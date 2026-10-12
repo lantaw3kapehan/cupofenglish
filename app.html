@@ -1004,14 +1004,18 @@ textarea.in-t{contain:content}
 <div id="lg1">
 <div class="acc"><button id="accT" class="on" onclick="setMode('teacher')"><b>Teacher</b></button>
 <button id="accM" onclick="setMode('mgmt')"><b>Management</b></button></div>
-<p id="lgMsg">Sign in with your Gmail. We'll send you a 6-digit code.</p>
-<input id="em" class="in-t" type="email" inputmode="email" autocomplete="email" placeholder="you@gmail.com">
-<button class="btn block" style="margin-top:12px" onclick="sendCode()">Send code</button>
+<p id="lgMsg">Sign in with your Gmail and password.</p>
+<input id="em" class="in-t" type="email" inputmode="email" autocomplete="username" placeholder="you@gmail.com">
+<input id="pw" class="in-t" type="password" autocomplete="current-password" placeholder="Password" style="margin-top:8px">
+<button class="btn block" style="margin-top:12px" onclick="pwLogin()">Sign in</button>
+<button id="lgFg" class="btn ghost block hide" style="margin-top:8px" onclick="sendCode()">First time or forgot password</button>
+<p id="lgOps" class="small mute" style="text-align:center;margin-top:10px">Forgot your password? Message Ops.</p>
 </div>
 <div id="lg2" class="hide">
-<p>Enter the code sent to <b id="emShow"></b></p>
+<p>Enter the code sent to <b id="emShow"></b>, then choose your password.</p>
 <input id="otp" class="in-t otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••">
-<button class="btn block" style="margin-top:12px" onclick="checkCode()">Sign in</button>
+<input id="pw2" class="in-t" type="password" autocomplete="new-password" placeholder="New password · at least 8 characters" style="margin-top:8px">
+<button class="btn block" style="margin-top:12px" onclick="checkCode()">Save password and sign in</button>
 <button class="btn ghost block" style="margin-top:8px" onclick="show('lg1');hide('lg2')">Back</button>
 </div>
 </div>
@@ -1192,11 +1196,41 @@ function skeleton(){ $('v-today').innerHTML = '<div class="lead"></div>' + '<div
 
 function setMode(m){ MODE = m; store('set','coe.mode', m);
 $('accT').classList.toggle('on', m==='teacher'); $('accM').classList.toggle('on', m==='mgmt');
-$('lgMsg').textContent = m==='mgmt' ? 'Management sign-in. We\'ll send a 6-digit code to your work email.' : 'Sign in with your Gmail. We\'ll send you a 6-digit code.';
+$('lgMsg').textContent = m==='mgmt' ? 'Management sign-in with your work email and password.' : 'Sign in with your Gmail and password.';
+$('lgFg').classList.toggle('hide', m!=='mgmt'); $('lgOps').classList.toggle('hide', m==='mgmt');
 $('em').placeholder = m==='mgmt' ? 'you@cupofenglishatph.com' : 'you@gmail.com';
 $('em').value = store('get','coe.em.'+m) || '';
-if(!$('em')._k){ $('em')._k = 1; $('em').addEventListener('keydown', e => { if(e.key==='Enter') sendCode(); });
-$('otp').addEventListener('input', e => { const v = e.target.value.replace(/\D/g,''); e.target.value = v; if(v.length===6) checkCode(); }); } }
+if(!$('em')._k){ $('em')._k = 1; $('em').addEventListener('keydown', e => { if(e.key==='Enter') $('pw').focus(); });
+$('pw').addEventListener('keydown', e => { if(e.key==='Enter') pwLogin(); });
+$('pw2').addEventListener('keydown', e => { if(e.key==='Enter') checkCode(); });
+$('otp').addEventListener('input', e => { const v = e.target.value.replace(/\D/g,''); e.target.value = v; if(v.length===6) $('pw2').focus(); }); } }
+async function pwLogin(){
+const em = $('em').value.trim().toLowerCase(), pw = $('pw').value; if(!em) return toast('Type your email'); if(!pw) return toast('Type your password');
+if(LG_BUSY) return; LG_BUSY = true; toast('Signing in…');
+const r = await api('passwordLogin', em, pw, MODE).catch(()=>({ok:false,msg:'No connection. Check your internet and try again.'})); LG_BUSY = false;
+if(!r || !r.ok) return toast(r && r.msg || 'Not signed in');
+store('set','coe.em.'+MODE, em); $('pw').value = '';
+TOKEN = r.token; store('set', KEY_T, TOKEN); hide('login'); show('app'); skeleton(); reload(false);
+}
+function pwSet(name){
+openSheet(`<h1>Password · ${esc(tName(name))}</h1><p class="small mute">Type a password or tap Make one. It shows only here, so send it right away. The app can't show it again later.</p>
+<input id="pwN" class="in-t" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="At least 8 characters">
+<div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost" onclick="$('pwN').value=pwMake()">Make one</button><button class="btn grow" onclick="pwSave('${esc(name)}')">Save password</button></div>
+<div id="pwOut"></div>
+<button class="btn ghost block" style="margin-top:12px" onclick="openTeacher('${esc(name)}')">Back</button>`);
+}
+function pwMake(){ const W = ['Mango','Pearl','Cedar','Lotus','River','Maple','Comet','Bamboo','Coral','Sunny','Tiger','Panda','Olive','Amber','Cloud','Lemon']; const r = new Uint32Array(3); crypto.getRandomValues(r); return W[r[0]%W.length] + '-' + String(1000 + r[1]%9000) + '-' + W[r[2]%W.length]; }
+async function pwSave(name){
+const pw = $('pwN').value.trim(); if(pw.length < 8) return toast('At least 8 characters');
+toast('Saving…');
+const r = await api('mgmtPwSave', TOKEN, name, pw).catch(e => ({ ok:false, msg:String(e && e.message || e) }));
+if(!r || !r.ok) return toast(r && r.msg || 'Not saved');
+window._pwMsg = 'CupOfEnglish app\nEmail: ' + r.email + '\nPassword: ' + pw + '\nOpen: https:' + SL2 + 'app.cupofenglishatph.com';
+$('pwOut').innerHTML = `<div class="mini" style="margin-top:12px"><b>Saved.</b> Send to ${esc(tName(name))}:<br>Email: ${esc(r.email)}<br>Password: <b>${esc(pw)}</b><br><button class="btn sm teal" style="margin-top:8px" onclick="pwCopy()">Copy message</button></div>`;
+}
+function pwCopy(){ const t = window._pwMsg || ''; const fb = () => { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try{ document.execCommand('copy'); toast('Copied'); }catch(e){} a.remove(); };
+if(navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast('Copied'), fb); else fb(); }
+
 let LG_BUSY = false;
 async function sendCode(){
 const em = $('em').value.trim().toLowerCase(); if(!em) return toast('Type your email'); if(LG_BUSY) return; LG_BUSY = true; toast('Sending your code…');
@@ -1207,11 +1241,12 @@ $('emShow').textContent = em; hide('lg1'); show('lg2'); $('otp').focus();
 }
 async function checkCode(){
 const code = $('otp').value.replace(/\D/g,''); if(code.length !== 6) return toast('Type the 6-digit code');
+const npw = $('pw2').value; if(npw.length < 8){ $('pw2').focus(); return toast('Choose a password · at least 8 characters'); }
 if(LG_BUSY) return; LG_BUSY = true; toast('Signing in…');            
-let r; for(let i = 0; i < 2; i++){ r = await api('verifyCode', $('em').value.trim().toLowerCase(), code, MODE).catch(()=>null); if(r) break; await new Promise(z => setTimeout(z, 800)); }
+let r; for(let i = 0; i < 2; i++){ r = await api('setPassword', $('em').value.trim().toLowerCase(), code, npw, MODE).catch(()=>null); if(r) break; await new Promise(z => setTimeout(z, 800)); }
 LG_BUSY = false; if(!r) return toast('No connection. Check your internet and tap Sign in again.');
 if(!r.ok) return toast(r.msg);
-TOKEN = r.token; store('set', KEY_T, TOKEN); hide('login'); show('app'); skeleton(); reload(false);
+$('pw2').value = ''; TOKEN = r.token; store('set', KEY_T, TOKEN); hide('login'); show('app'); skeleton(); reload(false);
 }
 function logout(silent){
 if(!silent && TOKEN) api('signOut', TOKEN).catch(()=>{});
@@ -2640,7 +2675,7 @@ catch(e){ if(!p0 && mine()) $('sheetBody').innerHTML = `<h1 data-tch="${esc(name
 function tchHtml(name, p){
 const me = p.me || {};
 const today = (p.schedule||[]).filter(c=>c.day===p.today).sort((a,b)=>a.start.localeCompare(b.start));
-let h = `<h1 style="padding-right:48px">${esc(tName(name))}</h1><div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px"><button class="btn ghost sm" onclick="closeSheet();go('teachers');loadTT('${esc(name)}')">TEACHERS tab</button><button class="btn ghost sm" onclick="avOpen('${esc(name)}')">Open slots</button><button class="btn ghost sm" onclick="profOpen('${esc(name)}')">Profile card</button><button class="btn ghost sm" onclick="payslip('${esc(name)}')">Payslip</button><button class="btn sm teal" onclick="growthSheet('${esc(name)}')">Growth</button></div><div class="mute small">${esc([me.rank, me.rate?peso(me.rate)+'/lesson':'', (me.lifetime||0).toLocaleString()+' lifetime units'].filter(Boolean).join(' · '))}</div>
+let h = `<h1 style="padding-right:48px">${esc(tName(name))}</h1><div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px"><button class="btn ghost sm" onclick="closeSheet();go('teachers');loadTT('${esc(name)}')">TEACHERS tab</button><button class="btn ghost sm" onclick="avOpen('${esc(name)}')">Open slots</button><button class="btn ghost sm" onclick="profOpen('${esc(name)}')">Profile card</button><button class="btn ghost sm" onclick="payslip('${esc(name)}')">Payslip</button><button class="btn sm teal" onclick="growthSheet('${esc(name)}')">Growth</button><button class="btn ghost sm" onclick="pwSet('${esc(name)}')">Password</button></div><div class="mute small">${esc([me.rank, me.rate?peso(me.rate)+'/lesson':'', (me.lifetime||0).toLocaleString()+' lifetime units'].filter(Boolean).join(' · '))}</div>
 <div class="stats" style="margin-top:12px"><div class="stat"><b class="num">${(me.nowReg||0)+(me.nowTrial||0)+(me.nowSub||0)}</b><span>units this month</span></div>
 <div class="stat"><b class="num">${peso((me.nowPay||0)+(me.monthBonus||0)-(me.monthDeduct||0))}</b><span>pay so far</span></div>
 <div class="stat"><b class="num">${(p.students||[]).length}</b><span>students</span></div></div>`;
@@ -5324,7 +5359,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 324;
+const COE_V = 325;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
