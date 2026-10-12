@@ -28,10 +28,11 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
   var KEY = 'coe.app', cached = null;
   try { cached = localStorage.getItem(KEY); } catch (e) {}
   function paint(h) { document.open(); document.write(h); document.close(); }
+  function ver(x) { var m = /const COE_V = (\d+);/.exec(x || ''); return m ? +m[1] : 0; }
   function get(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('bad'); return r.text(); }).then(function (h) { if (h.indexOf('COE_API') < 0) throw new Error('bad'); return h; }); }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
   get('app.html').catch(function () { return get(API + '?app=1'); }).then(function (h) {   // backup: the old Apps Script copy
-    if (h !== cached) { try { localStorage.setItem(KEY, h); } catch (e) {} if (!cached) paint(h); }   // a new version shows next time
+    if (h !== cached && ver(h) >= ver(cached)) { try { localStorage.setItem(KEY, h); } catch (e) {} if (!cached) paint(h); }   // a newer version shows next time · never step back to an older copy (stale CDN or the old backup)
   }).catch(function () { if (!cached) document.getElementById('m').textContent = 'No connection. Check your internet and reopen.'; });
   if (cached) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { paint(cached); }); else paint(cached); }
 })();
