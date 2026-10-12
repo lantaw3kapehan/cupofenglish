@@ -2795,6 +2795,7 @@ let h = `<div class="shero"><div class="av big">${esc((nm||'?')[0])}</div><div c
 ${!D.mgr && code ? `<button class="btn sm" onclick="noteSheet('${esc(code)}','','')">Class note</button>${fbCan(code) ? `<button class="btn sm teal" onclick="fbSheet('${esc(code)}')">Write monthly feedback</button>` : ''}` : ''}
 ${D.mgr ? `<button class="btn sm teal" onclick="printProfile()">Print / Save PDF</button>` : ''}
 ${D.mgr && code ? `<button class="btn sm teal" onclick="cxBalance(null,'${esc(code)}')">Lessons left · picture to send</button>` : ''}
+${D.mgr && code ? `<button class="btn sm teal" onclick="cnOpen('${esc(code)}')">Class notice</button>` : ''}
 ${D.mgr ? `<button class="btn ghost sm" onclick="tabSheet('INDPKG','Lesson summary','${esc(code)}')">Lesson summary</button><button class="btn ghost sm" onclick="agrOpen({code:'${esc(code)}'})">Agreement</button>` : ''}
 ${last?`<button class="btn ghost sm" onclick="docSheet('PRREP','Progress report','${esc(last.pr)}')">Progress report</button>`:''}</div>`;
 h += `<div id="stuSch">${STU.cls ? stuSched(STU.cls) : '<section class="sec"><h2>Schedule <span class="c">Google Calendar</span></h2><div class="sk"></div><div class="sk"></div></section>'}</div>`;
@@ -5405,7 +5406,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 336;
+const COE_V = 337;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
@@ -7565,6 +7566,7 @@ card(7, 'Trial welcome · young learners', '试听欢迎 · 少儿', 'For the ne
 card(8, 'Trial welcome · adults', '试听欢迎 · 成人', 'The same welcome written for adult learners, plus their learning goals · English and Chinese.', 'Copy message', 'welCopy(1)') +
 card(9, 'Payment · Alipay', '缴费 · 支付宝', 'When they decide to enrol: our Alipay QR + a short message asking them to add us as a friend first (overseas account) · English and Chinese.', 'Open', 'payOpen(0)') +
 card(10, 'Payment · send to a tagged person', '缴费 · @指定联系人', 'When the payment goes to someone we tag in the WeChat group (e.g. Dr. Sunshine) who helps us with it · English and Chinese.', 'Open', 'payOpen(1)') +
+card(11, 'Class notice · enrolled', '开课通知', 'When they enrol or renew: the WeChat group notice with student code, courseware, units, schedule, purchase date and cancellation policy · filled from ACTIVE and the calendar.', 'Open', 'cnPick()') +
 '<div class="small mute" style="margin-top:18px;line-height:1.6"><b>Suggested order:</b> price picture → CEFR picture → trial invitation. After the trial, open the student in <a class="lk" onclick="go(\'reports\')">Parent reports</a> for the personalised price, CEFR and course plan pictures.</div>';
 }
 const WEL_KID = "Hello! Welcome to CupOfEnglish. It’s a pleasure to meet you and your child! 😊\n\nWe’re happy to have you with us for the upcoming trial class.\n\nTo help your child have a smooth and comfortable first lesson, please kindly prepare the following:\n\n① Tencent Meeting (腾讯会议)\nPlease make sure it is installed and working properly before the class.\n\n② Camera On 📷\nWe encourage students to keep their cameras on so the teacher can observe their responses, give timely support, and create a more interactive learning experience.\n\n③ Class Recording 🎥\nThe trial class will be recorded. After the lesson, the teacher will send the recording here in the WeChat group so you can review your child’s class experience and performance.\n\nWe hope your child enjoys the class and feels comfortable learning with us. See you soon! 😊\n\n—— 中文 ——\n\n您好！欢迎来到 CupOfEnglish，很高兴认识您和孩子！😊\n\n也非常期待孩子参加接下来的试听课。\n\n为了让孩子的第一次课堂体验更加顺利、轻松，请您提前做好以下准备：\n\n① 腾讯会议\n请提前安装并确认腾讯会议可以正常使用，以便孩子准时、顺利进入课堂。\n\n② 打开摄像头 📷\n我们建议孩子上课时打开摄像头，这样老师可以更好地观察孩子的反应，及时给予引导和帮助，让课堂互动更加自然、有效。\n\n③ 课堂录像 🎥\n试听课会进行录制。课程结束后，老师会将课堂录像发送到本微信群，方便您回看并了解孩子的课堂体验和表现。\n\n希望孩子能够享受这次课堂体验，并轻松地融入我们的学习方式。期待课堂见！😊";
@@ -7594,6 +7596,71 @@ const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.downlo
 try{ const img = new Image(); img.src = PAY_QR; await img.decode(); const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0);
 const png = await new Promise(r => c.toBlob(r, 'image/png')); await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]); toast('QR picture copied · paste it in WeChat'); }
 catch(e){ toast('Could not copy the picture here · use Save QR'); }
+}
+let CN = null;
+const cnBook = b => String(b || '').replace(/([a-z])([A-Z])/g, '$1 $2');
+const cnDate = d => { const x = new Date(String(d || '') + 'T00:00:00'); return isNaN(x) ? '' : x.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }); };
+const cnT8 = iso => new Date(new Date(iso).getTime() + 8 * 36e5);
+const cnHm = iso => { const d = cnT8(iso); return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); };
+function cnSched(L){
+const now = Date.now(), ok = (Array.isArray(L) ? L : []).filter(x => !x.cancelled && !x.makeup), at = x => new Date(x.start).getTime();
+let W = ok.filter(x => at(x) >= now - 864e5 && at(x) < now + 15 * 864e5);
+if(!W.length) W = ok.filter(x => at(x) >= now).slice(0, 4);
+if(!W.length) W = ok.filter(x => at(x) < now).slice(-6);
+const DN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], by = {};
+W.forEach(x => { const t = (typeof tName === 'function' ? tName(x.teacher || '') : '') || x.teacher || ''; const k = cnT8(x.start).getUTCDay() + ' ' + cnHm(x.start) + ' - ' + cnHm(x.end); (by[t] = by[t] || {})[k] = 1; });
+return Object.keys(by).map(t => 'Teacher ' + t + '\n' + Object.keys(by[t]).sort((a, b) => ((+a[0] + 6) % 7) - ((+b[0] + 6) % 7) || a.localeCompare(b)).map(k => DN[+k[0]] + ' ' + k.slice(2)).join('\n')).join('\n\n');
+}
+async function cnOpen(code){
+code = String(code || '').trim().toUpperCase(); if(!code) return;
+openSheet('<h1>Class notice</h1><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>');
+try{
+const [A, L] = await Promise.all([AT ? Promise.resolve(AT) : api('mgmtActive', TOKEN), api('mgmtStuClasses', TOKEN, code).catch(() => [])]);
+if(!AT) AT = A;
+const C = {}; A.cols.forEach((c, i) => C[c] = i);
+const rows = A.rows.filter(r => String(r[C.code]).toUpperCase() === code);
+const pk = rows.filter(r => r[C.enrolled] !== '').sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])))[0] || rows[0];
+if(!pk) return openSheet('<h1>Class notice</h1><div class="empty">' + esc(code) + ' is not in ACTIVE yet · add the package first, then try again.</div>');
+const ok = (Array.isArray(L) ? L : []).filter(x => !x.cancelled), now = Date.now(), up = ok.find(x => new Date(x.start).getTime() >= now) || ok[ok.length - 1] || {};
+const carry = +pk[C.carry] || 0; let rn = ''; try{ rn = String((typeof REN === 'object' && REN && REN[code]) || ''); }catch(e){}
+CN = { code: code, name: pk[C.name] || code, cn: pk[C.cn] || '', book: cnBook(up.book), units: pk[C.enrolled], carry: carry || '', date: String(pk[C.start] || '').slice(0, 10), ren: carry > 0 || /^Renewed/.test(rn) ? 1 : 0, kid: 1, sch: cnSched(L) };
+cnPaint();
+}catch(e){ openSheet('<h1>Class notice</h1><div class="empty">Could not load ' + esc(code) + '. Check your internet and try again.</div>'); }
+}
+function cnText(){
+const x = CN, u = +x.units || 0, c = +x.carry || 0, fm = n => String(Math.round(n * 10) / 10);
+return '📢 CLASS NOTICE' + (x.ren ? ' (Renewal)' : '') + '\n\n🪪 ' + x.code + ' – ' + x.name + (x.cn ? ' (' + x.cn + ')' : '') +
+'\n\n📘 ' + (String(x.book || '').trim() ? String(x.book).trim() + ' ' : '') + 'Courseware | ' + fm(u) + ' units (50 min each) = ' + fm(u * 2) + ' × 25-min classes' +
+(c ? '\n📝 ' + fm(c) + (c < 2 ? ' unit' : ' units') + ' × 50-min classes (carried over)' : '') +
+'\n\n🗓️ Schedule\n' + (String(x.sch || '').trim() || 'Teacher …') +
+(x.date ? '\n\n💳 Purchased Online: ' + cnDate(x.date) : '') +
+'\n\n🔔 Cancellation Policy 温馨提醒\nPlease inform us ≥ 2 hours before class if ' + (x.kid ? 'your child' : 'you') + ' can’t attend.\nLate cancellations will still count as a paid class.\n若无法上课，请提前 2 小时告知。临时取消视为已完成课程。' +
+'\n\n❤️ Thank you for your understanding and support!\n非常感谢您的理解与支持！';
+}
+function cnPaint(){
+const x = CN, inp = (k, l, t) => `<label>${l}</label><input class="in-t" type="${t || 'text'}" value="${esc(x[k] == null ? '' : x[k])}" oninput="CN['${k}']=this.value;cnPv()">`;
+openSheet(`<h1>Class notice · ${esc(x.name)}</h1><div class="mute small">For the WeChat group when they enrol or renew · filled from ACTIVE and the calendar · change anything before copying.</div>
+<div class="seg" style="margin-top:12px"><button class="${x.ren ? '' : 'on'}" onclick="CN.ren=0;cnPaint()">New enrolment</button><button class="${x.ren ? 'on' : ''}" onclick="CN.ren=1;cnPaint()">Renewal</button></div>
+<div class="seg"><button class="${x.kid ? 'on' : ''}" onclick="CN.kid=1;cnPaint()">Child</button><button class="${x.kid ? '' : 'on'}" onclick="CN.kid=0;cnPaint()">Adult</button></div>
+${inp('book', 'Courseware')}
+<div class="row" style="gap:8px"><div class="grow">${inp('units', 'Units (50 min each)', 'number')}</div><div class="grow">${inp('carry', 'Carried over (units)', 'number')}</div></div>
+${inp('date', 'Purchased online', 'date')}
+<label>Schedule <span class="mute small">· from the calendar · one teacher per block</span></label><textarea class="in-t" rows="5" oninput="CN.sch=this.value;cnPv()">${esc(x.sch)}</textarea>
+<p class="small" id="cnPv" style="white-space:pre-line;margin-top:12px;padding:12px;border-radius:12px;background:#F4FAFA;border:1px solid #DCEFEF">${esc(cnText())}</p>
+<button class="btn teal" style="width:100%" onclick="cnCopy()">Copy notice</button>`);
+}
+function cnPv(){ const el = $('cnPv'); if(el) el.textContent = cnText(); }
+async function cnCopy(){ try{ await navigator.clipboard.writeText(cnText()); toast('Class notice copied · paste it in the WeChat group'); }catch(e){ toast('Could not copy · press and hold the text to copy'); } }
+async function cnPick(){
+openSheet(`<h1>Class notice</h1><div class="mute small">Pick the student · newest packages first.</div><input id="cnQ" class="search" style="margin-top:12px" placeholder="Name, Chinese name or ST code" oninput="cnList()"><div id="cnL"><div class="sk"></div><div class="sk"></div></div>`);
+if(!AT){ try{ AT = await api('mgmtActive', TOKEN); }catch(e){} }
+cnList();
+}
+function cnList(){
+const el = $('cnL'); if(!el) return; if(!AT){ el.innerHTML = '<div class="empty">Could not load students.</div>'; return; }
+const C = {}; AT.cols.forEach((c, i) => C[c] = i); const q = String(($('cnQ') || {}).value || '').trim().toLowerCase(), seen = {};
+const R = AT.rows.filter(r => r[C.active] && r[C.enrolled] !== '').sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start]))).filter(r => { const k = String(r[C.code]); if(seen[k]) return false; seen[k] = 1; return !q || (r[C.code] + ' ' + r[C.name] + ' ' + r[C.cn]).toLowerCase().includes(q); }).slice(0, 30);
+el.innerHTML = R.map(r => `<div class="li" onclick="cnOpen('${esc(r[C.code])}')"><div class="grow"><b>${esc(r[C.name])}</b> <span class="mute">${esc(r[C.cn])}</span><div class="small mute">${esc(r[C.code])} · ${esc(r[C.teacher])} · started ${esc(String(r[C.start]).slice(0, 10))}</div></div><span class="mute">›</span></div>`).join('') || '<div class="empty">No match.</div>';
 }
 function welCopy(ad){ const t = ad ? WEL_ADULT : WEL_KID; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Welcome message copied · paste it in the WeChat group'), () => openSheet('<p class="small" style="white-space:pre-line">' + esc(t) + '</p>')); }
 async function enqInv(){ try{ await navigator.clipboard.writeText(ENQ_INV); toast('Message copied · paste it in WeChat'); }catch(e){ openSheet('<p class="small">' + esc(ENQ_INV).replace(/\n/g, '<br>') + '</p>'); } }
