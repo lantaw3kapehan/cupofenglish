@@ -4742,16 +4742,17 @@ function scStage(e){ if(!e || e.cancelled) return ''; const m = (new Date(e.star
 const OPS_OFF = { 3: '24:00', 6: '14:00', 0: '11:00' };
 function remByTeacher(e){ const d = new Date(e.start), lim = OPS_OFF[d.getDay()]; return !!lim && tm(e.start) < lim; }
 function scRemKey(e, st){ return 'coeRem:' + ymdLocal(new Date(e.start)) + ':' + new Date(e.start).toISOString() + ':' + (e.code || e.student || e.title) + ':' + st; }
-let REM = { day: '', map: {}, busy: 0 };
-async function remLoad(){ if(REM.busy) return; REM.busy = 1; try{ const d = ymdLocal(new Date()), r = await api('mgmtReminders', TOKEN, d); if(r && r.ok){ REM.day = d; REM.map = r.rem || {}; } }catch(x){} REM.busy = 0; try{ const v = $('v-schedule'); const a = document.activeElement; if(SC && v && v.offsetParent && !(a && a.id === 'scQ')) scRefresh(); }catch(x){} }
+let REM = { day: '', map: {}, busy: 0, ts: 0 };
+function remFresh(){ return REM.day === ymdLocal(new Date()) && Date.now() - REM.ts < 12e4; }
+async function remLoad(){ if(REM.busy) return; REM.busy = 1; try{ const d = ymdLocal(new Date()), r = await api('mgmtReminders', TOKEN, d); if(r && r.ok){ REM.day = d; REM.map = r.rem || {}; REM.ts = Date.now(); } else if(REM.day === d) REM.ts = Date.now(); }catch(x){ if(REM.day === ymdLocal(new Date())) REM.ts = Date.now(); } REM.busy = 0; try{ const v = $('v-schedule'); const a = document.activeElement; if(SC && v && v.offsetParent && !(a && a.id === 'scQ')) scRefresh(); }catch(x){} }
 /* Redraw the Schedule only when something on it changed (class status, a reminder due or sent), so the screen does not blink every minute. */
-function scSig(){ if(!SC) return ''; const n = Date.now(); return SC.date + '|' + SC.events.map(e => { const s = +new Date(e.start), en = +new Date(e.end), st = scStage(e); return (n >= s - 30 * 6e4 ? 1 : 0) + '' + (n >= s + 2 * 6e4 ? 1 : 0) + (n >= en ? 1 : 0) + (n >= en + 15 * 6e4 ? 1 : 0) + (st || '-') + (st && scSent(e, st) ? 'y' : 'n') + (REM.map[scRemKey(e, '2h')] ? 'a' : '') + (REM.map[scRemKey(e, '10m')] ? 'b' : ''); }).join(','); }
+function scSig(){ if(!SC) return ''; const n = Date.now(); return (remFresh() ? 'F' : 'S') + SC.date + '|' + SC.events.map(e => { const s = +new Date(e.start), en = +new Date(e.end), st = scStage(e); return (n >= s - 30 * 6e4 ? 1 : 0) + '' + (n >= s + 2 * 6e4 ? 1 : 0) + (n >= en ? 1 : 0) + (n >= en + 15 * 6e4 ? 1 : 0) + (st || '-') + (st && scSent(e, st) ? 'y' : 'n') + (REM.map[scRemKey(e, '2h')] ? 'a' : '') + (REM.map[scRemKey(e, '10m')] ? 'b' : ''); }).join(','); }
 let SC_SIG = '';
 function scRefresh(){ const g = scSig(); if(g === SC_SIG) return; renderSchedule(); }
 function scSent(e, st){ if(REM.map[scRemKey(e, st)]) return true; try{ return localStorage.getItem(scRemKey(e, st)) === '1'; }catch(x){ return false; } }
 function scRemChips(e){ const c = ['2h', '10m'].map(st => { const r = REM.map[scRemKey(e, st)]; return r ? `<span class="chip teal">🔔 ${st === '10m' ? '10-min' : 'Early'} reminder · ${esc(r.by)} ${esc(r.at)}</span>` : ''; }).filter(Boolean); return c.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${c.join('')}</div>` : ''; }
 function scDueBox(){
-if(!SC || SC_OFF) return ''; if(REM.day !== ymdLocal(new Date()) && !REM.busy) setTimeout(remLoad, 0); const due = SC.events.filter(e => { const st = scStage(e); return st && !scSent(e, st); }).sort((a, b) => a.start.localeCompare(b.start));
+if(!SC || SC_OFF) return ''; if(!remFresh()){ if(!REM.busy) setTimeout(remLoad, 0); return SC.events.some(e => scStage(e)) ? '<div class="small mute" style="margin-top:10px">🔔 Checking which reminders were already sent…</div>' : ''; } const due = SC.events.filter(e => { const st = scStage(e); return st && !scSent(e, st); }).sort((a, b) => a.start.localeCompare(b.start));
 const sent = SC.events.filter(e => { const st = scStage(e); return st && scSent(e, st); }).length;
 if(!due.length){ const nx = scNextRem(); return (sent || nx) ? `<div class="small mute" style="margin-top:10px">🔔 Reminders: ${sent ? 'all sent ✓ (' + sent + ')' : 'none due now'}${nx ? ' · next opens ' + tm(new Date(nx.at).toISOString()) + ' · ' + esc(nx.e.student || nx.e.title) + ' (' + (nx.st === '10m' ? '10-min' : 'early') + ')' : ''}</div>` : ''; }
 return `<div class="card" style="margin-top:12px;border:1.5px solid #00A3AD"><b>🔔 Reminders due · ${due.length}</b><div class="small mute">Copy, then paste in the class WeChat group (type @ to tag the teacher and parent)${sent ? ' · ' + sent + ' sent' : ''}</div>` +
@@ -4760,7 +4761,7 @@ due.map(e => { const st = scStage(e), i = SC.events.indexOf(e); return `<div cla
 async function scRemDone(ix){
 const L = ix.map(i => SC.events[i]).filter(Boolean).map(e => ({ e, st: scStage(e) })).filter(x => x.st); if(!L.length) return;
 L.forEach(x => { try{ localStorage.setItem(scRemKey(x.e, x.st), '1'); }catch(y){} }); renderSchedule();
-let bad = 0; for(const x of L){ try{ const r = await api('mgmtRemindLog', TOKEN, { key: scRemKey(x.e, x.st), day: ymdLocal(new Date(x.e.start)), start: tm(x.e.start), code: x.e.code || '', student: x.e.student || x.e.title || '', teacher: x.e.teacher || '', stage: (x.st === '10m' ? '10-min' : 'Early') + ' · marked sent' }); if(r && r.ok){ REM.map = r.rem || REM.map; REM.day = ymdLocal(new Date()); } else bad++; }catch(y){ bad++; } }
+let bad = 0; for(const x of L){ try{ const r = await api('mgmtRemindLog', TOKEN, { key: scRemKey(x.e, x.st), day: ymdLocal(new Date(x.e.start)), start: tm(x.e.start), code: x.e.code || '', student: x.e.student || x.e.title || '', teacher: x.e.teacher || '', stage: (x.st === '10m' ? '10-min' : 'Early') + ' · marked sent' }); if(r && r.ok){ REM.map = r.rem || REM.map; REM.day = ymdLocal(new Date()); REM.ts = Date.now(); } else bad++; }catch(y){ bad++; } }
 renderSchedule(); toast(bad ? bad + ' not saved · try again' : (L.length > 1 ? L.length + ' reminders' : 'Reminder') + ' marked sent');
 }
 function scRemindText(e){
@@ -5582,7 +5583,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 369;
+const COE_V = 370;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
