@@ -5388,16 +5388,16 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 329;
+const COE_V = 331;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
 let UPD_AT = 0;
 function fetchUpdate(){ if(!API_URL || GAS || Date.now() - UPD_AT < 10*60000) return; UPD_AT = Date.now();
-fetch(API_URL + '?v=1', {cache:'no-store'}).then(r => r.text()).then(v => { if(+v > COE_V) fetchUpdateFull(); }).catch(()=>{}); }   /* a tiny version check first · the full app only downloads when there is a newer one */
+fetch('version.txt', {cache:'no-store'}).then(r => r.text()).then(v => { if(+v > COE_V) fetchUpdateFull(); }).catch(()=>{}); }   /* a tiny version check first · the full app only downloads when there is a newer one */
 function fetchUpdateFull(){ setTimeout(fetchUpdateNow, (typeof D !== 'undefined' && D && D.mgr) ? 500 : Math.random() * 90000); }   /* spread out: not every phone downloads the new version in the same second */
 function fetchUpdateNow(){
-fetch(API_URL + '?app=1', {cache:'no-store'}).then(r => r.text()).then(h => { if(h.indexOf('COE_API') < 0) return;
+fetch('app.html', {cache:'no-store'}).then(r => r.text()).then(h => { if(h.indexOf('COE_API') < 0) return;
 const m = h.match(/const COE_V = (\d+);/); if(m && +m[1] > COE_V){ try{ localStorage.setItem('coe.app', h); }catch(e){} applyUpdate(); } }).catch(()=>{}); }
 if(API_URL && !GAS){ setTimeout(applyUpdate, 2500); setTimeout(applyUpdate, 8000); setInterval(fetchUpdate, 20*60000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden) fetchUpdate(); }); }
@@ -7542,8 +7542,15 @@ card(1, 'Price list', '课程价格', 'Kids &amp; teens (4–17), adults (18+), 
 card(2, 'CEFR levels', '英语水平', 'How we place children by English level, not by age or school grade · IELTS and Cambridge for reference.', 'CEFR picture', 'cefrPic({})') +
 card(3, 'Course roadmap', '学习路线', 'Kids: the book path with the official roadmap pages. Adults: pick the goal (daily speaking, travel, work, business, vocabulary) and level.', 'Roadmap', 'coursePlan({})') +
 card(4, 'Invite to a trial', '预约试听', 'A short Chinese message asking for the child\'s age and a good trial time.', 'Copy message', 'enqInv()') +
+card(5, 'Inquiry form · kids &amp; teens', '试听课信息 · 少儿', 'Before booking: English and Chinese name, birthdate, school grade, English learning experience. No need to log the enquiry first.', 'Copy form', 'enqFormCopy(0)') +
+card(6, 'Inquiry form · adults', '试听课信息 · 成人', 'Before booking: occupation, main goal, English tests taken (if any), learning experience, good class times.', 'Copy form', 'enqFormCopy(1)') +
+card(7, 'Trial welcome · young learners', '试听欢迎 · 少儿', 'For the new WeChat group once the trial is set: Tencent Meeting, camera on, class recording · English and Chinese.', 'Copy message', 'welCopy(0)') +
+card(8, 'Trial welcome · adults', '试听欢迎 · 成人', 'The same welcome written for adult learners, plus their learning goals · English and Chinese.', 'Copy message', 'welCopy(1)') +
 '<div class="small mute" style="margin-top:18px;line-height:1.6"><b>Suggested order:</b> price picture → CEFR picture → trial invitation. After the trial, open the student in <a class="lk" onclick="go(\'reports\')">Parent reports</a> for the personalised price, CEFR and course plan pictures.</div>';
 }
+const WEL_KID = "Hello! Welcome to CupOfEnglish. It’s a pleasure to meet you and your child! 😊 We’re happy to have you with us for the upcoming trial class.\nTo help your child have a smooth and comfortable first lesson, please kindly prepare the following:\n① Tencent Meeting (腾讯会议)\nPlease make sure it is installed and working properly before the class.\n② Camera On 📷\nWe encourage students to keep their cameras on so the teacher can observe their responses, give timely support, and create a more interactive learning experience.\n③ Class Recording 🎥\nThe trial class will be recorded. After the lesson, the teacher will send the recording here in the WeChat group so you can review your child’s class experience and performance.\nWe hope your child enjoys the class and feels comfortable learning with us. See you soon! 😊\n—— 中文 ——\n您好！欢迎来到 CupOfEnglish，很高兴认识您和孩子！😊 也非常期待孩子参加接下来的试听课。\n\n为了让孩子的第一次课堂体验更加顺利、轻松，请您提前做好以下准备：\n① 腾讯会议\n请提前安装并确认腾讯会议可以正常使用，以便孩子准时、顺利进入课堂。\n② 打开摄像头 📷\n我们建议孩子上课时打开摄像头，这样老师可以更好地观察孩子的反应，及时给予引导和帮助，让课堂互动更加自然、有效。\n③ 课堂录像 🎥\n试听课会进行录制。课程结束后，老师会将课堂录像发送到本微信群，方便您回看并了解孩子的课堂体验和表现。\n希望孩子能够享受这次课堂体验，并轻松地融入我们的学习方式。期待课堂见！😊";
+const WEL_ADULT = "Hello! Welcome to CupOfEnglish. It’s a pleasure to meet you! 😊 We’re happy to have you with us for your upcoming trial class.\nTo make your first lesson smooth and comfortable, please kindly prepare the following:\n① Tencent Meeting (腾讯会议)\nPlease make sure it is installed and working properly before the class.\n② Camera On 📷\nWe encourage you to keep your camera on so your teacher can see your responses, give timely feedback, and make the lesson more interactive.\n③ Class Recording 🎥\nThe trial class will be recorded. After the lesson, your teacher will send the recording here in the WeChat group so you can review your lesson and your progress.\n④ Your Learning Goals 🎯\nFeel free to tell us your goals before the class (work, business, travel, exams or daily conversation), so your teacher can focus on what matters most to you.\nWe hope you enjoy the class and feel comfortable learning with us. See you soon! 😊\n—— 中文 ——\n您好！欢迎来到 CupOfEnglish，很高兴认识您！😊 非常期待您参加接下来的试听课。\n\n为了让您的第一次课堂体验更加顺利、轻松，请您提前做好以下准备：\n① 腾讯会议\n请提前安装并确认腾讯会议可以正常使用，以便准时、顺利进入课堂。\n② 打开摄像头 📷\n我们建议上课时打开摄像头，这样老师可以更好地了解您的反应，及时给予反馈和帮助，让课堂互动更加自然、有效。\n③ 课堂录像 🎥\n试听课会进行录制。课程结束后，老师会将课堂录像发送到本微信群，方便您回看并了解自己的课堂表现和进步。\n④ 学习目标 🎯\n欢迎提前告诉我们您的学习目标（如工作、商务、旅行、考试或日常交流），老师会根据您的需求重点安排课堂内容。\n希望您能享受这次课堂体验，并轻松地融入我们的学习方式。期待课堂见！😊";
+function welCopy(ad){ const t = ad ? WEL_ADULT : WEL_KID; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Welcome message copied · paste it in the WeChat group'), () => openSheet('<p class="small" style="white-space:pre-line">' + esc(t) + '</p>')); }
 async function enqInv(){ try{ await navigator.clipboard.writeText(ENQ_INV); toast('Message copied · paste it in WeChat'); }catch(e){ openSheet('<p class="small">' + esc(ENQ_INV).replace(/\n/g, '<br>') + '</p>'); } }
 </script>
 <script>
