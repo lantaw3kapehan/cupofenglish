@@ -1,0 +1,2 @@
+// Course chips: removing a course asks first (a stray tap had cleared one).
+require('../tools/lib.js')(process.argv[2], [["const cur = String(r[C.course] || '').split(',').map(x => x.trim()).filter(Boolean), i = cur.indexOf(b); if(i > -1) cur.splice(i, 1); else cur.push(b);", "const cur = String(r[C.course] || '').split(',').map(x => x.trim()).filter(Boolean), i = cur.indexOf(b); if(i > -1){ if(!confirm('Remove ' + pkCourse(b) + ' from this package? Its lessons then count with every course of this teacher.')) return; cur.splice(i, 1); } else cur.push(b);"]]);
