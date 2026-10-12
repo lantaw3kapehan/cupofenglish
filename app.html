@@ -2817,7 +2817,7 @@ return `<div class="fbt"><h3>${T.ls}</h3><p>${fbMd(T.s)||'—'}</p><h3>${T.la}</
 function dbProfile(P){                          // the student's DATABASE row, grouped like the tab's header
 if(!P) return '<h2>Profile</h2><div class="mute small">Not found in DATABASE.</div>';
 const G = [], at = {};
-P.head.forEach((k, j) => { let v = String(P.row[j]==null?'':P.row[j]).trim().split(SL2).join(' '); if(!v || v==='FALSE' || j===0) return; if(v==='TRUE') v = '✓';
+P.head.forEach((k, j) => { let v = String(P.row[j]==null?'':P.row[j]).trim().split(SL2).join(' '); if(!v || v==='FALSE' || j===0 || /^#(REF!|N\/A|VALUE!|DIV\/0!|NAME\?|NUM!|ERROR!|NULL!)$/.test(v)) return; if(v==='TRUE') v = '✓';
 const i = String(k||'').indexOf(' · '), g = i>0 ? k.slice(0,i) : 'Student', sub = i>0 ? k.slice(i+3) : (k || '—');
 if(!(g in at)){ at[g] = G.length; G.push({g, f:[]}); } G[at[g]].f.push([sub, v]); });
 return `<h2>Profile <span class="c">DATABASE${P.packages>1?' · latest of '+P.packages+' rows':''}</span>${sheetLink('DATABASE')}</h2>` +
@@ -5637,10 +5637,11 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 375;
+const COE_V = 376;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
-function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
+function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
+function updQuiet(){ try{ if(typeof D === 'undefined' || !D || D.mgr || performance.now() < 15000) return false; const h = new Date().getHours(); return h >= 16 && h < 22; }catch(e){ return false; } }
 let UPD_AT = 0;
 function fetchUpdate(){ if(!API_URL || GAS || Date.now() - UPD_AT < 10*60000) return; UPD_AT = Date.now();
 fetch('version.txt', {cache:'no-store'}).then(r => r.text()).then(v => { if(+v > COE_V) fetchUpdateFull(); }).catch(()=>{}); }   /* a tiny version check first · the full app only downloads when there is a newer one */
@@ -7736,7 +7737,8 @@ window.cpText = async function(){ if(CP.ad){ const ta = adText(); try{ await nav
 const t = (o.student ? '家长您好！附上为' + nm + '定制的学习规划，供您参考。\n\n根据本次试听课评估，建议从「' + s.zh + '（' + CP.bk + '）」开始学习，' : '家长您好！附上一杯英语的学习路线图，供您参考。\n\n以「' + s.zh + '（' + CP.bk + '）」为例，') + '学习路线为：' + path + '。老师会根据孩子的掌握情况灵活调整进度，帮助孩子每一步都打好扎实的基础。\n\n如有任何问题，欢迎随时与我们联系。\n\n一杯英语（CupOfEnglish）';
 try{ await navigator.clipboard.writeText(t); toast('Message copied'); }catch(e){ toast(t); } };
 const _pp = window.pricePic; if(_pp) window.pricePic = function(o){ _pp.apply(this, arguments); try{ const k = o && o.student && CPB[o.student]; if(k && window.ppRec) ppRec(BK[k].pk); }catch(e){} };
-const _tb = window.tlBtns; if(_tb) window.tlBtns = function(){ _tb.apply(this, arguments); try{ const el = $('tlAct'); if(el && TLD && !$('cpB')) el.insertAdjacentHTML('beforeend', '<button class="btn ghost grow" id="cpB" onclick="coursePlan({ student: TLD.student, cn: TLD.cn, cefr: TLD.cefr || (TLD.t ? (window.cefrOf ? cefrOf(+TLD.t)[1] : \'\') : \'\'), total: TLD.total || TLD.t, teacher: TLD.teacher })">Course plan</button>'); }catch(e){} };
+const _tb = window.tlBtns; if(_tb) window.tlBtns = function(){ _tb.apply(this, arguments); try{ const el = $('tlAct'); if(el && TLD && !$('agB')) el.insertAdjacentHTML('beforeend', '<button class="btn ghost grow" id="agB" onclick="agrOpen({ code: /^ST-/.test(TLD.code || \'\') ? TLD.code : \'\', key: \'trial:\' + (TLD.label || TLD.student), name: TLD.student, cn: TLD.cn || \'\' })">Agreement</button>');
+if(el && TLD && !$('cpB')) el.insertAdjacentHTML('beforeend', '<button class="btn ghost grow" id="cpB" onclick="coursePlan({ student: TLD.student, cn: TLD.cn, cefr: TLD.cefr || (TLD.t ? (window.cefrOf ? cefrOf(+TLD.t)[1] : \'\') : \'\'), total: TLD.total || TLD.t, teacher: TLD.teacher })">Course plan</button>'); }catch(e){} };
 })();
 </script>
 <script>
@@ -7997,6 +7999,7 @@ window.enqNoteSave = function(id){ const t = ($('eqNt') || {}).value || ''; enqL
 window.enqPic = function(id, k){ if(/^tmp/.test(id)) return toast('Still saving · try again in a moment'); const e = (ENQ || []).find(x => x.id === id); if(!e) return; const o = Object.assign({ enq: id }, pOpt(e.prog));
 if(k === 'p') pricePic(o); else if(k === 'c') cefrPic({ enq: id }); else if(k === 'r') coursePlan({ enq: id, adult: o.adult }); else { SX = { enq: id, what: 'Trial invitation' }; logSent(); enqInv(); } };
 window.enqF = function(f){ ENQ_F = f; renderEnq(); };
+window.enqAgr = function(id){ const e = (ENQ || []).find(x => x && String(x.id) === String(id)); if(!e) return; agrOpen({ key: 'enq:' + e.id, name: String(e.name || '').trim(), cn: String(e.cn || '').trim() }); };
 const _r = window.renderEnq; window.renderEnq = function(){ _r(); const el = $('v-enquiry'); if(!el) return; if(!ENQ) enqLoad();
 const L = ENQ || [], F = { follow: L.filter(isFollow), new: L.filter(e => (e.st || 'New') === 'New'), trial: L.filter(e => e.st === 'Trial booked'), enrolled: L.filter(e => e.st === 'Enrolled'), not: L.filter(e => e.st === 'Not now'), all: L };
 const tabs = [['follow', 'To follow up'], ['new', 'New'], ['trial', 'Trial booked'], ['enrolled', 'Enrolled'], ['not', 'Not now'], ['all', 'All'], ['results', 'Results']];
@@ -8005,7 +8008,7 @@ const row = e => { const d = days(e.up || e.at), fol = isFollow(e);
 return '<div class="tdr ' + (fol ? 'now' : 'soon') + '"><div class="tdn"><b class="num">' + days(e.at) + '</b><span>days</span></div><div class="grow" style="min-width:0"><div><b>' + esc(e.name) + '</b> <span class="mute small">' + esc([e.wechat, e.age ? e.age + ' yrs' : ''].filter(Boolean).join(' · ')) + '</span></div>' +
 '<div class="small" style="margin-top:2px">' + esc([e.prog, e.level, e.src ? 'via ' + e.src : ''].filter(Boolean).join(' · ')) + '<span class="mute"> · logged ' + esc(String(e.at || '').slice(5, 16)) + (e.by ? ' by ' + esc(e.by) : '') + '</span></div>' +
 '<div class="tags">' + chip(e.st) + trChip(e) + (e.sent ? '<span class="chip">Sent: ' + esc(e.sent) + '</span>' : '<span class="chip">Nothing sent yet</span>') + (fol ? '<span class="chip coral">Follow up · ' + d + ' days quiet</span>' : '') + '</div>' + (e.note ? '<div class="small mute" style="margin-top:4px">' + esc(e.note) + '</div>' : '') + (e.details ? '<div class="small" style="margin-top:4px;white-space:pre-line"><b>Answers</b> · ' + esc(e.details) + '</div>' : '') +
-'<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn teal sm" onclick="enqPic(\'' + e.id + '\',\'p\')">Price</button><button class="btn ghost sm" onclick="enqPic(\'' + e.id + '\',\'c\')">CEFR</button><button class="btn ghost sm" onclick="enqPic(\'' + e.id + '\',\'r\')">Roadmap</button><button class="btn ghost sm" onclick="enqPic(\'' + e.id + '\',\'i\')">Trial invite</button><button class="btn ghost sm" onclick="enqForm(\'' + e.id + '\')">Inquiry form</button><button class="btn ghost sm" onclick="enqNote(\'' + e.id + '\')">Note</button><button class="btn ghost sm" onclick="enqLink(\'' + e.id + '\')">' + (e.trial ? 'Change trial' : 'Link trial') + '</button></div>' +
+'<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn teal sm" onclick="enqPic(\'' + e.id + '\',\'p\')">Price</button><button class="btn ghost sm" onclick="enqPic(\'' + e.id + '\',\'c\')">CEFR</button><button class="btn ghost sm" onclick="enqAgr(\'' + e.id + '\')">Agreement</button><button class="btn ghost sm" onclick="enqPic(\'' + e.id + '\',\'r\')">Roadmap</button><button class="btn ghost sm" onclick="enqPic(\'' + e.id + '\',\'i\')">Trial invite</button><button class="btn ghost sm" onclick="enqForm(\'' + e.id + '\')">Inquiry form</button><button class="btn ghost sm" onclick="enqNote(\'' + e.id + '\')">Note</button><button class="btn ghost sm" onclick="enqLink(\'' + e.id + '\')">' + (e.trial ? 'Change trial' : 'Link trial') + '</button></div>' +
 '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">' + ['Trial booked', 'Enrolled', 'Not now'].filter(s => s !== e.st).map(s => '<button class="btn ghost sm" onclick="enqSt(\'' + e.id + '\',\'' + s + '\')">' + s + '</button>').join('') + (e.st && e.st !== 'New' ? '<button class="btn ghost sm" onclick="enqSt(\'' + e.id + '\',\'New\')">Back to new</button>' : '') + '</div></div></div>'; };
 const list = F[ENQ_F] || L;
 el.querySelector('.lead').insertAdjacentHTML('afterend', '<section class="sec" id="enqBox"><div class="row"><h2 class="grow">Enquiries <span class="c">' + L.length + ' logged · ' + F.follow.length + ' to follow up</span></h2><button class="btn teal sm" onclick="enqNew()">+ Log enquiry</button></div>' +
