@@ -5406,7 +5406,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 341;
+const COE_V = 342;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
@@ -7608,8 +7608,17 @@ const x = CN, p = x.pks[i] || x.pks[0]; x.pi = x.pks.indexOf(p);
 const only = x.pks.length > 1 ? [cnTn(p.t)].concat(x.extra) : null;
 const ok = (Array.isArray(x.L) ? x.L : []).filter(c => !c.cancelled && (!only || only.indexOf(cnTn(c.teacher)) > -1)), now = Date.now();
 const up = ok.find(c => new Date(c.start).getTime() >= now) || ok[ok.length - 1] || {};
-let sch = cnSched(x.L, only); if(!sch && only) sch = cnSched(x.L);
+const nowT = Date.now(), seen = {}; (Array.isArray(x.L) ? x.L : []).forEach(c => { const t0 = new Date(c.start).getTime(); if(c.cancelled || t0 < nowT - 30 * 864e5 || t0 > nowT + 30 * 864e5) return; const k = cnTn(c.teacher); if(k && !seen[k]) seen[k] = String(c.teacher || '').replace(/^(teacher|tr\.?)\s+/i, '').trim(); });
+x.tAll = Object.keys(seen).map(k => [k, seen[k]]);
+x.on = (only || x.tAll.map(t => t[0])).filter(k => seen[k]); if(!x.on.length) x.on = x.tAll.map(t => t[0]);
+let sch = cnSched(x.L, x.on.length ? x.on : null); if(!sch) sch = cnSched(x.L);
 Object.assign(x, { book: cnBookPick(up.book) || cnBook(up.book), bo: !!up.book && !cnBookPick(up.book) ? 1 : 0, units: p.en, carry: p.carry || '', date: p.st, ren: p.carry > 0 || /^Renewed/.test(x.rn) ? 1 : 0, sch: sch });
+cnPaint();
+}
+function cnTg(k){
+const x = CN, i = x.on.indexOf(k); if(i > -1){ if(x.on.length === 1) return toast('Keep at least one teacher'); x.on.splice(i, 1); } else x.on.push(k);
+const ok = (Array.isArray(x.L) ? x.L : []).filter(c => !c.cancelled && x.on.indexOf(cnTn(c.teacher)) > -1), up = ok.find(c => new Date(c.start).getTime() >= Date.now()) || ok[ok.length - 1] || {};
+x.sch = cnSched(x.L, x.on); if(up.book){ x.book = cnBookPick(up.book) || cnBook(up.book); x.bo = cnBookPick(up.book) ? 0 : 1; }
 cnPaint();
 }
 function cnSched(L, only){
@@ -7656,6 +7665,7 @@ openSheet(`<h1>Class notice · ${esc(x.name)}</h1><div class="mute small">For th
 <div class="seg" style="margin-top:10px">${cnBtn(!x.ren, CN_C.nw, 'CN.ren=0')}${cnBtn(x.ren, CN_C.ren, 'CN.ren=1')}</div>
 <div class="seg">${cnBtn(x.kid, CN_C.kid, 'CN.kid=1')}${cnBtn(!x.kid, CN_C.ad, 'CN.kid=0')}</div>
 ${x.pks && x.pks.length > 1 ? `<label>Package <span class="mute small">· ${x.pks.length} packages with different teachers · newest first · pick the one this notice is for</span></label><div class="seg" style="flex-wrap:wrap">${x.pks.map((p, i) => `<button class="${i === x.pi ? 'on' : ''}" onclick="cnUse(${i})">${esc(p.t)} · ${esc(p.en)} units · started ${esc(p.st)}${p.left !== '' && p.left != null ? ' · ' + esc(p.left) + ' left' : ''}</button>`).join('')}</div>` : ''}
+${x.tAll && x.tAll.length > 1 ? `<label>Teachers in this notice <span class="mute small">· pre-selected for this package · tap to add or remove</span></label><div class="row" style="gap:6px;flex-wrap:wrap">${x.tAll.map(t => { const on = x.on.indexOf(t[0]) > -1; return `<button class="btn sm ${on ? 'teal' : 'ghost'}" onclick="cnTg('${esc(t[0])}')">${on ? '✓ ' : ''}${esc(t[1])}</button>`; }).join('')}</div>` : ''}
 ${cnBookSel(x, inp)}
 <div class="row" style="gap:8px"><div class="grow">${inp('units', 'Units (50 min each)', 'number')}</div><div class="grow">${inp('carry', 'Carried over (units)', 'number')}</div></div>
 ${inp('date', 'Purchased online', 'date')}
