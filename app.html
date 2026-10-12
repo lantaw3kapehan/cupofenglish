@@ -4658,7 +4658,11 @@ const OPS_OFF = { 3: '24:00', 6: '14:00', 0: '11:00' };
 function remByTeacher(e){ const d = new Date(e.start), lim = OPS_OFF[d.getDay()]; return !!lim && tm(e.start) < lim; }
 function scRemKey(e, st){ return 'coeRem:' + ymdLocal(new Date(e.start)) + ':' + new Date(e.start).toISOString() + ':' + (e.code || e.student || e.title) + ':' + st; }
 let REM = { day: '', map: {}, busy: 0 };
-async function remLoad(){ if(REM.busy) return; REM.busy = 1; try{ const d = ymdLocal(new Date()), r = await api('mgmtReminders', TOKEN, d); if(r && r.ok){ REM.day = d; REM.map = r.rem || {}; } }catch(x){} REM.busy = 0; try{ const v = $('v-schedule'); const a = document.activeElement; if(SC && v && v.offsetParent && !(a && a.id === 'scQ')) renderSchedule(); }catch(x){} }
+async function remLoad(){ if(REM.busy) return; REM.busy = 1; try{ const d = ymdLocal(new Date()), r = await api('mgmtReminders', TOKEN, d); if(r && r.ok){ REM.day = d; REM.map = r.rem || {}; } }catch(x){} REM.busy = 0; try{ const v = $('v-schedule'); const a = document.activeElement; if(SC && v && v.offsetParent && !(a && a.id === 'scQ')) scRefresh(); }catch(x){} }
+/* Redraw the Schedule only when something on it changed (class status, a reminder due or sent), so the screen does not blink every minute. */
+function scSig(){ if(!SC) return ''; const n = Date.now(); return SC.date + '|' + SC.events.map(e => { const s = +new Date(e.start), en = +new Date(e.end), st = scStage(e); return (n >= s - 30 * 6e4 ? 1 : 0) + '' + (n >= s + 2 * 6e4 ? 1 : 0) + (n >= en ? 1 : 0) + (n >= en + 15 * 6e4 ? 1 : 0) + (st || '-') + (st && scSent(e, st) ? 'y' : 'n') + (REM.map[scRemKey(e, '2h')] ? 'a' : '') + (REM.map[scRemKey(e, '10m')] ? 'b' : ''); }).join(','); }
+let SC_SIG = '';
+function scRefresh(){ const g = scSig(); if(g === SC_SIG) return; renderSchedule(); }
 function scSent(e, st){ if(REM.map[scRemKey(e, st)]) return true; try{ return localStorage.getItem(scRemKey(e, st)) === '1'; }catch(x){ return false; } }
 function scRemChips(e){ const c = ['2h', '10m'].map(st => { const r = REM.map[scRemKey(e, st)]; return r ? `<span class="chip teal">🔔 ${st === '10m' ? '10-min' : 'Early'} reminder · ${esc(r.by)} ${esc(r.at)}</span>` : ''; }).filter(Boolean); return c.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${c.join('')}</div>` : ''; }
 function scDueBox(){
@@ -4689,9 +4693,9 @@ const show = () => openSheet('<h1>Reminder</h1><p class="small" style="white-spa
 const ok = () => { if(st){ try{ localStorage.setItem(scRemKey(e, st), '1'); }catch(x){} api('mgmtRemindLog', TOKEN, { key: scRemKey(e, st), day: ymdLocal(new Date(e.start)), start: tm(e.start), code: e.code || '', student: e.student || e.title || '', teacher: e.teacher || '', stage: st === '10m' ? '10-minute' : 'Early' }).then(r => { if(r && r.ok){ REM.map = r.rem || REM.map; REM.day = ymdLocal(new Date()); renderSchedule(); } else toast('Copied, but the Reminded log did not save'); }).catch(() => toast('Copied, but the Reminded log did not save')); } toast('Copied · in the WeChat group type @ to tag ' + who + ' and the parent, then paste'); if(st) renderSchedule(); };
 try{ navigator.clipboard.writeText(msg).then(ok, show); }catch(x){ show(); }
 }
-setInterval(() => { try{ const v = $('v-schedule'); if(!SC || SC_OFF || !v || !v.offsetParent) return; const a = document.activeElement; if(a && a.id === 'scQ') return; renderSchedule(); remLoad(); }catch(x){} }, 60000);
+setInterval(() => { try{ const v = $('v-schedule'); if(!SC || SC_OFF || !v || !v.offsetParent) return; const a = document.activeElement; if(a && a.id === 'scQ') return; scRefresh(); remLoad(); }catch(x){} }, 60000);
 function renderSchedule(){
-if(!SC) return;
+if(!SC) return; try{ SC_SIG = scSig(); }catch(x){}
 const E = SC.events, live = E.filter(e=>!e.cancelled), T = [...new Set(E.map(e=>e.teacher))].sort();
 const L = SC_T ? E.filter(e=>e.teacher===SC_T) : E, now = Date.now();
 let h = `<div class="lead row"><div class="grow"><h1>Schedule</h1><div class="mute small">All teachers · Google Calendar · cancellations crossed out</div></div><button class="btn sm teal" onclick="classForm()">+ Class</button></div>
@@ -5491,7 +5495,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 364;
+const COE_V = 365;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
