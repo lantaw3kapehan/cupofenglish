@@ -3799,6 +3799,7 @@ return `<a class="ov-t" onclick="go('money')"><div class="ov-th"><b>${now.toLoca
 <div class="ov-kc">${key('#00A3AD', (actN == null ? 0 : actN - lowN - outN) + ' healthy')}${key('#D9962B', lowN + ' with 5 or fewer lessons')}${key('#D4705A', outN + ' ran out')}</div></a></section>`;
 const act = x => /Leave/.test(x.t) ? 'Review leave' : /Late/.test(x.t) ? 'Decide' : /Renewal/.test(x.t) ? 'Open renewals' : /pay/i.test(x.t) ? 'Go to payroll' : /report/i.test(x.t) ? (/Trial/.test(x.t) ? 'Send reports' : 'Check reports') : /followed/i.test(x.t) ? 'Follow up' : /case/i.test(x.t) ? 'Open cases' : /Data/.test(x.t) ? 'Fix data' : 'Open';
 const who = s => String(s || '').split(' · ').filter(Boolean).slice(0, 4);
+h += wsCard();
 h += `<section id="ovDecide" class="ov-sec"><div class="ov-hd"><h2>Decide now</h2><span>${Q.length ? 'most urgent first · one tap to act' : ''}</span></div>
 ${Q.length ? `<div class="ov-dec">${Q.map(x => `<div class="ov-d ${x.tone || 'mid'}"><div class="ov-dt"><span class="ov-dn num">${esc(String(x.n))}</span><div class="grow" style="min-width:0"><b>${esc(x.t)}</b></div></div>
 ${x.s ? `<div class="ov-who">${who(x.s).map(w => `<span>${esc(w)}</span>`).join('')}</div>` : ''}<button class="ov-go" onclick="${x.go}">${act(x)}</button></div>`).join('')}</div>`
@@ -3820,6 +3821,69 @@ ${tot ? `<div class="ov-ql"><div class="ov-th"><span>Parent reports sent · ${es
 ${pr && pr[1] ? `<div class="ov-ql"><div class="ov-th"><span>Peer reviews done</span><b>${pr[0]} / ${pr[1]}</b></div>${bar(pr[0], pr[1], '#6C5FC7')}</div>` : ''}</section>`; }
 if(bq) h += `<div class="ov-two">${bq}</div>`;
 $('v-home').innerHTML = `<div class="ov">${h}</div>`;
+}
+/* ---- Monday summary: last week at a glance ---- */
+let WS = null, WS_BUSY = 0;
+function wsWeek(){ const d = new Date(); d.setHours(12, 0, 0, 0); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow - 7); const L = []; for(let i = 0; i < 7; i++){ const x = new Date(d); x.setDate(d.getDate() + i); L.push(ymdLocal(x)); } return L; }
+function wsLbl(L){ const f = s => new Date(s + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); return f(L[0]) + ' – ' + f(L[6]); }
+async function wsLoad(force){
+const L = wsWeek(), k = 'coe.ws.' + L[0];
+if(!WS || WS.week !== L[0]){ try{ const c = JSON.parse(localStorage.getItem(k) || 'null'); if(c && c.week === L[0]) WS = c; }catch(e){} }
+if(WS_BUSY || (WS && WS.week === L[0] && !force && Date.now() - (WS.ts || 0) < 6 * 36e5)) return; WS_BUSY = 1;
+try{
+const sc = await Promise.all(L.map(d => api('mgmtSchedule', TOKEN, d).catch(() => null))), rm = await Promise.all(L.map(d => api('mgmtReminders', TOKEN, d).catch(() => null)));
+if(sc.some(x => !x)) throw 0;
+const ev = []; sc.forEach(x => (x.events || []).forEach(e => ev.push({ start: e.start, student: e.student || e.title || '', code: String(e.code || '').toUpperCase(), teacher: e.teacher || '', cancelled: !!e.cancelled, type: e.type || '', why: e.why || '' })));
+const rem = {}; rm.forEach(x => { if(x && x.rem) Object.assign(rem, x.rem); });
+WS = { week: L[0], days: L, ts: Date.now(), ev, rem }; try{ localStorage.setItem(k, JSON.stringify(WS)); }catch(e){}
+}catch(e){ console.warn('ws', e); }
+WS_BUSY = 0; if(VIEW === 'home') try{ renderHome(); }catch(e){}
+if($('sheet').classList.contains('on') && $('wsBody')) wsSheet();
+}
+function wsCalc(){
+if(!WS) return null; const live = WS.ev.filter(e => !e.cancelled), cx = WS.ev.filter(e => e.cancelled);
+const byT = {}; WS.ev.forEach(e => String(e.teacher).split(', ').forEach(t => { const o = byT[t] = byT[t] || { held: 0, cx: 0 }; e.cancelled ? o.cx++ : o.held++; }));
+const rk = (e, st) => 'coeRem:' + ymdLocal(new Date(e.start)) + ':' + new Date(e.start).toISOString() + ':' + (e.code || e.student) + ':' + st;
+const hasRem = Object.keys(WS.rem).length > 0, miss = [], byWho = {}; let early = 0, ten = 0;
+live.forEach(e => { const a = WS.rem[rk(e, '2h')], b = WS.rem[rk(e, '10m')]; if(a) early++; if(b) ten++; if(!a && !b) miss.push(e); });
+Object.values(WS.rem).forEach(r => { const w = (r && r.by) || '?'; byWho[w] = (byWho[w] || 0) + 1; });
+let out = [], low = [], dl = [], idle = [];
+if(AT && AT.cols){ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const today = ymdLocal(new Date()), soon = ymdLocal(new Date(Date.now() + 14 * 864e5));
+const seen = {}; live.forEach(e => seen[e.code] = 1); const cxd = {}; cx.forEach(e => cxd[e.code] = 1);
+const A = AT.rows.filter(r => r[C.active] && r[C.enrolled] !== '' && r[C.enrolled] != null);
+out = A.filter(r => r[C.available] !== '' && +r[C.available] <= 0); low = A.filter(r => r[C.available] !== '' && +r[C.available] > 0 && +r[C.available] <= 2);
+dl = A.filter(r => r[C.deadline] && String(r[C.deadline]).slice(0, 10) >= today && String(r[C.deadline]).slice(0, 10) <= soon && +r[C.available] > 0);
+const one = {}; idle = AT.rows.filter(r => r[C.active] && !seen[String(r[C.code]).toUpperCase()]).filter(r => { const c = String(r[C.code]).toUpperCase(); if(one[c]) return false; one[c] = 1; return true; }).map(r => Object.assign(r.slice(), { _cx: !!cxd[String(r[C.code]).toUpperCase()] }));
+WS.C = C; }
+return { live, cx, byT, hasRem, miss, byWho, early, ten, out, low, dl, idle };
+}
+function wsCard(){
+if(!D || !D.mgr) return ''; const L = wsWeek(), dow = new Date().getDay(), hid = (() => { try{ return localStorage.getItem('coe.wsHide') === L[0]; }catch(e){ return false; } })();
+if(!WS || WS.week !== L[0]) setTimeout(() => wsLoad(), 0);
+if(!(dow === 1 || dow === 2) || hid) return `<div class="small" style="text-align:right;margin:-4px 4px 0"><a class="lk" onclick="wsSheet()">Last week's summary · ${esc(wsLbl(L))} ›</a></div>`;
+const S = wsCalc(), tile = (n, t, s, c) => `<div style="flex:1 1 130px;min-width:0;background:#F6FAFB;border-radius:14px;padding:10px 12px"><b class="num" style="font-size:24px;color:${c || '#2B2253'}">${n}</b><div style="font-weight:600;font-size:13px">${t}</div><div class="small mute">${s}</div></div>`;
+return `<section class="ov-card" style="border:1.5px solid #00A3AD"><div class="ov-hd"><h2>Last week</h2><span>${esc(wsLbl(L))}</span><a class="lk" onclick="wsSheet()">Details ›</a></div>` +
+(!S ? `<div class="sk"></div><div class="small mute">Reading last week's calendar…</div>` :
+`<div class="row" style="gap:10px;flex-wrap:wrap">${tile(S.live.length, 'Classes', S.cx.length + ' cancelled')}${S.hasRem ? tile(S.miss.length, 'Not reminded', S.early + ' early · ' + S.ten + ' 10-min sent', S.miss.length ? '#C0392B' : '#1E7A55') : tile('—', 'Reminders', 'tracking began 12 Oct')}${tile(S.out.length + S.low.length, 'Renew soon', S.out.length + ' ran out · ' + S.low.length + ' with 1–2 left', S.out.length ? '#C0392B' : '#D9962B')}${(() => { const n = S.idle.filter(r => !r._cx).length, c = S.idle.length - n; return tile(n, 'No class last week', 'nothing on the calendar' + (c ? ' · +' + c + ' cancelled all' : ''), n ? '#D9962B' : '#1E7A55'); })()}</div>`) +
+`<div style="text-align:right"><a class="lk small" onclick="try{localStorage.setItem('coe.wsHide','${L[0]}')}catch(e){};renderHome()">Hide for this week</a></div></section>`;
+}
+function wsSheet(){
+const L = wsWeek(); $('sheet').classList.add('wide'); if(!WS || WS.week !== L[0]){ openSheet('<h1>Last week</h1><div id="wsBody"><div class="sk"></div><div class="sk"></div></div>'); wsLoad(); return; }
+const S = wsCalc(), C = WS.C || {}, nm = r => esc(r[C.name]) + ' <span class="mute">· ' + esc(r[C.teacher]) + ' · ' + esc(r[C.code]) + '</span>';
+const stu = (r, t) => '<div class="li" onclick="closeSheet();openStudent(\'' + esc(r[C.code]) + '\')"><div class="grow"><b>' + nm(r) + '</b><div class="small">' + t + '</div></div><span class="mute">›</span></div>';
+const sec = (t, sub, L2) => '<h2 style="margin-top:16px">' + t + ' <span class="c">' + L2.length + '</span></h2>' + (sub ? '<div class="small mute">' + sub + '</div>' : '') + (L2.length ? L2.join('') : '<div class="small" style="color:#1E7A55;margin-top:6px">✓ None</div>');
+const dt = e => new Date(e.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + tm(e.start);
+const T = Object.keys(S.byT).filter(t => t && t !== '—').sort((a, b) => S.byT[b].held - S.byT[a].held);
+$('sheetBody').innerHTML = '<h1>Last week · ' + esc(wsLbl(L)) + '</h1><div class="mute small">From the calendar, the REMINDERS log and ACTIVE · <a class="lk" onclick="wsLoad(1)">refresh</a></div><div id="wsBody"></div>' +
+'<h2 style="margin-top:16px">Classes <span class="c">' + S.live.length + '</span></h2><div class="small mute">' + S.cx.length + ' cancelled · ' + S.live.filter(e => e.type === 'Trial').length + ' trials</div>' +
+'<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">' + T.map(t => '<span class="chip teal">' + esc(tName(t)) + ' · ' + S.byT[t].held + (S.byT[t].cx ? ' <span style="opacity:.7">(' + S.byT[t].cx + ' cx)</span>' : '') + '</span>').join('') + '</div>' +
+(S.hasRem ? sec('Classes not reminded', 'No early or 10-minute reminder logged' + (Object.keys(S.byWho).length ? ' · sent by ' + Object.entries(S.byWho).sort((a, b) => b[1] - a[1]).map(([w, n]) => esc(w) + ' ' + n).join(', ') : ''), S.miss.map(e => '<div class="li"><div class="grow"><b>' + esc(dt(e)) + '</b> ' + esc(e.student) + ' <span class="mute">· ' + esc(tName(e.teacher)) + (remByTeacher(e) ? ' · teacher’s turn' : '') + '</span></div></div>'))
+: '<h2 style="margin-top:16px">Reminders</h2><div class="small mute">Tracking began 12 Oct · the first full week shows next Monday</div>') +
+sec('Ran out · renew', 'Active, no lessons left', S.out.map(r => stu(r, '<b style="color:#C0392B">' + r[C.available] + '</b> left of ' + r[C.enrolled]))) +
+sec('1–2 lessons left', '', S.low.map(r => stu(r, '<b>' + r[C.available] + '</b> left of ' + r[C.enrolled]))) +
+sec('Deadline in the next 14 days', 'Lessons still left', S.dl.map(r => stu(r, 'Deadline ' + esc(String(r[C.deadline]).slice(0, 10)) + ' · <b>' + r[C.available] + '</b> left'))) +
+sec('Active, nothing on the calendar last week', 'Paused, on holiday, or needs a follow-up', S.idle.filter(r => !r._cx).map(r => stu(r, 'No class booked · ' + (r[C.available] === '' ? 'shared package' : r[C.available] + ' left')))) +
+sec('Active, every class cancelled last week', 'Check they are coming back this week', S.idle.filter(r => r._cx).map(r => stu(r, 'All classes cancelled · ' + (r[C.available] === '' ? 'shared package' : r[C.available] + ' left'))));
 }
 function ovCup(){ return (document.querySelector('link[rel="icon"]') || {}).href || ''; }   // the cup from the logo (also the app icon)
 const unpaidN = pay => pay.filter(p => !p.paid).length;
@@ -5518,7 +5582,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 368;
+const COE_V = 369;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
