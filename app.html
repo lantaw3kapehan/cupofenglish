@@ -5427,7 +5427,7 @@ try{ await swr('rep', () => api('mgmtReports', TOKEN, RP_M), v => { if(v && v.wa
 let RPW = 0;
 async function rpWait(){ if(!RP || !RP.waitLater || RPW) return; RPW = 1; const m = RP.month; try{ const r = await api('mgmtReportsWait', TOKEN, m); if(r && r.ok && RP && RP.month === r.month){ const have = {}; (RP.rows||[]).concat(RP.making||[]).forEach(x => have[x.code] = 1); RP.waiting = (r.waiting||[]).filter(x => !have[x.code]); RP.waitLater = false; keep('rep', RP); if(VIEW==='reports') renderReports(); if(VIEW==='mtoday') renderMToday(); } }catch(e){} RPW = 0; }
 async function loadTrials(){ try{ await swr('trl', () => api('mgmtTrials', TOKEN), v => TRL = v, () => { if(VIEW==='reports') renderReports(); if(VIEW==='mtoday') renderMToday(); }); }catch(e){} }
-const TL_ST = s => s==='Sent' ? ['green','Sent'] : s==='Ready' ? ['coral','To send'] : s==='Translating' ? ['','Adding Chinese'] : s==='Sending' ? ['','Just sent'] : ['','Making PDF'];
+const TL_ST = s => s==='Sent' ? ['green','Sent'] : s==='Ready' ? ['coral','To send'] : s==='Translating' ? ['','Adding Chinese'] : s==='Sending' ? ['','Just sent'] : s==='Redo asked' ? ['amber','Redo asked'] : s==='Redone · updating' ? ['teal','Redone · updating'] : ['','Making PDF'];
 
 async function tlOpen(i){
 TLD = (TRL.rows||[])[i]; TLB = null; if(!TLD) return; tlPaint();
@@ -5473,6 +5473,14 @@ const el = $('tlAct'); if(!el || !TLD) return; const sent = TLD.status === 'Sent
 el.innerHTML = (TLB ? `<div class="row" style="gap:8px;width:100%"><button class="btn teal grow" id="tlPicB" onclick="pdfPic(TLB,0,'tlPicB')">Copy picture</button><button class="btn ghost grow" onclick="pdfPic(TLB,1)">${navigator.share ? 'Share / save picture' : 'Save picture'}</button></div>` : '') + (TLB ? (canShare ? `<button class="btn ghost grow" onclick="tlShare()">${sent?'Send again on WeChat':'Send on WeChat'}</button>` : `<button class="btn ghost grow" onclick="tlSaveF()">Save PDF + copy message</button>`) : TLD.pdf ? (TLD._err ? `<a class="btn teal grow" href="${esc(TLD.pdf)}" target="_blank">Open PDF</a>` : `<button class="btn teal grow" disabled>Loading PDF…</button>`) : '')
 + (!sent ? `<button class="btn ghost" onclick="tlMark(${TLD.pdf ? '' : "'sent before / without the PDF'"})">${TLD.pdf ? 'Mark as sent' : 'Already sent · mark it'}</button>` : '') + `<button class="btn ghost" onclick="tlCopy()">Copy message</button>`;
 }
+window.tlRedo = function(){ const b = $('rdBox'); if(!b || !TLD) return; if(b.innerHTML){ b.innerHTML = ''; return; }
+const Q = ['Comments are too short or general', 'Add one example of what the child said or did', 'Level or score does not match the class', 'Strengths and areas to improve are mixed up', 'Check grammar and spelling', 'Next steps need a clear plan'];
+b.innerHTML = '<div class="card" style="margin-top:8px;padding:12px"><b>What should ' + esc(tName(TLD.teacher)) + ' change?</b><div class="small mute">They get this in Messages and the trial report goes back on their Today. Their new report replaces this one.</div><div class="gx-c" style="margin-top:6px">' + Q.map(x => '<button type="button" data-t="' + esc(x) + '" onclick="const t=$(\'rdT\'); t.value=(t.value.trim()?t.value.trim()+\'. \':\'\')+this.dataset.t; t.focus()">' + esc(x) + '</button>').join('') + '</div><textarea id="rdT" class="in-t" rows="3" placeholder="e.g. Please add what she said in class and make the next steps one clear plan."></textarea><button class="btn block" id="rdGo" style="margin-top:8px" onclick="tlRedoSend()">Send to ' + esc(tName(TLD.teacher)) + '</button></div>';
+setTimeout(() => { const t = $('rdT'); if(t) t.focus(); }, 50); };
+window.tlRedoSend = async function(){ const t = $('rdT'), g = $('rdGo'); if(!t || !TLD) return; const note = t.value.trim(); if(note.length < 5) return toast('Write what the teacher should change');
+if(g){ g.disabled = true; g.textContent = 'Sending…'; }
+try{ const r = await api('mgmtTrialReturn', TOKEN, TLD.label, note); if(!r || !r.ok) throw r; TLD.redo = r.redo; TLD.status = 'Redo asked'; toast('Sent to ' + tName(r.teacher) + ' · the report is back on their Today'); try{ localStorage.removeItem('coe.m.trl'); }catch(e){} try{ store('del', 'coe.m.trl'); }catch(e){} TRL = null; loadTrials(); tlPaint(); }
+catch(e){ if(g){ g.disabled = false; g.textContent = 'Send'; } toast((e && e.msg) || 'Not sent. Check your internet and try again.'); } };
 async function tlCopy(){ try{ await navigator.clipboard.writeText(tlMsg()); toast('Message copied · paste it in WeChat'); }catch(e){ toast('Could not copy'); } }
 async function tlShare(){ try{ await navigator.share({ files: [TLB], title: TLB.name, text: tlMsg() }); }catch(e){ if(e && e.name === 'AbortError') return; toast('Could not open sharing. Use Save PDF instead.'); return; } tlMark('WeChat'); }
 function tlSaveF(){ const a = document.createElement('a'); a.href = URL.createObjectURL(TLB); a.download = TLB.name; document.body.appendChild(a); a.click(); a.remove(); tlCopy(); toast('PDF saved and message copied · send both in WeChat, then tap Mark as sent'); }
@@ -5637,7 +5645,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 377;
+const COE_V = 378;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -7737,7 +7745,9 @@ window.cpText = async function(){ if(CP.ad){ const ta = adText(); try{ await nav
 const t = (o.student ? '家长您好！附上为' + nm + '定制的学习规划，供您参考。\n\n根据本次试听课评估，建议从「' + s.zh + '（' + CP.bk + '）」开始学习，' : '家长您好！附上一杯英语的学习路线图，供您参考。\n\n以「' + s.zh + '（' + CP.bk + '）」为例，') + '学习路线为：' + path + '。老师会根据孩子的掌握情况灵活调整进度，帮助孩子每一步都打好扎实的基础。\n\n如有任何问题，欢迎随时与我们联系。\n\n一杯英语（CupOfEnglish）';
 try{ await navigator.clipboard.writeText(t); toast('Message copied'); }catch(e){ toast(t); } };
 const _pp = window.pricePic; if(_pp) window.pricePic = function(o){ _pp.apply(this, arguments); try{ const k = o && o.student && CPB[o.student]; if(k && window.ppRec) ppRec(BK[k].pk); }catch(e){} };
-const _tb = window.tlBtns; if(_tb) window.tlBtns = function(){ _tb.apply(this, arguments); try{ const el = $('tlAct'); if(el && TLD && !$('agB')) el.insertAdjacentHTML('beforeend', '<button class="btn ghost grow" id="agB" onclick="agrOpen({ code: /^ST-/.test(TLD.code || \'\') ? TLD.code : \'\', key: \'trial:\' + (TLD.label || TLD.student), name: TLD.student, cn: TLD.cn || \'\' })">Agreement</button>');
+const _tb = window.tlBtns; if(_tb) window.tlBtns = function(){ _tb.apply(this, arguments); try{ const el = $('tlAct'); if(el && TLD && TLD.label && !$('rdB')) el.insertAdjacentHTML('afterend', '<div style="width:100%;margin-top:8px"><button class="btn ghost block" id="rdB" onclick="tlRedo()">↺ Ask teacher to redo the report</button><div id="rdBox"></div></div>');
+if(el && TLD && TLD.redo && !$('rdN')) el.insertAdjacentHTML('beforebegin', '<div id="rdN" class="card" style="border:1.5px solid #D9962B;padding:10px 12px;margin-bottom:10px"><b>↺ Redo asked</b> <span class="small mute">' + esc(TLD.redo.at || '') + ' · by ' + esc(TLD.redo.by || '') + (TLD.redo.doneAt ? ' · teacher sent the new report ' + esc(TLD.redo.doneAt) + ', the PDF is being made' : ' · waiting for the teacher') + '</span><div class="small" style="margin-top:4px">' + esc(TLD.redo.note || '') + '</div></div>');
+if(el && TLD && !$('agB')) el.insertAdjacentHTML('beforeend', '<button class="btn ghost grow" id="agB" onclick="agrOpen({ code: /^ST-/.test(TLD.code || \'\') ? TLD.code : \'\', key: \'trial:\' + (TLD.label || TLD.student), name: TLD.student, cn: TLD.cn || \'\' })">Agreement</button>');
 if(el && TLD && !$('cpB')) el.insertAdjacentHTML('beforeend', '<button class="btn ghost grow" id="cpB" onclick="coursePlan({ student: TLD.student, cn: TLD.cn, cefr: TLD.cefr || (TLD.t ? (window.cefrOf ? cefrOf(+TLD.t)[1] : \'\') : \'\'), total: TLD.total || TLD.t, teacher: TLD.teacher })">Course plan</button>'); }catch(e){} };
 })();
 </script>
