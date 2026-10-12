@@ -4605,6 +4605,32 @@ h += `<div class="sv-day sv-one ${y===today?'today':new Date(e.end) < now?'past'
 if(wk) h += `</section>`;
 $('sheetBody').innerHTML = h;
 }
+function scStage(e){ if(!e || e.cancelled) return ''; const m = (new Date(e.start) - Date.now()) / 6e4; if(ymdLocal(new Date(e.start)) !== ymdLocal(new Date())) return ''; return m > 20 && m <= 150 ? '2h' : m > -5 && m <= 20 ? '10m' : ''; }
+function scRemKey(e, st){ return 'coeRem:' + ymdLocal(new Date(e.start)) + ':' + e.start + ':' + (e.code || e.student || e.title) + ':' + st; }
+function scSent(e, st){ try{ return localStorage.getItem(scRemKey(e, st)) === '1'; }catch(x){ return false; } }
+function scDueBox(){
+if(!SC || SC_OFF) return ''; const due = SC.events.filter(e => { const st = scStage(e); return st && !scSent(e, st); }).sort((a, b) => a.start.localeCompare(b.start));
+const sent = SC.events.filter(e => { const st = scStage(e); return st && scSent(e, st); }).length;
+if(!due.length) return sent ? `<div class="small mute" style="margin-top:10px">🔔 Reminders due: all sent ✓ (${sent})</div>` : '';
+return `<div class="card" style="margin-top:12px;border:1.5px solid #00A3AD"><b>🔔 Reminders due · ${due.length}</b><div class="small mute">Copy, then paste in the class WeChat group (type @ to tag the teacher and parent)${sent ? ' · ' + sent + ' sent' : ''}</div>` +
+due.map(e => { const st = scStage(e), i = SC.events.indexOf(e); return `<div class="row" style="gap:8px;margin-top:8px;align-items:center"><div class="grow"><b>${tm(e.start)}</b> ${esc(e.student || e.title)} <span class="small mute">· ${esc(tName(e.teacher || ''))}</span><div class="small" style="color:${st === '10m' ? '#C0392B' : '#00737B'}">${st === '10m' ? '10-minute reminder' : '2-hour reminder'}</div></div><button class="btn sm teal" onclick="scRemind(${i},1)">Copy</button></div>`; }).join('') + `</div>`;
+}
+function scRemindText(e){
+const s = new Date(e.start), n = Date.now(), t = tm(e.start), mins = Math.round((s - n) / 6e4), today = ymdLocal(s) === ymdLocal(new Date()), tmw = ymdLocal(s) === ymdLocal(new Date(n + 864e5));
+const md = (s.getMonth() + 1) + '月' + s.getDate() + '日', vo = e.meet ? '\n\nTencent Meeting ID 腾讯会议号: ' + e.meet + '\n(Same meeting every class · 每次上课都是同一个会议号，也可以在腾讯会议的历史记录里找到哦)' : '';
+if(today && mins <= 0) return 'Class has started (' + t + '). Teacher ' + tName(e.teacher || '') + ' is waiting for you! 🙂\n已经开始上课啦（' + t + '），老师在等你哦！' + vo;
+if(today && mins <= 20) return 'Class starts in ' + mins + ' minute' + (mins === 1 ? '' : 's') + ' (' + t + ')! Please get ready ✊\n还有' + mins + '分钟上课（' + t + '），请准备好哦！' + vo;
+if(today) return 'Heads up! Class starts at ' + t + ' today! ✊\n提醒：今天' + t + '上课哦！' + vo;
+if(tmw) return 'Reminder: class tomorrow at ' + t + '! ✊\n提醒：明天' + t + '上课哦！' + vo;
+return 'Reminder: class on ' + s.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }) + ' at ' + t + '! ✊\n提醒：' + md + ' ' + t + '上课哦！' + vo;
+}
+function scRemind(i, fromBox){
+const e = SC.events[i]; if(!e) return; const msg = scRemindText(e), who = 'Teacher ' + tName(e.teacher || ''), st = scStage(e);
+const show = () => openSheet('<h1>Reminder</h1><p class="small" style="white-space:pre-line">' + esc(msg) + '</p>');
+const ok = () => { if(st){ try{ localStorage.setItem(scRemKey(e, st), '1'); }catch(x){} } toast('Copied · in the WeChat group type @ to tag ' + who + ' and the parent, then paste'); if(st) renderSchedule(); };
+try{ navigator.clipboard.writeText(msg).then(ok, show); }catch(x){ show(); }
+}
+setInterval(() => { try{ const v = $('v-schedule'); if(!SC || SC_OFF || !v || !v.offsetParent) return; const a = document.activeElement; if(a && a.id === 'scQ') return; renderSchedule(); }catch(x){} }, 60000);
 function renderSchedule(){
 if(!SC) return;
 const E = SC.events, live = E.filter(e=>!e.cancelled), T = [...new Set(E.map(e=>e.teacher))].sort();
@@ -4618,12 +4644,12 @@ ${SC_OFF?`<button class="btn ghost sm" onclick="SC_OFF=0;loadSchedule(0)">Today<
 <div class="stat"><b class="num ${E.length-live.length?'minus':''}">${E.length-live.length}</b><span>cancelled</span></div>
 <div class="stat"><b class="num">${new Set(live.map(e=>e.teacher)).size}</b><span>teachers</span></div></div>
 <div class="seg"><button class="${SC_BY==='time'?'on':''}" onclick="SC_BY='time';renderSchedule()">By time</button><button class="${SC_BY==='teacher'?'on':''}" onclick="SC_BY='teacher';renderSchedule()">By teacher</button></div>
-${bookKey()}<div class="fl"><span class="lbl">Teacher</span><button class="${!SC_T?'on':''}" onclick="SC_T='';renderSchedule()">All</button>${T.map(t=>`<button class="${SC_T===t?'on':''}" onclick="SC_T='${esc(t)}';renderSchedule()">${esc(t)}</button>`).join('')}</div>`;
+${scDueBox()}${bookKey()}<div class="fl"><span class="lbl">Teacher</span><button class="${!SC_T?'on':''}" onclick="SC_T='';renderSchedule()">All</button>${T.map(t=>`<button class="${SC_T===t?'on':''}" onclick="SC_T='${esc(t)}';renderSchedule()">${esc(t)}</button>`).join('')}</div>`;
 const row = (e, who) => { const on = now >= new Date(e.start) && now < new Date(e.end);
 const mon = e.cancelled ? '' : monChips(e, now);
 return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type==='Sub'?'sub':''} ${on?'now':''}" style="cursor:pointer;--c:${bookCol(e.book)}" onclick="classEdit(${SC.events.indexOf(e)})"><div class="t"><b>${tm(e.start)}</b><span>${tm(e.end)}</span></div><div class="bar"></div>
 <div class="grow"><div class="row" style="gap:6px"><span class="nm ell">${esc(e.student||e.title)}</span>${e.type?`<span class="chip ${e.type==='Trial'?'coral':''}">${e.type}</span>`:''}${e.cancelled?'<span class="chip red">Cancelled</span>':''}${on?'<span class="live-b"><i></i>Live</span>':''}</div>${e.cancelled && e.why ? `<div class="cxw">Why: ${cxWhy(e.why)}</div>` : ''}${e.cancelled ? `<button class="cxbtn" onclick="event.stopPropagation();cxProof(${SC.events.indexOf(e)})">Proof for the parent</button>` : ''}
-<div class="small mute ell">${[who?`<b style="color:var(--ink2)">${esc(e.teacher)}</b>`:'', esc([e.code,e.book,e.meet].filter(Boolean).join(' · '))].filter(Boolean).join(' · ')}</div>${mon}</div></div>`; };
+<div class="small mute ell">${[who?`<b style="color:var(--ink2)">${esc(e.teacher)}</b>`:'', esc([e.code,e.book,e.meet].filter(Boolean).join(' · '))].filter(Boolean).join(' · ')}</div>${mon}${!e.cancelled && now < new Date(e.end).getTime() ? `<button class="cxbtn" onclick="event.stopPropagation();scRemind(${SC.events.indexOf(e)})">🔔 Remind · copy message</button>` : ''}</div></div>`; };
 if(!L.length) h += `<div class="empty">No classes on the calendar.</div>`;
 else if(SC_BY==='teacher'){ const by = {}; L.forEach(e => (by[e.teacher]=by[e.teacher]||[]).push(e));
 h += Object.keys(by).sort().map(t => `<h2>${esc(t)} <span class="c">${by[t].filter(e=>!e.cancelled).length} classes${by[t].some(e=>e.cancelled)?' · '+by[t].filter(e=>e.cancelled).length+' cancelled':''}</span></h2>` + svNowFirst(by[t]).map(e=>row(e,false)).join('')).join(''); }
@@ -5406,7 +5432,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 347;
+const COE_V = 348;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
