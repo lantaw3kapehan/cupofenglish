@@ -2855,6 +2855,27 @@ if(!STU || !STU.cls) return; const K = wkSlots(STU.cls); if(!K.slots.length) ret
 const f = K.slots.map(x => x.first).sort((a, b) => a.start.localeCompare(b.start))[0], tt = [...new Set(K.slots.map(x => x.t))];
 CXP = { kind: 'class', week: { slots: K.slots, from: f.start, multi: tt.length > 1 }, e: { student: STU.s.name || STU.code, code: STU.code, teacher: tt.join(', '), start: f.start, end: f.end, book: f.book || '', meet: (K.up.find(x => x.meet) || {}).meet || '', title: '' }, why: '', by: '', zh: '', cn: cxCnOf(STU.code), url: '' };
 cxSheet(); }
+async function pkgCheck(){
+$('sheet').classList.add('wide'); openSheet('<h1>Package check</h1><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>');
+try{ await loadActive(true); }catch(e){} let srv = null; try{ srv = await api('mgmtPkgCheck', TOKEN); }catch(e){}
+if(!AT || !AT.cols){ $('sheetBody').innerHTML = '<h1>Package check</h1><div class="empty">Could not load ACTIVE. Try again.</div>'; return; }
+const C = {}; AT.cols.forEach((c, i) => C[c] = i); const M = AT.months || [], today = ymdLocal(new Date());
+const ymOf = lab => { const d = new Date('1 ' + String(lab).replace(/(\w+) (\d+)$/, '$1 20$2')); return isNaN(d) ? '' : d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }, MY = M.map(ymOf);
+const now = new Date(), y0 = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2), p = new Date(now.getFullYear(), now.getMonth() - 1, 1), y1 = p.getFullYear() + '-' + ('0' + (p.getMonth() + 1)).slice(-2);
+const recent = r => MY.some((y, i) => (y === y0 || y === y1) && (+((r[C.months] || [])[i]) || 0) > 0);
+const own = r => r[C.enrolled] !== '' && r[C.enrolled] != null, nm = r => esc(r[C.name]) + ' <span class="mute">· ' + esc(r[C.teacher]) + ' · ' + esc(r[C.code]) + '</span>';
+const item = (r, txt) => '<div class="li" onclick="closeSheet();openStudent(\'' + esc(r[C.code]) + '\')"><div class="grow"><b>' + nm(r) + '</b><div class="small">' + txt + '</div></div><span class="mute">›</span></div>';
+const sec = (t, sub, L) => '<h2 style="margin-top:16px">' + t + ' <span class="c">' + L.length + '</span></h2><div class="small mute">' + sub + '</div>' + (L.length ? L.join('') : '<div class="small" style="color:#1E7A55;margin-top:6px">✓ None</div>');
+const byRow = {}; AT.rows.forEach(r => byRow[r[C.row]] = r);
+const ren = ((srv && srv.rows) || []).filter(x => x.pre > 0 && byRow[x.row]).map(x => item(byRow[x.row], 'Paid ' + esc(x.paid) + ' (' + esc(x.invoice) + ') but the package start is still ' + esc(x.start) + ' · <b>' + x.pre + '</b> lessons from before the payment may still count · fix: set the renewal date in DATABASE (or use Renew), then clear the old months'));
+const over = AT.rows.filter(r => own(r) && r[C.available] !== '' && +r[C.available] < 0).map(r => item(r, '<b style="color:#C0392B">+' + (-r[C.available]) + '</b> lessons over the ' + r[C.enrolled] + '-lesson package · renew'));
+const exp = AT.rows.filter(r => own(r) && r[C.active] && r[C.deadline] && String(r[C.deadline]).slice(0, 10) < today && r[C.available] !== '' && +r[C.available] > 0);
+const expOn = exp.filter(recent).sort((a, b) => String(a[C.deadline]).localeCompare(String(b[C.deadline]))).map(r => item(r, 'Deadline ' + esc(String(r[C.deadline]).slice(0, 10)) + ' · <b>' + r[C.available] + '</b> left · still taking classes → extend the deadline or renew'));
+const expOff = exp.filter(r => !recent(r)).sort((a, b) => String(a[C.deadline]).localeCompare(String(b[C.deadline]))).map(r => item(r, 'Deadline ' + esc(String(r[C.deadline]).slice(0, 10)) + ' · <b>' + r[C.available] + '</b> left · no classes last 2 months → stopped? untick ACTIVE or follow up'));
+$('sheetBody').innerHTML = '<h1>Package check</h1><div class="mute small">From ACTIVE and SALES, as of ' + esc(now.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + ' · tap a student to open the profile</div>' +
+(srv ? sec('Renewed by hand · old lessons may still count', 'The ENROLLED invoice in SALES is newer than the package start', ren) : '<div class="small" style="color:#B4513B;margin-top:10px">Could not read SALES for the renewal check · try again</div>') +
+sec('Over the package', 'More lessons used than the package has', over) + sec('Deadline passed · still taking classes', 'Lessons left after the deadline, classes in the last 2 months', expOn) + sec('Deadline passed · no recent classes', 'Lessons left, no classes in the last 2 months', expOff);
+}
 function stuSched(L){
 const now = Date.now(), up = L.filter(e => new Date(e.end) >= now), past = L.filter(e => new Date(e.end) < now);
 const upLive = up.filter(e => !e.cancelled), pastDone = past.filter(e => !e.cancelled), cx = L.filter(e => e.cancelled);
@@ -5495,7 +5516,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 366;
+const COE_V = 367;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
@@ -8024,7 +8045,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     F.ren.sort((a, b) => String(b.o.start).localeCompare(String(a.o.start))); F.nw.sort((a, b) => String(b.o.start).localeCompare(String(a.o.start)));
     let L = q ? items.filter(it => [it.s.code, it.s.name, it.s.cn, (it.s.teachers || []).join(' '), it.o && it.o.shared].join(' ').toLowerCase().indexOf(q) > -1).sort((a, b) => b.on - a.on) : (F[STF] || F.active);
     const tabs = [['active', 'Active'], ['low', '5 or fewer left'], ['ren', 'Renewed · 30 days'], ['nw', 'New · 30 days'], ['agr', 'No agreement'], ['stale', 'No check in 30+ days'], ['past', 'Finished / not active']];
-    let h = '<div class="lead"><h1>Students</h1><div class="mute small">' + F.active.length + ' active · packages live from ACTIVE · tap a name for profile, package, schedule and agreement' + ((!P || !(typeof AGM !== 'undefined' && AGM)) ? ' · <span style="color:#00737B;font-weight:600">loading packages and agreements…</span>' : '') + '</div><div id="dbLk" class="small" style="margin-top:4px"><a class="lk" onclick="go(\'db\')">Database sheet · the raw rows, to check or fix</a></div></div>' +
+    let h = '<div class="lead"><h1>Students</h1><div class="mute small">' + F.active.length + ' active · packages live from ACTIVE · tap a name for profile, package, schedule and agreement' + ((!P || !(typeof AGM !== 'undefined' && AGM)) ? ' · <span style="color:#00737B;font-weight:600">loading packages and agreements…</span>' : '') + '</div><div id="dbLk" class="small" style="margin-top:4px"><a class="lk" onclick="go(\'db\')">Database sheet · the raw rows, to check or fix</a> · <a class="lk" onclick="pkgCheck()">Package check · renewals, over, deadlines</a></div></div>' +
       '<div style="margin-top:14px"><input id="aq" class="search" placeholder="Search student, code or teacher · also finds past students" value="' + esc(q) + '" oninput="renderAStudents()"></div>' +
       (q ? '' : '<div class="seg" style="flex-wrap:wrap">' + tabs.map(t => '<button class="' + (STF === t[0] ? 'on' : '') + '" onclick="stF(\'' + t[0] + '\')">' + t[1] + (t[0] === 'agr' && !(typeof AGM !== 'undefined' && AGM) ? '' : ' · ' + F[t[0]].length) + '</button>').join('') + '</div>') + '<div>';
     h += L.slice(0, 250).map(it => { const s = it.s, o = it.o, left = s.left != null ? s.left : o ? o.left : null, dl = it.on && o && o.deadline, late = dl && dl < new Date().toISOString().slice(0, 10);
