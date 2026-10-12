@@ -3456,7 +3456,7 @@ const k = String(s.code).toUpperCase(), prev = REN[k], note = ($('rnN')||{}).val
 const today = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 if(s.st) REN[k] = s.st + (until ? ' until ' + until : '') + ' · ' + today + ' · ' + ((D.me||{}).name || '') + (note.trim() ? ' · ' + note.trim() : ''); else delete REN[k];
 try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){}
-closeSheet(); renderMToday(); toast(s.st ? s.name + ' · ' + s.st : s.name + ' · status cleared');
+closeSheet(); renderMToday(); if(s.back) setTimeout(s.back, 60); toast(s.st ? s.name + ' · ' + s.st : s.name + ' · status cleared');
 try{ const r = await api('mgmtRenewal', TOKEN, s.code, s.st, note, until); if(!r.ok) throw r; if(r.status) REN[k] = r.status; try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){} renderMToday(); if(/untick|ticked/.test(r.note)) toast(r.note); AT = null; MS = null; }
 catch(e){ if(prev) REN[k] = prev; else delete REN[k]; try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(x){} renderMToday(); toast((e && e.msg) || 'Not saved. Check your internet and try again.'); }
 }
@@ -3884,26 +3884,60 @@ if(!(dow === 1 || dow === 2) || hid) return `<div class="small" style="text-alig
 const S = wsCalc(), tile = (n, t, s, c) => `<div style="flex:1 1 130px;min-width:0;background:#F6FAFB;border-radius:14px;padding:10px 12px"><b class="num" style="font-size:24px;color:${c || '#2B2253'}">${n}</b><div style="font-weight:600;font-size:13px">${t}</div><div class="small mute">${s}</div></div>`;
 return `<section class="ov-card" style="border:1.5px solid #00A3AD"><div class="ov-hd"><h2>Last week</h2><span>${esc(wsLbl(L))}</span><a class="lk" onclick="wsSheet()">Details ›</a></div>` +
 (!S ? `<div class="sk"></div><div class="small mute">Reading last week's calendar…</div>` :
-`<div class="row" style="gap:10px;flex-wrap:wrap">${tile(S.live.length, 'Classes', S.cx.length + ' cancelled')}${S.hasRem ? tile(S.miss.length, 'Not reminded', S.early + ' early · ' + S.ten + ' 10-min sent', S.miss.length ? '#C0392B' : '#1E7A55') : tile('—', 'Reminders', 'tracking began 12 Oct')}${tile(S.out.length + S.low.length, 'Renew soon', S.out.length + ' ran out · ' + S.low.length + ' with 1–2 left', S.out.length ? '#C0392B' : '#D9962B')}${(() => { const n = S.idle.filter(r => !r._cx).length, c = S.idle.length - n; return tile(n, 'No class last week', 'nothing on the calendar' + (c ? ' · +' + c + ' cancelled all' : ''), n ? '#D9962B' : '#1E7A55'); })()}</div>`) +
+`<div class="row" style="gap:10px;flex-wrap:wrap">${tile(S.live.length, 'Classes', S.cx.length + ' cancelled')}${S.hasRem ? tile(S.miss.length, 'Not reminded', S.early + ' early · ' + S.ten + ' 10-min sent', S.miss.length ? '#C0392B' : '#1E7A55') : tile('—', 'Reminders', 'tracking began 12 Oct')}${(() => { const o = S.out.filter(r => !wsHandled(r[WS.C.code])).length, l = S.low.filter(r => !wsHandled(r[WS.C.code])).length; return tile(o + l, 'Renew soon', o + ' ran out · ' + l + ' with 1–2 left', o ? '#C0392B' : '#D9962B'); })()}${(() => { const I = S.idle.filter(r => !wsHandled(r[WS.C.code])), n = I.filter(r => !r._cx).length, c = I.length - n; return tile(n, 'No class last week', 'nothing on the calendar' + (c ? ' · +' + c + ' cancelled all' : ''), n ? '#D9962B' : '#1E7A55'); })()}</div>`) +
 `<div style="text-align:right"><a class="lk small" onclick="try{localStorage.setItem('coe.wsHide','${L[0]}')}catch(e){};renderHome()">Hide for this week</a></div></section>`;
 }
+/* Follow-ups from the Monday summary: copy a short bilingual message for the parent group, and keep the parent's answer
+   in ACTIVE › RENEWAL STATUS (same place as renewals). Copying marks "Reminder sent" (who + date); Renewing / Paused /
+   Not renewing moves the student to "Handled". */
+let WS_RT = 0;
+function wsHandled(code){ const k = renSt(code).k; return k === 'yes' || k === 'pause' || k === 'no'; }
+function wsMsg(kind, r){ const C = WS.C, en = String(r[C.name] || '').trim(), zh = String(r[C.cn] || '').trim() || en, n = r[C.available];
+const dl = String(r[C.deadline] || '').slice(0, 10), dd = dl ? new Date(dl + 'T12:00:00') : null;
+if(kind === 'idle') return 'Hi! We miss ' + en + ' in class 😊 Shall we book lessons this week?\n好久没见到' + zh + '啦😊 这周要安排上课吗？';
+if(kind === 'cx') return 'Hi! ' + en + '’s classes were cancelled last week. Shall we continue this week as usual? 😊\n' + zh + '上周的课都取消了，这周照常上课吗？';
+if(kind === 'out') return en + '’s package is used up 📚 Shall we renew to keep the class time? 😊\n' + zh + '的课程包已用完，需要续费保留上课时间吗？';
+if(kind === 'low') return en + ' has ' + n + ' lesson' + (+n === 1 ? '' : 's') + ' left 📚 Shall we renew to keep the class time? 😊\n' + zh + '还剩' + n + '节课，需要续费保留上课时间吗？';
+return en + '’s package ends on ' + (dd ? dd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : dl) + ' with ' + n + ' lessons left 📚 Let’s plan the remaining classes 😊\n' + zh + '的课程包' + (dd ? (dd.getMonth() + 1) + '月' + dd.getDate() + '日' : dl) + '到期，还剩' + n + '节课，我们安排一下剩下的课吧😊'; }
+async function wsCopy(kind, code){
+const C = WS.C, r = AT.rows.find(x => String(x[C.code]).toUpperCase() === code); if(!r) return; const msg = wsMsg(kind, r);
+try{ await navigator.clipboard.writeText(msg); }catch(e){ openSheet('<h1>Copy this</h1><p style="white-space:pre-wrap">' + esc(msg) + '</p>'); return; }
+const why = { idle: 'no class last week', cx: 'all classes cancelled last week', out: 'package used up', low: 'few lessons left', dl: 'deadline soon' }[kind];
+toast('Copied · paste in ' + code + '’s WeChat group'); if(renSt(code).k) return;
+const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); REN[code] = 'Reminder sent · ' + today + ' · ' + ((D.me || {}).name || '') + ' · ' + why;
+try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){} wsSheet();
+try{ const x = await api('mgmtRenewal', TOKEN, code, 'Reminder sent', why, ''); if(x && x.ok && x.status){ REN[code] = x.status; try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){} } else throw x; }
+catch(e){ delete REN[code]; try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(x){} toast('Copied, but "asked" was not saved · try again'); }
+if($('wsBody')) wsSheet(); }
+function wsRen(code, name){ renSheet(code, name); RNS.back = () => { wsSheet(); try{ if(VIEW === 'home') renderHome(); }catch(e){} }; }
 function wsSheet(){
 const L = wsWeek(); $('sheet').classList.add('wide'); if(!WS || WS.week !== L[0]){ openSheet('<h1>Last week</h1><div id="wsBody"><div class="sk"></div><div class="sk"></div></div>'); wsLoad(); return; }
-const S = wsCalc(), C = WS.C || {}, nm = r => esc(r[C.name]) + ' <span class="mute">· ' + esc(r[C.teacher]) + ' · ' + esc(r[C.code]) + '</span>';
-const stu = (r, t) => '<div class="li" onclick="closeSheet();openStudent(\'' + esc(r[C.code]) + '\')"><div class="grow"><b>' + nm(r) + '</b><div class="small">' + t + '</div></div><span class="mute">›</span></div>';
-const sec = (t, sub, L2) => '<h2 style="margin-top:16px">' + t + ' <span class="c">' + L2.length + '</span></h2>' + (sub ? '<div class="small mute">' + sub + '</div>' : '') + (L2.length ? L2.join('') : '<div class="small" style="color:#1E7A55;margin-top:6px">✓ None</div>');
+if(Date.now() - WS_RT > 3e5){ WS_RT = Date.now(); api('mgmtRenewals', TOKEN).then(v => { if(v){ REN = v; try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){} if($('wsBody')) wsSheet(); } }).catch(() => {}); }
+const S = wsCalc(), C = WS.C || {}, nm = r => esc(r[C.name]) + ' <span class="mute">· ' + esc(r[C.teacher]) + '</span>';
+const btn = 'border:1.5px solid #2B2253;background:#fff;color:#2B2253;border-radius:8px;padding:1px 8px;font:700 12px ui-monospace,Menlo,monospace;cursor:pointer';
+const row = (kind, r, t) => { const code = String(r[C.code]).toUpperCase(), st = renSt(code);
+return '<div class="li" style="align-items:center;gap:8px;flex-wrap:wrap"><div class="grow" style="min-width:180px"><b style="cursor:pointer" onclick="closeSheet();openStudent(\'' + esc(code) + '\')">' + nm(r) + '</b> <button type="button" style="' + btn + '" title="Copy the code to find the WeChat group" onclick="navigator.clipboard.writeText(\'' + esc(code) + '\').then(()=>toast(\'' + esc(code) + ' copied\'))">' + esc(code) + '</button><div class="small">' + t + '</div>' +
+(st.k ? '<span class="chip ' + (st.c || '') + '" style="margin-top:4px">' + esc(st.k === 'sent' ? 'Asked ' + (st.t.split(' · ')[1] || '').replace(/,\s*\d{4}$/, '') + ' · ' + (st.t.split(' · ')[2] || '') : st.label) + '</span>' : '') + '</div>' +
+'<button class="btn sm ghost" onclick="wsRen(\'' + esc(code) + '\',\'' + esc(String(r[C.name]).replace(/'/g, '')) + '\')">Answer</button><button class="btn sm teal" onclick="wsCopy(\'' + kind + '\',\'' + esc(code) + '\')">Copy</button></div>'; };
+const sec = (t, sub, kind, L2, txt) => { const open = L2.filter(r => !wsHandled(r[C.code])), done = L2.filter(r => wsHandled(r[C.code]));
+return '<h2 style="margin-top:18px">' + t + ' <span class="c">' + open.length + '</span></h2>' + (sub ? '<div class="small mute">' + sub + '</div>' : '') +
+(open.length ? open.map(r => row(kind, r, txt(r))).join('') : '<div class="small" style="color:#1E7A55;margin-top:6px">✓ None to follow up</div>') +
+(done.length ? '<details style="margin-top:6px"><summary class="small mute" style="cursor:pointer">Handled · ' + done.length + '</summary>' + done.map(r => row(kind, r, txt(r))).join('') + '</details>' : ''); };
+const left = r => r[C.available] === '' ? 'shared package' : r[C.available] + ' left';
 const dt = e => new Date(e.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + tm(e.start);
 const T = Object.keys(S.byT).filter(t => t && t !== '—').sort((a, b) => S.byT[b].held - S.byT[a].held);
-$('sheetBody').innerHTML = '<h1>Last week · ' + esc(wsLbl(L)) + '</h1><div class="mute small">From the calendar, the REMINDERS log and ACTIVE · <a class="lk" onclick="wsLoad(1)">refresh</a></div><div id="wsBody"></div>' +
+const html = '<h1>Last week · ' + esc(wsLbl(L)) + '</h1><div class="mute small">Copy → paste in the parent WeChat group (marks “Asked”). When the parent answers, tap Answer: Renewing, Paused or Not renewing moves them to Handled. Saved in ACTIVE › RENEWAL STATUS · <a class="lk" onclick="wsLoad(1)">refresh</a></div><div id="wsBody"></div>' +
 '<h2 style="margin-top:16px">Classes <span class="c">' + S.live.length + '</span></h2><div class="small mute">' + S.cx.length + ' cancelled · ' + S.live.filter(e => e.type === 'Trial').length + ' trials</div>' +
 '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">' + T.map(t => '<span class="chip teal">' + esc(tName(t)) + ' · ' + S.byT[t].held + (S.byT[t].cx ? ' <span style="opacity:.7">(' + S.byT[t].cx + ' cx)</span>' : '') + '</span>').join('') + '</div>' +
-(S.hasRem ? sec('Classes not reminded', 'No early or 10-minute reminder logged' + (Object.keys(S.byWho).length ? ' · sent by ' + Object.entries(S.byWho).sort((a, b) => b[1] - a[1]).map(([w, n]) => esc(w) + ' ' + n).join(', ') : ''), S.miss.map(e => '<div class="li"><div class="grow"><b>' + esc(dt(e)) + '</b> ' + esc(e.student) + ' <span class="mute">· ' + esc(tName(e.teacher)) + (remByTeacher(e) ? ' · teacher’s turn' : '') + '</span></div></div>'))
-: '<h2 style="margin-top:16px">Reminders</h2><div class="small mute">Tracking began 12 Oct · the first full week shows next Monday</div>') +
-sec('Ran out · renew', 'Active, no lessons left', S.out.map(r => stu(r, '<b style="color:#C0392B">' + r[C.available] + '</b> left of ' + r[C.enrolled]))) +
-sec('1–2 lessons left', '', S.low.map(r => stu(r, '<b>' + r[C.available] + '</b> left of ' + r[C.enrolled]))) +
-sec('Deadline in the next 14 days', 'Lessons still left', S.dl.map(r => stu(r, 'Deadline ' + esc(String(r[C.deadline]).slice(0, 10)) + ' · <b>' + r[C.available] + '</b> left'))) +
-sec('Active, nothing on the calendar last week', 'Paused, on holiday, or needs a follow-up', S.idle.filter(r => !r._cx).map(r => stu(r, 'No class booked · ' + (r[C.available] === '' ? 'shared package' : r[C.available] + ' left')))) +
-sec('Active, every class cancelled last week', 'Check they are coming back this week', S.idle.filter(r => r._cx).map(r => stu(r, 'All classes cancelled · ' + (r[C.available] === '' ? 'shared package' : r[C.available] + ' left'))));
+(S.hasRem ? '<h2 style="margin-top:18px">Classes not reminded <span class="c">' + S.miss.length + '</span></h2><div class="small mute">No early or 10-minute reminder logged' + (Object.keys(S.byWho).length ? ' · sent by ' + Object.entries(S.byWho).sort((a, b) => b[1] - a[1]).map(([w, n]) => esc(w) + ' ' + n).join(', ') : '') + '</div>' +
+(S.miss.length ? S.miss.map(e => '<div class="li"><div class="grow"><b>' + esc(dt(e)) + '</b> ' + esc(e.student) + ' <span class="mute">· ' + esc(tName(e.teacher)) + (remByTeacher(e) ? ' · teacher’s turn' : '') + '</span></div></div>').join('') : '<div class="small" style="color:#1E7A55;margin-top:6px">✓ All reminded</div>')
+: '<h2 style="margin-top:18px">Reminders</h2><div class="small mute">Tracking began 12 Oct · the first full week shows next Monday</div>') +
+sec('Ran out · renew', 'Active, no lessons left', 'out', S.out, r => '<b style="color:#C0392B">' + r[C.available] + '</b> left of ' + r[C.enrolled]) +
+sec('1–2 lessons left', '', 'low', S.low, r => '<b>' + r[C.available] + '</b> left of ' + r[C.enrolled]) +
+sec('Deadline in the next 14 days', 'Lessons still left', 'dl', S.dl, r => 'Deadline ' + esc(String(r[C.deadline]).slice(0, 10)) + ' · <b>' + r[C.available] + '</b> left') +
+sec('Nothing on the calendar last week', 'Active students with no class booked · paused, on holiday, or needs a follow-up', 'idle', S.idle.filter(r => !r._cx), r => 'No class booked · ' + left(r)) +
+sec('Every class cancelled last week', 'Check they are coming back this week', 'cx', S.idle.filter(r => r._cx), r => 'All classes cancelled · ' + left(r));
+if($('sheet').classList.contains('on')) $('sheetBody').innerHTML = html; else { openSheet(html); $('sheet').classList.add('wide'); }
 }
 function ovCup(){ return (document.querySelector('link[rel="icon"]') || {}).href || ''; }   // the cup from the logo (also the app icon)
 const unpaidN = pay => pay.filter(p => !p.paid).length;
@@ -5603,7 +5637,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 372;
+const COE_V = 373;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
