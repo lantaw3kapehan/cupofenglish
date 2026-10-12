@@ -4607,7 +4607,7 @@ h += `<div class="sv-day sv-one ${y===today?'today':new Date(e.end) < now?'past'
 if(wk) h += `</section>`;
 $('sheetBody').innerHTML = h;
 }
-function scStage(e){ if(!e || e.cancelled) return ''; const m = (new Date(e.start) - Date.now()) / 6e4; if(ymdLocal(new Date(e.start)) !== ymdLocal(new Date())) return ''; return m > 20 && m <= 150 ? '2h' : m > -5 && m <= 20 ? '10m' : ''; }
+function scStage(e){ if(!e || e.cancelled) return ''; const m = (new Date(e.start) - Date.now()) / 6e4; if(ymdLocal(new Date(e.start)) !== ymdLocal(new Date())) return ''; return m > 20 && m <= 180 ? '2h' : m > -5 && m <= 20 ? '10m' : ''; }
 function scRemKey(e, st){ return 'coeRem:' + ymdLocal(new Date(e.start)) + ':' + e.start + ':' + (e.code || e.student || e.title) + ':' + st; }
 function scSent(e, st){ try{ return localStorage.getItem(scRemKey(e, st)) === '1'; }catch(x){ return false; } }
 function scDueBox(){
@@ -4615,16 +4615,16 @@ if(!SC || SC_OFF) return ''; const due = SC.events.filter(e => { const st = scSt
 const sent = SC.events.filter(e => { const st = scStage(e); return st && scSent(e, st); }).length;
 if(!due.length) return sent ? `<div class="small mute" style="margin-top:10px">🔔 Reminders due: all sent ✓ (${sent})</div>` : '';
 return `<div class="card" style="margin-top:12px;border:1.5px solid #00A3AD"><b>🔔 Reminders due · ${due.length}</b><div class="small mute">Copy, then paste in the class WeChat group (type @ to tag the teacher and parent)${sent ? ' · ' + sent + ' sent' : ''}</div>` +
-due.map(e => { const st = scStage(e), i = SC.events.indexOf(e); return `<div class="row" style="gap:8px;margin-top:8px;align-items:center"><div class="grow"><b>${tm(e.start)}</b> ${esc(e.student || e.title)} <span class="small mute">· ${esc(tName(e.teacher || ''))}</span><div class="small" style="color:${st === '10m' ? '#C0392B' : '#00737B'}">${st === '10m' ? '10-minute reminder' : '2-hour reminder'}</div></div><button class="btn sm teal" onclick="scRemind(${i},1)">Copy</button></div>`; }).join('') + `</div>`;
+due.map(e => { const st = scStage(e), i = SC.events.indexOf(e); return `<div class="row" style="gap:8px;margin-top:8px;align-items:center"><div class="grow"><b>${tm(e.start)}</b> ${esc(e.student || e.title)} <span class="small mute">· ${esc(tName(e.teacher || ''))}</span><div class="small" style="color:${st === '10m' ? '#C0392B' : '#00737B'}">${st === '10m' ? '10-minute reminder' : 'Early reminder · 2–3 hours before'}</div></div><button class="btn sm teal" onclick="scRemind(${i},1)">Copy</button></div>`; }).join('') + `</div>`;
 }
 function scRemindText(e){
 const s = new Date(e.start), n = Date.now(), t = tm(e.start), mins = Math.round((s - n) / 6e4), today = ymdLocal(s) === ymdLocal(new Date()), tmw = ymdLocal(s) === ymdLocal(new Date(n + 864e5));
-const md = (s.getMonth() + 1) + '月' + s.getDate() + '日', vo = e.meet ? '\n\nTencent Meeting ID 腾讯会议号: ' + e.meet + '\n(Same meeting every class · 每次上课都是同一个会议号，也可以在腾讯会议的历史记录里找到哦)' : '';
+const md = (s.getMonth() + 1) + '月' + s.getDate() + '日', vo = e.meet ? '\n腾讯会议号 Meeting ID: ' + e.meet + '（每次同一个会议号 · same every class）' : '';
 if(today && mins <= 0) return 'Class has started (' + t + '). ' + tName(e.teacher || '') + ' is waiting for you! 🙂\n已经开始上课啦（' + t + '），老师在等你哦！' + vo;
 if(today && mins <= 20) return 'Class starts in ' + mins + ' minute' + (mins === 1 ? '' : 's') + ' (' + t + ')! Please get ready ✊\n还有' + mins + '分钟上课（' + t + '），请准备好哦！' + vo;
-if(today) return 'Heads up! Class starts at ' + t + ' today! ✊\n提醒：今天' + t + '上课哦！' + vo;
-if(tmw) return 'Reminder: class tomorrow at ' + t + '! ✊\n提醒：明天' + t + '上课哦！' + vo;
-return 'Reminder: class on ' + s.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }) + ' at ' + t + '! ✊\n提醒：' + md + ' ' + t + '上课哦！' + vo;
+if(today) return 'Heads up! Class starts at ' + t + ' today! ✊\n提醒：今天' + t + '上课哦！';
+if(tmw) return 'Reminder: class tomorrow at ' + t + '! ✊\n提醒：明天' + t + '上课哦！';
+return 'Reminder: class on ' + s.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }) + ' at ' + t + '! ✊\n提醒：' + md + ' ' + t + '上课哦！';
 }
 function scRemind(i, fromBox){
 const e = SC.events[i]; if(!e) return; const msg = scRemindText(e), who = tName(e.teacher || ''), st = scStage(e);
@@ -5434,7 +5434,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 350;
+const COE_V = 351;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
