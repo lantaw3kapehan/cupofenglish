@@ -448,7 +448,7 @@ section.sec .cls .t{width:auto;min-width:96px;white-space:nowrap}
 h3.sch{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#2F6F77;margin:14px 0 2px}
 .shero{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:18px;border-radius:18px;margin-top:4px;
 background:linear-gradient(135deg,#EAF5F6 0%,#F7FBFB 55%,#FDF3EF 100%);border:1px solid #DCEFF1}
-.shero h1{font-size:28px;line-height:1.1} .shero .cn{font-family:var(--f);font-size:17px;color:var(--ink2);font-weight:400}
+.shero h1{font-size:28px;line-height:1.1;overflow-wrap:anywhere} .shero>.grow{min-width:min(240px,100%)} .shero .cn{font-family:var(--f);font-size:17px;color:var(--ink2);font-weight:400}
 .shero .av.big{width:70px;height:70px;font-size:30px;background:#fff;box-shadow:0 0 0 4px rgba(91,158,166,.18),var(--sh1)}
 .obs{margin-top:10px;background:var(--soft);border-radius:14px;padding:10px 12px} .obs summary{cursor:pointer;font-weight:700;color:#2F6F77;list-style:none} .obs summary::-webkit-details-marker{display:none}
 .obs .o{padding:8px 0;border-top:1px solid var(--line);font-size:14px} .obs .o:first-of-type{border-top:0}
@@ -2808,7 +2808,7 @@ G.map(x => `<div class="pgrp"><h3>${esc(x.g)}</h3><div class="facts">${x.f.map((
 }
 function stuRender(){
 const {s, r, code} = STU, F = r.feedback || [], P = r.profile, C = r.checks || [], last = C.find(c => c.pr);
-const nm = s.name || code, f0 = F[0];
+const nm = s.name || (() => { try{ const C2 = {}; AT.cols.forEach((c, i) => C2[c] = i); const x = AT.rows.find(y => String(y[C2.code]).toUpperCase() === String(code).toUpperCase() && y[C2.name]); return x ? String(x[C2.name]) : ''; }catch(e){ return ''; } })() || code, f0 = F[0];   /* a finished student opened from search: name from ACTIVE, not the code */
 let h = `<div class="shero"><div class="av big">${esc((nm||'?')[0])}</div><div class="grow">
 <h1>${esc(nm)} <span class="cn">${esc(s.cn)}</span></h1>
 <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><span class="chip">${esc(code)}</span>${(s.teachers||[]).map(t=>`<span class="chip teal">${esc(tName(t))}</span>`).join('')}${s.book?`<span class="chip">${esc(s.book)}</span>`:''}${s.shared?`<span class="chip coral">Shared package · ${esc(s.sharedName||s.sharedWith)}</span>`:''}</div></div>
@@ -4377,13 +4377,13 @@ c.fillStyle = '#6F6B85'; c.font = '400 22px ' + F; c.fillText('Student · 学生
 c.fillStyle = '#2B2253'; { const nm = String(e.student || e.title || '').replace(/\s+X$/i, ''); let fs = 54; c.font = '400 54px ' + B; while(fs > 26 && c.measureText(nm).width > W - 160){ fs -= 2; c.font = '400 ' + fs + 'px ' + B; } c.fillText(nm, 80, y + 82); }
 if(idLine){ c.fillStyle = '#4C4868'; c.font = '400 28px ' + F; c.fillText(idLine, 80, y + 126); }
 y += 130 + (idLine ? 44 : 0);
-if(bl){ const b = P.bal, shared = b.left === '' || b.left == null, ns = shared ? '—' : String(b.left), tot = Math.round(((+b.enrolled || 0) + (+b.carry || 0)) * 10) / 10, used = +b.finished || 0;
+if(bl){ const b = P.bal, shared = b.left === '' || b.left == null, ns = shared ? '—' : (!P.renew && +b.left < 0 ? '+' + Math.round(-b.left * 10) / 10 : String(b.left)), tot = Math.round(((+b.enrolled || 0) + (+b.carry || 0)) * 10) / 10, used = +b.finished || 0;
 rr(80, y, W - 160, 176, 24); c.fillStyle = '#E3F6F6'; c.fill();
-c.fillStyle = '#00737B'; c.font = '400 88px ' + B; c.fillText(ns, 112, y + 104); const nw = c.measureText(ns).width;
-c.fillStyle = '#2B2253'; c.font = '700 28px ' + F; const ov = !shared && !P.renew && +b.left < 0; c.fillText(shared ? 'shared package' : P.renew ? 'lessons now' : ov ? 'lessons over the package' : 'lessons left', 136 + nw, y + 66); c.fillStyle = '#4C4868'; c.font = '400 24px ' + F; c.fillText(shared ? '共享课时包' : P.renew ? '现有课时' : ov ? '超出课程包课时' : '剩余课时', 136 + nw, y + 100);
+c.fillStyle = !shared && !P.renew && +b.left < 0 ? '#C0392B' : '#00737B'; c.font = '400 88px ' + B; c.fillText(ns, 112, y + 104); const nw = c.measureText(ns).width;
+c.fillStyle = '#2B2253'; c.font = '700 28px ' + F; const ov = !shared && !P.renew && +b.left < 0; c.fillText(shared ? 'shared package' : P.renew ? 'lessons now' : ov ? 'over the package' : 'lessons left', 136 + nw, y + 66); const lw = c.measureText(shared ? 'shared package' : P.renew ? 'lessons now' : ov ? 'over the package' : 'lessons left').width; c.fillStyle = '#4C4868'; c.font = '400 24px ' + F; c.fillText(shared ? '共享课时包' : P.renew ? '现有课时' : ov ? '超出课程包课时' : '剩余课时', 136 + nw, y + 100);
 if(P.renew){ const Q = P.renew; c.fillStyle = '#1E7A55'; c.font = '700 22px ' + F; c.fillText((+Q.carry ? Q.carry + ' carried over + ' : '') + Q.tot + ' new · ' + (+Q.carry ? '结转 ' + Q.carry + ' + ' : '') + '新购 ' + Q.tot + ' 课时', 112, y + 150); }
 else if(tot){ const bw = W - 160 - 64, p = Math.max(0, Math.min(1, used / tot)); rr(112, y + 130, bw, 16, 8); c.fillStyle = '#fff'; c.fill(); if(p > 0){ rr(112, y + 130, Math.max(16, bw * p), 16, 8); c.fillStyle = '#00A3AD'; c.fill(); }
-c.textAlign = 'right'; c.fillStyle = '#4C4868'; c.font = '400 20px ' + F; c.fillText('Used ' + used + ' of ' + tot + ' · 已上 ' + used + ' / ' + tot, W - 112, y + 66); c.textAlign = 'left'; }
+c.textAlign = 'right'; c.fillStyle = '#4C4868'; c.font = '400 20px ' + F; { const ut = 'Used ' + used + ' of ' + tot + ' · 已上 ' + used + ' / ' + tot, uw = c.measureText(ut).width; c.fillText(ut, W - 112, 136 + nw + lw + 24 > W - 112 - uw ? y + 120 : y + 66); } c.textAlign = 'left'; }   /* no overlap with a long label: the Used line moves down above the bar */
 y += 206; }
 rows.forEach(([l, lz, v, vz]) => {
 if(l === '__POL__'){ if(window.cxPol) y = cxPol(c, rr, F, W, y, P, e); return; }
@@ -5491,7 +5491,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 362;
+const COE_V = 363;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
