@@ -1214,12 +1214,23 @@ TOKEN = r.token; store('set', KEY_T, TOKEN); hide('login'); show('app'); skeleto
 }
 async function pwSet(name, mg){
 openSheet(`<h1>Password · ${esc(mg ? name : tName(name))}</h1><div id="pwBox"><div class="sk"></div></div>
-<button class="btn ghost block" style="margin-top:12px" onclick="${mg ? 'mgPwList()' : `openTeacher('${esc(name)}')`}">Back</button>`);
+<button class="btn ghost block" style="margin-top:12px;color:#B3261E" onclick="accOff('${esc(name)}', ${mg ? 1 : 0})">Remove access…</button>
+<button class="btn ghost block" style="margin-top:8px" onclick="${mg ? 'mgPwList()' : `openTeacher('${esc(name)}')`}">Back</button>`);
 const i = await api('mgmtPwInfo', TOKEN, name).catch(() => null);
 if(!$('pwBox')) return;
 if(i && i.has) $('pwBox').innerHTML = `<div class="mini"><b>🔒 Password already set</b><br><span class="small mute">${esc(i.at || '')}${i.by ? ' · by ' + esc(i.by) : ''}</span><br><span class="small">Changing it stops the old password working right away.</span></div>
 <button class="btn ghost block" style="margin-top:10px" onclick="pwUnlock('${esc(name)}')">Change password…</button>`;
 else pwForm(name, false, i && i.msg);
+}
+async function accOff(name, mg){
+const who = mg ? name : tName(name);
+if(!confirm('Remove ' + who + '\'s access?\n\nThis signs them out on every phone and removes their password. Their history stays.')) return;
+const rs = confirm('Also mark ' + who + ' as Resigned in MASTERLIST?\n\nOK = yes, hide them from the lists\nCancel = no, only block the app');
+if(window._accBusy) return; window._accBusy = 1; toast('Removing access…');
+const r = await api('mgmtAccessOff', TOKEN, name, rs).catch(e => ({ ok:false, msg:String(e && e.message || e) })); window._accBusy = 0;
+if(!r || !r.ok) return toast(r && r.msg || 'Not removed');
+$('sheetBody').innerHTML = `<h1>Access removed · ${esc(who)}</h1><div class="mini">Signed out on ${r.signedOut} phone${r.signedOut === 1 ? '' : 's'} · password removed${r.resigned ? ' · marked Resigned in MASTERLIST' : ''}.${r.rerr ? '<br>Could not change STATUS: ' + esc(r.rerr) + ' · please change it by hand.' : ''}</div><p class="small mute">Their history stays. To bring them back: set STATUS to active (if changed) and save a new password.</p><button class="btn ghost block" style="margin-top:10px" onclick="${mg ? 'mgPwList()' : 'closeSheet()'}">Done</button>`;
+try{ if(typeof loadMgmt === 'function') loadMgmt(true); }catch(e){}
 }
 function pwUnlock(name){ if(!confirm('Change the password for ' + tName(name) + '?\nThe old password will stop working right away.')) return; pwForm(name, true); }
 function pwForm(name, ch, note){
@@ -1258,7 +1269,7 @@ $('emShow').textContent = em; hide('lg1'); show('lg2'); $('otp').focus();
 async function checkCode(){
 const code = $('otp').value.replace(/\D/g,''); if(code.length !== 6) return toast('Type the 6-digit code');
 const npw = $('pw2').value; if(npw.length < 8){ $('pw2').focus(); return toast('Choose a password · at least 8 characters'); }
-if(LG_BUSY) return; LG_BUSY = true; toast('Signing in…');           /* one sign-in at a time: auto sign-in + tapping the button no longer clash */
+if(LG_BUSY) return; LG_BUSY = true; toast('Signing in…');            
 let r; for(let i = 0; i < 2; i++){ r = await api('setPassword', $('em').value.trim().toLowerCase(), code, npw, MODE).catch(()=>null); if(r) break; await new Promise(z => setTimeout(z, 800)); }
 LG_BUSY = false; if(!r) return toast('No connection. Check your internet and tap Sign in again.');
 if(!r.ok) return toast(r.msg);
@@ -1266,7 +1277,7 @@ $('pw2').value = ''; TOKEN = r.token; store('set', KEY_T, TOKEN); hide('login');
 }
 function logout(silent){
 if(!silent && TOKEN) api('signOut', TOKEN).catch(()=>{});
-store('del', KEY_T); store('del', KEY_D); store('del','coe.mo'); window._pf = 0; Object.keys(MEM).forEach(k => store('del', k));   /* saved copies belong to the person who signed in */
+store('del', KEY_T); store('del', KEY_D); store('del','coe.mo'); window._pf = 0; Object.keys(MEM).forEach(k => store('del', k));    
 TOKEN = null; D = null; MO = null; MS = null; TD = TT = AT = SC = MN = AC = DB = PL = null; MYP = null; NAVKEY = '';
 hide('app'); show('login'); show('lg1'); hide('lg2');
 }
@@ -1318,7 +1329,7 @@ msgs:    [() => MSG, () => renderMsgs(),    q => loadMsgs(q)]
 };
 function go(v){
 VIEW = v; store('set', 'coe.view', v); VIEWS.forEach(x => $('v-'+x).classList.toggle('hide', x!==v));
-if(v==='astudents'){ if(MS) renderAStudents(); else loadStudents(); }   
+if(v==='astudents'){ if(MS) renderAStudents(); else loadStudents(); }   // list made in the background → draw it now
 if(v==='schedule'){ if(SC) renderSchedule(); if(!SC || !SC._t || Date.now() - SC._t > 60000) loadSchedule(0, !!SC); }   
 const S = SCREENS[v];                                                      
 if(S){ const has = S[0](); if(has){ try{ S[1](); }catch(e){} }
@@ -2692,7 +2703,7 @@ catch(e){ if(!p0 && mine()) $('sheetBody').innerHTML = `<h1 data-tch="${esc(name
 function tchHtml(name, p){
 const me = p.me || {};
 const today = (p.schedule||[]).filter(c=>c.day===p.today).sort((a,b)=>a.start.localeCompare(b.start));
-let h = `<h1 style="padding-right:48px">${esc(tName(name))}</h1><div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px"><button class="btn ghost sm" onclick="closeSheet();go('teachers');loadTT('${esc(name)}')">TEACHERS tab</button><button class="btn ghost sm" onclick="avOpen('${esc(name)}')">Open slots</button><button class="btn ghost sm" onclick="profOpen('${esc(name)}')">Profile card</button><button class="btn ghost sm" onclick="payslip('${esc(name)}')">Payslip</button><button class="btn sm teal" onclick="growthSheet('${esc(name)}')">Growth</button><button class="btn ghost sm" onclick="pwSet('${esc(name)}')">Password</button></div><div class="mute small">${esc([me.rank, me.rate?peso(me.rate)+'/lesson':'', (me.lifetime||0).toLocaleString()+' lifetime units'].filter(Boolean).join(' · '))}</div>
+let h = `<h1 style="padding-right:48px">${esc(tName(name))}</h1><div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px"><button class="btn ghost sm" onclick="closeSheet();go('teachers');loadTT('${esc(name)}')">TEACHERS tab</button><button class="btn ghost sm" onclick="avOpen('${esc(name)}')">Open slots</button><button class="btn ghost sm" onclick="profOpen('${esc(name)}')">Profile card</button><button class="btn ghost sm" onclick="payslip('${esc(name)}')">Payslip</button><button class="btn sm teal" onclick="growthSheet('${esc(name)}')">Growth</button><button class="btn ghost sm" onclick="pwSet('${esc(name)}')">Password · access</button></div><div class="mute small">${esc([me.rank, me.rate?peso(me.rate)+'/lesson':'', (me.lifetime||0).toLocaleString()+' lifetime units'].filter(Boolean).join(' · '))}</div>
 <div class="stats" style="margin-top:12px"><div class="stat"><b class="num">${(me.nowReg||0)+(me.nowTrial||0)+(me.nowSub||0)}</b><span>units this month</span></div>
 <div class="stat"><b class="num">${peso((me.nowPay||0)+(me.monthBonus||0)-(me.monthDeduct||0))}</b><span>pay so far</span></div>
 <div class="stat"><b class="num">${(p.students||[]).length}</b><span>students</span></div></div>`;
@@ -5376,7 +5387,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 327;
+const COE_V = 328;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
