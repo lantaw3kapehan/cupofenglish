@@ -2022,11 +2022,20 @@ const trKey = () => 'coe.trd.' + TRC.date + '|' + String(TRC.student||'').toLowe
 function trSave(){ try{ store('set', trKey(), JSON.stringify(TRS)); }catch(e){} }
 function trTot(){ const F = TRF.form.rate, p = F.map((r,i) => TRS.picks[i] > -1 ? trPts(r.choices[TRS.picks[i]]) : 0), sum = (a,b) => p.slice(a,b).reduce((x,y)=>x+y,0);
 return { s: sum(0,5), l: sum(5,7), r: sum(7,9), t: sum(0,9), all: TRS.picks.every(x => x > -1) }; }
+const TR_GRP = [['Young learner (≤10)', 'Young learner · ≤10'], ['Teen (11–17)', 'Teen · 11–17'], ['Adult (18+)', 'Adult · 18+']];
+const TR_GOAL = [['Adult (18+)', 'Daily speaking & free talk'], ['Adult · work English', 'English for work'], ['Adult · business English', 'Business English']];
+function trGrpGuess(){ const f = TRF.family || {}, a = parseInt(f.age, 10), g = String(f.goal || '') + ' ' + String(f.details || ''); if(!(a > 0)) return ''; if(a <= 10) return TR_GRP[0][0]; if(a < 18) return TR_GRP[1][0]; return /business|商务/i.test(g) ? TR_GOAL[2][0] : /\bwork\b|job|office|职场|工作/i.test(g) ? TR_GOAL[1][0] : TR_GOAL[0][0]; }
+function trGrpBox(){ if(TRS.group == null) TRS.group = trGrpGuess(); const g = TRS.group || '', ad = /^Adult/.test(g);
+return `<section class="sec" id="trGrp"><h2>Learner type <span class="c">学员类型</span></h2><div class="small mute">Sets the roadmap and books on the parent PDF${g && g === trGrpGuess() ? ' · filled from the enquiry, change it if needed' : ''}.</div>
+<div class="seg" style="flex-wrap:wrap;margin-top:8px">${TR_GRP.map(x => `<button class="${(x[0] === g || (ad && x[0] === TR_GRP[2][0])) ? 'on' : ''}" onclick="trGrp('${x[0]}')">${x[1]}</button>`).join('')}</div>
+${ad ? `<div class="small" style="margin-top:10px"><b>Adult goal</b> <span class="mute">· same books as the Course plan</span></div><div class="seg" style="flex-wrap:wrap">${TR_GOAL.map(x => `<button class="${x[0] === g ? 'on' : ''}" onclick="trGrp('${x[0]}')">${x[1]}</button>`).join('')}</div>` : ''}</section>`; }
+function trGrp(v){ TRS.group = v; try{ trSave(); }catch(e){} const el = $('trGrp'); if(el) el.outerHTML = trGrpBox(); }
 function trPaint(){
 const F = TRF.form, T = trTot(), lab = t => { const L = String(t||'').split('\n'); return `<b>${esc(L[0])}</b>${L[1]?` <span class="mute">${esc(L.slice(1).join(' '))}</span>`:''}`; };
 let h = `<div class="row" style="padding-right:44px"><div class="grow"><h1>Trial report</h1><div class="mute small">${esc(TRC.student)}${TRC.code?' · '+esc(TRC.code):''} · ${esc(TRC.date)}${TRC.time?' · '+esc(TRC.time):''} · Teacher ${esc((D.me||{}).name||'')}</div></div></div>`;
 if(TRF.family) h += `<div class="mini small" style="white-space:pre-line;margin-top:8px"><b>From the family</b>${TRF.family.age ? ' · ' + esc(TRF.family.age) + ' yrs' : ''}${TRF.family.goal ? ' · ' + esc(TRF.family.goal) : ''}${TRF.family.details ? '\n' + esc(TRF.family.details) : ''}</div>`;
 if(TRF.done) h += `<div class="fbdone">Already sent${TRF.done.at?' · '+esc(TRF.done.at):''}${TRF.done.total!=null&&TRF.done.total!==''?' · '+TRF.done.total+'/36':''}${TRF.done.cefr?' · '+esc(TRF.done.cefr):''}. Sending again adds a second report.</div>`;
+h += trGrpBox();
 h += `<div class="small mute" style="margin-top:8px">Rate each line from what you saw in the trial class. The Chinese version and the parent PDF are made for you, as before.</div>`;
 let sec = null;
 F.rate.forEach((r, i) => {
@@ -2051,8 +2060,9 @@ TRS.cefr = ''; if($('trRb') && window.cefrBox) $('trRb').innerHTML = cefrBox(T.t
 async function trSend(){
 const T = trTot(); if(!T.all){ const i = TRS.picks.findIndex(x => x < 0); toast('Rate every line · ' + String(TRF.form.rate[i].title).split('\n')[0].toLowerCase()); const el = $('trc'+i); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); return; }
 const ti = TRS.texts.findIndex(t => String(t||'').trim().length < 30); if(ti > -1) return toast('Please write ' + String(TRF.form.text[ti].title).split('\n')[0].toLowerCase() + ' (a few sentences)');
+if(!TRS.group){ toast('Pick the learner type · young learner, teen or adult'); const el = $('trGrp'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); return; }
 const b = $('trGo'); b.disabled = true; b.textContent = 'Sending…';
-try{ const r = await api('tTrialSubmit', TOKEN, TRC, { picks: TRS.picks, texts: TRS.texts, cefr: '' }); if(!r.ok) throw r;
+try{ const r = await api('tTrialSubmit', TOKEN, TRC, { picks: TRS.picks, texts: TRS.texts, cefr: '', group: TRS.group || '' }); if(!r.ok) throw r;
 try{ localStorage.removeItem(trKey()); }catch(e){} try{ store('del', trKey()); }catch(e){}
 (D.special||[]).forEach(x => { if(x.date === TRC.date && String(x.student).toLowerCase() === String(TRC.student).toLowerCase()) x.reportMissing = false; }); store('set', KEY_D, JSON.stringify(D));
 closeSheet(); render(); toast('Trial report sent · ' + r.total + '/36 · ' + r.cefr + ' · the parent PDF is made for Ops');
@@ -5207,6 +5217,13 @@ const isAdult = code => { code = String(code || '').trim().toUpperCase(); if(!co
 const s = ms.find(x => String(x.code || '').toUpperCase() === code); if(s && s.adult) return true;
 const r = DB && DB.rows && DB.rows.find(x => String(x[0] || '').toUpperCase() === code); if(r){ const gr = String(r[8] || '').trim(); return /^(WA|UM|U\d|PhD|ADULT)$/i.test(gr) || (+r[6] >= 20 && !/^(G\d+|GK)$/i.test(gr)); } return false; };
 function tlMsg(){ const x = TLD; if(isAdult(x.code)) return `Hello ${x.student}! Here is your trial class assessment from Teacher ${x.teacher}: CEFR ${x.cefr} · ${x.total}/36. Thank you for trying CupOfEnglish! — CupOfEnglish\n${x.student}您好！这是您的试听课评估报告（${x.teacher}老师）：CEFR ${x.cefr}，总分 ${x.total}/36。感谢您对CupOfEnglish的信任！— CupOfEnglish`; return `Dear parent, here is ${x.student}'s trial class assessment from Teacher ${x.teacher}: CEFR ${x.cefr} · ${x.total}/36. Thank you for trying CupOfEnglish! — CupOfEnglish\n家长您好！这是${x.student}的试听课评估报告（${x.teacher}老师）：CEFR ${x.cefr}，总分 ${x.total}/36。感谢您对CupOfEnglish的信任！— CupOfEnglish`; }
+const TL_GRPS = [['Young learner (≤10)', 'Young learner'], ['Teen (11–17)', 'Teen'], ['Adult (18+)', 'Adult · daily speaking'], ['Adult · work English', 'Adult · work'], ['Adult · business English', 'Adult · business']];
+function tlGrpBox(x){ return `<div class="small" style="margin-top:10px" id="tlGrp"><b>Learner type</b> <span class="mute">· sets the roadmap and books on the PDF${x.group ? '' : ' · not set yet'}</span><div class="seg" style="flex-wrap:wrap;margin-top:6px">${TL_GRPS.map((g, i) => `<button class="${x.group === g[0] ? 'on' : ''}" onclick="tlGrp(${i})">${g[1]}</button>`).join('')}</div></div>`; }
+async function tlGrp(i){ const x = TLD, g = TL_GRPS[i][0]; if(!x || x.group === g) return;
+if(x.pdf && !confirm('Change to ' + TL_GRPS[i][1] + '? The parent PDF is made again with the new roadmap (a few minutes).')) return;
+try{ const r = await api('mgmtTrialGroup', TOKEN, x.date, x.student, g); if(!r.ok) throw r; x.group = g;
+if(r.remade){ x.pdf = ''; x.status = 'Making PDF'; TLB = null; tlPaint(); toast('Saved · the new PDF is being made (a few minutes)'); }
+else { const el = $('tlGrp'); if(el) el.outerHTML = tlGrpBox(x); toast('Saved · ' + TL_GRPS[i][1]); } }catch(e){ toast((e && e.msg) || 'Not saved. Try again.'); } }
 function tlPaint(){
 const x = TLD, [c, l] = TL_ST(x.status);
 const T = (en, zh, a, b) => a ? `<div class="rp-tx"><div class="gr-k">${en} <span class="mute">${zh}</span></div><div class="small">${nl2br(a)}</div>${b?`<div class="small zh">${nl2br(b)}</div>`:''}</div>` : '';
@@ -5214,7 +5231,7 @@ let h = `<div class="row" style="padding-right:44px"><div class="av">${esc(Strin
 if(x.check) h += `<div class="fbfix"><b>Check before sending</b><div>${esc(x.check)}</div><div class="small">Fix it in TR-DATA (CEFR override or comments) · the PDF is remade after you clear its link</div></div>`;
 if(x.sent) h += `<div class="fbdone">Sent to the parent ${esc(x.sent.at)} by ${esc(x.sent.by)}${x.sent.how?' · '+esc(x.sent.how):''}</div>`;
 h += `<div class="rp-sk"><div><b class="num">${x.s===''||x.s==null?'—':x.s}</b><span>Speaking /20</span></div><div><b class="num">${x.l===''||x.l==null?'—':x.l}</b><span>Listening /8</span></div><div><b class="num">${x.rd===''||x.rd==null?'—':x.rd}</b><span>Reading /8</span></div><div style="background:var(--tint)"><b class="num">${x.total}</b><span>Total /36 · ${esc(x.cefr)}</span></div></div>
-${x.group||x.enrolled?`<div class="small mute" style="margin-top:6px">${esc([x.group, x.enrolled && 'Enrolled? ' + x.enrolled].filter(Boolean).join(' · '))}</div>`:''}
+${tlGrpBox(x)}${x.enrolled?`<div class="small mute" style="margin-top:6px">Enrolled? ${esc(x.enrolled)}</div>`:''}
 ${T("Teacher's comments",'教师评语',x.comm,x.commZh)}${T('Suggested next steps','建议的下一步措施',x.next,x.nextZh)}`;
 h += `<div id="tlPdf">${x.pdf ? '<div class="sk" style="height:180px;margin-top:12px"></div>' : `<div class="small mute" style="margin-top:12px">${x.status==='Translating'?'The Chinese is being added, then the PDF is made':'The PDF is being made'} · usually a few minutes after the teacher sends the report. Pull to refresh later.</div>`}</div><div class="rp-act" id="tlAct"></div>`;
 openSheet(h); $('sheet').classList.add('wide'); tlBtns();
@@ -5388,7 +5405,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 333;
+const COE_V = 334;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
