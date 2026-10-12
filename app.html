@@ -1212,19 +1212,29 @@ if(!r || !r.ok) return toast(r && r.msg || 'Not signed in');
 store('set','coe.em.'+MODE, em); $('pw').value = '';
 TOKEN = r.token; store('set', KEY_T, TOKEN); hide('login'); show('app'); skeleton(); reload(false);
 }
-function pwSet(name){
-openSheet(`<h1>Password · ${esc(tName(name))}</h1><p class="small mute">Type a password or tap Make one. It shows only here, so send it right away. The app can't show it again later.</p>
-<input id="pwN" class="in-t" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="At least 8 characters">
-<div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost" onclick="$('pwN').value=pwMake()">Make one</button><button class="btn grow" onclick="pwSave('${esc(name)}')">Save password</button></div>
-<div id="pwOut"></div>
+async function pwSet(name){
+openSheet(`<h1>Password · ${esc(tName(name))}</h1><div id="pwBox"><div class="sk"></div></div>
 <button class="btn ghost block" style="margin-top:12px" onclick="openTeacher('${esc(name)}')">Back</button>`);
+const i = await api('mgmtPwInfo', TOKEN, name).catch(() => null);
+if(!$('pwBox')) return;
+if(i && i.has) $('pwBox').innerHTML = `<div class="mini"><b>🔒 Password already set</b><br><span class="small mute">${esc(i.at || '')}${i.by ? ' · by ' + esc(i.by) : ''}</span><br><span class="small">Changing it stops the old password working right away.</span></div>
+<button class="btn ghost block" style="margin-top:10px" onclick="pwUnlock('${esc(name)}')">Change password…</button>`;
+else pwForm(name, false, i && i.msg);
+}
+function pwUnlock(name){ if(!confirm('Change the password for ' + tName(name) + '?\nThe old password will stop working right away.')) return; pwForm(name, true); }
+function pwForm(name, ch, note){
+$('pwBox').innerHTML = `${note ? `<p class="small" style="color:#9A4330">${esc(note)}</p>` : ''}<p class="small mute">Type a password or tap Make one. It shows only here, so send it right away. The app can't show it again later.</p>
+<input id="pwN" class="in-t" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="At least 8 characters">
+<div class="row" id="pwBtns" style="gap:8px;margin-top:10px"><button class="btn ghost" onclick="$('pwN').value=pwMake()">Make one</button><button class="btn grow" onclick="pwSave('${esc(name)}', ${ch ? 1 : 0})">${ch ? 'Save new password' : 'Save password'}</button></div>
+<div id="pwOut"></div>`;
 }
 function pwMake(){ const W = ['Mango','Pearl','Cedar','Lotus','River','Maple','Comet','Bamboo','Coral','Sunny','Tiger','Panda','Olive','Amber','Cloud','Lemon']; const r = new Uint32Array(3); crypto.getRandomValues(r); return W[r[0]%W.length] + '-' + String(1000 + r[1]%9000) + '-' + W[r[2]%W.length]; }
-async function pwSave(name){
+async function pwSave(name, ch){
 const pw = $('pwN').value.trim(); if(pw.length < 8) return toast('At least 8 characters');
-toast('Saving…');
-const r = await api('mgmtPwSave', TOKEN, name, pw).catch(e => ({ ok:false, msg:String(e && e.message || e) }));
+if(window._pwBusy) return; window._pwBusy = 1; toast('Saving…');
+const r = await api('mgmtPwSave', TOKEN, name, pw, !!ch).catch(e => ({ ok:false, msg:String(e && e.message || e) })); window._pwBusy = 0;
 if(!r || !r.ok) return toast(r && r.msg || 'Not saved');
+$('pwN').readOnly = true; if($('pwBtns')) $('pwBtns').remove();
 window._pwMsg = 'CupOfEnglish app\nEmail: ' + r.email + '\nPassword: ' + pw + '\nOpen: https:' + SL2 + 'app.cupofenglishatph.com';
 $('pwOut').innerHTML = `<div class="mini" style="margin-top:12px"><b>Saved.</b> Send to ${esc(tName(name))}:<br>Email: ${esc(r.email)}<br>Password: <b>${esc(pw)}</b><br><button class="btn sm teal" style="margin-top:8px" onclick="pwCopy()">Copy message</button></div>`;
 }
@@ -1242,7 +1252,7 @@ $('emShow').textContent = em; hide('lg1'); show('lg2'); $('otp').focus();
 async function checkCode(){
 const code = $('otp').value.replace(/\D/g,''); if(code.length !== 6) return toast('Type the 6-digit code');
 const npw = $('pw2').value; if(npw.length < 8){ $('pw2').focus(); return toast('Choose a password · at least 8 characters'); }
-if(LG_BUSY) return; LG_BUSY = true; toast('Signing in…');            
+if(LG_BUSY) return; LG_BUSY = true; toast('Signing in…');           /* one sign-in at a time: auto sign-in + tapping the button no longer clash */
 let r; for(let i = 0; i < 2; i++){ r = await api('setPassword', $('em').value.trim().toLowerCase(), code, npw, MODE).catch(()=>null); if(r) break; await new Promise(z => setTimeout(z, 800)); }
 LG_BUSY = false; if(!r) return toast('No connection. Check your internet and tap Sign in again.');
 if(!r.ok) return toast(r.msg);
@@ -1250,7 +1260,7 @@ $('pw2').value = ''; TOKEN = r.token; store('set', KEY_T, TOKEN); hide('login');
 }
 function logout(silent){
 if(!silent && TOKEN) api('signOut', TOKEN).catch(()=>{});
-store('del', KEY_T); store('del', KEY_D); store('del','coe.mo'); window._pf = 0; Object.keys(MEM).forEach(k => store('del', k));    
+store('del', KEY_T); store('del', KEY_D); store('del','coe.mo'); window._pf = 0; Object.keys(MEM).forEach(k => store('del', k));   /* saved copies belong to the person who signed in */
 TOKEN = null; D = null; MO = null; MS = null; TD = TT = AT = SC = MN = AC = DB = PL = null; MYP = null; NAVKEY = '';
 hide('app'); show('login'); show('lg1'); hide('lg2');
 }
@@ -1302,7 +1312,7 @@ msgs:    [() => MSG, () => renderMsgs(),    q => loadMsgs(q)]
 };
 function go(v){
 VIEW = v; store('set', 'coe.view', v); VIEWS.forEach(x => $('v-'+x).classList.toggle('hide', x!==v));
-if(v==='astudents'){ if(MS) renderAStudents(); else loadStudents(); }   // list made in the background → draw it now
+if(v==='astudents'){ if(MS) renderAStudents(); else loadStudents(); }   
 if(v==='schedule'){ if(SC) renderSchedule(); if(!SC || !SC._t || Date.now() - SC._t > 60000) loadSchedule(0, !!SC); }   
 const S = SCREENS[v];                                                      
 if(S){ const has = S[0](); if(has){ try{ S[1](); }catch(e){} }
@@ -5359,7 +5369,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 325;
+const COE_V = 326;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
