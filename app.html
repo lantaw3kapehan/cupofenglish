@@ -4609,9 +4609,12 @@ $('sheetBody').innerHTML = h;
 }
 function scStage(e){ if(!e || e.cancelled) return ''; const m = (new Date(e.start) - Date.now()) / 6e4; if(ymdLocal(new Date(e.start)) !== ymdLocal(new Date())) return ''; return m > 20 && m <= 180 ? '2h' : m > -5 && m <= 20 ? '10m' : ''; }
 function scRemKey(e, st){ return 'coeRem:' + ymdLocal(new Date(e.start)) + ':' + e.start + ':' + (e.code || e.student || e.title) + ':' + st; }
-function scSent(e, st){ try{ return localStorage.getItem(scRemKey(e, st)) === '1'; }catch(x){ return false; } }
+let REM = { day: '', map: {}, busy: 0 };
+async function remLoad(){ if(REM.busy) return; REM.busy = 1; try{ const d = ymdLocal(new Date()), r = await api('mgmtReminders', TOKEN, d); if(r && r.ok){ REM.day = d; REM.map = r.rem || {}; } }catch(x){} REM.busy = 0; try{ const v = $('v-schedule'); const a = document.activeElement; if(SC && v && v.offsetParent && !(a && a.id === 'scQ')) renderSchedule(); }catch(x){} }
+function scSent(e, st){ if(REM.map[scRemKey(e, st)]) return true; try{ return localStorage.getItem(scRemKey(e, st)) === '1'; }catch(x){ return false; } }
+function scRemChips(e){ const c = ['2h', '10m'].map(st => { const r = REM.map[scRemKey(e, st)]; return r ? `<span class="chip teal">🔔 ${st === '10m' ? '10-min' : 'Early'} reminder · ${esc(r.by)} ${esc(r.at)}</span>` : ''; }).filter(Boolean); return c.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${c.join('')}</div>` : ''; }
 function scDueBox(){
-if(!SC || SC_OFF) return ''; const due = SC.events.filter(e => { const st = scStage(e); return st && !scSent(e, st); }).sort((a, b) => a.start.localeCompare(b.start));
+if(!SC || SC_OFF) return ''; if(REM.day !== ymdLocal(new Date()) && !REM.busy) setTimeout(remLoad, 0); const due = SC.events.filter(e => { const st = scStage(e); return st && !scSent(e, st); }).sort((a, b) => a.start.localeCompare(b.start));
 const sent = SC.events.filter(e => { const st = scStage(e); return st && scSent(e, st); }).length;
 if(!due.length) return sent ? `<div class="small mute" style="margin-top:10px">🔔 Reminders due: all sent ✓ (${sent})</div>` : '';
 return `<div class="card" style="margin-top:12px;border:1.5px solid #00A3AD"><b>🔔 Reminders due · ${due.length}</b><div class="small mute">Copy, then paste in the class WeChat group (type @ to tag the teacher and parent)${sent ? ' · ' + sent + ' sent' : ''}</div>` +
@@ -4629,10 +4632,10 @@ return 'Reminder: class on ' + s.toLocaleDateString('en-GB', { weekday:'short', 
 function scRemind(i, fromBox){
 const e = SC.events[i]; if(!e) return; const msg = scRemindText(e), who = tName(e.teacher || ''), st = scStage(e);
 const show = () => openSheet('<h1>Reminder</h1><p class="small" style="white-space:pre-line">' + esc(msg) + '</p>');
-const ok = () => { if(st){ try{ localStorage.setItem(scRemKey(e, st), '1'); }catch(x){} } toast('Copied · in the WeChat group type @ to tag ' + who + ' and the parent, then paste'); if(st) renderSchedule(); };
+const ok = () => { if(st){ try{ localStorage.setItem(scRemKey(e, st), '1'); }catch(x){} api('mgmtRemindLog', TOKEN, { key: scRemKey(e, st), day: ymdLocal(new Date(e.start)), start: tm(e.start), code: e.code || '', student: e.student || e.title || '', teacher: e.teacher || '', stage: st === '10m' ? '10-minute' : 'Early' }).then(r => { if(r && r.ok){ REM.map = r.rem || REM.map; REM.day = ymdLocal(new Date()); renderSchedule(); } else toast('Copied, but the Reminded log did not save'); }).catch(() => toast('Copied, but the Reminded log did not save')); } toast('Copied · in the WeChat group type @ to tag ' + who + ' and the parent, then paste'); if(st) renderSchedule(); };
 try{ navigator.clipboard.writeText(msg).then(ok, show); }catch(x){ show(); }
 }
-setInterval(() => { try{ const v = $('v-schedule'); if(!SC || SC_OFF || !v || !v.offsetParent) return; const a = document.activeElement; if(a && a.id === 'scQ') return; renderSchedule(); }catch(x){} }, 60000);
+setInterval(() => { try{ const v = $('v-schedule'); if(!SC || SC_OFF || !v || !v.offsetParent) return; const a = document.activeElement; if(a && a.id === 'scQ') return; renderSchedule(); remLoad(); }catch(x){} }, 60000);
 function renderSchedule(){
 if(!SC) return;
 const E = SC.events, live = E.filter(e=>!e.cancelled), T = [...new Set(E.map(e=>e.teacher))].sort();
@@ -4651,7 +4654,7 @@ const row = (e, who) => { const on = now >= new Date(e.start) && now < new Date(
 const mon = e.cancelled ? '' : monChips(e, now);
 return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type==='Sub'?'sub':''} ${on?'now':''}" style="cursor:pointer;--c:${bookCol(e.book)}" onclick="classEdit(${SC.events.indexOf(e)})"><div class="t"><b>${tm(e.start)}</b><span>${tm(e.end)}</span></div><div class="bar"></div>
 <div class="grow"><div class="row" style="gap:6px"><span class="nm ell">${esc(e.student||e.title)}</span>${e.type?`<span class="chip ${e.type==='Trial'?'coral':''}">${e.type}</span>`:''}${e.cancelled?'<span class="chip red">Cancelled</span>':''}${on?'<span class="live-b"><i></i>Live</span>':''}</div>${e.cancelled && e.why ? `<div class="cxw">Why: ${cxWhy(e.why)}</div>` : ''}${e.cancelled ? `<button class="cxbtn" onclick="event.stopPropagation();cxProof(${SC.events.indexOf(e)})">Proof for the parent</button>` : ''}
-<div class="small mute ell">${[who?`<b style="color:var(--ink2)">${esc(e.teacher)}</b>`:'', esc([e.code,e.book,e.meet].filter(Boolean).join(' · '))].filter(Boolean).join(' · ')}</div>${mon}${!e.cancelled && now < new Date(e.end).getTime() ? `<button class="cxbtn" onclick="event.stopPropagation();scRemind(${SC.events.indexOf(e)})">🔔 Remind · copy message</button>` : ''}</div></div>`; };
+<div class="small mute ell">${[who?`<b style="color:var(--ink2)">${esc(e.teacher)}</b>`:'', esc([e.code,e.book,e.meet].filter(Boolean).join(' · '))].filter(Boolean).join(' · ')}</div>${mon}${scRemChips(e)}${!e.cancelled && now < new Date(e.end).getTime() ? `<button class="cxbtn" onclick="event.stopPropagation();scRemind(${SC.events.indexOf(e)})">🔔 Remind · copy message</button>` : ''}</div></div>`; };
 if(!L.length) h += `<div class="empty">No classes on the calendar.</div>`;
 else if(SC_BY==='teacher'){ const by = {}; L.forEach(e => (by[e.teacher]=by[e.teacher]||[]).push(e));
 h += Object.keys(by).sort().map(t => `<h2>${esc(t)} <span class="c">${by[t].filter(e=>!e.cancelled).length} classes${by[t].some(e=>e.cancelled)?' · '+by[t].filter(e=>e.cancelled).length+' cancelled':''}</span></h2>` + svNowFirst(by[t]).map(e=>row(e,false)).join('')).join(''); }
@@ -5434,7 +5437,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 351;
+const COE_V = 352;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
