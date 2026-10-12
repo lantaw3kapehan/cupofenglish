@@ -4166,8 +4166,9 @@ ${e.cancelled ? '' : `<button class="btn teal block" style="margin-top:12px" onc
 <button class="btn block" id="eGo" style="margin-top:10px" disabled onclick="sendEdit(${i},'move','${src}')">Save changes</button>
 ${e.cancelled?'':`<label class="check" style="margin-top:14px"><input type="checkbox" id="eMk" checked><div><b>Add a make-up class at the end</b><div class="small mute">Keeps the package complete: one more class after their last booked one, same day pattern and time</div></div></label>`}
 ${e.cancelled ? (e.why ? `<div class="cxw" style="margin-top:14px">Why cancelled: ${cxWhy(e.why)}</div>` : '') + `<button class="btn teal block" style="margin-top:10px" onclick="cxProof(${i},'${src}')">Proof to send (picture)</button>` : `<label>Reason for cancelling <span class="mute small">(the teacher sees it)</span></label><input id="eR" class="in-t" placeholder="e.g. Parent asked · student sick · school exam">
-<div class="skc">${['Parent asked','Student sick','School exam','Family trip','Holiday','Moved to another day','Student no-show','Teacher unavailable','Internet problem','Power outage'].map(r => `<button type="button" onclick="$('eR').value='${r}';this.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===this))">${r}</button>`).join('')}</div>`}
-<button class="btn ghost block" style="margin-top:8px" onclick="sendEdit(${i},'${e.cancelled?'restore':'cancel'}','${src}')">${e.cancelled?'Restore class (remove X, RSVP Yes)':'Cancel class (X + RSVP No)'}</button>
+<div class="skc">${['Parent asked','Student sick','School exam','Family trip','Holiday','Moved to another day','Student no-show','Teacher unavailable','Internet problem','Power outage'].map(r => `<button type="button" onclick="$('eR').value='${r}';this.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===this))">${r}</button>`).join('')}</div>
+<label class="check" style="margin-top:10px"><input type="checkbox" id="eStop" onchange="const k=$('eMk');if(k&&this.checked)k.checked=false;const b=$('eCx');if(b)b.textContent=this.checked?'Cancel this and every later ${esc(st.toLocaleDateString('en-GB',{weekday:'long'}))} ${tm(e.start)}':'Cancel class (X + RSVP No)'"><div><b>Stop this schedule · cancel every later ${esc(st.toLocaleDateString('en-GB',{weekday:'long'}))} ${tm(e.start)} too</b><div class="small mute">When the parent stops this day for good. Later classes of this package on the same day and time get X + RSVP No (nothing deleted, no make-up)</div></div></label>`}
+<button class="btn ghost block" id="eCx" style="margin-top:8px" onclick="sendEdit(${i},'${e.cancelled?'restore':'cancel'}','${src}')">${e.cancelled?'Restore class (remove X, RSVP Yes)':'Cancel class (X + RSVP No)'}</button>${e.cancelled ? `<button class="btn ghost block" style="margin-top:8px;color:#9A4330" onclick="if(confirm('Cancel every later ${esc(st.toLocaleDateString('en-GB',{weekday:'long'}))} ${tm(e.start)} class of this package too? They stay on the calendar with X + RSVP No.')){window._cxStop=1;sendEdit(${i},'cancel','${src}')}">Stop this schedule · cancel every later ${esc(st.toLocaleDateString('en-GB',{weekday:'long'}))} ${tm(e.start)}</button>` : ''}
 <p class="small mute" style="margin-top:8px">Only this day's class changes, even when it repeats weekly. Nothing is deleted: a cancelled class keeps its event with " X" and RSVP No (struck through), like the team does by hand.</p>`);
 ['eD','eH','eM','eT'].forEach(id => { const x = $(id); if(x){ x.addEventListener('change', () => ePrev(e)); x.addEventListener('input', () => ePrev(e)); } });
 if(!e.cancelled) monLoad();
@@ -4453,8 +4454,9 @@ if(!same && b && D && D.mgr) ckRun({ teacher: tc, dates: [d], time: t, mins: m, 
 }
 async function sendEdit(i, action, src){
 const L = evList(src), e = L[i]; if(!e) return;
-const f = {action, start:e.start, date:$('eD').value, time:$('eH').value.trim(), mins:$('eM').value, teacher:$('eT').value, makeup: !!($('eMk') && $('eMk').checked), reason: (($('eR')||{}).value||'').trim(), forward: action==='move' && !!($('eFw') && $('eFw').checked), force: action==='move' && ckForce()};
+const f = {action, start:e.start, date:$('eD').value, time:$('eH').value.trim(), mins:$('eM').value, teacher:$('eT').value, makeup: !!($('eMk') && $('eMk').checked), reason: (($('eR')||{}).value||'').trim(), forward: action==='move' ? !!($('eFw') && $('eFw').checked) : action==='cancel' && (!!($('eStop') && $('eStop').checked) || !!window._cxStop), force: action==='move' && ckForce()};
 if(action==='move' && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(f.time)) return toast('Choose a time');
+window._cxStop = 0; if(action==='cancel' && e.cancelled && !f.reason) f.reason = cxSplit(e.why).r;
 const before = Object.assign({}, e), code = src==='stu' && STU ? STU.code : '';
 if(action==='move'){ const [H,M] = f.time.split(':').map(Number), d = new Date(f.date+'T00:00:00'); d.setHours(H, M, 0, 0);
 e.start = d.toISOString(); e.end = new Date(d.getTime() + (Number(f.mins)||25)*6e4).toISOString(); if(f.teacher) e.teacher = f.teacher;
@@ -5432,7 +5434,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 349;
+const COE_V = 350;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
