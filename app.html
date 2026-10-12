@@ -1401,6 +1401,27 @@ const next = live.find(c => new Date(c.end) >= now), mins = next ? (new Date(nex
 const k = !live.length ? 'none' : !left ? 'done' : left === 1 && done ? 'last' : done ? 'between' : mins <= 30 ? 'soon' : 'early';
 return { h: pick(GREET[tod], tod) + ', ' + nm + '!', line: pick(GLINE[k], k).replace('{done}', done).replace('{left}', left) };
 }
+function tRemEv(c){ return Object.assign({}, c, { teacher: c.teacher || ((D.me || {}).name) || '' }); }
+function tRemDue(){ if(!D || D.mgr) return []; return (D.schedule || []).filter(c => c.day === D.today && !c.cancelled && remByTeacher(c)).map(c => ({ c, st: scStage(c) })).filter(x => x.st && !scSent(x.c, x.st)).sort((a, b) => a.c.start.localeCompare(b.c.start)); }
+async function tRemLoad(){ if(!D || D.mgr || REM.busy) return; REM.busy = 1; try{ const d = ymdLocal(new Date()), r = await api('tReminders', TOKEN, d); if(r && r.ok){ REM.day = d; REM.map = r.rem || {}; } }catch(x){} REM.busy = 0; }
+function tRemBox(){
+if(!D || D.mgr) return ''; const mine = (D.schedule || []).filter(c => c.day === D.today && !c.cancelled && remByTeacher(c)); if(!mine.length) return '';
+if(REM.day !== ymdLocal(new Date()) && !REM.busy) setTimeout(() => tRemLoad().then(() => { if(VIEW === 'today') renderToday(); }), 0);
+const due = tRemDue(), sent = mine.filter(c => ['2h', '10m'].some(st => REM.map[scRemKey(c, st)])).length;
+if(!due.length) return sent ? `<div class="small mute" style="margin-top:10px">🔔 Parent reminders: all sent ✓</div>` : '';
+return `<div class="card" style="margin-top:12px;border:1.5px solid #00A3AD"><b>🔔 Remind the parents · ${due.length}</b><div class="small mute">Ops is off now, so please send these in each class WeChat group: Copy, open the group with the student code, type @ to tag the parent, paste.</div>` +
+due.map(x => { const c = x.c; return `<div class="row" style="gap:8px;margin-top:8px;align-items:center"><div class="grow"><b>${tm(c.start)}</b> ${esc(c.student || c.title || '')}${c.code ? ` <button type="button" style="border:1.5px solid #2B2253;background:#fff;color:#2B2253;border-radius:8px;padding:1px 8px;font:700 13px ui-monospace,Menlo,monospace;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.code)}').then(()=>toast('${esc(c.code)} copied · paste it in WeChat search to open the right group'))">${esc(c.code)}</button>` : ''}<div class="small" style="color:${x.st === '10m' ? '#C0392B' : '#00737B'}">${x.st === '10m' ? '10-minute reminder (with meeting ID)' : 'Early reminder · 2–3 hours before'}</div></div><button class="btn sm teal" onclick="tRemind('${esc(c.id)}')">Copy</button></div>`; }).join('') + `</div>`;
+}
+function tRemind(id){
+const c0 = (D.schedule || []).find(x => x.id === id); if(!c0) return; const c = tRemEv(c0), st = scStage(c), msg = scRemindText(c);
+const show = () => openSheet('<h1>Reminder</h1><p class="small" style="white-space:pre-line">' + esc(msg) + '</p>');
+const ok = () => { toast('Copied · open the ' + (c.code || '') + ' group, type @ to tag the parent, then paste'); if(!st) return; try{ localStorage.setItem(scRemKey(c, st), '1'); }catch(x){}
+api('tRemindLog', TOKEN, { key: scRemKey(c, st), day: ymdLocal(new Date(c.start)), start: tm(c.start), code: c.code || '', student: c.student || c.title || '', teacher: c.teacher || '', stage: st === '10m' ? '10-minute' : 'Early' }).then(r => { if(r && r.ok){ REM.map = r.rem || REM.map; REM.day = ymdLocal(new Date()); } renderToday(); }).catch(() => { renderToday(); toast('Copied, but the Reminded record did not save'); }); };
+try{ navigator.clipboard.writeText(msg).then(ok, show); }catch(x){ show(); }
+}
+setInterval(() => { try{ if(!D || D.mgr || document.hidden) return; if(!(D.schedule || []).some(c => c.day === D.today && !c.cancelled && remByTeacher(c))) return;
+tRemLoad().then(() => { const due = tRemDue(), sig = due.map(x => x.c.id + x.st).join(','); due.forEach(x => { const k = 'rmd:' + x.c.id + ':' + x.st; if(!remTold(k)) notify('Remind the parents · ' + (x.c.student || x.c.code || ''), (x.st === '10m' ? 'Class in about 10 min' : 'Class at ' + tm(x.c.start)) + ' · Ops is off now. Open the app, tap Copy, paste in the ' + (x.c.code || '') + ' WeChat group.', 'coe-rmd-' + x.c.id); });
+if(sig !== HW_TOLD._rsig){ HW_TOLD._rsig = sig; if(VIEW === 'today') renderToday(); } }); }catch(x){} }, 60000);
 function renderToday(){
 const now = new Date(), hr = now.getHours();
 const greet = hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
@@ -1415,6 +1436,7 @@ let h = `<div class="lead"><h1>${esc(gm.h)}</h1>
 ${gm.line?`<div class="gline">${esc(gm.line)}</div>`:''}
 <div class="mute small">${now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})} · ${live.length} class${live.length===1?'':'es'}${todayList.length-live.length?` · ${todayList.length-live.length} cancelled`:''}</div></div>`;
 
+h += tRemBox();
 const ti = D.timeIn;
 if(ti){
 const chip = ti.status==='On time'?'green':ti.status==='Late'?'red':'teal';
@@ -4627,7 +4649,10 @@ if(wk) h += `</section>`;
 $('sheetBody').innerHTML = h;
 }
 function scStage(e){ if(!e || e.cancelled) return ''; const m = (new Date(e.start) - Date.now()) / 6e4; if(ymdLocal(new Date(e.start)) !== ymdLocal(new Date())) return ''; return m > 20 && m <= 180 ? '2h' : m > -5 && m <= 20 ? '10m' : ''; }
-function scRemKey(e, st){ return 'coeRem:' + ymdLocal(new Date(e.start)) + ':' + e.start + ':' + (e.code || e.student || e.title) + ':' + st; }
+/* While Ops (Celine) is off, teachers remind their own classes: Wednesday all day · Saturday classes before 14:00 · Sunday classes before 11:00. Change here. */
+const OPS_OFF = { 3: '24:00', 6: '14:00', 0: '11:00' };
+function remByTeacher(e){ const d = new Date(e.start), lim = OPS_OFF[d.getDay()]; return !!lim && tm(e.start) < lim; }
+function scRemKey(e, st){ return 'coeRem:' + ymdLocal(new Date(e.start)) + ':' + new Date(e.start).toISOString() + ':' + (e.code || e.student || e.title) + ':' + st; }
 let REM = { day: '', map: {}, busy: 0 };
 async function remLoad(){ if(REM.busy) return; REM.busy = 1; try{ const d = ymdLocal(new Date()), r = await api('mgmtReminders', TOKEN, d); if(r && r.ok){ REM.day = d; REM.map = r.rem || {}; } }catch(x){} REM.busy = 0; try{ const v = $('v-schedule'); const a = document.activeElement; if(SC && v && v.offsetParent && !(a && a.id === 'scQ')) renderSchedule(); }catch(x){} }
 function scSent(e, st){ if(REM.map[scRemKey(e, st)]) return true; try{ return localStorage.getItem(scRemKey(e, st)) === '1'; }catch(x){ return false; } }
@@ -4637,7 +4662,7 @@ if(!SC || SC_OFF) return ''; if(REM.day !== ymdLocal(new Date()) && !REM.busy) s
 const sent = SC.events.filter(e => { const st = scStage(e); return st && scSent(e, st); }).length;
 if(!due.length) return sent ? `<div class="small mute" style="margin-top:10px">🔔 Reminders due: all sent ✓ (${sent})</div>` : '';
 return `<div class="card" style="margin-top:12px;border:1.5px solid #00A3AD"><b>🔔 Reminders due · ${due.length}</b><div class="small mute">Copy, then paste in the class WeChat group (type @ to tag the teacher and parent)${sent ? ' · ' + sent + ' sent' : ''}</div>` +
-due.map(e => { const st = scStage(e), i = SC.events.indexOf(e); return `<div class="row" style="gap:8px;margin-top:8px;align-items:center"><div class="grow"><b>${tm(e.start)}</b> ${esc(e.student || e.title)}${e.code ? ` <button type="button" title="Copy the student code to find the WeChat group" style="border:1.5px solid #2B2253;background:#fff;color:#2B2253;border-radius:8px;padding:1px 8px;font:700 13px ui-monospace,Menlo,monospace;cursor:pointer;vertical-align:1px" onclick="navigator.clipboard.writeText('${esc(e.code)}').then(()=>toast('${esc(e.code)} copied · paste it in WeChat search to open the right group'))">${esc(e.code)}</button>` : ''} <span class="small mute">· ${esc(tName(e.teacher || ''))}</span><div class="small" style="color:${st === '10m' ? '#C0392B' : '#00737B'}">${st === '10m' ? '10-minute reminder' : 'Early reminder · 2–3 hours before'}</div></div><button class="btn sm teal" onclick="scRemind(${i},1)">Copy</button></div>`; }).join('') + `</div>`;
+due.map(e => { const st = scStage(e), i = SC.events.indexOf(e); return `<div class="row" style="gap:8px;margin-top:8px;align-items:center"><div class="grow"><b>${tm(e.start)}</b> ${esc(e.student || e.title)}${e.code ? ` <button type="button" title="Copy the student code to find the WeChat group" style="border:1.5px solid #2B2253;background:#fff;color:#2B2253;border-radius:8px;padding:1px 8px;font:700 13px ui-monospace,Menlo,monospace;cursor:pointer;vertical-align:1px" onclick="navigator.clipboard.writeText('${esc(e.code)}').then(()=>toast('${esc(e.code)} copied · paste it in WeChat search to open the right group'))">${esc(e.code)}</button>` : ''} <span class="small mute">· ${esc(tName(e.teacher || ''))}</span><div class="small" style="color:${st === '10m' ? '#C0392B' : '#00737B'}">${st === '10m' ? '10-minute reminder' : 'Early reminder · 2–3 hours before'}${remByTeacher(e) ? ' · <b style="color:#8A5A00">teacher’s turn (Ops off)</b>' : ''}</div></div><button class="btn sm teal" onclick="scRemind(${i},1)">Copy</button></div>`; }).join('') + `</div>`;
 }
 function scRemindText(e){
 const s = new Date(e.start), n = Date.now(), t = tm(e.start), mins = Math.round((s - n) / 6e4), today = ymdLocal(s) === ymdLocal(new Date()), tmw = ymdLocal(s) === ymdLocal(new Date(n + 864e5));
@@ -5456,7 +5481,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 356;
+const COE_V = 357;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
