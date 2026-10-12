@@ -5406,7 +5406,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 339;
+const COE_V = 340;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
@@ -7623,7 +7623,7 @@ const pk = rows.filter(r => r[C.enrolled] !== '').sort((a, b) => String(b[C.star
 if(!pk) return openSheet('<h1>Class notice</h1><div class="empty">' + esc(code) + ' is not in ACTIVE yet · add the package first, then try again.</div>');
 const ok = (Array.isArray(L) ? L : []).filter(x => !x.cancelled), now = Date.now(), up = ok.find(x => new Date(x.start).getTime() >= now) || ok[ok.length - 1] || {};
 const carry = +pk[C.carry] || 0; let rn = ''; try{ rn = String((typeof REN === 'object' && REN && REN[code]) || ''); }catch(e){}
-CN = { code: code, name: pk[C.name] || code, cn: pk[C.cn] || '', book: cnBook(up.book), units: pk[C.enrolled], carry: carry || '', date: String(pk[C.start] || '').slice(0, 10), ren: carry > 0 || /^Renewed/.test(rn) ? 1 : 0, kid: 1, sch: cnSched(L) };
+CN = { code: code, name: pk[C.name] || code, cn: pk[C.cn] || '', book: cnBookPick(up.book) || cnBook(up.book), bo: !!up.book && !cnBookPick(up.book), units: pk[C.enrolled], carry: carry || '', date: String(pk[C.start] || '').slice(0, 10), ren: carry > 0 || /^Renewed/.test(rn) ? 1 : 0, kid: 1, sch: cnSched(L) };
 cnPaint();
 }catch(e){ openSheet('<h1>Class notice</h1><div class="empty">Could not load ' + esc(code) + '. Check your internet and try again.</div>'); }
 }
@@ -7643,18 +7643,33 @@ openSheet(`<h1>Class notice · ${esc(x.name)}</h1><div class="mute small">For th
 <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:12px">${cnChip(x.ren ? CN_C.ren : CN_C.nw)}${cnChip(x.kid ? CN_C.kid : CN_C.ad)}</div>
 <div class="seg" style="margin-top:10px">${cnBtn(!x.ren, CN_C.nw, 'CN.ren=0')}${cnBtn(x.ren, CN_C.ren, 'CN.ren=1')}</div>
 <div class="seg">${cnBtn(x.kid, CN_C.kid, 'CN.kid=1')}${cnBtn(!x.kid, CN_C.ad, 'CN.kid=0')}</div>
-${inp('book', 'Courseware')}
+${cnBookSel(x, inp)}
 <div class="row" style="gap:8px"><div class="grow">${inp('units', 'Units (50 min each)', 'number')}</div><div class="grow">${inp('carry', 'Carried over (units)', 'number')}</div></div>
 ${inp('date', 'Purchased online', 'date')}
 <label>Schedule <span class="mute small">· from the calendar · one teacher per block</span></label><textarea class="in-t" rows="5" oninput="CN.sch=this.value;cnPv()">${esc(x.sch)}</textarea>
 <p class="small" id="cnPv" style="white-space:pre-line;margin-top:12px;padding:12px;border-radius:12px;background:#F4FAFA;border:1px solid #DCEFEF">${esc(cnText())}</p>
 <button class="btn teal" style="width:100%" onclick="cnCopy()">Copy notice</button>`);
 }
+const CN_BOOKS = [
+['Phonics · Oxford Phonics World', [['OPW1 The Alphabet', 'OPW1', 'TheAlphabet'], ['OPW2 Short Vowels', 'OPW2', 'ShortVowels'], ['OPW3 Long Vowels', 'OPW3', 'LongVowels'], ['OPW4 Consonant Blends', 'OPW4', 'ConsonantBlends'], ['Letter Blends', 'LetterBlends'], ['OPW5 Letter Combinations', 'OPW5', 'LetterCombinations']]],
+['Raz-Kids', [['Raz Aa', 'RazAa'], ['Raz A', 'RazA'], ['Raz B', 'RazB'], ['Raz Bb', 'RazBb'], ['Raz C', 'RazC'], ['Raz D', 'RazD'], ['Raz E', 'RazE'], ['Raz F', 'RazF'], ['Raz G', 'RazG'], ['Raz H', 'RazH']]],
+['Wonders', [['Wonders GK', 'WondersGK'], ['Wonders G1', 'WondersG1'], ['Wonders G2', 'WondersG2'], ['Wonders G3', 'WondersG3']]],
+['Oxford Discover', [['OD1'], ['OD2'], ['OD3'], ['OD4']]],
+['Reading Explorer', [['RE Foundation', 'REF', 'RE-F'], ['RE1'], ['RE2'], ['RE3']]],
+['Exams', [['KET'], ['PET'], ['IELTS'], ['IELTS Writing', 'IELTSWriting'], ['TOEFL'], ['Academic Writing', 'AcademicWriting']]],
+['Adults', [['DK English 1', 'DK1'], ['DK English 2', 'DK2'], ['DK English 3', 'DK3'], ['Pathways 1', 'PW1'], ['Pathways 2', 'PW2'], ['Pathways 3', 'PW3'], ['Pathways 4', 'PW4'],
+['Business Partner A1', 'BA1'], ['Business Partner A2', 'BA2'], ['Business Partner A2+', 'BA2P'], ['Business Partner B1', 'BB1'], ['Business Partner B1+', 'BB1P'], ['Business Partner B2', 'BB2'], ['Business Partner B2+', 'BB2P'], ['Business Partner C1', 'BC1'],
+['Market Leader Intermediate', 'MLI'], ['Market Leader Upper Intermediate', 'MLU'], ['Market Leader Advanced', 'MLA'], ['Business English', 'BusinessEnglish'], ['Free talk', 'Freetalk']]]];
+const cnN = v => String(v || '').toUpperCase().replace(/\+/g, 'P').replace(/[^A-Z0-9]/g, '');
+const cnBookPick = code => { const k = cnN(code); if(!k) return ''; for(const g of CN_BOOKS) for(const o of g[1]) if(o.some(a => cnN(a) === k)) return o[0]; return ''; };
+const cnBookSel = (x, inp) => { const cur = String(x.book || ''), known = !!cnBookPick(cur) && !x.bo;
+return `<label>Courseware <span class="mute small">· picked from the calendar · change if needed</span></label><select class="in-t" onchange="if(this.value==='__o'){CN.bo=1;CN.book='';}else{CN.bo=0;CN.book=this.value;}cnPaint()">
+<option value="" ${!cur && !x.bo ? 'selected' : ''} disabled>Pick the courseware</option>${CN_BOOKS.map(g => `<optgroup label="${esc(g[0])}">${g[1].map(o => `<option value="${esc(o[0])}" ${known && o[0] === cur ? 'selected' : ''}>${esc(o[0])}</option>`).join('')}</optgroup>`).join('')}<option value="__o" ${x.bo ? 'selected' : ''}>Other · type it</option></select>${x.bo ? inp('book', 'Courseware name') : ''}`; };
 const CN_C = { nw: ['#1E7A55', '#E6F4EC', '🆕 New enrolment'], ren: ['#B8620E', '#FDF0E1', '🔁 Renewal'], kid: ['#2B6CB0', '#E8F0FA', '🧒 Child'], ad: ['#7B3FA0', '#F3EAF8', '🧑 Adult'] };
 const cnBtn = (on, c, js) => `<button class="${on ? 'on' : ''}" style="${on ? 'background:' + c[0] + ';color:#fff;font-weight:700' : 'color:' + c[0]}" onclick="${js};cnPaint()">${c[2]}</button>`;
 const cnChip = c => `<span class="chip" style="background:${c[1]};color:${c[0]};border:1.5px solid ${c[0]};font-weight:700">${c[2]}</span>`;
 function cnPv(){ const el = $('cnPv'); if(el) el.textContent = cnText(); }
-async function cnCopy(){ try{ await navigator.clipboard.writeText(cnText()); toast('Class notice copied · paste it in the WeChat group'); }catch(e){ toast('Could not copy · press and hold the text to copy'); } }
+async function cnCopy(){ if(!String(CN.book || '').trim()) return toast('Pick the courseware first'); try{ await navigator.clipboard.writeText(cnText()); toast('Class notice copied · paste it in the WeChat group'); }catch(e){ toast('Could not copy · press and hold the text to copy'); } }
 async function cnPick(){
 openSheet(`<h1>Class notice</h1><div class="mute small">Pick the student · newest packages first.</div><input id="cnQ" class="search" style="margin-top:12px" placeholder="Name, Chinese name or ST code" oninput="cnList()"><div id="cnL"><div class="sk"></div><div class="sk"></div></div>`);
 if(!AT){ try{ AT = await api('mgmtActive', TOKEN); }catch(e){} }
