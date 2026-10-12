@@ -5406,7 +5406,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 345;
+const COE_V = 346;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
@@ -5514,7 +5514,9 @@ ${rows.map(x => { const tot = n1(kids.reduce((a, k) => a + (k.months[x.i] || 0),
 async function shSummary(code, force){ $('sheet').classList.add('wide'); openSheet('<h1>Shared lesson summary</h1><div class="paper"><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div></div>');
 try{ if(force || !AT || !AT.cols) await loadActive(true); }catch(e){}
 const sh = !!shGroup(code), h = shHtml(code) || lsHtml(code), T = sh ? 'Shared lesson summary' : 'Lesson summary'; if(!h){ $('sheetBody').innerHTML = '<h1>' + T + '</h1><div class="empty">Could not load the packages. Try again.</div>'; return; }
-docShow('SHPKG', T, { rows: h, pick: '' }, code); }
+docShow('SHPKG', T, { rows: h, pick: '' }, code);
+try{ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const up = s => String(s || '').trim().toUpperCase(), R = AT.rows.filter(x => up(x[C.code]) === up(code) && x[C.enrolled] !== '').sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])));
+if(R.length > 1){ const cur = (lsRows(code) || {}).r; $('sheetBody').insertAdjacentHTML('afterbegin', '<div class="small mute noprint">' + R.length + ' packages · pick one for its own summary</div><div class="seg noprint" style="flex-wrap:wrap;margin-bottom:8px">' + R.map(x => '<button class="' + (x === cur ? 'on' : '') + '" onclick="window.LS_PICK={code:\'' + esc(up(code)) + '\',row:' + x[C.row] + '};shSummary(\'' + esc(code) + '\')">' + esc((C.course != null && x[C.course] && typeof pkCourse === 'function' ? pkCourse(x[C.course]) + ' · ' : '') + x[C.teacher] + ' · ' + x[C.enrolled] + ' lessons · ' + x[C.start]) + '</button>').join('') + '</div>'); } }catch(e){} }
 const _tsSh = tabSheet;
 tabSheet = function(key, title, pick, pick2){ try{ if(key === 'INDPKG' && D && D.mgr && pick && (shGroup(pick) || lsRows(pick))) return shSummary(pick); }catch(e){} return _tsSh.apply(this, arguments); };
 const _drSh = docRefresh;
@@ -5840,10 +5842,12 @@ cxDraw = function(){ try{ const P = CXP; if(P && P.kind !== 'bal' && !P._zhFix &
 
 function lsRows(code){ if(!AT || !AT.cols) return null; const C = {}; AT.cols.forEach((c, i) => C[c] = i); const up = s => String(s || '').trim().toUpperCase();
 const mine = AT.rows.filter(x => up(x[C.code]) === up(code)); if(!mine.length) return null; const pk = mine.filter(x => x[C.enrolled] !== '');
-const r = pk.filter(x => x[C.active]).sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])))[0] || pk.sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])))[0] || mine[0];
+const pick = (window.LS_PICK && window.LS_PICK.code === up(code)) ? mine.find(x => x[C.row] === window.LS_PICK.row) : null;
+const r = pick || pk.filter(x => x[C.active]).sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])))[0] || pk.sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])))[0] || mine[0];
 return { C, r, G: pkgGroup(r, C) }; }
 function lsHtml(code){ const S = lsRows(code); if(!S) return ''; const { C, r, G } = S, o = G.owner || r, n1 = x => Math.round(x * 10) / 10, up = s => String(s || '').trim().toUpperCase();
-const rows0 = (G.members && G.members.length ? G.members : [o]).filter(x => up(x[C.code]) === up(code)); const T = [...new Set(rows0.map(x => String(x[C.teacher] || '')).filter(Boolean))];
+const multi = AT.rows.filter(y => up(y[C.code]) === up(code) && y[C.enrolled] !== '').length > 1;
+const rows0 = multi ? [o] : (G.members && G.members.length ? G.members : [o]).filter(x => up(x[C.code]) === up(code)); const T = [...new Set(rows0.map(x => String(x[C.teacher] || '')).filter(Boolean))];
 const months = (AT.months || []).map(() => 0); rows0.forEach(x => (x[C.months] || []).forEach((v, i) => { months[i] = n1(months[i] + (+v || 0)); }));
 const done = n1(rows0.reduce((a, x) => a + (+x[C.finished] || 0), 0)), enrolled = +o[C.enrolled] || 0, carry = +o[C.carry] || 0;
 const left = o[C.available] === '' ? Math.max(0, n1(enrolled + carry - done)) : Math.max(0, n1(+o[C.available] + (G.extra || 0))), total = n1(done + left), pct = total ? Math.min(100, Math.round(done / total * 100)) : 0;
@@ -5859,7 +5863,7 @@ return `<table class="sd" data-w="760" style="width:100%;border-collapse:collaps
 <div style="text-align:right;font-size:12px;margin-top:6px">As of ${fD(now)}<br>截至 ${zD(now)}<br><b>${('0' + now.getHours()).slice(-2)}:${('0' + now.getMinutes()).slice(-2)}</b> 生成时间</div>
 <div style="border-top:1px solid #3FA7A8;margin-top:8px;padding-top:6px;${H};font-size:13px">Student Lesson Record<div style="font-weight:400;font-size:12px">学生课时记录</div></div>
 <table style="width:100%;border-collapse:collapse;margin-top:6px;border-top:1px solid #3FA7A8"><tr style="${L}"><td style="padding:6px 0">STUDENT 学生</td><td>STUDENT CODE 学生编号</td><td>${T.length > 1 ? 'TEACHERS' : 'TEACHER'} 教师</td><td>LESSONS ENROLLED 报名课时</td></tr>
-<tr><td style="padding-bottom:8px"><div style="${H};font-size:24px">${esc(name)}</div><div style="font-size:16px">${esc(cn)}</div></td><td style="${H};font-size:14px">${esc(o[C.code])}</td><td style="${H};font-size:14px">${T.map(esc).join('<br>')}</td><td style="${H};font-size:26px">${enrolled}${carry ? `<div style="font-size:12px;font-weight:400">+ ${carry} carried over · 结转</div>` : ''}</td></tr></table>
+<tr><td style="padding-bottom:8px"><div style="${H};font-size:24px">${esc(name)}</div><div style="font-size:16px">${esc(cn)}</div></td><td style="${H};font-size:14px">${esc(o[C.code])}</td><td style="${H};font-size:14px">${T.map(esc).join('<br>')}${C.course != null && o[C.course] && typeof pkCourse === 'function' ? '<div style="font-weight:400;font-size:12px;color:#00737B">' + esc(pkCourse(o[C.course])) + '</div>' : ''}</td><td style="${H};font-size:26px">${enrolled}${carry ? `<div style="font-size:12px;font-weight:400">+ ${carry} carried over · 结转</div>` : ''}</td></tr></table>
 <table style="width:100%;border-collapse:collapse;border-top:1px solid #3FA7A8"><tr><td style="padding:8px 0;width:33%"><div style="${H};font-size:34px">${total}</div><div style="font-size:11px">Current package total${carry ? ' (' + enrolled + ' + ' + carry + ' carried)' : ''}<br>当前课程包总课时</div></td>
 <td style="width:33%"><div style="${L}">Lessons Completed 已完成课时</div><div style="font-weight:700;font-size:34px;color:#3FA7A8">${done}</div><div style="font-size:11px">${pct}% of package completed<br>已完成 ${pct}%</div></td>
 <td><div style="${L}">Lessons Remaining 剩余课时</div><div style="font-weight:700;font-size:34px;color:#E0533D">${left}</div><div style="font-size:11px">Remaining in current package<br>当前课程包剩余课时</div></td></tr></table>
@@ -7946,7 +7950,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
   window.pkCourseRow = (r, C, n) => { if(C.course == null) return ''; const cur = String(r[C.course] || '').split(',').map(x => x.trim()).filter(Boolean), books = [];
     ((STU && STU.cls) || []).forEach(c => { const b = String(c.book || '').trim(); if(b && books.indexOf(b) < 0) books.push(b); }); cur.forEach(b => { if(books.indexOf(b) < 0) books.push(b); });
     const rn = r[C.row], cd = esc(String(r[C.code] || ''));
-    return '<div class="row noprint" style="gap:6px;flex-wrap:wrap;margin-top:8px" onclick="event.stopPropagation()">' + ((n > 1 || cur.length) && books.length ? '<span class="small mute">Course</span>' + books.map(b => '<button class="btn sm ' + (cur.indexOf(b) > -1 ? 'teal' : 'ghost') + '" onclick="pkTg(' + rn + ',\'' + cd + '\',\'' + esc(b) + '\')">' + (cur.indexOf(b) > -1 ? '✓ ' : '') + esc(pkCourse(b)) + '</button>').join('') : '') + '<span class="grow"></span><button class="btn sm ghost" onclick="cxBalance(' + rn + ')">Lessons left picture</button></div>'; };
+    return '<div class="row noprint" style="gap:6px;flex-wrap:wrap;margin-top:8px" onclick="event.stopPropagation()">' + ((n > 1 || cur.length) && books.length ? '<span class="small mute">Course</span>' + books.map(b => '<button class="btn sm ' + (cur.indexOf(b) > -1 ? 'teal' : 'ghost') + '" onclick="pkTg(' + rn + ',\'' + cd + '\',\'' + esc(b) + '\')">' + (cur.indexOf(b) > -1 ? '✓ ' : '') + esc(pkCourse(b)) + '</button>').join('') : '') + '<span class="grow"></span><button class="btn sm ghost" onclick="window.LS_PICK={code:\'' + cd.toUpperCase() + '\',row:' + rn + '};shSummary(\'' + cd + '\')">Lesson summary</button><button class="btn sm ghost" onclick="cxBalance(' + rn + ')">Lessons left picture</button></div>'; };
   window.pkTg = async (rn, code, b) => { const P = pk(); if(!P) return; const C = P.C, r = (AT.rows || []).find(x => x[C.row] === rn); if(!r) return;
     const cur = String(r[C.course] || '').split(',').map(x => x.trim()).filter(Boolean), i = cur.indexOf(b); if(i > -1) cur.splice(i, 1); else cur.push(b);
     const v = cur.join(', '); toast('Saving course…');
