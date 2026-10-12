@@ -22,15 +22,15 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
 <body>
 <div class="s" id="s"><img src="icon-192.png" alt=""><b>CupOfEnglish</b><span id="m">Opening…</span></div>
 <script>
-/* CupOfEnglish app: the screens come from Apps Script (always the latest), kept on the phone so it opens instantly. */
+/* CupOfEnglish app: the screens live here (app.html); data still comes from Apps Script. Kept on the phone so it opens instantly. */
 (function () {
   var API = 'https://script.google.com/macros/s/AKfycbyqAYrjEQ3CdeTzogP8mZ8tMRx59nV0vMvOHtoQ0wudTBNNXV7YeE_mJPYcqIRhmRbu/exec';
   var KEY = 'coe.app', cached = null;
   try { cached = localStorage.getItem(KEY); } catch (e) {}
   function paint(h) { document.open(); document.write(h); document.close(); }
+  function get(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('bad'); return r.text(); }).then(function (h) { if (h.indexOf('COE_API') < 0) throw new Error('bad'); return h; }); }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
-  fetch(API + '?app=1', { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (h) {
-    if (h.indexOf('COE_API') < 0) throw new Error('bad');
+  get('app.html').catch(function () { return get(API + '?app=1'); }).then(function (h) {   // backup: the old Apps Script copy
     if (h !== cached) { try { localStorage.setItem(KEY, h); } catch (e) {} if (!cached) paint(h); }   // a new version shows next time
   }).catch(function () { if (!cached) document.getElementById('m').textContent = 'No connection. Check your internet and reopen.'; });
   if (cached) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { paint(cached); }); else paint(cached); }
