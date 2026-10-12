@@ -3848,11 +3848,14 @@ const L = wsWeek(), k = 'coe.ws.' + L[0];
 if(!WS || WS.week !== L[0]){ try{ const c = JSON.parse(localStorage.getItem(k) || 'null'); if(c && c.week === L[0]) WS = c; }catch(e){} }
 if(WS_BUSY || (WS && WS.week === L[0] && !force && Date.now() - (WS.ts || 0) < 6 * 36e5)) return; WS_BUSY = 1;
 try{
+const w = await api('mgmtWeekSum', TOKEN, L[0]).catch(() => null);
+if(w && w.ok && w.week && w.week.ev){ WS = { week: L[0], days: L, ts: Date.now(), ev: w.week.ev, rem: w.week.rem || {} }; try{ localStorage.setItem(k, JSON.stringify(WS)); }catch(e){} } else {
 const sc = await Promise.all(L.map(d => api('mgmtSchedule', TOKEN, d).catch(() => null))), rm = await Promise.all(L.map(d => api('mgmtReminders', TOKEN, d).catch(() => null)));
 if(sc.some(x => !x)) throw 0;
 const ev = []; sc.forEach(x => (x.events || []).forEach(e => ev.push({ start: e.start, student: e.student || e.title || '', code: String(e.code || '').toUpperCase(), teacher: e.teacher || '', cancelled: !!e.cancelled, type: e.type || '', why: e.why || '' })));
 const rem = {}; rm.forEach(x => { if(x && x.rem) Object.assign(rem, x.rem); });
 WS = { week: L[0], days: L, ts: Date.now(), ev, rem }; try{ localStorage.setItem(k, JSON.stringify(WS)); }catch(e){}
+}
 }catch(e){ console.warn('ws', e); }
 WS_BUSY = 0; if(VIEW === 'home') try{ renderHome(); }catch(e){}
 if($('sheet').classList.contains('on') && $('wsBody')) wsSheet();
@@ -5600,7 +5603,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 371;
+const COE_V = 372;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
