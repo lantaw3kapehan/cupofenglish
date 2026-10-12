@@ -2821,6 +2821,18 @@ const have = docHave('PRREP', last.pr, ''); if(have) show(have);
 docGet('PRREP', last.pr, '').then(v => { if(!have || JSON.stringify(have.rows) !== JSON.stringify(v.rows)) show(v); })
 .catch(() => { if(!have && $('stuSB')) $('stuSB').innerHTML = '<div class="mute small">Could not load the skill breakdown.</div>'; }); }
 }
+function wkSlots(L){   /* the student's weekly pattern from the classes booked in the next 4 weeks (cancelled ones left out) */
+const now = Date.now(), lim = now + 28 * 864e5, up = (L || []).filter(e => !e.cancelled && new Date(e.end) >= now && new Date(e.start) <= lim).sort((a, b) => a.start.localeCompare(b.start)), by = {};
+up.forEach(e => { const d = new Date(e.start), k = ((d.getDay() + 6) % 7) + '|' + tm(e.start) + '|' + tm(e.end) + '|' + (e.teacher || ''); (by[k] = by[k] || []).push(e); });
+const many = up.length && (new Date(up[up.length - 1].start) - new Date(up[0].start)) > 8 * 864e5;
+const W = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'], Z = '一二三四五六日';
+const slots = Object.keys(by).filter(k => !many || by[k].length > 1 || Object.keys(by).length === 1).sort().map(k => { const [w, s, en, t] = k.split('|'); const m = Math.round((new Date(by[k][0].end) - new Date(by[k][0].start)) / 6e4); return { w: +w, s, e: en, t, m, first: by[k][0], en: W[w] + ' · ' + s + ' – ' + en + ' · ' + m + ' min', zh: '每周' + Z[w] + ' ' + s + '–' + en + ' · ' + m + '分钟' }; });
+return { slots, up }; }
+function wkPic(){
+if(!STU || !STU.cls) return; const K = wkSlots(STU.cls); if(!K.slots.length) return toast('No upcoming weekly classes on the calendar');
+const f = K.slots.map(x => x.first).sort((a, b) => a.start.localeCompare(b.start))[0], tt = [...new Set(K.slots.map(x => x.t))];
+CXP = { kind: 'class', week: { slots: K.slots, from: f.start, multi: tt.length > 1 }, e: { student: STU.s.name || STU.code, code: STU.code, teacher: tt.join(', '), start: f.start, end: f.end, book: f.book || '', meet: (K.up.find(x => x.meet) || {}).meet || '', title: '' }, why: '', by: '', zh: '', cn: cxCnOf(STU.code), url: '' };
+cxSheet(); }
 function stuSched(L){
 const now = Date.now(), up = L.filter(e => new Date(e.end) >= now), past = L.filter(e => new Date(e.end) < now);
 const upLive = up.filter(e => !e.cancelled), pastDone = past.filter(e => !e.cancelled), cx = L.filter(e => e.cancelled);
@@ -2829,7 +2841,7 @@ const item = e => { const i = L.indexOf(e); return `<div class="cls ${e.cancelle
 <div class="grow"><div class="row" style="gap:6px"><span class="nm ell">${esc(e.teacher||'')}${e.book?' · '+esc(e.book):''}</span>${e.cancelled?'<span class="chip red">Cancelled</span>':''}${e.makeup?'<span class="chip teal">Make-up</span>':''}</div></div></div>`; };
 return `<section class="sec"><h2>Schedule <span class="c">Google Calendar</span>${D.mgr?`<button class="btn sm teal noprint" style="margin-left:auto;letter-spacing:0;text-transform:none" onclick="classForm('${esc(STU.code)}')">+ Class</button>`:''}</h2>
 <div class="stats"><div class="stat"><b class="num">${upLive.length}</b><span>coming up</span></div><div class="stat"><b class="num">${pastDone.length}</b><span>done · 45 days</span></div><div class="stat"><b class="num ${cx.length?'minus':''}">${cx.length}</b><span>cancelled</span></div></div>
-${up.length ? `<h3 class="sch">Coming up</h3>${up.slice(0,12).map(item).join('')}${up.length>12?`<div class="small mute">+ ${up.length-12} more</div>`:''}` : '<div class="mute small" style="margin-top:10px">No upcoming classes on the calendar.</div>'}
+${D.mgr && wkSlots(L).slots.length ? `<button class="btn teal block noprint" style="margin-top:10px" onclick="wkPic()">New weekly schedule · picture to send</button>` : ''}${up.length ? `<h3 class="sch">Coming up</h3>${up.slice(0,12).map(item).join('')}${up.length>12?`<div class="small mute">+ ${up.length-12} more</div>`:''}` : '<div class="mute small" style="margin-top:10px">No upcoming classes on the calendar.</div>'}
 ${past.length ? `<details class="fbold noprint" style="margin-top:10px"><summary class="small" style="color:#2F6F77;font-weight:700">Last 45 days · ${past.length} classes${cx.filter(e=>new Date(e.end)<now).length?' · '+cx.filter(e=>new Date(e.end)<now).length+' cancelled':''}</summary>${past.slice().reverse().map(item).join('')}</details>` : ''}</section>`;
 }
 function printProfile(){
@@ -4299,6 +4311,10 @@ if(b.left !== '' && b.left != null && +b.left <= 5) out.push(['', '', ['Only ' +
 out.push(['As of', '截至', [dEn(now) + ' · ' + tm(now.toISOString())], [dZh(now) + (b.today ? ' · includes today’s class · 含今日已上课程' : '')]]); return out; })()
 : mv ? (() => { const f = P.from, fs = new Date(f.start); return [['From', '原上课时间', [dEn(fs), tl(f)], [dZh(fs) + ' · ' + dur(f) + '分钟']], ['New time', '新上课时间', [dEn(s), tl(e)], [dZh(s) + ' · ' + dur(e) + '分钟 · Beijing time 北京时间']], ...(P.fwd ? [['From now on', '以后上课时间', ['Every ' + s.toLocaleDateString('en-GB', { weekday: 'long' }) + ' · ' + tm(e.start), (P.fwd.n + 1) + ' classes moved' + (P.fwd.until ? ' · until ' + new Date(P.fwd.until + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '')], ['每周' + '日一二三四五六'[s.getDay()] + ' ' + tm(e.start) + ' · 共' + (P.fwd.n + 1) + '节课已调整' + (P.fwd.until ? ' · 至' + (+P.fwd.until.slice(5, 7)) + '月' + (+P.fwd.until.slice(8, 10)) + '日' : '')]]] : []), ['Teacher', '老师', [tName(e.teacher || '')], [tZh(e.teacher)].concat(f.teacher && e.teacher && f.teacher !== e.teacher ? ['Changed from ' + tName(f.teacher) + ' · 原为' + tZh(f.teacher) + '，已更换老师'] : [])]]; })()
 : [['Date', '日期', [date], [dateZh]], ['Time', '时间', [tl(e)], ['Beijing time · 北京时间 · ' + dur(e) + '分钟']], ['Teacher', '老师', [tName(e.teacher || '')], [tZh(e.teacher)]]];
+if(P.week){ const K = P.week, fd = new Date(K.from), tt = [...new Set(K.slots.map(x => x.t))]; rows.length = 0;
+rows.push(['Weekly classes', '每周上课时间', K.slots.map(x => x.en + (K.multi ? ' · ' + tName(x.t) : '')), K.slots.map(x => x.zh + (K.multi ? ' · ' + tZh(x.t) : ''))]);
+if(!K.multi) rows.push(['Teacher', '老师', [tName(tt[0])], [tZh(tt[0])]]);
+rows.push(['Starting', '开始日期', [dEn(fd)], [dZh(fd)]]); }
 if(e.book){ const bp = String(e.book).split(/\s*,\s*/).filter(Boolean), lv = bp.filter(p => /^(pre[-\s]?)?[abc][12]\+?$/i.test(p)), bk = bp.filter(p => lv.indexOf(p) < 0);
 if(bk.length) rows.push(['Course', '课程', [bk.join(', ')], []]);
 if(lv.length) rows.push(cxTrial(e) && (cl || mv) ? ['Starting level', '起始级别', [lv.join(', ') + ' · estimated'], ['To be confirmed by the teacher after the trial class', '预估级别 · 试听课后由老师评估确认']] : ['Level', '级别', [lv.join(', ')], []]); }
@@ -4326,7 +4342,7 @@ c.save(); rr(40, 40, W - 80, H - 80, 34); c.clip();
 let y = 80;
 if(logo){ const lw = 300, lh = lw * logo.height / logo.width; c.drawImage(logo, 80, y, lw, lh); } else { c.font = '400 34px ' + B; c.fillStyle = '#2B2253'; c.fillText('CupOfEnglish', 80, y + 50); }
 c.font = '700 22px ' + F; const trl = e.type === 'Trial' || /trial|试听/i.test(e.title || '') || /(^|-)\s*TC\s*(\s+X)?\s*$/i.test(e.title || '');
-const pill = bl ? (P.renew ? 'Renewal confirmed · 续费成功' : 'Lesson balance · 课时余额') : cl ? (trl ? 'Trial class · 试听课' : 'Class scheduled · 已安排上课') : mv ? (trl ? 'Trial rescheduled · 试听课已调课' : 'Rescheduled · 已调课') : 'Cancelled · 已取消'; let pw = c.measureText(pill).width + 44; if(pw > W - 160 - 330){ c.font = '700 18px ' + F; pw = c.measureText(pill).width + 36; }
+const pill = P.week ? 'New weekly schedule · 新课表' : bl ? (P.renew ? 'Renewal confirmed · 续费成功' : 'Lesson balance · 课时余额') : cl ? (trl ? 'Trial class · 试听课' : 'Class scheduled · 已安排上课') : mv ? (trl ? 'Trial rescheduled · 试听课已调课' : 'Rescheduled · 已调课') : 'Cancelled · 已取消'; let pw = c.measureText(pill).width + 44; if(pw > W - 160 - 330){ c.font = '700 18px ' + F; pw = c.measureText(pill).width + 36; }
 rr(W - 80 - pw, y + 22, pw, 48, 24); c.fillStyle = bl && P.renew ? '#DDF3EC' : cl || bl ? '#ECEAF6' : mv ? '#E3F6F6' : '#FBEAE5'; c.fill(); c.fillStyle = bl && P.renew ? '#1E7A55' : cl || bl ? '#2B2253' : mv ? '#00737B' : '#B4513B'; c.textBaseline = 'middle'; c.fillText(pill, W - 80 - pw + 22, y + 47); c.textBaseline = 'alphabetic';
 y += 140;
 c.fillStyle = '#EEF0F4'; c.fillRect(80, y - 20, W - 160, 2);
@@ -4376,6 +4392,8 @@ if(navigator.canShare && navigator.canShare({ files: [f] })){ try{ await navigat
 const a = document.createElement('a'); a.href = CXP.url; a.download = cxName(); document.body.appendChild(a); a.click(); a.remove(); toast('Picture saved');
 }
 function cxText(){
+if(CXP && CXP.week){ const K = CXP.week, e = CXP.e, fd = new Date(K.from); const t = 'CupOfEnglish · 新课表 New weekly schedule\nStudent 学生: ' + e.student + (CXP.cn ? ' ' + CXP.cn : '') + (e.code ? ' (' + e.code + ')' : '') + '\n' + K.slots.map(x => x.en + (K.multi ? ' · ' + tName(x.t) : '') + '\n' + x.zh + (K.multi ? ' · ' + tZh(x.t) : '')).join('\n') + (K.multi ? '' : '\nTeacher 老师: ' + tName(e.teacher) + ' · ' + tZh(e.teacher)) + '\nStarting 开始: ' + fd.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + (fd.getMonth() + 1) + '月' + fd.getDate() + '日' + (e.meet ? '\n腾讯会议号 Meeting ID: ' + e.meet + '（每次同一个会议号 · same every class）' : '');
+try{ navigator.clipboard.writeText(t); toast('Text copied'); }catch(x){ openSheet('<h1>Text</h1><p class="small" style="white-space:pre-line">' + esc(t) + '</p>'); } return; }
 const e = CXP.e, s = new Date(e.start), why = String(CXP.why || '').trim(), mv = CXP.kind === 'move', nm = String(e.student || e.title || '').replace(/\s+X$/i, '');
 const dl = d => d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }) + ' · ' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
 const cl = CXP.kind === 'class', bl = CXP.kind === 'bal', head = `CupOfEnglish · ${bl ? '课时余额 Lesson balance' : cl ? (e.type === 'Trial' ? '试听课通知 Trial class' : '上课通知 Class scheduled') : mv ? (cxTrial(e) ? '试听课调课通知 Trial class rescheduled' : '调课通知 Class rescheduled') : '课程取消确认 Class cancelled'}\nStudent 学生: ${nm}${CXP.cn ? ' ' + CXP.cn : ''}${e.code ? ' (' + e.code + ')' : ''}\n`;
@@ -5437,7 +5455,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 352;
+const COE_V = 353;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
