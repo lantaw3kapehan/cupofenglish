@@ -1008,7 +1008,7 @@ textarea.in-t{contain:content}
 <input id="em" class="in-t" type="email" inputmode="email" autocomplete="username" placeholder="you@gmail.com">
 <input id="pw" class="in-t" type="password" autocomplete="current-password" placeholder="Password" style="margin-top:8px">
 <button class="btn block" style="margin-top:12px" onclick="pwLogin()">Sign in</button>
-<button id="lgFg" class="btn ghost block hide" style="margin-top:8px" onclick="sendCode()">First time or forgot password</button>
+<button id="lgFg" class="btn ghost block hide" style="margin-top:8px" onclick="sendCode()">President: first time or forgot password</button>
 <p id="lgOps" class="small mute" style="text-align:center;margin-top:10px">Forgot your password? Message Ops.</p>
 </div>
 <div id="lg2" class="hide">
@@ -1212,9 +1212,9 @@ if(!r || !r.ok) return toast(r && r.msg || 'Not signed in');
 store('set','coe.em.'+MODE, em); $('pw').value = '';
 TOKEN = r.token; store('set', KEY_T, TOKEN); hide('login'); show('app'); skeleton(); reload(false);
 }
-async function pwSet(name){
-openSheet(`<h1>Password · ${esc(tName(name))}</h1><div id="pwBox"><div class="sk"></div></div>
-<button class="btn ghost block" style="margin-top:12px" onclick="openTeacher('${esc(name)}')">Back</button>`);
+async function pwSet(name, mg){
+openSheet(`<h1>Password · ${esc(mg ? name : tName(name))}</h1><div id="pwBox"><div class="sk"></div></div>
+<button class="btn ghost block" style="margin-top:12px" onclick="${mg ? 'mgPwList()' : `openTeacher('${esc(name)}')`}">Back</button>`);
 const i = await api('mgmtPwInfo', TOKEN, name).catch(() => null);
 if(!$('pwBox')) return;
 if(i && i.has) $('pwBox').innerHTML = `<div class="mini"><b>🔒 Password already set</b><br><span class="small mute">${esc(i.at || '')}${i.by ? ' · by ' + esc(i.by) : ''}</span><br><span class="small">Changing it stops the old password working right away.</span></div>
@@ -1227,6 +1227,12 @@ $('pwBox').innerHTML = `${note ? `<p class="small" style="color:#9A4330">${esc(n
 <input id="pwN" class="in-t" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="At least 8 characters">
 <div class="row" id="pwBtns" style="gap:8px;margin-top:10px"><button class="btn ghost" onclick="$('pwN').value=pwMake()">Make one</button><button class="btn grow" onclick="pwSave('${esc(name)}', ${ch ? 1 : 0})">${ch ? 'Save new password' : 'Save password'}</button></div>
 <div id="pwOut"></div>`;
+}
+async function mgPwList(){
+openSheet('<h1>Management passwords</h1><div class="sk"></div>');
+const r = await api('mgmtPwPeople', TOKEN).catch(() => null);
+if(!r || !r.ok){ $('sheetBody').innerHTML = '<h1>Management passwords</h1><div class="empty">Only the President can open this.</div>'; return; }
+$('sheetBody').innerHTML = '<h1>Management passwords</h1><p class="small mute">Only the President sets these. Whoever uses these accounts cannot change them.</p>' + r.people.map(p => `<button class="btn ghost block" style="margin-top:8px" onclick="pwSet('${esc(p.name)}', 1)">${esc(p.name)} · ${esc(p.role)}</button>`).join('');
 }
 function pwMake(){ const W = ['Mango','Pearl','Cedar','Lotus','River','Maple','Comet','Bamboo','Coral','Sunny','Tiger','Panda','Olive','Amber','Cloud','Lemon']; const r = new Uint32Array(3); crypto.getRandomValues(r); return W[r[0]%W.length] + '-' + String(1000 + r[1]%9000) + '-' + W[r[2]%W.length]; }
 async function pwSave(name, ch){
@@ -2573,6 +2579,7 @@ openSheet(`<h1>Weekly open times · ${esc(chosen.map(t => t.name).join(', '))}</
 async function avaCopy(save){ const A = AVA; if(!A || !A.blob) return; const save0 = AVD; AVD = { blob: A.blob, url: A.url, name: 'teachers' }; try{ await avCopy(save); } finally { AVD = save0; } }
 const _rTAll = renderTeachers;
 renderTeachers = function(){ const r = _rTAll.apply(this, arguments); try{ const lead = $('v-teachers') && $('v-teachers').querySelector('.lead'); if(lead && !lead.querySelector('#avaBtn')){ const b = document.createElement('button'); b.id = 'avaBtn'; b.className = 'btn teal sm'; b.style.marginTop = '8px'; b.textContent = 'All teachers · open times'; b.onclick = () => avAllOpen(); lead.appendChild(b); }
+if(lead && D && D.pres && !lead.querySelector('#mgPwBtn')){ const p = document.createElement('button'); p.id = 'mgPwBtn'; p.className = 'btn ghost sm'; p.style.margin = '8px 0 0 6px'; p.textContent = 'Management passwords'; p.onclick = () => mgPwList(); lead.appendChild(p); }
 if((!window._avaPf || Date.now() - window._avaPf > 10 * 60000) && avaNames().length){ window._avaPf = Date.now(); setTimeout(() => bg(() => avaGet(true).catch(() => {})), 1500); } }catch(e){} return r; };
 function avaStale(r){ const now = Date.now(); return (r.teachers || []).filter(t => !(t.days && t.days.some(Boolean)) || !t.at || now - t.at > 30 * 864e5).map(t => ({ name: t.name, why: !(t.days && t.days.some(Boolean)) ? 'not set' : !t.at ? 'date unknown' : Math.floor((now - t.at) / 864e5) + ' days' })); }
 const avaWeekKey = () => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return ymdLocal(d); };
@@ -5369,7 +5376,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 326;
+const COE_V = 327;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy()) window._upd = 1; else location.reload(); } }
