@@ -2866,24 +2866,50 @@ async function cjDraw(){ const J = window._CJ, M = J.M, zh = i => (M[J.mk(i)] ||
 J.blob = await coeCard('CEFR journey · 学习进阶', (T, y) => {
 y = coeWho(T, J.who, y);
 y = coeHero(T, CJ_L[J.now], 'Current level', '目前级别 · ' + zh(J.now), J.up > 0 ? 'Up ' + J.up + ' level step' + (J.up === 1 ? '' : 's') + (J.since ? ' since ' + J.since : '') + ' · 进步 ' + J.up + ' 个级别' : 'Next goal · 下一阶段目标：CEFR ' + CJ_L[J.nxt] + '（' + zh(J.nxt) + '）', y);
-T.label('CEFR journey', '学习进阶 · 从下往上', y); y += 24;
-const step = 34, W = T.Wc - T.CX * 2 - step * (M.length - 1);
-for(let k = M.length - 1; k >= 0; k--){ const m = M[k], X = T.CX + k * step, st = k < J.nowK ? 'dn' : k === J.nowK ? 'now' : k === J.nowK + 1 ? 'nx' : 'lt';
-const tags = J.T.filter(x => J.mk(x.i) === k).map(x => CJ_L[x.i] + ' · ' + (x.start ? '入学起点 Start' : /^Trial/.test(x.en) ? '试听 Trial' : /^Level/.test(x.en) ? '升级 Up' : '测评 Check') + (J.mon(x.d) ? ' · ' + J.mon(x.d) : '') + (x.u != null && x.u > 0 ? ' · ' + x.u + ' 课时' : ''));
-if(k === J.nowK) tags.unshift('现在 Now · ' + CJ_L[J.now]); else if(k === J.nowK + 1) tags.unshift('下一阶段目标 Next');
-const tf = '700 18px ' + T.F; let rows = 1, cx = 0; tags.forEach(t => { const w = T.w(t, tf) + 32 + 8; if(cx + w > W - 48){ rows++; cx = 0; } cx += w; });
-const h = 92 + (tags.length ? rows * 44 + 4 : 0);
-const fill = st === 'now' ? T.TEAL : st === 'dn' ? T.SOFT : st === 'nx' ? '#FFFFFF' : '#F7F8FA', ink = st === 'now' ? '#FFFFFF' : st === 'lt' ? '#A3A1B0' : T.NAVY;
-T.box(X, y, W, h, 22, fill, st === 'nx' ? '#E9C46A' : null, 2.6, st === 'nx' ? [10, 7] : null);
-T.text(m[0], X + 26, y + 50, '400 36px ' + T.B, st === 'now' ? '#FFFFFF' : st === 'lt' ? '#B9B6C6' : T.TEAL);
-const lw = T.w(m[0], '400 36px ' + T.B); T.text(m[1], X + 40 + lw, y + 48, '700 24px ' + T.F, ink);
-T.text(m[3], X + W - 24, y + 48, '400 19px ' + T.F, st === 'now' ? '#DDF2F1' : T.MUTE, 'right');
-if(m[2]) T.text(T.wrap(m[2], W - 52, '400 18px ' + T.F)[0], X + 26, y + 80, '400 18px ' + T.F, st === 'now' ? '#DDF2F1' : st === 'lt' ? '#B9B6C6' : T.SUB);
-let tx = X + 24, ty = y + 96; tags.forEach((t, i) => { const w = T.w(t, tf) + 32; if(tx + w > X + W - 24){ tx = X + 24; ty += 44; }
-T.chip(t, tx, ty, st === 'now' ? 'rgba(255,255,255,.22)' : st === 'nx' ? T.AMB : '#FFFFFF', st === 'now' ? '#FFFFFF' : st === 'nx' ? T.AMBT : T.TEAL, tf); tx += w + 8; });
-y += h + 10; }
-y += 16;
-T.wrap('以上中国学习阶段、IELTS 成绩及 Cambridge English 等级考试的对应关系仅供参考，并非官方对应关系。CupOfEnglish 依据国际公认 CEFR 标准进行课程分级，帮助学习者实现长期、系统化、可持续的语言发展。', T.Wc - T.CX * 2, '400 20px ' + T.F).forEach(s => { T.text(s, T.CX, y + 6, '400 20px ' + T.F, T.SUB); y += 30; });
+/* 1 · the staircase: low on the left, high on the right, the child's step in teal */
+T.label('Level staircase', '级别阶梯 · 一步一步往上走', y); y += 30;
+const n = M.length, gap = 8, AW = T.Wc - T.CX * 2, cw = (AW - gap * (n - 1)) / n, h0 = 96, hs = 34, top = h0 + hs * (n - 1), cf = '700 18px ' + T.F;
+const st = J.T.find(x => x.start), stK = st ? J.mk(st.i) : -1, marks = k => { const a = []; if(k === J.nowK) a.push(['现在 Now', T.TEAL, '#FFFFFF']); else if(k === J.nowK + 1) a.push(['目标 Next', T.AMB, T.AMBT]); if(k === stK && k !== J.nowK) a.push(['起点 Start', T.SOFT, T.TEAL]); return a; };
+const mh = Math.max(10, ...M.map((_, k) => marks(k).length * 44 + 8 - hs * (n - 1 - k))), base = y + mh + top;
+for(let k = 0; k < n; k++){ const m = M[k], X = T.CX + k * (cw + gap), h = h0 + hs * k, Y = base - h, s = k < J.nowK ? 'dn' : k === J.nowK ? 'now' : k === J.nowK + 1 ? 'nx' : 'lt';
+const fill = s === 'now' ? T.TEAL : s === 'dn' ? T.SOFT : s === 'nx' ? '#FFFFFF' : '#F4F5F8';
+T.box(X, Y, cw, h + 18, 16, fill, s === 'nx' ? '#E9C46A' : null, 2.6, s === 'nx' ? [9, 6] : null);
+const lf = '400 ' + (m[0].length > 3 ? 26 : 32) + 'px ' + T.B;
+T.text(m[0], X + cw / 2, Y + 42, lf, s === 'now' ? '#FFFFFF' : s === 'lt' ? '#B9B6C6' : T.TEAL, 'center');
+T.text(m[1], X + cw / 2, Y + 72, '700 20px ' + T.F, s === 'now' ? '#DDF2F1' : s === 'lt' ? '#B9B6C6' : T.NAVY, 'center');
+if(s === 'dn' || s === 'now') T.text('✓', X + cw / 2, base + 4, '700 22px ' + T.F, s === 'now' ? '#DDF2F1' : T.EDGE, 'center');
+marks(k).forEach((mk, j) => { const w = T.w(mk[0], cf) + 28, cx = Math.max(T.CX, Math.min(X + cw / 2 - w / 2, T.Wc - T.CX - w)); T.box(cx, Y - 46 - j * 44, w, 36, 18, mk[1]); if(T.draw){ T.c.save(); T.c.textBaseline = 'middle'; T.text(mk[0], cx + 14, Y - 46 - j * 44 + 19, cf, mk[2]); T.c.restore(); } }); }
+y = base + 18;
+if(T.draw){ T.c.fillStyle = '#D6DCE2'; T.c.fillRect(T.CX, y, AW, 3); }
+y += 56;
+/* 2 · what happened, in date order, in plain words */
+T.label('Our journey together', '学习记录', y); y += 24;
+const EV = x => x.start ? ['入学起点', 'Started with us'] : /^Trial/.test(x.en) ? ['试听评估', 'Trial class'] : /^Level/.test(x.en) ? ['升级', 'Levelled up'] : ['阶段测评', 'Progress check'];
+const L = J.T.slice(), last = L.length - 1;
+L.forEach((x, k) => { const e = EV(x), isNow = x.i === J.now && k === last, rh = (x.u != null && x.u > 0) ? 92 : 64;
+if(T.draw){ T.c.fillStyle = '#D6DCE2'; if(k < last) T.c.fillRect(T.CX + 186, y + 30, 3, rh); T.c.beginPath(); T.c.arc(T.CX + 187.5, y + 30, isNow ? 11 : 8, 0, Math.PI * 2); T.c.fillStyle = isNow ? T.TEAL : T.EDGE; T.c.fill(); }
+T.text(J.mon(x.d) || '', T.CX, y + 38, '700 22px ' + T.F, T.MUTE);
+const lv = 'CEFR ' + CJ_L[x.i], lw = T.w(lv, '400 30px ' + T.B);
+T.text(lv, T.CX + 220, y + 42, '400 30px ' + T.B, T.TEAL);
+T.text(e[0] + ' · ' + e[1] + (isNow ? '  ·  现在 Now' : ''), T.CX + 236 + lw, y + 40, '700 23px ' + T.F, T.NAVY);
+if(x.u != null && x.u > 0) T.text('此阶段学习 ' + x.u + ' 课时 · ' + x.u + ' lessons at this stage', T.CX + 220, y + 76, '400 21px ' + T.F, T.SUB);
+y += rh; });
+y += 30;
+/* 3 · the CoE CEFR chart, the child's row marked */
+T.label('CEFR chart', 'CEFR 对照表', y); y += 22;
+const c1 = 130, c2 = 130, c4 = 330, c3 = AW - c1 - c2 - c4, rf = '400 19px ' + T.F;
+T.box(T.CX, y, AW, 44, 12, '#F4F5F8');
+[['Level', 0], ['中文', c1], ['中国学习阶段 · School stage', c1 + c2], ['IELTS · Cambridge', c1 + c2 + c3]].forEach(([t, o]) => T.text(t, T.CX + 16 + o, y + 29, '700 18px ' + T.F, T.MUTE)); y += 50;
+for(let k = n - 1; k >= 0; k--){ const m = M[k], a = T.wrap(m[2] || '', c3 - 24, rf), b = T.wrap(m[3] || '', c4 - 24, rf), rh = Math.max(a.length, b.length, 1) * 26 + 22, on = k === J.nowK;
+if(on) T.box(T.CX, y, AW, rh, 12, T.TEAL); else if(T.draw){ T.c.fillStyle = T.LINE; T.c.fillRect(T.CX, y + rh, AW, 1.5); }
+const col = on ? '#FFFFFF' : T.NAVY, sub = on ? '#DDF2F1' : T.SUB;
+T.text(m[0], T.CX + 16, y + 34, '400 26px ' + T.B, on ? '#FFFFFF' : T.TEAL);
+T.text(m[1] + (on ? ' · 现在' : ''), T.CX + 16 + c1, y + 33, '700 20px ' + T.F, col);
+a.forEach((s, i) => T.text(s, T.CX + 16 + c1 + c2, y + 33 + i * 26, rf, sub));
+b.forEach((s, i) => T.text(s, T.CX + 16 + c1 + c2 + c3, y + 33 + i * 26, rf, sub));
+y += rh + 2; }
+y += 24;
+T.wrap('以上中国学习阶段、IELTS 成绩及 Cambridge English 等级考试的对应关系仅供参考，并非官方对应关系。CupOfEnglish 依据国际公认 CEFR 标准进行课程分级，帮助学习者实现长期、系统化、可持续的语言发展。', AW, '400 19px ' + T.F).forEach(s => { T.text(s, T.CX, y + 6, '400 19px ' + T.F, T.MUTE); y += 28; });
 return y; });
 const el = $('cjImg'); if(el) el.innerHTML = '<img src="' + URL.createObjectURL(J.blob) + '" style="width:100%;border-radius:12px;border:1px solid #E6EEF0">'; }
 const cjFn = () => 'CupOfEnglish-CEFR-journey' + (window._CJ && _CJ.who.student ? '-' + _CJ.who.student : '') + '.png';
@@ -5575,7 +5601,7 @@ openSheet('<h1>' + esc(name) + ' · Enrolled · paid</h1><div class="mute small"
 '<div id="enNew" class="' + (ENS.sale ? 'hide' : '') + '"><label>Package paid</label><div class="rnl">' + RP_PK.map(([p, f]) => '<button type="button" class="rno enk' + (ENS.pkg === p && ENS.free === f ? ' on' : '') + '" data-p="' + p + '" data-f="' + f + '" onclick="enPk(' + p + ',' + f + ')"><b>' + p + (f ? ' + ' + f : '') + '</b><span>' + (p + f) + ' lessons</span></button>').join('') + '</div>' +
 '<div class="row" style="gap:8px"><div class="grow"><label>Paid on</label><input id="enD" class="in-t" type="date" value="' + today + '"></div><div class="grow"><label>Payment method</label><input id="enM" class="in-t" value="' + esc((() => { try{ return localStorage.getItem('coe.rpM') || 'Alipay'; }catch(e){ return 'Alipay'; } })()) + '"><div class="skc" style="margin-top:6px">' + ['Alipay','WeChat Pay','Bank transfer','Cash'].map(x => '<button type="button" onclick="$(\'enM\').value=\'' + x + '\'">' + x + '</button>').join('') + '</div></div></div>' +
 '<label>Partner</label><input id="enPa" class="in-t" value="CupOfEnglish"><label>Invoice</label><input id="enI" class="in-t" placeholder="e.g. Invoice1739_' + esc(String(name || '').split(/\s+/)[0]) + '"><input id="enF" type="file" accept="application/pdf,image/*" class="in-t" style="margin-top:6px"></div>' +
-'<div class="row" style="gap:8px"><div class="grow"><label>Teacher</label><select id="enT" class="in-t">' + T.map(t => '<option' + (t === teacher ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></div><div class="grow"><label>First class</label><input id="enS" class="in-t" type="date" value="' + esc(first || today) + '"></div></div>' +
+'<div class="row" style="gap:8px"><div class="grow"><label>Teacher</label><select id="enT" class="in-t">' + T.map(t => '<option' + (t === teacher ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></div><div class="grow"><label>First class</label><input id="enS" class="in-t" type="date" onchange="enPrev()" value="' + esc(first || today) + '"></div></div>' +
 '<label>Course <span class="mute small">(book on the calendar, e.g. OD1)</span></label><input id="enC" class="in-t" list="cBL" placeholder="OD1"><datalist id="cBL">' + (window.classBooks ? classBooks() : '') + '</datalist>' +
 '<div id="enP" class="card" style="margin-top:14px;background:#F1FAF9;border-color:#BFE6E3"></div><button id="enGo" class="btn teal block" style="margin-top:14px" onclick="enSave()">Save enrolment</button>' +
 '<p class="small mute" style="margin-top:8px">Same as doing it by hand: the payment in SALES · a new ACTIVE row near the top (formulas copied, ACTIVE ticked, ENROLLED = that SALES row) · DATABASE › first class and lessons if empty. The calendar is not changed.</p>');
@@ -5583,7 +5609,7 @@ enPrev(); }
 window.enPick = function(row, p, f){ ENS.sale = row; if(row){ ENS.pkg = p; ENS.free = f; } document.querySelectorAll('[data-s]').forEach(b => b.classList.toggle('on', +b.dataset.s === row)); const n = $('enNew'); if(n) n.classList.toggle('hide', !!row); enPrev(); };
 window.enPk = function(p, f){ ENS.pkg = p; ENS.free = f; document.querySelectorAll('.enk').forEach(b => b.classList.toggle('on', +b.dataset.p === p && +b.dataset.f === f)); enPrev(); };
 function enPrev(){ const el = $('enP'); if(!el || !ENS) return; const t = (+ENS.pkg || 0) + (+ENS.free || 0);
-el.innerHTML = '<div style="font-size:15px"><b style="font-size:20px;color:#00737B">' + t + ' lessons</b> · ' + (ENS.sale ? 'payment already in SALES (row ' + ENS.sale + ')' : 'new SALES row') + '</div><div class="small" style="margin-top:4px">Valid ' + (t < 30 ? 4 : t < 60 ? 8 : 12) + ' months from the paid date · 25-min classes count as half a lesson (' + t + ' lessons = ' + (t * 2) + ' × 25-min classes)</div>'; }
+el.innerHTML = '<div style="font-size:15px"><b style="font-size:20px;color:#00737B">' + t + ' lessons</b> · ' + (ENS.sale ? 'payment already in SALES (row ' + ENS.sale + ')' : 'new SALES row') + '</div><div class="small" style="margin-top:4px">Valid ' + (t < 30 ? 4 : t < 60 ? 8 : 12) + ' months from the first class' + (() => { const s = ($('enS') || {}).value; if(!s) return ''; const d = new Date(s + 'T12:00:00'); d.setMonth(d.getMonth() + (t < 30 ? 4 : t < 60 ? 8 : 12)); return ' · until <b>' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '</b>'; })() + ' · 25-min classes count as half a lesson (' + t + ' lessons = ' + (t * 2) + ' × 25-min classes)</div>'; }
 window.enSave = async function(){ const S = ENS; if(!S || !S.info) return; const b = $('enGo');
 const f = { code: S.code, name: S.name, teacher: $('enT').value, start: $('enS').value, course: $('enC').value.trim(), saleRow: S.sale || 0 };
 if(!S.sale){ Object.assign(f, { pkg: +S.pkg || 0, free: +S.free || 0, date: $('enD').value, method: $('enM').value.trim(), partner: $('enPa').value.trim(), invoice: $('enI').value.trim() });
@@ -5782,7 +5808,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 395;
+const COE_V = 396;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -6044,7 +6070,7 @@ return `<div style="font-family:Poppins,'PingFang SC','Microsoft YaHei',Arial,sa
 <table style="flex:1;border-collapse:collapse;background:#F1F2F5"><tr><td colspan="2" style="padding:9px 10px;font-weight:700;border-bottom:2px solid #16BCB0">Learner / Parent / Guardian 学员 / 家长 / 监护人</td></tr>${row(a.members && a.members.length > 1 ? 'Learners 学员' : 'Learner 学员', a.members && a.members.length > 1 ? a.members.map(x => esc(x.name) + (x.cn ? ' · ' + esc(x.cn) : '') + ' <span style="color:#6F6B85">' + esc(x.code) + '</span>').join('<br>') + '<br><span style="color:#6F6B85">shared package · 共享课时包</span>' : esc(a.name || '') + (a.cn ? ' · ' + esc(a.cn) : '') + (a.code ? '<br><span style="color:#6F6B85">' + esc(a.code) + '</span>' : ''))}${row('Parent 家长', '<span style="color:#9A97AE">(sign below · 请在下方签名)</span>')}${row('Contact 联系方式', 'WeChat 微信')}${row('Nationality 国籍', esc(a.nat || '') + (a.city ? '<br><span style="color:#6F6B85">' + esc(a.city) + '</span>' : ''))}</table></div>
 ${sec(1, 'Services 服务内容', `Mode of Learning 学习方式：${agBox(1)}<b>Online 在线</b> &nbsp; ${agBox(0)}Face-to-Face 线下 &nbsp; ${agBox(0)}Blended 线上 + 线下<br>Class Delivery 授课形式：<b>Live instructor-led sessions 实时教师授课</b><br>Lesson Package 课程套餐：${agBox(k === 15)}<b>15 lessons节</b> &nbsp; ${agBox(k === 30)}<b>30 lessons节</b> &nbsp; ${agBox(k === 60)}<b>60 lessons节</b>${pk && pk !== k ? ' <span style="color:#6F6B85">(' + pk + ' lessons incl. free · 含赠送共' + pk + '节)</span>' : ''}<br>Learning Focus 学习方向：<b>English Language Instruction Program 英语语言教学课程</b>`)}
 ${sec(2, 'Enrollment &amp; Payment 报名与付款', 'Full payment is required before classes begin; payment via WeChat Pay or Alipay confirms enrollment.<br>课程开始前须全额付款；支持微信支付或支付宝，付款完成即视为正式报名。')}
-${sec(3, 'Lesson Package Validity 课程有效期', '15 lessons 节课 – 4 months（4个月）· 30 lessons 节课 – 8 months（8个月）· 60 lessons 节课 – 12 months（12个月）<br>Unused lessons beyond validity are forfeited unless prior approval for long holidays or vacations is granted.<br>超出有效期未使用的课程将作废，除非事先获准长期假期或度假。')}
+${sec(3, 'Lesson Package Validity 课程有效期', '15 lessons 节课 – 4 months（4个月）· 30 lessons 节课 – 8 months（8个月）· 60 lessons 节课 – 12 months（12个月）<br>Validity counts from the first class of the package. 有效期自课程包首次上课之日起计算。<br>Unused lessons beyond validity are forfeited unless prior approval for long holidays or vacations is granted.<br>超出有效期未使用的课程将作废，除非事先获准长期假期或度假。')}
 ${sec(4, 'Scheduling &amp; Attendance 课程安排与出勤', '• Cancellations or rescheduling must be made at least 2 hours before class. 取消或改期须至少提前2小时通知。<br>• Learner late arrival or notice under 2 hours is counted as a completed class and deducted per the scheduled lesson. 学员迟到或不足2小时通知，课程视为已上并按当次安排扣课时。<br>• Provider cancellation or lateness under 2 hours results in the lesson being returned to the package. 教师或 CupOfEnglish 不足2小时取消或迟到，课时返还至课程包。<br>• Force majeure interruptions are adjusted based on responsibility and class duration. 因不可抗力中断的课程，将根据责任方及实际时长调整。')}
 ${sec(5, 'Refund &amp; Transfer 退款与转让', 'Fees are non-refundable once classes start; lesson transfers require management approval.<br>课程开始后不予退款；转课须经管理层批准。')}
 ${sec(6, 'Conduct, Recording &amp; Privacy 行为规范、录课与隐私', 'Both learners and teachers are expected to maintain respectful conduct; misconduct may result in termination without refund, and classes are recorded for internal use only.<br>学员与教师均须保持良好课堂行为；违规可能导致终止服务且不退款，课程录制仅限内部教学使用。')}
