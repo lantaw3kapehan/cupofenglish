@@ -5664,7 +5664,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 385;
+const COE_V = 386;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -5851,7 +5851,7 @@ const other = !RP_PK.some(x => x[0] === RPS.pkg && x[1] === RPS.free);
 openSheet(`<h1>${esc(name)} · Renewed · paid</h1><div class="mute small">${esc(code)} · Teacher ${esc(r.teacher)} · ACTIVE row ${r.row}${r.prev && r.prev.date ? ' · last paid ' + esc(r.prev.date) + ' (' + r.prev.pkg + (r.prev.free ? '+' + r.prev.free : '') + ')' : ''}</div>
 <label>Package paid</label><div class="rnl">${pk}<button type="button" class="rno rpk${other ? ' on' : ''}" data-p="o" onclick="rpOther()"><b>Other</b><span>type the lessons</span></button></div>
 <div id="rpO" class="row ${other ? '' : 'hide'}" style="gap:8px"><div class="grow"><label>Lessons</label><input class="in-t" type="number" step="0.5" value="${other ? RPS.pkg : ''}" oninput="RPS.pkg=this.value;rpPrev()"></div><div class="grow"><label>Free lessons</label><input class="in-t" type="number" step="0.5" value="${other ? RPS.free : 0}" oninput="RPS.free=this.value;rpPrev()"></div></div>
-<div class="row" style="gap:8px"><div class="grow"><label>Paid on</label><input id="rpD" class="in-t" type="date" value="${today}" onchange="rpPrev()"></div><div class="grow"><label>Payment method</label><input id="rpM" class="in-t" value="${esc(r.method || '')}" placeholder="e.g. WeChat Pay"></div></div>
+<div class="row" style="gap:8px"><div class="grow"><label>Paid on</label><input id="rpD" class="in-t" type="date" value="${today}" onchange="rpPrev()"></div><div class="grow"><label>Payment method</label><input id="rpM" class="in-t" value="${esc(r.method || (() => { try{ return localStorage.getItem('coe.rpM') || ''; }catch(e){ return ''; } })())}" placeholder="e.g. WeChat Pay"><div class="skc" style="margin-top:6px">${['Alipay','WeChat Pay','Bank transfer','Cash'].map(x => `<button type="button" class="${x === (r.method || '') ? 'on' : ''}" onclick="$('rpM').value='${x}';this.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===this))">${x}</button>`).join('')}</div></div></div>
 <label>Partner</label><input id="rpPa" class="in-t" value="${esc(r.partner || '')}">
 <label>Invoice (optional)</label><input id="rpI" class="in-t" placeholder="Invoice no. or name · e.g. Invoice1690_Mia"><input id="rpF" type="file" accept="application/pdf,image/\u002a" class="in-t" style="margin-top:6px">
 <div id="rpP" class="card" style="margin-top:14px;background:#F1FAF9;border-color:#BFE6E3"></div>
@@ -5860,7 +5860,7 @@ openSheet(`<h1>${esc(name)} · Renewed · paid</h1><div class="mute small">${esc
 rpPrev(); }
 async function renPaidSave(){ const S = RPS; if(!S || !S.info) return; const t = rpTot(); if(!(t > 0)) return toast('Choose the package');
 const b = $('rpS'); if(b){ b.disabled = true; b.textContent = 'Saving…'; }
-const f = { code: S.code, teacher: S.teacher, pkg: +S.pkg || 0, free: +S.free || 0, date: $('rpD').value, method: $('rpM').value.trim(), partner: $('rpPa').value.trim(), invoice: $('rpI').value.trim() };
+const f = { code: S.code, teacher: S.teacher, pkg: +S.pkg || 0, free: +S.free || 0, date: $('rpD').value, method: (() => { const v = $('rpM').value.trim(); try{ if(v) localStorage.setItem('coe.rpM', v); }catch(e){} return v; })(), partner: $('rpPa').value.trim(), invoice: $('rpI').value.trim() };
 const fl = $('rpF') && $('rpF').files[0];
 if(fl){ if(fl.size > 8e6){ if(b){ b.disabled = false; b.textContent = 'Save renewal'; } return toast('The invoice file is too big (8 MB max)'); }
 f.file = await new Promise(res => { const rd = new FileReader(); rd.onload = () => res({ name: fl.name, mime: fl.type, b64: String(rd.result).split(',')[1] }); rd.readAsDataURL(fl); }); }
