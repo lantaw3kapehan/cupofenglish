@@ -5515,10 +5515,18 @@ ${T("Teacher's comments",'教师评语',x.comm,x.commZh)}${T('Suggested next ste
 h += `<div id="tlPdf">${x.pdf ? '<div class="sk" style="height:180px;margin-top:12px"></div>' : `<div class="small mute" style="margin-top:12px">${x.status==='Translating'?'The Chinese is being added, then the PDF is made':'The PDF is being made'} · usually a few minutes after the teacher sends the report. Pull to refresh later.</div>`}</div><div class="rp-act" id="tlAct"></div>`;
 openSheet(h); $('sheet').classList.add('wide'); tlBtns();
 }
+async function tlSched(){ const x = TLD; if(!x) return; if(!x.code) return toast('Add the student code first (DATABASE) · then set the schedule');
+await classForm(x.code); if(!$('cS')) return;
+try{ classKind(''); }catch(e){}   /* a regular class, even if the student was added as a trial */
+const t = $('cT'); if(t && x.teacher && [...t.options].some(o => o.value === x.teacher)) t.value = x.teacher;
+const d = new Date(); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); const dd = $('cD'); if(dd) dd.value = ymdLocal(d);   /* next Monday */
+const r = $('cR'); if(r && !r.checked){ r.checked = true; classRep(); } document.querySelectorAll('#cDays button.on').forEach(b => b.classList.remove('on'));   /* the parent's days are picked by hand */
+const h = $('sheetBody').querySelector('h1'); if(h) h.insertAdjacentHTML('afterend', '<div class="mini" style="margin-top:8px"><b>' + esc(x.student) + ' · first schedule after the trial</b><div class="small">Tap the days (e.g. Tue + Fri), the time and the length (25 or 50 min), then the number of classes in the package. The parent picture comes up after you add them.</div></div>');
+try{ classPrev(); }catch(e){} }
 function tlBtns(){
 const el = $('tlAct'); if(!el || !TLD) return; const sent = TLD.status === 'Sent', canShare = TLB && navigator.canShare && navigator.canShare({ files: [TLB] });
 el.innerHTML = (TLB ? `<div class="row" style="gap:8px;width:100%"><button class="btn teal grow" id="tlPicB" onclick="pdfPic(TLB,0,'tlPicB')">Copy picture</button><button class="btn ghost grow" onclick="pdfPic(TLB,1)">${navigator.share ? 'Share / save picture' : 'Save picture'}</button></div>` : '') + (TLB ? (canShare ? `<button class="btn ghost grow" onclick="tlShare()">${sent?'Send again on WeChat':'Send on WeChat'}</button>` : `<button class="btn ghost grow" onclick="tlSaveF()">Save PDF + copy message</button>`) : TLD.pdf ? (TLD._err ? `<a class="btn teal grow" href="${esc(TLD.pdf)}" target="_blank">Open PDF</a>` : `<button class="btn teal grow" disabled>Loading PDF…</button>`) : '')
-+ (!sent ? `<button class="btn ghost" onclick="tlMark(${TLD.pdf ? '' : "'sent before / without the PDF'"})">${TLD.pdf ? 'Mark as sent' : 'Already sent · mark it'}</button>` : '') + `<button class="btn ghost" onclick="tlCopy()">Copy message</button>`;
++ (!sent ? `<button class="btn ghost" onclick="tlMark(${TLD.pdf ? '' : "'sent before / without the PDF'"})">${TLD.pdf ? 'Mark as sent' : 'Already sent · mark it'}</button>` : '') + `<button class="btn ghost" onclick="tlCopy()">Copy message</button>` + (D && D.mgr && TLD.code ? `<button class="btn teal" onclick="tlSched()">Set class schedule</button>` : '');
 }
 window.tlCefr = async function(v){ if(!TLD || !TLD.label || String(TLD.cefr) === v) return; if(!confirm('Change ' + TLD.student + '\'s level from ' + (TLD.cefr || '—') + ' to ' + v + '?\nThe parent PDF will be made again with ' + v + '.')) return;
 try{ const r = await api('mgmtTrialCefrSave', TOKEN, TLD.label, v); if(!r || !r.ok) throw r; TLD.cefr = r.cefr; if(r.remade){ TLD.pdf = ''; TLB = null; if(TLD.status !== 'Sent') TLD.status = 'Making PDF'; } toast(TLD.student + ' · level ' + r.cefr + (r.remade ? ' · new PDF within about an hour' : '')); TRL = null; loadTrials(); tlPaint(); }
@@ -5695,7 +5703,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 389;
+const COE_V = 390;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
