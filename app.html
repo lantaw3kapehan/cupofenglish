@@ -2850,7 +2850,7 @@ const cls = k < nowK ? 'dn' : k === nowK ? 'now' : k === nowK + 1 ? 'nx' : 'lt',
 const tg = T.filter(x => mk(x.i) === k).map(x => tag(esc(CJ_L[x.i]) + ' · ' + (x.start ? 'Start 起点' : /^Trial/.test(x.en) ? 'Trial 试听' : /^Level/.test(x.en) ? 'Up 升级' : 'Check 测评') + (mon(x.d) ? ' · ' + esc(mon(x.d)) : '') + (x.u != null && x.u > 0 ? ' · ' + x.u + ' lessons 课时' : ''), lt));
 if(k === nowK) tg.unshift(tag('<b>Now 现在 · ' + esc(CJ_L[now]) + '</b>', lt)); else if(k === nowK + 1) tg.unshift(tag('Next 下一步', 0));
 return '<div class="cj-r ' + cls + '" style="--o:' + (k * 6) + '%"><div class="cj-b"><b class="cj-lv">' + m[0] + '</b><span class="cj-d">' + m[1] + '</span><span class="cj-x">' + m[3] + '</span>' + (m[2] ? '<span class="cj-cn">' + m[2] + '</span>' : '') + (tg.length ? '<div class="cj-tgs">' + tg.join('') + '</div>' : '') + '</div></div>'; }).reverse();
-window._CJ = { T, now, nxt, up, nowK, M: CJ_M, mk, mon, since: mon(st.d), who: { student: (S.s && S.s.name) || '', cn: (S.s && S.s.cn) || '', code: S.code } };
+window._CJ = { T, now, nxt, up, nowK, M: CJ_M, mk, mon, since: mon(st.d), tk: tot > 0 ? tot : (S.s && +S.s.done > 0 ? +S.s.done : null), tkAll: tot > 0, left: S.s && S.s.left != null && !S.s.shared ? +S.s.left : null, who: { student: (S.s && S.s.name) || '', cn: (S.s && S.s.cn) || '', code: S.code } };
 const head = up > 0 ? '<b>Up ' + up + ' level step' + (up === 1 ? '' : 's') + '</b> since ' + esc(mon(st.d) || 'starting') + ' · 进步 ' + up + ' 个级别'
 : '<b>' + CJ_L[now] + '</b> · building towards ' + CJ_L[nxt] + ' · 正在向 ' + CJ_L[nxt] + ' 迈进';
 return '<section class="sec cj"><style>.cj-st{display:flex;flex-direction:column;gap:5px;margin-top:12px}.cj-r{padding-left:var(--o)}.cj-b{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:8px 12px;border-radius:12px;background:#F6F7F9;color:#A3A1B0;border:2px solid transparent}.cj-lv{font-size:16px;min-width:50px}.cj-d{font-size:12px}.cj-x{font-size:11px;margin-left:auto;opacity:.85}.cj-tgs{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px}.cj-tg{font-size:11px;padding:2px 8px;border-radius:999px;background:#fff;color:#00737B}.cj-tg.lt{background:rgba(255,255,255,.18);color:#fff}.cj-r.dn .cj-b{background:#DDF2F1;color:#00737B}.cj-r.now .cj-b{background:#00737B;color:#fff;box-shadow:0 4px 12px rgba(0,115,123,.25)}.cj-r.nx .cj-b{background:#fff;border:2px dashed #E08A6F;color:#B4513B}.cj-r.nx .cj-tg{background:#FBEDE8;color:#B4513B}.cj-d{font-size:14px;font-weight:700}.cj-cn{flex-basis:100%;font-size:11px;opacity:.8}.cj-note{font-size:11px;color:#8A8799;margin-top:8px}</style>' +
@@ -2866,6 +2866,8 @@ async function cjDraw(){ const J = window._CJ, M = J.M, zh = i => (M[J.mk(i)] ||
 J.blob = await coeCard('CEFR journey · 学习进阶', (T, y) => {
 y = coeWho(T, J.who, y);
 y = coeHero(T, CJ_L[J.now], 'Current level', '目前级别 · ' + zh(J.now), J.up > 0 ? 'Up ' + J.up + ' level step' + (J.up === 1 ? '' : 's') + (J.since ? ' since ' + J.since : '') + ' · 进步 ' + J.up + ' 个级别' : 'Next goal · 下一阶段目标：CEFR ' + CJ_L[J.nxt] + '（' + zh(J.nxt) + '）', y);
+if(J.tk != null || J.left != null){ const bw = (T.Wc - T.CX * 2 - 16) / 2, cards = [J.tk != null ? [J.tk, J.tkAll ? '已上课时 · Lessons taken' : '本期已上 · Lessons taken', J.tkAll ? 'with CupOfEnglish so far · 累计' : 'in this package · 本期课时包'] : null, J.left != null ? [J.left, '剩余课时 · Lessons left', 'in this package · 本期课时包'] : null].filter(Boolean);
+cards.forEach((c, i) => { const X = T.CX + i * (bw + 16); T.box(X, y, bw, 120, 22, '#F4FAFA', '#BFE6E3', 2); T.text(String(c[0]), X + 30, y + 78, '400 60px ' + T.B, T.TEAL); const nw = T.w(String(c[0]), '400 60px ' + T.B); T.text(c[1], X + 50 + nw, y + 56, '700 24px ' + T.F, T.NAVY); T.text(c[2], X + 50 + nw, y + 88, '400 19px ' + T.F, T.MUTE); }); y += 166; }
 /* 1 · the staircase: low on the left, high on the right, the child's step in teal */
 T.label('Level staircase', '级别阶梯 · 一步一步往上走', y); y += 30;
 const n = M.length, gap = 8, AW = T.Wc - T.CX * 2, cw = (AW - gap * (n - 1)) / n, h0 = 96, hs = 34, top = h0 + hs * (n - 1), cf = '700 18px ' + T.F;
@@ -5806,7 +5808,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 399;
+const COE_V = 400;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
