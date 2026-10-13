@@ -2841,13 +2841,15 @@ const DT = T.filter(x => x.d && !/^Trial/.test(x.en)).sort((a, b) => a.d.localeC
 const BK = {}; MO.forEach(x => { const c = String(x.c || '').trim() || 'Other'; BK[c] = (BK[c] || 0) + U(x); });
 const st = T.find(x => x.start) || T[0], C = (r.checks || []).filter(c => cjLv(c.cefr) >= 0).sort((a, b) => String(b.date).localeCompare(String(a.date)));
 const now = C.length && cjDay(C[0].date) >= (st.d || '') ? cjLv(C[0].cefr) : chain.length ? chain[chain.length - 1] : T[T.length - 1].i;
-const nxt = Math.min(CJ_L.length - 1, now + 1), up = now - st.i;
+let nxt = Math.min(CJ_L.length - 1, now + 1), up = now - st.i;
 const CJ_M = window.CEFR_LV && CEFR_LV.length ? CEFR_LV.slice().reverse().map(l => [l.k, l.zh, (l.d || []).join(' · '), (/[一-鿿]/.test(l.ie) ? l.ie : 'IELTS ' + l.ie) + ' · ' + (l.ca || []).join(' · ')]) : [['Pre-A1', 'Starter', '启蒙', 'YLE Starters'], ['A1', 'Beginner', '入门', 'YLE Movers'], ['A2', 'Elementary', '初级', 'KET · YLE Flyers'], ['B1', 'Intermediate', '中级', 'PET · IELTS 4–5'], ['B2', 'Upper-intermediate', '中高级', 'FCE · IELTS 5.5–6.5'], ['C1', 'Advanced', '高级', 'CAE · IELTS 7–8'], ['C2', 'Mastery', '精通', 'CPE · IELTS 8.5+']];
 const mk = i => CJ_M.findIndex(m => m[0] === String(CJ_L[i] || '').replace('+', '')), nowK = mk(now);
+nxt = (() => { for(let i = now + 1; i < CJ_L.length; i++) if(!/\+/.test(CJ_L[i]) && mk(i) > nowK) return i; return now; })(); up = Math.max(0, nowK - mk(st.i));   /* whole levels, as on the staircase */
+{ const rd0 = cjDay(col(/RENEWAL DATE/i)); if(rd0 && rd0 > (st.d || '')){ const at = T.filter(x => x.d && x.d <= rd0 && !/^Trial/.test(x.en)).pop(); T.push({ d: rd0, i: at ? at.i : now, en: 'Renewed', zh: '续费' }); } }   /* the latest renewal, on the level they were at then */
 const tag = (x, light) => '<span class="cj-tg' + (light ? ' lt' : '') + '">' + x + '</span>';
 const rows = CJ_M.map((m, k) => {
 const cls = k < nowK ? 'dn' : k === nowK ? 'now' : k === nowK + 1 ? 'nx' : 'lt', lt = k === nowK;
-const tg = T.filter(x => mk(x.i) === k).map(x => tag(esc(CJ_L[x.i]) + ' · ' + (x.start ? 'Start 起点' : /^Trial/.test(x.en) ? 'Trial 试听' : /^Level/.test(x.en) ? 'Up 升级' : 'Check 测评') + (mon(x.d) ? ' · ' + esc(mon(x.d)) : '') + (x.u != null && x.u > 0 ? ' · ' + x.u + ' lessons 课时' : ''), lt));
+const tg = T.filter(x => (/^Trial/.test(x.en) && chain.length ? mk(chain[0]) : mk(x.i)) === k).map(x => tag(esc(CJ_L[x.i]) + ' · ' + (x.start ? 'Start 起点' : /^Trial/.test(x.en) ? 'Trial 试听' : /^Renew/.test(x.en) ? 'Renewed 续费' : /^Level/.test(x.en) ? 'Up 升级' : 'Check 测评') + (mon(x.d) ? ' · ' + esc(mon(x.d)) : '') + (x.u != null && x.u > 0 ? ' · ' + x.u + ' lessons 课时' : ''), lt));
 if(k === nowK) tg.unshift(tag('<b>Now 现在 · ' + esc(CJ_L[now]) + '</b>', lt)); else if(k === nowK + 1) tg.unshift(tag('Next 下一步', 0));
 return '<div class="cj-r ' + cls + '" style="--o:' + (k * 6) + '%"><div class="cj-b"><b class="cj-lv">' + m[0] + '</b><span class="cj-d">' + m[1] + '</span><span class="cj-x">' + m[3] + '</span>' + (m[2] ? '<span class="cj-cn">' + m[2] + '</span>' : '') + (tg.length ? '<div class="cj-tgs">' + tg.join('') + '</div>' : '') + '</div></div>'; }).reverse();
 window._CJ = { T, now, nxt, up, nowK, M: CJ_M, mk, mon, since: mon(st.d), tk: tot > 0 ? tot : (S.s && +S.s.done > 0 ? +S.s.done : null), tkAll: tot > 0, left: S.s && S.s.left != null && !S.s.shared ? +S.s.left : null, who: { student: (S.s && S.s.name) || '', cn: (S.s && S.s.cn) || '', code: S.code } };
@@ -2873,7 +2875,7 @@ T.label('Level staircase', '级别阶梯 · 一步一步往上走', y); y += 30;
 const n = M.length, gap = 8, AW = T.Wc - T.CX * 2, cw = (AW - gap * (n - 1)) / n, h0 = 96, hs = 34, top = h0 + hs * (n - 1), cf = '700 18px ' + T.F;
 const st = J.T.find(x => x.start), stK = st ? J.mk(st.i) : -1, marks = k => { const a = []; if(k === J.nowK) a.push(['现在 Now', T.TEAL, '#FFFFFF']); else if(k === J.nowK + 1) a.push(['目标 Next', T.AMB, T.AMBT]); return a; };
 const mh = Math.max(10, ...M.map((_, k) => marks(k).length * 44 + 8 - hs * (n - 1 - k))), base = y + mh + top;
-for(let k = 0; k < n; k++){ const m = M[k], X = T.CX + k * (cw + gap), h = h0 + hs * k, Y = base - h, s = k < J.nowK ? 'dn' : k === J.nowK ? 'now' : k === J.nowK + 1 ? 'nx' : 'lt';
+for(let k = 0; k < n; k++){ const m = M[k], X = T.CX + k * (cw + gap), h = h0 + hs * k, Y = base - h, s = k < J.nowK ? (stK > -1 && k < stK ? 'lt' : 'dn') : k === J.nowK ? 'now' : k === J.nowK + 1 ? 'nx' : 'lt';
 const fill = s === 'now' ? T.TEAL : s === 'dn' ? T.SOFT : s === 'nx' ? '#FFFFFF' : '#F4F5F8';
 T.box(X, Y, cw, h + 18, 16, fill, s === 'nx' ? '#E9C46A' : null, 2.6, s === 'nx' ? [9, 6] : null);
 const lf = '400 ' + (m[0].length > 3 ? 26 : 32) + 'px ' + T.B;
@@ -2884,10 +2886,10 @@ marks(k).forEach((mk, j) => { const w = T.w(mk[0], cf) + 28, cx = Math.max(T.CX,
 y = base + 18;
 if(T.draw){ T.c.fillStyle = '#D6DCE2'; T.c.fillRect(T.CX, y, AW, 3); }
 /* under each step: when it happened (trial, start, checks), lessons at that stage */
-const EV = x => x.start ? '入学 Start' : /^Trial/.test(x.en) ? '试听 Trial' : /^Level/.test(x.en) ? '升级 Up' : '测评 Check';
+const EV = x => x.start ? '入学 Start' : /^Renew/.test(x.en) ? '续费 Renewed' : /^Trial/.test(x.en) ? '试听 Trial' : /^Level/.test(x.en) ? '升级 Up' : '测评 Check';
 let low = y + 10;
 for(let k = 0; k < n; k++){ const X = T.CX + k * (cw + gap) + cw / 2; let yy = y + 14;
-J.T.filter(x => J.mk(x.i) === k).forEach(x => { const sub = /\+/.test(CJ_L[x.i]) ? CJ_L[x.i] + ' ' : '';
+J.T.filter(x => (/^Trial/.test(x.en) && st ? J.mk(st.i) : J.mk(x.i)) === k).forEach(x => { const sub = /\+/.test(CJ_L[x.i]) ? CJ_L[x.i] + ' ' : '';
 T.text(J.mon(x.d) || '—', X, yy + 22, '700 18px ' + T.F, T.NAVY, 'center');
 T.text(sub + EV(x), X, yy + 46, '700 17px ' + T.F, T.TEAL, 'center');
 if(x.u != null && x.u > 0){ T.text(x.u + ' 课时 lessons', X, yy + 68, '400 15px ' + T.F, T.MUTE, 'center'); yy += 22; }
@@ -5808,7 +5810,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 400;
+const COE_V = 401;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
