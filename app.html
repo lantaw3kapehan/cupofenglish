@@ -1138,12 +1138,12 @@ if(!GAS){ const write = !API_READ.test(fn), safe = write || API_SAFE.test(fn), r
 const run = async () => { let last, net = false;
 for(let a = 0; a < (safe ? 4 : 1); a++){
 if(a) await new Promise(z => setTimeout(z, [0, 1500, 4000, 10000][a]));
-let r; try{ r = await apiOnce(fn, args, safe ? 45000 : 0, rid); net = false; }catch(e){ last = e; net = true; continue; }
+let r; try{ r = await apiOnce(fn, args, safe ? (/^(editClass|addClass|mgmtEnrolPaid|mgmtRenewPaid|classCheck)$/.test(fn) ? 240000 : 45000) : 0, rid); net = false; }catch(e){ last = e; net = true; continue; }
 if(r.ok) return r.data; const e = new Error(r.error); if(r.error === 'AUTH'){ logout(true); throw e; }
 if(safe && /lock|timed? ?out|too many|busy|service|internal|try again/i.test(String(r.error || ''))){ last = e; continue; }
 throw e; }
 if(write && net && typeof wqAdd === 'function' && wqAdd(fn, args, rid)) throw new Error('Weak signal · saved on this device, it will send by itself when the signal is back');
-throw last || new Error('Weak signal · not saved'); };
+throw net && /^(editClass|addClass|mgmtEnrolPaid|mgmtRenewPaid)$/.test(fn) ? new Error('Connection dropped · it may still have saved. Refresh before trying again.') : (last || new Error('Weak signal · not saved')); };
 return run().finally(() => { if(write) API_PEND = Math.max(0, API_PEND - 1); }); }
 return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(e => {
 if(/^(Error: )?AUTH$/.test(String(e && e.message || e))){ logout(true); } rej(e); })[fn](...args));
@@ -2770,7 +2770,7 @@ return h.replace('<h1 class="grow">', '<h1 class="grow" data-tch="' + esc(name) 
 async function loadStudents(quiet){
 if(!MS && !kept('stu')) $('v-astudents').innerHTML = `<div class="lead"><h1>Students</h1></div><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>`;
 try{ await swr('stu', () => api('mgmtStudents', TOKEN), v => MS = v, renderAStudents);
-if(!window._wpM){ window._wpM = 1; setTimeout(() => warmProfiles((MS||[]).map(s => s.code)), 4000); } }catch(e){ if(!MS) $('v-astudents').innerHTML = '<div class="empty">Could not load students.</div>'; }
+if(!window._wpM){ window._wpM = 1; setTimeout(() => { const d0 = ymdLocal(new Date()), d1 = ymdLocal(new Date(Date.now() + 864e5)); Promise.all([d0, d1].map(k => schedGet(k).catch(() => null))).then(L => { const codes = []; L.forEach(v => ((v && v.events) || []).forEach(e => { if(e.code && !e.cancelled && codes.indexOf(e.code) < 0) codes.push(e.code); })); if(codes.length) warmProfiles(codes.slice(0, 30)); }).catch(() => 0); }, 4000); }   /* audit 13 Oct */ }catch(e){ if(!MS) $('v-astudents').innerHTML = '<div class="empty">Could not load students.</div>'; }
 }
 function renderAStudents(){
 if(!MS) return;
@@ -3883,10 +3883,10 @@ const rank = { hot:0, '':1, low:2 }; Q.sort((a, b) => rank[a.tone] - rank[b.tone
 return { Q, W, ok }; }
 function hmBadge(){ const b = $('dHome'); if(!b) return; let n = 0; try{ n = hmQueue().Q.filter(x => x.tone === 'hot').reduce((a, x) => a + x.n, 0); }catch(e){} b.textContent = n; b.classList.toggle('hide', !n); }
 function hmLoad(force){                                         // refresh every source quietly, at most every 90 s
-if(!force && Date.now() - HM_AT < 90000) return; HM_AT = Date.now();
-bg(() => { loadMgmt(true); loadHealth(); loadReady(); const k = ymdLocal(new Date()); schedGet(k).then(homeSoon).catch(()=>{});
+if(!force && Date.now() - HM_AT < 540000) return; HM_AT = Date.now();   /* audit 13 Oct: was 90 s */
+bg(() => { loadMgmt(true); if(force || Date.now() - (window._hlAt || 0) > 30 * 60000){ window._hlAt = Date.now(); loadHealth(); } loadReady(); const k = ymdLocal(new Date()); schedGet(k).then(homeSoon).catch(()=>{});
 loadMToday(true); if(isPres()) loadMoney(true); loadActions(true); loadReports(true); loadPeerM(); loadPerf(true); loadActive(true); }); }
-setInterval(() => { if(D && D.mgr && VIEW === 'home' && !document.hidden) hmLoad(); }, 120000);
+setInterval(() => { if(D && D.mgr && VIEW === 'home' && !document.hidden) hmLoad(); }, 600000);   /* audit 13 Oct: was 2 min; the live feed already refreshes what changed */
 function renderHome(){
 if(!$('v-home') || !D) return;
 const now = new Date(), hr = now.getHours(), first = String((D.me||{}).name || '').split(' ')[0];
@@ -4308,7 +4308,7 @@ async function schedAhead(d){ const run = ++SCA;
 for(const o of [1,-1,2,3,4,5,6,7]){ if(run !== SCA || !TOKEN) return; while(document.hidden) await new Promise(r => setTimeout(r, 5000));
 const n = new Date(d); n.setDate(n.getDate()+o); const nk = ymdLocal(n), c = SCC[nk];
 if(c && c._t && Date.now() - c._t < 5*60000) continue; try{ await schedGet(nk); }catch(e){} await new Promise(r => setTimeout(r, 250)); } }
-setInterval(() => { if(D && D.mgr && VIEW === 'schedule' && !document.hidden && SC) loadSchedule(0, true); }, 120000);
+setInterval(() => { if(D && D.mgr && VIEW === 'schedule' && !document.hidden && SC) loadSchedule(0, true); }, 300000);
 let SL = null;
 async function classForm(code){
 CHIST = null; CKIND = ''; CKSET = 0; CSRC = ''; CREF = null; openSheet('<h1>New class</h1><div class="sk"></div><div class="sk"></div>');
@@ -5819,11 +5819,11 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 404;
+const COE_V = 405;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
-function updQuiet(){ try{ if(typeof D === 'undefined' || !D || D.mgr || performance.now() < 15000) return false; const h = new Date().getHours(); return h >= 16 && h < 22; }catch(e){ return false; } }
+function updQuiet(){ try{ if(typeof D === 'undefined' || !D || performance.now() < 15000) return false;   /* audit 13 Oct: management too */ const h = new Date().getHours(); return h >= 16 && h < 22; }catch(e){ return false; } }
 let UPD_AT = 0;
 function fetchUpdate(){ if(!API_URL || GAS || Date.now() - UPD_AT < 10*60000) return; UPD_AT = Date.now();
 fetch('version.txt', {cache:'no-store'}).then(r => r.text()).then(v => { if(+v > COE_V) fetchUpdateFull(); }).catch(()=>{}); }   /* a tiny version check first · the full app only downloads when there is a newer one */
@@ -8404,11 +8404,11 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
   const K = 'coe.wq', OK = /^(saveNote|markHomework|tFbSubmit|tPcSubmit|tTrialSubmit|tGoalsSave|tHwFlag|tPeerSubmit)$/;
   const get = () => { try{ return JSON.parse(localStorage.getItem(K) || '[]') || []; }catch(e){ return []; } };
   const put = q => { try{ localStorage.setItem(K, JSON.stringify(q)); return true; }catch(e){ return false; } };
-  window.wqAdd = function(fn, args, rid){ if(!OK.test(fn) || !rid) return false; const q = get().filter(x => x.rid !== rid); q.push({ fn: fn, args: args, rid: rid, at: Date.now(), n: 0 }); return put(q.slice(-30)); };
+  window.wqAdd = function(fn, args, rid){ if(!OK.test(fn) || !rid) return false; const q = get().filter(x => x.rid !== rid); q.push({ fn: fn, args: args, rid: rid, at: Date.now(), n: 0 }); return put(q.slice(-60)); };
   let busy = 0;
   window.wqFlush = async function(){ if(busy || !navigator.onLine) return; const q = get(); if(!q.length) return; busy = 1; let sent = 0; const left = [];
-    for(const it of q){ try{ const a = (it.args || []).slice(); if(typeof TOKEN !== 'undefined' && TOKEN && typeof a[0] === 'string') a[0] = TOKEN; const r = await apiOnce(it.fn, a, 45000, it.rid); if(r && r.ok){ sent++; continue; } if(r && r.error === 'AUTH'){ left.push(it); continue; } it.n = (it.n || 0) + 1; if(it.n < 5) left.push(it); }catch(e){ it.n = (it.n || 0); left.push(it); } }
-    put(left); busy = 0; if(sent){ try{ toast('✓ Sent ' + sent + ' saved item' + (sent === 1 ? '' : 's') + ' from this device'); }catch(e){} try{ if(typeof reload === 'function' && typeof D !== 'undefined' && D && !D.mgr) reload(false); }catch(e){} } };
+    for(const it of q){ if((it.n || 0) >= 5 && Date.now() - (it.last || 0) < 10 * 60000){ left.push(it); continue; } it.last = Date.now(); try{ const a = (it.args || []).slice(); if(typeof TOKEN !== 'undefined' && TOKEN && typeof a[0] === 'string') a[0] = TOKEN; const r = await apiOnce(it.fn, a, 45000, it.rid); if(r && r.ok){ sent++; continue; } if(r && r.error === 'AUTH'){ left.push(it); continue; } it.n = (it.n || 0) + 1; it.err = String((r && (r.error || r.msg)) || '').slice(0, 120); left.push(it); }catch(e){ it.n = (it.n || 0); left.push(it); } }
+    put(left); busy = 0; { const bad = left.filter(x => (x.n || 0) >= 5); if(bad.length && !window._wqWarn){ window._wqWarn = 1; try{ toast('⚠ ' + bad.length + ' item' + (bad.length === 1 ? '' : 's') + ' saved on this phone could not be sent yet' + (bad[0].err ? ' (' + bad[0].err + ')' : '') + '. Please tell Ops.'); }catch(e){} } } if(sent){ try{ toast('✓ Sent ' + sent + ' saved item' + (sent === 1 ? '' : 's') + ' from this device'); }catch(e){} try{ if(typeof reload === 'function' && typeof D !== 'undefined' && D && !D.mgr) reload(false); }catch(e){} } };
   setInterval(function(){ try{ wqFlush(); }catch(e){} }, 30000); window.addEventListener('online', function(){ setTimeout(function(){ try{ wqFlush(); }catch(e){} }, 2000); }); setTimeout(function(){ try{ wqFlush(); }catch(e){} }, 6000);
 })();
 </script>
