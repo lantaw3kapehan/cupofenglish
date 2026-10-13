@@ -3434,7 +3434,9 @@ try{ const r = await api('mgmtTrialFu', TOKEN, s.k, s.st, note, s.name); if(!r.o
 catch(e){ if(prev) TFU[s.k] = prev; else delete TFU[s.k]; try{ localStorage.setItem('coe.tfu', JSON.stringify(TFU)); }catch(x){} renderMToday(); toast((e && e.msg) || 'Not saved. Check your internet and try again.'); }
 }
 let REN = (() => { try{ return JSON.parse(localStorage.getItem('coe.ren')||'null') || {}; }catch(e){ return {}; } })();
+function renDone(t){ const m = /^Renewed\b.*?([A-Z][a-z]{2} \d{1,2}, \d{4})/.exec(String(t || '')); if(!m) return false; const d = new Date(m[1] + ' 12:00'); return !isNaN(d) && Date.now() - d.getTime() < 30 * 864e5; }   /* renewed in the last 30 days */
 function renSt(code){ const t = String((REN||{})[String(code||'').toUpperCase()] || ''); if(!t) return { k:'' };
+if(renDone(t)) return { k:'done', c:'green', label: t.split(' · ').slice(0, 3).join(' · '), t };
 const p = t.split(' · '), d = p[1] ? p[1].replace(/,\s*\d{4}$/, '') : '';
 return /^Not renewing/.test(t) ? { k:'no', c:'', label:'Not renewing' + (p[3] ? ' · ' + p[3] : ''), t }
 : /^Paused/.test(t) ? { k:'pause', c:'amber', label: p[0].replace(/until (\d{4}-\d{2}-\d{2})/, (m, x) => 'until ' + tdDate(x)), t }
@@ -3475,9 +3477,9 @@ fol.forEach(x => { x.k = tfuKey(x.date, x.name); x.app = TFU[x.k] || null; x.ope
 fol.sort((a, b) => (a.closed - b.closed));
 const repAll = rep; rep.splice(0, rep.length, ...repAll.filter(x => { x.tr = trlFor(x.date, x.name, x.code); return !(x.tr && x.tr.status === 'Sent'); }));
 if(TRL && TRL.rows){ const s14 = ymdLocal(new Date(Date.now() - 14 * 864e5)); TRL.rows.forEach(r => { if(!r.date || r.status === 'Sent' || r.date < s14) return; if(rep.some(x => x.tr === r || (String(x.date || '').slice(0, 10) === r.date && String(x.name || '').trim().toLowerCase() === String(r.student || '').trim().toLowerCase()))) return; rep.push({ date: r.date, name: r.student, code: r.code, t: r.teacher, cefr: r.cefr, days: -(tdDays(r.date) || 0), tr: r }); }); }
-const nNow = ren.filter(x => x.lv === 'now' && !/^(Not renewing|Paused|Renewing)/.test((REN||{})[String(x.r[1]).toUpperCase()]||'')).length, nFu = fol.filter(x => x.open).length;
+const nNow = ren.filter(x => x.lv === 'now' && !/^(Not renewing|Paused|Renewing)/.test((REN||{})[String(x.r[1]).toUpperCase()]||'') && !renDone((REN||{})[String(x.r[1]).toUpperCase()])).length, nFu = fol.filter(x => x.open).length;
 const upd = (S.head.match(/Updated\s+([^·]+·\s*[\d:]+H?)/) || [])[1] || '';
-const isClosed = x => /^(Not renewing|Paused|Renewing)/.test((REN||{})[String(x.r[1]).toUpperCase()]||''), nOpen = ren.filter(x => !isClosed(x)).length;
+const isClosed = x => /^(Not renewing|Paused|Renewing)/.test((REN||{})[String(x.r[1]).toUpperCase()]||'') || renDone((REN||{})[String(x.r[1]).toUpperCase()]), nOpen = ren.filter(x => !isClosed(x)).length;
 const sum = [['reports', rep.length, 'trial reports to send', rep.length ? 'hot' : 'ok', ''], ['renew', nOpen, 'renewals', nNow ? 'hot' : nOpen ? '' : 'ok', nNow ? nNow + ' now' : ''], ['follow', fol.length, 'trial follow-ups', nFu ? 'hot' : 'ok', nFu ? nFu + ' not followed up' : ''], ['fix', fix.filter(x => !FIXD[fixKey(x)]).length, 'data to fix', fix.filter(x => !FIXD[fixKey(x)]).length ? '' : 'ok', '']]
 .map(s => `<a class="${s[3]}" onclick="tdJump('${s[0]}')"><b class="num">${s[1]}</b><span>${s[2]}${s[4] ? `<small>${s[4]}</small>` : s[3] === 'ok' ? '<small class="okc">✓ all clear</small>' : '<small class="nc">tap to see</small>'}</span></a>`).join('');
 let pulse = '';
@@ -3491,16 +3493,16 @@ const pcChip = !pc ? '' : /^✓/.test(pc) ? `<span class="chip green">Progress c
 : /need/i.test(pc) ? ((window.pcAsked && pcAsked(r[1])) || ((pc.match(/ask\s+(.+)$/i)||[])[1] ? `<a class="chip coral" style="cursor:pointer" title="Message the teacher" onclick="pcAsk('${esc(String(pc.match(/ask\s+(.+)$/i)[1]).replace(/^teacher\s+/i,'').trim())}','${esc(String(r[0]).replace(/'/g,''))}','${esc(r[1])}')">Progress check needed · ask ${esc(tName(pc.match(/ask\s+(.+)$/i)[1]))} ✉</a>` : '<span class="chip coral">Progress check needed</span>')) : `<span class="chip">${esc(pc)}</span>`;
 const endT = !(x.left > 0) ? 'Package finished' : x.end ? 'Last lesson ~' + tdDate(x.end) + ' <span class="mute">(' + tdAgo(x.endN) + ')</span>' : '';
 const dlT = x.dl && x.dlN != null ? (x.dlN < 0 ? `<span class="chip" style="opacity:.7" title="Package end date passed">Package expired ${tdDate(x.dl)}</span>` : `<span class="chip">Deadline ${tdDate(x.dl)}</span>`) : '';
-const ag = renAge(x.st), again = ag >= 3 && x.lv !== 'closed' && x.lv !== 'yes', needs = (x.lv === 'now' && !(x.st && x.st.k)) || again;
+const ag = renAge(x.st), again = ag >= 3 && x.lv !== 'closed' && x.lv !== 'yes' && x.lv !== 'done', needs = (x.lv === 'now' && !(x.st && x.st.k)) || again;
 return `<div class="tdr ${x.lv}"${needs ? ` data-focus="Renewal|${esc(String(r[0]).replace(/[|"]/g,''))} · ${esc(String(x.left))} left · ${again ? 'no reply ' + ag + ' days · remind again' : 'send the renewal reminder'}"` : ''}><div class="tdn"><b class="num">${esc(String(x.left))}</b><span>left</span></div>
 <div class="grow" style="min-width:0"><div><a class="nm" onclick="openStudent('${esc(r[1])}')">${esc(r[0])}</a> <span class="mute small">${esc(r[1])}</span></div>
 <div class="small" style="margin-top:2px">${tdWho(r[2])}${endT ? ' · ' + endT : ''}${x.pm ? ' <span class="mute">· ' + esc(x.pm) + ' a month</span>' : ''}</div>
 <div class="tags">${x.st && x.st.k ? `<span class="chip ${x.st.c}" title="${esc(x.st.t)}">${esc(x.st.label)}</span>` : ''}${pcChip}${dlT}</div>${again ? `<div class="small" style="margin-top:6px;padding:6px 10px;border-radius:10px;background:#FFF6EC;display:inline-block">➜ <b>No reply for ${ag} days</b> · send a friendly reminder again</div>` : ''}</div>
-<div class="tdb">${x.rem && x.lv !== 'closed' && x.lv !== 'yes' ? `<button class="btn ${x.lv==='now' || again ? 'teal' : 'ghost'} sm" onclick="tdCopy(${i})">${again ? 'Copy reminder again' : 'Copy reminder'}</button>${!(x.st && x.st.k) || again ? `<button class="btn ghost sm" onclick="renQuick('${esc(r[1])}','${esc(String(r[0]).replace(/'/g,''))}')">✓ Sent</button>` : ''}` : ''}${x.lv === 'yes' ? `<button class="btn teal sm" onclick="renPaidSheet('${esc(r[1])}','${esc(String(r[0])).replace(/'/g,'')}','${esc(String(r[2] || '')).replace(/'/g,'')}')">Renewed · paid</button>` : ''}<button class="btn ghost sm" onclick="renSheet('${esc(r[1])}','${esc(r[0]).replace(/'/g,'')}')">${x.st && x.st.k ? 'Change' : 'Parent replied'}</button></div></div>`; };
-ren.forEach(x => { const s = renSt(x.r[1]); x.st = s; if(s.k === 'no' || s.k === 'pause') x.lv = 'closed'; else if(s.k === 'yes') x.lv = 'yes'; });
+<div class="tdb">${x.rem && x.lv !== 'closed' && x.lv !== 'yes' && x.lv !== 'done' ? `<button class="btn ${x.lv==='now' || again ? 'teal' : 'ghost'} sm" onclick="tdCopy(${i})">${again ? 'Copy reminder again' : 'Copy reminder'}</button>${!(x.st && x.st.k) || again ? `<button class="btn ghost sm" onclick="renQuick('${esc(r[1])}','${esc(String(r[0]).replace(/'/g,''))}')">✓ Sent</button>` : ''}` : ''}${x.lv === 'yes' ? `<button class="btn teal sm" onclick="renPaidSheet('${esc(r[1])}','${esc(String(r[0])).replace(/'/g,'')}','${esc(String(r[2] || '')).replace(/'/g,'')}')">Renewed · paid</button>` : ''}<button class="btn ghost sm" onclick="renSheet('${esc(r[1])}','${esc(r[0]).replace(/'/g,'')}')">${x.st && x.st.k ? 'Change' : 'Parent replied'}</button></div></div>`; };
+ren.forEach(x => { const s = renSt(x.r[1]); x.st = s; if(s.k === 'no' || s.k === 'pause') x.lv = 'closed'; else if(s.k === 'yes') x.lv = 'yes'; else if(s.k === 'done') x.lv = 'done'; });
 const grp = (lv, label, sub) => { const L = ren.filter(x => x.lv === lv); return L.length ? `<div class="tdg ${lv}"><i></i>${label} <span class="c">${L.length} · ${sub}</span></div>` + L.map(renRow).join('') : ''; };
 const renH = `<section class="sec" id="td-renew"><h2>Renewals due <span class="c">5 or fewer lessons left · copy the reminder, send it in WeChat</span></h2>
-${ren.length ? grp('now','Act now','finished, 1 lesson left, or ending within a week') + grp('soon','This month','3 or fewer left, or ending within 3 weeks') + grp('later','Coming up','up to 5 left') + grp('yes','Renewing','parent confirmed · waiting for the new package') + grp('closed','Paused or not renewing','no reminder needed · also marked in ACTIVE') : '<div class="tdok">No renewals due.</div>'}</section>`;
+${ren.length ? grp('now','Act now','finished, 1 lesson left, or ending within a week') + grp('soon','This month','3 or fewer left, or ending within 3 weeks') + grp('later','Coming up','up to 5 left') + grp('yes','Renewing','parent confirmed · waiting for the new package') + grp('closed','Paused or not renewing','no reminder needed · also marked in ACTIVE') + grp('done','Renewed ✓','paid · leaves this list when the TODAY sheet next updates') : '<div class="tdok">No renewals due.</div>'}</section>`;
 const folH = `<section class="sec" id="td-follow"><h2>Trial follow-ups <span class="c">trials in the last 30 days, not enrolled yet · Day 3 check-in → Day 7 open times → Day 14 last note → close · copy the message, send it in WeChat, tap ✓ Sent</span></h2>
 ${fol.length ? fol.map(x => { const no = x.open, d = Math.abs(x.days), a = x.app, fi = TDF.push(x) - 1, stp = fuNext(x), fdue = stp && (stp.k === 'report' || stp.due >= 0);
 const chip = a ? `<span class="chip ${x.closed ? (/^Enrolling/.test(a.st) ? 'green' : '') : 'teal'}">${esc(a.st)} · ${esc(tfuDay(a.at))} · ${esc(a.by)}</span>${a.note ? `<span class="chip">${esc(a.note)}</span>` : ''}` : no ? '<span class="chip coral">Not followed up yet</span>' : `<span class="chip green">${esc(x.fu)}</span>`;
@@ -3743,7 +3745,7 @@ for(let i = iM + 1; i < R.length; i++){ const r = R[i]; if(!r[0] || !/\d{4}/.tes
 return L.length ? L : null; }
 function hmTodo(){ if(!TD || !TD.rows) return null; let S = null; try{ S = tdParse(TD.rows); }catch(e){ return null; } if(!S || !Object.keys(S.sec).length) return null;
 const R = S.sec.renew, F = S.sec.follow, P = S.sec.reports, X = S.sec.fix;
-const closed = c => /^(Not renewing|Paused|Renewing)/.test((REN||{})[String(c||'').toUpperCase()] || '');
+const closed = c => /^(Not renewing|Paused|Renewing)/.test((REN||{})[String(c||'').toUpperCase()] || '') || renDone((REN||{})[String(c||'').toUpperCase()]);
 const ren = (R ? R.rows : []).filter(r => !closed(r[1])).map(r => { const left = parseFloat(r[tdCol(R,/LESSON|LEFT/,3)]), end = tdDays(r[tdCol(R,/EXPECTED|END/,5)]);
 return { name: r[0], now: !(left > 0) || left <= 1 || (end != null && end <= 7) }; });
 const fol = (F ? F.rows : []).filter(r => { const fu = r[tdCol(F,/FOLLOW/,7)]; return (!fu || /not set/i.test(fu)) && !TFU[tfuKey(r[0], r[1])]; });
@@ -5664,7 +5666,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 386;
+const COE_V = 387;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
