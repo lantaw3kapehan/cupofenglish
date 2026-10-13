@@ -5819,7 +5819,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 403;
+const COE_V = 404;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -5979,10 +5979,11 @@ renderMToday = function(){ const r = _rmtF.apply(this, arguments); try{ tdFocus(
 let RPS = null;
 const RP_PK = [[15, 0], [30, 3], [60, 8]];
 function rpTot(){ return (+RPS.pkg || 0) + (+RPS.free || 0); }
-function rpDl(){ const d = new Date(($('rpD') || {}).value + 'T12:00:00'); if(isNaN(d)) return ''; const t = rpTot(); d.setMonth(d.getMonth() + (t < 30 ? 4 : t < 60 ? 8 : 12)); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+function rpNc(){ const p = ($('rpD') || {}).value; if(!p) return null; const t0 = new Date(p + 'T00:00:00').getTime(), L = ((RPS && RPS.cls) || []).filter(c => !c.cancelled && !/-TC\s*$/i.test(String(c.title || '').replace(/\s+X$/i, '')) && new Date(c.start).getTime() >= t0).sort((a, b) => new Date(a.start) - new Date(b.start)); return L.length ? new Date(L[0].start) : null; }
+function rpDl(){ const n = rpNc(), d = n ? new Date(n.getFullYear(), n.getMonth(), n.getDate(), 12) : new Date(($('rpD') || {}).value + 'T12:00:00'); if(isNaN(d)) return ''; const t = rpTot(); d.setMonth(d.getMonth() + (t < 30 ? 4 : t < 60 ? 8 : 12)); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
 function rpPrev(){ const p = $('rpP'); if(!p || !RPS || !RPS.info) return; const I = RPS.info, t = rpTot(), tot = Math.round((I.left + t) * 10) / 10;
 p.innerHTML = `<div style="font-size:15px"><b>${I.left}</b> left + <b>${t}</b> new = <b style="font-size:20px;color:#00737B">${tot} lessons</b></div>
-<div class="small" style="margin-top:4px">Valid until <b>${rpDl()}</b> · ${t < 30 ? '4' : t < 60 ? '8' : '12'} months from the paid date</div>
+<div class="small" style="margin-top:4px">Valid until <b>${rpDl()}</b> · ${t < 30 ? '4' : t < 60 ? '8' : '12'} months from ${(() => { const n = rpNc(); return n ? 'the next class (' + n.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ')' : 'the paid date (no class booked yet)'; })()}</div>
 <div class="small" style="margin-top:4px">${RPS.sched ? '📅 ' + RPS.sched : '<span class="mute">Checking the schedule…</span>'}</div>`; }
 function rpPick(p, f){ RPS.pkg = p; RPS.free = f; document.querySelectorAll('.rpk').forEach(b => b.classList.toggle('on', +b.dataset.p === p && +b.dataset.f === f)); const o = $('rpO'); if(o) o.classList.toggle('hide', RP_PK.some(x => x[0] === p && x[1] === f)); rpPrev(); }
 function rpOther(){ RPS.pkg = ''; RPS.free = 0; document.querySelectorAll('.rpk').forEach(b => b.classList.toggle('on', b.dataset.p === 'o')); $('rpO').classList.remove('hide'); rpPrev(); }
@@ -5992,7 +5993,7 @@ const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
 const [r, cl] = await Promise.all([api('mgmtRenewPaid', TOKEN, { code, teacher, dry: true, date: today }).catch(e => ({ ok: false, msg: String(e && e.message || e) })), api('mgmtStuClasses', TOKEN, code).catch(() => null)]);
 if(RPS.code !== code) return;
 if(!r || !r.ok) return openSheet(`<h1>${esc(name)}</h1><p>${esc((r && r.msg) || 'Could not read the package.')}</p>`);
-RPS.info = r; if(r.prev && r.prev.pkg){ RPS.pkg = r.prev.pkg; RPS.free = r.prev.free; }
+RPS.info = r; RPS.cls = Array.isArray(cl) ? cl : []; if(r.prev && r.prev.pkg){ RPS.pkg = r.prev.pkg; RPS.free = r.prev.free; }
 try{ const now = Date.now(), up = (Array.isArray(cl) ? cl : []).filter(c => !c.cancelled && new Date(c.start).getTime() > now).sort((a, b) => new Date(a.start) - new Date(b.start));
 if(up.length){ const fmt = d => new Date(d).toLocaleString('en-GB', { timeZone: 'Asia/Shanghai', weekday: 'short' }), hm = d => new Date(d).toLocaleTimeString('en-GB', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit' });
 const pat = {}; up.slice(0, 12).forEach(c => { const k = fmt(c.start) + ' ' + hm(c.start); pat[k] = (pat[k] || 0) + 1; });
