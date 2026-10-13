@@ -5556,6 +5556,42 @@ ${T("Teacher's comments",'教师评语',x.comm,x.commZh)}${T('Suggested next ste
 h += `<div id="tlPdf">${x.pdf ? '<div class="sk" style="height:180px;margin-top:12px"></div>' : `<div class="small mute" style="margin-top:12px">${x.status==='Translating'?'The Chinese is being added, then the PDF is made':'The PDF is being made'} · usually a few minutes after the teacher sends the report. Pull to refresh later.</div>`}</div><div class="rp-act" id="tlAct"></div>`;
 openSheet(h); $('sheet').classList.add('wide'); tlBtns();
 }
+let ENS = null;
+async function enSheet(code, name, teacher){ ENS = { code, name, teacher, pkg: 15, free: 0, sale: 0, info: null };
+openSheet('<h1>' + esc(name) + ' · Enrolled · paid</h1><div class="mute small">' + esc(code) + ' · first package · SALES, ACTIVE and DATABASE in one save</div><div class="sk"></div><div class="sk"></div>');
+let r = null; try{ r = await api('mgmtEnrolPaid', TOKEN, { code, dry: true }); }catch(e){ r = { ok: false, msg: String((e && (e.msg || e.message)) || e) }; }
+if(ENS.code !== code) return;
+if(!r || !r.ok) return openSheet('<h1>' + esc(name) + '</h1><p>' + (/unknown action/i.test(String(r && r.msg)) ? 'The server part of this button is not installed yet · paste <b>Step 9</b> of SERVER-SPEED-paste.md into Apps Script, then try again.' : esc((r && r.msg) || 'Could not read the student.')) + '</p>');
+ENS.info = r; const nm = String(name || '').split(/\s+/)[0].toLowerCase();
+const hit = (r.sales || []).find(x => nm && x.invoice.toLowerCase().indexOf(nm) > -1); if(hit){ ENS.sale = hit.row; ENS.pkg = hit.pkg; ENS.free = hit.free; }
+if(!SL) SL = kept('sl2'); const T = ((SL && SL.teachers) || [teacher]).filter(Boolean);
+let first = r.firstClass || ''; try{ const L = await api('mgmtStuClasses', TOKEN, code); const nx = (L || []).filter(c => !c.cancelled && !/-TC$/i.test(String(c.title || '').replace(/\s+X$/, '')) && new Date(c.start) > Date.now()).sort((a, b) => a.start.localeCompare(b.start))[0]; if(nx) first = ymdLocal(new Date(nx.start)); }catch(e){}
+const today = ymdLocal(new Date());
+const saleOpt = x => '<button type="button" class="rno' + (ENS.sale === x.row ? ' on' : '') + '" data-s="' + x.row + '" onclick="enPick(' + x.row + ',' + x.pkg + ',' + x.free + ')"><b>' + esc(x.invoice || 'SALES row ' + x.row) + '</b><span>' + esc(x.date) + ' · ' + x.pkg + (x.free ? ' + ' + x.free : '') + ' lessons' + (x.method ? ' · ' + esc(x.method) : '') + '</span></button>';
+openSheet('<h1>' + esc(name) + ' · Enrolled · paid</h1><div class="mute small">' + esc(code) + ' · first package · adds the ACTIVE row for you</div>' +
+'<label>Payment</label><div class="rnl">' + (r.sales || []).map(saleOpt).join('') + '<button type="button" class="rno' + (ENS.sale ? '' : ' on') + '" data-s="0" onclick="enPick(0)"><b>New payment</b><span>add it to SALES now</span></button></div>' +
+'<div id="enNew" class="' + (ENS.sale ? 'hide' : '') + '"><label>Package paid</label><div class="rnl">' + RP_PK.map(([p, f]) => '<button type="button" class="rno enk' + (ENS.pkg === p && ENS.free === f ? ' on' : '') + '" data-p="' + p + '" data-f="' + f + '" onclick="enPk(' + p + ',' + f + ')"><b>' + p + (f ? ' + ' + f : '') + '</b><span>' + (p + f) + ' lessons</span></button>').join('') + '</div>' +
+'<div class="row" style="gap:8px"><div class="grow"><label>Paid on</label><input id="enD" class="in-t" type="date" value="' + today + '"></div><div class="grow"><label>Payment method</label><input id="enM" class="in-t" value="' + esc((() => { try{ return localStorage.getItem('coe.rpM') || 'Alipay'; }catch(e){ return 'Alipay'; } })()) + '"><div class="skc" style="margin-top:6px">' + ['Alipay','WeChat Pay','Bank transfer','Cash'].map(x => '<button type="button" onclick="$(\'enM\').value=\'' + x + '\'">' + x + '</button>').join('') + '</div></div></div>' +
+'<label>Partner</label><input id="enPa" class="in-t" value="CupOfEnglish"><label>Invoice</label><input id="enI" class="in-t" placeholder="e.g. Invoice1739_' + esc(String(name || '').split(/\s+/)[0]) + '"><input id="enF" type="file" accept="application/pdf,image/*" class="in-t" style="margin-top:6px"></div>' +
+'<div class="row" style="gap:8px"><div class="grow"><label>Teacher</label><select id="enT" class="in-t">' + T.map(t => '<option' + (t === teacher ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></div><div class="grow"><label>First class</label><input id="enS" class="in-t" type="date" value="' + esc(first || today) + '"></div></div>' +
+'<label>Course <span class="mute small">(book on the calendar, e.g. OD1)</span></label><input id="enC" class="in-t" list="cBL" placeholder="OD1"><datalist id="cBL">' + (window.classBooks ? classBooks() : '') + '</datalist>' +
+'<div id="enP" class="card" style="margin-top:14px;background:#F1FAF9;border-color:#BFE6E3"></div><button id="enGo" class="btn teal block" style="margin-top:14px" onclick="enSave()">Save enrolment</button>' +
+'<p class="small mute" style="margin-top:8px">Same as doing it by hand: the payment in SALES · a new ACTIVE row near the top (formulas copied, ACTIVE ticked, ENROLLED = that SALES row) · DATABASE › first class and lessons if empty. The calendar is not changed.</p>');
+enPrev(); }
+window.enPick = function(row, p, f){ ENS.sale = row; if(row){ ENS.pkg = p; ENS.free = f; } document.querySelectorAll('[data-s]').forEach(b => b.classList.toggle('on', +b.dataset.s === row)); const n = $('enNew'); if(n) n.classList.toggle('hide', !!row); enPrev(); };
+window.enPk = function(p, f){ ENS.pkg = p; ENS.free = f; document.querySelectorAll('.enk').forEach(b => b.classList.toggle('on', +b.dataset.p === p && +b.dataset.f === f)); enPrev(); };
+function enPrev(){ const el = $('enP'); if(!el || !ENS) return; const t = (+ENS.pkg || 0) + (+ENS.free || 0);
+el.innerHTML = '<div style="font-size:15px"><b style="font-size:20px;color:#00737B">' + t + ' lessons</b> · ' + (ENS.sale ? 'payment already in SALES (row ' + ENS.sale + ')' : 'new SALES row') + '</div><div class="small" style="margin-top:4px">Valid ' + (t < 30 ? 4 : t < 60 ? 8 : 12) + ' months from the paid date · 25-min classes count as half a lesson (' + t + ' lessons = ' + (t * 2) + ' × 25-min classes)</div>'; }
+window.enSave = async function(){ const S = ENS; if(!S || !S.info) return; const b = $('enGo');
+const f = { code: S.code, name: S.name, teacher: $('enT').value, start: $('enS').value, course: $('enC').value.trim(), saleRow: S.sale || 0 };
+if(!S.sale){ Object.assign(f, { pkg: +S.pkg || 0, free: +S.free || 0, date: $('enD').value, method: $('enM').value.trim(), partner: $('enPa').value.trim(), invoice: $('enI').value.trim() });
+const fl = $('enF') && $('enF').files[0]; if(fl){ if(fl.size > 8e6) return toast('The invoice file is too big (8 MB max)'); f.file = await new Promise(res => { const rd = new FileReader(); rd.onload = () => res({ name: fl.name, mime: fl.type, b64: String(rd.result).split(',')[1] }); rd.readAsDataURL(fl); }); }
+try{ if(f.method) localStorage.setItem('coe.rpM', f.method); }catch(e){} }
+if(b){ b.disabled = true; b.textContent = 'Saving… (about 20–40 seconds)'; }
+try{ const r = await api('mgmtEnrolPaid', TOKEN, f); if(!r || !r.ok) throw r; AT = null; MS = null; try{ ding('msg'); }catch(e){}
+openSheet('<h1>✓ ' + esc(S.name) + ' enrolled</h1><div class="card" style="margin-top:10px;background:#F1FAF9;border-color:#BFE6E3"><div style="font-size:20px"><b style="color:#00737B">' + r.available + ' lessons</b> left</div><div class="small" style="margin-top:4px">' + r.pkg + (r.free ? ' + ' + r.free : '') + ' paid' + (r.deadline ? ' · valid until <b>' + new Date(r.deadline + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '</b>' : '') + '</div><div class="small mute" style="margin-top:4px">ACTIVE row ' + r.row + ' · SALES row ' + r.saleRow + (r.link ? ' · invoice saved' : '') + '</div></div>' +
+'<button class="btn teal block" style="margin-top:14px" onclick="cnOpen(\'' + esc(S.code) + '\')">Class notice</button><button class="btn ghost block" style="margin-top:8px" onclick="openStudent(\'' + esc(S.code) + '\')">Open student</button>'); }
+catch(e){ if(b){ b.disabled = false; b.textContent = 'Save enrolment'; } toast((e && e.msg) || 'Not saved. Check SALES and ACTIVE before trying again.'); } };
 async function tlSched(){ const x = TLD; if(!x) return; if(!x.code) return toast('Add the student code first (DATABASE) · then set the schedule');
 await classForm(x.code); if(!$('cS')) return;
 try{ classKind(''); }catch(e){}   /* a regular class, even if the student was added as a trial */
@@ -5567,7 +5603,7 @@ try{ classPrev(); }catch(e){} }
 function tlBtns(){
 const el = $('tlAct'); if(!el || !TLD) return; const sent = TLD.status === 'Sent', canShare = TLB && navigator.canShare && navigator.canShare({ files: [TLB] });
 el.innerHTML = (TLB ? `<div class="row" style="gap:8px;width:100%"><button class="btn teal grow" id="tlPicB" onclick="pdfPic(TLB,0,'tlPicB')">Copy picture</button><button class="btn ghost grow" onclick="pdfPic(TLB,1)">${navigator.share ? 'Share / save picture' : 'Save picture'}</button></div>` : '') + (TLB ? (canShare ? `<button class="btn ghost grow" onclick="tlShare()">${sent?'Send again on WeChat':'Send on WeChat'}</button>` : `<button class="btn ghost grow" onclick="tlSaveF()">Save PDF + copy message</button>`) : TLD.pdf ? (TLD._err ? `<a class="btn teal grow" href="${esc(TLD.pdf)}" target="_blank">Open PDF</a>` : `<button class="btn teal grow" disabled>Loading PDF…</button>`) : '')
-+ (!sent ? `<button class="btn ghost" onclick="tlMark(${TLD.pdf ? '' : "'sent before / without the PDF'"})">${TLD.pdf ? 'Mark as sent' : 'Already sent · mark it'}</button>` : '') + `<button class="btn ghost" onclick="tlCopy()">Copy message</button>` + (D && D.mgr && TLD.code ? `<button class="btn teal" onclick="tlSched()">Set class schedule</button>` : '');
++ (!sent ? `<button class="btn ghost" onclick="tlMark(${TLD.pdf ? '' : "'sent before / without the PDF'"})">${TLD.pdf ? 'Mark as sent' : 'Already sent · mark it'}</button>` : '') + `<button class="btn ghost" onclick="tlCopy()">Copy message</button>` + (D && D.mgr && TLD.code ? `<button class="btn teal" onclick="enSheet('${esc(TLD.code)}','${esc(String(TLD.student).replace(/'/g,''))}','${esc(String(TLD.teacher || '').replace(/'/g,''))}')">Enrolled · paid</button><button class="btn teal" onclick="tlSched()">Set class schedule</button>` : '');
 }
 window.tlCefr = async function(v){ if(!TLD || !TLD.label || String(TLD.cefr) === v) return; if(!confirm('Change ' + TLD.student + '\'s level from ' + (TLD.cefr || '—') + ' to ' + v + '?\nThe parent PDF will be made again with ' + v + '.')) return;
 try{ const r = await api('mgmtTrialCefrSave', TOKEN, TLD.label, v); if(!r || !r.ok) throw r; TLD.cefr = r.cefr; if(r.remade){ TLD.pdf = ''; TLB = null; if(TLD.status !== 'Sent') TLD.status = 'Making PDF'; } toast(TLD.student + ' · level ' + r.cefr + (r.remade ? ' · new PDF within about an hour' : '')); TRL = null; loadTrials(); tlPaint(); }
@@ -5744,7 +5780,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 393;
+const COE_V = 394;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
