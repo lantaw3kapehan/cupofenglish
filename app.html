@@ -2869,7 +2869,7 @@ y = coeHero(T, CJ_L[J.now], 'Current level', '目前级别 · ' + zh(J.now), J.u
 /* 1 · the staircase: low on the left, high on the right, the child's step in teal */
 T.label('Level staircase', '级别阶梯 · 一步一步往上走', y); y += 30;
 const n = M.length, gap = 8, AW = T.Wc - T.CX * 2, cw = (AW - gap * (n - 1)) / n, h0 = 96, hs = 34, top = h0 + hs * (n - 1), cf = '700 18px ' + T.F;
-const st = J.T.find(x => x.start), stK = st ? J.mk(st.i) : -1, marks = k => { const a = []; if(k === J.nowK) a.push(['现在 Now', T.TEAL, '#FFFFFF']); else if(k === J.nowK + 1) a.push(['目标 Next', T.AMB, T.AMBT]); if(k === stK && k !== J.nowK) a.push(['起点 Start', T.SOFT, T.TEAL]); return a; };
+const st = J.T.find(x => x.start), stK = st ? J.mk(st.i) : -1, marks = k => { const a = []; if(k === J.nowK) a.push(['现在 Now', T.TEAL, '#FFFFFF']); else if(k === J.nowK + 1) a.push(['目标 Next', T.AMB, T.AMBT]); return a; };
 const mh = Math.max(10, ...M.map((_, k) => marks(k).length * 44 + 8 - hs * (n - 1 - k))), base = y + mh + top;
 for(let k = 0; k < n; k++){ const m = M[k], X = T.CX + k * (cw + gap), h = h0 + hs * k, Y = base - h, s = k < J.nowK ? 'dn' : k === J.nowK ? 'now' : k === J.nowK + 1 ? 'nx' : 'lt';
 const fill = s === 'now' ? T.TEAL : s === 'dn' ? T.SOFT : s === 'nx' ? '#FFFFFF' : '#F4F5F8';
@@ -2881,20 +2881,17 @@ if(s === 'dn' || s === 'now') T.text('✓', X + cw / 2, base + 4, '700 22px ' + 
 marks(k).forEach((mk, j) => { const w = T.w(mk[0], cf) + 28, cx = Math.max(T.CX, Math.min(X + cw / 2 - w / 2, T.Wc - T.CX - w)); T.box(cx, Y - 46 - j * 44, w, 36, 18, mk[1]); if(T.draw){ T.c.save(); T.c.textBaseline = 'middle'; T.text(mk[0], cx + 14, Y - 46 - j * 44 + 19, cf, mk[2]); T.c.restore(); } }); }
 y = base + 18;
 if(T.draw){ T.c.fillStyle = '#D6DCE2'; T.c.fillRect(T.CX, y, AW, 3); }
-y += 56;
-/* 2 · what happened, in date order, in plain words */
-T.label('Our journey together', '学习记录', y); y += 24;
-const EV = x => x.start ? ['入学起点', 'Started with us'] : /^Trial/.test(x.en) ? ['试听评估', 'Trial class'] : /^Level/.test(x.en) ? ['升级', 'Levelled up'] : ['阶段测评', 'Progress check'];
-const L = J.T.slice(), last = L.length - 1;
-L.forEach((x, k) => { const e = EV(x), isNow = x.i === J.now && k === last, rh = (x.u != null && x.u > 0) ? 92 : 64;
-if(T.draw){ T.c.fillStyle = '#D6DCE2'; if(k < last) T.c.fillRect(T.CX + 186, y + 30, 3, rh); T.c.beginPath(); T.c.arc(T.CX + 187.5, y + 30, isNow ? 11 : 8, 0, Math.PI * 2); T.c.fillStyle = isNow ? T.TEAL : T.EDGE; T.c.fill(); }
-T.text(J.mon(x.d) || '', T.CX, y + 38, '700 22px ' + T.F, T.MUTE);
-const lv = 'CEFR ' + CJ_L[x.i], lw = T.w(lv, '400 30px ' + T.B);
-T.text(lv, T.CX + 220, y + 42, '400 30px ' + T.B, T.TEAL);
-T.text(e[0] + ' · ' + e[1] + (isNow ? '  ·  现在 Now' : ''), T.CX + 236 + lw, y + 40, '700 23px ' + T.F, T.NAVY);
-if(x.u != null && x.u > 0) T.text('此阶段学习 ' + x.u + ' 课时 · ' + x.u + ' lessons at this stage', T.CX + 220, y + 76, '400 21px ' + T.F, T.SUB);
-y += rh; });
-y += 30;
+/* under each step: when it happened (trial, start, checks), lessons at that stage */
+const EV = x => x.start ? '入学 Start' : /^Trial/.test(x.en) ? '试听 Trial' : /^Level/.test(x.en) ? '升级 Up' : '测评 Check';
+let low = y + 10;
+for(let k = 0; k < n; k++){ const X = T.CX + k * (cw + gap) + cw / 2; let yy = y + 14;
+J.T.filter(x => J.mk(x.i) === k).forEach(x => { const sub = /\+/.test(CJ_L[x.i]) ? CJ_L[x.i] + ' ' : '';
+T.text(J.mon(x.d) || '—', X, yy + 22, '700 18px ' + T.F, T.NAVY, 'center');
+T.text(sub + EV(x), X, yy + 46, '700 17px ' + T.F, T.TEAL, 'center');
+if(x.u != null && x.u > 0){ T.text(x.u + ' 课时 lessons', X, yy + 68, '400 15px ' + T.F, T.MUTE, 'center'); yy += 22; }
+yy += 62; });
+low = Math.max(low, yy); }
+y = low + 30;
 /* 3 · the CoE CEFR chart, the child's row marked */
 T.label('CEFR chart', 'CEFR 对照表', y); y += 22;
 const c1 = 130, c2 = 130, c4 = 330, c3 = AW - c1 - c2 - c4, rf = '400 19px ' + T.F;
@@ -5809,7 +5806,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 397;
+const COE_V = 398;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
