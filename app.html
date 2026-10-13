@@ -4298,7 +4298,7 @@ openSheet(`<h1>New class</h1><div class="mute small">Goes straight into the work
 <div class="grow"><label>Length</label><select id="cM" class="in-t">${lens.map(m=>`<option value="${m}"${m===mins?' selected':''}>${m} min</option>`).join('')}</select></div></div>
 <label class="check" style="margin-top:14px"><input type="checkbox" id="cR" onchange="classRep()"><div><b>Weekly package</b><div class="small mute">Same time on the chosen days every week</div></div></label>
 <div id="cRep" class="hide"><label>Days</label><div class="seg" id="cDays" style="margin-top:0">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d,i)=>`<button type="button" data-d="${(i+1)%7}" onclick="this.classList.toggle('on');classPrev()">${d}</button>`).join('')}</div>
-<label>Number of classes</label><input id="cN" class="in-t" type="number" min="2" max="60" value="12" oninput="classPrev()"></div>
+<label>Number of classes</label><input id="cN" class="in-t" type="number" min="2" max="60" value="12" oninput="classPrev()"><div class="skc" style="margin-top:6px">${[[15,'15'],[33,'30 + 3'],[68,'60 + 8']].map(([u, l]) => `<button type="button" onclick="classFill(${u})">${l} lessons</button>`).join('')}</div><div class="small mute" style="margin-top:4px">Tap the package and the number of classes is worked out from the length · a 25-min class is half a lesson (15 lessons = 30 × 25 min)</div></div>
 <div id="cPrev" class="mini" style="margin-top:12px"></div>
 <button class="btn block" id="cGo" style="margin-top:14px" onclick="sendClass()">Add to calendar</button>
 <p class="small mute" style="margin-top:8px">The teacher sees it on Today in the app, and in their own Google Calendar if their Gmail is set under Teachers.</p>`);
@@ -4306,6 +4306,7 @@ openSheet(`<h1>New class</h1><div class="mute small">Goes straight into the work
 const pre = code && SL.students.find(x => x.code === code); if(pre){ $('cS').value = pre.code + ' · ' + pre.name; classPick(); $('cH').focus(); } else $('cS').focus(); classPrev();
 }
 function classDays(){ return [...document.querySelectorAll('#cDays button.on')].map(b => +b.dataset.d); }
+function classFill(u){ const m = +(($('cM') || {}).value) || 50, n = $('cN'); if(n) n.value = Math.min(60, Math.round(u * 50 / m)); if(u * 50 / m > 60) toast('More than 60 classes · add the rest in a second batch'); classPrev(); }
 function classRep(){ const on = $('cR').checked; $('cRep').classList.toggle('hide', !on);
 if(on && !classDays().length && $('cD').value){ const d = new Date($('cD').value+'T12:00:00').getDay(); const b = document.querySelector(`#cDays button[data-d="${d}"]`); if(b) b.classList.add('on'); }
 classPrev(); }
@@ -4366,7 +4367,7 @@ if(!auto && k === 'TC' && !/ST-\d{4}-\d{3}/i.test((($('cS')||{}).value) || '')){
 function classPick(){ const s = classStu(), typed = ($('cS')||{}).value || ''; if(/\b(TC|trial|试听)\b/i.test(typed) || (s && s.trial)) classKind('TC', 1); else if(/\bSC\b/i.test(typed)) classKind('SC', 1); if(s){ if(s.teachers[0]) $('cT').value = s.teachers[0]; $('cB').value = s.book || ''; if(!CHIST || CHIST.code !== s.code) classHist(s); } else { CHIST = null; const h = $('cHist'); if(h) h.classList.add('hide'); } classPrev(); }
 function classPrev(){ const s = classStu(), el = $('cPrev'); if(!el) return; const nw = $('cNew'); if(nw) nw.classList.toggle('hide', !(s && s.fresh)); const sr = $('cSrc'); if(sr) sr.classList.toggle('hide', CKIND !== 'TC');
 const D = classDates(), fd = x => new Date(x+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-el.innerHTML = s ? `${CKIND ? `<span class="chip ${CKIND==='TC'?'coral':'teal'}" style="margin-bottom:4px">${CKIND==='TC'?'Trial class · not counted in the package':'Substitute class'}</span><br>` : ''}${s.fresh ? '<span class="small mute">New student · a DATABASE row is added (code, names, trial date, time, book, teacher)</span><br>' : ''}<b>${esc([s.code, s.name.replace(/-/g,' '), ($('cB').value||'').replace(/-/g,' '), $('cT').value, CKIND].filter(Boolean).join('-'))}</b><br>${esc($('cH').value||'--:--')} · ${esc($('cM').value)} min · ${D.length>1?`<b>${D.length} classes</b>, ${esc(fd(D[0]))} → ${esc(fd(D[D.length-1]))}`:esc(D[0]?fd(D[0]):'')}` : (() => { const t = (($('cS')||{}).value || '').trim(); return t && !/ST-\d{4}-\d{3}/i.test(t) && !/^s(t[\s\-\d]*)?$/i.test(t) ? `New student, not on the list yet? <button type="button" class="btn sm teal" style="margin-left:6px" onclick="classUseNew()">Use new code ${esc(classNextCode())}</button><div class="small mute" style="margin-top:6px">Or type their code and name, e.g. ST-2026-120 Paipai</div>` : classNeedName() ? 'New student · now type their name after the code (e.g. ' + esc(t.replace(/\s*·?\s*$/, '')) + ' · Paipai).' : 'Choose a student from the list, or type a new student\'s code and name (e.g. ST-2026-120 Paipai).'; })();
+el.innerHTML = s ? `${CKIND ? `<span class="chip ${CKIND==='TC'?'coral':'teal'}" style="margin-bottom:4px">${CKIND==='TC'?'Trial class · not counted in the package':'Substitute class'}</span><br>` : ''}${s.fresh ? '<span class="small mute">New student · a DATABASE row is added (code, names, trial date, time, book, teacher)</span><br>' : ''}<b>${esc([s.code, s.name.replace(/-/g,' '), ($('cB').value||'').replace(/-/g,' '), $('cT').value, CKIND].filter(Boolean).join('-'))}</b><br>${esc($('cH').value||'--:--')} · ${esc($('cM').value)} min · ${D.length>1?`<b>${D.length} classes</b>${(+$('cM').value || 50) < 50 ? ' = <b>' + Math.round(D.length * (+$('cM').value || 50) / 50 * 10) / 10 + ' lessons</b>' : ''}, ${esc(fd(D[0]))} → ${esc(fd(D[D.length-1]))}`:esc(D[0]?fd(D[0]):'')}` : (() => { const t = (($('cS')||{}).value || '').trim(); return t && !/ST-\d{4}-\d{3}/i.test(t) && !/^s(t[\s\-\d]*)?$/i.test(t) ? `New student, not on the list yet? <button type="button" class="btn sm teal" style="margin-left:6px" onclick="classUseNew()">Use new code ${esc(classNextCode())}</button><div class="small mute" style="margin-top:6px">Or type their code and name, e.g. ST-2026-120 Paipai</div>` : classNeedName() ? 'New student · now type their name after the code (e.g. ' + esc(t.replace(/\s*·?\s*$/, '')) + ' · Paipai).' : 'Choose a student from the list, or type a new student\'s code and name (e.g. ST-2026-120 Paipai).'; })();
 const b = $('cGo'); if(b && !b.disabled) b.textContent = D.length > 1 ? 'Add ' + D.length + ' classes to calendar' : 'Add to calendar';
 if(s){ const tc = ($('cT') || {}).value || '', t = (($('cH') || {}).value || '').trim(); if(tc && /^\d{1,2}:\d{2}$/.test(t) && D.length) ckRun({ teacher: tc, dates: D, time: t, mins: +$('cM').value || 50 }, 'cPrev', 'cGo'); } }
 function classShare(f, r, s){
@@ -4376,8 +4377,9 @@ const st = at(ds[0]), en = new Date(st.getTime() + mins * 6e4), kind = r.kind ||
 const e = { start: st.toISOString(), end: en.toISOString(), student: s.name.replace(/-/g, ' '), code: s.code, teacher: f.teacher, book: f.book, title: r.title || '', type: kind === 'TC' ? 'Trial' : kind === 'SC' ? 'Sub' : '', meet: '' };
 CXP = { kind: 'class', e, why: '', by: '', zh: '', cn: cxCnOf(s.code) || f.cn || '', url: '', added: 1 };
 if(ds.length > 1){ const W = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], WZ = '日一二三四五六', dd = [...new Set(ds.map(d => at(d).getDay()))].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)), last = at(ds[ds.length - 1]);
-CXP.pkg = { en: ds.length + ' classes · every ' + dd.map(d => W[d]).join(' & ') + ' · until ' + last.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-zh: '共' + ds.length + '节课 · 每周' + dd.map(d => WZ[d]).join('、') + ' · 至' + (last.getMonth() + 1) + '月' + last.getDate() + '日' }; }
+const lu = Math.round(ds.length * mins / 50 * 10) / 10;   /* 25-min class = half a lesson: the parent sees the lessons too, and the last class is not read as the package end */
+CXP.pkg = { en: ds.length + ' classes' + (mins < 50 ? ' (= ' + lu + ' lessons)' : '') + ' · every ' + dd.map(d => W[d]).join(' & ') + ' · last class ' + last.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+zh: '共' + ds.length + '节课' + (mins < 50 ? '（' + lu + '课时）' : '') + ' · 每周' + dd.map(d => WZ[d]).join('、') + ' · 最后一节课 ' + (last.getMonth() + 1) + '月' + last.getDate() + '日' }; }
 cxSheet();
 }
 let CSRC = '', CREF = null;
@@ -5780,7 +5782,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 394;
+const COE_V = 395;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
