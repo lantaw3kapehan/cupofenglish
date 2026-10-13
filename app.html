@@ -2836,6 +2836,9 @@ if(chain.length) T.push({ d: first || (tr && cjDay(tr.date)) || '', i: chain[0],
 chain.slice(1).forEach(i => T.push({ d: '', i, en: 'Levelled up', zh: '升级' }));
 (r.checks || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(c => { const i = cjLv(c.cefr); if(i >= 0) T.push({ d: cjDay(c.date), i, en: 'Progress check', zh: '阶段测评' }); });
 if(!T.length) return '';
+const MO = (r.monthly || []).filter(x => x && x.m), U = x => Number(x.u) || Number(x.n) || 0, rd = v => Math.round(v * 10) / 10, tot = rd(MO.reduce((a, x) => a + U(x), 0));
+const DT = T.filter(x => x.d && !/^Trial/.test(x.en)).sort((a, b) => a.d.localeCompare(b.d)); DT.forEach((x, k) => { const a = x.d.slice(0, 7), b = k + 1 < DT.length ? DT[k + 1].d.slice(0, 7) : '9999-99'; x.u = MO.length ? rd(MO.filter(y => y.m >= a && y.m < b).reduce((s, y) => s + U(y), 0)) : null; });
+const BK = {}; MO.forEach(x => { const c = String(x.c || '').trim() || 'Other'; BK[c] = (BK[c] || 0) + U(x); });
 const st = T.find(x => x.start) || T[0], C = (r.checks || []).filter(c => cjLv(c.cefr) >= 0).sort((a, b) => String(b.date).localeCompare(String(a.date)));
 const now = C.length && cjDay(C[0].date) >= (st.d || '') ? cjLv(C[0].cefr) : chain.length ? chain[chain.length - 1] : T[T.length - 1].i;
 const nxt = Math.min(CJ_L.length - 1, now + 1), up = now - st.i;
@@ -2846,7 +2849,7 @@ const head = up > 0 ? '<b>Up ' + up + ' level step' + (up === 1 ? '' : 's') + '<
 : '<b>' + CJ_L[now] + '</b> · building towards ' + CJ_L[nxt] + ' · 正在向 ' + CJ_L[nxt] + ' 迈进';
 return '<section class="sec cj"><style>.cj-l{display:flex;gap:4px;margin:10px 0 6px;overflow-x:auto}.cj-c{flex:1 0 54px;min-width:54px;text-align:center;padding:10px 4px 8px;border-radius:12px;background:#F1F3F6;color:#8A8799}.cj-c b{display:block;font-size:15px}.cj-c span{display:block;font-size:11px;min-height:14px;margin-top:2px}.cj-c.on{background:#DDF2F1;color:#00737B}.cj-c.now{background:#00737B;color:#fff;box-shadow:0 4px 12px rgba(0,115,123,.25)}.cj-c.nx{background:#fff;border:2px dashed #E08A6F;color:#B4513B}.cj-t{display:flex;flex-direction:column;gap:6px;margin-top:10px}.cj-t div{display:flex;gap:10px;align-items:baseline;font-size:13px}.cj-t i{font-style:normal;min-width:74px;color:#8A8799}.cj-t em{font-style:normal;font-weight:700;min-width:46px;color:#00737B}</style>' +
 '<h2>CEFR journey <span class="c">学习进阶</span></h2><div class="small">' + head + '</div><div class="cj-l">' + cells.join('') + '</div>' +
-'<div class="cj-t">' + T.map(x => '<div><i>' + esc(mon(x.d) || '—') + '</i><em>' + CJ_L[x.i] + '</em><span>' + x.en + ' · ' + x.zh + '</span></div>').join('') + '</div></section>';
+'<div class="cj-t">' + T.map(x => '<div><i>' + esc(mon(x.d) || '—') + '</i><em>' + CJ_L[x.i] + '</em><span>' + x.en + ' · ' + x.zh + (x.u != null ? ' · <b>' + x.u + '</b> lesson' + (x.u === 1 ? '' : 's') + ' at this level · 本级别 ' + x.u + ' 课时' : '') + '</span></div>').join('') + '</div>' + (MO.length ? '<div class="small" style="margin-top:10px"><b>' + tot + ' lessons with us</b> · 共 ' + tot + ' 课时<div class="mute" style="margin-top:2px">By book 按教材: ' + Object.keys(BK).sort((a, b) => BK[b] - BK[a]).map(c => esc(c) + ' ' + rd(BK[c])).join(' · ') + '</div></div>' : '') + '</section>';
 }catch(e){ return ''; } }
 function stuRender(){
 const {s, r, code} = STU, F = r.feedback || [], P = r.profile, C = r.checks || [], last = C.find(c => c.pr);
@@ -5692,7 +5695,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 388;
+const COE_V = 389;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
