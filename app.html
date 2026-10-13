@@ -2842,20 +2842,56 @@ const BK = {}; MO.forEach(x => { const c = String(x.c || '').trim() || 'Other'; 
 const st = T.find(x => x.start) || T[0], C = (r.checks || []).filter(c => cjLv(c.cefr) >= 0).sort((a, b) => String(b.date).localeCompare(String(a.date)));
 const now = C.length && cjDay(C[0].date) >= (st.d || '') ? cjLv(C[0].cefr) : chain.length ? chain[chain.length - 1] : T[T.length - 1].i;
 const nxt = Math.min(CJ_L.length - 1, now + 1), up = now - st.i;
-const CJ_M = [['Pre-A1', 'Starter', '启蒙', 'YLE Starters'], ['A1', 'Beginner', '入门', 'YLE Movers'], ['A2', 'Elementary', '初级', 'KET · YLE Flyers'], ['B1', 'Intermediate', '中级', 'PET · IELTS 4–5'], ['B2', 'Upper-intermediate', '中高级', 'FCE · IELTS 5.5–6.5'], ['C1', 'Advanced', '高级', 'CAE · IELTS 7–8'], ['C2', 'Mastery', '精通', 'CPE · IELTS 8.5+']];
+const CJ_M = window.CEFR_LV && CEFR_LV.length ? CEFR_LV.slice().reverse().map(l => [l.k, l.zh, (l.d || []).join(' · '), (/[一-鿿]/.test(l.ie) ? l.ie : 'IELTS ' + l.ie) + ' · ' + (l.ca || []).join(' · ')]) : [['Pre-A1', 'Starter', '启蒙', 'YLE Starters'], ['A1', 'Beginner', '入门', 'YLE Movers'], ['A2', 'Elementary', '初级', 'KET · YLE Flyers'], ['B1', 'Intermediate', '中级', 'PET · IELTS 4–5'], ['B2', 'Upper-intermediate', '中高级', 'FCE · IELTS 5.5–6.5'], ['C1', 'Advanced', '高级', 'CAE · IELTS 7–8'], ['C2', 'Mastery', '精通', 'CPE · IELTS 8.5+']];
 const mk = i => CJ_M.findIndex(m => m[0] === String(CJ_L[i] || '').replace('+', '')), nowK = mk(now);
 const tag = (x, light) => '<span class="cj-tg' + (light ? ' lt' : '') + '">' + x + '</span>';
 const rows = CJ_M.map((m, k) => {
 const cls = k < nowK ? 'dn' : k === nowK ? 'now' : k === nowK + 1 ? 'nx' : 'lt', lt = k === nowK;
 const tg = T.filter(x => mk(x.i) === k).map(x => tag(esc(CJ_L[x.i]) + ' · ' + (x.start ? 'Start 起点' : /^Trial/.test(x.en) ? 'Trial 试听' : /^Level/.test(x.en) ? 'Up 升级' : 'Check 测评') + (mon(x.d) ? ' · ' + esc(mon(x.d)) : '') + (x.u != null && x.u > 0 ? ' · ' + x.u + ' lessons 课时' : ''), lt));
 if(k === nowK) tg.unshift(tag('<b>Now 现在 · ' + esc(CJ_L[now]) + '</b>', lt)); else if(k === nowK + 1) tg.unshift(tag('Next 下一步', 0));
-return '<div class="cj-r ' + cls + '" style="--o:' + (k * 6) + '%"><div class="cj-b"><b class="cj-lv">' + m[0] + '</b><span class="cj-d">' + m[1] + ' · ' + m[2] + '</span><span class="cj-x">' + m[3] + '</span>' + (tg.length ? '<div class="cj-tgs">' + tg.join('') + '</div>' : '') + '</div></div>'; }).reverse();
+return '<div class="cj-r ' + cls + '" style="--o:' + (k * 6) + '%"><div class="cj-b"><b class="cj-lv">' + m[0] + '</b><span class="cj-d">' + m[1] + '</span><span class="cj-x">' + m[3] + '</span>' + (m[2] ? '<span class="cj-cn">' + m[2] + '</span>' : '') + (tg.length ? '<div class="cj-tgs">' + tg.join('') + '</div>' : '') + '</div></div>'; }).reverse();
+window._CJ = { T, now, nxt, up, nowK, M: CJ_M, mk, mon, since: mon(st.d), who: { student: (S.s && S.s.name) || '', cn: (S.s && S.s.cn) || '', code: S.code } };
 const head = up > 0 ? '<b>Up ' + up + ' level step' + (up === 1 ? '' : 's') + '</b> since ' + esc(mon(st.d) || 'starting') + ' · 进步 ' + up + ' 个级别'
 : '<b>' + CJ_L[now] + '</b> · building towards ' + CJ_L[nxt] + ' · 正在向 ' + CJ_L[nxt] + ' 迈进';
-return '<section class="sec cj"><style>.cj-st{display:flex;flex-direction:column;gap:5px;margin-top:12px}.cj-{padding-left:var(--o)}.cj-b{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:8px 12px;border-radius:12px;background:#F6F7F9;color:#A3A1B0;border:2px solid transparent}.cj-lv{font-size:16px;min-width:50px}.cj-d{font-size:12px}.cj-x{font-size:11px;margin-left:auto;opacity:.85}.cj-tgs{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px}.cj-tg{font-size:11px;padding:2px 8px;border-radius:999px;background:#fff;color:#00737B}.cj-tg.lt{background:rgba(255,255,255,.18);color:#fff}.cj-r.dn .cj-b{background:#DDF2F1;color:#00737B}.cj-r.now .cj-b{background:#00737B;color:#fff;box-shadow:0 4px 12px rgba(0,115,123,.25)}.cj-r.nx .cj-b{background:#fff;border:2px dashed #E08A6F;color:#B4513B}.cj-r.nx .cj-tg{background:#FBEDE8;color:#B4513B}.cj-note{font-size:11px;color:#8A8799;margin-top:8px}</style>' +
-'<h2>CEFR journey <span class="c">学习进阶</span></h2><div class="small">' + head + '</div><div class="cj-st">' + rows.join('') + '</div>' +
+return '<section class="sec cj"><style>.cj-st{display:flex;flex-direction:column;gap:5px;margin-top:12px}.cj-{padding-left:var(--o)}.cj-b{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:8px 12px;border-radius:12px;background:#F6F7F9;color:#A3A1B0;border:2px solid transparent}.cj-lv{font-size:16px;min-width:50px}.cj-d{font-size:12px}.cj-x{font-size:11px;margin-left:auto;opacity:.85}.cj-tgs{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px}.cj-tg{font-size:11px;padding:2px 8px;border-radius:999px;background:#fff;color:#00737B}.cj-tg.lt{background:rgba(255,255,255,.18);color:#fff}.cj-r.dn .cj-b{background:#DDF2F1;color:#00737B}.cj-r.now .cj-b{background:#00737B;color:#fff;box-shadow:0 4px 12px rgba(0,115,123,.25)}.cj-r.nx .cj-b{background:#fff;border:2px dashed #E08A6F;color:#B4513B}.cj-r.nx .cj-tg{background:#FBEDE8;color:#B4513B}.cj-d{font-size:14px;font-weight:700}.cj-cn{flex-basis:100%;font-size:11px;opacity:.8}.cj-note{font-size:11px;color:#8A8799;margin-top:8px}</style>' +
+'<h2>CEFR journey <span class="c">学习进阶</span>' + (D && D.mgr ? '<button class="btn sm teal noprint" style="margin-left:auto;letter-spacing:0;text-transform:none" onclick="cjPic()">Picture to send</button>' : '') + '</h2><div class="small">' + head + '</div><div class="cj-st">' + rows.join('') + '</div>' +
 '<div class="cj-note">CEFR is the international scale for English levels, from Pre-A1 up to C2. A “+” means the upper half of a level. CEFR 是国际通用的英语水平标准（Pre-A1 至 C2），“+”表示该级别的高阶。</div>' + (MO.length ? '<div class="small" style="margin-top:10px"><b>' + tot + ' lessons with us</b> · 共 ' + tot + ' 课时<div class="mute" style="margin-top:2px">By book 按教材: ' + Object.keys(BK).sort((a, b) => BK[b] - BK[a]).map(c => esc(c) + ' ' + rd(BK[c])).join(' · ') + '</div></div>' : '') + '</section>';
 }catch(e){ return ''; } }
+window.cjPic = function(){ const J = window._CJ; if(!J) return toast('Open the student again');
+openSheet('<h1>CEFR journey picture</h1><div class="mute small">' + esc(J.who.student || '') + ' · for the parent · Chinese and English</div>' +
+'<div class="row" style="gap:8px;margin-top:12px"><button class="btn teal grow" onclick="cjCopy()">Copy picture</button><button class="btn ghost grow" onclick="cjSave()">' + (navigator.share ? 'Share / save' : 'Save picture') + '</button><button class="btn ghost" onclick="cjText()">Copy message</button></div>' +
+'<div id="cjImg" style="margin-top:12px"><div class="sk"></div><div class="sk"></div></div>');
+try{ $('sheet').classList.add('wide'); }catch(e){} cjDraw(); };
+async function cjDraw(){ const J = window._CJ, M = J.M, zh = i => (M[J.mk(i)] || [])[1] || '';
+J.blob = await coeCard('CEFR journey · 学习进阶', (T, y) => {
+y = coeWho(T, J.who, y);
+y = coeHero(T, CJ_L[J.now], 'Current level', '目前级别 · ' + zh(J.now), J.up > 0 ? 'Up ' + J.up + ' level step' + (J.up === 1 ? '' : 's') + (J.since ? ' since ' + J.since : '') + ' · 进步 ' + J.up + ' 个级别' : 'Next goal · 下一阶段目标：CEFR ' + CJ_L[J.nxt] + '（' + zh(J.nxt) + '）', y);
+T.label('CEFR journey', '学习进阶 · 从下往上', y); y += 24;
+const step = 34, W = T.Wc - T.CX * 2 - step * (M.length - 1);
+for(let k = M.length - 1; k >= 0; k--){ const m = M[k], X = T.CX + k * step, st = k < J.nowK ? 'dn' : k === J.nowK ? 'now' : k === J.nowK + 1 ? 'nx' : 'lt';
+const tags = J.T.filter(x => J.mk(x.i) === k).map(x => CJ_L[x.i] + ' · ' + (x.start ? '入学起点 Start' : /^Trial/.test(x.en) ? '试听 Trial' : /^Level/.test(x.en) ? '升级 Up' : '测评 Check') + (J.mon(x.d) ? ' · ' + J.mon(x.d) : '') + (x.u != null && x.u > 0 ? ' · ' + x.u + ' 课时' : ''));
+if(k === J.nowK) tags.unshift('现在 Now · ' + CJ_L[J.now]); else if(k === J.nowK + 1) tags.unshift('下一阶段目标 Next');
+const tf = '700 18px ' + T.F; let rows = 1, cx = 0; tags.forEach(t => { const w = T.w(t, tf) + 32 + 8; if(cx + w > W - 48){ rows++; cx = 0; } cx += w; });
+const h = 92 + (tags.length ? rows * 44 + 4 : 0);
+const fill = st === 'now' ? T.TEAL : st === 'dn' ? T.SOFT : st === 'nx' ? '#FFFFFF' : '#F7F8FA', ink = st === 'now' ? '#FFFFFF' : st === 'lt' ? '#A3A1B0' : T.NAVY;
+T.box(X, y, W, h, 22, fill, st === 'nx' ? '#E9C46A' : null, 2.6, st === 'nx' ? [10, 7] : null);
+T.text(m[0], X + 26, y + 50, '400 36px ' + T.B, st === 'now' ? '#FFFFFF' : st === 'lt' ? '#B9B6C6' : T.TEAL);
+const lw = T.w(m[0], '400 36px ' + T.B); T.text(m[1], X + 40 + lw, y + 48, '700 24px ' + T.F, ink);
+T.text(m[3], X + W - 24, y + 48, '400 19px ' + T.F, st === 'now' ? '#DDF2F1' : T.MUTE, 'right');
+if(m[2]) T.text(T.wrap(m[2], W - 52, '400 18px ' + T.F)[0], X + 26, y + 80, '400 18px ' + T.F, st === 'now' ? '#DDF2F1' : st === 'lt' ? '#B9B6C6' : T.SUB);
+let tx = X + 24, ty = y + 96; tags.forEach((t, i) => { const w = T.w(t, tf) + 32; if(tx + w > X + W - 24){ tx = X + 24; ty += 44; }
+T.chip(t, tx, ty, st === 'now' ? 'rgba(255,255,255,.22)' : st === 'nx' ? T.AMB : '#FFFFFF', st === 'now' ? '#FFFFFF' : st === 'nx' ? T.AMBT : T.TEAL, tf); tx += w + 8; });
+y += h + 10; }
+y += 16;
+T.wrap('以上中国学习阶段、IELTS 成绩及 Cambridge English 等级考试的对应关系仅供参考，并非官方对应关系。CupOfEnglish 依据国际公认 CEFR 标准进行课程分级，帮助学习者实现长期、系统化、可持续的语言发展。', T.Wc - T.CX * 2, '400 20px ' + T.F).forEach(s => { T.text(s, T.CX, y + 6, '400 20px ' + T.F, T.SUB); y += 30; });
+return y; });
+const el = $('cjImg'); if(el) el.innerHTML = '<img src="' + URL.createObjectURL(J.blob) + '" style="width:100%;border-radius:12px;border:1px solid #E6EEF0">'; }
+const cjFn = () => 'CupOfEnglish-CEFR-journey' + (window._CJ && _CJ.who.student ? '-' + _CJ.who.student : '') + '.png';
+window.cjSave = async function(){ const J = window._CJ; if(!J || !J.blob) return; const f = new File([J.blob], cjFn(), { type: 'image/png' }); if(navigator.canShare && navigator.canShare({ files: [f] })){ try{ await navigator.share({ files: [f] }); return; }catch(e){ if(e && e.name === 'AbortError') return; } } const a = document.createElement('a'); a.href = URL.createObjectURL(J.blob); a.download = cjFn(); a.click(); };
+window.cjCopy = async function(){ const J = window._CJ; if(!J || !J.blob) return toast('Still making the picture…'); try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': J.blob })]); toast('Picture copied · paste it in WeChat'); }catch(e){ cjSave(); } };
+window.cjText = async function(){ const J = window._CJ; if(!J) return; const M = J.M, zh = i => (M[J.mk(i)] || [])[1] || '', nm = J.who.cn || J.who.student || '孩子';
+const t = '家长您好！附上' + nm + '的 CEFR 学习进阶图，供您参考。\n\n' + nm + '目前的英语水平为 CEFR ' + CJ_L[J.now] + '（' + zh(J.now) + '）' + (J.up > 0 ? '，' + (J.since ? '自' + J.since + '入学以来' : '入学以来') + '已进步 ' + J.up + ' 个级别' : '') + '。下一阶段的学习目标为 CEFR ' + CJ_L[J.nxt] + '（' + zh(J.nxt) + '）。我们会根据孩子的学习情况，继续安排最合适的课程。\n\n如有任何问题，欢迎随时与我们联系。\n\n一杯英语（CupOfEnglish）';
+try{ await navigator.clipboard.writeText(t); toast('Message copied'); }catch(e){ toast(t); } };
 function stuRender(){
 const {s, r, code} = STU, F = r.feedback || [], P = r.profile, C = r.checks || [], last = C.find(c => c.pr);
 const nm = (s.name && String(s.name).trim().toUpperCase() !== String(code).toUpperCase() ? s.name : '') || (() => { try{ const C2 = {}; AT.cols.forEach((c, i) => C2[c] = i); const x = AT.rows.find(y => String(y[C2.code]).toUpperCase() === String(code).toUpperCase() && y[C2.name]); return x ? String(x[C2.name]) : ''; }catch(e){ return ''; } })() || code, f0 = F[0];   /* a finished student opened from search: name from ACTIVE, not the code */
@@ -5708,7 +5744,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 391;
+const COE_V = 392;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -7647,6 +7683,7 @@ const LV = [
 { k: 'A2', zh: '初级', d: ['初中毕业英语水平 · 中考英语合格水平（参考）'], ie: '3.5–4.5', ca: ['A2 Key（KET）', 'Flyers 剑桥少儿三级'] },
 { k: 'A1', zh: '入门', d: ['小学英语基础水平 · 初中入门英语（参考）'], ie: '< 3.5', ca: ['剑桥少儿二级'] },
 { k: 'Pre-A1', zh: '启蒙', d: ['英语启蒙阶段 · 幼儿园至小学低年级'], ie: '暂无对应雅思', ca: ['剑桥少儿一级'] }];
+window.CEFR_LV = LV;   /* shared with the student page's CEFR journey */
 const lvOf = c => { c = String(c || '').trim(); if(/^pre/i.test(c)) return 'Pre-A1'; const m = c.match(/^(A1|A2|B1|B2|C1|C2)/i); return m ? m[1].toUpperCase() : ''; };
 let CF = null;
 window.cefrZh = c => { const l = LV.find(z => z.k === lvOf(c)); return l ? l.k + '（' + l.zh + '）' : String(c || ''); };
