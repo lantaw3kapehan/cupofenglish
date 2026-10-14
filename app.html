@@ -1174,7 +1174,7 @@ async function sbRead(fn, args, real, ui){
   const key = sbKey(fn, args), f = SB_FRESH[key]; if(f && Date.now() - f.t < 20000) return f.data;
   const age = d => d ? Date.now() - Date.parse(d.at) : Infinity, mx = fn in SB_BGAGE ? SB_BGAGE[fn] : 300000;
   if(!ui){ const d = await sbDoc(key); if(d && (age(d) < mx || (d.live && age(d) < 90 * 6e4))) return d.data; return real(); }
-  if(SB_LIVE.test(fn)){ const d = await sbDoc(key); if(d && d.live && age(d) < 90 * 6e4) return d.data;   /* 14 Oct night: worked out by the database itself */
+  if(SB_LIVE.test(fn)){ const d = await sbDoc(key); if(d && ((d.live && age(d) < 90 * 6e4) || age(d) < 180000)) return d.data;   /* 14 Oct night: worked out by the database itself */
     const rp = real(); if(!d || age(d) > (SB_UIAGE[fn] || 3 * 864e5)) return rp;
     rp.then(x => { if(JSON.stringify(x) !== JSON.stringify(d.data)){ SB_FRESH[key] = { data: x, t: Date.now() }; sbRedraw(fn, args, x); } }).catch(() => {}); return d.data; }
   let d0; if(!(fn in SB_BGAGE) || SB_BGAGE[fn] > 0){ d0 = await sbDoc(key); if(d0 && age(d0) < 180000) return d0.data; }   /* 14 Oct night: a copy under 3 min is fresh enough */
@@ -5954,7 +5954,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 442;
+const COE_V = 443;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
