@@ -4331,6 +4331,7 @@ openSheet(`<h1>New class</h1><div class="mute small">Goes straight into the work
 <div id="cRefW" class="hide"><input id="cRf" class="in-t" list="cSL" placeholder="Type the student's name or ST code" autocomplete="off" oninput="classRefChk()"><div id="cRfOk" class="small" style="margin-top:4px"></div></div>
 <div id="cPtW" class="hide"><input id="cPt" class="in-t" placeholder="Partner name (optional) · no incentive for partners" autocomplete="off"></div></div>
 <div id="cHist" class="mini hide" style="margin-top:10px"></div>
+<div id="cAbs" class="hide" style="margin-top:12px"><label>Why is the regular teacher out? <span class="mute small">· contract: tell us at least 4 hours before class</span></label><div class="seg" id="cAbK" style="flex-wrap:wrap;margin-top:0">${[['leave','Approved leave'],['told','Informed us'],['none','No notice'],['coe','CupOfEnglish reason']].map(([k, t]) => `<button type="button" data-k="${k}" onclick="classAbs('${k}')">${t}</button>`).join('')}</div><div id="cAbT" class="hide"><label>When did the teacher tell us?</label><div class="row" style="gap:10px;align-items:flex-start"><div class="grow"><input id="cAbD" class="in-t" type="date" onchange="classAbsPrev()"></div><div class="grow">${timeSel('cAbH', '', 'Time')}</div></div></div><div id="cAbR" class="small" style="margin-top:6px"></div></div>
 <div class="row" style="gap:10px;align-items:flex-start"><div class="grow"><label>Teacher</label><select id="cT" class="in-t"><option></option>${SL.teachers.map(t=>`<option>${esc(t)}</option>`).join('')}</select></div>
 <div class="grow"><label>Book / course</label><input id="cB" class="in-t" list="cBL" placeholder="Tap to pick · ShortVowels" oninput="classPrev()" autocomplete="off"><datalist id="cBL">${classBooks()}</datalist></div></div>
 <div class="row" style="gap:10px;align-items:flex-start"><div class="grow"><label>Date</label><input id="cD" class="in-t" type="date" value="${esc(day)}"></div>
@@ -4402,10 +4403,10 @@ return out.sort((a, b) => a.localeCompare(b)).map(b => `<option value="${esc(b)}
 const classOpts = () => SL.students.map(x => `<option value="${esc(x.code)} · ${esc(x.name)}">${x.trial?'Trial · ':''}${esc(x.teachers.join(', '))}</option>`).join('');
 let CKIND = '', CKSET = 0;
 const classNeedName = () => { const v = (($('cS')||{}).value || ''), c = (v.match(/ST-\d{4}-\d{3}/i)||[])[0]; return c && SL && !SL.students.some(x => x.code.toUpperCase() === c.toUpperCase()) && !classStu(); };
-function classKind(k, auto){ if(auto && CKSET) return; if(!auto) CKSET = 1; CKIND = k || '';
+function classKind(k, auto){ if(auto && CKSET) return; if((k || '') !== CKIND){ CABS = ''; document.querySelectorAll('#cAbK button').forEach(b => b.classList.remove('on')); const at = $('cAbT'); if(at) at.classList.add('hide'); } if(!auto) CKSET = 1; CKIND = k || '';
 if(!auto && k === 'TC' && !/ST-\d{4}-\d{3}/i.test((($('cS')||{}).value) || '')){ document.querySelectorAll('#cK button').forEach(b => b.classList.toggle('on', b.dataset.k === CKIND)); return classUseNew(); }     document.querySelectorAll('#cK button').forEach(b => b.classList.toggle('on', b.dataset.k === CKIND)); classPrev(); }
 function classPick(){ const s = classStu(), typed = ($('cS')||{}).value || ''; if(/\b(TC|trial|试听)\b/i.test(typed) || (s && s.trial)) classKind('TC', 1); else if(/\bSC\b/i.test(typed)) classKind('SC', 1); if(s){ if(s.teachers[0]) $('cT').value = s.teachers[0]; $('cB').value = s.book || ''; if(!CHIST || CHIST.code !== s.code) classHist(s); } else { CHIST = null; const h = $('cHist'); if(h) h.classList.add('hide'); } classPrev(); }
-function classPrev(){ const s = classStu(), el = $('cPrev'); if(!el) return; const nw = $('cNew'); if(nw) nw.classList.toggle('hide', !(s && s.fresh)); const sr = $('cSrc'); if(sr) sr.classList.toggle('hide', CKIND !== 'TC');
+function classPrev(){ const s = classStu(), el = $('cPrev'); if(!el) return; const ab = $('cAbs'); if(ab){ ab.classList.toggle('hide', CKIND !== 'SC'); if(CKIND === 'SC'){ const ad = $('cAbD'); if(ad && !ad.value) ad.value = ($('cD') || {}).value || ''; const ah = $('cAbH'); if(ah && !ah._w){ ah._w = 1; ah.addEventListener('change', classAbsPrev); } classAbsPrev(); } } const nw = $('cNew'); if(nw) nw.classList.toggle('hide', !(s && s.fresh)); const sr = $('cSrc'); if(sr) sr.classList.toggle('hide', CKIND !== 'TC');
 const D = classDates(), fd = x => new Date(x+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
 el.innerHTML = s ? `${CKIND ? `<span class="chip ${CKIND==='TC'?'coral':'teal'}" style="margin-bottom:4px">${CKIND==='TC'?'Trial class · not counted in the package':'Substitute class'}</span><br>` : ''}${s.fresh ? '<span class="small mute">New student · a DATABASE row is added (code, names, trial date, time, book, teacher)</span><br>' : ''}<b>${esc([s.code, s.name.replace(/-/g,' '), ($('cB').value||'').replace(/-/g,' '), $('cT').value, CKIND].filter(Boolean).join('-'))}</b><br>${esc($('cH').value||'--:--')} · ${esc($('cM').value)} min · ${D.length>1?`<b>${D.length} classes</b>${(+$('cM').value || 50) < 50 ? ' = <b>' + Math.round(D.length * (+$('cM').value || 50) / 50 * 10) / 10 + ' lessons</b>' : ''}, ${esc(fd(D[0]))} → ${esc(fd(D[D.length-1]))}`:esc(D[0]?fd(D[0]):'')}` : (() => { const t = (($('cS')||{}).value || '').trim(); return t && !/ST-\d{4}-\d{3}/i.test(t) && !/^s(t[\s\-\d]*)?$/i.test(t) ? `New student, not on the list yet? <button type="button" class="btn sm teal" style="margin-left:6px" onclick="classUseNew()">Use new code ${esc(classNextCode())}</button><div class="small mute" style="margin-top:6px">Or type their code and name, e.g. ST-2026-120 Paipai</div>` : classNeedName() ? 'New student · now type their name after the code (e.g. ' + esc(t.replace(/\s*·?\s*$/, '')) + ' · Paipai).' : 'Choose a student from the list, or type a new student\'s code and name (e.g. ST-2026-120 Paipai).'; })();
 const b = $('cGo'); if(b && !b.disabled) b.textContent = D.length > 1 ? 'Add ' + D.length + ' classes to calendar' : 'Add to calendar';
@@ -4428,6 +4429,18 @@ function classRefChk(){ const v = (($('cRf') || {}).value || '').trim(), out = $
 if(v){ const m = v.match(/ST-\d{4}-\d{3}/i); let hit = m ? L.filter(x => x.code === m[0].toUpperCase()) : []; if(!hit.length){ const q = v.toLowerCase().replace(/\s+/g, ' '); hit = L.filter(x => String(x.name).toLowerCase().replace(/-/g, ' ') === q); if(!hit.length) hit = L.filter(x => String(x.name).toLowerCase().replace(/-/g, ' ').split(' ')[0] === q); }
 const uniq = [...new Map(hit.map(x => [x.code, x])).values()]; if(uniq.length === 1) CREF = { code: uniq[0].code, name: String(uniq[0].name).replace(/-/g, ' ') };
 if(out) out.innerHTML = CREF ? '<b style="color:#1E7A55">✓ ' + esc(CREF.name) + ' · ' + esc(CREF.code) + '</b> <span class="mute">· gets 1 free lesson when this student enrols</span>' : uniq.length > 1 ? '<span style="color:#B4513B">' + uniq.length + ' students match · pick one from the list (with the ST code)</span>' : '<span class="mute">No match yet · pick from the list</span>'; } else if(out) out.innerHTML = ''; }
+let CABS = '';
+function classAbs(k){ CABS = k; document.querySelectorAll('#cAbK button').forEach(b => b.classList.toggle('on', b.dataset.k === k)); const t = $('cAbT'); if(t) t.classList.toggle('hide', k !== 'told'); classAbsPrev(); }
+function classAbsTold(){ const d = ($('cAbD') || {}).value || '', h = (($('cAbH') || {}).value || '').trim(); return /^\d{4}-\d{2}-\d{2}$/.test(d) && /^\d{1,2}:\d{2}$/.test(h) ? d + ' ' + (h.length === 4 ? '0' + h : h) : ''; }
+function classAbsPrev(){ const el = $('cAbR'); if(!el) return; const d = ($('cD') || {}).value || '', h = (($('cH') || {}).value || '').trim(); let t = '';
+if(CABS === 'leave') t = '<span style="color:#2E8B57">No case · covered by the approved leave</span>';
+else if(CABS === 'coe') t = '<span style="color:#2E8B57">No case · CupOfEnglish reason</span>';
+else if(CABS === 'none') t = '<b style="color:#9A3B22">CASE · Teacher Absence · Unexcused</b> <span class="mute">· no notice · amount from POLICY</span>';
+else if(CABS === 'told'){ const k = classAbsTold(); if(!k || !h) t = '<span class="mute">Choose the date and time the teacher told us</span>'; else { const hrs = (new Date(d + 'T' + (h.length === 4 ? '0' + h : h) + ':00') - new Date(k.replace(' ', 'T') + ':00')) / 36e5, ok = hrs >= 4;
+  const ht = hrs < 0 ? 'after the class started' : Math.floor(hrs) + ' h ' + Math.round((hrs % 1) * 60) + ' min before class';
+  t = (ok ? '<b style="color:#B7791F">CASE · Teacher Absence · Excused</b>' : '<b style="color:#9A3B22">CASE · Teacher Absence · Unexcused</b>') + ' <span class="mute">· told us ' + esc(ht) + (ok ? ' (4 h or more)' : ' (under 4 h)') + ' · amount from POLICY</span>'; } }
+if(t) t += '<div class="mute" style="margin-top:3px">The regular class at this time is cancelled (no make-up) and the sub class is added.</div>';
+el.innerHTML = t; }
 async function sendClass(){
 const s = classStu(); if(!s) return toast('Choose a student from the list');
 const D = classDates(), f = {code:s.code, student:s.name, kind:CKIND, fresh: !!s.fresh, cn: s.fresh ? (($('cCn')||{}).value || '').trim() : '', book:$('cB').value, teacher:$('cT').value, date:$('cD').value, time:$('cH').value.trim(), mins:$('cM').value,
@@ -4435,9 +4448,10 @@ days: $('cR').checked ? classDays() : [], count: D.length, force: ckForce()};
 if(CKIND === 'TC' && CSRC){ if(CSRC === 'Student'){ classRefChk(); if(!CREF) return toast('Pick the referring student from the list'); if(CREF.code === s.code) return toast('A student cannot refer themselves'); Object.assign(f, { src: 'Student', refCode: CREF.code, refName: CREF.name }); } else Object.assign(f, { src: CSRC, partner: CSRC === 'Partner' ? (($('cPt') || {}).value || '').trim() : '' }); }
 if($('cR').checked && !f.days.length) return toast('Choose the days of the week');
 if(!f.teacher) return toast('Choose a teacher');
+if(CKIND === 'SC'){ if(!CABS) return toast('Choose why the regular teacher is out'); if(CABS === 'told' && !classAbsTold()) return toast('Choose when the teacher told us'); if(f.days.length) return toast('A substitute is for one class · untick Weekly package'); f.abs = { why: CABS, told: CABS === 'told' ? classAbsTold() : '' }; }
 if(!/^([01]?\d|2[0-3]):[0-5]\d$/.test(f.time)) return toast('Choose a time');
 const b = $('cGo'); b.disabled = true; b.textContent = 'Adding…';
-try{ const r = await api('addClass', TOKEN, f); if(!r.ok) throw r; toast('Added · ' + r.note + (r.ref || '')); CSRC = ''; CREF = null; if(f.fresh && SL){ SL.students.unshift({ code: s.code, name: s.name, book: f.book, teachers: [f.teacher], trial: f.kind === 'TC' }); keep('sl2', SL); }
+try{ const r = await api('addClass', TOKEN, f); if(!r.ok) throw r; toast('Added · ' + r.note + (r.ref || '')); CABS = ''; CSRC = ''; CREF = null; if(f.fresh && SL){ SL.students.unshift({ code: s.code, name: s.name, book: f.book, teachers: [f.teacher], trial: f.kind === 'TC' }); keep('sl2', SL); }
 try{ classShare(f, r, s); }catch(x){ closeSheet(); }
 Object.keys(SCC).forEach(k => { SCC[k]._t = 0; });     const d0 = new Date(); d0.setHours(12,0,0,0); const t = new Date(f.date+'T12:00:00');
 SC_OFF = Math.round((t - d0) / 864e5); loadSchedule(0); }
@@ -5825,7 +5839,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 406;
+const COE_V = 407;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
