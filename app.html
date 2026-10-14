@@ -5147,8 +5147,10 @@ ${x.amount && x.amount !== '0' && !/^Waived/.test(x.action || '') ? `<div id="cw
 }
 async function caseWaive(id){ const x = AC.rows.find(y => y.id === id); if(!x) return; const why = (($('cwWhy') || {}).value || '').trim(); if(!why) return toast('Write the reason first');
 if(!confirm('Waive ' + id + ' (' + x.employee + ', ' + x.amount + ')? It stays on record with no penalty.')) return;
-try{ const r = await api('mgmtCaseWaive', TOKEN, id, why); if(!r || !r.ok) throw r; x.amount = '0'; x.demerit = ''; x.done = true; if(r.action) x.action = r.action + (x.action ? '\n' + x.action : ''); keep('actions', AC); renderActions(); caseView(id); toast('✓ Waived · ' + x.employee); }
-catch(e){ toast((e && e.msg) || (/unknown action/i.test(String(e && (e.msg || e.message))) ? 'Server part not installed yet' : 'Not saved. Try again.')); } }   /* 14 Oct */
+const was = { amount: x.amount, demerit: x.demerit, done: x.done, action: x.action };
+x.amount = '0'; x.demerit = ''; x.done = true; x.action = 'Waived · ' + why + (x.action ? '\n' + x.action : ''); keep('actions', AC); renderActions(); caseView(id); toast('Waiving · ' + x.employee + '…');   /* 14 Oct: shown at once */
+try{ const r = await api('mgmtCaseWaive', TOKEN, id, why); if(!r || !r.ok) throw r; if(r.action) x.action = r.action + (was.action ? '\n' + was.action : ''); keep('actions', AC); renderActions(); if($('cwBox') === null && $('sheet').classList.contains('on')) try{ caseView(id); }catch(y){} toast('✓ Waived · ' + x.employee); }
+catch(e){ Object.assign(x, was); keep('actions', AC); renderActions(); try{ caseView(id); }catch(y){} toast((e && e.msg) || (/unknown action/i.test(String(e && (e.msg || e.message))) ? 'Server part not installed yet' : 'Not saved. Try again.')); } }   /* 14 Oct */
 async function caseDone(id, v){
 const x = AC.rows.find(y => y.id === id); if(!x) return; const prev = x.done; x.done = v; keep('actions', AC); renderActions(); toast(v ? 'Marked completed' : 'Marked open');
 try{ const r = await api('setCaseDone', TOKEN, id, v); if(!r.ok) throw r; }
@@ -5176,9 +5178,10 @@ const v = id => ($(id)||{}).value || '';
 const f = {subject:v('cS'),employee:v('cE'),type:v('cT'),student:v('cSt'),source:v('cSo'),assigned:'Operations',condition:v('cC'),status:v('cSt2'),tier:v('cTi'),
 demerit:v('cD'),incentive:v('cI'),amount:v('cA'),action:v('cX'),done:$('cDone').checked};
 if(!f.subject || !f.employee) return toast('Choose a subject and employee');
-const b = $('cGo'); b.disabled = true; b.textContent = 'Saving…';
-try{ const r = await api('addCase', TOKEN, f); if(!r.ok) throw r; closeSheet(); toast(r.caseId + ' added'); AC = null; loadActions(); }
-catch(e){ toast((e&&e.msg)||'Not saved. Try again.'); b.disabled=false; b.textContent='Add case'; }
+const ids = { cS: f.subject, cE: f.employee, cT: f.type, cSt: f.student, cSo: f.source, cC: f.condition, cSt2: f.status, cTi: f.tier, cD: f.demerit, cI: f.incentive, cA: f.amount, cX: f.action };
+closeSheet(); toast('Saving case · ' + f.employee + '…');   /* 14 Oct: closes at once, saves in the background */
+api('addCase', TOKEN, f).then(r => { if(!r || !r.ok) throw r; toast('✓ ' + r.caseId + ' added · ' + f.employee); AC = null; loadActions(); })
+.catch(e => { try{ caseSheet(); Object.keys(ids).forEach(k => { const el = $(k); if(el && ids[k] != null) el.value = ids[k]; }); if($('cDone')) $('cDone').checked = !!f.done; }catch(y){} toast((e && e.msg) || 'Case not saved · your details are back in the form. Try again.'); });
 }
 
 async function loadDb(quiet){ urls();
@@ -5870,7 +5873,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 424;
+const COE_V = 425;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
