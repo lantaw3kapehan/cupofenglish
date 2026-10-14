@@ -4458,7 +4458,7 @@ if(CKIND === 'SC'){ if(!CABS) return toast('Choose why the regular teacher is ou
 if(!/^([01]?\d|2[0-3]):[0-5]\d$/.test(f.time)) return toast('Choose a time');
 const b = $('cGo'); b.disabled = true; b.textContent = 'Adding…';
 try{ const r = await api('addClass', TOKEN, f); if(!r.ok) throw r; toast('Added · ' + r.note + (r.ref || '')); CABS = ''; CSRC = ''; CREF = null; if(f.fresh && SL){ SL.students.unshift({ code: s.code, name: s.name, book: f.book, teachers: [f.teacher], trial: f.kind === 'TC' }); keep('sl2', SL); }
-try{ classShare(f, r, s); }catch(x){ closeSheet(); }
+try{ classShare(f, r, s); if(r.sub) cxSubCard(r.sub); }catch(x){ closeSheet(); }
 Object.keys(SCC).forEach(k => { SCC[k]._t = 0; });     const d0 = new Date(); d0.setHours(12,0,0,0); const t = new Date(f.date+'T12:00:00');
 SC_OFF = Math.round((t - d0) / 864e5); loadSchedule(0); }
 catch(e){ toast((e&&e.msg)||'Not added. Try again.'); b.disabled = false; classPrev(); }
@@ -4581,6 +4581,8 @@ return open();
 }
 const TRIAL_WELCOME = "Hello! Welcome to CupOfEnglish. 😊\nIt’s a pleasure to meet you and your child! We’re happy to have you with us for the upcoming trial class.\n\nTo help your child have a smooth and comfortable first lesson, please kindly prepare the following:\n\n① Tencent Meeting (腾讯会议)\nPlease make sure it is installed and working properly before the class.\n\n② Camera On 📷\nWe encourage students to keep their cameras on so the teacher can observe their responses, give timely support, and create a more interactive learning experience.\n\n③ Class Recording 🎥\nThe trial class will be recorded. After the lesson, the teacher will send the recording here in the WeChat group so you can review your child’s class experience and performance.\n\nWe hope your child enjoys the class and feels comfortable learning with us. See you soon! 😊\n\n—— 中文 ——\n\n您好！欢迎来到 CupOfEnglish 😊\n很高兴认识您和孩子！也非常期待孩子参加接下来的试听课。\n\n为了让孩子的第一次课堂体验更加顺利、轻松，请您提前做好以下准备：\n\n① 腾讯会议\n请提前安装并确认腾讯会议可以正常使用，以便孩子准时、顺利进入课堂。\n\n② 打开摄像头 📷\n我们建议孩子上课时打开摄像头，这样老师可以更好地观察孩子的反应，及时给予引导和帮助，让课堂互动更加自然、有效。\n\n③ 课堂录像 🎥\n试听课会进行录制。课程结束后，老师会将课堂录像发送到本微信群，方便您回看并了解孩子的课堂体验和表现。\n\n希望孩子能够享受这次课堂体验，并轻松地融入我们的学习方式。期待课堂见！😊";
 async function cxWelcome(){ try{ await navigator.clipboard.writeText(TRIAL_WELCOME); toast('Welcome message copied · paste it in the WeChat group'); const b = $('cxWel'); if(b){ b.textContent = '✓ Welcome message copied'; } }catch(e){ openSheet('<h1>Welcome message</h1><p class="small" style="white-space:pre-line;user-select:text">' + esc(TRIAL_WELCOME) + '</p>'); } }
+function cxSubCard(t){ const h = $('sheetBody') && $('sheetBody').querySelector('h1'); if(!h) return; const L = String(t).split(' · ').map(x => x.trim()).filter(Boolean), bad = /NOT /.test(t), sus = /suspension/i.test(t), cs = /CASE /.test(t);
+  h.insertAdjacentHTML('afterend', '<div style="margin:10px 0 4px;padding:12px 14px;border-radius:14px;background:' + (bad || sus ? '#FFF1EC' : cs ? '#FFF8E6' : '#E8F6F1') + ';color:' + (bad || sus ? '#9A3B22' : cs ? '#8A5A00' : '#1E6B4F') + '"><b>' + (bad ? '⚠️ Check this' : cs ? 'Substitute · case lodged' : 'Substitute · done') + '</b><div class="small" style="margin-top:4px;line-height:1.5">' + L.map(esc).join('<br>') + '</div>' + (sus ? '<div class="small" style="margin-top:6px"><b>3rd absence this month · contract (d): immediate suspension · decide in Cases</b></div>' : '') + '</div>'); }   /* 14 Oct */
 function cxSheet(){
 const mv = CXP.kind === 'move', bl = CXP.kind === 'bal', cl = CXP.kind === 'class' || bl;
 openSheet(`<h1>${bl ? 'Lessons left · to send' : CXP.added ? (CXP.e.type === 'Trial' ? 'Trial class added ✓' : 'Class added ✓') : cl ? 'Class details to send' : mv ? 'Class moved · proof to send' : 'Proof to send'}</h1><div class="mute small">A clean picture for WeChat · student code and Chinese name included · ${bl ? 'from the ACTIVE tab' + (CXP.bal && CXP.bal.today ? ' + ' + CXP.bal.today + ' lesson(s) finished since the sheet’s last update' : '') : cl || mv ? 'with the VooV meeting ID to join' : 'no meeting ID'}</div>
@@ -5848,7 +5850,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 414;
+const COE_V = 415;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
