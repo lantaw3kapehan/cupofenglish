@@ -4472,6 +4472,8 @@ else if(CABS === 'told'){ const k = classAbsTold(); if(!k || !h) t = '<span clas
   t = (ok ? '<span style="color:#2E8B57">No case · told us ' + esc(ht) + ' (4 h or more)</span>' : '<b style="color:#9A3B22">CASE · Teacher Absence · Unexcused</b> <span class="mute">· told us ' + esc(ht) + ' (under 4 h) · amount from POLICY</span>'); } }
 if(t) t += '<div class="mute" style="margin-top:3px">The regular class at this time is cancelled (no make-up) and the sub class is added.</div>';
 el.innerHTML = t; }
+const BUSY = {};   /* 14 Oct: saves running in the background (no double taps) */
+const whenFree = fn => { if(!$('sheet').classList.contains('on')) return fn(); let n = 0; const w = setInterval(() => { if(!$('sheet').classList.contains('on') || ++n > 120){ clearInterval(w); if(n <= 120) fn(); } }, 1000); };
 async function sendClass(){
 const s = classStu(); if(!s) return toast('Choose a student from the list');
 const D = classDates(), f = {code:s.code, student:s.name, kind:CKIND, fresh: !!s.fresh, cn: s.fresh ? (($('cCn')||{}).value || '').trim() : '', book:$('cB').value, teacher:$('cT').value, date:$('cD').value, time:$('cH').value.trim(), mins:$('cM').value,
@@ -4481,12 +4483,17 @@ if($('cR').checked && !f.days.length) return toast('Choose the days of the week'
 if(!f.teacher) return toast('Choose a teacher');
 if(CKIND === 'SC'){ if(!CABS) return toast('Choose why the regular teacher is out'); if(CABS === 'told' && !classAbsTold()) return toast('Choose when the teacher told us'); if(f.days.length) return toast('A substitute is for one class · untick Weekly package'); f.abs = { why: CABS, told: CABS === 'told' ? classAbsTold() : '' }; }
 if(!/^([01]?\d|2[0-3]):[0-5]\d$/.test(f.time)) return toast('Choose a time');
-const b = $('cGo'); b.disabled = true; b.textContent = 'Adding…';
-try{ const r = await api('addClass', TOKEN, f); if(!r.ok) throw r; toast('Added · ' + r.note + (r.ref || '')); CABS = ''; CSRC = ''; CREF = null; if(f.fresh && SL){ SL.students.unshift({ code: s.code, name: s.name, book: f.book, teachers: [f.teacher], trial: f.kind === 'TC' }); keep('sl2', SL); }
-try{ classShare(f, r, s); if(r.sub) cxSubCard(r.sub); }catch(x){ closeSheet(); }
+const bk = 'c:' + f.code + '|' + f.date + '|' + f.time; if(BUSY[bk]) return toast('Still adding this class · wait a moment'); BUSY[bk] = 1;
+const body = $('sheetBody'), snap = body.innerHTML, vals = {}; body.querySelectorAll('input,select,textarea').forEach(el => { if(el.id) vals[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value; });
+const back = () => { const same = $('cGo') && body.innerHTML === snap; if(!same){ openSheet(snap); Object.keys(vals).forEach(k => { const el = $(k); if(!el) return; if(el.type === 'checkbox' || el.type === 'radio') el.checked = vals[k]; else el.value = vals[k]; }); } else { $('scrim').classList.add('on'); $('sheet').classList.add('on'); } const b = $('cGo'); if(b){ b.disabled = false; b.textContent = 'Add to calendar'; } try{ classPrev(); }catch(y){} };
+closeSheet(); toast('Adding ' + (s.name || s.code) + (f.count > 1 ? ' · ' + f.count + ' classes' : '') + '…');   /* 14 Oct: closes at once, adds in the background */
+try{ const r = await api('addClass', TOKEN, f); if(!r.ok) throw r; toast('✓ Added · ' + r.note + (r.ref || '')); CABS = ''; CSRC = ''; CREF = null; if(f.fresh && SL){ SL.students.unshift({ code: s.code, name: s.name, book: f.book, teachers: [f.teacher], trial: f.kind === 'TC' }); keep('sl2', SL); }
+const share = () => { try{ classShare(f, r, s); if(r.sub) cxSubCard(r.sub); }catch(x){ closeSheet(); } };
+whenFree(share);   /* the share message waits for a sheet you opened meanwhile */
 Object.keys(SCC).forEach(k => { SCC[k]._t = 0; });     const d0 = new Date(); d0.setHours(12,0,0,0); const t = new Date(f.date+'T12:00:00');
 SC_OFF = Math.round((t - d0) / 864e5); loadSchedule(0); }
-catch(e){ toast((e&&e.msg)||'Not added. Try again.'); b.disabled = false; classPrev(); }
+catch(e){ back(); toast(((e&&e.msg)||'Not added') + ' · your details are back in the form'); }
+finally{ delete BUSY[bk]; }
 }
 const evList = src => src==='stu' ? ((STU && STU.cls) || []) : src==='tw' ? ((TW && TW.events) || []) : src==='sw' ? ((SW && SW.events) || []) : ((SC && SC.events) || []);
 async function classEdit(i, src){
@@ -5693,11 +5700,15 @@ const f = { code: S.code, name: S.name, teacher: $('enT').value, start: $('enS')
 if(!S.sale){ Object.assign(f, { pkg: +S.pkg || 0, free: +S.free || 0, date: $('enD').value, method: $('enM').value.trim(), partner: $('enPa').value.trim(), invoice: $('enI').value.trim() });
 const fl = $('enF') && $('enF').files[0]; if(fl){ if(fl.size > 8e6) return toast('The invoice file is too big (8 MB max)'); f.file = await new Promise(res => { const rd = new FileReader(); rd.onload = () => res({ name: fl.name, mime: fl.type, b64: String(rd.result).split(',')[1] }); rd.readAsDataURL(fl); }); }
 try{ if(f.method) localStorage.setItem('coe.rpM', f.method); }catch(e){} }
-if(b){ b.disabled = true; b.textContent = 'Saving… (about 20–40 seconds)'; }
-try{ const r = await api('mgmtEnrolPaid', TOKEN, f); if(!r || !r.ok) throw r; AT = null; MS = null; try{ ding('msg'); }catch(e){}
-openSheet('<h1>✓ ' + esc(S.name) + ' enrolled</h1><div class="card" style="margin-top:10px;background:#F1FAF9;border-color:#BFE6E3"><div style="font-size:20px"><b style="color:#00737B">' + r.available + ' lessons</b> left</div><div class="small" style="margin-top:4px">' + r.pkg + (r.free ? ' + ' + r.free : '') + ' paid' + (r.deadline ? ' · valid until <b>' + new Date(r.deadline + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '</b>' : '') + '</div><div class="small mute" style="margin-top:4px">ACTIVE row ' + r.row + ' · SALES row ' + r.saleRow + (r.link ? ' · invoice saved' : '') + '</div></div>' +
-'<button class="btn teal block" style="margin-top:14px" onclick="cnOpen(\'' + esc(S.code) + '\')">Class notice</button><button class="btn ghost block" style="margin-top:8px" onclick="openStudent(\'' + esc(S.code) + '\')">Open student</button>'); }
-catch(e){ if(b){ b.disabled = false; b.textContent = 'Save enrolment'; } toast((e && e.msg) || 'Not saved. Check SALES and ACTIVE before trying again.'); } };
+const bk = 'e:' + S.code; if(BUSY[bk]) return toast('Still saving ' + S.name + '\'s enrolment · wait a moment'); BUSY[bk] = 1;
+const body = $('sheetBody'), snap = body.innerHTML, vals = {}; body.querySelectorAll('input,select,textarea').forEach(el => { if(el.id && el.type !== 'file') vals[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value; });
+closeSheet(); toast('Enrolling ' + S.name + '… (about 30 s · you can keep working)');   /* 14 Oct: closes at once, saves in the background */
+try{ const r = await api('mgmtEnrolPaid', TOKEN, f); if(!r || !r.ok) throw r; AT = null; MS = null; try{ ding('msg'); }catch(e){} toast('✓ ' + S.name + ' enrolled');
+whenFree(() => openSheet('<h1>✓ ' + esc(S.name) + ' enrolled</h1><div class="card" style="margin-top:10px;background:#F1FAF9;border-color:#BFE6E3"><div style="font-size:20px"><b style="color:#00737B">' + r.available + ' lessons</b> left</div><div class="small" style="margin-top:4px">' + r.pkg + (r.free ? ' + ' + r.free : '') + ' paid' + (r.deadline ? ' · valid until <b>' + new Date(r.deadline + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '</b>' : '') + '</div><div class="small mute" style="margin-top:4px">ACTIVE row ' + r.row + ' · SALES row ' + r.saleRow + (r.link ? ' · invoice saved' : '') + '</div></div>' +
+'<button class="btn teal block" style="margin-top:14px" onclick="cnOpen(\'' + esc(S.code) + '\')">Class notice</button><button class="btn ghost block" style="margin-top:8px" onclick="openStudent(\'' + esc(S.code) + '\')">Open student</button>')); }
+catch(e){ try{ if(!($('enGo') && $('sheetBody').innerHTML === snap)){ openSheet(snap); Object.keys(vals).forEach(k => { const el = $(k); if(!el) return; if(el.type === 'checkbox' || el.type === 'radio') el.checked = vals[k]; else el.value = vals[k]; }); } else { $('scrim').classList.add('on'); $('sheet').classList.add('on'); } ENS = S; const b2 = $('enGo'); if(b2){ b2.disabled = false; b2.textContent = 'Save enrolment'; } }catch(y){}
+  toast(((e && e.msg) || 'Not saved') + ' · check SALES and ACTIVE before trying again' + (f.file ? ' · choose the invoice file again' : '')); }
+finally{ delete BUSY[bk]; } };
 async function tlSched(){ const x = TLD; if(!x) return; if(!x.code) return toast('Add the student code first (DATABASE) · then set the schedule');
 await classForm(x.code); if(!$('cS')) return;
 try{ classKind(''); }catch(e){}   /* a regular class, even if the student was added as a trial */
@@ -5888,7 +5899,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 427;
+const COE_V = 428;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
