@@ -1131,12 +1131,12 @@ async function fastWrite(fn, args){ const rid = 'f' + Date.now().toString(36) + 
     const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'write', fn, args, rid }), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid));
     if(r && r.ok && r.queued) return fastAns(fn, args); break; }catch(e){ if(a) break; await new Promise(z => setTimeout(z, 800)); } }
   return apiNow(fn, ...args); }   /* not ready, not signed in there yet, or no answer → the normal save, exactly as today */
-const SB_R = /^(mgmt(Overview|Students|Student|Schedule|Teacher|Actions|Active|Renewals|Trials|TrialFus|Reports|ReportsWait|Performance|TeacherCard|PayChecks|PayReady|AvailAll|Health|Night|Msgs|Tab|Database|Payroll|Leave|Peer|Hours|StuClasses|Urls|EnqList|MonDay|VisitCoverage|AgreeMap|Growth|Pulse)|schedLists|moneyLists|dbLists)$/;
+const SB_R = /^(mgmt(Overview|Students|Student|Schedule|Teacher|Actions|Active|Renewals|Trials|TrialFus|Reports|ReportsWait|Performance|TeacherCard|PayChecks|PayReady|AvailAll|Health|Night|Msgs|Tab|Database|Payroll|Leave|Peer|Hours|StuClasses|Urls|EnqList|MonDay|VisitCoverage|AgreeMap|Growth)|schedLists|moneyLists|dbLists|t(Student|StuClasses|FbStatus|Growth|Schedule|PayCheck|PayReady|Msgs|Leave|LeaveClasses|MyVisits|MyComments|HwHist|Goals|NoteComments|Reminders|FbForm|PcForm|TrialForm|PeerForm))$/;   /* 14 Oct pm: + teachers' screens, − pulse */
 const SB_SH = /^mgmt(Health|Night|PayReady|AvailAll|Performance|TeacherCard|Peer|Hours|Trials|Reports|PayChecks|Active|Renewals|Overview|Schedule|Teacher)$/;   /* the same for all management (server SHARED_TTL) */
-const SB_BGAGE = { mgmtStudent: 20 * 6e4, mgmtStuClasses: 20 * 6e4, mgmtMsgs: 0, mgmtPulse: 0, mgmtHealth: 0 };
+const SB_BGAGE = { mgmtStudent: 20 * 6e4, mgmtStuClasses: 20 * 6e4, mgmtMsgs: 0, mgmtPulse: 0, mgmtHealth: 0, tStudent: 20 * 6e4, tStuClasses: 20 * 6e4, tMsgs: 0 };
 let SB_LASTW = 0; const SB_FRESH = {}, SB_WANT = {}; let SB_T = 0;
-function sbOn(){ try{ if(localStorage.getItem('coe.fastr') === '0') return false; }catch(e){} return !!(D && D.mgr && TOKEN); }
-function sbKey(fn, args){ return (SB_SH.test(fn) || !D.pres ? 'mgmt' : 'pres') + ':' + fn + '|' + JSON.stringify(args.slice(1)); }
+function sbOn(){ try{ if(localStorage.getItem('coe.fastr') === '0') return false; }catch(e){} return !!(D && TOKEN && (D.mgr || (D.me && D.me.name))); }
+function sbKey(fn, args){ return (/^t[A-Z]/.test(fn) ? String((D.me || {}).name || '').trim().toLowerCase() : SB_SH.test(fn) || !D.pres ? 'mgmt' : 'pres') + ':' + fn + '|' + JSON.stringify(args.slice(1)); }
 function sbDoc(key){ return new Promise(res => { (SB_WANT[key] = SB_WANT[key] || []).push(res); if(SB_T) return; SB_T = setTimeout(async () => { const W = Object.assign({}, SB_WANT); Object.keys(SB_WANT).forEach(k => delete SB_WANT[k]); SB_T = 0;
   let docs = {}; try{ const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 2500) : 0;
     const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: Object.keys(W) }), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid));
@@ -1144,9 +1144,9 @@ function sbDoc(key){ return new Promise(res => { (SB_WANT[key] = SB_WANT[key] ||
   Object.keys(W).forEach(k => W[k].forEach(f => f(docs[k] || null))); }, 25); }); }
 let SB_RD = 0;
 function sbRedraw(fn, args, data){ try{
-  if(fn === 'mgmtStudent'){ const code = args[1]; try{ store('set', 'coe.stu.' + code, JSON.stringify(data)); }catch(e){} if(window._stuOpen === code && STU && STU.code === code && $('sheet').classList.contains('on') && $('stuSch')){ STU.r = data; stuRender(); } return; }
-  if(fn === 'mgmtStuClasses'){ const code = args[1]; CLSM[code] = data; if(STU && STU.code === code){ STU.cls = data; const el = $('stuSch'); if(el) el.innerHTML = stuSched(data); } return; }
-  clearTimeout(SB_RD); SB_RD = setTimeout(() => bg(() => { try{ if(VIEW === 'astudents') loadStudents(); else if(VIEW === 'schedule') loadSchedule(0, true); else { const S = SCREENS[VIEW]; if(S) S[2](true); } }catch(e){} }), 300);
+  if(fn === 'mgmtStudent' || fn === 'tStudent'){ const code = args[1]; try{ store('set', 'coe.stu.' + code, JSON.stringify(data)); }catch(e){} if(window._stuOpen === code && STU && STU.code === code && $('sheet').classList.contains('on') && $('stuSch')){ STU.r = data; stuRender(); } return; }
+  if(fn === 'mgmtStuClasses' || fn === 'tStuClasses'){ const code = args[1]; CLSM[code] = data; if(STU && STU.code === code){ STU.cls = data; const el = $('stuSch'); if(el) el.innerHTML = stuSched(data); } return; }
+  clearTimeout(SB_RD); SB_RD = setTimeout(() => bg(() => { try{ if(VIEW === 'astudents') loadStudents(); else if(VIEW === 'schedule') loadSchedule(0, true); else if(VIEW === 'growth' || VIEW === 'qa') loadGrowth(); else if(VIEW === 'pay' || VIEW === 'mypay') loadMyReady(); else { const S = SCREENS[VIEW]; if(S) S[2](true); } }catch(e){} }), 300);
 }catch(e){} }
 async function sbRead(fn, args, real, ui){
   const key = sbKey(fn, args), f = SB_FRESH[key]; if(f && Date.now() - f.t < 20000) return f.data;
@@ -1158,9 +1158,9 @@ async function sbRead(fn, args, real, ui){
   return d.data; }
 function api(fn, ...args){
 if(!LIVE) return DEMO_API(fn, ...args);
-if(!API_READ.test(fn) && !API_BG.test(fn) && !/Seen|Ack|Pulse|Nudge/.test(fn)) SB_LASTW = Date.now();   /* a save: read fresh for 2 min */
+if(!API_READ.test(fn) && !API_BG.test(fn) && !SB_R.test(fn) && !/Seen|Ack|Pulse|Nudge/.test(fn)) SB_LASTW = Date.now();   /* a save: read fresh for 2 min */
 if(FAST_W[fn] && fastOn()) return fastWrite(fn, args);   /* 14 Oct: fast layer (test users first) */
-if(!API_READ.test(fn) && !API_BG.test(fn)) return apiNow(fn, ...args);   /* 14 Oct: API_BG reads also wait in the queue */
+if(!API_READ.test(fn) && !API_BG.test(fn) && !(SB_R.test(fn) && sbOn())) return apiNow(fn, ...args);   /* 14 Oct: API_BG reads also wait in the queue */
 const k = fn + '|' + JSON.stringify(args); if(API_FLY[k]) return API_FLY[k];
 const go = () => apiNow(fn, ...args);
 if(SB_R.test(fn) && sbOn() && Date.now() - SB_LASTW > 120000){ const ui = Date.now() - (window._ui || 0) < 1500;   /* 14 Oct pm: database copy first */
@@ -5928,7 +5928,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 430;
+const COE_V = 431;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
