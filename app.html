@@ -1117,7 +1117,7 @@ let API_N = 0; const API_Q = [], API_FLY = {};
 function bg(f){ const u = window._ui; window._ui = 0; try{ return f(); } finally { window._ui = u; } }   
 const API_BG = /^(mgmtAvailAll|mgmtPayChecks|mgmtVisitCoverage|mgmtMonDay|mgmtReportsWait|mgmtAgreeMap|mgmtEnqList|mgmtMsgs|mgmtHours|mgmtWeekSum|mgmtRemindLog|mgmtReminders|mgmtTeacherVisits|mgmtPeerMonth|mgmtPayReady|tFbStatus)$/;
 function apiPump(){ while(API_N < 3 && API_Q.length){ API_N++; API_Q.shift()().finally(() => { API_N--; apiPump(); }); } }
-const FAST_URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe', FAST_USERS = ['misty', 'julia'], FAST_W = { saveNote: 1, markHomework: 1, tNoteTag: 1, tGoalsSave: 1, timeIn: 1, classIn: 1, tFbSubmit: 1, tPcSubmit: 1, tTrialSubmit: 1, tPeerSubmit: 1, tSetMeet: 1, tMsgAck: 1, tVisitAck: 1, tMsgSeen: 1, tHwFlag: 1 };
+const FAST_URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe', FAST_USERS = ['misty', 'julia'], FAST_W = { saveNote: 1, markHomework: 1, tNoteTag: 1, tGoalsSave: 1, timeIn: 1, classIn: 1, tFbSubmit: 1, tPcSubmit: 1, tTrialSubmit: 1, tPeerSubmit: 1, tSetMeet: 1, tMsgAck: 1, tVisitAck: 1, tMsgSeen: 1, tHwFlag: 1, tMsgSend: 1, tLeaveRequest: 1, tPayVerify: 1 };
 function fastOn(){ try{ const o = localStorage.getItem('coe.fast'); if(o === '0') return false; if(o === '1') return true; }catch(e){} return !!(D && !D.mgr && D.me && D.me.name); }   /* 14 Oct pm: every teacher (was FAST_USERS only) */
 function fastAns(fn, args){ const t = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }), a = args[1] || {};
   if(fn === 'saveNote') return { ok: true, queued: true, note: {}, hw: a.homework ? { time: t, text: String(a.homework) } : null };
@@ -1129,15 +1129,19 @@ function fastAns(fn, args){ const t = new Date().toLocaleTimeString('en-GB', { h
   if(fn === 'tPeerSubmit'){ let t = '', p = ''; try{ const x = prTot(); t = x.t; p = x.p; }catch(e){} return { ok: true, queued: true, total: t, pct: p }; }
   if(fn === 'tPcSubmit' || fn === 'tTrialSubmit') return { ok: true, queued: true, total: '', cefr: '', label: '' };
   if(fn === 'tSetMeet') return { ok: true, queued: true, meet: args[2] };
+  if(fn === 'tMsgSend') return { ok: true, queued: true, note: 'Sent · management sees it in the app' };
+  if(fn === 'tLeaveRequest') return { ok: true, queued: true, note: 'Leave request sent · it shows in your list within a minute', classes: 0 };
+  if(fn === 'tPayVerify'){ const ok = !!args[2], c0 = (typeof PCK !== 'undefined' && PCK && PCK.check) || {}, net = (typeof PCK !== 'undefined' && PCK && PCK.me && PCK.me.net) || '', d = new Date(), at = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + t;
+    return { ok: true, queued: true, check: Object.assign({}, c0, { status: ok ? 'Verified' : 'Disputed', net: net, note: ok ? (c0.note || '') : (c0.note && c0.status !== 'Verified' ? c0.note + '\n' : '') + at + ' · ' + String(args[3] || ''), at: new Date().toISOString().slice(0, 16).replace('T', ' ') }), note: ok ? 'Thank you · management sees your pay is verified' : 'Sent · management sees your note on Payroll' }; }
   if(fn === 'tVisitAck') return { ok: true, queued: true, at: t };
   if(fn === 'tMsgAck') return { ok: true, queued: true, note: 'Saved' };
   return { ok: true, queued: true }; }
 let FF = [];   /* 14 Oct pm: saves the sheet refused later (fast layer) */
-const FF_L = { tFbSubmit: 'Monthly feedback', tPcSubmit: 'Progress check', tTrialSubmit: 'Trial report', tPeerSubmit: 'Peer review', saveNote: 'Class note', markHomework: 'Homework', timeIn: 'Time-in', classIn: "I'm in", tGoalsSave: 'Goals', tNoteTag: 'Note tag', tSetMeet: 'Meeting ID' };
+const FF_L = { tFbSubmit: 'Monthly feedback', tPcSubmit: 'Progress check', tTrialSubmit: 'Trial report', tPeerSubmit: 'Peer review', saveNote: 'Class note', markHomework: 'Homework', timeIn: 'Time-in', classIn: "I'm in", tGoalsSave: 'Goals', tNoteTag: 'Note tag', tSetMeet: 'Meeting ID', tMsgSend: 'Message', tLeaveRequest: 'Leave request', tPayVerify: 'Pay check' };
 async function fastFails(){ if(!TOKEN || !D || D.mgr) return; try{ const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'mine', token: TOKEN }) }).then(x => x.json());
   if(!r || !r.ok) return; let ok = []; try{ ok = JSON.parse(localStorage.getItem('coe.ffok') || '[]'); }catch(e){} FF = (r.failed || []).filter(x => FF_L[x.fn] && ok.indexOf(x.id) < 0); ffPaint(); }catch(e){} }
 function ffOk(id){ try{ const ok = JSON.parse(localStorage.getItem('coe.ffok') || '[]'); ok.push(id); localStorage.setItem('coe.ffok', JSON.stringify(ok.slice(-50))); }catch(e){} FF = FF.filter(x => x.id !== id); ffPaint(); }
-function ffWho(x){ const a = x.a1; return typeof a === 'string' ? a : a && (a.student || a.code || a.date) || ''; }
+function ffWho(x){ const a = x.a1; return String(typeof a === 'string' ? a : a && (a.student || a.code || a.date || a.type || a.from) || '').slice(0, 60); }
 function ffPaint(){ try{ const el = $('v-today'); if(!el) return; const old = $('ffBox'); if(old) old.remove(); if(!FF.length) return;
   el.insertAdjacentHTML('afterbegin', '<div id="ffBox" class="card" style="border-color:#E9B8AC;background:#FFF5F2;margin-bottom:12px"><b style="color:#9A3B22">Not sent · please check</b>' + FF.map(x => { const code = typeof x.a1 === 'string' ? x.a1 : ''; const open = x.fn === 'tFbSubmit' && code ? `<button class="btn teal sm" onclick="fbSheet('${esc(code)}')">Open</button>` : x.fn === 'tPcSubmit' && code ? `<button class="btn teal sm" onclick="pcForm('${esc(code)}')">Open</button>` : '';
     return `<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:8px"><div class="small"><b>${esc(FF_L[x.fn])}</b>${ffWho(x) ? ' · ' + esc(ffWho(x)) : ''} · ${esc(String(x.error || 'refused'))} <span class="mute">· ${esc(new Date(x.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}</span></div><div style="display:flex;gap:6px">${open}<button class="btn ghost sm" onclick="ffOk(${x.id})">OK</button></div></div>`; }).join('') + '</div>'); }catch(e){} }
@@ -3535,7 +3539,7 @@ const f = { type: LVF.type, from: $('tlF').value, to: $('tlT').value, part: LVF.
 if(!f.type) return toast('Choose the type of leave'); if(some && (!f.tFrom || !f.tTo)) return toast('Pick from what time to what time'); if(String(f.reason).trim().length < 5) return toast('Write a short reason');
 if(!LVFILES.length && !f.later) return toast('Attach your proof, or tick "I\'ll send it later"');
 const b = $('tlGo'); b.disabled = true; b.textContent = 'Sending…';
-try{ const r = await api('tLeaveRequest', TOKEN, f); if(!r.ok) throw r; LVFILES = []; closeSheet(); toast('✓ ' + r.note + (r.classes ? ' · ' + r.classes + ' classes in those dates' : '')); loadTLeave(); }
+try{ const r = await api('tLeaveRequest', TOKEN, f); if(!r.ok) throw r; LVFILES = []; closeSheet(); toast('✓ ' + r.note + (r.classes ? ' · ' + r.classes + ' classes in those dates' : '')); if(r.queued) setTimeout(loadTLeave, 75000); else loadTLeave(); }
 catch(e){ b.disabled = false; b.textContent = 'Send request'; toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); } }
 
 
@@ -4289,7 +4293,7 @@ function tmTo(b){ document.querySelectorAll('#tmTo button').forEach(x => x.class
 async function tMsgSend(parent){ const t = ($('tmR') || {}).value || ''; if(!t.trim()) return toast('Write the message');
 const po = !parent && !!(document.querySelector('#tmTo button.on') || {dataset:{}}).dataset.p;
 closeSheet(); toast('Sending…');
-try{ const r = await api('tMsgSend', TOKEN, t, parent || '', po); if(!r.ok) throw r; toast('✓ ' + r.note); await loadTMsgs(); if(parent) tMsgOpen(parent); }
+try{ const r = await api('tMsgSend', TOKEN, t, parent || '', po); if(!r.ok) throw r; toast('✓ ' + r.note); if(r.queued){ setTimeout(loadTMsgs, 75000); if(parent) tMsgOpen(parent); } else { await loadTMsgs(); if(parent) tMsgOpen(parent); } }
 catch(e){ toast(((e && (e.msg || e.message)) || 'Not sent') + ' · your message is kept, tap Send again'); if(parent) tMsgOpen(parent); else tMsgNew();
 setTimeout(() => { if($('tmR')) $('tmR').value = t; if(po){ const p = document.querySelector('#tmTo button[data-p="1"]'); if(p) tmTo(p); } }, 30); } }
 setInterval(() => { if(!D || document.hidden) return; if(D.mgr) loadMsgs(true); else loadTMsgs(); }, 120000);
@@ -5945,7 +5949,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 435;
+const COE_V = 436;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -7614,7 +7618,7 @@ if(dup('t' + parent, t)) return toast('Already sent ✓');
 const th = ((TMSG && TMSG.threads) || []).find(x => x.root.id === parent); const loc = { role: 'teacher', from: (D.me || {}).name || 'You', text: t, at: nowAt(), pending: 1 };
 if(th){ th.replies.push(loc); th.lastAt = loc.at; }
 tMsgOpen(parent); toast('✓ Sent');
-try{ const r = await api('tMsgSend', TOKEN, t, parent, false); if(!r || !r.ok) throw r; delete loc.pending; loadTMsgs(); }
+try{ const r = await api('tMsgSend', TOKEN, t, parent, false); if(!r || !r.ok) throw r; delete loc.pending; if(r.queued) setTimeout(loadTMsgs, 75000); else loadTMsgs(); }
 catch(e){ delete SENT['t' + parent]; if(th) th.replies = th.replies.filter(x => x !== loc); toast(((e && (e.msg || e.message)) || 'Not sent') + ' · your message is kept, tap Send again'); tMsgOpen(parent); setTimeout(() => { const r = $('tmR'); if(r) r.value = t; }, 30); }
 };
 })();
