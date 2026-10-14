@@ -2833,14 +2833,15 @@ function cjDay(d){ if(!d) return ''; if(/^\d{4}-\d{2}-\d{2}/.test(String(d))) re
 function cjHtml(S){ try{
 const r = (S && S.r) || {}, P = r.profile, col = re => { if(!P || !P.head) return ''; const j = P.head.findIndex(h => re.test(String(h || ''))); return j > -1 ? P.row[j] : ''; };
 const mon = d => { const x = new Date(cjDay(d) + 'T12:00:00'); return isNaN(x) ? '' : x.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }); };
-const chain = String(col(/CEFR\s*&\s*BOOKS/i) || '').split(/→|->/).map(cjLv).filter(i => i >= 0);
-const first = cjDay(col(/FIRST CLASS/i)), tr = r.trial && cjLv(r.trial.cefr) >= 0 ? r.trial : null, T = [];
+const cbTxt = String(col(/CEFR\s*&\s*BOOKS/i) || ''), chain0 = cbTxt.split(/→|->/).map(cjLv).filter(i => i >= 0), dbTr = cjLv(col(/TRIAL CLASS\s*·\s*CEFR/i)), curBk = (cbTxt.split(/→|->/).pop().split(',')[1] || '').trim();
+const chain = dbTr >= 0 && (!chain0.length || dbTr < chain0[0]) ? [dbTr].concat(chain0) : chain0;   /* 14 Oct: start from the trial level in DATABASE, then the levels since */
+const first = cjDay(col(/FIRST CLASS/i)), tr = r.trial && cjLv(r.trial.cefr) >= 0 ? r.trial : (dbTr >= 0 && cjDay(col(/TRIAL CLASS\s*·\s*DATE/i)) ? { date: col(/TRIAL CLASS\s*·\s*DATE/i), cefr: col(/TRIAL CLASS\s*·\s*CEFR/i) } : null), T = [];
 if(tr) T.push({ d: cjDay(tr.date), i: cjLv(tr.cefr), en: 'Trial class assessment', zh: '试听评估' });
-if(chain.length) T.push({ d: first || (tr && cjDay(tr.date)) || '', i: chain[0], en: 'Started with us', zh: '入学起点', start: 1 });
-chain.slice(1).forEach(i => T.push({ d: '', i, en: 'Levelled up', zh: '升级' }));
+if(chain.length) T.push({ d: first || (tr && cjDay(tr.date)) || '', i: chain[0], en: 'Started with us', zh: '入学起点', start: 1, bk: dbTr >= 0 && chain[0] === dbTr ? String(col(/TRIAL CLASS\s*·\s*BOOK/i) || '').trim() : (chain.length === 1 ? curBk : '') });
+chain.slice(1).forEach((i, k, a) => T.push({ d: '', i, en: 'Levelled up', zh: '升级', bk: k === a.length - 1 ? curBk : '' }));
 (r.checks || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(c => { const i = cjLv(c.cefr); if(i >= 0) T.push({ d: cjDay(c.date), i, en: 'Progress check', zh: '阶段测评' }); });
 if(!T.length) return '';
-const MO = (r.monthly || []).filter(x => x && x.m), U = x => Number(x.u) || Number(x.n) || 0, rd = v => Math.round(v * 10) / 10, tot = rd(MO.reduce((a, x) => a + U(x), 0));
+const MO = (r.monthly || []).filter(x => x && x.m), U = x => Number(x.u) || Number(x.n) || 0, rd = v => Math.round(v * 10) / 10, tot0 = rd(MO.reduce((a, x) => a + U(x), 0)), tot = Math.max(tot0, Number(String(col(/ENROLLMENT\s*·\s*TOTAL/i) || '').replace(/[^\d.]/g, '')) || 0);   /* 14 Oct: DATABASE total when higher */
 const DT = T.filter(x => x.d && !/^Trial/.test(x.en)).sort((a, b) => a.d.localeCompare(b.d)); DT.forEach((x, k) => { const a = x.d.slice(0, 7), b = k + 1 < DT.length ? DT[k + 1].d.slice(0, 7) : '9999-99'; x.u = MO.length ? rd(MO.filter(y => y.m >= a && y.m < b).reduce((s, y) => s + U(y), 0)) : null; });
 const BK = {}; MO.forEach(x => { const c = String(x.c || '').trim() || 'Other'; BK[c] = (BK[c] || 0) + U(x); });
 const st = T.find(x => x.start) || T[0], C = (r.checks || []).filter(c => cjLv(c.cefr) >= 0).sort((a, b) => String(b.date).localeCompare(String(a.date)));
@@ -2864,8 +2865,8 @@ return '<section class="sec cj"><style>.cj-st{display:flex;flex-direction:column
 const ev = x => (x.start ? '入学 Start' : /^Trial/.test(x.en) ? '试听 Trial' : /^Renew/.test(x.en) ? '续费 Renewed' : /^Level/.test(x.en) ? '升级 Up' : (/\+/.test(CJ_L[x.i]) ? CJ_L[x.i] + ' ' : '') + '测评 Check');
 return '<style>.cj-sx{display:flex;gap:4px;align-items:flex-end;margin-top:14px}.cj-ex{display:flex;gap:4px;align-items:flex-start;border-top:2px solid #D6DCE2;padding-top:4px}.cj-sx>div,.cj-ex>div{flex:1;min-width:0;text-align:center}.cj-tg2{font-size:10px;font-weight:700;min-height:16px;color:#00737B;white-space:nowrap}.cj-sx .nx .cj-tg2{color:#8A5A00}.cj-bar{border-radius:10px 10px 3px 3px;background:#F4F5F8;color:#B9B6C6;display:flex;flex-direction:column;align-items:center;padding-top:6px;box-sizing:border-box}.cj-bar b{font-size:13px}.cj-bar span{font-size:10px}.dn .cj-bar{background:#DDF2F1;color:#00737B}.now .cj-bar{background:#00737B;color:#fff}.nx .cj-bar{background:#fff;border:2px dashed #E9C46A;color:#00737B}.cj-ex i{display:block;font-style:normal;font-size:10px;line-height:1.3;color:#2B2253;margin-top:4px}.cj-ex i em{font-style:normal;color:#00737B;font-weight:700}.cj-ex i small{color:#6F6B85}</style>' +
 '<div class="cj-sx">' + CJ_M.map((m, k) => '<div class="' + cl(k) + '"><div class="cj-tg2">' + (k === nowK ? '现在 Now' : k === nowK + 1 ? '目标 Next' : '') + '</div><div class="cj-bar" style="height:' + (46 + k * 14) + 'px"><b>' + m[0] + '</b><span>' + m[1] + '</span></div></div>').join('') + '</div>' +
-'<div class="cj-ex">' + CJ_M.map((m, k) => '<div>' + T.filter(x => at(x) === k).map(x => '<i>' + esc(mon(x.d) || '—') + '<br><em>' + ev(x) + '</em>' + (x.u > 0 ? '<br><small>' + x.u + ' 课时</small>' : '') + '</i>').join('') + '</div>').join('') + '</div>'; })() +
-'<div class="cj-note">CEFR is the international scale for English levels, from Pre-A1 up to C2. A “+” means the upper half of a level. CEFR 是国际通用的英语水平标准（Pre-A1 至 C2），“+”表示该级别的高阶。</div>' + (!MO.length && S.s && (+S.s.done > 0 || (S.s.left != null && !S.s.shared)) ? '<div class="small" style="margin-top:10px"><b>' + (+S.s.done || 0) + ' lessons taken · 本期已上</b>' + (S.s.left != null && !S.s.shared ? ' · <b>' + S.s.left + ' left · 剩余</b>' : '') + ' <span class="mute">· this package 本期课时包</span></div>' : '') + (MO.length ? '<div class="small" style="margin-top:10px"><b>' + tot + ' lessons with us</b> · 共 ' + tot + ' 课时<div class="mute" style="margin-top:2px">By book 按教材: ' + Object.keys(BK).sort((a, b) => BK[b] - BK[a]).map(c => esc(c) + ' ' + rd(BK[c])).join(' · ') + '</div></div>' : '') + '</section>';
+'<div class="cj-ex">' + CJ_M.map((m, k) => '<div>' + T.filter(x => at(x) === k).map(x => '<i>' + esc(mon(x.d) || '—') + '<br><em>' + ev(x) + '</em>' + (x.bk ? '<br><small><b>' + esc(x.bk) + '</b></small>' : '') + (x.u > 0 ? '<br><small>' + x.u + ' 课时</small>' : '') + '</i>').join('') + '</div>').join('') + '</div>'; })() +
+'<div class="cj-note">CEFR is the international scale for English levels, from Pre-A1 up to C2. A “+” means the upper half of a level. CEFR 是国际通用的英语水平标准（Pre-A1 至 C2），“+”表示该级别的高阶。</div>' + (!MO.length && S.s && (+S.s.done > 0 || (S.s.left != null && !S.s.shared)) ? '<div class="small" style="margin-top:10px"><b>' + (+S.s.done || 0) + ' lessons taken · 本期已上</b>' + (S.s.left != null && !S.s.shared ? ' · <b>' + S.s.left + ' left · 剩余</b>' : '') + ' <span class="mute">· this package 本期课时包</span></div>' : '') + (MO.length ? '<div class="small" style="margin-top:10px"><b>' + tot + ' lessons with us</b> · 共 ' + tot + ' 课时<div class="mute" style="margin-top:2px">' + (tot > tot0 ? 'Since ' + esc(mon(MO.map(x => x.m).sort()[0] + '-01')) + ' in the app · ' : '') + 'By book 按教材: ' + Object.keys(BK).sort((a, b) => BK[b] - BK[a]).map(c => esc(c) + ' ' + rd(BK[c])).join(' · ') + '</div></div>' : '') + '</section>';
 }catch(e){ return ''; } }
 window.cjPic = function(){ const J = window._CJ; if(!J) return toast('Open the student again');
 openSheet('<h1>CEFR journey picture</h1><div class="mute small">' + esc(J.who.student || '') + ' · for the parent · Chinese and English</div>' +
@@ -2899,7 +2900,7 @@ marks(k).forEach((mk, j) => { const w = T.w(mk[0], cf) + 28, cx = Math.max(T.CX,
 y = base + 18;
 if(T.draw){ T.c.fillStyle = '#D6DCE2'; T.c.fillRect(T.CX, y, AW, 3); }
 /* under each step: when it happened (trial, start, checks), lessons at that stage */
-const EV = x => x.start ? '入学 Start' : /^Renew/.test(x.en) ? '续费 Renewed' : /^Trial/.test(x.en) ? '试听 Trial' : /^Level/.test(x.en) ? '升级 Up' : '测评 Check';
+const EV0 = x => x.start ? '入学 Start' : /^Renew/.test(x.en) ? '续费 Renewed' : /^Trial/.test(x.en) ? '试听 Trial' : /^Level/.test(x.en) ? '升级 Up' : '测评 Check', EV = x => EV0(x) + (x.bk ? ' · ' + x.bk : '');
 let low = y + 10;
 for(let k = 0; k < n; k++){ const X = T.CX + k * (cw + gap) + cw / 2; let yy = y + 14;
 J.T.filter(x => (/^Trial/.test(x.en) && st ? J.mk(st.i) : J.mk(x.i)) === k).forEach(x => { const sub = /\+/.test(CJ_L[x.i]) ? CJ_L[x.i] + ' ' : '';
@@ -5839,7 +5840,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 407;
+const COE_V = 408;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
