@@ -3620,7 +3620,7 @@ if(!t) return `<span class="chip coral">Waiting for ${tdWho(x.t)}'s report</span
 return t.status === 'Ready' ? '<span class="chip amber">PDF ready · not sent yet</span>' : t.status === 'Translating' ? '<span class="chip">Adding Chinese</span>' : '<span class="chip">PDF being made</span>'; }
 function trlBtn(x){ const t = x.tr; if(!t || !t.label) return ''; const i = (TRL.rows||[]).indexOf(t);
 return `<div class="tdb"><button class="btn ${t.status === 'Ready' ? 'teal' : 'ghost'} sm" onclick="tlOpen(${i})">${t.status === 'Ready' ? 'Send' : 'Open'}</button></div>`; }
-function fuSheet(i){ const x = TDF[i]; if(!x) return; FUS = { k: x.k, name: x.name, st: null };
+function fuSheet(i){ const x = typeof i === 'object' ? i : TDF[i]; if(!x) return; FUS = { k: x.k, name: x.name, st: null, code: x.code || '', teacher: x.teacher || '' };
 const cur = TFU[x.k], opt = (k, s) => `<button type="button" class="rno" data-k="${k}" onclick="FUS.st='${k}';document.querySelectorAll('.rno').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'))"><b>${k}</b><span>${s}</span></button>`;
 openSheet(`<h1>${esc(x.name)}</h1><div class="mute small">Trial ${tdDate(x.date)} · ${tdWho(x.t)} · how did the follow-up go?${cur ? ' · now: <b>' + esc(cur.st) + '</b>' : ''}</div>
 <div class="rnl">${opt('Following up','messaged the parent · waiting for an answer')}${opt('Thinking it over','parent replied · still deciding')}
@@ -5990,7 +5990,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 450;
+const COE_V = 451;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -8612,6 +8612,60 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     for(const it of q){ if((it.n || 0) >= 5 && Date.now() - (it.last || 0) < 10 * 60000){ left.push(it); continue; } it.last = Date.now(); try{ const a = (it.args || []).slice(); if(typeof TOKEN !== 'undefined' && TOKEN && typeof a[0] === 'string') a[0] = TOKEN; const r = await apiOnce(it.fn, a, 45000, it.rid); if(r && r.ok){ sent++; continue; } if(r && r.error === 'AUTH'){ left.push(it); continue; } it.n = (it.n || 0) + 1; it.err = String((r && (r.error || r.msg)) || '').slice(0, 120); left.push(it); }catch(e){ it.n = (it.n || 0); left.push(it); } }
     put(left); busy = 0; { const bad = left.filter(x => (x.n || 0) >= 5); if(bad.length && !window._wqWarn){ window._wqWarn = 1; try{ toast('⚠ ' + bad.length + ' item' + (bad.length === 1 ? '' : 's') + ' saved on this phone could not be sent yet' + (bad[0].err ? ' (' + bad[0].err + ')' : '') + '. Please tell Ops.'); }catch(e){} } } if(sent){ try{ toast('✓ Sent ' + sent + ' saved item' + (sent === 1 ? '' : 's') + ' from this device'); }catch(e){} try{ if(typeof reload === 'function' && typeof D !== 'undefined' && D && !D.mgr) reload(false); }catch(e){} } };
   setInterval(function(){ try{ wqFlush(); }catch(e){} }, 30000); window.addEventListener('online', function(){ setTimeout(function(){ try{ wqFlush(); }catch(e){} }, 2000); }); setTimeout(function(){ try{ wqFlush(); }catch(e){} }, 6000);
+})();
+</script>
+<script>
+(function(){
+  const LOG = {}, PN = {}, up = s => String(s || '').trim().toUpperCase();
+  let BACK = null, PEND = null;
+  const stName = () => { try{ const h = document.querySelector('#sheetBody .shero h1'); const t = h && h.firstChild ? String(h.firstChild.textContent || '').trim() : ''; if(t) return t; }catch(e){} return (STU && STU.s && STU.s.name) || (STU && STU.code) || ''; };
+  const when = s => { const d = new Date(String(s).replace(' ', 'T') + ':00'); return isNaN(d) ? esc(s) : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : ''); };
+  const logHtml = (L, n) => !L ? '<div class="sk"></div>' : !L.length ? '<div class="small mute">No notes yet.</div>' :
+    L.slice(0, n).map(x => '<div class="mini" style="padding:8px 10px"><div class="row small" style="gap:6px;flex-wrap:wrap"><b>' + esc(x.status || 'Note') + '</b><span class="mute grow">' + when(x.at) + (x.by ? ' · ' + esc(x.by) : '') + '</span></div>' + (x.note ? '<div class="small" style="margin-top:2px;white-space:pre-line">' + esc(x.note) + '</div>' : '') + '</div>').join('') +
+    (L.length > n ? '<div class="small mute" style="margin-top:4px">' + (L.length - n) + ' older · tap Update to see all</div>' : '');
+  const lk = (code, key) => up(code) || String(key || '').toLowerCase();
+  async function loadLog(code, key, note){ const k = lk(code, key); if(!k) return []; try{ const r = await api('mgmtStuLog', TOKEN, up(code), Object.assign({ key: key || '' }, note || {})); if(r && r.ok){ let L = r.log || []; if(note && note.note && !L.some(y => y.note === note.note)) return []; PN[k] = (PN[k] || []).filter(x => Date.now() - x.t < 120000); LOG[k] = PN[k].filter(x => !L.some(y => y.note === x.note)).concat(L); return LOG[k]; } }catch(e){} return LOG[k] || []; }
+
+  // ── under both cards (trial follow-up · renewal status): a bigger note box, "Save note only" and the history ──
+  function addOn(code, key, name, stage, noteId){ const b = $('sheetBody'); if(!b) return;
+    const n = $(noteId); if(n && n.tagName === 'INPUT'){ const t = document.createElement('textarea'); t.id = n.id; t.className = n.className; t.rows = 2; t.placeholder = n.placeholder; t.maxLength = 500; n.replaceWith(t); }
+    const btn = [...b.querySelectorAll('button.btn.block')].find(x => x.textContent.trim() === 'Save');
+    if(btn) btn.insertAdjacentHTML('afterend', '<button class="btn ghost block" style="margin-top:8px" id="stNo">Save note only · status stays</button>');
+    b.insertAdjacentHTML('beforeend', '<h3 style="margin:16px 0 6px">History</h3><div id="stLog">' + logHtml(LOG[lk(code, key)], 10) + '</div>');
+    const nb = $('stNo'); if(nb) nb.onclick = async () => { const v = (($(noteId) || {}).value || '').trim(); if(!v) return toast('Type the note first');
+      const k = lk(code, key), me = (D && D.me && D.me.name) || '', bk = BACK || (stage === 'student' && RNS && RNS.back) || null; BACK = null;
+      const it = { at: ymdLocal(new Date()) + ' ' + new Date().toTimeString().slice(0, 5), status: 'Note', note: v, by: me, t: Date.now() }; PN[k] = [it].concat(PN[k] || []); LOG[k] = [it].concat(LOG[k] || []);
+      closeSheet(); toast('Note saved · ' + name); if(bk) setTimeout(bk, 80); paintBox();
+      const L = await loadLog(code, key, { note: v, name: name, stage: stage }); if(!L.some(y => y.note === v)){ PN[k] = (PN[k] || []).filter(x => x !== it); LOG[k] = (LOG[k] || []).filter(x => x !== it); toast('Note not saved · check your internet and try again'); } paintBox(); };
+    loadLog(code, key).then(L => { const el = $('stLog'); if(el) el.innerHTML = logHtml(L, 10); }); }
+  const _fu = window.fuSheet; window.fuSheet = function(i){ BACK = PEND; PEND = null; const r = _fu.apply(this, arguments); try{ const s = FUS; if(s){ addOn(s.code, s.k, s.name, 'trial', 'fuN');
+    if(s.code && !/Enrolling/.test(((TFU || {})[s.k] || {}).st || '')){ const h = document.querySelector('#sheet .rnl'); if(h) h.insertAdjacentHTML('beforebegin', '<button type="button" class="btn teal block" style="margin:12px 0 4px" onclick="enSheet(\'' + esc(s.code) + '\',\'' + esc(String(s.name).replace(/'/g, '')) + '\',\'' + esc(String(s.teacher || '').replace(/'/g, '')) + '\')">✓ Enrolled · paid · record the first package</button>'); } } }catch(e){} return r; };
+  const _rn = window.renSheet; window.renSheet = function(code, name){ const r = _rn.apply(this, arguments); try{ addOn(code, '', name, 'student', 'rnN'); }catch(e){} return r; };
+  const _fs = window.fuSave; window.fuSave = function(){ const bk = BACK; const p = _fs.apply(this, arguments); try{ if(bk && !$('fuN')){ BACK = null; setTimeout(bk, 80); } }catch(e){} return p; };
+
+  // ── the Status box at the top of the student page (management) ──
+  function stage(){ if(!STU) return ''; const code = up(STU.code);
+    try{ if(AT && AT.cols && AT.rows){ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const R = AT.rows.filter(x => up(x[C.code]) === code && x[C.enrolled] !== '');
+      if(R.some(x => x[C.active] === true || x[C.active] === 'TRUE')) return 'active'; if(R.length) return 'finished'; return STU.r && STU.r.trial ? 'trial' : 'none'; } }catch(e){}
+    return STU.s && STU.s.left != null ? 'active' : STU.r && STU.r.trial ? 'trial' : ''; }
+  function tKey(){ const t = STU && STU.r && STU.r.trial; return t ? tfuKey(t.date, stName()) : ''; }
+  function paintBox(){ const el = $('stuStat'); if(!el || !STU) return; const code = STU.code, st = stage(), key = st === 'trial' ? tKey() : '';
+    let now = ''; if(st === 'trial'){ const f = (TFU || {})[key]; now = f ? esc(f.st) + (f.note ? ' · ' + esc(f.note) : '') : 'Trial done · no follow-up yet'; }
+    else { const s = renSt(code); now = s.k ? esc(s.label) : st === 'active' ? 'Studying · no renewal news yet' : st === 'finished' ? 'Package finished' : ''; }
+    const lbl = { trial: ['Trial', 'coral'], active: ['Active', 'green'], finished: ['Not active', ''], none: ['No package', ''] }[st] || ['', ''];
+    const nm = esc(String(stName()).replace(/'/g, '')), tc = esc(String((STU.s.teachers || [])[0] || (STU.r.trial && STU.r.trial.teacher) || '').replace(/'/g, ''));
+    el.innerHTML = '<h2>Status' + (lbl[0] ? ' <span class="chip ' + lbl[1] + '" style="font-size:11px;margin-left:6px">' + lbl[0] + '</span>' : '') + '</h2>' + (now ? '<div class="small" style="margin-bottom:8px"><b>' + now + '</b></div>' : '') +
+      '<div class="row noprint" style="gap:8px;flex-wrap:wrap"><button class="btn sm teal" onclick="stOpen()">Update · add a note</button>' +
+      (st === 'trial' || st === 'none' ? '<button class="btn sm ghost" onclick="enSheet(\'' + esc(code) + '\',\'' + nm + '\',\'' + tc + '\')">Enrolled · paid</button>' : '<button class="btn sm ghost" onclick="renPaidSheet(\'' + esc(code) + '\',\'' + nm + '\',\'' + tc + '\')">Renewed · paid</button>') + '</div>' +
+      '<div style="margin-top:8px">' + logHtml(LOG[lk(code, key)], 3) + '</div>'; }
+  window.stOpen = function(){ if(!STU) return; const st = stage(), nm = stName(), code = STU.code; PEND = () => openStudent(code);
+    if(st === 'trial'){ const t = STU.r.trial; fuSheet({ k: tKey(), name: nm, code: code, teacher: t.teacher, date: t.date, t: t.teacher }); }
+    else { PEND = null; BACK = null; renSheet(code, nm); RNS.back = () => openStudent(code); } };
+  const _sr = window.stuRender; window.stuRender = function(){ const r = _sr.apply(this, arguments);
+    try{ if(D && D.mgr && STU && !$('stuStat')){ const sch = $('stuSch'); if(sch){ sch.insertAdjacentHTML('beforebegin', '<section class="sec" id="stuStat"></section>'); paintBox();
+      const code = STU.code, key = stage() === 'trial' ? tKey() : ''; loadLog(code, key).then(() => { if(STU && STU.code === code) paintBox(); }); } } }catch(e){} return r; };
+  const _ra = window.renderActive; if(_ra) window.renderActive = function(){ const r = _ra.apply(this, arguments); try{ paintBox(); }catch(e){} return r; };
+  const _rt = window.renderMToday; if(_rt) window.renderMToday = function(){ const r = _rt.apply(this, arguments); try{ paintBox(); }catch(e){} return r; };
 })();
 </script>
 
