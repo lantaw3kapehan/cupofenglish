@@ -1117,7 +1117,7 @@ let API_N = 0; const API_Q = [], API_FLY = {};
 function bg(f){ const u = window._ui; window._ui = 0; try{ return f(); } finally { window._ui = u; } }   
 const API_BG = /^(mgmtAvailAll|mgmtPayChecks|mgmtVisitCoverage|mgmtMonDay|mgmtReportsWait|mgmtAgreeMap|mgmtEnqList|mgmtMsgs|mgmtHours|mgmtWeekSum|mgmtRemindLog|mgmtReminders|mgmtTeacherVisits|mgmtPeerMonth|mgmtPayReady|tFbStatus)$/;
 function apiPump(){ while(API_N < 3 && API_Q.length){ API_N++; API_Q.shift()().finally(() => { API_N--; apiPump(); }); } }
-const FAST_URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe', FAST_USERS = ['misty', 'julia'], FAST_W = { saveNote: 1, markHomework: 1, tNoteTag: 1, tGoalsSave: 1, timeIn: 1, classIn: 1 };
+const FAST_URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe', FAST_USERS = ['misty', 'julia'], FAST_W = { saveNote: 1, markHomework: 1, tNoteTag: 1, tGoalsSave: 1, timeIn: 1, classIn: 1, tFbSubmit: 1, tPcSubmit: 1, tTrialSubmit: 1, tPeerSubmit: 1, tSetMeet: 1, tMsgAck: 1, tVisitAck: 1, tMsgSeen: 1, tHwFlag: 1 };
 function fastOn(){ try{ const o = localStorage.getItem('coe.fast'); if(o === '0') return false; if(o === '1') return true; }catch(e){} return !!(D && !D.mgr && D.me && D.me.name); }   /* 14 Oct pm: every teacher (was FAST_USERS only) */
 function fastAns(fn, args){ const t = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }), a = args[1] || {};
   if(fn === 'saveNote') return { ok: true, queued: true, note: {}, hw: a.homework ? { time: t, text: String(a.homework) } : null };
@@ -1125,7 +1125,23 @@ function fastAns(fn, args){ const t = new Date().toLocaleTimeString('en-GB', { h
   if(fn === 'timeIn'){ const fl = (D.schedule || []).filter(x => x.day === D.today && !x.cancelled).sort((p, q) => String(p.start).localeCompare(String(q.start)))[0], mins = fl ? Math.round((new Date(fl.start).getTime() - Date.now()) / 60000) : '';
     return { ok: true, queued: true, timeIn: { time: t, status: fl ? (mins >= 30 ? 'On time' : 'Late') : 'No class today', mins, place: '', proof: '', flag: '' } }; }
   if(fn === 'classIn'){ const c = args[1] || {}, x = (D.classIns || {})[c.id] || { time: t, status: 'On time', mins: '' }; return { ok: true, queued: true, classIn: Object.assign({}, x, { pending: false, proof: '', flag: '', speed: '' }) }; }
+  if(fn === 'tFbSubmit'){ let t = ''; try{ t = fbTotals().total; }catch(e){} return { ok: true, queued: true, done: { total: t, at: 'sending' }, total: t, student: (typeof FBF !== 'undefined' && FBF && (FBF.student || FBF.name)) || args[1] }; }
+  if(fn === 'tPeerSubmit'){ let t = '', p = ''; try{ const x = prTot(); t = x.t; p = x.p; }catch(e){} return { ok: true, queued: true, total: t, pct: p }; }
+  if(fn === 'tPcSubmit' || fn === 'tTrialSubmit') return { ok: true, queued: true, total: '', cefr: '', label: '' };
+  if(fn === 'tSetMeet') return { ok: true, queued: true, meet: args[2] };
+  if(fn === 'tVisitAck') return { ok: true, queued: true, at: t };
+  if(fn === 'tMsgAck') return { ok: true, queued: true, note: 'Saved' };
   return { ok: true, queued: true }; }
+let FF = [];   /* 14 Oct pm: saves the sheet refused later (fast layer) */
+const FF_L = { tFbSubmit: 'Monthly feedback', tPcSubmit: 'Progress check', tTrialSubmit: 'Trial report', tPeerSubmit: 'Peer review', saveNote: 'Class note', markHomework: 'Homework', timeIn: 'Time-in', classIn: "I'm in", tGoalsSave: 'Goals', tNoteTag: 'Note tag', tSetMeet: 'Meeting ID' };
+async function fastFails(){ if(!TOKEN || !D || D.mgr) return; try{ const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'mine', token: TOKEN }) }).then(x => x.json());
+  if(!r || !r.ok) return; let ok = []; try{ ok = JSON.parse(localStorage.getItem('coe.ffok') || '[]'); }catch(e){} FF = (r.failed || []).filter(x => FF_L[x.fn] && ok.indexOf(x.id) < 0); ffPaint(); }catch(e){} }
+function ffOk(id){ try{ const ok = JSON.parse(localStorage.getItem('coe.ffok') || '[]'); ok.push(id); localStorage.setItem('coe.ffok', JSON.stringify(ok.slice(-50))); }catch(e){} FF = FF.filter(x => x.id !== id); ffPaint(); }
+function ffWho(x){ const a = x.a1; return typeof a === 'string' ? a : a && (a.student || a.code || a.date) || ''; }
+function ffPaint(){ try{ const el = $('v-today'); if(!el) return; const old = $('ffBox'); if(old) old.remove(); if(!FF.length) return;
+  el.insertAdjacentHTML('afterbegin', '<div id="ffBox" class="card" style="border-color:#E9B8AC;background:#FFF5F2;margin-bottom:12px"><b style="color:#9A3B22">Not sent · please check</b>' + FF.map(x => { const code = typeof x.a1 === 'string' ? x.a1 : ''; const open = x.fn === 'tFbSubmit' && code ? `<button class="btn teal sm" onclick="fbSheet('${esc(code)}')">Open</button>` : x.fn === 'tPcSubmit' && code ? `<button class="btn teal sm" onclick="pcForm('${esc(code)}')">Open</button>` : '';
+    return `<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:8px"><div class="small"><b>${esc(FF_L[x.fn])}</b>${ffWho(x) ? ' · ' + esc(ffWho(x)) : ''} · ${esc(String(x.error || 'refused'))} <span class="mute">· ${esc(new Date(x.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}</span></div><div style="display:flex;gap:6px">${open}<button class="btn ghost sm" onclick="ffOk(${x.id})">OK</button></div></div>`; }).join('') + '</div>'); }catch(e){} }
+setInterval(() => { if(!document.hidden) fastFails(); }, 600000);
 async function fastWrite(fn, args){ const rid = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   for(let a = 0; a < 2; a++){ try{ const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), fn === 'timeIn' || fn === 'classIn' ? 15000 : 6000) : 0;   /* the screen proof needs longer */
     const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'write', fn, args, rid }), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid));
@@ -1227,7 +1243,7 @@ async function reload(force){
 $('rf').classList.add('spin');
 try{
 D = await api(force ? 'refresh' : 'getBootstrap', TOKEN);
-store('set', KEY_D, JSON.stringify(D)); render(); if(!D.mgr) prefetchTeacher(force);
+store('set', KEY_D, JSON.stringify(D)); render(); if(!D.mgr){ prefetchTeacher(force); fastFails(); }
 if(force && D.mgr){ await loadMgmt(); if(MS){ MS = null; if(VIEW==='astudents') loadStudents(); } }
 if(force) toast('Up to date');
 }catch(e){ if(!D) toast('Could not load. Check your internet.'); }
@@ -1485,7 +1501,7 @@ try{ navigator.clipboard.writeText(msg).then(ok, show); }catch(x){ show(); }
 setInterval(() => { try{ if(!D || D.mgr || document.hidden) return; if(!(D.schedule || []).some(c => c.day === D.today && !c.cancelled && remByTeacher(c))) return;
 tRemLoad().then(() => { const due = tRemDue(), sig = due.map(x => x.c.id + x.st).join(','); due.forEach(x => { const k = 'rmd:' + x.c.id + ':' + x.st; if(!remTold(k)) notify('Remind the parents · ' + (x.c.student || x.c.code || ''), (x.st === '10m' ? 'Class in about 10 min' : 'Class at ' + tm(x.c.start)) + ' · Ops is off now. Open the app, tap Copy, paste in the ' + (x.c.code || '') + ' WeChat group.', 'coe-rmd-' + x.c.id); });
 if(sig !== HW_TOLD._rsig){ HW_TOLD._rsig = sig; if(VIEW === 'today') renderToday(); } }); }catch(x){} }, 60000);
-function renderToday(){
+function renderToday(){ setTimeout(ffPaint, 0);   /* 14 Oct pm: keep the "Not sent" box on Today */
 const now = new Date(), hr = now.getHours();
 const greet = hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
 const byDay = {}; (D.schedule||[]).forEach(c => (byDay[c.day] = byDay[c.day]||[]).push(c));
@@ -5929,7 +5945,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 434;
+const COE_V = 435;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
