@@ -5855,7 +5855,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 418;
+const COE_V = 419;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -5981,8 +5981,9 @@ ${rows.map(x => { const tot = n1(kids.reduce((a, k) => a + (k.months[x.i] || 0),
 <div style="margin-top:14px;font-size:13px;line-height:1.5">${esc(names)} have completed <b>${done}</b> of <b>${tot}</b> lessons in their shared package, with <b>${left}</b> lessons remaining.<br>${esc(cns)} 共享课程包已完成 ${done} / ${tot} 课时，剩余 ${left} 课时。</div>
 <div style="margin-top:10px;font-size:12px;line-height:1.5;color:#4A4766">${st ? `Package Starts: ${fD(st)} · 课程包开始：${zD(st)}<br>` : ''}${dl ? `Package Ends: ${fD(dl)} · 课程包结束：${zD(dl)}<br>` : ''}Renewals welcome anytime. 欢迎随时续费。</div>
 <div style="margin-top:8px;font-size:11px;color:#6F6B85">Records current as of the date above. 记录更新至上述日期。</div></td></tr></table>`; }
-async function shSummary(code, force){ $('sheet').classList.add('wide'); openSheet('<h1>Shared lesson summary</h1><div class="paper"><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div></div>');
-try{ if(force || !AT || !AT.cols) await loadActive(true); }catch(e){}
+async function shSummary(code, force, bg){ $('sheet').classList.add('wide'); openSheet('<h1>Shared lesson summary</h1><div class="paper"><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div></div>');
+const had0 = !!(AT && AT.cols); try{ if(force || !had0) await loadActive(true); }catch(e){}
+if(had0 && !force && !bg){ const sig = JSON.stringify(AT && AT.rows); loadActive(true).then(() => { if(JSON.stringify(AT && AT.rows) !== sig && DOCV && DOCV.key === 'SHPKG' && DOCV.pick === code && $('sheet').classList.contains('on')){ shSummary(code, false, 1); toast('Updated to the latest numbers'); } }).catch(() => {}); }   /* 14 Oct: always ends on the latest ACTIVE */
 const sh = !!shGroup(code), h = shHtml(code) || lsHtml(code), T = sh ? 'Shared lesson summary' : 'Lesson summary'; if(!h){ $('sheetBody').innerHTML = '<h1>' + T + '</h1><div class="empty">Could not load the packages. Try again.</div>'; return; }
 docShow('SHPKG', T, { rows: h, pick: '' }, code);
 try{ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const up = s => String(s || '').trim().toUpperCase(), R = AT.rows.filter(x => up(x[C.code]) === up(code) && x[C.enrolled] !== '').sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])));
