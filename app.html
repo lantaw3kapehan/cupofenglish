@@ -1958,15 +1958,19 @@ ${n.ended?`<div class="note" style="margin-top:10px">Last time (${esc(tName(n.by
 <button class="btn block" id="nGo" style="margin-top:8px" onclick="saveNote('${esc(code)}','${esc(eventId||'')}','${day||''}')">Save</button>`);
 const hd = $('sheetBody').querySelector('.mute.small');
 if(hd && mine && !dr) hd.insertAdjacentHTML('afterend', `<div class="fbdone" style="margin-top:10px">✓ Class note saved${mine.at ? ' at ' + esc(mine.at) : ''} · you can read it here, or change it and tap Update</div>`);
-if(hd && dr) hd.insertAdjacentHTML('afterend', `<div class="fbfix" style="margin-top:10px"><b>Not saved yet</b><div>Your note was kept on this device · check it and tap Save again</div></div>`);
+if(hd && dr) hd.insertAdjacentHTML('afterend', `<div class="fbfix" style="margin-top:10px"><b>Not saved yet</b><div>Your note was kept on this phone · check it and tap Save</div></div>`);
 if(cur && cur.skills) String(cur.skills).split(/,\s*/).forEach(k => { const b = [...document.querySelectorAll('.skc button')].find(x => x.textContent === k); if(b){ b.classList.add('on'); NSK.push(k); } });
 NUPD = !!mine; nReady(); setTimeout(()=>{ const o = $('nO'); if(o && !o.value) o.focus(); }, 250);
+NKEEP = { code: code, day: dd, base: JSON.stringify(nNow()) }; const sb = $('sheetBody'); if(sb){ sb.addEventListener('input', nKeep); sb.addEventListener('change', nKeep); sb.addEventListener('click', nKeepClick); }
 }
 function nMiss(){ const v = id => (($(id)||{}).value||'').trim();
 return v('nO').length < 10 ? ['nO','Write what you noticed today'] : !v('nE') ? ['nE','Add where you ended'] : !($('nNoH') && $('nNoH').checked) && !v('nH') ? ['nH','Add the homework · or tick No homework'] : null; }
 function nReady(){ const b = $('nGo'), m = nMiss(); if(!b) return; b.textContent = m ? m[1] : (NUPD ? 'Update note' : 'Save'); b.style.opacity = m ? '.55' : '';
 ['nO','nE','nH'].forEach(id => { const el = $(id); if(el && (!m || m[0] !== id)) el.classList.remove('bad'); }); if(!m && $('nErr')) $('nErr').textContent = ''; }
-let NUPD = false, NSAVING = 0;
+let NUPD = false, NSAVING = 0, NKEEP = null;
+function nNow(){ const v = id => (($(id)||{}).value||'').trim(); return { obs: v('nO'), ended: v('nE'), skills: [...document.querySelectorAll('.skc button.on')].map(b => b.textContent).join(', '), next: v('nN'), homework: ($('nNoH') && $('nNoH').checked) ? 'No homework today' : v('nH') }; }
+function nKeepClick(e){ if(e.target && e.target.closest && e.target.closest('.skc')) setTimeout(nKeep, 0); }
+function nKeep(){ if(!NKEEP || !$('nO')) return; const n = nNow(), j = JSON.stringify(n); if(j === NKEEP.base) return; NKEEP.dirty = 1; noteDraft(NKEEP.code, NKEEP.day, (n.obs || n.ended || n.next || (n.homework && n.homework !== 'No homework today')) ? Object.assign({ date: NKEEP.day }, n) : null); }   /* 14 Oct: typed notes are never lost */
 function noteDraft(code, day, v){ const k = 'coe.nd:' + code + ':' + day; if(v === undefined){ try{ return JSON.parse(store('get', k) || 'null'); }catch(e){ return null; } } if(v) store('set', k, JSON.stringify(v)); else store('del', k); }
 async function saveNote(code, eventId, day){
 if(NSAVING && Date.now() - NSAVING < 8000) return;
@@ -1981,7 +1985,7 @@ const b = $('nGo'); if(b){ b.disabled = true; b.textContent = 'Saving…'; } NSA
 noteDraft(code, n.date, n);
 const prevNote = s.note, now = new Date(), upd = NUPD;
 s.note = { by: (D.me||{}).name, date: n.date, ended: n.ended, obs: n.obs, skills: n.skills.join(', '), next: n.next, homework: n.homework, eventId: eventId || '', at: now.toTimeString().slice(0,5), pending: true };
-closeSheet(); render(); toast((upd ? 'Updating ' : 'Saving ') + (s.name || code) + "'s class note…");
+NKEEP = null; closeSheet(); render(); toast((upd ? 'Updating ' : 'Saving ') + (s.name || code) + "'s class note…");
 try{ let r; try{ r = await api('saveNote', TOKEN, n); if(!r || !r.ok) throw r; }
 catch(e1){ await new Promise(z => setTimeout(z, 2500)); r = await api('saveNote', TOKEN, n); }   // one quiet retry (busy server / weak signal) · the server updates the same row, never a duplicate
 if(!r || !r.ok) throw r; s.note = Object.assign({}, s.note, r.note || {}); delete s.note.pending; if(!s.note.obs) s.note.obs = n.obs; noteDraft(code, n.date, null); if(r.hw && eventId){ D.hw = D.hw || {}; D.hw[eventId] = r.hw; } store('set', KEY_D, JSON.stringify(D)); render();
@@ -5812,18 +5816,20 @@ catch(e){ if(x){ x[8] = !v; keep('active', AT); } renderActive(); toast((e&&e.ms
 }
 
 function openSheet(html){ if(!/class="paper/.test(html)) $('sheet').classList.remove('wide'); $('sheetBody').innerHTML = html; $('scrim').classList.add('on'); $('sheet').classList.add('on'); }
-function closeSheet(){ if(SC_PEND){ SC_PEND = 0; setTimeout(() => loadSchedule(0, true), 50); } $('scrim').classList.remove('on'); $('sheet').classList.remove('on'); if(window._upd) setTimeout(() => { if(typeof applyUpdate==='function') applyUpdate(); }, 400); setTimeout(() => { if(!$('sheet').classList.contains('on')) $('sheet').classList.remove('wide'); }, 250); }
+function closeSheet(){ if(NKEEP){ const k = NKEEP; NKEEP = null; if(k.dirty && noteDraft(k.code, k.day)){ toast('Note kept on this phone · open it and tap Save'); setTimeout(() => { try{ render(); }catch(e){} }, 300); } } if(SC_PEND){ SC_PEND = 0; setTimeout(() => loadSchedule(0, true), 50); } $('scrim').classList.remove('on'); $('sheet').classList.remove('on'); if(window._upd) setTimeout(() => { if(typeof applyUpdate==='function') applyUpdate(); }, 400); setTimeout(() => { if(!$('sheet').classList.contains('on')) $('sheet').classList.remove('wide'); }, 250); }
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeSheet(); });
+/* 14 Oct: phone Back button closes the open card (one step), it doesn't leave the app or lose what was typed */
+try{ if(!(history.state && history.state.coe)) history.pushState({ coe: 1 }, ''); window.addEventListener('popstate', () => { if($('sheet').classList.contains('on')){ closeSheet(); try{ history.pushState({ coe: 1 }, ''); }catch(e){} } }); const _os = openSheet; openSheet = function(h){ try{ if(!(history.state && history.state.coe)) history.pushState({ coe: 1 }, ''); }catch(e){} return _os.apply(this, arguments); }; }catch(e){}
 document.addEventListener('visibilitychange', () => { if(!document.hidden && TOKEN && D && Date.now()-(window._lr||0) > 120000){ window._lr=Date.now(); reload(false); } });
 
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 405;
+const COE_V = 406;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
-function updQuiet(){ try{ if(typeof D === 'undefined' || !D || performance.now() < 15000) return false;   /* audit 13 Oct: management too */ const h = new Date().getHours(); return h >= 16 && h < 22; }catch(e){ return false; } }
+function updQuiet(){ try{ if(typeof D === 'undefined' || !D || performance.now() < 15000) return false;   /* audit 13 Oct: management too */ const h = new Date().getHours(); return h >= 16; }   /* 14 Oct: quiet until midnight (late trial classes), was 22:00 */catch(e){ return false; } }
 let UPD_AT = 0;
 function fetchUpdate(){ if(!API_URL || GAS || Date.now() - UPD_AT < 10*60000) return; UPD_AT = Date.now();
 fetch('version.txt', {cache:'no-store'}).then(r => r.text()).then(v => { if(+v > COE_V) fetchUpdateFull(); }).catch(()=>{}); }   /* a tiny version check first · the full app only downloads when there is a newer one */
