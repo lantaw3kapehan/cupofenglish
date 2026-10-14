@@ -2832,6 +2832,7 @@ function cjLv(x){ const m = String(x || '').match(/(pre-?\s*a1|[abc][12])\s*(\+)
 function cjDay(d){ if(!d) return ''; if(/^\d{4}-\d{2}-\d{2}/.test(String(d))) return String(d).slice(0, 10); const x = new Date(d); return isNaN(x) ? '' : ymdLocal(x); }
 function cjPath(MO){ const fm = {}; (MO || []).forEach(x => { const c = String(x.c || '').trim().split(/\s+/)[0].toUpperCase(); if(c && (!fm[c] || x.m < fm[c])) fm[c] = x.m; }); const L = Object.keys(fm).sort((a, b) => fm[a].localeCompare(fm[b])); if(L.length < 2) return ''; const mo = m => new Date(m + '-01T12:00:00').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
   return '<div style="margin-top:4px;color:#2B2253"><b>Book path 教材路径</b> · ' + L.map(b => '<b>' + esc(b) + '</b> ' + esc(mo(fm[b]))).join(' → ') + '</div>'; }   /* 14 Oct: from the -DAILY tabs (2025 onwards) */
+function cjNewest(a, b){ return String(b.d || '').localeCompare(String(a.d || '')); }   /* newest first, undated last */
 function cjHtml(S){ try{
 const r = (S && S.r) || {}, P = r.profile, col = re => { if(!P || !P.head) return ''; const j = P.head.findIndex(h => re.test(String(h || ''))); return j > -1 ? P.row[j] : ''; };
 const mon = d => { const x = new Date(cjDay(d) + 'T12:00:00'); return isNaN(x) ? '' : x.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }); };
@@ -2869,7 +2870,7 @@ return '<section class="sec cj"><style>.cj-st{display:flex;flex-direction:column
 const ev = x => (x.start ? '入学 Start' : /^Trial/.test(x.en) ? '试听 Trial' : /^Renew/.test(x.en) ? '续费 Renewed' : /^Level/.test(x.en) ? '升级 Up' : (/\+/.test(CJ_L[x.i]) ? CJ_L[x.i] + ' ' : '') + '测评 Check');
 return '<style>.cj-sx{display:flex;gap:4px;align-items:flex-end;margin-top:14px}.cj-ex{display:flex;gap:4px;align-items:flex-start;border-top:2px solid #D6DCE2;padding-top:4px}.cj-sx>div,.cj-ex>div{flex:1;min-width:0;text-align:center}.cj-tg2{font-size:10px;font-weight:700;min-height:16px;color:#00737B;white-space:nowrap}.cj-sx .nx .cj-tg2{color:#8A5A00}.cj-bar{border-radius:10px 10px 3px 3px;background:#F4F5F8;color:#B9B6C6;display:flex;flex-direction:column;align-items:center;padding-top:6px;box-sizing:border-box}.cj-bar b{font-size:13px}.cj-bar span{font-size:10px}.dn .cj-bar{background:#DDF2F1;color:#00737B}.now .cj-bar{background:#00737B;color:#fff}.nx .cj-bar{background:#fff;border:2px dashed #E9C46A;color:#00737B}.cj-ex i{display:block;font-style:normal;font-size:10px;line-height:1.3;color:#2B2253;margin-top:4px}.cj-ex i em{font-style:normal;color:#00737B;font-weight:700}.cj-ex i small{color:#6F6B85}</style>' +
 '<div class="cj-sx">' + CJ_M.map((m, k) => '<div class="' + cl(k) + '"><div class="cj-tg2">' + (k === nowK ? '现在 Now' : k === nowK + 1 ? '目标 Next' : '') + '</div><div class="cj-bar" style="height:' + (46 + k * 14) + 'px"><b>' + m[0] + '</b><span>' + m[1] + '</span></div></div>').join('') + '</div>' +
-'<div class="cj-ex">' + CJ_M.map((m, k) => '<div>' + T.filter(x => at(x) === k).map(x => '<i>' + esc(mon(x.d) || '—') + '<br><em>' + ev(x) + '</em>' + (x.bk ? '<br><small><b>' + esc(x.bk) + '</b></small>' : '') + (x.u > 0 ? '<br><small>' + x.u + ' 课时</small>' : '') + '</i>').join('') + '</div>').join('') + '</div>'; })() +
+'<div class="cj-ex">' + CJ_M.map((m, k) => '<div>' + T.filter(x => at(x) === k).sort(cjNewest).map(x => '<i>' + esc(mon(x.d) || '—') + '<br><em>' + ev(x) + '</em>' + (x.bk ? '<br><small><b>' + esc(x.bk) + '</b></small>' : '') + (x.u > 0 ? '<br><small>' + x.u + ' 课时</small>' : '') + '</i>').join('') + '</div>').join('') + '</div>'; })() +
 '<div class="cj-note">CEFR is the international scale for English levels, from Pre-A1 up to C2. A “+” means the upper half of a level. CEFR 是国际通用的英语水平标准（Pre-A1 至 C2），“+”表示该级别的高阶。</div>' + (!MO.length && S.s && (+S.s.done > 0 || (S.s.left != null && !S.s.shared)) ? '<div class="small" style="margin-top:10px"><b>' + (+S.s.done || 0) + ' lessons taken · 本期已上</b>' + (S.s.left != null && !S.s.shared ? ' · <b>' + S.s.left + ' left · 剩余</b>' : '') + ' <span class="mute">· this package 本期课时包</span></div>' : '') + (MO.length ? '<div class="small" style="margin-top:10px"><b>' + tot + ' lessons with us</b> · 共 ' + tot + ' 课时' + cjPath(MO) + '<div class="mute" style="margin-top:2px">' + (tot > tot0 ? 'Since ' + esc(mon(MO.map(x => x.m).sort()[0] + '-01')) + ' in the app · ' : '') + 'By book 按教材: ' + Object.keys(BK).sort((a, b) => BK[b] - BK[a]).map(c => esc(c) + ' ' + rd(BK[c])).join(' · ') + '</div></div>' : '') + '</section>';
 }catch(e){ return ''; } }
 window.cjPic = function(){ const J = window._CJ; if(!J) return toast('Open the student again');
@@ -2907,7 +2908,7 @@ if(T.draw){ T.c.fillStyle = '#D6DCE2'; T.c.fillRect(T.CX, y, AW, 3); }
 const EV0 = x => x.start ? '入学 Start' : /^Renew/.test(x.en) ? '续费 Renewed' : /^Trial/.test(x.en) ? '试听 Trial' : /^Level/.test(x.en) ? '升级 Up' : '测评 Check', EV = x => EV0(x) + (x.bk ? ' · ' + x.bk : '');
 let low = y + 10;
 for(let k = 0; k < n; k++){ const X = T.CX + k * (cw + gap) + cw / 2; let yy = y + 14;
-J.T.filter(x => (/^Trial/.test(x.en) && st ? J.mk(st.i) : J.mk(x.i)) === k).forEach(x => { const sub = /\+/.test(CJ_L[x.i]) ? CJ_L[x.i] + ' ' : '';
+J.T.filter(x => (/^Trial/.test(x.en) && st ? J.mk(st.i) : J.mk(x.i)) === k).sort(cjNewest).forEach(x => { const sub = /\+/.test(CJ_L[x.i]) ? CJ_L[x.i] + ' ' : '';
 T.text(J.mon(x.d) || '—', X, yy + 22, '700 18px ' + T.F, T.NAVY, 'center');
 T.text(sub + EV(x), X, yy + 46, '700 17px ' + T.F, T.TEAL, 'center');
 if(x.u != null && x.u > 0){ T.text(x.u + ' 课时 lessons', X, yy + 68, '400 15px ' + T.F, T.MUTE, 'center'); yy += 22; }
@@ -5844,7 +5845,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 409;
+const COE_V = 410;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
