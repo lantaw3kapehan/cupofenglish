@@ -3620,11 +3620,11 @@ if(!t) return `<span class="chip coral">Waiting for ${tdWho(x.t)}'s report</span
 return t.status === 'Ready' ? '<span class="chip amber">PDF ready · not sent yet</span>' : t.status === 'Translating' ? '<span class="chip">Adding Chinese</span>' : '<span class="chip">PDF being made</span>'; }
 function trlBtn(x){ const t = x.tr; if(!t || !t.label) return ''; const i = (TRL.rows||[]).indexOf(t);
 return `<div class="tdb"><button class="btn ${t.status === 'Ready' ? 'teal' : 'ghost'} sm" onclick="tlOpen(${i})">${t.status === 'Ready' ? 'Send' : 'Open'}</button></div>`; }
-function fuSheet(i){ const x = typeof i === 'object' ? i : TDF[i]; if(!x) return; FUS = { k: x.k, name: x.name, st: null, code: x.code || '', teacher: x.teacher || '' };
+function fuSheet(i){ const x = typeof i === 'object' ? i : TDF[i]; if(!x) return; FUS = { k: x.k, name: x.name, st: null, code: /^ST-/.test(x.code || '') ? x.code : '', teacher: String(x.teacher || x.t || '').replace(/^teacher\s+/i, '').split(/[,&/]/)[0].trim() };
 const cur = TFU[x.k], opt = (k, s) => `<button type="button" class="rno" data-k="${k}" onclick="FUS.st='${k}';document.querySelectorAll('.rno').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'))"><b>${k}</b><span>${s}</span></button>`;
 openSheet(`<h1>${esc(x.name)}</h1><div class="mute small">Trial ${tdDate(x.date)} · ${tdWho(x.t)} · how did the follow-up go?${cur ? ' · now: <b>' + esc(cur.st) + '</b>' : ''}</div>
 <div class="rnl">${opt('Following up','messaged the parent · waiting for an answer')}${opt('Thinking it over','parent replied · still deciding')}
-${opt('Unreachable','no answer after messaging · try again later')}${opt('Enrolling','said yes · package coming')}${opt('Not now','said no or not now · closes the follow-up')}</div>
+${opt('Unreachable','no answer after messaging · try again later')}${x.code && /^ST-/.test(x.code) ? '' : opt('Enrolling','said yes · package coming')}${opt('Not now','said no or not now · closes the follow-up')}</div>
 <label>Note (optional)</label><input id="fuN" class="in-t" maxlength="120" placeholder="e.g. wants 2x a week · asks about price · after exams">
 <button class="btn block" style="margin-top:14px" onclick="fuSave()">Save</button>
 ${cur ? `<button class="btn ghost block" style="margin-top:8px" onclick="FUS.st='';fuSave()">Clear</button>` : ''}
@@ -3711,9 +3711,9 @@ ${fol.length ? fol.map(x => { const no = x.open, d = Math.abs(x.days), a = x.app
 const chip = a ? `<span class="chip ${x.closed ? (/^Enrolling/.test(a.st) ? 'green' : '') : 'teal'}">${esc(a.st)} · ${esc(tfuDay(a.at))} · ${esc(a.by)}</span>${a.note ? `<span class="chip">${esc(a.note)}</span>` : ''}` : no ? '<span class="chip coral">Not followed up yet</span>' : `<span class="chip green">${esc(x.fu)}</span>`;
 return `<div class="tdr ${x.closed ? 'closed' : d > 14 ? 'now' : d > 7 ? 'soon' : 'later'}"${fdue ? ` data-focus="Trial|${esc(String(x.name).replace(/[|"]/g,''))} · ${esc(stp.en)}${stp.k === 'report' ? '' : stp.due > 0 ? ' · overdue ' + stp.due + ' day' + (stp.due === 1 ? '' : 's') : ' · due today'}"` : ''}><div class="tdn"><b class="num">${d}</b><span>days</span></div>
 <div class="grow" style="min-width:0"><div>${x.code && /^ST-/.test(x.code) ? `<a class="nm" onclick="openStudent('${esc(x.code)}')">${esc(x.name)}</a>` : `<b>${esc(x.name)}</b>`} <span class="mute small">${esc(x.code && x.code !== '—' ? x.code : 'no code yet')}</span></div>
-<div class="small" style="margin-top:2px">Trial ${tdDate(x.date)} · ${tdWho(x.t)}${x.note ? ' · <span class="mute">' + esc(x.note) + '</span>' : ''}</div>
+<div class="small" style="margin-top:2px">Trial ${tdDate(x.date)} · ${tdWho(x.t)}</div>${x.note ? `<div class="small mute" style="margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="Tap to see all" onclick="this.style.whiteSpace=this.style.whiteSpace==='normal'?'nowrap':'normal'">History › ${esc(String(x.note).split(' · ').slice(-1)[0])}</div>` : ''}
 <div class="tags">${x.cefr ? `<span class="chip teal">${esc(x.cefr)}</span>` : ''}${x.sug ? `<span class="chip">★ Suggested ${esc(x.sug)}</span>` : ''}${chip}</div>${fuStepHtml(x)}</div>
-<div class="tdb">${fuBtns(x, fi)}<button class="btn ghost sm" onclick="fuSheet(${fi})">${a || !no ? 'Change' : 'Followed up'}</button></div></div>`; }).join('') : '<div class="tdok">Every recent trial is enrolled or followed up.</div>'}</section>`;
+<div class="tdb">${fuBtns(x, fi)}<button class="btn ghost sm" onclick="fuSheet(${fi})">Update</button></div></div>`; }).join('') : '<div class="tdok">Every recent trial is enrolled or followed up.</div>'}</section>`;
 const repH = `<section class="sec" id="td-reports"><div class="row"><h2 class="grow">Trial reports to send <span class="c">last 14 days · not sent to the parent yet · tap Send</span></h2>${rep.length ? `<button class="btn teal sm" onclick="RP_K='trial';go('reports')">Open trial reports</button>` : ''}</div>
 ${rep.length ? rep.map(x => `<div class="tdr ${x.days > 7 ? 'now' : 'soon'}" data-focus="Report|${esc(String(x.name).replace(/[|"]/g,''))} · send the trial report"><div class="tdn"><b class="num">${Math.abs(x.days)}</b><span>days</span></div>
 <div class="grow" style="min-width:0"><div><a class="nm" onclick="openStudent('${esc(x.code)}')">${esc(x.name)}</a> <span class="mute small">${esc(x.code)}</span></div>
@@ -6009,7 +6009,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 456;
+const COE_V = 457;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -6159,7 +6159,7 @@ return `<div class="small" style="margin-top:6px;padding:6px 10px;border-radius:
 function fuBtns(x, fi){ const s = x.step; if(!s) return '';
 if(s.k === 'report') return s.tr && s.tr.label ? `<button class="btn teal sm" onclick="tlOpen(${(TRL.rows || []).indexOf(s.tr)})">Send report</button>` : '';
 if(s.k === 'close') return `<button class="btn ghost sm" onclick="fuQuick(${fi},'Not now','no reply after 3 follow-ups')">Close · Not now</button>`;
-return `<button class="btn ${s.due >= 0 ? 'teal' : 'ghost'} sm" onclick="fuCopy(${fi})">Copy message</button>${s.k === 'd7' && x.t ? `<button class="btn ghost sm" onclick="avOpen('${esc(String(x.t).replace(/^teacher\s+/i, '').split(/[,&/]/)[0].trim())}')">Open times</button>` : ''}<button class="btn ghost sm" onclick="fuQuick(${fi},'Following up','${esc(s.en.split(' · ')[0])} message sent')">✓ Sent</button>`; }
+return `<button class="btn ${s.due >= 0 ? 'teal' : 'ghost'} sm" onclick="fuCopy(${fi})">Copy message</button>${s.k === 'd7' && x.t ? `<button class="btn ghost sm" onclick="avOpen('${esc(String(x.t).replace(/^teacher\s+/i, '').split(/[,&/]/)[0].trim())}')">Open times</button>` : ''}<button class="btn ghost sm" onclick="fuQuick(${fi},'Following up','${esc(s.en.split(' · ')[0])} message sent')">✓ Message sent</button>`; }
 function fuMsg(x, k){ const kid = String(x.name || '').trim().split(/\s+/)[0] || 'your child', T = String(x.t || '').replace(/^teacher\s+/i, '').split(/[,&/]/)[0].trim(), tzh = T ? T + '老师' : '老师', ten = T ? 'Teacher ' + T : 'our teacher';
 const sug = String(x.sug || '').trim(), szh = sug.replace(/lessons?/i, '节课').replace(/\s+/g, ' ');
 const fri = (() => { const d = new Date(Date.now() + 3 * 864e5); while(d.getDay() !== 5) d.setDate(d.getDate() + 1); return d; })(), fen = fri.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }), fzh = (fri.getMonth() + 1) + '月' + fri.getDate() + '日（周五）';
