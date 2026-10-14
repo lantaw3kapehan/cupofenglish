@@ -1,0 +1,13 @@
+// 14 Oct night · Transfer from someone who is not in DATABASE (Joey, a 2022 student, → Ying).
+// When the name typed in "Lessons come from" is not picked from the list, a tick box appears: "Not in our sheet · record it
+// on <student> only". The server (SERVER-TRANSFER2) makes only the receiver's ACTIVE row (CARRY OVER + a note naming the giver).
+require('../tools/lib.js')(process.argv[2], [
+["<div class=\"small mute\" style=\"margin-top:4px\">The giver\\'s TRANSFER OUT goes up, this student gets them as CARRY OVER · no SALES row</div></div>' +",
+ "<label id=\"enTxL\" class=\"small hide\" style=\"display:flex;gap:6px;align-items:center;margin-top:8px;font-weight:400\"><input type=\"checkbox\" id=\"enTx\" onchange=\"enPrev()\" style=\"width:auto;margin:0\"> <span>Not in our sheet (an old student) · record the lessons on this student only, with the giver\\'s name in a note</span></label><div class=\"small mute\" style=\"margin-top:4px\">The giver\\'s TRANSFER OUT goes up, this student gets them as CARRY OVER · no SALES row</div></div>' +"],
+["' · ' + (enTrFrom() ? '' : '<b>choose the student from the list</b> · ')",
+ "' · ' + (() => { const L = $('enTxL'), typed = String(($('enTf') || {}).value || '').trim(); if(L) L.classList.toggle('hide', !!enTrFrom() || !typed); return enTrFrom() ? '' : ($('enTx') || {}).checked && typed ? '<b>' + esc(typed) + ' is not in our sheet · recorded on this student only</b> · ' : '<b>choose the student from the list</b>' + (typed ? ' or tick \"Not in our sheet\"' : '') + ' · '; })()"],
+["if(S.tr){ const fr = enTrFrom(), n = +($('enTn') || {}).value || 0; if(!fr) return toast('Choose the student the lessons come from (from the list)'); if(!(n > 0)) return toast('Type how many lessons'); f.transfer = { from: fr, n: n }; f.saleRow = 0; }",
+ "if(S.tr){ const fr = enTrFrom(), n = +($('enTn') || {}).value || 0, typed = String(($('enTf') || {}).value || '').trim(), out = !fr && typed && ($('enTx') || {}).checked; if(!fr && !out) return toast(typed ? 'Pick ' + typed + ' from the list, or tick \"Not in our sheet\"' : 'Type who the lessons come from'); if(!(n > 0)) return toast('Type how many lessons'); f.transfer = out ? { from: '', name: typed, n: n, outside: true } : { from: fr, n: n }; f.saleRow = 0; }"],
+["(r.transfer ? esc(r.carried + ' lessons transferred from ' + r.fromName + ' · ' + r.fromName + ' has ' + r.fromLeft + ' left · ACTIVE row ' + r.row)",
+ "(r.transfer ? esc(r.carried + ' lessons transferred from ' + r.fromName + (r.outside ? ' (not in our sheet)' : ' · ' + r.fromName + ' has ' + r.fromLeft + ' left') + ' · ACTIVE row ' + r.row)"],
+]);
