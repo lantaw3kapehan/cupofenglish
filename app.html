@@ -5790,6 +5790,12 @@ window.ENPRE = window.ENPRE || {};
 window.enPre = function(code){ const k = String(code || '').toUpperCase(), x = ENPRE[k]; if(x && Date.now() - x.t < 300000) return x.p;
   const p = api('mgmtEnrolPaid', TOKEN, { code: k, dry: true }).catch(e => ({ ok: false, msg: String((e && (e.msg || e.message)) || e) })); ENPRE[k] = { t: Date.now(), p: p };
   p.then(r => { if(!r || !r.ok) delete ENPRE[k]; }); return p; };
+window.enDoneFu = function(code, name, r){ const T = (typeof TRL !== 'undefined' && TRL && TRL.rows) || [], up = s => String(s || '').toUpperCase();
+  const t = T.filter(x => up(x.code) === up(code)).sort((a, b) => String(b.date).localeCompare(String(a.date)))[0]; if(!t) return;
+  const k = t.date + '|' + tfuFirst(t.student), note = (r.transfer ? r.carried + ' lessons transferred' : (r.pkg + (r.free ? '+' + r.free : '')) + ' paid') + ' · ACTIVE row ' + r.row, now = new Date();
+  TFU[k] = { st: 'Enrolling', note: note, by: (D && D.me && D.me.name) || '', at: ymdLocal(now) + ' ' + now.toTimeString().slice(0, 5) }; try{ localStorage.setItem('coe.tfu', JSON.stringify(TFU)); }catch(e){}
+  try{ if(VIEW === 'trials') renderTP(); if(VIEW === 'mtoday') renderMToday(); }catch(e){}
+  api('mgmtTrialFu', TOKEN, k, 'Enrolling', note, t.student).then(x => { if(x && x.fu){ TFU[k] = x.fu; try{ localStorage.setItem('coe.tfu', JSON.stringify(TFU)); }catch(e){} } }).catch(() => {}); };
 window.enOth = function(){ ENS.pkg = +($('enOp') || {}).value || 0; ENS.free = +($('enOf') || {}).value || 0; enPrev(); };
 window.enPk = function(p, f){ const o = $('enO'); if(o) o.classList.toggle('hide', p !== -1); if(p === -1){ document.querySelectorAll('.enk').forEach(b => b.classList.toggle('on', b.dataset.p === '-1')); return enOth(); } ENS.pkg = p; ENS.free = f; document.querySelectorAll('.enk').forEach(b => b.classList.toggle('on', +b.dataset.p === p && +b.dataset.f === f)); enPrev(); };
 function enTrFrom(){ const v = String(($('enTf') || {}).value || ''), m = v.toUpperCase().match(/ST-\d{4}-\d{3}/); return m ? m[0] : ''; }
@@ -5807,7 +5813,7 @@ try{ if(f.method) localStorage.setItem('coe.rpM', f.method); }catch(e){} }
 const bk = 'e:' + S.code; if(BUSY[bk]) return toast('Still saving ' + S.name + '\'s enrolment · wait a moment'); BUSY[bk] = 1;
 const body = $('sheetBody'), snap = body.innerHTML, vals = {}; body.querySelectorAll('input,select,textarea').forEach(el => { if(el.id && el.type !== 'file') vals[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value; });
 closeSheet(); toast('Enrolling ' + S.name + '… (about 30 s · you can keep working)');   /* 14 Oct: closes at once, saves in the background */
-try{ const r = await api('mgmtEnrolPaid', TOKEN, f); if(!r || !r.ok) throw r; AT = null; MS = null; try{ ding('msg'); }catch(e){} toast('✓ ' + S.name + ' enrolled');
+try{ const r = await api('mgmtEnrolPaid', TOKEN, f); if(!r || !r.ok) throw r; AT = null; MS = null; try{ enDoneFu(S.code, S.name, r); }catch(e){} try{ ding('msg'); }catch(e){} toast('✓ ' + S.name + ' enrolled');
 whenFree(() => openSheet('<h1>✓ ' + esc(S.name) + ' enrolled</h1><div class="card" style="margin-top:10px;background:#F1FAF9;border-color:#BFE6E3"><div style="font-size:20px"><b style="color:#00737B">' + r.available + ' lessons</b> left</div><div class="small" style="margin-top:4px">' + (r.transfer ? r.carried + ' transferred · no payment' : r.pkg + (r.free ? ' + ' + r.free : '') + ' paid') + (r.deadline ? ' · valid until <b>' + new Date(r.deadline + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '</b>' : '') + (r.noStart ? ' · valid ' + (r.months || '') + ' months from the first class' : f.noStart ? ' · <b style="color:#B54708">the start date was saved as today · the server part for "Not set yet" is not installed yet</b>' : '') + '</div>' + (r.noStart ? '<div class="small" style="margin-top:6px">When the first class is agreed, type its date in ACTIVE row ' + r.row + ' › <b>Purchase Date/1st Class</b> · the deadline fills itself.</div>' : '') + '<div class="small mute" style="margin-top:4px">' + (r.transfer ? esc(r.carried + ' lessons transferred from ' + r.fromName + (r.outside ? ' (not in our sheet)' : ' · ' + r.fromName + ' has ' + r.fromLeft + ' left') + ' · ACTIVE row ' + r.row) : 'ACTIVE row ' + r.row + ' · SALES row ' + r.saleRow + (r.link ? ' · invoice saved' : '')) + '</div></div>' +
 '<button class="btn teal block" style="margin-top:14px" onclick="cnOpen(\'' + esc(S.code) + '\')">Class notice</button><button class="btn ghost block" style="margin-top:8px" onclick="openStudent(\'' + esc(S.code) + '\')">Open student</button>')); }
 catch(e){ try{ if(!($('enGo') && $('sheetBody').innerHTML === snap)){ openSheet(snap); Object.keys(vals).forEach(k => { const el = $(k); if(!el) return; if(el.type === 'checkbox' || el.type === 'radio') el.checked = vals[k]; else el.value = vals[k]; }); } else { $('scrim').classList.add('on'); $('sheet').classList.add('on'); } ENS = S; const b2 = $('enGo'); if(b2){ b2.disabled = false; b2.textContent = 'Save enrolment'; } }catch(y){}
@@ -6003,7 +6009,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 454;
+const COE_V = 455;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
