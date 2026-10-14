@@ -2163,9 +2163,10 @@ const sum = top.length > 1 ? `<div class="pr-sc" style="grid-template-columns:re
 return `<section class="sec"><h2>Peer feedback <span class="c">from fellow teachers · ${L.length}</span></h2>${sum}${L.map((x,i) => one(x, i===0 && top.length < 2)).join('')}</section>`;
 }
 
+function nowPayOf(m){ m = m || {}; return Math.round((+m.nowPay || 0) + (+m.nowTrial || 0) * (+m.rate || 0)); }   /* 14 Oct: trials paid at the same rate, not regular units */
 function renderPay(){
 const me = D.me||{}, pay = D.pay||[], adj = D.adj||[];
-const est = (me.nowPay||0) + (me.monthBonus||0) - (me.monthDeduct||0);
+const est = nowPayOf(me) + (me.monthBonus||0) - (me.monthDeduct||0);
 const units = (me.nowReg||0)+(me.nowTrial||0)+(me.nowSub||0);
 const month = new Date().toLocaleDateString('en-US',{month:'long'});
 let h = `<div class="lead"><h1>Pay</h1><div class="mute small">${month} so far · estimate, final after Ops review</div></div>${payChkHtml()}${myReadyHtml()}
@@ -2760,7 +2761,7 @@ const me = p.me || {};
 const today = (p.schedule||[]).filter(c=>c.day===p.today).sort((a,b)=>a.start.localeCompare(b.start));
 let h = `<h1 style="padding-right:48px">${esc(tName(name))}</h1><div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px"><button class="btn ghost sm" onclick="closeSheet();go('teachers');loadTT('${esc(name)}')">TEACHERS tab</button><button class="btn ghost sm" onclick="avOpen('${esc(name)}')">Open slots</button><button class="btn ghost sm" onclick="profOpen('${esc(name)}')">Profile card</button><button class="btn ghost sm" onclick="payslip('${esc(name)}')">Payslip</button><button class="btn sm teal" onclick="growthSheet('${esc(name)}')">Growth</button><button class="btn ghost sm" onclick="pwSet('${esc(name)}')">Password · access</button></div><div class="mute small">${esc([me.rank, me.rate?peso(me.rate)+'/lesson':'', (me.lifetime||0).toLocaleString()+' lifetime units'].filter(Boolean).join(' · '))}</div>
 <div class="stats" style="margin-top:12px"><div class="stat"><b class="num">${(me.nowReg||0)+(me.nowTrial||0)+(me.nowSub||0)}</b><span>units this month</span></div>
-<div class="stat"><b class="num">${peso((me.nowPay||0)+(me.monthBonus||0)-(me.monthDeduct||0))}</b><span>pay so far</span></div>
+<div class="stat"><b class="num">${peso(nowPayOf(me)+(me.monthBonus||0)-(me.monthDeduct||0))}</b><span>pay so far</span></div>
 <div class="stat"><b class="num">${(p.students||[]).length}</b><span>students</span></div></div>`;
 h += `<h2>Today</h2>` + (today.length ? today.map(c => `<div class="row small" style="padding:4px 0;gap:8px"><i style="width:9px;height:9px;border-radius:50%;flex:none;background:${c.cancelled?'var(--mute)':bookCol(c.book)}"></i><b class="num" style="width:56px">${tm(c.start)}</b><span class="grow ell" style="${c.cancelled?'text-decoration:line-through;color:var(--mute)':''}">${esc(c.student||c.title)} ${c.book?'· '+esc(c.book):''}</span>${c.type!=='Regular'?`<span class="chip">${esc(c.type)}</span>`:''}</div>`).join('') : '<div class="mute small">No classes today.</div>');
 h += `<h2>Time-ins</h2>` + ((p.timeIns||[]).length ? (p.timeIns||[]).slice(0,12).map(t => `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row small"><b class="num">${esc(String(t.date).slice(5))} ${esc(t.time)}</b><span class="grow mute">${t.type==='Class'?'Class '+esc(t.cls):'Day time-in'}</span><span class="chip ${t.status==='On time'?'green':/Late/.test(t.status)?'red':''}">${esc(t.status)}</span></div>
@@ -3121,7 +3122,7 @@ let h = `<div class="card" style="margin-top:10px"><div class="row"><div class="
 <div class="stat"><b class="num">${(m.lifetime||0).toLocaleString()}</b><span>lifetime units</span></div>
 <div class="stat"><b class="num">${t.students}</b><span>students</span></div></div>
 <div class="stats" style="margin-top:10px"><div class="stat"><b class="num">${(m.nowReg||0)+(m.nowTrial||0)+(m.nowSub||0)}</b><span>units this month</span></div>
-<div class="stat"><b class="num">${peso((m.nowPay||0)+(m.monthBonus||0)-(m.monthDeduct||0))}</b><span>pay so far</span></div>
+<div class="stat"><b class="num">${peso(nowPayOf(m)+(m.monthBonus||0)-(m.monthDeduct||0))}</b><span>pay so far</span></div>
 <div class="stat"><b class="num"><span class="plus">+${peso(m.monthBonus||0)}</span></b><span>bonus · <span class="minus">−${peso(m.monthDeduct||0)}</span></span></div></div>
 <label>App sign-in email (MASTERLIST → APP EMAIL)</label>
 <div class="row" style="gap:8px"><input id="ttE" class="in-t grow" type="email" value="${esc(f.email||'')}" placeholder="teacher@gmail.com"><button class="btn sm" id="ttEGo" onclick="saveEmail()">Save</button></div></div>`;
@@ -5864,7 +5865,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 421;
+const COE_V = 422;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
