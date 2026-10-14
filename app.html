@@ -5760,7 +5760,9 @@ openSheet('<h1>' + esc(name) + ' · Enrolled · paid</h1><div class="mute small"
 enPrev(); try{ $('sheetBody').addEventListener('input', () => { ENS.touched = 1; }, { once: true }); }catch(e){}
 rp.then(x => { if(!ENS || ENS.code !== code || !$('enPay')) return; const w = $('enWait'); if(!x || !x.ok){ if(w) w.textContent = '· could not read SALES (' + ((x && x.msg) || 'no answer') + ')'; return; }
   ENS.info = x; if(w) w.remove(); const h = (x.sales || []).find(y => nm && y.invoice.toLowerCase().indexOf(nm) > -1);
-  const box = $('enPay'); box.insertAdjacentHTML('afterbegin', (x.sales || []).map(saleOpt).join(''));
+  const box = $('enPay'), mine = (x.sales || []).filter(y => nm && String(y.invoice || '').toLowerCase().indexOf(nm) > -1), oth = (x.sales || []).filter(y => mine.indexOf(y) < 0);
+  box.insertAdjacentHTML('afterbegin', mine.map(saleOpt).join(''));
+  if(oth.length) box.insertAdjacentHTML('afterend', '<div class="small" style="margin-top:6px"><button type="button" class="btn ghost sm" onclick="this.parentNode.nextElementSibling.classList.toggle(\'hide\')">Other payments (' + oth.length + ') · not ' + esc(name) + '\'s</button></div><div class="rnl hide">' + oth.map(saleOpt).join('') + '</div>');
   if(h && !ENS.touched && !ENS.tr && !ENS.sale && $('enOp') && !$('enOp').value) enPick(h.row, h.pkg, h.free);
   if(x.firstClass && !first){ const s = $('enS'); if(s && !ENS.touched) { s.value = x.firstClass; enPrev(); } } }); }
 window.enPick = function(row, p, f){ ENS.tr = row === -1; ENS.sale = row > 0 ? row : 0; if(row > 0){ ENS.pkg = p; ENS.free = f; } document.querySelectorAll('[data-s]').forEach(b => b.classList.toggle('on', +b.dataset.s === row)); const n = $('enNew'); if(n) n.classList.toggle('hide', row !== 0); const t = $('enTr'); if(t) t.classList.toggle('hide', row !== -1);
@@ -5979,7 +5981,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 447;
+const COE_V = 448;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
