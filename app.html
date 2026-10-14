@@ -4444,7 +4444,7 @@ else if(CABS === 'coe') t = '<span style="color:#2E8B57">No case · CupOfEnglish
 else if(CABS === 'none') t = '<b style="color:#9A3B22">CASE · Teacher Absence · Unexcused</b> <span class="mute">· no notice · amount from POLICY</span>';
 else if(CABS === 'told'){ const k = classAbsTold(); if(!k || !h) t = '<span class="mute">Choose the date and time the teacher told us</span>'; else { const hrs = (new Date(d + 'T' + (h.length === 4 ? '0' + h : h) + ':00') - new Date(k.replace(' ', 'T') + ':00')) / 36e5, ok = hrs >= 4;
   const ht = hrs < 0 ? 'after the class started' : Math.floor(hrs) + ' h ' + Math.round((hrs % 1) * 60) + ' min before class';
-  t = (ok ? '<b style="color:#B7791F">CASE · Teacher Absence · Excused</b>' : '<b style="color:#9A3B22">CASE · Teacher Absence · Unexcused</b>') + ' <span class="mute">· told us ' + esc(ht) + (ok ? ' (4 h or more)' : ' (under 4 h)') + ' · amount from POLICY</span>'; } }
+  t = (ok ? '<span style="color:#2E8B57">No case · told us ' + esc(ht) + ' (4 h or more)</span>' : '<b style="color:#9A3B22">CASE · Teacher Absence · Unexcused</b> <span class="mute">· told us ' + esc(ht) + ' (under 4 h) · amount from POLICY</span>'); } }
 if(t) t += '<div class="mute" style="margin-top:3px">The regular class at this time is cancelled (no make-up) and the sub class is added.</div>';
 el.innerHTML = t; }
 async function sendClass(){
@@ -5127,8 +5127,13 @@ const x = AC.rows.find(r=>r.id===id); if(!x) return;
 const kv = [['Subject',x.subject],['Date',x.when],['Source',x.source],['Assigned to',x.assigned],['Type',x.type],['Employee',x.employee],['Student',x.student],['Condition',x.condition],
 ['Employment status',x.status],['Teacher tier',x.tier],['Demerit points',x.demerit],['Incentive',x.incentive],['Financial impact',x.amount],['Action taken',x.action]].filter(k=>k[1]);
 openSheet(`<h1>${esc(x.id)}</h1><table style="margin-top:10px">${kv.map(([k,v])=>`<tr><td class="mute">${k}</td><td style="text-align:right">${esc(v).replace(/\n/g,'<br>')}</td></tr>`).join('')}</table>
-<label class="check"><input type="checkbox" ${x.done?'checked':''} onchange="caseDone('${esc(id)}',this.checked)"><span>Completed</span></label>`);
+<label class="check"><input type="checkbox" ${x.done?'checked':''} onchange="caseDone('${esc(id)}',this.checked)"><span>Completed</span></label>
+${x.amount && x.amount !== '0' && !/^Waived/.test(x.action || '') ? `<div id="cwBox" style="margin-top:14px"><input id="cwWhy" class="in-t" placeholder="Reason, e.g. informed us in advance"><button class="btn ghost block" style="margin-top:8px" onclick="caseWaive('${esc(id)}')">Waive · no penalty, keep on record</button></div>` : /^Waived/.test(x.action || '') ? '<div class="fbdone" style="margin-top:12px">Waived · no penalty</div>' : ''}`);
 }
+async function caseWaive(id){ const x = AC.rows.find(y => y.id === id); if(!x) return; const why = (($('cwWhy') || {}).value || '').trim(); if(!why) return toast('Write the reason first');
+if(!confirm('Waive ' + id + ' (' + x.employee + ', ' + x.amount + ')? It stays on record with no penalty.')) return;
+try{ const r = await api('mgmtCaseWaive', TOKEN, id, why); if(!r || !r.ok) throw r; x.amount = '0'; x.demerit = ''; x.done = true; if(r.action) x.action = r.action + (x.action ? '\n' + x.action : ''); keep('actions', AC); renderActions(); caseView(id); toast('✓ Waived · ' + x.employee); }
+catch(e){ toast((e && e.msg) || (/unknown action/i.test(String(e && (e.msg || e.message))) ? 'Server part not installed yet' : 'Not saved. Try again.')); } }   /* 14 Oct */
 async function caseDone(id, v){
 const x = AC.rows.find(y => y.id === id); if(!x) return; const prev = x.done; x.done = v; keep('actions', AC); renderActions(); toast(v ? 'Marked completed' : 'Marked open');
 try{ const r = await api('setCaseDone', TOKEN, id, v); if(!r.ok) throw r; }
@@ -5850,7 +5855,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 415;
+const COE_V = 416;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
