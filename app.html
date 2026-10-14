@@ -5928,7 +5928,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 431;
+const COE_V = 432;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -6117,13 +6117,20 @@ p.innerHTML = `<div style="font-size:15px"><b>${I.left}</b> left + <b>${t}</b> n
 <div class="small" style="margin-top:4px">${RPS.sched ? '📅 ' + RPS.sched : '<span class="mute">Checking the schedule…</span>'}</div>`; }
 function rpPick(p, f){ RPS.pkg = p; RPS.free = f; document.querySelectorAll('.rpk').forEach(b => b.classList.toggle('on', +b.dataset.p === p && +b.dataset.f === f)); const o = $('rpO'); if(o) o.classList.toggle('hide', RP_PK.some(x => x[0] === p && x[1] === f)); rpPrev(); }
 function rpOther(){ RPS.pkg = ''; RPS.free = 0; document.querySelectorAll('.rpk').forEach(b => b.classList.toggle('on', b.dataset.p === 'o')); $('rpO').classList.remove('hide'); rpPrev(); }
-async function renPaidSheet(code, name, teacher){ RPS = { code, name, teacher, pkg: 30, free: 3, info: null, sched: '' };
+async function renPaidSheet(code, name, teacher, again){ RPS = { code, name, teacher, pkg: 30, free: 3, info: null, sched: '', again: !!again };
 openSheet(`<h1>${esc(name)} · Renewed · paid</h1><div class="mute small">${esc(code)} · records the new package in SALES, ACTIVE and DATABASE</div><div class="sk"></div><div class="sk"></div>`);
 const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
 const [r, cl] = await Promise.all([api('mgmtRenewPaid', TOKEN, { code, teacher, dry: true, date: today }).catch(e => ({ ok: false, msg: String(e && e.message || e) })), api('mgmtStuClasses', TOKEN, code).catch(() => null)]);
 if(RPS.code !== code) return;
 if(!r || !r.ok) return openSheet(`<h1>${esc(name)}</h1><p>${esc((r && r.msg) || 'Could not read the package.')}</p>`);
 RPS.info = r; RPS.cls = Array.isArray(cl) ? cl : []; if(r.prev && r.prev.pkg){ RPS.pkg = r.prev.pkg; RPS.free = r.prev.free; }
+{ const pd = r.prev && r.prev.date, rs = String((REN || {})[String(code).toUpperCase()] || ''), cd = (/^Renewing · ([A-Z][a-z]{2} \d{1,2}, \d{4})/.exec(rs) || [])[1], pt = pd ? new Date(pd + 'T12:00:00').getTime() : 0;   /* 14 Oct pm: already paid → no second form */
+  if(pt && !RPS.again && Date.now() - pt < 7 * 864e5 && (!cd || pt >= new Date(cd + ' 00:00').getTime())){
+    const lbl = new Date(pt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    try{ REN[String(code).toUpperCase()] = 'Renewed · ' + r.prev.pkg + (r.prev.free ? '+' + r.prev.free : '') + ' paid · ' + lbl + ' · SALES'; localStorage.setItem('coe.ren', JSON.stringify(REN)); renderMToday(); }catch(e){}
+    return openSheet(`<h1>${esc(name)} · already renewed</h1><div class="card" style="margin-top:10px;background:#F1FAF9;border-color:#BFE6E3"><div style="font-size:20px"><b style="color:#00737B">${r.left} lessons</b> left now</div><div class="small" style="margin-top:4px">Paid ${esc(lbl)} · ${r.prev.pkg}${r.prev.free ? ' + ' + r.prev.free : ''} · ${esc(r.prev.invoice || 'SALES')} · ACTIVE row ${r.row}</div></div>` +
+      `<button class="btn teal block" style="margin-top:14px" onclick="cnOpen('${esc(code)}')">Class notice</button><button class="btn ghost block" style="margin-top:8px" onclick="cxBalance(null,'${esc(code)}')">Renewal picture for the parent · 续费成功</button>` +
+      `<button class="btn ghost block" style="margin-top:8px" onclick="renPaidSheet('${esc(code)}','${esc(String(name)).replace(/'/g, '')}','${esc(String(teacher || '')).replace(/'/g, '')}', true)">Record another payment (a new package)</button>`); } }
 try{ const now = Date.now(), up = (Array.isArray(cl) ? cl : []).filter(c => !c.cancelled && new Date(c.start).getTime() > now).sort((a, b) => new Date(a.start) - new Date(b.start));
 if(up.length){ const fmt = d => new Date(d).toLocaleString('en-GB', { timeZone: 'Asia/Shanghai', weekday: 'short' }), hm = d => new Date(d).toLocaleTimeString('en-GB', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit' });
 const pat = {}; up.slice(0, 12).forEach(c => { const k = fmt(c.start) + ' ' + hm(c.start); pat[k] = (pat[k] || 0) + 1; });
@@ -6154,12 +6161,13 @@ try{ const r = await api('mgmtRenewPaid', TOKEN, f); if(!r || !r.saleRow) throw 
 try{ REN[String(S.code).toUpperCase()] = r.status; localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){}
 RN_PIC = { code: String(S.code).toUpperCase(), pkg: r.pkg, free: r.free, tot: r.pkg + r.free, carry: r.left, paid: f.date, days: S.days || [], t: Date.now() };
 AT = null; MS = null; try{ ding('msg'); }catch(e){}
-openSheet(`<h1>✓ ${esc(S.name)} renewed</h1><div class="card" style="margin-top:10px;background:#F1FAF9;border-color:#BFE6E3"><div style="font-size:20px"><b style="color:#00737B">${r.balance} lessons</b> left now</div>
+const rpBan = (`<h2 style="margin:0">✓ ${esc(S.name)} renewed · class notice below</h2><div class="card" style="margin-top:10px;background:#F1FAF9;border-color:#BFE6E3"><div style="font-size:20px"><b style="color:#00737B">${r.balance} lessons</b> left now</div>
 <div class="small" style="margin-top:4px">${r.left} carried over + ${r.pkg}${r.free ? ' + ' + r.free : ''} new · valid until <b>${new Date(r.deadline + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</b></div>
 <div class="small mute" style="margin-top:4px">SALES row ${r.saleRow}${r.link ? ' · invoice saved' : ''} · ACTIVE row ${r.row} · ${esc(r.status)}</div></div>
 ${r.ok ? '' : `<p style="color:#C0533D">${esc(r.note)}</p>`}
 <button class="btn teal block" style="margin-top:14px" onclick="cxBalance(null,'${esc(S.code)}')">Renewal picture for the parent · 续费成功</button>
-<div id="rpAgr"></div><button class="btn ghost block" style="margin-top:8px" onclick="closeSheet()">Done</button>`);
+<div id="rpAgr"></div>`);
+await cnOpen(S.code); try{ $('sheetBody').insertAdjacentHTML('afterbegin', '<div style="border-bottom:1px solid #E5ECEC;padding-bottom:14px;margin-bottom:14px">' + rpBan + '</div>'); }catch(x){}   /* 14 Oct pm: one flow · the class notice follows the payment */
 try{ agrMap(true).then(() => { const a = agrOf(S.code), el = $('rpAgr'); if(el && !(a && a.how !== 'Sent')) el.innerHTML = `<button class="btn ghost block" style="margin-top:8px" onclick="agrOpen({code:'${esc(S.code)}'})">Service agreement not on file · send it now</button>`; }); }catch(e){}
 toast(r.note); try{ renderMToday(); }catch(e){} }
 catch(e){ if(b){ b.disabled = false; b.textContent = 'Save renewal'; } toast((e && (e.msg || e.message)) || 'Could not save · nothing was changed'); } }
