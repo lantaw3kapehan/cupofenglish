@@ -5607,6 +5607,9 @@ if(x.pdf && !confirm('Change to ' + TL_GRPS[i][1] + '? The parent PDF is made ag
 try{ const r = await api('mgmtTrialGroup', TOKEN, x.date, x.student, g); if(!r.ok) throw r; x.group = g;
 if(r.remade){ x.pdf = ''; x.status = 'Making PDF'; TLB = null; tlPaint(); toast('Saved · the new PDF is being made (a few minutes)'); }
 else { const el = $('tlGrp'); if(el) el.outerHTML = tlGrpBox(x); toast('Saved · ' + TL_GRPS[i][1]); } }catch(e){ toast((e && e.msg) || 'Not saved. Try again.'); } }
+async function tlPdfNow(){ const x = TLD, b = $('tlNow'); if(!x || !x.label || !b || b.disabled) return; b.disabled = true; b.textContent = 'Making the PDF… about 30–60 s';
+try{ const r = await api('mgmtTrialPdfNow', TOKEN, x.label); if(!r || !r.ok) throw r; x.pdf = r.url; if(x.status !== 'Sent') x.status = 'Ready'; TRL = TRL || {}; const i = (TRL.rows || []).indexOf(x); toast('✓ PDF made · ' + x.student); if(i > -1) tlOpen(i); else tlPaint(); try{ loadTrials(); }catch(e){} }
+catch(e){ b.disabled = false; b.textContent = 'Make PDF now'; toast((e && (e.msg || e.message)) || 'Could not make the PDF. Try again.'); } }   /* 14 Oct */
 function tlPaint(){
 const x = TLD, [c, l] = TL_ST(x.status);
 const T = (en, zh, a, b) => a ? `<div class="rp-tx"><div class="gr-k">${en} <span class="mute">${zh}</span></div><div class="small">${nl2br(a)}</div>${b?`<div class="small zh">${nl2br(b)}</div>`:''}</div>` : '';
@@ -5616,7 +5619,7 @@ if(x.sent) h += `<div class="fbdone">Sent to the parent ${esc(x.sent.at)} by ${e
 h += `<div class="rp-sk"><div><b class="num">${x.s===''||x.s==null?'—':x.s}</b><span>Speaking /20</span></div><div><b class="num">${x.l===''||x.l==null?'—':x.l}</b><span>Listening /8</span></div><div><b class="num">${x.rd===''||x.rd==null?'—':x.rd}</b><span>Reading /8</span></div><div style="background:var(--tint)"><b class="num">${x.total}</b><span>Total /36 · ${esc(x.cefr)}</span></div></div>
 ${tlGrpBox(x)}${x.enrolled?`<div class="small mute" style="margin-top:6px">Enrolled? ${esc(x.enrolled)}</div>`:''}
 ${T("Teacher's comments",'教师评语',x.comm,x.commZh)}${T('Suggested next steps','建议的下一步措施',x.next,x.nextZh)}`;
-h += `<div id="tlPdf">${x.pdf ? '<div class="sk" style="height:180px;margin-top:12px"></div>' : `<div class="small mute" style="margin-top:12px">${x.status==='Translating'?'The Chinese is being added, then the PDF is made':'The PDF is being made'} · usually a few minutes after the teacher sends the report. Pull to refresh later.</div>`}</div><div class="rp-act" id="tlAct"></div>`;
+h += `<div id="tlPdf">${x.pdf ? '<div class="sk" style="height:180px;margin-top:12px"></div>' : `<div class="small mute" style="margin-top:12px">${x.status==='Translating'?'The Chinese is being added, then the PDF is made':'The PDF is being made'} · usually a few minutes after the teacher sends the report. Pull to refresh later.</div><button class="btn teal sm" id="tlNow" style="margin-top:8px" onclick="tlPdfNow()">Make PDF now</button>`}</div><div class="rp-act" id="tlAct"></div>`;
 openSheet(h); $('sheet').classList.add('wide'); tlBtns();
 }
 let ENS = null;
@@ -5845,7 +5848,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 410;
+const COE_V = 411;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
