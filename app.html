@@ -1132,7 +1132,8 @@ async function fastWrite(fn, args){ const rid = 'f' + Date.now().toString(36) + 
     if(r && r.ok && r.queued) return fastAns(fn, args); break; }catch(e){ if(a) break; await new Promise(z => setTimeout(z, 800)); } }
   return apiNow(fn, ...args); }   /* not ready, not signed in there yet, or no answer → the normal save, exactly as today */
 const SB_R = /^(mgmt(Overview|Students|Student|Schedule|Teacher|Actions|Active|Renewals|Trials|TrialFus|Reports|ReportsWait|Performance|TeacherCard|PayChecks|PayReady|AvailAll|Health|Night|Msgs|Tab|Database|Payroll|Leave|Peer|Hours|StuClasses|Urls|EnqList|MonDay|VisitCoverage|AgreeMap|Growth)|schedLists|moneyLists|dbLists|t(Student|StuClasses|FbStatus|Growth|Schedule|PayCheck|PayReady|Msgs|Leave|LeaveClasses|MyVisits|MyComments|HwHist|Goals|NoteComments|Reminders|FbForm|PcForm|TrialForm|PeerForm))$/;   /* 14 Oct pm: + teachers' screens, − pulse */
-const SB_SH = /^mgmt(Health|Night|PayReady|AvailAll|Performance|TeacherCard|Peer|Hours|Trials|Reports|PayChecks|Active|Renewals|Overview|Schedule|Teacher)$/;   /* the same for all management (server SHARED_TTL) */
+const SB_SH = /^mgmt(Health|Night|PayReady|AvailAll|Performance|TeacherCard|Peer|Hours|Trials|Reports|PayChecks|Active|Renewals|Overview|Schedule|Teacher|Student|StuClasses)$/;
+const SB_UIAGE = { mgmtStudent: 7 * 864e5, tStudent: 7 * 864e5, mgmtStuClasses: 864e5, tStuClasses: 864e5 };   /* the same for all management (server SHARED_TTL) */
 const SB_BGAGE = { mgmtStudent: 20 * 6e4, mgmtStuClasses: 20 * 6e4, mgmtMsgs: 0, mgmtPulse: 0, mgmtHealth: 0, tStudent: 20 * 6e4, tStuClasses: 20 * 6e4, tMsgs: 0 };
 let SB_LASTW = 0; const SB_FRESH = {}, SB_WANT = {}; let SB_T = 0;
 function sbOn(){ try{ if(localStorage.getItem('coe.fastr') === '0') return false; }catch(e){} return !!(D && TOKEN && (D.mgr || (D.me && D.me.name))); }
@@ -1153,7 +1154,7 @@ async function sbRead(fn, args, real, ui){
   const age = d => d ? Date.now() - Date.parse(d.at) : Infinity, mx = fn in SB_BGAGE ? SB_BGAGE[fn] : 90000;
   if(!ui){ const d = await sbDoc(key); if(d && age(d) < mx) return d.data; return real(); }
   const rp = real(), d = await Promise.race([sbDoc(key), rp.then(() => null, () => null)]);
-  if(!d || age(d) > 6 * 3600e3) return rp;
+  if(!d || age(d) > (SB_UIAGE[fn] || 6 * 3600e3)) return rp;
   rp.then(x => { if(JSON.stringify(x) !== JSON.stringify(d.data)){ SB_FRESH[key] = { data: x, t: Date.now() }; sbRedraw(fn, args, x); } }).catch(() => {});
   return d.data; }
 function api(fn, ...args){
@@ -5928,7 +5929,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 432;
+const COE_V = 433;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
