@@ -3039,15 +3039,15 @@ async function openStudent(code){
 const ts = !D.mgr && (D.students||[]).concat(D.special||[]).find(x=>x.code===code);
 const s = (D.mgr ? (MS||[]).find(x=>x.code===code) : ts && Object.assign({teachers:[(D.me||{}).name], name: ts.student || code, cn: ''}, ts)) || {code, name:code, cn:'', teachers:[]};
 $('sheet').classList.add('wide');
-const k = 'coe.stu.' + code; let kept0 = null; try{ kept0 = JSON.parse(store('get', k)||'null'); }catch(e){}
+window._stuOpen = code; const k = 'coe.stu.' + code; let kept0 = null; try{ kept0 = JSON.parse(store('get', k)||'null'); }catch(e){}
 let cls0 = null; try{ cls0 = JSON.parse(store('get', 'coe.cls.' + code)||'null'); }catch(e){}
 api(D.mgr ? 'mgmtStuClasses' : 'tStuClasses', TOKEN, code).then(L => { if(CLS_HOLD===code) return; CLSM[code] = L; try{ store('set', 'coe.cls.' + code, JSON.stringify(L)); }catch(e){}
 if(STU && STU.code === code){ STU.cls = L; const el = $('stuSch'); if(el) el.innerHTML = stuSched(L); } }).catch(() => {});
 if(kept0){ STU = {s, r:kept0, code, cls:cls0}; openSheet('<div class="paper" style="display:none"></div>'); stuRender(); }
-else openSheet(`<div class="paper" style="display:none"></div><h1>${esc(s.name)}</h1><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>`);
+else openSheet(`<div class="paper" style="display:none"></div><h1 id="stuLoad">${esc(s.name)}</h1><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>`);
 try{
 const r = await stuPre(code); if(r && r.ok === false) throw r; try{ store('set', k, JSON.stringify(r)); const at = JSON.parse(store('get','coe.stu.@at') || '{}'); at[code] = Date.now(); store('set','coe.stu.@at', JSON.stringify(at)); }catch(e){}
-if(!$('sheet').classList.contains('on')) return;
+if(!$('sheet').classList.contains('on') || window._stuOpen !== code || (!$('stuSch') && !$('stuLoad'))) return;   /* 14 Oct: another card is open now (picture, agreement…) */
 STU = {s, r, code, cls: CLSM[code] || (STU && STU.code === code && STU.cls) || cls0}; stuRender();
 }catch(e){ if(!kept0) $('sheetBody').innerHTML = '<div class="empty">Could not load. Try again.</div>'; }
 }
@@ -5848,7 +5848,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 412;
+const COE_V = 413;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
