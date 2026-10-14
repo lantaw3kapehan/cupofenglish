@@ -5737,7 +5737,7 @@ openSheet(h); $('sheet').classList.add('wide'); tlBtns();
 let ENS = null;
 async function enSheet(code, name, teacher){ ENS = { code, name, teacher, pkg: 15, free: 0, sale: 0, info: null };
 openSheet('<h1>' + esc(name) + ' · Enrolled · paid</h1><div class="mute small">' + esc(code) + ' · first package · SALES, ACTIVE and DATABASE in one save</div><div class="sk"></div><div class="sk"></div>');
-const rp = api('mgmtEnrolPaid', TOKEN, { code, dry: true }).catch(e => ({ ok: false, msg: String((e && (e.msg || e.message)) || e) })); let r = { ok: true, sales: [], firstClass: '', pending: true };   /* 14 Oct night: the form opens at once; SALES payments fill in when Google answers */
+const rp = enPre(code); let r = { ok: true, sales: [], firstClass: '', pending: true };   /* 14 Oct night: the form opens at once; SALES payments fill in when Google answers */
 if(ENS.code !== code) return;
 if(!r || !r.ok) return openSheet('<h1>' + esc(name) + '</h1><p>' + (/unknown action/i.test(String(r && r.msg)) ? 'The server part of this button is not installed yet · paste <b>Step 9</b> of SERVER-SPEED-paste.md into Apps Script, then try again.' : esc((r && r.msg) || 'Could not read the student.')) + '</p>');
 ENS.info = r; const nm = String(name || '').split(/\s+/)[0].toLowerCase(); ENS.touched = 0;
@@ -5786,6 +5786,10 @@ window.enTfS = function(){ const box = $('enTS'), i = $('enTf'); if(!box || !i) 
   L.sort((a, b) => (+b[C.available] || 0) - (+a[C.available] || 0));
   box.innerHTML = L.length ? L.slice(0, 8).map(r => '<button type="button" class="rno" data-v="' + esc(String(r[C.name] || '').trim() + ' · ' + String(r[C.code]).toUpperCase()) + '" onclick="$(\'enTf\').value=this.dataset.v;enTfS();enPrev()"><b>' + esc(String(r[C.name] || '').trim()) + ' ' + esc(r[C.cn] || '') + '</b><span>' + esc(String(r[C.code]).toUpperCase()) + ' · ' + esc(r[C.teacher] || '') + ' · ' + (r[C.available] === '' ? 'shared' : esc(r[C.available]) + ' left') + (r[C.active] === true ? '' : ' · not active') + '</span></button>').join('') + (L.length > 8 ? '<div class="small mute">' + (L.length - 8) + ' more · type more letters</div>' : '')
     : '<div class="small mute">No student with a package in ACTIVE matches · if the giver is an old student not in our sheet, tick the box below</div>'; };
+window.ENPRE = window.ENPRE || {};
+window.enPre = function(code){ const k = String(code || '').toUpperCase(), x = ENPRE[k]; if(x && Date.now() - x.t < 300000) return x.p;
+  const p = api('mgmtEnrolPaid', TOKEN, { code: k, dry: true }).catch(e => ({ ok: false, msg: String((e && (e.msg || e.message)) || e) })); ENPRE[k] = { t: Date.now(), p: p };
+  p.then(r => { if(!r || !r.ok) delete ENPRE[k]; }); return p; };
 window.enOth = function(){ ENS.pkg = +($('enOp') || {}).value || 0; ENS.free = +($('enOf') || {}).value || 0; enPrev(); };
 window.enPk = function(p, f){ const o = $('enO'); if(o) o.classList.toggle('hide', p !== -1); if(p === -1){ document.querySelectorAll('.enk').forEach(b => b.classList.toggle('on', b.dataset.p === '-1')); return enOth(); } ENS.pkg = p; ENS.free = f; document.querySelectorAll('.enk').forEach(b => b.classList.toggle('on', +b.dataset.p === p && +b.dataset.f === f)); enPrev(); };
 function enTrFrom(){ const v = String(($('enTf') || {}).value || ''), m = v.toUpperCase().match(/ST-\d{4}-\d{3}/); return m ? m[0] : ''; }
@@ -5999,7 +6003,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 453;
+const COE_V = 454;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -8522,7 +8526,7 @@ try{ if(typeof TFU !== 'undefined' && TFU !== M) TFU = M; localStorage.setItem('
 if(VIEW === 'trials') renderTP();
 try{ const r = await api('mgmtTrialFu', TOKEN, k, st, note || '', t.student); if(!(r && r.ok)) throw r; if(r.fu) M[k] = r.fu; }catch(e){ if(prev) M[k] = prev; else delete M[k]; toast('Not saved · try again'); if(VIEW === 'trials') renderTP(); } }
 window.tpFu = function(st){ const t = (typeof TLD !== 'undefined') ? TLD : null; if(!t) return; setFu(t, st, ''); toast(t.student + ' · ' + st); try{ tlBtns(); }catch(e){} };
-const _tb = window.tlBtns; window.tlBtns = function(){ const r = _tb.apply(this, arguments); try{ const el = $('tlAct'), t = TLD; if(el && t && t.label){ const f = fuMap()[kOf(t)], cur = enrolled(t) ? 'Enrolled' : f && f.st ? f.st : '';
+const _tb = window.tlBtns; window.tlBtns = function(){ try{ if(D && D.mgr && typeof TLD !== 'undefined' && TLD && TLD.code) enPre(TLD.code); }catch(e){} const r = _tb.apply(this, arguments); try{ const el = $('tlAct'), t = TLD; if(el && t && t.label){ const f = fuMap()[kOf(t)], cur = enrolled(t) ? 'Enrolled' : f && f.st ? f.st : '';
 const opts = ['Following up', 'Thinking it over', 'Unreachable', 'Not now'];
 el.insertAdjacentHTML('beforeend', '<div style="width:100%;margin-top:10px;padding-top:10px;border-top:1px solid #EEF0F4"><div class="small"><b>After the report</b>' + (cur ? ' · now: ' + esc(cur) : ' · no follow-up yet') + '</div><div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">' +
 (enrolled(t) ? '' : '<button class="btn teal sm" onclick="tpEnrol()">Enrol</button>') + opts.filter(o => o !== cur).map(o => '<button class="btn ghost sm" onclick="tpFu(\'' + o + '\')">' + o + '</button>').join('') + '</div></div>'); } }catch(e){} return r; };
@@ -8665,7 +8669,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     const nm = esc(String(stName()).replace(/'/g, '')), tc = esc(String((STU.s.teachers || [])[0] || (STU.r.trial && STU.r.trial.teacher) || '').replace(/'/g, ''));
     el.innerHTML = '<h2>Status' + (lbl[0] ? ' <span class="chip ' + lbl[1] + '" style="font-size:11px;margin-left:6px">' + lbl[0] + '</span>' : '') + '</h2>' + (now ? '<div class="small" style="margin-bottom:8px"><b>' + now + '</b></div>' : '') +
       '<div class="row noprint" style="gap:8px;flex-wrap:wrap"><button class="btn sm teal" onclick="stOpen()">Update · add a note</button>' +
-      (st === 'trial' || st === 'none' ? '<button class="btn sm ghost" onclick="enSheet(\'' + esc(code) + '\',\'' + nm + '\',\'' + tc + '\')">Enrolled · paid</button>' : '<button class="btn sm ghost" onclick="renPaidSheet(\'' + esc(code) + '\',\'' + nm + '\',\'' + tc + '\')">Renewed · paid</button>') + '</div>' +
+      (st === 'trial' || st === 'none' ? '<button class="btn sm ghost" onpointerdown="enPre(\'' + esc(code) + '\')" onclick="enSheet(\'' + esc(code) + '\',\'' + nm + '\',\'' + tc + '\')">Enrolled · paid</button>' : '<button class="btn sm ghost" onclick="renPaidSheet(\'' + esc(code) + '\',\'' + nm + '\',\'' + tc + '\')">Renewed · paid</button>') + '</div>' +
       '<div style="margin-top:8px">' + logHtml(LOG[lk(code, key)], 3) + '</div>'; }
   window.stOpen = function(){ if(!STU) return; const st = stage(), nm = stName(), code = STU.code; PEND = () => openStudent(code);
     if(st === 'trial'){ const t = STU.r.trial; fuSheet({ k: tKey(), name: nm, code: code, teacher: t.teacher, date: t.date, t: t.teacher }); }
