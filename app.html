@@ -1117,8 +1117,20 @@ let API_N = 0; const API_Q = [], API_FLY = {};
 function bg(f){ const u = window._ui; window._ui = 0; try{ return f(); } finally { window._ui = u; } }   
 const API_BG = /^(mgmtAvailAll|mgmtPayChecks|mgmtVisitCoverage|mgmtMonDay|mgmtReportsWait|mgmtAgreeMap|mgmtEnqList|mgmtMsgs|mgmtHours|mgmtWeekSum|mgmtRemindLog|mgmtReminders|mgmtTeacherVisits|mgmtPeerMonth|mgmtPayReady|tFbStatus)$/;
 function apiPump(){ while(API_N < 3 && API_Q.length){ API_N++; API_Q.shift()().finally(() => { API_N--; apiPump(); }); } }
+const FAST_URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe', FAST_USERS = ['misty', 'julia'], FAST_W = { saveNote: 1, markHomework: 1, tNoteTag: 1, tGoalsSave: 1 };
+function fastOn(){ try{ const o = localStorage.getItem('coe.fast'); if(o === '0') return false; if(o === '1') return true; }catch(e){} return !!(D && !D.mgr && D.me && FAST_USERS.indexOf(String(D.me.name || '').trim().toLowerCase()) > -1); }
+function fastAns(fn, args){ const t = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }), a = args[1] || {};
+  if(fn === 'saveNote') return { ok: true, queued: true, note: {}, hw: a.homework ? { time: t, text: String(a.homework) } : null };
+  if(fn === 'markHomework') return { ok: true, queued: true, hw: { time: t, text: String(a.text || '') } };
+  return { ok: true, queued: true }; }
+async function fastWrite(fn, args){ const rid = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  for(let a = 0; a < 2; a++){ try{ const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 6000) : 0;
+    const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'write', fn, args, rid }), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid));
+    if(r && r.ok && r.queued) return fastAns(fn, args); break; }catch(e){ if(a) break; await new Promise(z => setTimeout(z, 800)); } }
+  return apiNow(fn, ...args); }   /* not ready, not signed in there yet, or no answer → the normal save, exactly as today */
 function api(fn, ...args){
 if(!LIVE) return DEMO_API(fn, ...args);
+if(FAST_W[fn] && fastOn()) return fastWrite(fn, args);   /* 14 Oct: fast layer (test users first) */
 if(!API_READ.test(fn) && !API_BG.test(fn)) return apiNow(fn, ...args);   /* 14 Oct: API_BG reads also wait in the queue */
 const k = fn + '|' + JSON.stringify(args); if(API_FLY[k]) return API_FLY[k];
 const go = () => apiNow(fn, ...args);
@@ -5873,7 +5885,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 425;
+const COE_V = 426;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
