@@ -3691,7 +3691,7 @@ H.forEach((h, j) => { if(!h || /^vs/i.test(h)) return; const dl = /^vs/i.test(H[
 if(dl && !tiles.vs) tiles.vs = String(H[j+1]).replace(/^vs\s*/i, '');
 tiles.push(`<span class="tdp-i"><b class="num">${esc(V[j]||'—')}</b> ${esc(h.toLowerCase())}${dl ? ` <em class="${up?'up':dn?'dn':''}">${esc(dl.replace(/pts?/,'pts'))}</em>` : ''}</span>`); });
 pulse = `<div class="tdp"><span class="tdp-l">${esc(/so far/i.test(V[0] || '') ? V[0] : (V[0] || 'This month') + ' so far')}</span>${tiles.join('')}${tiles.vs ? `<span class="tdp-vs">▲▼ vs ${esc(tiles.vs.charAt(0).toUpperCase() + tiles.vs.slice(1))}</span>` : ''}<a class="lk" onclick="tdJump('num')">Trends ›</a></div>`; }
-const renRow = x => { const r = x.r, i = TDC.push(x.rem) - 1, pc = String(x.pc || '');
+const renRow = x => { const r = x.r, i = TDC.push(x.rem) - 1, _rm = ((window.REMC = window.REMC || {})[String(r[1]).toUpperCase()] = x.rem), pc = String(x.pc || '');
 const pcChip = !pc ? '' : /^✓/.test(pc) ? `<span class="chip green">Progress check ${esc(pc.replace(/\s*·\s*save PDF/i,''))}</span>` + `<a class="chip teal" style="cursor:pointer" onclick="prPic('${esc(r[1])}', this)">Copy report picture</a>` + (/save PDF/i.test(pc) ? '<span class="chip amber">PDF not saved</span>' : '')
 : /need/i.test(pc) ? ((window.pcAsked && pcAsked(r[1])) || ((pc.match(/ask\s+(.+)$/i)||[])[1] ? `<a class="chip coral" style="cursor:pointer" title="Message the teacher" onclick="pcAsk('${esc(String(pc.match(/ask\s+(.+)$/i)[1]).replace(/^teacher\s+/i,'').trim())}','${esc(String(r[0]).replace(/'/g,''))}','${esc(r[1])}')">Progress check needed · ask ${esc(tName(pc.match(/ask\s+(.+)$/i)[1]))} ✉</a>` : '<span class="chip coral">Progress check needed</span>')) : `<span class="chip">${esc(pc)}</span>`;
 const endT = !(x.left > 0) ? 'Package finished' : x.end ? 'Last lesson ~' + tdDate(x.end) + ' <span class="mute">(' + tdAgo(x.endN) + ')</span>' : '';
@@ -5803,7 +5803,7 @@ function enPrev(){ const el = $('enP'); if(!el || !ENS) return; if(ENS.tr){ cons
   el.innerHTML = '<div style="font-size:15px"><b style="font-size:20px;color:#00737B">' + n + ' lessons</b> · transferred' + (fr ? ' from <b>' + esc(fr) + '</b>' : '') + ' · no payment</div><div class="small" style="margin-top:4px">Valid ' + (n < 30 ? 4 : n < 60 ? 8 : 12) + ' months from the first class' + (($('enSx') || {}).checked ? ' (date set later)' : '') + ' · ' + (() => { const L = $('enTxL'), typed = String(($('enTf') || {}).value || '').trim(); if(L) L.classList.toggle('hide', !!enTrFrom() || !typed); return enTrFrom() ? '' : ($('enTx') || {}).checked && typed ? '<b>' + esc(typed) + ' is not in our sheet · recorded on this student only</b> · ' : '<b>choose the student from the list</b>' + (typed ? ' or tick "Not in our sheet"' : '') + ' · '; })() + 'TRANSFER OUT on the giver, CARRY OVER here</div>'; return; }
   const t = (+ENS.pkg || 0) + (+ENS.free || 0);
 el.innerHTML = '<div style="font-size:15px"><b style="font-size:20px;color:#00737B">' + t + ' lessons</b> · ' + (ENS.sale ? 'payment already in SALES (row ' + ENS.sale + ')' : 'new SALES row') + '</div><div class="small" style="margin-top:4px">Valid ' + (t < 30 ? 4 : t < 60 ? 8 : 12) + ' months from the first class' + (() => { const s = ($('enS') || {}).value; if(($('enSx') || {}).checked) return ' · <b>first class date set later</b>'; if(!s) return ''; const d = new Date(s + 'T12:00:00'); d.setMonth(d.getMonth() + (t < 30 ? 4 : t < 60 ? 8 : 12)); return ' · until <b>' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '</b>'; })() + ' · 25-min classes count as half a lesson (' + t + ' lessons = ' + (t * 2) + ' × 25-min classes)</div>'; }
-window.enSave = async function(){ const S = ENS; if(!S || !S.info) return; const b = $('enGo');
+window.enSave = async function(){ const S = ENS; if(!S) return; if(!S.info && !S.tr && !S.sale) return toast('Still reading SALES · try again in a few seconds'); const b = $('enGo');
 const f = { code: S.code, name: S.name, teacher: $('enT').value, start: ($('enSx') || {}).checked ? '' : $('enS').value, noStart: !!($('enSx') || {}).checked, course: $('enC').value.trim(), saleRow: S.sale || 0 };
 if(S.tr){ const fr = enTrFrom(), n = +($('enTn') || {}).value || 0, typed = String(($('enTf') || {}).value || '').trim(), out = !fr && typed && ($('enTx') || {}).checked; if(!fr && !out) return toast(typed ? 'Pick ' + typed + ' from the list, or tick "Not in our sheet"' : 'Type who the lessons come from'); if(!(n > 0)) return toast('Type how many lessons'); f.transfer = out ? { from: '', name: typed, n: n, outside: true } : { from: fr, n: n }; f.saleRow = 0; }
 else if(!(S.pkg + S.free > 0) && !S.sale) return toast('Type the number of lessons');
@@ -6009,7 +6009,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 457;
+const COE_V = 459;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -8729,6 +8729,45 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
       el.querySelectorAll('div').forEach(d => { if(/^After the report/.test((d.firstChild && d.firstChild.textContent) || '') ) d.remove(); });
       if(t.code && !(AT && AT.rows) && !window._tlAT){ window._tlAT = 1; loadActive(true).then(() => { window._tlAT = 0; if(TLD === t) tlBtns(); }).catch(() => { window._tlAT = 0; }); }
     }catch(e){ console.warn('trial steps', e); } return r; };
+})();
+</script>
+<script>
+(function(){
+  const up = s => String(s || '').trim().toUpperCase();
+  const head = (n, title, sub, done) => '<div class="small" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid #EEF0F4"><span style="display:inline-flex;width:22px;height:22px;border-radius:11px;align-items:center;justify-content:center;font-weight:700;font-size:12px;' + (done ? 'background:#2E9B6A;color:#fff' : 'background:#E6F4F4;color:#00737B') + '">' + (done ? '✓' : n) + '</span><b>' + title + '</b>' + (sub ? '<span class="mute">' + sub + '</span>' : '') + '</div>';
+  function pkg(code){ try{ if(!(AT && AT.cols && AT.rows)) return null; const C = {}; AT.cols.forEach((c, i) => C[c] = i); const R = AT.rows.filter(r => up(r[C.code]) === up(code) && r[C.enrolled] !== ''); if(!R.length) return null; const r = R.find(x => x[C.active] === true) || R[0]; return { left: r[C.available], dl: r[C.deadline], teacher: r[C.teacher], row: r[C.row] }; }catch(e){ return null; } }
+  const _rn = window.renSheet; window.renSheet = function(code, name){ const r = _rn.apply(this, arguments);
+    try{ const b = $('sheetBody'); if(!b) return r; const st = renSt(code), k = st.k || '', nm = esc(String(name || '').replace(/'/g, '')), cd = esc(code), P = pkg(code);
+      const opts = b.querySelector('.rnl'), rnU = $('rnU'), note = $('rnN'), noteL = note && note.previousElementSibling && note.previousElementSibling.tagName === 'LABEL' ? note.previousElementSibling : null;
+      const btns = [...b.querySelectorAll('button')], find = re => btns.find(x => re.test(x.textContent.trim()));
+      const save = find(/^Save$/), noteOnly = $('stNo'), clear = find(/^Clear status$/), paid = find(/Renewed · paid/), foot = [...b.querySelectorAll('p.small.mute')].pop();
+      const histH = [...b.querySelectorAll('h3')].find(h => /History/.test(h.textContent)), hist = $('stLog');
+      const rem = (window.REMC || {})[up(code)];
+      if(!opts) return r;
+      const wrap = document.createElement('div');
+      const answered = /^(yes|pause|no|done)$/.test(k), paidDone = k === 'done';
+      // 1 · remind
+      wrap.insertAdjacentHTML('beforeend', head(1, 'Remind the parent', P ? ' · ' + (P.left === '' ? 'shared package' : esc(P.left) + ' lessons left') + (P.dl ? ' · deadline ' + esc(P.dl) : '') : '', !!k));
+      const r1 = document.createElement('div'); r1.className = 'row'; r1.style.cssText = 'gap:8px;flex-wrap:wrap;margin-top:8px';
+      r1.innerHTML = (rem ? '<button class="btn ' + (k ? 'ghost' : 'teal') + ' sm" id="rnCp">Copy reminder</button>' : '') + (k ? '<span class="small mute" style="align-self:center">' + esc(st.label) + '</span>' : '<button class="btn ghost sm" onclick="renQuick(\'' + cd + '\',\'' + nm + '\')">✓ Reminder sent</button>');
+      wrap.appendChild(r1);
+      // 2 · answer
+      wrap.insertAdjacentHTML('beforeend', head(2, 'What did the parent say?', answered ? ' · ' + esc(st.label) : '', answered));
+      [...opts.querySelectorAll('[data-k]')].forEach(o => { if(o.dataset.k === 'Reminder sent') o.remove(); });
+      opts.style.marginTop = '8px'; wrap.appendChild(opts); if(rnU) wrap.appendChild(rnU); if(noteL) wrap.appendChild(noteL); if(note) wrap.appendChild(note);
+      const r2 = document.createElement('div'); [save, noteOnly, clear].filter(Boolean).forEach(x => r2.appendChild(x)); wrap.appendChild(r2);
+      // 3 · payment
+      wrap.insertAdjacentHTML('beforeend', head(3, 'Record the payment', paidDone ? '' : ' · when the parent has paid', paidDone));
+      if(paidDone) wrap.insertAdjacentHTML('beforeend', '<div class="card" style="margin-top:8px;padding:10px 12px;background:#F1FAF9;border-color:#BFE6E3"><b style="color:#00737B">✓ ' + esc(st.label) + '</b><div class="small mute">Recorded in SALES and ACTIVE · a second payment only if the parent paid again.</div></div>');
+      if(paid){ paid.style.margin = '8px 0 0'; if(paidDone){ paid.className = 'btn ghost sm'; paid.textContent = 'Record another payment'; } wrap.appendChild(paid); }
+      // 4 · get started
+      wrap.insertAdjacentHTML('beforeend', head(4, 'Send the parent the new package', ' · after payment', false));
+      wrap.insertAdjacentHTML('beforeend', '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost sm" onclick="cxBalance(null,\'' + cd + '\')">Renewal picture · 续费成功</button><button class="btn ghost sm" onclick="cnOpen(\'' + cd + '\')">Class notice</button><button class="btn ghost sm" onclick="agrOpen({code:\'' + cd + '\'})">Agreement</button></div>');
+      if(foot) wrap.appendChild(foot); if(histH) wrap.appendChild(histH); if(hist) wrap.appendChild(hist);
+      const sub = b.querySelector('.mute.small'); if(sub) sub.insertAdjacentElement('afterend', wrap); else b.appendChild(wrap);
+      const cp = $('rnCp'); if(cp) cp.onclick = () => { try{ navigator.clipboard.writeText(rem); toast('Reminder copied · paste it in WeChat, then tap ✓ Reminder sent'); }catch(e){ openSheet('<h1>Reminder</h1><p class="small" style="white-space:pre-line">' + esc(rem) + '</p>'); } };
+      if(!(AT && AT.rows) && !window._rnAT){ window._rnAT = 1; loadActive(true).then(() => { window._rnAT = 0; }).catch(() => { window._rnAT = 0; }); }
+    }catch(e){ console.warn('renewal steps', e); } return r; };
 })();
 </script>
 
