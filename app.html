@@ -1115,10 +1115,11 @@ const API_READ = /^(getBootstrap|refresh|schedLists|moneyLists|dbLists|mgmt(Over
 let API_N = 0; const API_Q = [], API_FLY = {};
 ['pointerdown','keydown'].forEach(t => addEventListener(t, () => { window._ui = Date.now(); }, true));
 function bg(f){ const u = window._ui; window._ui = 0; try{ return f(); } finally { window._ui = u; } }   
+const API_BG = /^(mgmtAvailAll|mgmtPayChecks|mgmtVisitCoverage|mgmtMonDay|mgmtReportsWait|mgmtAgreeMap|mgmtEnqList|mgmtMsgs|mgmtHours|mgmtWeekSum|mgmtRemindLog|mgmtReminders|mgmtTeacherVisits|mgmtPeerMonth|mgmtPayReady|tFbStatus)$/;
 function apiPump(){ while(API_N < 3 && API_Q.length){ API_N++; API_Q.shift()().finally(() => { API_N--; apiPump(); }); } }
 function api(fn, ...args){
 if(!LIVE) return DEMO_API(fn, ...args);
-if(!API_READ.test(fn)) return apiNow(fn, ...args);
+if(!API_READ.test(fn) && !API_BG.test(fn)) return apiNow(fn, ...args);   /* 14 Oct: API_BG reads also wait in the queue */
 const k = fn + '|' + JSON.stringify(args); if(API_FLY[k]) return API_FLY[k];
 const go = () => apiNow(fn, ...args);
 const p = Date.now() - (window._ui || 0) < 1500 || /^(getBootstrap|refresh|mgmtOverview|mgmtRenewals|mgmtTrialFus)$/.test(fn) ? go()   
@@ -5097,6 +5098,11 @@ const v = id => ($(id)||{}).value || '';
 const f = fn==='addSale' ? {date:v('fD'),invoice:v('fI').trim(),pkg:v('fP'),free:v('fF'),partner:v('fR'),method:v('fM'),file:INV}
 : {date:v('fD'),desc:v('fE').trim(),category:v('fC'),amount:v('fA').replace(/,/g,'')};
 const b = $('fGo'); b.disabled = true; b.textContent = 'Saving…';
+if(fn === 'addExpense'){ if(!f.desc || !f.category || !(+f.amount)){ b.disabled = false; b.textContent = 'Add expense'; return toast('Description, category and amount are needed.'); }
+  closeSheet(); toast('Saving expense…');   /* 14 Oct: closes at once, saves in the background */
+  api(fn, TOKEN, f).then(r => { if(!r || !r.ok) throw r; toast('✓ ' + (r.note || 'Expense added')); MN = null; loadMoney(); })
+  .catch(async e => { try{ await expSheet(); [['fD', f.date], ['fE', f.desc], ['fC', f.category], ['fA', f.amount]].forEach(([id, x]) => { const el = $(id); if(el) el.value = x; }); }catch(y){} toast((e && e.msg) || 'Expense not saved · your details are back in the form. Try again.'); });
+  return; }
 try{ const r = await api(fn, TOKEN, f); if(!r.ok) throw r; closeSheet(); toast(r.note); MN = null; loadMoney(); }
 catch(e){ toast((e&&e.msg)||'Not saved. Try again.'); b.disabled=false; b.textContent = fn==='addSale'?'Add sale':'Add expense'; }
 }
@@ -5855,7 +5861,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 419;
+const COE_V = 420;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
