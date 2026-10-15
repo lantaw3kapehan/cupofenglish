@@ -6011,7 +6011,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 475;
+const COE_V = 476;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -9208,6 +9208,18 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
   const _mh = window.monHtml; if(_mh) window.monHtml = function(e, info){ const h = _mh.apply(this, arguments); try{ if(e && D && D.mgr) setTimeout(() => check(e), 600); setTimeout(() => { if(!$("mvOnce")) check(e); }, 2600); }catch(x){} return h; };
   // after a visit is saved, the next check for that teacher reads fresh
   const _ap = window.api; window.api = function(fn){ if(fn === 'mgmtMonitor'){ for(const k in VIS) delete VIS[k]; COVQ.at = 0; } return _ap.apply(this, arguments); };
+})();
+</script>
+<script>
+(function(){
+  // The things in the orange "Management is waiting" box are not listed a second time in the To do card on the right.
+  const _rt = window.renderToday; window.renderToday = function(){ const r = _rt.apply(this, arguments);
+    try{ if(!D || D.mgr || !$('mustBox')) return r; const root = $('v-today'), h2 = [...root.querySelectorAll('h2')].find(x => /^To do/.test(x.textContent.trim())); if(!h2) return r;
+      const card = h2.nextElementSibling; if(!card) return r; let left = 0;
+      card.querySelectorAll(':scope > .li').forEach(li => { if(li.dataset.must != null) li.style.display = 'none'; else left++; });
+      const c = h2.querySelector('.c'); if(c) c.textContent = left || '';
+      if(!left && !card.querySelector('.td-up')) card.insertAdjacentHTML('beforeend', '<div class="small mute td-up" style="padding:12px 0">Everything is in the box at the top ↑</div>');
+    }catch(e){ console.warn('todo repeat', e); } return r; };
 })();
 </script>
 
