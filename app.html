@@ -6011,7 +6011,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 467;
+const COE_V = 468;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -8873,10 +8873,12 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     const lead = root.querySelector('.lead'); if(lead) lead.insertAdjacentHTML('afterend', box); else root.insertAdjacentHTML('afterbegin', box);
     // Pop up once when the app opens (and again when something new arrives), never during a class, "Later" = 2 hours.
     const sig = L.map(x => x.key).sort().join('¦'); window._mustSig = sig;
-    if(POPPED === sig || snoozed(sig) || inClass() || VIEW !== 'today' || $('sheet').classList.contains('on')) return;
+    const popH = () => '<h1 id="mustPop">Before you start</h1><p class="small mute" style="margin:8px 0 6px">Management is waiting for ' + (n === 1 ? 'this' : 'these ' + n + ' things') + '. It only takes a minute.</p>' + L.map((x, i) => row(x, i, true)).join('') +
+        '<div style="margin-top:14px;text-align:center"><a class="link small" onclick="mustLater(window._mustSig)">Remind me in 2 hours</a></div>';
+    if($('mustPop') && $('sheet').classList.contains('on')){ POPPED = sig; $('sheetBody').innerHTML = popH(); return; }
+    if(POPPED === sig || snoozed(sig) || inClass() || VIEW !== 'today' || $('sheet').classList.contains('on') || (window._mustAt && Date.now() - window._mustAt < 10 * 6e4)) return;
     clearTimeout(window._mustT); window._mustT = setTimeout(() => { if(POPPED === sig || $('sheet').classList.contains('on') || VIEW !== 'today') return; POPPED = sig;
-      openSheet('<h1>Before you start</h1><p class="small mute" style="margin:8px 0 6px">Management is waiting for ' + (n === 1 ? 'this' : 'these ' + n + ' things') + '. It only takes a minute.</p>' + L.map((x, i) => row(x, i, true)).join('') +
-        '<div style="margin-top:14px;text-align:center"><a class="link small" onclick="mustLater(window._mustSig)">Remind me in 2 hours</a></div>'); }, 2500);
+      window._mustAt = Date.now(); openSheet(popH()); }, 2500);
     // A phone / laptop notification for each new item (once).
     try{ L.forEach(x => { if(!remTold('must:' + x.key)) notify('CupOfEnglish · to do', x.label + ' · ' + x.title, 'coe-must'); }); }catch(e){}
   }
