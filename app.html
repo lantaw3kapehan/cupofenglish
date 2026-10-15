@@ -6060,7 +6060,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 518;
+const COE_V = 519;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -6373,9 +6373,16 @@ ${sec(8, 'Acceptance 协议确认', 'Payment and/or signature confirms that the 
 function agrMsg(a){ const kid = String(a.name || '').trim().split(/\s+/)[0] || 'your child', zh = a.cn || kid;
 return `Dear parent, before ${kid}'s classes begin, please read our Learner Service Agreement (picture above). To sign, long-press the picture › Edit, write your signature, name and date in the box and send it back here, or simply reply 「已阅读并同意」. Thank you!\n家长您好！${zh}的课程开始前，请阅读我们的《学员服务协议》（见上图）。请长按图片 → 编辑 → 在签名框内手写签名、姓名和日期后发回本群；或直接回复「已阅读并同意」。谢谢！`; }
 async function agrOpen(q){ q = q || {}; AGS = { code: String(q.code || '').toUpperCase(), key: q.key || '', name: q.name || '', cn: q.cn || '', pkg: q.pkg || 0, list: [] }; AGPIC = null;
-openSheet(`<h1>Service agreement · 服务协议</h1><div class="sk"></div><div class="sk"></div>`); $('sheet').classList.add('wide');
-try{ const r = await api('mgmtAgree', TOKEN, { code: AGS.code, key: AGS.key, name: AGS.name }); if(r && r.ok) Object.assign(AGS, { name: r.name || AGS.name, cn: r.cn || AGS.cn, pkg: r.pkg || AGS.pkg, list: r.list || [], city: r.city || '' }); AGS.nat = /philippin|manila|cebu|davao|pangasinan|urdaneta|\bPH\b/i.test(AGS.city) ? 'Philippines 菲律宾' : 'China 中国'; }catch(e){}
-agrPaint(); agrPic(); }
+try{ if(AGS.code && typeof AT !== 'undefined' && AT && AT.rows){ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const rs = AT.rows.filter(x => String(x[C.code]).toUpperCase() === AGS.code); const r0 = rs.find(x => x[C.enrolled] !== '') || rs[0];
+  if(r0){ AGS.name = AGS.name || String(r0[C.name] || ''); AGS.cn = AGS.cn || String(r0[C.cn] || ''); AGS.pkg = AGS.pkg || (+r0[C.enrolled] || 0); } }
+  if(!AGS.name && AGS.code && typeof SL !== 'undefined' && SL && SL.students){ const s = SL.students.find(x => x.code === AGS.code); if(s){ AGS.name = s.name; AGS.cn = AGS.cn || s.cn || ''; } }
+  const rec = agrOf(AGS.code, AGS.key, AGS.name); if(rec) AGS.list = [rec]; }catch(e){}
+AGS.nat = 'China 中国'; const first = AGS;
+agrPaint(); agrPic();   /* at once, from what the app knows */
+try{ const r = await api('mgmtAgree', TOKEN, { code: AGS.code, key: AGS.key, name: AGS.name }); if(AGS !== first) return;
+  if(r && r.ok){ const nat = /philippin|manila|cebu|davao|pangasinan|urdaneta|\bPH\b/i.test(r.city || '') ? 'Philippines 菲律宾' : 'China 中国', ch = (r.name && r.name !== AGS.name) || (r.cn && r.cn !== AGS.cn) || (r.pkg && r.pkg !== AGS.pkg) || nat !== AGS.nat;
+    Object.assign(AGS, { name: r.name || AGS.name, cn: r.cn || AGS.cn, pkg: r.pkg || AGS.pkg, list: r.list || AGS.list, city: r.city || '', nat });
+    if($('sheet').classList.contains('on') && $('agImg')){ const nv = $('agN') ? $('agN').value : '', how = AGS.how; if(ch){ AGPIC = null; } agrPaint(); if($('agN')) $('agN').value = nv; if(how) AGS.how = how; if(ch) agrPic(); } } }catch(e){} }
 function agrPaint(){ const a = AGS; if(!a) return; const last = a.list[0], ok = a.list.find(x => x.how !== 'Sent');
 const opt = (k, t, sub) => `<button type="button" class="rno" data-k="${k}" onclick="AGS.how='${k}';document.querySelectorAll('.rno').forEach(b=>b.classList.toggle('on',b.dataset.k==='${k}'));$('agF').classList.toggle('hide','${k}'!=='Signed copy')"><b>${t}</b><span>${sub}</span></button>`;
 openSheet(`<h1>${esc(a.name || 'Student')}${a.cn ? ' ' + esc(a.cn) : ''} · Service agreement</h1><div class="mute small">${esc(a.code || 'trial · no code yet')}${a.pkg ? ' · package ' + a.pkg + ' lessons' : ''} · ${ok ? '<b style="color:#1E7A55">on file ✓ ' + esc(ok.how) + ' · ' + esc(tfuDay(ok.at)) + ' · ' + esc(ok.by) + '</b>' + (ok.file ? ' · <a href="' + esc(ok.file) + '" target="_blank">signed copy</a>' : '') : last ? '<b>sent ' + esc(tfuDay(last.at)) + ' · waiting for the reply</b>' : 'not sent yet'}</div>
