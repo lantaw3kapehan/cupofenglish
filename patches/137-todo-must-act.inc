@@ -30,7 +30,7 @@
     const sig = L.map(x => x.key).sort().join('¦'); window._mustSig = sig;
     if(POPPED === sig || snoozed(sig) || inClass() || VIEW !== 'today' || $('sheet').classList.contains('on')) return;
     clearTimeout(window._mustT); window._mustT = setTimeout(() => { if(POPPED === sig || $('sheet').classList.contains('on') || VIEW !== 'today') return; POPPED = sig;
-      openSheet('<h1>Before you start</h1><p class="small mute" style="margin-top:-4px">Management is waiting for ' + (n === 1 ? 'this' : 'these ' + n + ' things') + '. It only takes a minute.</p>' + L.map((x, i) => row(x, i, true)).join('') +
+      openSheet('<h1>Before you start</h1><p class="small mute" style="margin:8px 0 6px">Management is waiting for ' + (n === 1 ? 'this' : 'these ' + n + ' things') + '. It only takes a minute.</p>' + L.map((x, i) => row(x, i, true)).join('') +
         '<div style="margin-top:14px;text-align:center"><a class="link small" onclick="mustLater(window._mustSig)">Remind me in 2 hours</a></div>'); }, 2500);
     // A phone / laptop notification for each new item (once).
     try{ L.forEach(x => { if(!remTold('must:' + x.key)) notify('CupOfEnglish · to do', x.label + ' · ' + x.title, 'coe-must'); }); }catch(e){}
