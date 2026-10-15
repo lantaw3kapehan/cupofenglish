@@ -1011,6 +1011,19 @@ body #v-teachers .tc2-f span{padding:0;background:none!important;color:#8A87A0}
 body #v-teachers .tc2-f span+span:before{content:'·';margin:0 7px;color:#C9CCD8}
 body #v-teachers .tc2-f .late{color:#A1452F!important}body #v-teachers .tc2-f .off{color:#8A5A00!important}
 </style>
+<style id="tc4css">
+@media (min-width:760px){
+body #v-teachers .tc2-g{grid-template-columns:1fr;gap:0;background:#fff;border:1px solid #EEF0F4;border-radius:20px;overflow:hidden}
+body #v-teachers .tc2{display:grid;grid-template-columns:38px minmax(210px,1.3fr) minmax(150px,1fr) minmax(230px,1.3fr) 76px;align-items:center;column-gap:18px;row-gap:0;border:0;border-bottom:1px solid #F1F2F6;border-radius:0;padding:14px 22px;transform:none!important}
+body #v-teachers .tc2:last-child{border-bottom:0}
+body #v-teachers .tc2:hover{background:#F7F9FA;box-shadow:none}
+body #v-teachers .tc2-top{display:contents}
+body #v-teachers .tc2-av{grid-column:1;grid-row:1}body #v-teachers .tc2-nm{grid-column:2;grid-row:1}
+body #v-teachers .tc2-line{grid-column:3;grid-row:1}body #v-teachers .tc2-f{grid-column:4;grid-row:1}
+body #v-teachers .tc2-u{grid-column:5;grid-row:1;text-align:right}
+body #v-teachers .tc2-u b{font-size:24px}
+}
+</style>
 </head>
 <body>
 
@@ -2630,8 +2643,9 @@ async function avOpen(name){ name = String(name || '').replace(/^teacher\s+/i, '
 openSheet('<h1>Teacher ' + esc(name) + ' · open slots</h1><div class="sk"></div><div class="sk" style="height:220px"></div>'); $('sheet').classList.add('wide');
 const ck = 'av:' + name.toLowerCase(), old = kept(ck); let r = old;
 const fresh = api('mgmtAvail', TOKEN, name, 21).then(x => { if(x && x.ok) keep(ck, x); return x; });
+if(!r){ try{ const q = await Promise.race([api('mgmtAvailAll', TOKEN, [name]), new Promise(z => setTimeout(() => z(null), 4000))]); const t = q && q.ok && (q.teachers || []).find(x => String(x.name || '').toLowerCase() === name.toLowerCase()); if(t && t.days && t.days.some(Boolean)) r = { ok: true, days: t.days, busy: t.busy || [], from: q.from }; }catch(e){} }
 if(!r){ try{ r = await fresh; if(!r || !r.ok) throw r; }catch(e){ $('sheetBody').innerHTML = '<h1>Teacher ' + esc(name) + ' · open slots</h1><div class="empty">Could not load. Try again.</div>'; return; } }
-else fresh.then(x => { if(!x || !x.ok || !AVD || AVD.name !== name || AVD.dirty) return; AVD.busy = x.busy || []; AVD._b = null; AVD.from = x.from; if(!AVD.saved && x.days){ AVD.days = x.days.slice(0, 7); AVD.saved = true; } avRefresh(); }).catch(() => {});
+else fresh.then(x => { if(!x || !x.ok || !AVD || AVD.name !== name || AVD.dirty) return; AVD.busy = x.busy || []; AVD._b = null; AVD.at = x.at || AVD.at; AVD.by = x.by || AVD.by; AVD.from = x.from; if(!AVD.saved && x.days){ AVD.days = x.days.slice(0, 7); AVD.saved = true; } avRefresh(); }).catch(() => {});
 AVD = { name, days: (r.days || r.sug || ['', '', '', '', '', '', '']).slice(0, 7), saved: !!r.days, sug: !r.days && !!(r.sug && r.sug.some(Boolean)), busy: r.busy || [], from: r.from, len: 25, at: r.at, by: r.by, wk: new Date().getDay() === 0 || new Date().getDay() === 6 ? 1 : 0 };
 avPaint(); }
 const avT = t => { const x = new Date(t); return String(x.getHours()).padStart(2, '0') + ':' + String(x.getMinutes()).padStart(2, '0'); };
@@ -6036,7 +6050,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 508;
+const COE_V = 509;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
