@@ -5311,9 +5311,9 @@ ${r[10] && !r[16] ? `<div class="tin" style="margin-top:12px"><div class="grow">
 let DBL = null;
 const dbLocal = r => { const d = s => { s = String(s == null ? '' : s).trim(); if(/^\d{4}-\d\d-\d\d$/.test(s)) return s; const m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/); if(!m) return s; const M = 'janfebmaraprmayjunjulaugsepoctnovdec'.indexOf(m[2].toLowerCase()) / 3 + 1; return M >= 1 ? m[3] + '-' + String(M).padStart(2, '0') + '-' + m[1].padStart(2, '0') : s; };
 const c = i => String(r[i] == null ? '' : r[i]).trim();
-return { ok: true, code: c(0), cn: c(1), en: c(2), birth: d(r[5]), gender: c(7), grade: c(8), city: c(9), trialDate: d(r[10]), trialTime: c(11), trialBook: c(12), trialCefr: c(13), trialTeacher: c(14), firstClass: d(r[16]), lessons: c(17), cefrBooks: c(19), ended: d(r[20]), recommended: d(r[21]), free: c(23) }; };
+return { ok: true, code: c(0), cn: c(1), en: c(2), birth: d(r[5]), gender: c(7), grade: c(8), city: c(9), trialDate: d(r[10]), trialTime: c(11), trialBook: c(12), trialCefr: c(13), trialTeacher: c(14), firstClass: d(r[16]), lessons: c(17), cefrBooks: c(19), ended: d(r[20]), recommended: d(r[21]), source: c(22), free: c(23) }; };
 function dbPatch(v2, code){ const b = $('sheetBody'); if(!b || !$('sEn')) return; if(!v2 || !v2.ok){ toast((v2 && v2.msg) || 'The DATABASE tab changed. Refresh and try again.'); closeSheet(); return; }
-const M = { sEn: 'en', sCn: 'cn', sBirth: 'birth', sGender: 'gender', sGrade: 'grade', sCity: 'city', sTd: 'trialDate', sTt: 'trialTime', sTb: 'trialBook', sTc: 'trialCefr', sTe: 'trialTeacher', sFc: 'firstClass', sLs: 'lessons', sCb: 'cefrBooks', sFr: 'free', sRc: 'recommended', sEnd: 'ended' };
+const M = { sEn: 'en', sCn: 'cn', sBirth: 'birth', sGender: 'gender', sGrade: 'grade', sCity: 'city', sTd: 'trialDate', sTt: 'trialTime', sTb: 'trialBook', sTc: 'trialCefr', sTe: 'trialTeacher', sFc: 'firstClass', sLs: 'lessons', sCb: 'cefrBooks', sFr: 'free', sRc: 'recommended', sEnd: 'ended', sSrc: 'source' };
 Object.keys(M).forEach(id => { const el = $(id); if(!el || el.dataset.t) return; const val = String(v2[M[id]] == null ? '' : v2[M[id]]).trim(); if(String(el.value).trim() === val) return;
 if(el.tagName === 'SELECT' && val && ![...el.options].some(o => o.value === val)) el.insertAdjacentHTML('beforeend', '<option>' + esc(val) + '</option>'); el.value = val; }); }
 async function stuForm(row, code, enrol){
@@ -5336,6 +5336,7 @@ openSheet(`<h1>${row?'Edit '+esc(v.en||v.cn||code):'New student'}</h1>
 ${two(`<label>English name</label>${inp('sEn',v.en)}`, `<label>Chinese name</label>${inp('sCn',v.cn)}`)}
 ${two(`<label>Birthdate</label>${inp('sBirth',v.birth,'date')}`, `<label>Gender</label>${sel('sGender',(L.gender||[]).map(x=>x.trim()),(v.gender||'').trim())}`)}
 ${two(`<label>School grade</label>${sel('sGrade',L.grade,v.grade)}`, `<label>City</label>${inp('sCity',v.city,'text','Dongguan')}`)}
+<label>Source <span class="mute small">· partner, referring student or CupOfEnglish</span></label><input id="sSrc" class="in-t" list="sSrcL" value="${esc(v.source||'')}" placeholder="Pick or type · e.g. Jinan – Dr. Rose · ST-2024-068 – Dudu · COE – Misty" autocomplete="off"><datalist id="sSrcL">${(() => { const S = {}; ((typeof DB !== 'undefined' && DB && DB.rows) || []).forEach(r => { const x = String(r[22] || '').trim(); if(x && !/^n\/?a$/i.test(x)) S[x] = (S[x] || 0) + 1; }); return Object.keys(S).sort((a, b) => S[b] - S[a]).slice(0, 80).map(x => '<option value="' + esc(x) + '">').join(''); })()}</datalist>
 <h2>Trial class</h2>
 ${two(`<label>Date</label>${inp('sTd',v.trialDate,'date')}`, `<label>Time</label>${timeSel('sTt', v.trialTime || '', '—')}`)}
 ${two(`<label>Book</label>${sel('sTb',L.book,v.trialBook)}`, `<label>CEFR</label>${sel('sTc',L.cefr,v.trialCefr)}`)}
@@ -5359,7 +5360,7 @@ async function sendStu(row, code){
 const v = id => ($(id)||{}).value || '';
 const f = {rid: 'st' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), code, en:v('sEn'), cn:v('sCn'), birth:v('sBirth'), gender:v('sGender'), grade:v('sGrade'), city:v('sCity'),
 trialDate:v('sTd'), trialTime:v('sTt'), trialBook:v('sTb'), trialCefr:v('sTc'), trialTeacher:v('sTe'),
-firstClass:v('sFc'), lessons:v('sLs'), cefrBooks:v('sCb'), free:v('sFr'), recommended:v('sRc'), ended:v('sEnd')};
+firstClass:v('sFc'), lessons:v('sLs'), cefrBooks:v('sCb'), free:v('sFr'), recommended:v('sRc'), ended:v('sEnd'), source:v('sSrc')};
 if(!row && !($('sEnr')||{}).open) ['firstClass','lessons','cefrBooks','free','recommended','ended'].forEach(k => delete f[k]);
 if(!f.en.trim() && !f.cn.trim()) return toast('Type the English or Chinese name');
 if(f.trialTime && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(f.trialTime.trim())) return toast('Choose the trial time from the list');
@@ -6015,7 +6016,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 494;
+const COE_V = 495;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -9695,7 +9696,9 @@ ${scDueBox()}${bookKey()}<div class="fl"><span class="lbl">Teacher</span><button
   function deadlines(){ const out = {}; try{ if(!AT || !AT.cols) return out; const C = {}; AT.cols.forEach((c, i) => C[c] = i);
     (AT.rows || []).forEach(r => { const k = up(r[C.code]); if(!/^ST-/.test(k)) return; if(r[C.active] && r[C.deadline] && (!out[k] || r[C.deadline] < out[k])) out[k] = r[C.deadline]; }); }catch(e){} return out; }
   function sources(){ const out = {}; try{ if(!AT || !AT.cols) return out; const C = {}; AT.cols.forEach((c, i) => C[c] = i); if(C.source == null) return out;
-    (AT.rows || []).forEach(r => { const k = up(r[C.code]); if(!/^ST-/.test(k)) return; const v = String(r[C.source] || '').trim(); if(v && (!out[k] || r[C.active])) out[k] = v; else if(!(k in out)) out[k] = ''; }); }catch(e){} return out; }
+    (AT.rows || []).forEach(r => { const k = up(r[C.code]); if(!/^ST-/.test(k)) return; const v = String(r[C.source] || '').trim(); if(v && (!out[k] || r[C.active])) out[k] = v; else if(!(k in out)) out[k] = ''; }); }catch(e){}
+    try{ if(typeof DB !== 'undefined' && DB && DB.rows){ const seen = {}; DB.rows.forEach(r => { const k = up(r[0]); if(!/^ST-/.test(k) || seen[k]) return; seen[k] = 1; const v = String(r[22] || '').trim(); if(v && !/^n\/?a$/i.test(v)) out[k] = v; }); } }catch(e){}   /* 166: DATABASE first */
+    return out; }
   function srcTag(v){ v = String(v || '').trim(); if(!v || /^n\/?a$/i.test(v)) return '<span class="sa-src none" title="Add the source in ACTIVE › SOURCE"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.5h.01"/></svg>Source not set</span>';
     const m = v.match(/^(ST-\d{4}-\d{3})\s*[–-]\s*(.+)$/i); if(m) return '<span class="sa-src ref" title="Student referral"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18.5 14.3A6.5 6.5 0 0 1 21.5 20"/></svg>Referred by ' + esc(m[2]) + ' (' + esc(m[1].toUpperCase()) + ')</span>';
     if(/^(COE|CupOfEnglish)\b/i.test(v)) return '<span class="sa-src coe" title="Came to CupOfEnglish directly"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h13v4a7 7 0 0 1-7 7h1a7 7 0 0 1-7-7z"/><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H16.5"/><path d="M8 3.5v2.5M12 3.5v2.5"/></svg>' + esc(v.replace(/^COE\b/i, 'CupOfEnglish')) + '</span>';
@@ -9793,7 +9796,7 @@ ${scDueBox()}${bookKey()}<div class="fl"><span class="lbl">Teacher</span><button
     try{ if(typeof DB !== 'undefined' && DB && DB.rows){ const H = (DB.head || []).map(h => String(h || '').trim().toUpperCase()); let j = H.indexOf('SOURCE'); if(j < 0) j = 22;
       DB.rows.forEach(r => { const k = up(r[0]); if(/^ST-/.test(k) && !(k in out)) out[k] = String(r[j] || '').trim(); }); } }catch(e){}
     try{ if(typeof AT !== 'undefined' && AT && AT.cols){ const C = {}; AT.cols.forEach((c, i) => C[c] = i);
-      if(C.source != null) (AT.rows || []).forEach(r => { const k = up(r[C.code]), v = String(r[C.source] || '').trim(); if(/^ST-/.test(k) && v && (r[C.active] || !out[k])) out[k] = v; }); } }catch(e){}
+      if(C.source != null) (AT.rows || []).forEach(r => { const k = up(r[C.code]), v = String(r[C.source] || '').trim(); if(/^ST-/.test(k) && v && !out[k]) out[k] = v; }); } }catch(e){}   /* 166: DATABASE first, ACTIVE only when blank */
     return out; }
   const css = `#v-trials .sk2{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
 #v-trials .sk2>span{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#8A87A0;margin-right:2px}
@@ -9977,6 +9980,36 @@ return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type=
     }catch(e){ console.warn('enquiry refine', e); }
     return r; };
   try{ if(VIEW === 'enquiry') renderEnq(); }catch(e){}
+})();
+</script>
+<script>
+(function(){
+  const PEN = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:6px"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
+  const up = s => String(s || '').trim().toUpperCase();
+  window.stuEdit = async function(code){ code = up(code); if(!/^ST-/.test(code)) return toast('No student code yet · add it in DATABASE first');
+    if(typeof DB === 'undefined' || !DB){ toast('Opening the student’s DATABASE row…'); try{ await loadDb(true); }catch(e){} }
+    const r = ((typeof DB !== 'undefined' && DB && DB.rows) || []).find(x => up(x[0]) === code);
+    if(!r) return toast(code + ' is not in DATABASE yet');
+    closeSheet(); setTimeout(() => stuForm(r[r.length - 1], r[0]), 120); };
+  const btn = (code, cls) => '<button class="btn ' + (cls || 'ghost') + ' sm s2-edit" onclick="event.stopPropagation();stuEdit(\'' + esc(code) + '\')">' + PEN + 'Edit details</button>';
+  // student page: top buttons + Profile header
+  const _sr = window.stuRender;
+  if(_sr) window.stuRender = function(){ const r = _sr.apply(this, arguments);
+    try{ if(D && D.mgr && typeof STU !== 'undefined' && STU && STU.code){ const b = $('sheetBody'); if(b){
+      const ag = [...b.querySelectorAll('button')].find(x => /^Agreement$|^Lesson summary$/.test(x.textContent.trim()) && x.closest('.row, div'));
+      if(ag && !b.querySelector('.s2-edit')) ag.insertAdjacentHTML('afterend', btn(STU.code, 'ghost'));
+      const ph = [...b.querySelectorAll('h2')].find(h => /^\s*Profile/.test(h.textContent));
+      if(ph && !ph.querySelector('.s2-edit')){ const lk = ph.querySelector('a'); (lk || ph).insertAdjacentHTML(lk ? 'beforebegin' : 'beforeend', btn(STU.code, 'teal')); }
+    } } }catch(e){}
+    return r; };
+  // trial details
+  if(typeof tlOpen === 'function'){ const _tl = tlOpen;
+    tlOpen = async function(){ const r = await _tl.apply(this, arguments);
+      try{ const b = $('sheetBody'); if(D && D.mgr && b && !b.querySelector('.s2-edit')){ const m = (b.textContent || '').slice(0, 600).match(/ST-\d{4}-\d{3}/); const h1 = b.querySelector('h1');
+        if(m && h1) h1.insertAdjacentHTML('afterend', '<div style="margin:8px 0 4px">' + btn(m[0], 'ghost') + '</div>'); } }catch(e){}
+      return r; }; }
+  const st = document.createElement('style'); st.textContent = '.s2-edit{white-space:nowrap}h2 .s2-edit{margin-left:10px;font-family:var(--f,inherit);font-size:13px;vertical-align:middle}';
+  document.head.appendChild(st);
 })();
 </script>
 
