@@ -6016,7 +6016,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 499;
+const COE_V = 501;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -10078,7 +10078,7 @@ return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type=
       const first = v.querySelector('.li[onclick^="openTeacher"]'); if(!first) return r; const box = first.parentElement;
       const cp = x => x.sch ? Math.round(x.done / x.sch * 100) : null, mx = Math.max(1, ...T.map(x => +x.units || 0));
       T.sort((a, b) => TS === 'name' ? String(a.name).localeCompare(String(b.name)) : TS === 'comp' ? ((cp(b) == null ? -1 : cp(b)) - (cp(a) == null ? -1 : cp(a))) : ((+b.units || 0) - (+a.units || 0)));
-      const card = x => { const k = RK.find(z => z[0].test(String(x.rank || ''))), c = cp(x), col = c == null ? '#C9CCD8' : c >= 80 ? '#2E9E6F' : c >= 60 ? '#D9962B' : '#D4705A';
+      const card = x => { const k = RK.find(z => z[0].test(String(x.rank || ''))) || RK[RK.length - 1], c = cp(x), col = c == null ? '#C9CCD8' : c >= 80 ? '#2E9E6F' : c >= 60 ? '#D9962B' : '#D4705A';
         return `<div class="tc2" style="--rt:${k[1]};--rb:${k[2]};--rc:${k[3]}" onclick="openTeacher('${esc(x.name)}')"><div class="tc2-top"><div class="tc2-av">${esc(String(x.name || '?').slice(0, 2).toUpperCase())}</div>
 <div class="tc2-nm"><b>${esc(tName(x.name))}</b><span class="tc2-rk">${esc(x.rank || 'No rank')} · ${peso(x.rate)}</span></div><div class="tc2-u"><b>${esc(String(x.units))}</b><span>units this month</span></div></div>
 <div class="tc2-line"><span style="width:62px">Units</span><span class="pg"><i style="width:${Math.round((+x.units || 0) / mx * 100)}%;background:var(--rc)"></i></span></div>
@@ -10107,7 +10107,7 @@ return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type=
     const now = new Date(), thisM = all.filter(x => { const d = dOf(x.when); return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
     const T = [...new Set(all.map(x => String(x.employee || '').trim()).filter(Boolean))].sort();
     let h = `<div class="lead row"><div class="grow"><h1>Cases</h1><div class="mute small">Live from ACTIONS · newest first${sheetLink('ACTIONS')}</div></div><button class="btn sm teal" onclick="caseSheet()">+ New case</button></div>
-<div class="ac2-sum"><span>${MON[now.getMonth()]} so far</span><span><b>${thisM.length}</b>cases</span><span class="plus"><b>+${peso2(thisM.reduce((a, x) => a + num(x.incentive), 0))}</b>bonuses</span><span class="minus"><b>−${peso2(thisM.reduce((a, x) => a + num(x.amount), 0))}</b>deductions</span><span><b>${F.open.length}</b>not completed</span></div>
+<div class="ac2-sum"><span>${MON[now.getMonth()]} so far</span><span><b>${thisM.length}</b>cases</span><span class="plus"><b>+${peso2(thisM.reduce((a, x) => a + num(x.incentive), 0))}</b>bonuses</span><span class="minus"><b>${(d => (d ? '−' : '') + peso2(d))(thisM.reduce((a, x) => a + num(x.amount), 0))}</b>deductions</span><span><b>${F.open.length}</b>not completed</span></div>
 <div style="margin-top:12px"><input id="acq" class="search" placeholder="Search case, teacher, student" value="${esc(q)}" oninput="renderActions()"></div>
 <div class="seg">${[['all', 'All'], ['open', 'Not completed'], ['pen', 'Deductions'], ['bon', 'Bonuses']].map(([k, l]) => `<button class="${AC_F === k ? 'on' : ''}" onclick="AC_F='${k}';renderActions()">${l} · ${F[k].length}</button>`).join('')}</div>
 <div class="ac2-tf"><span>Teacher</span><button class="${!ACT ? 'on' : ''}" onclick="acT('')">All</button>${T.map(t => `<button class="${ACT.toLowerCase() === t.toLowerCase() ? 'on' : ''}" onclick="acT('${esc(t).replace(/'/g, '')}')">${esc(t)}</button>`).join('')}</div>`;
@@ -10121,6 +10121,32 @@ return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type=
     const f = document.activeElement && document.activeElement.id === 'acq';
     $('v-actions').innerHTML = h; if(f){ const i = $('acq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); } };
   try{ if(VIEW === 'teachers') renderTeachers(); if(VIEW === 'actions') renderActions(); }catch(e){}
+})();
+</script>
+<script>
+(function(){
+  // 15 Oct · Leave, tidied: when the three counts are all 0 they become one calm "all clear" line (and the empty
+  // "On leave now" section goes); a request waiting for approval turns its tile coral; the 4-step flow becomes a small strip.
+  const css = `
+#v-leave .lv2-ok{display:flex;align-items:center;gap:10px;margin-top:14px;padding:12px 16px;border-radius:14px;background:#E3F4EC;color:#1C6B4C;font-size:14px}
+#v-leave .lv2-ok b{font-family:var(--brand);font-weight:400;font-size:17px}
+#v-leave .stat.lv2-hot{background:#FBEAE5;border-color:#F3C9BD}#v-leave .stat.lv2-hot b{color:#A1452F}
+#v-leave .lv2-flow{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;font-size:12.5px;color:#6F6B85}
+#v-leave .lv2-flow span{padding:4px 10px;border-radius:999px;background:#F3F4F8}
+#v-leave .lv2-flow i{font-style:normal;color:#B5B3C4;align-self:center}`;
+  const st = document.createElement('style'); st.id = 'lv2css'; st.textContent = css; document.head.appendChild(st);
+  const _r = window.renderLeave;
+  window.renderLeave = function(){ const r = _r.apply(this, arguments);
+    try{ const v = $('v-leave'); if(!v) return r; const S = v.querySelector('.stats'); if(!S) return r;
+      const T = [...S.querySelectorAll('.stat')], n = T.map(t => +((t.querySelector('b') || {}).textContent || 0) || 0);
+      if(T[2] && n[2] > 0) T[2].classList.add('lv2-hot');
+      if(n.length && n.every(x => !x)){ S.outerHTML = '<div class="lv2-ok"><b>✓ All clear</b> · nobody on leave today · none coming up · nothing waiting for your approval</div>';
+        const h = [...v.querySelectorAll('h2')].find(x => /On leave now/.test(x.textContent)); if(h && h.nextElementSibling && h.nextElementSibling.classList.contains('tdok')){ h.nextElementSibling.remove(); h.remove(); } }
+      const fl = [...v.querySelectorAll('.small.mute')].find(x => /Teacher asks with proof/.test(x.textContent));
+      if(fl) fl.outerHTML = '<div class="lv2-flow">' + ['Teacher asks with proof', 'Operations checks', 'President approves', 'Teacher sees it in the app'].map(s => '<span>' + s + '</span>').join('<i>→</i>') + '</div>';
+    }catch(e){ console.warn('leave tidy', e); }
+    return r; };
+  try{ if(VIEW === 'leave') renderLeave(); }catch(e){}
 })();
 </script>
 
