@@ -6066,7 +6066,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 533;
+const COE_V = 534;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -10791,7 +10791,8 @@ try{ if(VIEW === 'payroll') renderPayroll(); }catch(e){}
    e.g. October so far) comes to the top — in the dark card and as its own list. Last month stays one tap away. */
 (function(){
   const css = `
-.py-cur .py-row{grid-template-columns:44px minmax(0,1.4fr) 140px 150px!important}
+@media(min-width:901px){.py-cur .py-row{grid-template-columns:44px minmax(0,1.4fr) 140px 150px!important}}
+.py-now .py-chips{display:none}
 .py-cur .py-row .py-av{background:#7B6FC9}
 .py-cur .neg{color:var(--red)}
 .py-done{background:#fff;border:1px solid rgba(236,234,241,.9);border-radius:20px;box-shadow:var(--sh1);margin-top:18px;overflow:hidden}
@@ -10826,7 +10827,7 @@ try{ if(VIEW === 'payroll') renderPayroll(); }catch(e){}
     try{
       const P = (MO && MO.payroll) || [], C = curRows(), v = $('v-payroll'); if(!v || !P.length || !C || P.some(x => !x.paid)) return r;
       const tot = C.rows.reduce((a, x) => a + x.net, 0), last = P.reduce((a, x) => a + x.net, 0), pm = esc((MO && MO.payMonth) || 'Last month');
-      const hero = v.querySelector('.py-hero');
+      const hero = v.querySelector('.py-hero'); v.classList.add('py-now'); const sub = v.querySelector('.py-top .sub'); if(sub) sub.textContent = C.label + ' so far · from the PAYROLL tab · ' + ((MO && MO.payMonth) || 'last month') + ' all paid';
       if(hero) hero.innerHTML = `<img class="py-cup" src="${esc(ovCup())}" alt=""><div class="r1"><span>${esc(C.label)} · so far</span></div><div class="big">${peso(tot)}</div>
         <div class="bs">${C.rows.length} teacher${C.rows.length === 1 ? '' : 's'} · the month is still running · paid out after month end</div>
         <div class="py-3"><div><span>${pm}</span><b>${peso(last)}</b><small>all ${P.length} paid ✓</small></div>
@@ -10842,6 +10843,7 @@ try{ if(VIEW === 'payroll') renderPayroll(); }catch(e){}
         paintCur();
       }
     }catch(e){ console.warn('payroll current month', e); }
+    finally{ try{ const v = $('v-payroll'); if(v && !$('pyCur')) v.classList.remove('py-now'); }catch(e){} }
     return r;
   };
   const _f = window.payFind; window.payFind = function(){ const r = _f.apply(this, arguments); try{ paintCur(); const d = document.querySelector('.py-done'); if(d && qv()) d.open = true; }catch(e){} return r; };
