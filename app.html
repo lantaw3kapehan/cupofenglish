@@ -6018,7 +6018,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 505;
+const COE_V = 506;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -8433,8 +8433,8 @@ window.enqF = function(f){ ENQ_F = f; renderEnq(); };
 window.enqAgrAny = function(){ openSheet('<h1>Service agreement · 服务协议</h1><div class="mute small">For a parent who asks before enrolling · the package boxes stay blank</div><label>Child\'s English name</label><input id="eaN" class="in-t" placeholder="e.g. Ying"><label>Chinese name (optional)</label><input id="eaC" class="in-t" placeholder="e.g. 贺莹"><button class="btn teal block" style="margin-top:14px" onclick="const n=$(\'eaN\').value.trim(); if(!n) return toast(\'Type the child\\\'s name\'); agrOpen({ key: \'enq:any:\' + n.toLowerCase(), name: n, cn: $(\'eaC\').value.trim() })">Make the agreement picture</button>'); setTimeout(() => { const i = $('eaN'); if(i) i.focus(); }, 50); };
 window.enqAgr = function(id){ const e = (ENQ || []).find(x => x && String(x.id) === String(id)); if(!e) return; agrOpen({ key: 'enq:' + e.id, name: String(e.name || '').trim(), cn: String(e.cn || '').trim() }); };
 const _r = window.renderEnq; window.renderEnq = function(){ _r(); const el = $('v-enquiry'); if(!el) return; if(!ENQ) enqLoad();
-const L = ENQ || [], F = { follow: L.filter(isFollow), new: L.filter(e => (e.st || 'New') === 'New'), trial: L.filter(e => e.st === 'Trial booked'), enrolled: L.filter(e => e.st === 'Enrolled'), not: L.filter(e => e.st === 'Not now'), all: L };
-const tabs = [['follow', 'To follow up'], ['new', 'New'], ['trial', 'Trial booked'], ['enrolled', 'Enrolled'], ['not', 'Not now'], ['all', 'All'], ['results', 'Results']];
+const L = ENQ || [], F = { follow: L.filter(isFollow), new: L.filter(e => (e.st || 'New') === 'New'), trial: L.filter(e => e.st === 'Trial booked'), enrolled: L.filter(e => e.st === 'Enrolled'), not: L.filter(e => e.st === 'Not now'), all: L.filter(e => e.st !== 'Enrolled' && e.st !== 'Not now') };
+const tabs = [['follow', 'To follow up'], ['new', 'New'], ['trial', 'Trial booked'], ['enrolled', 'Enrolled'], ['not', 'Not now'], ['all', 'Open'], ['results', 'Results']];
 const chip = s => '<span class="chip ' + (s === 'Enrolled' ? 'green' : s === 'Trial booked' ? 'teal' : s === 'Not now' ? '' : 'coral') + '">' + esc(s || 'New') + '</span>';
 const row = e => { const d = days(e.up || e.at), fol = isFollow(e);
 return '<div class="tdr ' + (fol ? 'now' : 'soon') + '"><div class="tdn"><b class="num">' + days(e.at) + '</b><span>days</span></div><div class="grow" style="min-width:0"><div><b>' + esc(e.name) + '</b> <span class="mute small">' + esc([e.wechat, e.age ? e.age + ' yrs' : ''].filter(Boolean).join(' · ')) + '</span></div>' +
@@ -8445,7 +8445,7 @@ return '<div class="tdr ' + (fol ? 'now' : 'soon') + '"><div class="tdn"><b clas
 const list = F[ENQ_F] || L;
 el.querySelector('.lead').insertAdjacentHTML('afterend', '<section class="sec" id="enqBox"><div class="row"><h2 class="grow">Enquiries <span class="c">' + L.length + ' logged · ' + F.follow.length + ' to follow up</span></h2><button class="btn teal sm" onclick="enqNew()">+ Log enquiry</button></div>' +
 '<div class="seg" style="flex-wrap:wrap;margin:8px 0">' + tabs.map(t => '<button class="' + (ENQ_F === t[0] ? 'on' : '') + '" onclick="enqF(\'' + t[0] + '\')">' + t[1] + (F[t[0]] ? ' · ' + F[t[0]].length : '') + '</button>').join('') + '</div>' +
-(ENQ_F === 'results' ? enqResults(L) : ENQ ? (list.length ? list.slice(0, 60).map(row).join('') : '<div class="tdok">' + (ENQ_F === 'follow' ? 'No one to follow up. Nice work.' : 'None here.') + '</div>') : '<div class="sk"></div>') +
+(ENQ_F === 'results' ? enqResults(L) : ENQ ? (list.length ? list.slice(0, 60).map(row).join('') : '<div class="tdok">' + (ENQ_F === 'follow' ? 'No one to follow up. Nice work.' : ENQ_F === 'all' ? '✓ All clear · every enquiry is enrolled or set to Not now' : 'None here.') + '</div>') : '<div class="sk"></div>') +
 '</section><h2 style="margin-top:22px">Pictures for any enquiry</h2>'); };
 const _go = window.go; window.go = function(v){ const r = _go.apply(this, arguments); if(v === 'enquiry') enqLoad(); return r; };
 const _rm = window.renderMToday; if(_rm) window.renderMToday = function(){ const r = _rm.apply(this, arguments); try{ if(!ENQ) enqLoad(); const n = (ENQ || []).filter(isFollow).length, el = $('v-mtoday'); if(n && el && !$('enqTd')){ const ld = el.querySelector('.lead'); if(ld) ld.insertAdjacentHTML('afterend', '<div id="enqTd" class="tdr now" style="margin:10px 0;cursor:pointer" onclick="ENQ_GO()"><div class="tdn"><b class="num">' + n + '</b><span>to call</span></div><div class="grow"><b>Enquiries to follow up</b><div class="small">Asked about prices 2+ days ago and no trial booked yet · tap to open</div></div></div>'); } }catch(e){} return r; };
@@ -10188,6 +10188,56 @@ return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type=
 <button class="btn ghost sm" onclick="closeSheet();setTimeout(()=>stuEdit('${code}'),120)">${pen}Edit details</button>
 <button class="btn teal sm" onclick="closeSheet();setTimeout(()=>classForm('${code}'),120)">+ Add a class</button></div>`);
     }catch(x){ console.warn('class sheet student', x); }
+    return r; };
+})();
+</script>
+<script>
+(function(){
+  // 15 Oct · New class, opened for a student (Misty: "when opening their name, can this be improved"):
+  //  · title says who: "New class · Jun";
+  //  · Quick pick: the next 14 days as chips — the student's usual days in teal, days already booked show the time
+  //    (dimmed); one tap fills the date + the usual time (a single class, e.g. a make-up);
+  //  · a live check under the date: time already passed / the student already has a class then / teacher busy then.
+  const css = `#cQP{margin-top:12px}#cQP>b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#8A87A0;margin-bottom:6px}
+#cQP .qp{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+#cQP button{all:unset;cursor:pointer;flex:none;min-width:58px;text-align:center;padding:7px 8px;border-radius:12px;background:#fff;border:1.5px solid #EEF0F4;font-size:12px;color:#4C4868;line-height:1.25}
+#cQP button b{display:block;font-family:var(--brand);font-weight:400;font-size:17px;color:#2B2253}
+#cQP button.u{border-color:#00A3AD;background:#F2FBFB}#cQP button.bk{opacity:.5}#cQP button.on{background:#2B2253;border-color:#2B2253;color:#fff}#cQP button.on b{color:#fff}
+#cWarn{margin-top:8px;font-size:13px;padding:8px 12px;border-radius:10px;background:#FBEAE5;color:#A1452F}#cWarn.ok{background:#E3F4EC;color:#1C6B4C}`;
+  const st = document.createElement('style'); st.id = 'cqpcss'; st.textContent = css; document.head.appendChild(st);
+  const DN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const evs = code => ((CLSM && CLSM[code]) || []).filter(e => !e.cancelled);
+  window.cqpPick = function(d){ const h = CHIST; $('cD').value = d; if(h && h.time){ if(![...$('cH').options].some(o => o.value === h.time)){ const o = document.createElement('option'); o.value = o.textContent = h.time; $('cH').appendChild(o); } $('cH').value = h.time; }
+    if($('cR') && $('cR').checked){ $('cR').checked = false; $('cRep').classList.add('hide'); }
+    document.querySelectorAll('#cQP button').forEach(b => b.classList.toggle('on', b.dataset.d === d)); classPrev(); };
+  function chips(s){ const el = $('cHist'); if(!el || !s) return; const old = $('cQP'); if(old) old.remove();
+    const h = CHIST && CHIST.code === s.code ? CHIST : null, E = evs(s.code), by = {};
+    E.forEach(e => { const d = ymdLocal(new Date(e.start)); (by[d] = by[d] || []).push(tm(e.start)); });
+    const t0 = new Date(); t0.setHours(12, 0, 0, 0); let out = '';
+    for(let k = 0; k < 14; k++){ const x = new Date(t0); x.setDate(t0.getDate() + k); const d = ymdLocal(x), u = h && h.days.includes(x.getDay()), b = by[d];
+      out += `<button type="button" data-d="${d}" class="${u ? 'u' : ''}${b ? ' bk' : ''}" onclick="cqpPick('${d}')" title="${b ? 'Booked ' + b.join(', ') : u ? 'Usual day' : ''}">${k === 0 ? 'Today' : k === 1 ? 'Tmrw' : DN[x.getDay()]}<b>${x.getDate()}</b>${b ? esc(b[0]) : u ? 'usual' : '&nbsp;'}</button>`; }
+    el.insertAdjacentHTML('afterend', `<div id="cQP"><b>Quick pick · one class${h && h.time ? ' at ' + esc(h.time) : ''}</b><div class="qp">${out}</div></div>`); }
+  const _ch = window.classHist;
+  window.classHist = async function(s){ const r = await _ch.apply(this, arguments); try{ const s2 = classStu(); if(s2 && s && s2.code === s.code && !s2.fresh) chips(s); }catch(e){} return r; };
+  const _cp = window.classPrev;
+  window.classPrev = function(){ const r = _cp.apply(this, arguments);
+    try{ const D0 = $('cD'), H = $('cH'), s = classStu(); let w = $('cWarn'); if(!D0 || !H) return r;
+      const row = D0.closest('.row'); if(!w && row){ row.insertAdjacentHTML('afterend', '<div id="cWarn" class="hide"></div>'); w = $('cWarn'); } if(!w) return r;
+      const d = D0.value, t = H.value, rep = $('cR') && $('cR').checked; let msg = '', ok = '';
+      document.querySelectorAll('#cQP button').forEach(b => b.classList.toggle('on', b.dataset.d === d && !rep));
+      if(d && t){ const st0 = new Date(d + 'T' + t + ':00'), mins = +($('cM') || {}).value || 25, en0 = new Date(st0.getTime() + mins * 6e4);
+        if(!rep && st0 < new Date()) msg = '⚠ ' + t + ' on this day has already passed';
+        else if(s){ const clash = evs(s.code).find(e => new Date(e.start) < en0 && new Date(e.end) > st0); if(clash) msg = '⚠ ' + esc(s.name) + ' already has a class then · ' + tm(clash.start) + '–' + tm(clash.end) + (clash.teacher ? ' with ' + esc(tName(clash.teacher)) : ''); }
+        if(!msg){ const T = ($('cT') || {}).value, all = Object.values(SCC || {}).flatMap(c => (c && c.events) || []);
+          const busy = T && all.find(e => !e.cancelled && String(e.teacher || '').toLowerCase() === T.toLowerCase() && new Date(e.start) < en0 && new Date(e.end) > st0 && !(s && String(e.code || '').toUpperCase() === s.code));
+          if(busy) msg = '⚠ ' + esc(tName(T)) + ' is teaching then · ' + esc(busy.student || busy.title || '') + ' ' + tm(busy.start) + '–' + tm(busy.end);
+          else if(!rep && s && !s.fresh) ok = '✓ ' + new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }) + ' · ' + t + ' is free' + (T ? ' for ' + esc(tName(T)) : ''); } }
+      w.className = msg ? '' : ok ? 'ok' : 'hide'; w.innerHTML = msg || ok;
+    }catch(e){ console.warn('class check', e); }
+    return r; };
+  const _cf = window.classForm;
+  window.classForm = async function(code){ const r = await _cf.apply(this, arguments);
+    try{ const s = code && SL && SL.students.find(x => x.code === code), h1 = $('sheetBody') && $('sheetBody').querySelector('h1'); if(s && h1 && /^New class$/.test(h1.textContent)) h1.textContent = 'New class · ' + s.name; }catch(e){}
     return r; };
 })();
 </script>
