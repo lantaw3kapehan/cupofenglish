@@ -6066,7 +6066,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 534;
+const COE_V = 535;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -10818,9 +10818,9 @@ try{ if(VIEW === 'payroll') renderPayroll(); }catch(e){}
     box.innerHTML = L.map(x => `<div class="py-row" onclick="payslipNow('${esc(x.name)}')" title="Open ${esc(x.name)}'s payslip"><span class="py-av">${esc(x.name.slice(0, 2).toUpperCase())}</span><div class="py-n"><b>${esc(tName(x.name))}</b><small>so far this month</small></div><span class="py-net ${x.net < 0 ? 'neg' : ''}">${peso(x.net)}</span><div class="py-st"><span class="${x.paid ? 'paid' : 'wait'}">${esc(x.paid ? '✓ Paid' : x.st)}</span></div></div>`).join('')
       || `<div class="py-empty">${q ? 'No teacher matches “' + esc(q) + '” this month' : 'Nothing yet this month'}</div>`; }
   // the payslip opens on this month (not last month's pay)
-  window.payslipNow = function(name){ payslip(name); const C = curRows(); if(!C) return; let n = 0;
-    const t = setInterval(() => { const s = $('psP'); if(s || ++n > 30){ clearInterval(t); if(!s) return;
-      const o = [...s.options].find(o => plMonth(o.value) === C.label || plMonth(o.textContent) === C.label); if(o && s.value !== o.value){ s.value = o.value; try{ psPre(); }catch(e){} } } }, 100); };
+  window.payslipNow = async function(name){ const C = curRows(), pick = () => { const s = $('psP'); if(!s || !C) return;
+      const o = [...s.options].find(o => plMonth(o.value) === C.label); if(o && s.value !== o.value){ s.value = o.value; try{ psPre(); }catch(e){} } };
+    const p = payslip(name); setTimeout(pick, 0); try{ await p; }catch(e){} pick(); };
   const _r = window.renderPayroll;
   window.renderPayroll = function(){
     const r = _r.apply(this, arguments);
