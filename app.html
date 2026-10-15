@@ -3501,8 +3501,9 @@ LVF.clearAsk = 0;
 if(!remove){ if(!f.id && !f.teacher) return toast('Choose the teacher'); if(!f.type) return toast('Choose the type of leave'); if(!f.from) return toast('Choose the dates'); if(some && (!f.tFrom || !f.tTo)) return toast('Pick from what time to what time'); }
 if(endorse){ const x = LV.rows.find(r => r.id === f.id); if(x && !(x.proof || []).length && !LVFILES.length && !confirm('There is no proof attached. Raise it to the President anyway?')) return; }
 const b = $('lvGo'); if(b){ b.disabled = true; b.textContent = 'Saving…'; }
-try{ const r = await api('mgmtLeaveSave', TOKEN, f); if(!r.ok) throw r; closeSheet(); toast('✓ ' + r.note); loadLeave(true); }
-catch(e){ if(b){ b.disabled = false; b.textContent = 'Try again'; } toast((e && (e.msg || e.message)) || 'Not saved. Try again.'); } }
+const _sn = sheetSnap(); closeSheet(); toast('Saving leave…');
+try{ const r = await api('mgmtLeaveSave', TOKEN, f); if(!r.ok) throw r; toast('✓ ' + r.note); loadLeave(true); }
+catch(e){ sheetBack(_sn); toast(((e && (e.msg || e.message)) || 'Not saved') + ' · the form is back. Try again.'); } }
 async function lvDecide(id, st, fromSheet){ const x = LV.rows.find(r => r.id === id); if(!x) return;
 let note; if(st === 'Declined'){ note = prompt('Why is it declined? The teacher sees this (optional).', ''); if(note === null) return; note = note.trim() ? (x.note ? x.note + ' · ' : '') + 'Declined: ' + note.trim() : undefined; }
 if(fromSheet) closeSheet(); const prev = x.status; x.status = st; renderLeave();
@@ -4350,8 +4351,9 @@ return '<h2 style="margin-top:16px">Teacher’s check</h2><div class="mini">' + 
 + (k.st === 'Disputed' || k.st === 'Answered' ? '<label>Reply to Teacher ' + esc(x.name) + '</label><textarea id="prR" class="in-t" rows="3" placeholder="e.g. Fixed · the 2 trial classes are added, please check again"></textarea><button class="btn block" style="margin-top:8px" id="prRB" onclick="payReply(\'' + esc(x.name) + '\')">Send reply</button>' : '')
 + (!x.paid && k.st !== 'Verified' ? '<button class="btn ghost block" style="margin-top:8px" onclick="payVerNudge([\'' + esc(x.name) + '\'])">Ask Teacher ' + esc(x.name) + ' to check this pay</button>' : ''); }
 async function payReply(n){ const t = ($('prR') || {}).value || '', b = $('prRB'); if(!t.trim()) return toast('Write a reply'); if(b){ b.disabled = true; b.textContent = 'Sending…'; }
-try{ const r = await api('mgmtPayReply', TOKEN, n, t); if(!r.ok) throw r; PCKM.checks[n.toLowerCase()] = r.check; keep('paychkm', PCKM); closeSheet(); toast('✓ ' + r.note); renderPayroll(); }
-catch(e){ toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); if(b){ b.disabled = false; b.textContent = 'Send reply'; } } }
+const _sn = sheetSnap(); closeSheet(); toast('Sending reply to Teacher ' + n + '…');
+try{ const r = await api('mgmtPayReply', TOKEN, n, t); if(!r.ok) throw r; PCKM.checks[n.toLowerCase()] = r.check; keep('paychkm', PCKM); toast('✓ ' + r.note); renderPayroll(); }
+catch(e){ sheetBack(_sn); toast(((e && (e.msg || e.message)) || 'Not sent') + ' · your reply is back. Try again.'); } }
 async function payVerNudge(names){ if(!names || !names.length) return; closeSheet(); toast('Sending…');
 try{ const r = await api('mgmtPayVerNudge', TOKEN, names); if(!r.ok) throw r; toast('✓ ' + r.note + ' · they see it on Pay and Today'); loadPayChecks(); }catch(e){ toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); } }
 let MYR = null;
@@ -5366,11 +5368,11 @@ if(!f.en.trim() && !f.cn.trim()) return toast('Type the English or Chinese name'
 if(f.trialTime && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(f.trialTime.trim())) return toast('Choose the trial time from the list');
 const lk = FIXLINK; FIXLINK = null;
 if(!row && lk && Date.now() - lk.t < 30*60000 && f.trialDate === lk.date && tfuFirst(f.en || f.cn) === tfuFirst(String(lk.name).replace(/^(ms|mr|mrs|miss)\.?\s+/i, ''))) f.linkTrial = { date: lk.date, name: lk.name };
-const b = $('sGo'); b.disabled = true; b.textContent = 'Saving…';
-try{ const r = await api('saveStudent', TOKEN, f, row || 0); if(!r.ok) throw r; closeSheet(); toast(r.note);
+const b = $('sGo'); b.disabled = true; b.textContent = 'Saving…'; const _sn = sheetSnap(); closeSheet(); toast('Saving ' + (f.en || f.cn) + '…');
+try{ const r = await api('saveStudent', TOKEN, f, row || 0); if(!r.ok) throw r; toast(r.note);
 if(r.linked && f.linkTrial){ FIXD[fixKey(f.linkTrial)] = { note: 'Added ' + r.code + ' · linked', t: Date.now() }; fixKeep(); if(VIEW === 'mtoday') renderMToday(); }
 try{ store('del','coe.m.db'); }catch(x){} DB = null; MS = null; AT = null; loadDb(); }
-catch(e){ toast((e&&e.msg)||'Not saved. Try again.'); b.disabled = false; stuBtn(row?1:0); }
+catch(e){ sheetBack(_sn); toast(((e&&e.msg)||'Not saved') + ' · your changes are back in the form. Try again.'); try{ stuBtn(row?1:0); }catch(x){} }
 }
 
 async function loadPayLedger(){ urls(); try{ await swr('payroll', () => api('mgmtPayroll', TOKEN), v => PL = v, renderPayroll); }catch(e){} }
@@ -6016,7 +6018,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 503;
+const COE_V = 504;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -10148,6 +10150,20 @@ return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type=
     }catch(e){ console.warn('leave tidy', e); }
     return r; };
   try{ if(VIEW === 'leave') renderLeave(); }catch(e){}
+})();
+</script>
+<script>
+(function(){
+  // 15 Oct · Stage 2 · the last management saves that made you wait now close at once and save in the background:
+  // student details (new / Edit details), leave form, reply on a pay check. If Google refuses, the form comes back
+  // exactly as it was, with a note.
+  window.sheetSnap = function(){ const b = $('sheetBody'); if(!b) return null;
+    return { html: b.innerHTML, wide: $('sheet').classList.contains('wide'), vals: [...b.querySelectorAll('input,textarea,select')].map(el => el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value),
+      open: [...b.querySelectorAll('details')].map(d => d.open) }; };
+  window.sheetBack = function(s){ if(!s) return; try{ openSheet(s.html); if(s.wide) $('sheet').classList.add('wide'); const b = $('sheetBody');
+    [...b.querySelectorAll('input,textarea,select')].forEach((el, i) => { if(i >= s.vals.length) return; if(el.type === 'checkbox' || el.type === 'radio') el.checked = s.vals[i]; else if(el.type !== 'file') el.value = s.vals[i]; });
+    [...b.querySelectorAll('details')].forEach((d, i) => { if(i < s.open.length) d.open = s.open[i]; });
+    b.querySelectorAll('button[disabled]').forEach(x => { x.disabled = false; if(/Saving|Sending/.test(x.textContent)) x.textContent = 'Try again'; }); }catch(e){ console.warn('sheetBack', e); } };
 })();
 </script>
 
