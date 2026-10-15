@@ -6011,7 +6011,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 473;
+const COE_V = 474;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -9073,7 +9073,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     if(!document.getElementById('ftCss')) document.head.insertAdjacentHTML('beforeend', '<style id="ftCss">#ftBox{border:2px solid #C0392B;background:#FDECEA;border-radius:18px;padding:14px 16px;margin:14px 0 6px}#ftBox h3{margin:0;font-size:17px;color:#8E1F12}#ftBox ul{margin:8px 0 0 18px;padding:0}#ftBox li{margin:3px 0}</style>');
     const head = R.level >= 3 ? '⛔ Final warning · management has been told' : '⚠ Warning · management’s comments need action';
     const sub = R.level >= 3 ? 'These were raised more than once or have waited too long. Management may send a memorandum.' : 'These have waited 2 days or more, or were not fixed after the last class visit.';
-    const box = '<div id="ftBox"><h3>' + head + '</h3><div class="small" style="color:#8E1F12;margin-top:2px">' + sub + '</div><ul>' + R.items.map(x => '<li class="small"><b>' + esc(x.kind) + '</b> · ' + esc(x.text) + (x.overdue && x.days >= 2 ? ' · ' + x.days + ' days' : '') + '</li>').join('') + '</ul>' +
+    const box = '<div id="ftBox"><h3>' + head + '</h3><div class="small" style="color:#8E1F12;margin-top:2px">' + sub + '</div><ul>' + R.items.slice(0, 6).map(x => '<li class="small"><b>' + esc(x.kind) + '</b> · ' + esc(x.text) + (x.overdue && x.days >= 2 ? ' · ' + x.days + ' days' : '') + '</li>').join('') + (R.items.length > 6 ? '<li class="small">+' + (R.items.length - 6) + ' more</li>' : '') + '</ul>' +
       (sent ? '<div class="small" style="margin-top:10px;color:#1E7A55"><b>✓ Your plan was sent ' + esc(sd(plan.at)) + '.</b> This stays until the items above are done or fixed at the next visit.</div>'
         : '<label style="margin-top:10px">What did you change, or what will you do and by when?</label><textarea id="ftP" class="in-t" rows="2" placeholder="e.g. I moved my camera back and checked it with a test call. From today I will…"></textarea><button class="btn teal block" id="ftB" style="margin-top:8px" onclick="ftSend()">Send my plan to management</button>') + '</div>';
     const lead = root.querySelector('.lead'); if(lead) lead.insertAdjacentHTML('afterend', box); else root.insertAdjacentHTML('afterbegin', box); }
@@ -9146,6 +9146,47 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
   const _pf = window.pcForm; window.pcForm = function(code){ CODE = code; return _pf.apply(this, arguments); };
   const _pp = window.pcPaint; window.pcPaint = function(){ const r = _pp.apply(this, arguments); try{ paint(); setTimeout(paint, 1500); }catch(e){ console.warn('pc guide', e); } return r; };
   const _pk = window.pcPick; window.pcPick = function(){ const r = _pk.apply(this, arguments); try{ setTimeout(paint, 0); }catch(e){} return r; };
+})();
+</script>
+<script>
+(function(){
+  // Fairer warnings (after Misty saw Kat's first list):
+  //  · the "ignored" clock starts when this started (15 Oct, noon) — nobody is late for days before they could see it;
+  //  · unread class visits are one line ("3 class visits not read"), not one line each;
+  //  · "Not fixed" / "Same issue" only count when the teacher had READ the earlier visit before the next one
+  //    (seen but nothing changed). If she never read it, it is "not read", not "not fixed";
+  //  · the same follow-up written on several visits counts once.
+  const DAY = 864e5, START = Date.parse('2026-10-15T12:00:00+08:00'), MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const tms = s => { s = String(s || ''); const m = s.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?/); return m ? Date.parse(m[1] + 'T' + (m[2] || '12:00') + ':00+08:00') : 0; };
+  const ackT = (a, ymd) => { const m = String(a || '').match(/^(\d{1,2}) (\w{3}) (\d{2}):(\d{2})/); if(!m) return a ? 1 : 0; const mi = MON.indexOf(m[2]); if(mi < 0) return 1;
+    return Date.parse(String(ymd).slice(0, 4) + '-' + String(mi + 1).padStart(2, '0') + '-' + m[1].padStart(2, '0') + 'T' + m[3] + ':' + m[4] + ':00+08:00'); };
+  const sd = t => t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+  const late = t => t ? Math.floor((Date.now() - Math.max(t, START)) / DAY) : 0;
+  const isTask = r => !!r && r.role === 'mgmt' && r.kind !== 'memo' && /^📌\s*Task/.test(String(r.text || ''));
+  const pcOf = r => { const m = String((r && r.text) || '').match(/progress check\s*\((ST-\d{4}-\d{3})\)/i); return m ? m[1].toUpperCase() : ''; };
+  const short = s => { s = String(s || '').replace(/^📌\s*Task\s*[·:-]?\s*/, '').replace(/\s+/g, ' ').trim(); return s.length > 80 ? s.slice(0, 78) + '…' : s; };
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60);
+  window.ftCheck = function(visits, threads, opt){ opt = opt || {}; const items = [], acked = opt.acked || {}, done = opt.pcDone || {};
+    (threads || []).forEach(t => { const r = t.root; if(!r || r.role !== 'mgmt') return; const at = tms(r.at), a = late(at);
+      if(isTask(r)){ if(!/^✅/.test(r.react || '') && a >= 2) items.push({ kind: 'Task', text: 'Task from ' + r.from + ' not done since ' + sd(at) + ' · ' + short(r.text), days: a, overdue: 1 }); return; }
+      if(r.kind === 'memo'){ if(!r.ack && a >= 1) items.push({ kind: 'Memorandum', text: 'Memorandum ' + (r.memoNo || '') + ' not acknowledged since ' + sd(at), days: a, overdue: 1 }); return; }
+      if(pcOf(r)){ if(!done[pcOf(r)] && a >= 3) items.push({ kind: 'Progress check', text: 'Progress check (' + pcOf(r) + ') asked ' + sd(at) + ', not sent yet', days: a, overdue: 1 }); return; }
+      if(r.need && !r.ack && a >= 2) items.push({ kind: 'Message', text: 'Message from ' + r.from + ' not answered since ' + sd(at) + ' · ' + short(r.text), days: a, overdue: 1 }); });
+    const V = (visits || []).filter(v => v && v.date).slice().sort((a, b) => String(b.date + (b.time || '')).localeCompare(String(a.date + (a.time || ''))));
+    const seenAt = v => acked[v.id] ? 1 : ackT(v.ack, v.date);
+    const unread = V.filter(v => !seenAt(v) && late(tms(v.date + ' ' + (v.time || ''))) >= 2);
+    if(unread.length){ const ds = [...new Set(unread.map(v => sd(tms(v.date))))]; items.push({ kind: 'QA visit', text: (unread.length === 1 ? '1 class visit' : unread.length + ' class visits') + ' not read (' + ds.slice(0, 4).join(', ') + (ds.length > 4 ? '…' : '') + ') · open each and tap Got it', days: Math.max(...unread.map(v => late(tms(v.date)))), overdue: 1 }); }
+    let repeat = 0; const since = Date.now() - 30 * DAY, fu = {};
+    V.forEach(v => { const t = tms(v.date + ' ' + (v.time || '')); if(t < since) return; const m = String(v.note || '').match(/Follow-up on (\S+)\s*\(([\s\S]*?)\):\s*(Not yet|Partly)\b/); if(!m) return;
+      const before = V.filter(x => x.date === m[1]); if(!before.some(x => { const s = seenAt(x); return s && s <= t; })) return;   // not read before this visit → not "seen but not acted"
+      const k = norm(m[2]); if(fu[k]) return; fu[k] = 1; const w = m[3] === 'Not yet' ? 1 : 0.5; repeat += w;
+      items.push({ kind: 'Not fixed', text: '“' + short(m[2]) + '” · raised ' + sd(tms(m[1])) + ', still ' + m[3].toLowerCase() + ' on ' + sd(t), days: 0, weight: w }); });
+    const area = {}; V.filter(v => tms(v.date) >= since).forEach(v => String(v.checks || '').split(' · ').forEach(c => { const m = c.match(/^(.*?):\s*(Needs work|Not yet)$/); if(m) (area[m[1]] = area[m[1]] || []).push(v); }));
+    Object.keys(area).forEach(k => { const L = area[k]; for(let i = 0; i < L.length - 1; i++){ const later = L[i], earlier = L[i + 1], s = seenAt(earlier);
+      if(earlier.date !== later.date && s && s <= tms(later.date + ' ' + (later.time || ''))){ repeat += 1; items.push({ kind: 'Same issue', text: k + ' “Needs work” on ' + sd(tms(earlier.date)) + ' and again on ' + sd(tms(later.date)) + ' after you read it', days: 0, weight: 1 }); break; } } });
+    const od = items.filter(x => x.overdue), maxd = od.reduce((m, x) => Math.max(m, x.days), 0);
+    const level = (repeat >= 2 || maxd >= 5 || od.length >= 3) ? 3 : (od.length || repeat >= 1) ? 2 : 0;
+    return { level, items, repeat }; };
 })();
 </script>
 
