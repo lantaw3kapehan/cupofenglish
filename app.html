@@ -1160,12 +1160,12 @@ async function fastWrite(fn, args){ const rid = 'f' + Date.now().toString(36) + 
   return apiNow(fn, ...args); }   /* not ready, not signed in there yet, or no answer → the normal save, exactly as today */
 const SB_R = /^(mgmt(Overview|Students|Student|Schedule|Teacher|Actions|Active|Renewals|Trials|TrialFus|Reports|ReportsWait|Performance|TeacherCard|PayChecks|PayReady|AvailAll|Health|Night|Msgs|Tab|Database|Payroll|Leave|Peer|Hours|StuClasses|Urls|EnqList|MonDay|VisitCoverage|AgreeMap|Growth)|schedLists|moneyLists|dbLists|dbRecord|mgmt(Agree|Avail|ClassInfo|FixIgnored|LeaveClasses|MemoInfo|PeerClasses|PlanFlags|Profiles|QaForm|QaLast|Reminders|Report|ShiftTasks|SlipPeople|TrialSearch|WeekSum|TeacherWeek|TeacherVisits)|t(Student|StuClasses|FbStatus|Growth|Schedule|PayCheck|PayReady|Msgs|Leave|LeaveClasses|MyVisits|MyComments|HwHist|Goals|NoteComments|Reminders|FbForm|PcForm|TrialForm|PeerForm))$/;   /* 14 Oct pm: + teachers' screens, − pulse */
 const SB_SH = /^mgmt(Health|Night|PayReady|AvailAll|Performance|TeacherCard|Peer|Hours|Trials|Reports|PayChecks|Active|Renewals|Overview|Schedule|Teacher|Student|StuClasses)$/;
-const SB_UIAGE = { mgmtStudent: 7 * 864e5, tStudent: 7 * 864e5, mgmtStuClasses: 864e5, tStuClasses: 864e5 };   /* the same for all management (server SHARED_TTL) */
+const SB_UIAGE = { getBootstrap: 1, mgmtStudent: 7 * 864e5, tStudent: 7 * 864e5, mgmtStuClasses: 864e5, tStuClasses: 864e5 };   /* the same for all management (server SHARED_TTL) */
 const SB_BGAGE = { mgmtStudent: 20 * 6e4, mgmtStuClasses: 20 * 6e4, mgmtMsgs: 0, mgmtPulse: 0, mgmtHealth: 0, tStudent: 20 * 6e4, tStuClasses: 20 * 6e4, tMsgs: 0 };
-const SB_LIVE = /^(mgmt(Active|Students|Student|StuClasses|Schedule|TeacherWeek)|t(Student|Schedule))$/;   /* 14 Oct night: the database works these out itself */
+const SB_LIVE = /^(mgmt(Active|Students|Student|StuClasses|Schedule|TeacherWeek)|t(Student|Schedule)|getBootstrap)$/;   /* 14 Oct night: the database works these out itself */
 let SB_LASTW = 0; const SB_FRESH = {}, SB_WANT = {}; let SB_T = 0;
 function sbOn(){ try{ if(localStorage.getItem('coe.fastr') === '0') return false; }catch(e){} return !!(D && TOKEN && (D.mgr || (D.me && D.me.name))); }
-function sbKey(fn, args){ return (/^t[A-Z]/.test(fn) ? String((D.me || {}).name || '').trim().toLowerCase() : SB_SH.test(fn) || !D.pres ? 'mgmt' : 'pres') + ':' + fn + '|' + JSON.stringify(args.slice(1)); }
+function sbKey(fn, args){ return (/^t[A-Z]|^getBootstrap$/.test(fn) ? String((D.me || {}).name || '').trim().toLowerCase() : SB_SH.test(fn) || !D.pres ? 'mgmt' : 'pres') + ':' + fn + '|' + JSON.stringify(args.slice(1)); }
 function sbDoc(key){ return new Promise(res => { (SB_WANT[key] = SB_WANT[key] || []).push(res); if(SB_T) return; SB_T = setTimeout(async () => { const W = Object.assign({}, SB_WANT); Object.keys(SB_WANT).forEach(k => delete SB_WANT[k]); SB_T = 0;
   let docs = {}; try{ const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 4000) : 0;
     const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: Object.keys(W) }), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid));
@@ -1173,6 +1173,7 @@ function sbDoc(key){ return new Promise(res => { (SB_WANT[key] = SB_WANT[key] ||
   Object.keys(W).forEach(k => W[k].forEach(f => f(docs[k] || null))); }, 25); }); }
 let SB_RD = 0;
 function sbRedraw(fn, args, data){ try{
+  if(fn === 'getBootstrap'){ if(D && !D.mgr && data && data.me){ D = data; store('set', KEY_D, JSON.stringify(D)); render(); } return; }
   if(fn === 'mgmtStudent' || fn === 'tStudent'){ const code = args[1]; try{ store('set', 'coe.stu.' + code, JSON.stringify(data)); }catch(e){} if(window._stuOpen === code && STU && STU.code === code && $('sheet').classList.contains('on') && $('stuSch')){ STU.r = data; stuRender(); } return; }
   if(fn === 'mgmtStuClasses' || fn === 'tStuClasses'){ const code = args[1]; CLSM[code] = data; if(STU && STU.code === code){ STU.cls = data; const el = $('stuSch'); if(el) el.innerHTML = stuSched(data); } return; }
   clearTimeout(SB_RD); SB_RD = setTimeout(() => bg(() => { try{ if(VIEW === 'astudents') loadStudents(); else if(VIEW === 'schedule') loadSchedule(0, true); else if(VIEW === 'growth' || VIEW === 'qa') loadGrowth(); else if(VIEW === 'pay' || VIEW === 'mypay') loadMyReady(); else { const S = SCREENS[VIEW]; if(S) S[2](true); } }catch(e){} }), 300);
@@ -1197,8 +1198,8 @@ if(fastOnM(fn, args)) return fastWrite(fn, args);   /* 14 Oct night: management 
 if(!API_READ.test(fn) && !API_BG.test(fn) && !(SB_R.test(fn) && sbOn())) return apiNow(fn, ...args);   /* 14 Oct: API_BG reads also wait in the queue */
 const k = fn + '|' + JSON.stringify(args); if(API_FLY[k]) return API_FLY[k];
 const go = () => apiNow(fn, ...args);
-if(SB_R.test(fn) && sbOn() && Date.now() - SB_LASTW > 120000){ const ui = Date.now() - (window._ui || 0) < 1500;   /* 14 Oct pm: database copy first */
-  const real = () => ui || /^(mgmtOverview|mgmtRenewals|mgmtTrialFus)$/.test(fn) ? go() : new Promise((res, rej) => { API_Q.push(() => go().then(res, rej)); apiPump(); });
+if((SB_R.test(fn) || (fn === 'getBootstrap' && D && !D.mgr && D.me && D.me.name)) && sbOn() && Date.now() - SB_LASTW > 120000){ const ui = Date.now() - (window._ui || 0) < 1500;   /* 14 Oct pm: database copy first */
+  const real = () => ui || /^(getBootstrap|mgmtOverview|mgmtRenewals|mgmtTrialFus)$/.test(fn) ? go() : new Promise((res, rej) => { API_Q.push(() => go().then(res, rej)); apiPump(); });
   const sp = sbRead(fn, args, real, ui); API_FLY[k] = sp; sp.then(() => delete API_FLY[k], () => delete API_FLY[k]); return sp; }
 const p = Date.now() - (window._ui || 0) < 1500 || /^(getBootstrap|refresh|mgmtOverview|mgmtRenewals|mgmtTrialFus)$/.test(fn) ? go()   
 : new Promise((res, rej) => { API_Q.push(() => go().then(res, rej)); apiPump(); });
@@ -6010,7 +6011,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 464;
+const COE_V = 465;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
