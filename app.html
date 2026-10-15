@@ -4906,7 +4906,10 @@ Object.keys(SCC).forEach(k => { SCC[k]._t = 0; });   /* keep what's on screen, r
 if(code) api('mgmtStuClasses', TOKEN, code).then(x => { CLSM[code] = x; try{ store('set','coe.cls.'+code, JSON.stringify(x)); }catch(y){}
 if(STU && STU.code===code){ STU.cls = x; const el = $('stuSch'); if(el) el.innerHTML = stuSched(x); } }).catch(()=>{});
 else loadSchedule(0, true); }
-catch(x){ CLS_HOLD = null; Object.assign(e, before); if(src==='stu') L.sort((a,b)=>a.start.localeCompare(b.start)); paint(); toast((x&&x.msg)||'Not saved — the calendar was not changed. Try again.'); }
+catch(x){ CLS_HOLD = null; Object.assign(e, before); if(src==='stu') L.sort((a,b)=>a.start.localeCompare(b.start)); paint(); toast((x&&x.msg)||'Not saved — the calendar was not changed. Try again.');
+  try{ window._seRetry = async () => { closeSheet(); toast('Saving again…'); try{ const r2 = await api('editClass', TOKEN, e.id, f); if(!r2 || !r2.ok) throw r2; toast('✓ ' + (r2.note || 'Saved')); Object.keys(SCC).forEach(k => { SCC[k]._t = 0; }); if(code){ delete CLSM[code]; openStudent(code); } else loadSchedule(0, true); }catch(z){ toast(((z && z.msg) || 'Still not saved') + ' · check your internet and try once more'); } }; const nm = esc(before.student || before.title || 'This class'), when = esc(svDate(ymdLocal(new Date(before.start)), { weekday: 'short', day: 'numeric', month: 'short' })) + ' ' + esc(tm(before.start));
+    setTimeout(() => openSheet('<h1>Not saved</h1><div class="fbfix" style="margin-top:10px;border-left:4px solid #C0392B"><b style="color:#B23A22">' + nm + ' is still at ' + when + '</b><div class="small">' + esc((x && x.msg) || 'Google did not answer in time · the calendar was not changed.') + '</div></div>' +
+      (action === 'move' ? '<div class="small mute" style="margin-top:8px">You wanted: ' + esc(f.date) + ' ' + esc(f.time) + (f.teacher ? ' · Teacher ' + esc(f.teacher) : '') + '</div>' : '') + '<button class="btn teal block" style="margin-top:12px" onclick="_seRetry()">Try again</button>'), 400); }catch(y){} }
 }
 let TW = null, SW = null, SC_SEL = 0;
 const SV_PAL = ['#3F9FA8','#E5B53E','#6C74C9','#E08A6F','#3E8E5E','#C9567A','#4F86C6','#9A7BC9'];
@@ -6011,7 +6014,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 476;
+const COE_V = 477;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
