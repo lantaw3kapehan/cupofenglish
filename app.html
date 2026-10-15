@@ -4579,7 +4579,7 @@ const whenFree = fn => { if(!$('sheet').classList.contains('on')) return fn(); l
 async function sendClass(){
 const s = classStu(); if(!s) return toast('Choose a student from the list');
 const D = classDates(), f = {code:s.code, student:s.name, kind:CKIND, fresh: !!s.fresh, cn: s.fresh ? (($('cCn')||{}).value || '').trim() : '', book:$('cB').value, teacher:$('cT').value, date:$('cD').value, time:$('cH').value.trim(), mins:$('cM').value,
-days: $('cR').checked ? classDays() : [], count: D.length, force: ckForce()};
+days: $('cR').checked ? classDays() : [], count: D.length, force: ckForce() || !!window.CFORCE};
 if(CKIND === 'TC' && CSRC){ if(CSRC === 'Student'){ classRefChk(); if(!CREF) return toast('Pick the referring student from the list'); if(CREF.code === s.code) return toast('A student cannot refer themselves'); Object.assign(f, { src: 'Student', refCode: CREF.code, refName: CREF.name }); } else Object.assign(f, { src: CSRC, partner: CSRC === 'Partner' ? (($('cPt') || {}).value || '').trim() : '' }); }
 if($('cR').checked && !f.days.length) return toast('Choose the days of the week');
 if(!f.teacher) return toast('Choose a teacher');
@@ -4594,8 +4594,9 @@ const share = () => { try{ classShare(f, r, s); if(r.sub) cxSubCard(r.sub); }cat
 whenFree(share);   /* the share message waits for a sheet you opened meanwhile */
 Object.keys(SCC).forEach(k => { SCC[k]._t = 0; });     const d0 = new Date(); d0.setHours(12,0,0,0); const t = new Date(f.date+'T12:00:00');
 SC_OFF = Math.round((t - d0) / 864e5); loadSchedule(0); }
-catch(e){ back(); toast(((e&&e.msg)||'Not added') + ' · your details are back in the form'); }
-finally{ delete BUSY[bk]; }
+catch(e){ back(); window.CFORCE = 0; const msg = (e && e.msg) || 'Not added'; toast(msg + ' · your details are back in the form');
+  try{ const g = $('cGo'); if(g){ const o = $('cErr'); if(o) o.remove(); g.insertAdjacentHTML('beforebegin', '<div id="cErr" class="mini" style="background:#FFF5F2;border:1px solid #E9B8AC;margin:10px 0"><b style="color:#9A3B22">Not added yet</b> · ' + esc(msg) + (e && e.conflict ? '<div style="margin-top:8px"><button type="button" class="btn sm coral" onclick="window.CFORCE=1;sendClass()">Add anyway</button></div>' : '') + '</div>'); const x = $('cErr'); if(x && x.scrollIntoView) x.scrollIntoView({ block: 'center' }); } }catch(x){} }
+finally{ delete BUSY[bk]; window.CFORCE = 0; }
 }
 const evList = src => src==='stu' ? ((STU && STU.cls) || []) : src==='tw' ? ((TW && TW.events) || []) : src==='sw' ? ((SW && SW.events) || []) : ((SC && SC.events) || []);
 async function classEdit(i, src){
@@ -6051,7 +6052,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 514;
+const COE_V = 515;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
