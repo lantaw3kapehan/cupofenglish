@@ -4236,7 +4236,7 @@ const msgWho = n => msgIsM(n) ? msgMName(n) : 'Teacher ' + n;
 const msgNewM = r => !r.seen && (r.role !== 'mgmt' || (MSG && String(r.to).toLowerCase() === String(MSG.me).toLowerCase()));
 const msgAt = s => { const d = String(s || ''); return d.slice(5, 10).replace('-', '/') + ' ' + d.slice(11, 16); };
 const msgBubble = (r, mineRole) => '<div class="msgb ' + (mineRole === 'mgmt' ? (MSG && String(r.from).toLowerCase() === String(MSG.me).toLowerCase() ? 'me' : '') : (r.role === mineRole ? 'me' : '')) + '"><div class="small mute">' + esc(r.role === 'mgmt' ? msgMName(r.from) : 'Teacher ' + r.from) + ' · ' + esc(msgAt(r.at)) + '</div><div style="white-space:pre-line">' + esc(r.text) + '</div></div>';
-async function loadMsgs(quiet){ if(!D || !D.mgr) return; try{ await swr('msgs', () => api('mgmtMsgs', TOKEN), v => MSG = v, () => { msgBadge(); msgAckWatch(); if(VIEW === 'msgs') renderMsgs(); if(VIEW === 'home') try{ renderHome(); }catch(e){} }); }catch(e){ if(!quiet && VIEW === 'msgs') $('v-msgs').innerHTML = '<div class="empty">Could not load messages. Try again.</div>'; } }
+async function loadMsgs(quiet){ if(!D || !D.mgr) return; try{ await swr('msgs', () => api('mgmtMsgs', TOKEN), v => { MSG = v; try{ const sys = (MSG.threads || []).filter(t => t && t.root && /^App health$/i.test(String(t.root.from || ''))); MSG.unread = Math.max(0, (MSG.unread || 0) - sys.reduce((a, t) => a + [t.root].concat(t.replies || []).filter(msgNewM).length, 0)); }catch(e){} }, () => { msgBadge(); msgAckWatch(); if(VIEW === 'msgs') renderMsgs(); if(VIEW === 'home') try{ renderHome(); }catch(e){} }); }catch(e){ if(!quiet && VIEW === 'msgs') $('v-msgs').innerHTML = '<div class="empty">Could not load messages. Try again.</div>'; } }
 function msgBadge(){ const n = MSG ? MSG.unread : 0; ['dMsg', 'dMsgM'].forEach(k => { const d = $(k); if(d){ d.classList.toggle('hide', !n); d.textContent = k === 'dMsg' ? (n || '') : ''; } });
 if(MSG && MSG_N >= 0 && n > MSG_N){ const t = MSG.threads.find(t => [t.root].concat(t.replies).some(msgNewM)); if(t){ const r = [t.root].concat(t.replies).filter(msgNewM).pop(); ding('msg'); notify('Message from ' + (r.role === 'mgmt' ? msgMName(r.from) : 'Teacher ' + r.from), r.text, 'coe-msg'); } }
 if(MSG) MSG_N = n; }
@@ -6066,7 +6066,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 523;
+const COE_V = 524;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
