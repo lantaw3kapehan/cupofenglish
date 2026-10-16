@@ -4006,7 +4006,7 @@ function hmQueue(){                                            // what needs man
 const Q = [], W = [], ok = [], add = (list, n, x) => { if(n > 0) list.push(Object.assign({ n }, x)); else if(x.okLabel) ok.push(x.okLabel); };
 const late = (MO && MO.late) || [];
 { const P = LV ? LV.rows.filter(r => r.status === 'Pending' && !r.ask && (isPres() ? r.ops : !r.ops)) : []; add(Q, P.length, { tone:'hot', t: isPres() ? 'Leave waiting for your approval' : 'Leave requests to check', s: P.slice(0,3).map(r => tName(r.teacher) + ' · ' + lvDates(r)).join(' · '), go:"go('leave')", okLabel:'Leave' }); }
-if(MSG){ const nw = (MSG.threads || []).filter(t => [t.root].concat(t.replies).some(msgNewM)); add(Q, nw.length, { tone:'hot', t:'New messages', s: nw.slice(0,3).map(t => tName(t.teacher)).join(' · '), go:"go('msgs')", okLabel:'Messages' });
+if(MSG){ const nw = (MSG.threads || []).filter(t => t && t.root && !/^App health$/i.test(String(t.root.from || '')) && [t.root].concat(t.replies).some(msgNewM)); add(Q, nw.length, { tone:'hot', t:'New messages', s: nw.slice(0,3).map(t => tName(t.teacher)).join(' · '), go:"go('msgs')", okLabel:'Messages' });
 const na = (MSG.threads || []).filter(t => t.root.role === 'mgmt' && t.root.need && !t.root.ack && t.root.at.slice(0, 10) >= new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)); add(W, na.length, { tone:'', t:'Notices without “Got it”', s: [...new Set(na.map(t => tName(t.teacher)))].slice(0,5).join(' · '), go:"go('msgs')" }); }
 if(PCKM){ const q = Object.keys(PCKM.checks || {}).filter(k => PCKM.checks[k].status === 'Disputed'); add(Q, q.length, { tone:'hot', t:'Pay questions from teachers', s: q.slice(0,3).map(k => tName(k)).join(' · '), go:"go('payroll')", okLabel:'Pay checks' }); }
 add(Q, late.length, { tone:'hot', t:'Late time-ins to decide', s: late.slice(0,3).map(x => tName(x.teacher) + (x.mins !== '' && x.mins != null ? ' · ' + Math.abs(x.mins) + ' min' : '')).join(' · '), go:"go('team')", okLabel:'Time-ins' });
@@ -6066,7 +6066,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 535;
+const COE_V = 536;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
