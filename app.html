@@ -6093,7 +6093,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 580;
+const COE_V = 581;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11696,7 +11696,7 @@ ${Object.keys(G).sort(nat).map(g => `<h2 style="margin-top:16px">${esc(SER(g))}<
 /* 16 Oct · 248 · Books: for CupOfEnglish classes only (Misty 20:41). A notice on the Books screen and on every book list, and
    before a teacher opens a book for the first time on a device, they read it and tap "I understand". */
 (function(){
-  const TXT = 'These books are for CupOfEnglish classes only. Use them only to teach and prepare for your CupOfEnglish students. Do not download, copy, share, forward or post them, and do not use them for other classes, private tutoring or personal use.';
+  const TXT = 'These books are for CupOfEnglish classes only. Use them only to teach and prepare for your CupOfEnglish students. Do not download, copy, share, forward or post them, and do not use them for other classes, private tutoring or personal use. Sharing or using them outside CupOfEnglish breaks your teacher agreement, and your access to the books will be removed.';
   try{ const st = document.createElement('style'); st.textContent = `
 .bk-rule{display:flex;gap:10px;align-items:flex-start;margin:12px 0 4px;padding:12px 14px;border-radius:12px;background:#FDF1EE;border:1px solid #F1C9BF;color:var(--ink);font-size:13.5px;line-height:1.5}
 .bk-rule b{display:block;color:var(--coral);font-size:14px;margin-bottom:2px}
@@ -11706,15 +11706,15 @@ ${Object.keys(G).sort(nat).map(g => `<h2 style="margin-top:16px">${esc(SER(g))}<
   const box = () => `<div class="bk-rule">${ICO}<div><b>For CupOfEnglish classes only</b>${esc(TXT)}</div></div>`;
   window.bkRuleHtml = box;
   const L0 = window.bkLib2; if(L0) window.bkLib2 = function(){ const r = L0.apply(this, arguments); try{ const h = document.querySelector('#v-books .bl-hd'); if(h && !document.querySelector('#v-books .bk-rule')) h.insertAdjacentHTML('afterend', box()); }catch(e){} return r; };
-  const ok = () => { try{ return !!store('get', 'coe.bkok.' + String((D && D.me && D.me.name) || '').toLowerCase()); }catch(e){ return false; } };
-  window.bkAgree = function(a, b, c){ try{ store('set', 'coe.bkok.' + String((D && D.me && D.me.name) || '').toLowerCase(), new Date().toISOString()); }catch(e){} window.bookSheet(a, b, c); };
+  const ok = () => { try{ return !!store('get', 'coe.bkok2.' + String((D && D.me && D.me.name) || '').toLowerCase()); }catch(e){ return false; } };
+  window.bkAgree = function(a, b, c){ try{ (window.bkRec && bkRec()), store('set', 'coe.bkok2.' + String((D && D.me && D.me.name) || '').toLowerCase(), new Date().toISOString()); }catch(e){} window.bookSheet(a, b, c); };
   const S0 = window.bookSheet; if(S0) window.bookSheet = function(a, b, c){
     if(D && !D.mgr && !ok()){ const arg = [a, b, c].map(x => esc(JSON.stringify(x == null ? '' : x))).join(',');
       openSheet(`<h1>Before you open the books</h1>${box()}<div class="small mute" style="margin-top:8px">The books are licensed to CupOfEnglish for our classes. Keeping them inside CupOfEnglish protects the institution and you.</div><button class="btn block" style="margin-top:16px" onclick="bkAgree(${arg})">I understand · open the book</button>`); return; }
     const r = S0.apply(this, arguments); try{ const h = document.querySelector('#sheetBody h1'); if(h && !document.querySelector('#sheetBody .bk-rule')) h.parentNode.insertBefore(document.createRange().createContextualFragment(box()), $('bkBody')); }catch(e){} return r; };
   /* the one-tap unit link on a class card opens Drive directly: the first time, the notice comes first */
   document.addEventListener('click', ev => { const a0 = ev.target && ev.target.closest && ev.target.closest('a[href^="https://drive.google.com/file/d/"]'); if(!a0 || !D || D.mgr || ok()) return;
-    ev.preventDefault(); const u = a0.href; window._bkGo = () => { try{ store('set', 'coe.bkok.' + String((D && D.me && D.me.name) || '').toLowerCase(), new Date().toISOString()); }catch(e){} closeSheet(); window.open(u, '_blank', 'noopener'); };
+    ev.preventDefault(); const u = a0.href; window._bkGo = () => { try{ (window.bkRec && bkRec()), store('set', 'coe.bkok2.' + String((D && D.me && D.me.name) || '').toLowerCase(), new Date().toISOString()); }catch(e){} closeSheet(); window.open(u, '_blank', 'noopener'); };
     openSheet(`<h1>Before you open the books</h1>${box()}<div class="small mute" style="margin-top:8px">The books are licensed to CupOfEnglish for our classes. Keeping them inside CupOfEnglish protects the institution and you.</div><button class="btn block" style="margin-top:16px" onclick="_bkGo()">I understand · open the book</button>`); }, true);
 })();
 </script>
@@ -11746,6 +11746,29 @@ ${Object.keys(G).sort(nat).map(g => `<h2 style="margin-top:16px">${esc(SER(g))}<
     NAV_T.length = 0; out.forEach(x => NAV_T.push(x));
     if(D && !D.mgr) buildNav();
   }catch(e){}
+})();
+</script>
+<script>
+/* 16 Oct · 252 · Books rule, version 2 (Misty 20:56): the notice says what happens after a breach; each "I understand" is kept in
+   the database (who, when, rule version) and management sees on the Books screen who has agreed and who has not yet.
+   A new rule version asks every teacher again. */
+(function(){
+  const V = 2;
+  window.bkRec = function(){ try{ fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'books', token: TOKEN, agree: V }) }).catch(() => {}); }catch(e){} };
+  const cap = s => String(s || '').replace(/\b\w/g, m => m.toUpperCase());
+  const when = t => { const d = new Date(t); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }); };
+  let AG = null, AGT = 0;
+  async function agLoad(){ if(AG && Date.now() - AGT < 120000) return AG;
+    try{ const r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'books', token: TOKEN, agrees: V }) }).then(x => x.json()); if(r && r.ok){ AG = r.agrees || []; AGT = Date.now(); } }catch(e){}
+    return AG; }
+  function agPaint(){ const host = document.querySelector('#v-books .bk-rule'); if(!host || !D || !D.mgr) return; let el = $('bkAgree');
+    if(!el){ host.insertAdjacentHTML('afterend', '<div id="bkAgree" style="margin:8px 0 2px"></div>'); el = $('bkAgree'); }
+    if(!AG){ el.innerHTML = '<div class="small mute">Loading who has agreed…</div>'; return; }
+    const yes = AG.filter(x => x.at), no = AG.filter(x => !x.at);
+    el.innerHTML = `<div class="small" style="margin-bottom:6px"><b>Books rule</b> <span class="mute">· ${yes.length} of ${AG.length} teachers agreed (they agree the first time they open a book)</span></div><div style="display:flex;flex-wrap:wrap;gap:6px">`
+      + no.map(x => `<span class="bk-sn" style="--sb:#FDF1EE;--sc:var(--coral)">${esc(cap(x.name))} · not yet</span>`).join('')
+      + yes.map(x => `<span class="bk-sn" style="--sb:#E8F5E9;--sc:#2E7D32">✓ ${esc(cap(x.name))} · ${esc(when(x.at))}</span>`).join('') + '</div>'; }
+  const L0 = window.bkLib2; if(L0) window.bkLib2 = function(){ const r = L0.apply(this, arguments); try{ if(D && D.mgr){ agPaint(); agLoad().then(agPaint); } }catch(e){} return r; };
 })();
 </script>
 
