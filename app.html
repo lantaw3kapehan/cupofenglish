@@ -1150,8 +1150,9 @@ const API_BG = /^(mgmtAvailAll|mgmtPayChecks|mgmtVisitCoverage|mgmtMonDay|mgmtRe
 function apiPump(){ while(API_N < 3 && API_Q.length){ API_N++; API_Q.shift()().finally(() => { API_N--; apiPump(); }); } }
 const FAST_URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe', FAST_USERS = ['misty', 'julia'], FAST_W = { saveNote: 1, markHomework: 1, tNoteTag: 1, tGoalsSave: 1, timeIn: 1, classIn: 1, tFbSubmit: 1, tPcSubmit: 1, tTrialSubmit: 1, tPeerSubmit: 1, tSetMeet: 1, tMsgAck: 1, tVisitAck: 1, tMsgSeen: 1, tHwFlag: 1, tMsgSend: 1, tLeaveRequest: 1, tPayVerify: 1 };
 const FAST_M = { mgmtReportSent: 1, mgmtTrialFu: 1, setCaseDone: 1, mgmtMsgSeen: 1, mgmtMsgSend: 1, mgmtMsgReply: 1 };   /* 14 Oct night: management saves */
-function fastOnM(fn, args){ try{ if(localStorage.getItem('coe.fast') === '0') return false; }catch(e){} return !!(D && D.mgr && TOKEN && FAST_M[fn] && !(fn === 'mgmtTrialFu' && args[2] === 'Enrolling') && !(fn === 'mgmtMsgSend' && args[4]) && !(fn === 'saveStudent' && (!Number(args[2]) || !args[1] || args[1].linkTrial))); }   /* memos and new students: Google */
-FAST_M.saveStudent = 1;   /* 15 Oct night: edits of a student record */
+function fastOnM(fn, args){ try{ if(localStorage.getItem('coe.fast') === '0') return false; }catch(e){} return !!(D && D.mgr && TOKEN && FAST_M[fn] && !(fn === 'mgmtTrialFu' && args[2] === 'Enrolling') && !(fn === 'mgmtMsgSend' && args[4]) && !(fn === 'saveStudent' && (!Number(args[2]) || !args[1] || args[1].linkTrial)) && !(fn === 'addSale' && args[1] && args[1].file)); }   /* memos, new students and a sale with an invoice file: Google */
+FAST_M.saveStudent = 1;
+FAST_M.addExpense = 1; FAST_M.addSale = 1;   /* 16 Oct: money entries through the database (a sale with an invoice file: Google) */   /* 15 Oct night: edits of a student record */
 function fastOn(){ try{ const o = localStorage.getItem('coe.fast'); if(o === '0') return false; if(o === '1') return true; }catch(e){} return !!(D && !D.mgr && D.me && D.me.name); }   /* 14 Oct pm: every teacher (was FAST_USERS only) */
 function fastAns(fn, args){ if(/Msg/.test(fn)) try{ Object.keys(SB_FRESH).forEach(k => { if(/Msgs\|/.test(k)) delete SB_FRESH[k]; }); }catch(e){}   /* the message list is read again at once */
   const t = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }), a = args[1] || {};
@@ -1177,9 +1178,11 @@ function fastAns(fn, args){ if(/Msg/.test(fn)) try{ Object.keys(SB_FRESH).forEac
   if(fn === 'mgmtReportSent') return { ok: true, queued: true, at: now.getDate() + ' ' + now.toLocaleString('en-US', { month: 'short' }) + ' ' + p2(now.getHours()) + ':' + p2(now.getMinutes()), by: who, ticked: false, student: '' };
   if(fn === 'mgmtTrialFu'){ const key = String(args[1] || '').trim().toLowerCase(), st = String(args[2] || ''), note = String(args[3] || '').replace(/\s+/g, ' ').trim().slice(0, 120);
     return { ok: true, queued: true, fu: st ? { st: st, note: note, by: who, at: now.getFullYear() + '-' + p2(now.getMonth() + 1) + '-' + p2(now.getDate()) + ' ' + p2(now.getHours()) + ':' + p2(now.getMinutes()) } : null, student: String(args[4] || key.slice(11)), ref: '' }; }
+  if(fn === 'addExpense') return { ok: true, queued: true, note: 'Expense saved · in EXPENSES within a minute' };
+  if(fn === 'addSale') return { ok: true, queued: true, note: 'Sale saved · in SALES within a minute' };
   return { ok: true, queued: true }; }
 let FF = [];   /* 14 Oct pm: saves the sheet refused later (fast layer) */
-const FF_L = { saveStudent: 'Student record', mgmtReportSent: 'Report sent', mgmtTrialFu: 'Trial follow-up', setCaseDone: 'Case done', mgmtMsgSeen: 'Messages seen', tFbSubmit: 'Monthly feedback', tPcSubmit: 'Progress check', tTrialSubmit: 'Trial report', tPeerSubmit: 'Peer review', saveNote: 'Class note', markHomework: 'Homework', timeIn: 'Time-in', classIn: "I'm in", tGoalsSave: 'Goals', tNoteTag: 'Note tag', tSetMeet: 'Meeting ID', tMsgSend: 'Message', tLeaveRequest: 'Leave request', tPayVerify: 'Pay check' };
+const FF_L = { saveStudent: 'Student record', mgmtReportSent: 'Report sent', mgmtTrialFu: 'Trial follow-up', setCaseDone: 'Case done', mgmtMsgSeen: 'Messages seen', tFbSubmit: 'Monthly feedback', tPcSubmit: 'Progress check', tTrialSubmit: 'Trial report', tPeerSubmit: 'Peer review', saveNote: 'Class note', markHomework: 'Homework', timeIn: 'Time-in', classIn: "I'm in", tGoalsSave: 'Goals', tNoteTag: 'Note tag', tSetMeet: 'Meeting ID', tMsgSend: 'Message', tLeaveRequest: 'Leave request', tPayVerify: 'Pay check', addExpense: 'Expense', addSale: 'Sale' };
 async function fastFails(){ if(!TOKEN || !D) return; try{ const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'mine', token: TOKEN }) }).then(x => x.json());
   if(!r || !r.ok) return; let ok = []; try{ ok = JSON.parse(localStorage.getItem('coe.ffok') || '[]'); }catch(e){} FF = (r.failed || []).filter(x => FF_L[x.fn] && ok.indexOf(x.id) < 0); ffPaint(); }catch(e){} }
 function ffOk(id){ try{ const ok = JSON.parse(localStorage.getItem('coe.ffok') || '[]'); ok.push(id); localStorage.setItem('coe.ffok', JSON.stringify(ok.slice(-50))); }catch(e){} FF = FF.filter(x => x.id !== id); ffPaint(); }
@@ -5254,6 +5257,7 @@ if(fn === 'addExpense'){ if(!f.desc || !f.category || !(+f.amount)){ b.disabled 
   api(fn, TOKEN, f).then(r => { if(!r || !r.ok) throw r; toast('✓ ' + (r.note || 'Expense added')); MN = null; loadMoney(); })
   .catch(async e => { try{ await expSheet(); [['fD', f.date], ['fE', f.desc], ['fC', f.category], ['fA', f.amount]].forEach(([id, x]) => { const el = $(id); if(el) el.value = x; }); }catch(y){} toast((e && e.msg) || 'Expense not saved · your details are back in the form. Try again.'); });
   return; }
+if(fn === 'addSale' && (!(f.invoice || (f.file && f.file.name)) || !f.partner)){ b.disabled = false; b.textContent = 'Add sale'; return toast('Invoice/student and partner are needed.'); }   /* checked here too: a fast save is answered before the sheet sees it */
 try{ const r = await api(fn, TOKEN, f); if(!r.ok) throw r; closeSheet(); toast(r.note); MN = null; loadMoney(); }
 catch(e){ toast((e&&e.msg)||'Not saved. Try again.'); b.disabled=false; b.textContent = fn==='addSale'?'Add sale':'Add expense'; }
 }
@@ -6066,7 +6070,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 537;
+const COE_V = 538;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
