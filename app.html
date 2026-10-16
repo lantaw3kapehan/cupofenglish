@@ -6092,7 +6092,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 562;
+const COE_V = 563;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11200,11 +11200,11 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0)) return ''; const t = new
   function hasReport(x){ const R = (typeof TRL !== 'undefined' && TRL && TRL.rows) || [], c = up(x.code), d0 = ymdLocal(new Date(new Date(x.moved || x.start).getTime() - 3 * 864e5)), f = typeof tfuFirst === 'function' ? tfuFirst(x.student) : String(x.student || '').toLowerCase();
     return R.some(r => String(r.date || '') >= d0 && ((/^ST-/.test(c) && up(r.code) === c) || (typeof tfuFirst === 'function' && tfuFirst(r.student) === f))); }
   function html(){ if(!TPA) return ''; const q = String((typeof TPQ !== 'undefined' && TPQ) || '').trim().toLowerCase(), now = Date.now();
-    const L = TPA.filter(x => !hasReport(x)).filter(x => !q || [x.student, x.code, x.teacher, x.book].join(' ').toLowerCase().indexOf(q) > -1);
+    const L = TPA.filter(x => !hasReport(x)).filter(x => !q || [x.student, x.code, x.teacher, x.book].join(' ').toLowerCase().indexOf(q) > -1).sort((a, b) => (+!!a.pkg) - (+!!b.pkg));
     if(!L.length) return q ? '' : '';
     const dw = d => d.toLocaleDateString('en-GB', { weekday: 'short' }), dd = d => d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-    return `<section class="sec" id="tpBk"><h2>Booked trial classes <span class="c">${L.length} · from Schedule · tap to open the student</span></h2>${L.map(x => { const s = new Date(x.start), past = new Date(x.end || x.start).getTime() < now, today = ymdLocal(s) === ymdLocal(new Date());
-      const chip = past ? '<span class="chip amber">Report not in yet</span>' : today ? '<span class="chip teal">Today ' + tm(x.start) + '</span>' : '<span class="chip teal">Booked</span>';
+    return `<section class="sec" id="tpBk"><h2>Booked trial classes <span class="c">${L.filter(x => !x.pkg).length} to come${L.some(x => x.pkg) ? ' · ' + L.filter(x => x.pkg).length + ' already enrolled' : ''} · from Schedule · tap to open the student</span></h2>${L.map(x => { const s = new Date(x.start), past = new Date(x.end || x.start).getTime() < now, today = ymdLocal(s) === ymdLocal(new Date());
+      const chip = x.pkg ? '<span class="chip green">Enrolled ✓ · ' + x.pkg.lessons + ' lessons' + (x.pkg.first ? ' from ' + esc(new Date(String(x.pkg.first).slice(0, 10) + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })) : '') + '</span>' : past ? '<span class="chip amber">Report not in yet</span>' : today ? '<span class="chip teal">Today ' + tm(x.start) + '</span>' : '<span class="chip teal">Booked</span>';
       return `<div class="tpb ${past ? 'past' : ''}" onclick="${x.code ? `openStudent('${esc(x.code)}')` : ''}"><div class="tpb-d"><b>${s.getDate()}</b><span>${dw(s)}</span></div>
 <div class="grow" style="min-width:0"><div><b>${esc(x.student || '—')}</b> <span class="mute small">${esc(x.code || 'no code yet')}</span></div>
 <div class="small">${tm(x.start)} · Teacher ${esc(String(x.teacher).charAt(0).toUpperCase() + String(x.teacher).slice(1))}${x.book ? ' · ' + esc(x.book) : ''}${x.moved ? ' · <span class="mute">moved from ' + esc(dd(new Date(x.moved))) + '</span>' : ''}</div></div>${chip}</div>`; }).join('')}</section>`; }
