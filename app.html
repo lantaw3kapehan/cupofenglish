@@ -6093,7 +6093,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 569;
+const COE_V = 570;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11340,6 +11340,19 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
     try{ if(MO && MO.late && !MO.late.some(l => l.row === row)) fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'lateDone', token: TOKEN, row: String(row), cond: cond }) }).catch(() => {}); else delete LD[String(row)]; }catch(e){}
     return r; };
   setInterval(() => { try{ const v = $('v-team'); if(v && v.offsetParent) ldLoad(); }catch(e){} }, 60000);
+})();
+</script>
+<script>
+/* 16 Oct · Add class › new student: the code comes from the database too (coe-mgmt › newCode), so a code shown in
+   Add class and a code given in Students can never be the same. The app's own guess shows first and is replaced within a second. */
+(function(){
+  const base = window.classUseNew; if(typeof base !== 'function') return;
+  window.classUseNew = function(){ const r = base.apply(this, arguments);
+    try{ const el = $('cS'), guess = ((el && el.value) || '').match(/^ST-\d{4}-\d{3}/); if(!guess || !TOKEN) return r;
+      fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'newCode', token: TOKEN }) }).then(x => x.json()).then(nc => {
+        const e2 = $('cS'); if(!nc || !nc.ok || !nc.code || !e2 || e2.value.indexOf(guess[0]) !== 0) return;
+        e2.value = nc.code + e2.value.slice(guess[0].length); try{ classPick(); }catch(x){} }).catch(() => {}); }catch(e){}
+    return r; };
 })();
 </script>
 
