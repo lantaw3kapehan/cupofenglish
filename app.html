@@ -6092,7 +6092,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 567;
+const COE_V = 568;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11321,6 +11321,24 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
     try{ const t = ((window.TMSG && TMSG.threads) || []).find(x => x.root.id === id); if(t && /level-up test/i.test(String(t.root.text || ''))) document.querySelectorAll('#sheetBody button').forEach(bt => { if(/^Fill in .+'s progress check$/.test(bt.textContent)) bt.textContent = bt.textContent.replace(/progress check$/, 'level-up test'); }); }catch(e){} return r; };
   const _td = window.ncTodo; if(_td) window.ncTodo = function(){ fresh(); let L = _td.apply(this, arguments);
     try{ if(Array.isArray(L)) L = L.map(x => { const m = typeof x === 'string' && x.match(/pcForm\('(ST-\d{4}-\d{3})'\)/); if(!m || !luOf(m[1])) return x; return x.replace('<span class="chip red">Progress check</span>', '<span class="chip red">Level-up test</span>').replace('9 skills, progress and next focus', 'test the next level · Ready, Almost or Not yet'); }); }catch(e){} return L; };
+})();
+</script>
+<script>
+/* 16 Oct · Misty: Celine waived Teacher April's late time-in but it still showed on Misty's Time-ins. Each screen kept its
+   own list until the next full reload. A decision (Excused / Unexcused / Waive) is now noted in the database at once
+   (coe-mgmt › lateDone → docs mgmt:lateDone) and every management screen hides it within a minute. */
+(function(){
+  let LD = {}, LDAT = 0, busy = false;
+  const hideDone = () => { try{ if(MO && Array.isArray(MO.late)){ const n = MO.late.length; MO.late = MO.late.filter(l => !LD[String(l.row)]); return n !== MO.late.length; } }catch(e){} return false; };
+  async function ldLoad(){ if(busy || !TOKEN || !(D && D.mgr)) return; busy = true;
+    try{ const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: ['mgmt:lateDone'] }) }).then(x => x.json());
+      const d = r && r.ok && r.docs && r.docs['mgmt:lateDone']; if(d && d.data && typeof d.data === 'object'){ LD = d.data; LDAT = Date.now(); if(hideDone()){ try{ store('set', 'coe.mo', JSON.stringify(MO)); }catch(e){} if(typeof renderTeam === 'function') renderTeam(); } } }catch(e){} busy = false; }
+  const _rt = window.renderTeam; if(_rt) window.renderTeam = function(){ hideDone(); if(Date.now() - LDAT > 60000) setTimeout(ldLoad, 0); return _rt.apply(this, arguments); };
+  const _sd = window.sendDecide; if(_sd) window.sendDecide = async function(row, cond){ LD[String(row)] = { cond: cond, ts: Date.now() };
+    const r = await _sd.apply(this, arguments);
+    try{ if(MO && MO.late && !MO.late.some(l => l.row === row)) fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'lateDone', token: TOKEN, row: String(row), cond: cond }) }).catch(() => {}); else delete LD[String(row)]; }catch(e){}
+    return r; };
+  setInterval(() => { try{ const v = $('v-team'); if(v && v.offsetParent) ldLoad(); }catch(e){} }, 60000);
 })();
 </script>
 
