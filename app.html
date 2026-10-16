@@ -6093,7 +6093,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 584;
+const COE_V = 585;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11450,11 +11450,12 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
   const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const codes = s => String(s || '').split(/\s*[,;/]\s*/).map(x => x.trim()).filter(p => p && !/^(pre[-\s]?)?[abc][12]\+?$/i.test(p)).map(norm).filter(x => x && !NONE.test(x));
   window.bkHas = s => codes(s).length > 0;
-  const BK = {}, BKF = {};
-  const cached = k => { if(BK[k]) return BK[k]; try{ const c = JSON.parse(store('get', 'coe.bk2.' + k) || 'null'); if(c && Date.now() - c.t < 3 * 864e5){ BK[k] = c; return c; } }catch(e){} return null; };
+  const BK = {}, BKF = {}; window.bkU = () => String((D && D.me && D.me.name) || (D && D.mgr ? 'mgmt' : '') || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const bkU0 = { u: null }; const bkFresh = () => { const u = bkU(); if(bkU0.u !== u){ Object.keys(BK).forEach(k => delete BK[k]); bkU0.u = u; } };
+  const cached = k => { bkFresh(); if(BK[k]) return BK[k]; try{ const c = JSON.parse(store('get', 'coe.bk2.' + bkU() + '.' + k) || 'null'); if(c && Date.now() - c.t < 3 * 864e5){ BK[k] = c; return c; } }catch(e){} return null; };
   function bkFetch(k){ if(BKF[k]) return BKF[k];
     const p = fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'books', token: TOKEN, code: k }) }).then(x => x.json()).then(r => {
-      if(!r || !r.ok) throw new Error('books'); const o = { b: r.book, t: Date.now(), locked: !!r.locked }; BK[k] = o; try{ store('set', 'coe.bk2.' + k, JSON.stringify(o)); }catch(e){} return r.book; });
+      if(!r || !r.ok) throw new Error('books'); const o = { b: r.book, t: Date.now(), locked: !!r.locked }; BK[k] = o; try{ store('set', 'coe.bk2.' + bkU() + '.' + k, JSON.stringify(o)); }catch(e){} return r.book; });
     BKF[k] = p; p.then(() => delete BKF[k], () => delete BKF[k]); return p; }
   async function bkGet(k){ k = norm(k); const c = cached(k); if(c && Date.now() - c.t < 6 * 36e5) return c.b; if(c){ bkFetch(k).catch(() => {}); return c.b; } return bkFetch(k); }
   window.bkGet = bkGet;
@@ -11531,9 +11532,9 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
 ${Object.keys(G).sort(nat).map(g => `<h2 style="margin-top:16px">${esc(SER(g))}</h2><div>${G[g].sort((x, y) => nat(x.label, y.label)).map(x => `<button class="btn ghost" style="margin:4px 6px 0 0" onclick="bookSheet('','',${esc(JSON.stringify(x.code))})">${esc(x.label.replace(/^(Oxford Discover|Reading Explorer|Raz Kids ·|Wonders|Pathways|Oxford Phonics) ?/, '') || x.label)} <span class="mute small">· ${x.n}</span></button>`).join('')}</div>`).join('') || '<div class="mute small" style="margin-top:12px">No book matches.</div>'}`;
   }
   window.bkLibQ = t => { LQ = t; clearTimeout(window._bkq); window._bkq = setTimeout(() => { renderBooks(); const e = document.querySelector('#v-books input'); if(e){ e.focus(); e.setSelectionRange(e.value.length, e.value.length); } }, 200); };
-  async function loadBooks(){ try{ const c = JSON.parse(store('get', 'coe.bklib2') || 'null'); if(c && c.l){ LIB = c.l; window._bkOthers = c.o || 0; renderBooks(); if(Date.now() - c.t < 6 * 36e5) return; } }catch(e){}
+  async function loadBooks(){ if(window._bkWho !== bkU()){ LIB = null; window._bkOthers = 0; window._bkWho = bkU(); } try{ const c = JSON.parse(store('get', 'coe.bklib2.' + bkU()) || 'null'); if(c && c.l){ LIB = c.l; window._bkOthers = c.o || 0; renderBooks(); if(Date.now() - c.t < 6 * 36e5) return; } }catch(e){}
     try{ const r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'books', token: TOKEN, list: true }) }).then(x => x.json());
-      if(r && r.ok){ LIB = r.list || []; window._bkOthers = r.others || 0; try{ store('set', 'coe.bklib2', JSON.stringify({ l: LIB, t: Date.now(), o: window._bkOthers || 0 })); }catch(e){} } }catch(e){}
+      if(r && r.ok){ LIB = r.list || []; window._bkOthers = r.others || 0; try{ store('set', 'coe.bklib2.' + bkU(), JSON.stringify({ l: LIB, t: Date.now(), o: window._bkOthers || 0 })); }catch(e){} } }catch(e){}
     if(!LIB){ const v = $('v-books'); if(v) v.innerHTML = '<div class="hd"><h1>Books</h1></div><div class="mute small">Could not load the books. Check your internet and try again.</div>'; return; }
     if(VIEW === 'books') renderBooks(); }
   const g0 = go; go = function(v){ const r = g0.apply(this, arguments); if(v === 'books'){ renderBooks(); loadBooks(); } return r; };
