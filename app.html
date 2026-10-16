@@ -1150,7 +1150,7 @@ const API_BG = /^(mgmtAvailAll|mgmtPayChecks|mgmtVisitCoverage|mgmtMonDay|mgmtRe
 function apiPump(){ while(API_N < 3 && API_Q.length){ API_N++; API_Q.shift()().finally(() => { API_N--; apiPump(); }); } }
 const FAST_URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe', FAST_USERS = ['misty', 'julia'], FAST_W = { saveNote: 1, markHomework: 1, tNoteTag: 1, tGoalsSave: 1, timeIn: 1, classIn: 1, tFbSubmit: 1, tPcSubmit: 1, tTrialSubmit: 1, tPeerSubmit: 1, tSetMeet: 1, tMsgAck: 1, tVisitAck: 1, tMsgSeen: 1, tHwFlag: 1, tMsgSend: 1, tLeaveRequest: 1, tPayVerify: 1 };
 const FAST_M = { mgmtRenewal: 1, mgmtRenewPaid: 1, mgmtEnrolPaid: 1, mgmtReportSent: 1, mgmtTrialFu: 1, setCaseDone: 1, mgmtMsgSeen: 1, mgmtMsgSend: 1, mgmtMsgReply: 1 };   /* 14 Oct night: management saves */
-function fastOnM(fn, args){ try{ if(localStorage.getItem('coe.fast') === '0') return false; }catch(e){} return !!(D && D.mgr && TOKEN && FAST_M[fn] && !(fn === 'mgmtTrialFu' && args[2] === 'Enrolling') && !(fn === 'mgmtMsgSend' && args[4]) && !(fn === 'saveStudent' && (!Number(args[2]) || !args[1] || args[1].linkTrial)) && !(fn === 'addSale' && args[1] && args[1].file) && !(/^mgmt(Renew|Enrol)Paid$/.test(fn) && (!args[1] || args[1].dry || args[1].file || args[1].transfer))); }   /* memos, new students and a sale with an invoice file: Google */
+function fastOnM(fn, args){ try{ if(localStorage.getItem('coe.fast') === '0') return false; }catch(e){} return !!(D && D.mgr && TOKEN && FAST_M[fn] && !(fn === 'mgmtTrialFu' && args[2] === 'Enrolling') && !(fn === 'mgmtMsgSend' && args[4]) && !(fn === 'saveStudent' && (!args[1] || args[1].linkTrial || (!Number(args[2]) && !/^ST-\d{4}-\d{3}$/.test(String(args[1].code || '').trim())))) && !(fn === 'addSale' && args[1] && args[1].file) && !(/^mgmt(Renew|Enrol)Paid$/.test(fn) && (!args[1] || args[1].dry || args[1].file || args[1].transfer))); }   /* memos, new students and a sale with an invoice file: Google */
 FAST_M.saveStudent = 1;
 FAST_M.addExpense = 1; FAST_M.addSale = 1;   /* 16 Oct: money entries through the database (a sale with an invoice file: Google) */   /* 15 Oct night: edits of a student record */
 function fastOn(){ try{ const o = localStorage.getItem('coe.fast'); if(o === '0') return false; if(o === '1') return true; }catch(e){} return !!(D && !D.mgr && D.me && D.me.name); }   /* 14 Oct pm: every teacher (was FAST_USERS only) */
@@ -1174,7 +1174,7 @@ function fastAns(fn, args){ if(/Msg/.test(fn)) try{ Object.keys(SB_FRESH).forEac
   if(fn === 'mgmtMsgSend'){ const to = [].concat(args[1] || []); return { ok: true, queued: true, note: 'Sent to ' + (to.length === 1 ? to[0] : to.length + ' people') }; }
   if(fn === 'mgmtMsgReply') return { ok: true, queued: true, note: 'Reply sent' };
   const who = String((D && D.me && D.me.name) || ''), now = new Date(), p2 = n => ('0' + n).slice(-2);
-  if(fn === 'saveStudent'){ const c = String((args[1] || {}).code || ''); try{ Object.keys(SB_FRESH).forEach(k => { if(/(mgmtDatabase|dbRecord|mgmtStudents?)\|/.test(k)) delete SB_FRESH[k]; }); }catch(e){} return { ok: true, queued: true, code: c, row: Number(args[2]) || 0, linked: 0, note: 'Saved ' + c + ' · ' + who }; }
+  if(fn === 'saveStudent'){ const c = String((args[1] || {}).code || ''); try{ Object.keys(SB_FRESH).forEach(k => { if(/(mgmtDatabase|dbRecord|mgmtStudents?)\|/.test(k)) delete SB_FRESH[k]; }); }catch(e){} return { ok: true, queued: true, code: c, row: Number(args[2]) || 0, linked: 0, note: (Number(args[2]) ? 'Saved ' : 'Added ') + c + ' · ' + who }; }
   if(fn === 'mgmtReportSent') return { ok: true, queued: true, at: now.getDate() + ' ' + now.toLocaleString('en-US', { month: 'short' }) + ' ' + p2(now.getHours()) + ':' + p2(now.getMinutes()), by: who, ticked: false, student: '' };
   if(fn === 'mgmtTrialFu'){ const key = String(args[1] || '').trim().toLowerCase(), st = String(args[2] || ''), note = String(args[3] || '').replace(/\s+/g, ' ').trim().slice(0, 120);
     return { ok: true, queued: true, fu: st ? { st: st, note: note, by: who, at: now.getFullYear() + '-' + p2(now.getMonth() + 1) + '-' + p2(now.getDate()) + ' ' + p2(now.getHours()) + ':' + p2(now.getMinutes()) } : null, student: String(args[4] || key.slice(11)), ref: '' }; }
@@ -5443,7 +5443,8 @@ if(f.trialTime && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(f.trialTime.trim())) return
 const lk = FIXLINK; FIXLINK = null;
 if(!row && lk && Date.now() - lk.t < 30*60000 && f.trialDate === lk.date && tfuFirst(f.en || f.cn) === tfuFirst(String(lk.name).replace(/^(ms|mr|mrs|miss)\.?\s+/i, ''))) f.linkTrial = { date: lk.date, name: lk.name };
 const b = $('sGo'); b.disabled = true; b.textContent = 'Saving…'; const _sn = sheetSnap(); closeSheet(); toast('Saving ' + (f.en || f.cn) + '…');
-try{ const r = await api('saveStudent', TOKEN, f, row || 0); if(!r.ok) throw r; toast(r.note);
+try{ if(!row && !f.linkTrial && !/^ST-\d{4}-\d{3}$/.test(String(f.code || '').trim())){ try{ const nc = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'newCode', token: TOKEN }) }).then(x => x.json()); if(nc && nc.ok && nc.code) f.code = nc.code; }catch(e){} }   /* 16 Oct: the database hands out the code, so the save is instant */
+const r = await api('saveStudent', TOKEN, f, row || 0); if(!r.ok) throw r; toast(r.note);
 if(r.linked && f.linkTrial){ FIXD[fixKey(f.linkTrial)] = { note: 'Added ' + r.code + ' · linked', t: Date.now() }; fixKeep(); if(VIEW === 'mtoday') renderMToday(); }
 try{ store('del','coe.m.db'); }catch(x){} DB = null; MS = null; AT = null; loadDb(); }
 catch(e){ sheetBack(_sn); toast(((e&&e.msg)||'Not saved') + ' · your changes are back in the form. Try again.'); try{ stuBtn(row?1:0); }catch(x){} }
@@ -6092,7 +6093,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 568;
+const COE_V = 569;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
