@@ -1,0 +1,8 @@
+// 16 Oct · Best-fit times: open slots right next to a teacher's classes are marked, and Add/Move class points them out
+// when the chosen time leaves a gap (Michael put at 19:00 while 18:00, right before Pam's 18:30, was free).
+const inc = require('fs').readFileSync(require('path').join(__dirname, '218-best-fit-times.inc'), 'utf8');
+require('../tools/lib.js')(process.argv[2], [
+["    else body = `<div class=\"avs\">${x.t.map(t => `<button type=\"button\" class=\"avf\" title=\"Book this slot\" onclick=\"scAvBook(${t})\">${avT(t)}</button>`).join('')}</div><div class=\"small mute\" style=\"margin-top:6px\">${x.t.length} open · teaching hours ${esc(String(x.hours).replace(/,/g, ', '))} · tap a time to book it</div>`;",
+ "    else { const F = typeof avFit === 'function' ? avFit(n, SC.date, LEN) : null, bm = {}; (F ? F.best : []).forEach(b => bm[b.t] = b.why);\n      const all = [...new Set(x.t.concat(Object.keys(bm).map(Number)))].sort((a, b) => a - b), nb = Object.keys(bm).length;\n      body = `<div class=\"avs\">${all.map(t => `<button type=\"button\" class=\"avf ${bm[t] ? 'avbest' : ''}\" title=\"${bm[t] ? 'Best fit · ' + esc(bm[t]) + ' · no gap' : 'Book this slot'}\" onclick=\"scAvBook(${t})\">${bm[t] ? '★ ' : ''}${avT(t)}</button>`).join('')}</div><div class=\"small mute\" style=\"margin-top:6px\">${all.length} open${nb ? ' · <b style=\"color:#0E9F95\">★ best fit</b> = right next to her classes, no gap (' + Object.keys(bm).map(Number).sort((a, b) => a - b).map(t => avT(t) + ' ' + esc(bm[t])).join(' · ') + ')' : ''} · teaching hours ${esc(String(x.hours).replace(/,/g, ', '))} · tap a time to book it</div>`; }"],
+["\n</script>\n\n</body>", "\n</script>\n<script>\n" + inc + "</script>\n\n</body>"],
+]);
