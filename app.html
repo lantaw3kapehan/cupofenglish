@@ -6093,7 +6093,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 582;
+const COE_V = 583;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11705,13 +11705,15 @@ ${Object.keys(G).sort(nat).map(g => `<h2 style="margin-top:16px">${esc(SER(g))}<
   const ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>';
   const box = () => `<div class="bk-rule">${ICO}<div><b>For CupOfEnglish classes only</b>${esc(TXT)}</div></div>`;
   window.bkRuleHtml = box;
-  const L0 = window.bkLib2; if(L0) window.bkLib2 = function(){ const r = L0.apply(this, arguments); try{ const h = document.querySelector('#v-books .bl-hd'); if(h && !document.querySelector('#v-books .bk-rule')) h.insertAdjacentHTML('afterend', box()); }catch(e){} return r; };
+  const slim = () => `<div class="bk-rule slim">${ICO}<span>For CupOfEnglish classes only · not for sharing, other classes or personal use</span></div>`;
+  const rule = () => (D && !D.mgr && ok()) ? slim() : box();
+  const L0 = window.bkLib2; if(L0) window.bkLib2 = function(){ const r = L0.apply(this, arguments); try{ const h = document.querySelector('#v-books .bl-hd'); if(h && !document.querySelector('#v-books .bk-rule')) h.insertAdjacentHTML('afterend', rule()); }catch(e){} return r; };
   const ok = () => { try{ return !!store('get', 'coe.bkok2.' + String((D && D.me && D.me.name) || '').toLowerCase()); }catch(e){ return false; } };
   window.bkAgree = function(a, b, c){ try{ (window.bkRec && bkRec()), store('set', 'coe.bkok2.' + String((D && D.me && D.me.name) || '').toLowerCase(), new Date().toISOString()); }catch(e){} window.bookSheet(a, b, c); };
   const S0 = window.bookSheet; if(S0) window.bookSheet = function(a, b, c){
     if(D && !D.mgr && !ok()){ const arg = [a, b, c].map(x => esc(JSON.stringify(x == null ? '' : x))).join(',');
       openSheet(`<h1>Before you open the books</h1>${box()}<div class="small mute" style="margin-top:8px">The books are licensed to CupOfEnglish for our classes. Keeping them inside CupOfEnglish protects the institution and you.</div><button class="btn block" style="margin-top:16px" onclick="bkAgree(${arg})">I understand · open the book</button>`); return; }
-    const r = S0.apply(this, arguments); try{ const h = document.querySelector('#sheetBody h1'); if(h && !document.querySelector('#sheetBody .bk-rule')) h.parentNode.insertBefore(document.createRange().createContextualFragment(box()), $('bkBody')); }catch(e){} return r; };
+    const r = S0.apply(this, arguments); try{ const h = document.querySelector('#sheetBody h1'); if(h && !document.querySelector('#sheetBody .bk-rule')) h.parentNode.insertBefore(document.createRange().createContextualFragment(rule()), $('bkBody')); }catch(e){} return r; };
   /* the one-tap unit link on a class card opens Drive directly: the first time, the notice comes first */
   document.addEventListener('click', ev => { const a0 = ev.target && ev.target.closest && ev.target.closest('a[href^="https://drive.google.com/file/d/"]'); if(!a0 || !D || D.mgr || ok()) return;
     ev.preventDefault(); const u = a0.href; window._bkGo = () => { try{ (window.bkRec && bkRec()), store('set', 'coe.bkok2.' + String((D && D.me && D.me.name) || '').toLowerCase(), new Date().toISOString()); }catch(e){} closeSheet(); window.open(u, '_blank', 'noopener'); };
@@ -11803,6 +11805,21 @@ ${Object.keys(G).sort(nat).map(g => `<h2 style="margin-top:16px">${esc(SER(g))}<
       if(m) return `<a class="btn ghost sm bkb" style="--bc:${col}" href="${m[1]}" target="_blank" rel="noopener"><i></i>${esc(String(m[2]).replace(/^.*?·\s*/, ''))}</a>`;
       const u = /Unit\s*(\d+)/.exec(html);
       return `<button class="btn ghost sm bkb" style="--bc:${col}" onclick="bookSheet('${esc(c.code)}','${esc(c.id)}')"><i></i>${u ? 'Unit ' + u[1] : 'Book'}</button>`; }catch(e){ return ''; } };
+})();
+</script>
+<script>
+/* 16 Oct · 254 · Books rule asked once (Misty 21:07): after "I understand" a teacher only sees a slim one-line reminder on the
+   book lists, never the big box or the prompt again — also on a new phone or laptop, because the app asks the database
+   whether they already agreed (coe-mgmt › books › check). */
+(function(){
+  try{ const st = document.createElement('style'); st.textContent = `
+.bk-rule.slim{background:none;border:0;padding:2px 0;margin:6px 0 2px;font-size:12px;color:var(--mute);align-items:center;gap:6px}
+.bk-rule.slim svg{width:14px;height:14px;margin:0;color:var(--mute)}
+`; document.head.appendChild(st); }catch(e){}
+  setTimeout(function chk(){ try{
+    if(!D || D.mgr || !TOKEN) return; const k = 'coe.bkok2.' + String((D.me && D.me.name) || '').toLowerCase(); if(store('get', k)) return;
+    fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'books', token: TOKEN, check: 2 }) }).then(x => x.json()).then(r => { if(r && r.ok && r.agreed) try{ store('set', k, 'server'); }catch(e){} }).catch(() => {});
+  }catch(e){} }, 4000);
 })();
 </script>
 
