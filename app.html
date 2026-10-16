@@ -2434,13 +2434,16 @@ return `<details class="card" style="margin-top:22px;padding:10px 14px"><summary
 <i style="width:10px;height:10px;border-radius:50%;background:${dot};flex:none"></i><b class="grow small">System health · ${esc(line)}</b><span class="mute small">${esc(HL.time)}H ›</span></div>${gauge}</summary>
 <div class="small" style="margin-top:8px;line-height:1.7">${HL.issues.slice(1).map(x => `<div style="color:var(--red)">${esc(x)}</div>`).join('')}
 <div>Background warm-up: ${HL.warm.at ? 'last ran ' + esc(HL.warm.at) + 'H (' + HL.warm.age + ' min ago) · took ' + HL.warm.took + ' s' : 'not yet'}</div>
-<div>Background time today: ${HL.today.hours} h of about ${HL.today.budget} h · ${HL.today.runs} runs</div>
+<div>Background time today: ${HL.today.hours} h of about ${HL.today.budget} h${HL.today.drain != null ? ' · every-minute job ' + HL.today.drain + ' h + warm-up ' + HL.today.warm + ' h' : ' · ' + HL.today.runs + ' runs'}</div>
 ${(HL.handover||[]).length ? `<div style="margin:4px 0"><b>Teacher changed in the calendar · update ACTIVE column D</b>${HL.handover.map(x => `<div>${esc(x.name)} · ${esc(x.code)} · ACTIVE: ${esc(x.active||'—')} → now ${esc(tName(x.now))}</div>`).join('')}</div>` : ''}
 <div>Sign-in emails left today: ${HL.mail == null ? '—' : HL.mail}</div>
 <div>Slowest recent screens: ${(HL.slow||[]).slice(0,4).map(s => esc(s[1]) + ' ' + (s[2]/1000).toFixed(1) + ' s').join(' · ') || 'none'}</div>
 <div>Yearly archive: ${HL.archive ? 'checked ' + esc(HL.archive.at) + ' · ' + esc(Object.keys(HL.archive.moved||{}).map(k => k + ' ' + HL.archive.moved[k]).join(' · ') || 'nothing old enough yet') : 'runs nightly, 02:00–05:00'}</div></div></details>`;
 }
-async function loadHealth(){ try{ HL = await api('mgmtHealth', TOKEN); const b = $('hlBox'); if(b) b.innerHTML = hlHtml(); homeSoon(); }catch(e){} }
+async function hlBudget(){ try{ const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: ['sys:budget2'] }) }).then(x => x.json());
+  const b = r && r.ok && r.docs && r.docs['sys:budget2'] && r.docs['sys:budget2'].data; if(!b || b.day !== ymdLocal(new Date()) || !HL || !HL.today) return;
+  const dr = (+b.drainAllSec || 0) / 3600, wm = (+b.warmSec || 0) / 3600; HL.today.drain = Math.round(dr * 10) / 10; HL.today.warm = Math.round(wm * 10) / 10; HL.today.hours = Math.round((dr + wm) * 10) / 10; }catch(e){} }
+async function loadHealth(){ try{ HL = await api('mgmtHealth', TOKEN); await hlBudget(); const b = $('hlBox'); if(b) b.innerHTML = hlHtml(); homeSoon(); }catch(e){} }
 let NG = null, NG_D = '';
 const ymdMNL = (k=0) => new Date(Date.now() + 8*3600e3 + k*864e5).toISOString().slice(0,10);
 const ymdAdd = (ds, k) => new Date(new Date(ds+'T12:00:00Z').getTime() + k*864e5).toISOString().slice(0,10);
@@ -6089,7 +6092,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 559;
+const COE_V = 560;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
