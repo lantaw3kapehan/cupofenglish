@@ -6093,7 +6093,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 570;
+const COE_V = 571;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11353,6 +11353,31 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
         const e2 = $('cS'); if(!nc || !nc.ok || !nc.code || !e2 || e2.value.indexOf(guess[0]) !== 0) return;
         e2.value = nc.code + e2.value.slice(guess[0].length); try{ classPick(); }catch(x){} }).catch(() => {}); }catch(e){}
     return r; };
+})();
+</script>
+<script>
+/* 16 Oct · 242 · a saved meeting ID stays on the screen. It used to jump back to the old one (or "+ Meeting ID") when the
+   schedule was read again before Google had written it (about a minute), so the teacher typed it again. Kept here for 15 min. */
+(function(){
+  const K = 'coe.meetp'; let P = {};
+  try{ P = JSON.parse(localStorage.getItem(K) || '{}') || {}; }catch(e){ P = {}; }
+  const keep = () => { try{ localStorage.setItem(K, JSON.stringify(P)); }catch(e){} };
+  function mpApply(){
+    if(typeof D === 'undefined' || !D || !D.schedule) return; const now = Date.now(); let ch = false;
+    Object.keys(P).forEach(code => { const p = P[code];
+      if(!p || !(p.until > now)){ delete P[code]; ch = true; return; }
+      D.schedule.forEach(x => { if(x.code === code && String(x.meet || '').replace(/\D/g, '') !== p.v) x.meet = p.v; }); });
+    if(ch) keep();
+  }
+  if(typeof render === 'function'){ const r0 = render; render = function(){ try{ mpApply(); }catch(e){} return r0.apply(this, arguments); }; }
+  if(typeof api === 'function'){ const a0 = api; api = async function(fn){
+    if(fn !== 'tSetMeet') return a0.apply(this, arguments);
+    const code = String(arguments[2] || ''), v = String(arguments[3] || '').replace(/\D/g, '');
+    if(code && v){ P[code] = { v: v, until: Date.now() + 15 * 60000 }; keep(); }
+    let r; try{ r = await a0.apply(this, arguments); }catch(e){ delete P[code]; keep(); throw e; }
+    if(!r || !r.ok){ delete P[code]; keep(); }
+    return r;
+  }; }
 })();
 </script>
 
