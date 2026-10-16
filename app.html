@@ -5128,7 +5128,7 @@ function remByTeacher(e){ const d = new Date(e.start), lim = OPS_OFF[d.getDay()]
 function scRemKey(e, st){ return 'coeRem:' + ymdLocal(new Date(e.start)) + ':' + new Date(e.start).toISOString() + ':' + (e.code || e.student || e.title) + ':' + st; }
 let REM = { day: '', map: {}, busy: 0, ts: 0 };
 function remFresh(){ return REM.day === ymdLocal(new Date()) && Date.now() - REM.ts < 12e4; }
-async function remLoad(){ if(REM.busy) return; REM.busy = 1; try{ const d = ymdLocal(new Date()), r = await api('mgmtReminders', TOKEN, d); if(r && r.ok){ REM.day = d; REM.map = r.rem || {}; REM.ts = Date.now(); } else if(REM.day === d) REM.ts = Date.now(); }catch(x){ if(REM.day === ymdLocal(new Date())) REM.ts = Date.now(); } REM.busy = 0; try{ const v = $('v-schedule'); const a = document.activeElement; if(SC && v && v.offsetParent && !(a && a.id === 'scQ')) scRefresh(); }catch(x){} }
+async function remLoad(){ if(REM.busy) return; REM.busy = 1; try{ const d = ymdLocal(new Date()); let r = null; try{ const x = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'calc', token: TOKEN, fn: 'tReminders', args: [d] }) }).then(z => z.json()); if(x && x.ok && x.data && x.data.ok && x.data.rem) r = x.data; }catch(z){} if(!r) r = await api('mgmtReminders', TOKEN, d); if(r && r.ok){ REM.day = d; REM.map = r.rem || {}; REM.ts = Date.now(); } else if(REM.day === d) REM.ts = Date.now(); }catch(x){ if(REM.day === ymdLocal(new Date())) REM.ts = Date.now(); } REM.busy = 0; try{ const v = $('v-schedule'); const a = document.activeElement; if(SC && v && v.offsetParent && !(a && a.id === 'scQ')) scRefresh(); }catch(x){} }
 /* Redraw the Schedule only when something on it changed (class status, a reminder due or sent), so the screen does not blink every minute. */
 function scSig(){ if(!SC) return ''; const n = Date.now(); return (remFresh() ? 'F' : 'S') + SC.date + '|' + SC.events.map(e => { const s = +new Date(e.start), en = +new Date(e.end), st = scStage(e); return (n >= s - 30 * 6e4 ? 1 : 0) + '' + (n >= s + 2 * 6e4 ? 1 : 0) + (n >= en ? 1 : 0) + (n >= en + 15 * 6e4 ? 1 : 0) + (st || '-') + (st && scSent(e, st) ? 'y' : 'n') + (REM.map[scRemKey(e, '2h')] ? 'a' : '') + (REM.map[scRemKey(e, '10m')] ? 'b' : ''); }).join(','); }
 let SC_SIG = '';
@@ -6092,7 +6092,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 566;
+const COE_V = 567;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
