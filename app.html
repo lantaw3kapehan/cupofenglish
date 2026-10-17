@@ -5002,7 +5002,7 @@ return t.concat(st);
 }
 async function scSug(){
 const inp = $('scQ'); if(!inp) return;
-if(!SL){ SL = { students:[], teachers:[] }; api('schedLists', TOKEN).then(x => { SL = x; if(document.activeElement === inp) scSug(); }).catch(()=>{ SL = null; }); }
+if(!SL){ SL = kept('sl2') || { students:[], teachers:[] }; api('schedLists', TOKEN).then(x => { if(x && x.students){ SL = x; keep('sl2', x); if(document.activeElement === inp) scSug(); } }).catch(()=>{ if(!SL.students.length) SL = null; }); }
 const M = scMatches(inp.value); SC_SEL = 0; let l = $('scL');
 if(!inp.value.trim()){ if(l) l.remove(); return; }
 if(!l){ l = document.createElement('div'); l.id = 'scL'; l.className = 'sch-l'; inp.parentNode.appendChild(l); }
@@ -5136,7 +5136,7 @@ function scRefresh(){ const g = scSig(); if(g === SC_SIG) return; renderSchedule
 function scSent(e, st){ if(REM.map[scRemKey(e, st)]) return true; try{ return localStorage.getItem(scRemKey(e, st)) === '1'; }catch(x){ return false; } }
 function scRemChips(e){ const c = ['2h', '10m'].map(st => { const r = REM.map[scRemKey(e, st)]; return r ? `<span class="chip teal">🔔 ${st === '10m' ? '10-min' : 'Early'} reminder · ${esc(r.by)} ${esc(r.at)}</span>` : ''; }).filter(Boolean); return c.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${c.join('')}</div>` : ''; }
 function scDueBox(){
-if(!SC || SC_OFF) return ''; if(!remFresh()){ if(!REM.busy) setTimeout(remLoad, 0); return SC.events.some(e => scStage(e)) ? '<div class="small mute" style="margin-top:10px">🔔 Checking which reminders were already sent…</div>' : ''; } const due = SC.events.filter(e => { const st = scStage(e); return st && !scSent(e, st); }).sort((a, b) => a.start.localeCompare(b.start));
+if(!SC || SC_OFF) return ''; if(!remFresh()){ if(!REM.busy) setTimeout(remLoad, 0); return SC.events.some(e => scStage(e)) ? '<div class="small mute" style="margin-top:10px">🔔 Checking which reminders were already sent…</div>' : ''; } const due = SC.events.filter(e => { const st = scStage(e); return st && !scSent(e, st) && !remByTeacher(e); }).sort((a, b) => a.start.localeCompare(b.start));
 const sent = SC.events.filter(e => { const st = scStage(e); return st && scSent(e, st); }).length;
 if(!due.length){ const nx = scNextRem(); return (sent || nx) ? `<div class="small mute" style="margin-top:10px">🔔 Reminders: ${sent ? 'all sent ✓ (' + sent + ')' : 'none due now'}${nx ? ' · next opens ' + tm(new Date(nx.at).toISOString()) + ' · ' + esc(nx.e.student || nx.e.title) + ' (' + (nx.st === '10m' ? '10-min' : 'early') + ')' : ''}</div>` : ''; }
 return `<div class="card" style="margin-top:12px;border:1.5px solid #00A3AD"><b>🔔 Reminders due · ${due.length}</b><div class="small mute">Copy, then paste in the class WeChat group (type @ to tag the teacher and parent)${sent ? ' · ' + sent + ' sent' : ''}</div>` +
@@ -6093,7 +6093,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 590;
+const COE_V = 591;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
