@@ -6096,7 +6096,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 599;
+const COE_V = 600;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11937,6 +11937,24 @@ function svPill(id, html, kind){
   api = function(fn, ...args){
     if(fn === 'mgmtRenewals' && typeof D !== 'undefined' && D && D.mgr && TOKEN) return renDb().catch(() => base(fn, ...args));
     if(/^mgmt(Renewal|RenewPaid|EnrolPaid)$/.test(fn)) saved = Date.now();
+    return base(fn, ...args); };
+})();
+</script>
+<script>
+/* 17 Oct · 271 · Performance from the database (coe-mgmt › screen mgmtPerformance = coe_performance_live). Same as Google's except:
+   homework counts each homework once (Google counted a homework saved twice as two). Google only as a fallback. */
+(function(){
+  const base = api; let last = null, at = 0;
+  async function perfDb(){
+    if(last && Date.now() - at < 30000) return last;
+    const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 8000) : 0;
+    try{ const r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'screen', fn: 'mgmtPerformance', token: TOKEN }), signal: ac ? ac.signal : undefined }).then(x => x.json());
+      if(!(r && r.ok && r.data && Array.isArray(r.data.teachers) && Array.isArray(r.data.ranks))) throw new Error('no performance');
+      last = r.data; at = Date.now(); return r.data; }
+    finally{ clearTimeout(tid); } }
+  api = function(fn, ...args){
+    if(fn === 'mgmtPerformance' && typeof D !== 'undefined' && D && D.mgr && TOKEN) return perfDb().catch(() => base(fn, ...args));
+    if(/^(mgmtQaSubmit|tPcSubmit)$/.test(fn)) at = 0;
     return base(fn, ...args); };
 })();
 </script>
