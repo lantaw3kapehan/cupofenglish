@@ -6096,7 +6096,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 597;
+const COE_V = 598;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11901,6 +11901,25 @@ function svPill(id, html, kind){
   scDueBox = function(){ return base.apply(this, arguments) + scTeachBox(); };
 })();
 
+</script>
+<script>
+/* 17 Oct · 269 · Overview from the database (coe-mgmt › overview = coe_overview_live: teachers, payroll, today's team and Ops,
+   late time-ins), checked equal to Google's on 17 Oct. Google is asked only if the database does not answer. */
+(function(){
+  const base = api; let last = null, at = 0, fly = null;
+  async function ovDb(){
+    if(last && Date.now() - at < 20000) return last; if(fly) return fly;
+    fly = (async () => { const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 8000) : 0;
+      try{ const r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'overview', token: TOKEN }), signal: ac ? ac.signal : undefined }).then(x => x.json());
+        if(!(r && r.ok && r.data && Array.isArray(r.data.teachers) && Array.isArray(r.data.team))) throw new Error('no overview');
+        last = r.data; at = Date.now(); return r.data; }
+      finally{ clearTimeout(tid); fly = null; } })();
+    return fly; }
+  api = function(fn, ...args){
+    if(fn === 'mgmtOverview' && typeof D !== 'undefined' && D && D.mgr && typeof LIVE !== 'undefined' && LIVE && TOKEN) return ovDb().catch(() => base(fn, ...args));
+    if(/^(decideLate|timeIn|timeOut)$/.test(fn)) at = 0;   /* a decision or a time-in: the next Overview is read fresh */
+    return base(fn, ...args); };
+})();
 </script>
 
 </body>
