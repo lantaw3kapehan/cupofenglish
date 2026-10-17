@@ -6093,7 +6093,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 593;
+const COE_V = 594;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11298,7 +11298,7 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
     if(best) best.k = code + '|' + best.at; return best; }catch(e){ return null; } };
   const fresh = () => { try{ if(!window.PCDONE) return; let ch = 0; Object.keys(PCDONE).forEach(c => { const q = luOf(c); if(q && !SENT[q.k]){ delete PCDONE[c]; ch = 1; } }); if(ch) store('set', 'coe.pcdone', JSON.stringify(PCDONE)); }catch(e){} };
   window.luSkipDone = function(code, done){ const q = luOf(code); if(!q || SENT[q.k]) return false; return String((done && done.date) || '').slice(0, 10) < q.at.slice(0, 10); };
-  window.luBody = function(code, picks){ const q = luOf(code), d = q && DECS[q.k]; if(!q || !d) return undefined; const tot = (picks || []).reduce((a, x) => a + (+x || 0), 0); return { to: q.to, d: d.d, why: String(d.why || '').slice(0, 800), cefr: rubric(tot) }; };
+  window.luBody = function(code, picks){ const q = luOf(code), d = q && DECS[q.k]; if(!q || !d) return undefined; const tot = (picks || []).reduce((a, x) => a + (+x || 0), 0); return { to: q.to, d: d.d, why: (String(d.why || '').trim() + (String(d.tm || '').trim() ? ' (Test material: ' + String(d.tm).trim() + ')' : '')).slice(0, 800), test: String(d.tm || '').slice(0, 120), cefr: rubric(tot) }; };
   let CUR = '';
   const _pf = window.pcForm; if(_pf) window.pcForm = function(code){ CUR = code; fresh(); return _pf.apply(this, arguments); };
   window.luPick = function(v){ const q = luOf(CUR); if(!q) return; DECS[q.k] = Object.assign(DECS[q.k] || {}, { d: v }); keep(); paintLv(); };
@@ -11310,7 +11310,10 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
       '<div class="lud">' + [['ready', '✓ Ready for ' + to, 'can move up now'], ['almost', 'Almost', 'a few more weeks on ' + from], ['notyet', 'Not yet', 'stay on ' + from]].map(([v, l, s]) => '<button type="button" class="' + (d.d === v ? 'on' : '') + '" onclick="luPick(\'' + v + '\')">' + esc(l) + '<small>' + esc(s) + '</small></button>').join('') + '</div>' +
       '<label style="margin-top:10px">Why · 2–3 simple sentences (management may share it with the parent)</label><textarea id="luW" class="in-t" rows="3" oninput="luWhy(this.value)" placeholder="e.g. She answered the A2 questions in full sentences and read the A2 story alone. Her writing still needs past tense practice.">' + esc(d.why || '') + '</textarea>';
     let el = $('luT'); if(!el){ const at = b.querySelector('.pc-sec') || $('pcB'); if(!at) return; at.insertAdjacentHTML('beforebegin', '<div class="lut" id="luT"></div>'); el = $('luT'); }
-    el.innerHTML = html; }
+    el.innerHTML = html;
+    try{ const bi = $('pcB'), lb = bi && bi.previousElementSibling; if(bi && lb && lb.tagName === 'LABEL' && !$('luTm')){ lb.innerHTML = 'Class book and unit now <span class="small mute" style="font-weight:400">· the book in the regular classes (not the test material)</span>'; bi.placeholder = 'e.g. Oxford Discover 2 - Unit 5 p.32';
+      bi.insertAdjacentHTML('afterend', '<label>Test material used <span class="small mute" style="font-weight:400">· for the level-up test</span></label><input id="luTm" class="in-t" placeholder="e.g. REF Unit 1 p.7 (A2 reading and questions)" oninput="luTmSet(this.value)" value="' + esc(d.tm || '') + '">'); } }catch(e){} }
+  window.luTmSet = function(v){ const q = luOf(CUR); if(!q) return; DECS[q.k] = Object.assign(DECS[q.k] || {}, { tm: v }); keep(); };
   const _pp = window.pcPaint; if(_pp) window.pcPaint = function(){ const r = _pp.apply(this, arguments); try{ paintLv(); }catch(e){ console.warn('lv paint', e); } return r; };
   const _ps = window.pcSend; if(_ps) window.pcSend = function(){ const q = luOf(CUR);
     if(q){ const d = DECS[q.k] || {}, er = $('pcErr'), stop = m => { if(er) er.textContent = m; const t = $('luT'); if(t) t.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
