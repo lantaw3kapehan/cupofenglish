@@ -4973,8 +4973,8 @@ if(action==='move'){ const [H,M] = f.time.split(':').map(Number), d = new Date(f
 e.start = d.toISOString(); e.end = new Date(d.getTime() + (Number(f.mins)||25)*6e4).toISOString(); if(f.teacher) e.teacher = f.teacher;
 if(src==='stu') L.sort((a,b)=>a.start.localeCompare(b.start)); }
 else { e.cancelled = action==='cancel'; e.why = e.cancelled ? f.reason : ''; e.title = String(e.title||'').replace(/\s+X$/i,'') + (e.cancelled?' X':''); }
-const paint = () => { if(src==='tw' && TW){ twPaint(); return; } if(src==='sw' && SW){ SW.events.sort((a,b)=>a.start.localeCompare(b.start)); swPaint(); return; } if(src==='stu' && STU){ CLSM[code] = L; try{ store('set','coe.cls.'+code, JSON.stringify(L)); }catch(x){} STU.cls = L; openStudent(code); } else { closeSheet(); renderSchedule(); } };
-CLS_HOLD = code; paint();
+const paint = () => { if(src==='tw' && TW){ twPaint(); return; } if(src==='sw' && SW){ SW.events.sort((a,b)=>a.start.localeCompare(b.start)); swPaint(); return; } if(src==='stu' && STU){ CLSM[code] = L; if(!window._seOpt) try{ store('set','coe.cls.'+code, JSON.stringify(L)); }catch(x){} STU.cls = L; openStudent(code); } else { closeSheet(); renderSchedule(); } };
+CLS_HOLD = code; window._seOpt = 1; paint(); window._seOpt = 0;
 const epk = svPill(null, '⏳ ' + (action==='cancel' ? 'Cancelling' : action==='restore' ? 'Restoring' : f.forward ? 'Moving this and the later classes of' : 'Moving') + ' <b>' + esc(before.student || before.title || 'the class') + '</b> in Google Calendar…', 'wait');
 try{ const r = await api('editClass', TOKEN, e.id, f); if(!r.ok) throw r; svPill(epk, '✓ <b>Saved in Google Calendar</b>' + (r.note ? ' · ' + esc(r.note) : ''), 'ok'); try{ ding('msg'); }catch(y){}
 if(action === 'move'){ e.mv = { start: before.start, end: before.end }; setTimeout(() => cxMoveProof(before, e, r.fwd), 450); }   /* the same parent picture: old time → new time */
@@ -6093,9 +6093,9 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 594;
+const COE_V = 595;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
-function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
+function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
 function updQuiet(){ try{ if(typeof D === 'undefined' || !D || performance.now() < 15000) return false;   /* audit 13 Oct: management too */ const h = new Date().getHours(); return h >= 16; }   /* 14 Oct: quiet until midnight (late trial classes), was 22:00 */catch(e){ return false; } }
 let UPD_AT = 0;
@@ -11865,6 +11865,39 @@ ${Object.keys(G).sort(nat).map(g => `<h2 style="margin-top:16px">${esc(SER(g))}<
     try{ if(D && D.mgr && STU && STU.code && !$('cbBtn')){ const row = document.querySelector('#sheetBody .row.noprint'); if(row) row.insertAdjacentHTML('beforeend', `<button class="btn ghost sm" id="cbBtn" onclick="cbOpen('${esc(STU.code)}')">Change book</button>`); } }catch(e){}
     return r; };
 })();
+</script>
+<script>
+/* 17 Oct · 263 · a save banner that stays until the result is known (Misty: "the prompt just goes off without knowing if it has been saved") */
+function svPillWhen(f){ try{ const d = new Date(f.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); return d + ' ' + f.time + (f.count > 1 ? ' · ' + f.count + ' classes' : '') + (f.teacher ? ' · Teacher ' + tName(f.teacher) : ''); }catch(e){ return ''; } }
+function svPill(id, html, kind){
+  let box = document.getElementById('svPills'); if(!box){ box = document.createElement('div'); box.id = 'svPills'; box.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:9999;display:flex;flex-direction:column;gap:8px;width:min(520px,calc(100vw - 32px))'; document.body.appendChild(box); }
+  const C = { wait: ['#2B2253', '#fff'], ok: ['#E8F7F3', '#0B6B4F'], bad: ['#FFF0EC', '#9A3B22'] }[kind] || ['#2B2253', '#fff'];
+  let el = id && document.getElementById(id); if(!el){ el = document.createElement('div'); el.id = id = 'svp' + Date.now() + Math.random().toString(36).slice(2, 6); box.appendChild(el); }
+  el.dataset.k = kind; el.style.cssText = 'background:' + C[0] + ';color:' + C[1] + ';border-radius:14px;padding:12px 40px 12px 16px;box-shadow:0 8px 24px rgba(43,34,83,.18);font-size:14px;line-height:1.4;position:relative;border:1.5px solid ' + (kind === 'ok' ? '#3E8E5E' : kind === 'bad' ? '#E9B8AC' : 'transparent');
+  el.innerHTML = html + '<button type="button" aria-label="Close" style="position:absolute;top:8px;right:10px;border:0;background:none;color:inherit;font-size:18px;cursor:pointer;opacity:.7">×</button>';
+  el.querySelector('button').onclick = () => el.remove();
+  clearTimeout(el._t); if(kind === 'ok') el._t = setTimeout(() => el.remove(), 15000);
+  return id;
+}
+
+/* 17 Oct · Reminders in the teacher's turn (Ops off): shown apart, tagged when the teacher reminded */
+(function(){
+  if(typeof scDueBox !== 'function') return;
+  const base = scDueBox;
+  function scTeachBox(){
+    if(!SC || SC_OFF || !remFresh()) return '';
+    const L = SC.events.filter(e => scStage(e) && remByTeacher(e)).sort((a, b) => a.start.localeCompare(b.start)); if(!L.length) return '';
+    let done = 0;
+    const rows = L.map(e => { const st = scStage(e), r = REM.map[scRemKey(e, st)], i = SC.events.indexOf(e), lbl = st === '10m' ? '10-min' : 'early';
+      const nm = `<b>${tm(e.start)}</b> ${esc(e.student || e.title || '')}`;
+      if(r || scSent(e, st)){ done++; const by = r && r.by ? (/cupofenglish/i.test(r.by) ? 'marked sent' : 'Teacher ' + esc(tName(r.by))) : 'sent'; return `<span class="chip teal" style="margin:4px 6px 0 0">✓ ${nm} · ${lbl} · ${by}${r && r.at ? ' ' + esc(r.at) : ''}</span>`; }
+      return `<div class="row" style="gap:8px;margin-top:6px;align-items:center"><div class="grow small">${nm} · <span style="color:#8A5A00">waiting for Teacher ${esc(tName(e.teacher || ''))}</span> <span class="mute">(${lbl})</span></div><button class="btn sm ghost" title="Already reminded in WeChat · clear it" onclick="scRemDone([${i}])">✓ Sent</button></div>`; });
+    const chips = rows.filter(x => x.startsWith('<span')), wait = rows.filter(x => !x.startsWith('<span'));
+    return `<div class="card" style="margin-top:10px;border:1px dashed #C9B37A;background:#FFFCF3"><b class="small">👩‍🏫 Teacher's turn (Ops off) · ${done}/${L.length} reminded</b>${wait.join('')}${chips.length ? `<div style="display:flex;flex-wrap:wrap;margin-top:4px">${chips.join('')}</div>` : ''}</div>`;
+  }
+  scDueBox = function(){ return base.apply(this, arguments) + scTeachBox(); };
+})();
+
 </script>
 
 </body>
