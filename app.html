@@ -6096,7 +6096,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 600;
+const COE_V = 601;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11955,6 +11955,26 @@ function svPill(id, html, kind){
   api = function(fn, ...args){
     if(fn === 'mgmtPerformance' && typeof D !== 'undefined' && D && D.mgr && TOKEN) return perfDb().catch(() => base(fn, ...args));
     if(/^(mgmtQaSubmit|tPcSubmit)$/.test(fn)) at = 0;
+    return base(fn, ...args); };
+})();
+</script>
+<script>
+/* 17 Oct · 272 · the teacher card (management › Teachers) from the database (coe-mgmt › teacherCard): staff list, profile,
+   6 months of attendance, pay, extras and students. Google only as a fallback. */
+(function(){
+  const base = api, memo = {};
+  async function cardDb(name){
+    const k = String(name || ''), m = memo[k]; if(m && Date.now() - m.t < 20000) return m.d;
+    const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 9000) : 0;
+    try{ const r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'teacherCard', name: k, token: TOKEN }), signal: ac ? ac.signal : undefined }).then(x => x.json());
+      const d = r && r.ok && r.data;
+      if(!(d && d.name && Array.isArray(d.options) && d.options.length && d.me && Array.isArray(d.attend))) throw new Error('no card');
+      memo[k] = { t: Date.now(), d }; return d; }
+    finally{ clearTimeout(tid); } }
+  api = function(fn, ...args){
+    if(fn === 'mgmtTeacherCard' && typeof D !== 'undefined' && D && D.mgr && TOKEN){ const nm = args[1], force = args[2];
+      if(force) delete memo[String(nm || '')];
+      return cardDb(nm).catch(() => base(fn, ...args)); }
     return base(fn, ...args); };
 })();
 </script>
