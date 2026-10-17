@@ -6096,7 +6096,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 598;
+const COE_V = 599;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11918,6 +11918,25 @@ function svPill(id, html, kind){
   api = function(fn, ...args){
     if(fn === 'mgmtOverview' && typeof D !== 'undefined' && D && D.mgr && typeof LIVE !== 'undefined' && LIVE && TOKEN) return ovDb().catch(() => base(fn, ...args));
     if(/^(decideLate|timeIn|timeOut)$/.test(fn)) at = 0;   /* a decision or a time-in: the next Overview is read fresh */
+    return base(fn, ...args); };
+})();
+</script>
+<script>
+/* 17 Oct · 270 · Renewals from the database (coe-mgmt › screen mgmtRenewals = coe_renewals_map, checked equal to Google's).
+   After a renewal status is saved the next read waits 5 s so the database has it; Google only as a fallback. */
+(function(){
+  const base = api; let last = null, at = 0, saved = 0;
+  async function renDb(){
+    if(last && Date.now() - at < 15000 && at > saved) return last;
+    if(Date.now() - saved < 5000) await new Promise(z => setTimeout(z, 5000 - (Date.now() - saved)));
+    const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 8000) : 0;
+    try{ const r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'screen', fn: 'mgmtRenewals', token: TOKEN }), signal: ac ? ac.signal : undefined }).then(x => x.json());
+      if(!(r && r.ok && r.data && typeof r.data === 'object' && !Array.isArray(r.data))) throw new Error('no renewals');
+      last = r.data; at = Date.now(); return r.data; }
+    finally{ clearTimeout(tid); } }
+  api = function(fn, ...args){
+    if(fn === 'mgmtRenewals' && typeof D !== 'undefined' && D && D.mgr && TOKEN) return renDb().catch(() => base(fn, ...args));
+    if(/^mgmt(Renewal|RenewPaid|EnrolPaid)$/.test(fn)) saved = Date.now();
     return base(fn, ...args); };
 })();
 </script>
