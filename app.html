@@ -4975,17 +4975,17 @@ if(src==='stu') L.sort((a,b)=>a.start.localeCompare(b.start)); }
 else { e.cancelled = action==='cancel'; e.why = e.cancelled ? f.reason : ''; e.title = String(e.title||'').replace(/\s+X$/i,'') + (e.cancelled?' X':''); }
 const paint = () => { if(src==='tw' && TW){ twPaint(); return; } if(src==='sw' && SW){ SW.events.sort((a,b)=>a.start.localeCompare(b.start)); swPaint(); return; } if(src==='stu' && STU){ CLSM[code] = L; try{ store('set','coe.cls.'+code, JSON.stringify(L)); }catch(x){} STU.cls = L; openStudent(code); } else { closeSheet(); renderSchedule(); } };
 CLS_HOLD = code; paint();
-toast(action==='cancel' ? 'Cancelled · updating calendar…' : action==='restore' ? 'Restored · updating calendar…' : f.forward ? 'Moving this and the later classes…' : 'Moved · updating calendar…');
-try{ const r = await api('editClass', TOKEN, e.id, f); if(!r.ok) throw r; toast(r.note);
+const epk = svPill(null, '⏳ ' + (action==='cancel' ? 'Cancelling' : action==='restore' ? 'Restoring' : f.forward ? 'Moving this and the later classes of' : 'Moving') + ' <b>' + esc(before.student || before.title || 'the class') + '</b> in Google Calendar…', 'wait');
+try{ const r = await api('editClass', TOKEN, e.id, f); if(!r.ok) throw r; svPill(epk, '✓ <b>Saved in Google Calendar</b>' + (r.note ? ' · ' + esc(r.note) : ''), 'ok'); try{ ding('msg'); }catch(y){}
 if(action === 'move'){ e.mv = { start: before.start, end: before.end }; setTimeout(() => cxMoveProof(before, e, r.fwd), 450); }   /* the same parent picture: old time → new time */
 Object.keys(SCC).forEach(k => { SCC[k]._t = 0; });   /* keep what's on screen, refetch quietly */ CLS_HOLD = null; if(src==='sw' && SW) delete CLSM[SW.code];
 if(code) api('mgmtStuClasses', TOKEN, code).then(x => { CLSM[code] = x; try{ store('set','coe.cls.'+code, JSON.stringify(x)); }catch(y){}
 if(STU && STU.code===code){ STU.cls = x; const el = $('stuSch'); if(el) el.innerHTML = stuSched(x); } }).catch(()=>{});
 else loadSchedule(0, true); }
-catch(x){ CLS_HOLD = null; Object.assign(e, before); if(src==='stu') L.sort((a,b)=>a.start.localeCompare(b.start)); paint(); toast((x&&x.msg)||'Not saved — the calendar was not changed. Try again.');
-  try{ window._seRetry = async () => { closeSheet(); toast('Saving again…'); try{ const r2 = await api('editClass', TOKEN, e.id, f); if(!r2 || !r2.ok) throw r2; toast('✓ ' + (r2.note || 'Saved')); Object.keys(SCC).forEach(k => { SCC[k]._t = 0; }); if(code){ delete CLSM[code]; openStudent(code); } else loadSchedule(0, true); }catch(z){ toast(((z && z.msg) || 'Still not saved') + ' · check your internet and try once more'); } }; const nm = esc(before.student || before.title || 'This class'), when = esc(svDate(ymdLocal(new Date(before.start)), { weekday: 'short', day: 'numeric', month: 'short' })) + ' ' + esc(tm(before.start));
+catch(x){ CLS_HOLD = null; Object.assign(e, before); if(src==='stu') L.sort((a,b)=>a.start.localeCompare(b.start)); paint(); try{ const q = document.getElementById(epk); if(q) q.remove(); }catch(y){}
+  try{ const isC = !!(x && (x.conflict || /save anyway|outside .*hours|clash|already has|overlap/i.test(String(x.msg || '')))); window._seRetry = async (force) => { if(force) f.force = true; closeSheet(); const pk = svPill(null, '⏳ Saving <b>' + esc(before.student || before.title || 'the class') + '</b> in Google Calendar…', 'wait'); try{ const r2 = await api('editClass', TOKEN, e.id, f); if(!r2 || !r2.ok) throw r2; svPill(pk, '✓ <b>Saved in Google Calendar</b>' + (r2.note ? ' · ' + esc(r2.note) : ''), 'ok'); try{ ding('msg'); }catch(y){} Object.keys(SCC).forEach(k => { SCC[k]._t = 0; }); if(code){ delete CLSM[code]; openStudent(code); } else loadSchedule(0, true); }catch(z){ svPill(pk, '✕ <b>Still not saved</b> · ' + esc((z && z.msg) || 'check your internet and try once more'), 'bad'); } }; const nm = esc(before.student || before.title || 'This class'), when = esc(svDate(ymdLocal(new Date(before.start)), { weekday: 'short', day: 'numeric', month: 'short' })) + ' ' + esc(tm(before.start));
     setTimeout(() => openSheet('<h1>Not saved</h1><div class="fbfix" style="margin-top:10px;border-left:4px solid #C0392B"><b style="color:#B23A22">' + nm + ' is still at ' + when + '</b><div class="small">' + esc((x && x.msg) || 'Google did not answer in time · the calendar was not changed.') + '</div></div>' +
-      (action === 'move' ? '<div class="small mute" style="margin-top:8px">You wanted: ' + esc(f.date) + ' ' + esc(f.time) + (f.teacher ? ' · Teacher ' + esc(f.teacher) : '') + '</div>' : '') + '<button class="btn teal block" style="margin-top:12px" onclick="_seRetry()">Try again</button>'), 400); }catch(y){} }
+      (action === 'move' ? '<div class="small mute" style="margin-top:8px">You wanted: ' + esc(f.date) + ' ' + esc(f.time) + (f.teacher ? ' · Teacher ' + esc(f.teacher) : '') + '</div>' : '') + (isC ? '<button class="btn teal block" style="margin-top:12px" onclick="_seRetry(1)">Save anyway</button><button class="btn ghost block" style="margin-top:8px" onclick="closeSheet()">Keep the old time</button>' : '<button class="btn teal block" style="margin-top:12px" onclick="_seRetry()">Try again</button>')), 400); }catch(y){} }
 }
 let TW = null, SW = null, SC_SEL = 0;
 const SV_PAL = ['#3F9FA8','#E5B53E','#6C74C9','#E08A6F','#3E8E5E','#C9567A','#4F86C6','#9A7BC9'];
@@ -6093,7 +6093,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 592;
+const COE_V = 593;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
