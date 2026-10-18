@@ -6096,7 +6096,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 601;
+const COE_V = 602;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11975,6 +11975,21 @@ function svPill(id, html, kind){
     if(fn === 'mgmtTeacherCard' && typeof D !== 'undefined' && D && D.mgr && TOKEN){ const nm = args[1], force = args[2];
       if(force) delete memo[String(nm || '')];
       return cardDb(nm).catch(() => base(fn, ...args)); }
+    return base(fn, ...args); };
+})();
+</script>
+<script>
+/* 18 Oct · 273 · Pam's approved leave still showed "waiting for your approval": a leave decision is written straight to the
+   sheet by Google, while the leave list is read from the database copy of T-LEAVE (now re-copied every 3 min, Apps Script HEAD).
+   For 10 minutes after a leave save on this device, the leave lists come straight from Google, so the decision shows at once. */
+(function(){
+  const base = api; let until = 0;
+  api = function(fn, ...args){
+    if(/^(mgmtLeave(Save|Ask|Proof)|tLeave(Cancel|Reply|Request|Informed))$/.test(fn)){
+      const p = base(fn, ...args);
+      try{ p.then(r => { if(!(r && r.ok === false)) until = Date.now() + 10 * 6e4; }, () => {}); }catch(e){}
+      return p; }
+    if((fn === 'mgmtLeave' || fn === 'tLeave') && Date.now() < until) return apiNow(fn, ...args);
     return base(fn, ...args); };
 })();
 </script>
