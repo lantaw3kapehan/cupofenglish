@@ -3002,7 +3002,7 @@ const MO = (r.monthly || []).filter(x => x && x.m).filter((x, i, A) => !/unmatch
   T.forEach(x => { const b = String(x.bk || '').trim().split(/[\s,]+/)[0].toUpperCase(); if(/^Level/.test(x.en) && !x.d && b && fm[b]) x.d = fm[b] + '-01'; });
   { const have = {}, nm0 = {}; MO.forEach(x => { const c = String(x.c || '').trim().split(/\s+/)[0]; if(c) nm0[c.toUpperCase()] = nm0[c.toUpperCase()] || c; });
     const sx = T.find(x => x.start), s0 = String((sx || {}).d || ''), L = Object.keys(fm).filter(b => b && !/^(OTHER|FREETALK|FREE|TRIAL|TC|SC|SUB|\(UNMATCHED\))$/.test(b)).sort((a, b) => fm[a].localeCompare(fm[b]));
-    if(sx && !sx.bk && L.length && (!s0 || fm[L[0]] <= s0.slice(0, 7) || L.length > 1)) sx.bk = nm0[L[0]] || L[0];   /* the first book they had with us */
+    if(sx && !sx.bk && L.length) sx.bk = nm0[L[0]] || L[0];   /* the first book they had with us */
     T.forEach(x => { const b = String(x.bk || '').trim().split(/[\s,]+/)[0].toUpperCase(); if(b) have[b] = 1; });
     L.forEach((b, k) => { if(have[b]) return; if(k === 0 && (!s0 || fm[b] <= s0.slice(0, 7))) return; if(s0 && fm[b] < s0.slice(0, 7)) return; const d = fm[b] + '-01', at = T.filter(x => x.d && x.d <= d && !/^Trial/.test(x.en)).sort((p, q) => p.d.localeCompare(q.d)).pop();
       T.push({ d, i: at ? at.i : (chain.length ? chain[chain.length - 1] : T[0].i), en: 'Book up', zh: '教材升级', bk: nm0[b] || b }); });
@@ -3011,6 +3011,8 @@ const MO = (r.monthly || []).filter(x => x && x.m).filter((x, i, A) => !/unmatch
       Object.keys(cf).forEach(B => { if(have[B] || fm[B] || /^(OTHER|FREETALK|FREE|TRIAL|TC|SC|SUB)$/.test(B)) return; have[B] = 1; const d = cf[B].d; if(s0 && d < s0) return; const at = T.filter(x => x.d && x.d <= d && !/^Trial/.test(x.en)).sort((p, q) => p.d.localeCompare(q.d)).pop();
         T.push({ d, i: at ? at.i : (chain.length ? chain[chain.length - 1] : T[0].i), en: 'Book up', zh: '教材升级', bk: cf[B].b, cal: 1 }); }); } } }   /* 19 Oct: each new book is a step up (Misty) */   /* 14 Oct: level-up month from the -DAILY tabs */
 const DT = T.filter(x => x.d && !/^Trial/.test(x.en) && !x.cal).sort((a, b) => a.d.localeCompare(b.d)); DT.forEach((x, k) => { const a = x.d.slice(0, 7), b = k + 1 < DT.length ? DT[k + 1].d.slice(0, 7) : '9999-99'; x.u = MO.length ? rd(MO.filter(y => y.m >= a && y.m < b).reduce((s, y) => s + U(y), 0)) : null; });
+{ const gap = rd((Number(tot) || 0) - tot0), f0 = MO.map(y => String(y.m)).sort()[0] || '', pre = DT.filter(x => x.d.slice(0, 7) < f0);   /* 19 Oct: lessons before the first monthly record */
+  if(gap > 0 && f0 && pre.length && !(S && S.s && S.s.shared)){ const p = pre[pre.length - 1]; p.u = rd((p.u || 0) + gap); } }
 const BK = {}; MO.forEach(x => { const c = String(x.c || '').trim().split(/\s+/)[0] || 'Other'; BK[c] = (BK[c] || 0) + U(x); });
 const st = T.find(x => x.start) || T[0], C = (r.checks || []).filter(c => cjLv(c.cefr) >= 0).sort((a, b) => String(b.date).localeCompare(String(a.date)));
 const now = C.length && cjDay(C[0].date) >= (st.d || '') ? cjLv(C[0].cefr) : chain.length ? chain[chain.length - 1] : T[T.length - 1].i;
@@ -6106,7 +6108,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 616;
+const COE_V = 617;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
