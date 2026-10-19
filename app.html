@@ -6115,7 +6115,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 680;
+const COE_V = 681;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -13371,12 +13371,14 @@ ${off.length ? `<div class="small" style="padding:8px 0 0;border-top:1px solid v
 ${olds.length > 1 ? `<label>From which teacher</label><div class="gx-c" style="margin-top:6px">${olds.map(t => `<button type="button" style="${t === CT.old ? 'background:#2B2253;color:#fff' : ''}" onclick="ctSet('old','${esc(t)}')">Teacher ${esc(t)}</button>`).join('')}</div>` : `<div class="small" style="margin-top:8px">Now: <b>Teacher ${esc(CT.old || '—')}</b></div>`}
 <label>New teacher</label><div class="gx-c" style="margin-top:6px">${T.map(t => `<button type="button" style="${t === CT.nw ? 'background:#2B2253;color:#fff' : ''}" onclick="ctSet('nw','${esc(t)}')">Teacher ${esc(t)}</button>`).join('')}</div>
 <label>From</label><input id="ctD" class="in-t" type="date" value="${esc(CT.from || today())}" onchange="ctSet('from',this.value)">
+<label>New time <span class="mute small">(optional · 24h, e.g. 18:00 · leave empty to keep the times · same weekday)</span></label><input id="ctT" class="in-t" placeholder="e.g. 18:00" value="${esc(CT.time || '')}" onchange="ctSet('time',this.value)" autocomplete="off" inputmode="numeric">
 <label>New book <span class="mute small">(optional · leave empty to keep the books)</span></label><input id="ctB" class="in-t" placeholder="e.g. OD1" value="${esc(CT.book || '')}" oninput="CT_book(this.value)" autocomplete="off">
 <div class="gx-c" style="margin-top:6px">${SUG.map(b => `<button type="button" onclick="$('ctB').value='${b}';CT_book('${b}')">${b}</button>`).join('')}</div>
-<div class="card" style="margin-top:12px;padding:10px 14px;background:#F6F5FA"><b>${M.length} class${M.length === 1 ? '' : 'es'}</b> with Teacher ${esc(CT.old || '—')} from ${esc(CT.from || today())} will move to <b>Teacher ${esc(CT.nw || '…')}</b> · same days and times${M.length ? `<div class="small mute" style="margin-top:4px">${M.slice(0, 6).map(c => esc(ymd(c.start).slice(5) + ' ' + hm(c.start) + (c.book ? ' · ' + c.book : ''))).join(' · ')}${M.length > 6 ? ' …' : ''}</div>` : ''}</div>
-<button class="btn teal block" id="ctGo" style="margin-top:12px" onclick="ctRun()" ${CT.nw && M.length ? '' : 'disabled'}>Change to Teacher ${esc(CT.nw || '…')}</button>
+<div class="card" style="margin-top:12px;padding:10px 14px;background:#F6F5FA"><b>${M.length} class${M.length === 1 ? '' : 'es'}</b> with Teacher ${esc(CT.old || '—')} from ${esc(CT.from || today())} will move to <b>Teacher ${esc(CT.nw || '…')}</b> · ${NT() ? 'same days, at <b>' + esc(NT()) + '</b>' : 'same days and times'}${CT.time && !NT() ? ' <span style="color:#B03A2E">· time must be like 18:00</span>' : ''}${M.length ? `<div class="small mute" style="margin-top:4px">${M.slice(0, 6).map(c => esc(ymd(c.start).slice(5) + ' ' + (NT() ? hm(c.start) + '→' + NT() : hm(c.start)) + ' · ' + (CT.book || c.book || ''))).join(' · ')}${M.length > 6 ? ' …' : ''}</div>` : ''}</div>
+<button class="btn teal block" id="ctGo" style="margin-top:12px" onclick="ctRun()" ${CT.nw && M.length && !(CT.time && !NT()) ? '' : 'disabled'}>Change to Teacher ${esc(CT.nw || '…')}</button>
 <div class="small mute" style="margin-top:6px">Classes already taught stay with Teacher ${esc(CT.old || '—')} (her pay and records).</div>`); }
   window.CT_book = v => { CT.book = String(v || '').trim(); };
+  const NT = () => { const m = String((CT && CT.time) || '').trim().replace(/[.：]/g, ':').match(/^([01]?\d|2[0-3]):?([0-5]\d)$/); return m ? m[1].padStart(2, '0') + ':' + m[2] : ''; };
   window.ctSet = (k, v) => { if(k === 'from') CT.from = v; else CT[k] = v; const b = $('ctB'); if(b) CT.book = b.value.trim(); paint(); };
   window.ctOpen = function(code){ const s = (STU && STU.code === code && STU.s) || {}, now = Date.now();
     const nx = ((STU && STU.cls) || []).filter(c => c && !c.cancelled && new Date(c.start).getTime() > now).sort((a, b) => a.start.localeCompare(b.start));
@@ -13386,10 +13388,10 @@ ${olds.length > 1 ? `<label>From which teacher</label><div class="gx-c" style="m
       for(const id of left){ try{ const r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'writeStatus', id, token: TOKEN }) }).then(x => x.json()); if(!(r && r.ok && (r.status === 'done' || r.status === 'error'))) still.push(id); }catch(e){ still.push(id); } }
       left = still; const g = $('ctProg'); if(g) g.textContent = 'Google Calendar · ' + (ids.length - left.length) + ' of ' + ids.length + ' done'; }
     return left.length === 0; }
-  window.ctRun = async function(){ const M = moving(), o = Object.assign({}, CT); if(!o.nw || !M.length) return;
+  window.ctRun = async function(){ const M = moving(), o = Object.assign({}, CT, { nt: NT() }); if(!o.nw || !M.length || (o.time && !o.nt)) return;
     openSheet(`<h1>Changing to Teacher ${esc(o.nw)}…</h1><div class="small mute">${esc(o.name)} · ${M.length} classes · please keep this open</div><div class="card" style="margin-top:12px;padding:12px 14px"><div id="ctProg">Moving the classes · 0 of ${M.length}</div></div>`);
     const ids = [], clash = [], fail = []; let n = 0;
-    for(const c of M){ const f = { action: 'move', start: c.start, date: ymd(c.start), time: hm(c.start), mins: Math.round((new Date(c.end) - new Date(c.start)) / 6e4) || 25, teacher: o.nw };
+    for(const c of M){ const f = { action: 'move', start: c.start, date: ymd(c.start), time: o.nt || hm(c.start), mins: Math.round((new Date(c.end) - new Date(c.start)) / 6e4) || 25, teacher: o.nw };
       try{ const r = await api('editClass', TOKEN, c.id, f); if(r && r.ok){ n++; if(r.queued) ids.push(r.queued); } else if(r && (r.conflict || /already has/i.test(String(r.msg || '')))) clash.push(ymd(c.start) + ' ' + hm(c.start) + ' · ' + (r.msg || 'double booking')); else fail.push(ymd(c.start) + ' ' + hm(c.start) + ' · ' + ((r && r.msg) || 'not saved')); }
       catch(e){ const m = String((e && (e.msg || e.error)) || 'not saved'); if(e && (e.conflict || /already has/i.test(m))) clash.push(ymd(c.start) + ' ' + hm(c.start) + ' · ' + m); else fail.push(ymd(c.start) + ' ' + hm(c.start) + ' · ' + m); }
       const g = $('ctProg'); if(g) g.textContent = 'Moving the classes · ' + (n + clash.length + fail.length) + ' of ' + M.length; }
@@ -13399,7 +13401,7 @@ ${olds.length > 1 ? `<label>From which teacher</label><div class="gx-c" style="m
       catch(e){ bookMsg = 'Book not changed · use Change book'; } }
     try{ delete CLSM[o.code]; store('del', 'coe.cls.' + o.code); }catch(e){}
     openSheet(`<h1>✓ ${esc(o.name)} · now with Teacher ${esc(o.nw)}</h1>
-<div class="card" style="margin-top:10px;padding:12px 14px;background:#E3F4EC;border-color:#BFE3CF"><b>${n} class${n === 1 ? '' : 'es'} moved</b> from Teacher ${esc(o.old)} to Teacher ${esc(o.nw)} from ${esc(o.from)} · Google Calendar follows in a few seconds${bookMsg ? '<div style="margin-top:4px">' + esc(bookMsg) + '</div>' : ''}</div>
+<div class="card" style="margin-top:10px;padding:12px 14px;background:#E3F4EC;border-color:#BFE3CF"><b>${n} class${n === 1 ? '' : 'es'} moved</b> from Teacher ${esc(o.old)} to Teacher ${esc(o.nw)} from ${esc(o.from)}${o.nt ? ' · now at ' + esc(o.nt) : ''} · Google Calendar follows in a few seconds${bookMsg ? '<div style="margin-top:4px">' + esc(bookMsg) + '</div>' : ''}</div>
 ${clash.length ? `<div class="card" style="margin-top:10px;padding:12px 14px;background:#FFF4E5;border-color:#F3D48B"><b>Not moved · Teacher ${esc(o.nw)} already has a class then</b><div class="small" style="margin-top:4px">${clash.map(esc).join('<br>')}</div><div class="small mute" style="margin-top:4px">Move these one by one in Schedule (another time, or Save anyway).</div></div>` : ''}
 ${fail.length ? `<div class="card" style="margin-top:10px;padding:12px 14px;background:#FDECEA;border-color:#F3C9BD"><b>Not saved</b><div class="small" style="margin-top:4px">${fail.map(esc).join('<br>')}</div></div>` : ''}
 <div class="card" style="margin-top:10px;padding:12px 14px"><b>One step in the sheet (ACTIVE)</b><div class="small" style="margin-top:4px">Add a row for <b>${esc(o.code)} · ${esc(o.name)} · Teacher ${esc(o.nw)}</b> right under his package row, with <b>Enrolled empty</b> (like Teacher Kat under Teacher Daniela). Then Teacher ${esc(o.nw)}'s lessons come off the same package and the lessons left stay right.</div></div>
