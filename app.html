@@ -6113,7 +6113,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 652;
+const COE_V = 653;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12836,7 +12836,12 @@ ${last && curPer() && norm(curPer()) === norm(last.period) ? `<div style="margin
         pair.appendChild(p); return; }
       if(q.querySelector('.qa-sc')) return;   // scores: the "Her scores" line and the marker already show last month
       if(val){ const l = document.createElement('div'); l.className = 'qh-prevline'; l.innerHTML = `<b>${esc(mon)}:</b> ${esc(val.length > 160 ? val.slice(0, 160) + '…' : val)}`; const ch = q.querySelector('.qa-ch,.qa-v'); if(ch) ch.after(l); else q.appendChild(l); } });
-    if(cleared){ qaSave(); toast(cleared + ' answer' + (cleared > 1 ? 's' : '') + ' still copied from ' + mon + ' cleared · ' + mon + '’s text is beside each box'); } };
+    if(cleared){   // 323: a draft made by the old auto-fill: its scores and choices still equal to last month were copied too → unpicked
+      document.querySelectorAll('#sheetBody .qa-q').forEach(q => { const c = cmap[q.dataset.id], ch = q.querySelector('.qa-ch'); if(c == null || c < 7 || !ch || SKIP.test(norm((d.last.head || [])[c])) || /PROGRESS FROM PREVIOUS/.test(norm((d.last.head || [])[c]))) return;
+        const val = String(row[c] == null ? '' : row[c]).trim(), on = [...ch.querySelectorAll('button.on')].map(x => x.dataset.v);
+        const want = q.dataset.t === 'CHECKBOX' ? val.split(/,\s*/).sort().join('|') : val;
+        if(on.length && (q.dataset.t === 'CHECKBOX' ? on.sort().join('|') : on[0]) === want){ ch.querySelectorAll('button.on').forEach(x => x.classList.remove('on')); q.querySelectorAll('.qh-mk').forEach(x => { x.textContent = ''; }); } });
+      qaSave(); toast(cleared + ' answer' + (cleared > 1 ? 's' : '') + ' still copied from ' + mon + ' cleared, and the scores copied with them · ' + mon + '’s text is beside each box'); } };
   // the dark background and Esc no longer close the QA form (× still does; the writing is kept)
   const _cs = window.closeSheet; window.closeSheet = function(){ try{ const ev = window.event;
       if($('qaGo') && $('sheet').classList.contains('on') && ev && ((ev.type === 'click' && ev.target && ev.target.id === 'scrim') || ev.type === 'keydown')){ toast('The QA form stays open · tap × to close · your writing is kept'); return; } }catch(e){}
