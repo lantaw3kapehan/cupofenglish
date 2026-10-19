@@ -6108,7 +6108,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 630;
+const COE_V = 631;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12301,6 +12301,7 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
     L.push(['Students kept', f.keptFrom ? `${f.kept} of ${f.keptFrom} from last month → ${p.kept}` : '—']);
     L.push(['Recognitions', `${n(f.recognitions)} → ${n(p.recognition)}`]);
     L.push(['Time-ins', f.timeIns ? `${f.onTime} of ${f.timeIns} on time → ${p.timeIns}` : 'no class time-ins this month']);
+    L.push(['Attendance', [[f.absences, 'absence'], [f.lateToClass, 'late to class'], [f.cancellations, 'cancellation'], [f.incomplete, 'incomplete'], [f.scheduleChanges, 'schedule change'], [f.leaveShortNotice, 'short-notice leave'], [f.leaveDays, 'leave days']].filter(x => +x[0] > 0).map(x => x[0] + ' ' + x[1]).join(' · ') + (p.attendance != null ? ' → ' + p.attendance : '') || 'perfect → 100']);
     L.push(['Demerits', `${n(f.demerits)} point${f.demerits == 1 ? '' : 's'} → ${n(p.demerits)} (score only · pay penalties as in the contract)` + (f.demeritWhy ? ` · ${esc(f.demeritWhy)}` : '')]);
     return `<table class="small" style="width:100%;border-collapse:collapse;margin:6px 0 2px">${L.map(r => `<tr><td class="mute" style="padding:3px 8px 3px 0;white-space:nowrap;vertical-align:top">${r[0]}</td><td style="padding:3px 0">${r[1]}</td></tr>`).join('')}</table>`; }
   function row(t, i){ const pl = t.pillars || {};
@@ -12358,7 +12359,7 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
     el.appendChild(s); }
 
   // 2 · the Growth card and timeline
-  const P = [['quality', 'Quality', 'your QA and class visits'], ['progress', 'Progress', 'progress checks, class notes, new books'], ['trust', 'Trust', 'trials enrolled, students still with us, recognitions'], ['reliability', 'Reliability', 'time-ins, demerits, hours taught and opened']];
+  const P = [['quality', 'Quality', 'your QA and class visits'], ['progress', 'Progress', 'progress checks, class notes, new books'], ['trust', 'Trust', 'trials enrolled, students still with us, recognitions'], ['reliability', 'Reliability', 'attendance, time-ins, hours taught and opened, demerits']];
   const bar = v => v == null ? '<span class="mute small">no data yet</span>' : `<span style="display:inline-block;width:90px;height:8px;border-radius:4px;background:#e9ecef;vertical-align:middle;overflow:hidden"><span style="display:block;height:100%;width:${Math.max(0, Math.min(100, v))}%;background:${v >= 80 ? '#2a9d8f' : v >= 60 ? '#e9c46a' : '#e76f51'}"></span></span> <b class="small">${v}</b>`;
   const clip = (s, n) => { s = String(s || '').split(/\n/)[0].trim(); return s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') + '…' : s; };
   function cardHtml(){ const m = cur(); if(!K || !K.on || !m) return ''; const me = m.me || {}, pl = me.pillars || {}, q = K.qa, t = Number(me.total);
@@ -12390,6 +12391,9 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
         L.push('Recognitions · ' + B(f.recognitions || 0));
       } else if(k === 'reliability'){
         if(f.timeIns) L.push('Time-ins on time · ' + B(f.onTime) + ' of ' + f.timeIns);
+        const at = [[f.absences, 'absence', 'absences'], [f.lateToClass, 'late to class', 'late to class'], [f.cancellations, 'cancellation', 'cancellations'], [f.incomplete, 'incomplete class', 'incomplete classes'], [f.scheduleChanges, 'schedule change', 'schedule changes'], [f.leaveShortNotice, 'short-notice leave', 'short-notice leaves'], [f.leaveDays, 'leave day', 'leave days']]
+          .filter(x => +x[0] > 0).map(x => B(+x[0]) + ' ' + (+x[0] === 1 ? x[1] : x[2]));
+        L.push('Attendance · ' + (at.length ? at.join(' · ') : B('perfect') + ' (no absence, late, cancellation or schedule change)'));
         L.push('Hours · ' + B(f.units || 0) + ' taught' + (f.freeHoursMonth != null ? ' + ' + B(Math.round(f.freeHoursMonth)) + ' open (not yet booked)' : ''));
         L.push('Demerits · ' + B(f.demerits || 0));
         if(f.peerAsked) L.push('Peer evaluation · ' + (f.peerDone >= f.peerAsked ? B('done') : (f.peerDone || 0) + ' of ' + f.peerAsked + ' done · <b style="color:#e76f51">to do</b>'));
