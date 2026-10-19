@@ -6115,7 +6115,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 662;
+const COE_V = 663;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12327,8 +12327,10 @@ ${t.facts ? `<div class="kxf" hidden>${facts(t)}</div>` : ''}</div>`; }
       + R.map(row).join('')
       + (U.length ? `<h3 style="margin:16px 0 4px">Not ranked</h3><p class="small mute">Under ${d.min} units this month, or the President.</p>` + U.map(row).join('') : '')
       + `<p class="small mute" style="margin-top:12px">Quality 35 (monthly QA 55%, daily class visits 40%, peers 5%) · Reliability 35 (attendance & schedule, class videos by 23:59, class record, hours taught and opened, demerits, peer evaluation done) · Progress 15 (students' progress + her own growth) · Trust 15 (trials enrolled, students still studying with us, recognitions). Renewals are not counted. Gold 88+ · Silver 78+ · Bronze 65+. # is this month's place, not the teacher rank (Junior, Senior…). Tap a teacher for the facts behind the score. Worked out ${new Date(d.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.</p>`; }
-  function load(ym, force){ KM = ym; if(KX[ym] && !KX[ym].err && !force){ paint(); return; } delete KX[ym]; paint();
-    post('mgmtKpi', [ym]).then(d => { KX[ym] = d; }).catch(e => { KX[ym] = { err: String(e && e.message || e) }; }).finally(() => { if(KM === ym) paint(); }); }
+  function load(ym, force){ KM = ym; if(KX[ym] && !KX[ym].err && !force && KX[ym]._at && Date.now() - KX[ym]._at < 5 * 6e4){ paint(); return; }   /* 333: last result shown at once, refreshed behind */
+    const ck = 'coe.kx.' + ym; if(!KX[ym] || KX[ym].err){ try{ const c = JSON.parse(localStorage.getItem(ck) || 'null'); if(c && c.teachers) KX[ym] = c; else delete KX[ym]; }catch(e){ delete KX[ym]; } }
+    paint(); const el = $('kxBody'); if(KX[ym] && el && !$('kxUpd')){ const u = document.createElement('div'); u.id = 'kxUpd'; u.className = 'small mute'; u.textContent = 'Updating…'; el.prepend(u); }
+    post('mgmtKpi', [ym]).then(d => { d._at = Date.now(); KX[ym] = d; try{ localStorage.setItem(ck, JSON.stringify(d)); }catch(e){} }).catch(e => { if(!KX[ym]) KX[ym] = { err: String(e && e.message || e) }; }).finally(() => { if(KM === ym) paint(); }); }
   window.kxMonth = ym => { const s = $('kxSel'); if(s) s.value = ym; load(ym); };
   window.kpiSheet = function(ym){ if(!(D && D.mgr)) return; const L = months(), m = ym || L[1];
     openSheet(`<div class="row" style="align-items:center;gap:8px"><div class="grow"><h2 style="margin:0">Teacher Excellence</h2><div class="small mute">${isPres() ? 'Full view · tap a teacher for the facts behind the score' : 'Places, levels and the four parts · the facts behind each score stay with the President'}</div></div>
