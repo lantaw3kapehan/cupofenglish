@@ -1,0 +1,10 @@
+// 19 Oct · "it is too slow, this affects operations": Stop this schedule is saved in the database at once (coe-mgmt v33, Google follows),
+// and Change teacher / schedule works in the background with a save banner (the screen is free at once; the result opens when you are not in another window).
+require('../tools/lib.js')(process.argv[2], [
+["if(fn === 'editClass' && TOKEN && D && D.mgr && f && /^(cancel|restore|move)$/.test(f.action) && !f.forward && !(f.action === 'cancel' && f.makeup)){",
+ "if(fn === 'editClass' && TOKEN && D && D.mgr && f && /^(cancel|restore|move)$/.test(f.action) && (!f.forward || f.action === 'cancel') && !(f.action === 'cancel' && f.makeup)){   /* 353: Stop this schedule too */"],
+["    openSheet(`<h1>Saving the new schedule…</h1><div class=\"small mute\">${esc(o.name)} · please keep this open</div><div class=\"card\" style=\"margin-top:12px;padding:12px 14px\"><div id=\"csProg\">Starting…</div></div>`);\n    const prog = t => { const g = $('csProg'); if(g) g.innerHTML = t; }, res = [];",
+ "    closeSheet(); const pk = svPill(null, '⏳ <b>' + esc(o.name) + '</b> · saving the new schedule…', 'wait');   /* 353: in the background, the screen is free */\n    const prog = t => { try{ svPill(pk, '⏳ <b>' + esc(o.name) + '</b> · ' + t, 'wait'); }catch(e){} }, res = [];"],
+["    LAST = { o, res }; try{ Object.keys(SCC).forEach(k => { SCC[k]._t = 0; }); delete CLSM[o.code]; store('del', 'coe.cls.' + o.code); }catch(e){}\n    done(); };",
+ "    LAST = { o, res }; try{ Object.keys(SCC).forEach(k => { SCC[k]._t = 0; }); delete CLSM[o.code]; store('del', 'coe.cls.' + o.code); }catch(e){}\n    const bad = res.filter(x => !x.ok).length; try{ svPill(pk, (bad ? '⚠ <b>' : '✓ <b>') + esc(o.name) + '</b> · ' + (bad ? bad + ' not saved · tap to see' : 'new schedule saved') + ' <a href=\"#\" onclick=\"csShow();return false\" style=\"color:inherit;text-decoration:underline\">Details</a>', bad ? 'bad' : 'ok'); if(!bad) ding('msg'); }catch(e){}\n    const show = () => { if($('sheet') && $('sheet').classList.contains('on')) return setTimeout(show, 1500); done(); }; if(bad) show(); };\n  window.csShow = () => { if(LAST) done(); };"],
+]);
