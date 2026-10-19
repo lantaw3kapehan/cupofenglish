@@ -6108,7 +6108,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 646;
+const COE_V = 647;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12648,11 +12648,12 @@ ${m.top && m.top.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-
     const nF = Object.keys(FILL).filter(id => { const q = qOf(id); return q && q.querySelector('.qh-tag'); }).length;
     box.innerHTML = `<div class="qh-box small"><b>Her QA months</b> · ${R.length ? R.slice(-6).map(r => `${esc(mon(r.period))} <b>${r.avg}</b>`).join(' · ') : 'none yet'}${d.team ? ` <span class="mute">· team ${esc(mon(d.team.period))} ${d.team.avg.length ? (d.team.avg.reduce((a, b) => a + b, 0) / d.team.avg.length).toFixed(1) : ''} (${d.team.n} teachers)</span>` : ''}
 <div style="margin-top:4px"><b>Class visits · ${esc(v.month || '')}</b> · ${v.n ? `${v.n} visit${v.n > 1 ? 's' : ''} · ${v.strong} Strong · ${v.ok} OK · ${v.needs} Needs work${weak.length ? ' <span class="mute">(most "Needs work": ' + weak.map(esc).join(', ') + ')</span>' : ''}` : 'none yet this month'}</div>
+${last ? `<div style="margin-top:6px"><b>This evaluation · ${esc(curPer())}</b> <span class="mute">(her last was ${esc(last.period)} · the classes you watch can be from a later month)</span></div>` : ''}
 ${nF ? `<div style="margin-top:6px">✎ <b>${nF} answers copied from ${esc(last ? last.period : '')}</b> (marked) · change what is different this month. <a class="link" onclick="qhUndo()">Clear the copy</a></div>` : ''}
 ${last && curPer() && norm(curPer()) === norm(last.period) ? `<div style="margin-top:6px;color:var(--coral)"><b>${esc(last.period)} is already evaluated</b> for this teacher · sending again adds a second evaluation.</div>` : ''}
 <div class="mute" style="margin-top:4px">Each score shows her earlier scores and a marker when it moves · a big change or 1+ above the team asks for strong evidence.</div></div>`; }
   // fill the empty questions from the last QA
-  function fill(){ const d = H[QA_T]; if(!d || !d.last || !QF || !$('qaLast') || FILLT === QA_T) return; FILLT = QA_T; FILL = FILLS[QA_T] = FILLS[QA_T] || {};
+  function fill(){ const d = H[QA_T]; if(!d || !d.last || !QF || !$('qaLast') || FILLT === QA_T) return; FILLT = QA_T; setPer(); FILL = FILLS[QA_T] = FILLS[QA_T] || {};
     if(curPer() && norm(curPer()) === norm(d.last.period)) return;
     const cmap = colMap(d.last.head), row = d.last.data || [], per = mon(d.last.period);
     Object.keys(cmap).forEach(id => { const c = cmap[id], hd = norm((d.last.head || [])[c]); if(c < 7 || SKIP.test(hd)) return; const val = String(row[c] == null ? '' : row[c]).trim(); if(!val) return;
@@ -12671,6 +12672,14 @@ ${last && curPer() && norm(curPer()) === norm(last.period) ? `<div style="margin
     FILL = FILLS[QA_T] = {}; qaSave(); paint(); };
   function load(){ const t = QA_T; if(!t) return; if(H[t]){ fill(); paint(); return; }
     post('mgmtQaHist', [t]).then(d => { H[t] = d; if(t === QA_T){ fill(); paint(); } }).catch(() => {}); }
+  const TOUCH = {};
+  document.addEventListener('change', e => { const it = QF && QF.form.items.find(x => qaRole(x) === 'period'), q = it && qOf(it.id); if(q && q.contains(e.target)) TOUCH[QA_T] = 1; }, true);
+  // 317 · the period follows her last QA (Misty: the videos watched in October are for the September feedback, after August) — not the date
+  const nextPer = p => { const t = new Date(Date.parse('1 ' + p)); if(isNaN(t)) return ''; t.setMonth(t.getMonth() + 1); return t.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); };
+  function setPer(){ const d = H[QA_T], it = QF && QF.form.items.find(x => qaRole(x) === 'period'), q = it && qOf(it.id), sel = q && q.querySelector('select.qa-v'); if(!d || !d.last || !sel || TOUCH[QA_T]) return;
+    const want = nextPer(d.last.period); if(!want || sel.value === want) return;
+    if(![...sel.options].some(o => o.value === want)){ const o = document.createElement('option'); o.textContent = want; sel.insertBefore(o, sel.firstChild); }
+    sel.value = want; qaSave(); }
   document.addEventListener('input', e => { if(e.target.closest && e.target.closest('#sheetBody .qa-q') && Object.keys(FILL).length){ retag(); } }, true);
   const _pa = window.qaPaint; window.qaPaint = function(){ const x = _pa.apply(this, arguments); FILLT = ''; try{ load(); }catch(e){} return x; };
   const _pk = window.qaPick; window.qaPick = function(b){ const x = _pk.apply(this, arguments); try{ const q = b.closest('.qa-q'); retag(); if(q && q.dataset.qhc != null) marker(q); if(H[QA_T]) paint(); }catch(e){} return x; };
