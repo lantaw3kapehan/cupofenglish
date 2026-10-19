@@ -6113,7 +6113,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 654;
+const COE_V = 658;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12863,6 +12863,180 @@ ${last && curPer() && norm(curPer()) === norm(last.period) ? `<div style="margin
   const _api = api; api = function(fn, ...args){ const p = _api(fn, ...args);
     if(fn === 'mgmtQaSubmit' && typeof D !== 'undefined' && D && D.mgr){ const a = Object.assign({}, args[1] || {}); Promise.resolve(p).then(r => { if(r && r.ok) send(a, 2); }).catch(() => {}); }
     return p; };
+})();
+</script>
+<script>
+/* 19 Oct · 325 · QA next actions checked in Celine's class visits (Misty: "do all")
+   · Class visit form: the teacher's "Required next action" from her latest QA, one line each, with Done / Partly / Not yet.
+     Saved with the visit (coe_qa_checks through coe-mgmt mgmtQaCheck); optional — a visit can be saved without them.
+   · QA form: "Since her last QA" shows, for each next action, how many visits saw it Done / Partly / Not yet. */
+(function(){
+  const post = (fn, args) => fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'screen', fn, args: args || [], token: TOKEN }) }).then(x => x.json()).then(r => { if(!(r && r.ok)) throw new Error(fn); return r.data; });
+  const NX = {}, PICK = {};
+  const css = document.createElement('style'); css.textContent = `.qn-box{margin-top:12px;padding:10px 12px;border-radius:14px;background:#F4F1FB;border:1px solid #E1DAF3}
+.qn-it{padding:8px 0;border-top:1px dashed #DDD5F0}.qn-it:first-of-type{border-top:0}.qn-b{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.qn-b button{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:5px 10px;font:inherit;font-size:13px;cursor:pointer}
+.qn-b button.on.d{background:#E3F6EC;border-color:#1E7A55;color:#1E7A55}.qn-b button.on.p{background:#FFF4D6;border-color:#B78A00;color:#7a5a00}.qn-b button.on.n{background:#FDECEA;border-color:#C0392B;color:#B03A2E}
+.qn-tally{font-size:12px;color:var(--mute);margin-top:2px}`;
+  document.head.appendChild(css);
+  const tOf = e => String(e && (e.teacher || (e.teachers || [])[0]) || '').split(/\s*,\s*/)[0].trim();
+  const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+  function load(t){ const k = t.toLowerCase(); if(NX[k] && Date.now() - NX[k].at < 5 * 6e4) return Promise.resolve(NX[k].d);
+    return post('mgmtQaNext', [cap(t)]).then(d => { NX[k] = { d, at: Date.now() }; return d; }); }
+  const tally = it => [it.done ? '✓ ' + it.done : '', it.partly ? '◐ ' + it.partly : '', it.notyet ? '✗ ' + it.notyet : ''].filter(Boolean).join(' · ');
+  // the visit form
+  function inject(){ const go = $('mvGo'), e = window._mvE; if(!go || !e || go.parentNode.querySelector('.qn-box')) return; const t = tOf(e); if(!t) return;
+    const box = document.createElement('div'); box.className = 'qn-box small'; box.innerHTML = '<span class="mute">Loading her QA next actions…</span>'; go.before(box);
+    load(t).then(d => { if(!d || !d.period || !(d.items || []).length){ box.remove(); return; } const key = (e.id || '') + '|' + d.period; PICK[key] = PICK[key] || {};
+      box.innerHTML = `<b>QA next actions · ${esc(d.period)}</b> <span class="mute">· did you see these in this class? (optional)</span>` + d.items.map(it => `<div class="qn-it" data-i="${it.i}"><div>${esc(it.text)}</div>${tally(it) ? `<div class="qn-tally">Earlier visits: ${esc(tally(it))}</div>` : ''}
+<div class="qn-b">${[['Done', 'd'], ['Partly', 'p'], ['Not yet', 'n']].map(([l, c]) => `<button type="button" class="${c}${PICK[key][it.i] === l ? ' on' : ''}" data-v="${l}">${l}</button>`).join('')}<button type="button" class="mute" data-v="" style="border-style:dashed">Not seen</button></div></div>`).join('');
+      box.querySelectorAll('.qn-b button').forEach(b => b.onclick = () => { const i = +b.closest('.qn-it').dataset.i; PICK[key][i] = b.dataset.v; b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b && !!b.dataset.v)); });
+      box.dataset.key = key; box.dataset.period = d.period; box.dataset.t = t; box._items = d.items; }).catch(() => box.remove()); }
+  new MutationObserver(() => { try{ if($('mvGo') && !document.querySelector('#mvGo ~ .qn-box, .qn-box')) inject(); }catch(e){} }).observe(document.body, { childList: true, subtree: true });
+  const _send = window.mvSend; if(_send) window.mvSend = async function(){ const box = document.querySelector('.qn-box'), e = window._mvE; let rows = [];
+      try{ if(box && box.dataset.key && e){ const P = PICK[box.dataset.key] || {}; rows = (box._items || []).filter(it => P[it.i]).map(it => ({ i: it.i, text: it.text, status: P[it.i] })); } }catch(x){}
+      const r = await _send.apply(this, arguments);
+      try{ if(rows.length && !$('mvGo')){ post('mgmtQaCheck', [box.dataset.t, box.dataset.period, rows, String(e.id || ''), ymdLocal(new Date(e.start))]).then(() => { delete NX[box.dataset.t.toLowerCase()]; toast('✓ QA next actions noted · ' + rows.length); }).catch(() => toast('QA next actions not saved · check the connection')); } }catch(x){}
+      return r; };
+  // the QA form: what Celine's visits saw since her last QA
+  function qaPanel(){ const t = typeof QA_T !== 'undefined' ? QA_T : ''; const hist = $('qaHist'); if(!t || !hist) return; let p = $('qaNx'); if(p && p.dataset.t === t) return;
+    if(!p){ p = document.createElement('div'); p.id = 'qaNx'; p.className = 'qh-box small'; hist.after(p); } p.dataset.t = t; p.innerHTML = '<span class="mute">Class visits since her last QA…</span>';
+    load(t).then(d => { if(t !== QA_T) return; if(!d || !d.period || !(d.items || []).length){ p.remove(); return; }
+      const any = d.items.some(it => it.done + it.partly + it.notyet > 0);
+      p.innerHTML = `<b>Her ${esc(d.period)} next actions · seen in class visits</b>` + (any ? '' : ' <span class="mute">· not checked in a visit yet</span>') + d.items.map(it => `<div style="margin-top:5px">${it.done + it.partly + it.notyet ? `<b style="color:${it.done >= it.partly + it.notyet ? '#1E7A55' : it.notyet > it.done ? '#B03A2E' : '#7a5a00'}">${esc(tally(it))}</b> · ` : '<span class="mute">— · </span>'}${esc(it.text)}</div>`).join(''); }).catch(() => p.remove()); }
+  setInterval(() => { try{ if($('qaHist')) qaPanel(); }catch(e){} }, 1500);
+})();
+</script>
+<script>
+/* 19 Oct · 326 · Renewal early warning (Misty: "do all")
+   Active students who may not renew, before the package ends: few lessons left, deadline close, classes cancelled lately,
+   nothing booked in the next 2 weeks, same book for 3+ months. Already Renewed / Renewing are left out; Paused and Not renewing are shown apart.
+   Shown on Active (top panel + "At risk" filter) and as one line on Overview. Data: ACTIVE (mgmtActive) + class signals (coe_renew_signals). */
+(function(){
+  const post = (fn, args) => fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'screen', fn, args: args || [], token: TOKEN }) }).then(x => x.json()).then(r => { if(!(r && r.ok)) throw new Error(fn); return r.data; });
+  let SIG = null, SAT = 0, OPEN = false;
+  try{ SIG = JSON.parse(localStorage.getItem('coe.rsig') || 'null'); }catch(e){}
+  const isM = () => !!(typeof D !== 'undefined' && D && D.mgr && TOKEN);
+  function loadSig(){ if(!isM() || Date.now() - SAT < 10 * 6e4) return; SAT = Date.now(); post('mgmtRenewSig').then(d => { SIG = d || {}; try{ localStorage.setItem('coe.rsig', JSON.stringify(SIG)); }catch(e){} paintAll(); }).catch(() => { SAT = 0; }); }
+  const today = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const days = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+  function risks(){ const A = (typeof AT !== 'undefined' && AT) || (typeof kept === 'function' && kept('active')); if(!A || !A.cols || !SIG) return null;
+    const C = {}; A.cols.forEach((c, i) => C[c] = i); const seen = {}, out = [], t = today();
+    A.rows.forEach(r => { if(!r[C.active]) return; const code = String(r[C.code] || '').toUpperCase(); if(!/^ST-/.test(code) || seen[code]) return; seen[code] = 1;
+      const rn = String((typeof REN === 'object' && REN && REN[code]) || ''); if(/^(Renewed|Renewing)/.test(rn)) return;
+      const s = SIG[code] || {}, left = r[C.available] === '' ? null : +r[C.available], dl = String(r[C.deadline] || '').slice(0, 10), why = []; let sc = 0;
+      if(left != null){ if(left <= 3){ sc += 40; why.push(left <= 0 ? 'no lessons left' : left + ' lesson' + (left === 1 ? '' : 's') + ' left'); } else if(left <= 8){ sc += 25; why.push(left + ' lessons left'); } }
+      if(/^\d{4}-\d{2}-\d{2}$/.test(dl)){ const dd = days(t, dl); if(dd >= 0 && dd <= 21){ sc += 20; why.push('deadline in ' + dd + ' days'); } else if(dd < 0 && left > 0){ sc += 15; why.push('deadline passed'); } }
+      if(s.c30 >= 2){ sc += Math.min(30, 10 * s.c30); why.push(s.c30 + ' classes cancelled in 30 days'); }
+      if(!s.n14 && (left == null || left > 0)){ sc += 25; why.push(s.last ? 'nothing booked · last class ' + s.last.slice(5) : 'nothing booked'); }
+      if(s.since && days(s.since, t) >= 90 && s.book){ sc += 10; why.push('same book (' + s.book + ') for ' + Math.round(days(s.since, t) / 30) + ' months'); }
+      if(/^(Paused|Not renewing)/.test(rn)){ out.push({ code, name: r[C.name], cn: r[C.cn], teacher: r[C.teacher], left, sc: -1, why: [rn.split(' · ')[0]], rn }); return; }
+      if(sc >= 30) out.push({ code, name: r[C.name], cn: r[C.cn], teacher: r[C.teacher], left, sc, why, rn }); });
+    return out.sort((a, b) => b.sc - a.sc); }
+  const lvl = x => x.sc < 0 ? ['', 'Paused / not renewing'] : x.sc >= 60 ? ['red', 'High'] : x.sc >= 40 ? ['amber', 'Medium'] : ['', 'Watch'];
+  function rowH(x){ const [c, l] = lvl(x); return `<div class="li" onclick="openStudent('${esc(x.code)}')" style="cursor:pointer"><span class="chip ${c}" style="min-width:64px;text-align:center">${l}</span><div class="grow"><b>${esc(x.name || x.code)}</b> <span class="small mute">${esc(x.cn || '')} · ${esc(x.code)} · Teacher ${esc(tName(String(x.teacher || '').split(/\s*,\s*/)[0]))}</span><div class="small" style="color:#6b4e00">${esc(x.why.join(' · '))}</div>${x.rn && x.sc >= 0 ? `<div class="small mute">${esc(x.rn.split(' · ').slice(0, 2).join(' · '))}</div>` : ''}</div></div>`; }
+  function panel(){ const v = $('v-active'); if(!v || VIEW !== 'active') return; const R = risks(); let p = $('rnWarn'); if(!R){ loadSig(); return; }
+    const act = R.filter(x => x.sc >= 0), off = R.filter(x => x.sc < 0);
+    if(!p){ p = document.createElement('section'); p.id = 'rnWarn'; p.className = 'card'; p.style.cssText = 'padding:12px 14px;margin:0 0 14px;border:1.5px solid #F2C46D'; const lead = v.querySelector('.lead'); if(lead) lead.after(p); else v.prepend(p); }
+    p.innerHTML = `<div class="row" style="align-items:center;cursor:pointer" onclick="rnToggle()"><b class="grow">⚠ Renewal early warning · ${act.length} student${act.length === 1 ? '' : 's'}</b><span class="small mute">${OPEN ? 'Hide' : 'Show'}</span></div>
+<div class="small mute">Act before the package ends: message the parent, offer the next book or a new schedule, then set the renewal status.</div>
+${OPEN ? act.map(rowH).join('') + (off.length ? `<details style="margin-top:8px"><summary class="small">Paused or not renewing · ${off.length}</summary>${off.map(rowH).join('')}</details>` : '') : act.slice(0, 3).map(rowH).join('') + (act.length > 3 ? `<div class="small link" style="margin-top:6px" onclick="rnToggle()">Show all ${act.length}</div>` : '')}`; }
+  window.rnToggle = () => { OPEN = !OPEN; panel(); };
+  function home(){ const v = $('v-home'); if(!v || VIEW !== 'home') return; const R = risks(); if(!R){ loadSig(); return; } const act = R.filter(x => x.sc >= 0), hi = act.filter(x => x.sc >= 60).length;
+    let p = $('rnHome'); if(!act.length){ if(p) p.remove(); return; }
+    if(!p){ p = document.createElement('div'); p.id = 'rnHome'; p.className = 'card'; p.style.cssText = 'padding:10px 14px;margin:0 0 12px;cursor:pointer;border:1.5px solid #F2C46D'; const lead = v.querySelector('.lead'); if(lead) lead.after(p); else v.prepend(p); }
+    p.onclick = () => { OPEN = true; go('active'); };
+    p.innerHTML = `<b>⚠ ${act.length} student${act.length === 1 ? '' : 's'} may not renew</b>${hi ? ` <span class="chip red">${hi} high</span>` : ''} <span class="small mute">· ${esc(act.slice(0, 3).map(x => x.name || x.code).join(', '))}${act.length > 3 ? '…' : ''} · tap to see why</span>`; }
+  function paintAll(){ try{ panel(); }catch(e){} try{ home(); }catch(e){} }
+  const _ra = window.renderActive; if(_ra) window.renderActive = function(){ const x = _ra.apply(this, arguments); try{ loadSig(); panel(); }catch(e){} return x; };
+  const _rh = window.renderHome; if(_rh) window.renderHome = function(){ const x = _rh.apply(this, arguments); try{ loadSig(); home(); }catch(e){} return x; };
+  const _go = window.go; window.go = function(v){ const x = _go.apply(this, arguments); try{ if(v === 'active' || v === 'home') setTimeout(paintAll, 300); }catch(e){} return x; };
+  setTimeout(() => { if(isM()){ loadSig(); paintAll(); } }, 4000);
+})();
+</script>
+<script>
+/* 19 Oct · 327 · Teaching setup check (Misty: "do all")
+   Teacher · Today: once a month, one screenshot of her teaching screen (solid white background, face lit and centred, headset, stable video).
+     Until it is approved the card stays on Today: Not sent → Waiting for Operations → Approved ✓ (card gone) or Fix needed (with the note, upload again).
+   Management · Performance: "Teaching setup · October" — every active teacher, the screenshot, Approve / Ask for a fix.
+   Files: private storage bucket "setup" (coe-mgmt setupUpload / setupUrl); records: coe_setup_check. */
+(function(){
+  const call = (body) => fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, body)) }).then(x => x.json());
+  const post = (fn, args) => call({ op: 'screen', fn, args: args || [] }).then(r => { if(!(r && r.ok)) throw new Error(fn); return r.data; });
+  const isT = () => !!(typeof D !== 'undefined' && D && !D.mgr && TOKEN), isM = () => !!(typeof D !== 'undefined' && D && D.mgr && TOKEN);
+  const ym = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 7);
+  const mName = m => { try{ return new Date(m + '-15T12:00:00').toLocaleDateString('en-GB', { month: 'long' }); }catch(e){ return m; } };
+  const RULES = 'Solid white background · face lit and centred · headset on · camera at eye level · nothing personal behind you';
+  // ── teacher ──
+  let ME = null, MEat = 0; try{ ME = JSON.parse(localStorage.getItem('coe.setup.me') || 'null'); }catch(e){}
+  function loadMe(force){ if(!isT() || (!force && Date.now() - MEat < 5 * 6e4)) return; MEat = Date.now(); post('tSetupMe').then(d => { ME = d; try{ localStorage.setItem('coe.setup.me', JSON.stringify(d)); }catch(e){} card(); }).catch(() => { MEat = 0; }); }
+  function card(){ const v = $('v-today'); if(!v || !isT()) return; let c = $('setupCard'); const cur = ME && (ME.rows || []).find(x => x.ym === ym()), st = cur ? cur.status : '';
+    if(!ME || st === 'Approved'){ if(c) c.remove(); return; }
+    const h = st === 'Waiting' ? `<b>📷 Teaching setup · ${esc(mName(ym()))}</b> <span class="chip amber">Waiting for Operations</span><div class="small mute" style="margin-top:4px">Sent ${esc(new Date(cur.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))} · you can send a better one any time</div><label class="btn sm ghost" style="margin-top:8px">Send another<input type="file" accept="image/*" hidden onchange="setupUp(this)"></label>`
+      : st === 'Fix needed' ? `<b>📷 Teaching setup · ${esc(mName(ym()))}</b> <span class="chip red">Fix needed</span><div class="small" style="margin-top:4px;color:#B03A2E">${esc(cur.note || 'Please fix your setup and send a new screenshot.')}</div><div class="small mute">${RULES}</div><label class="btn sm" style="margin-top:8px">Send a new screenshot<input type="file" accept="image/*" hidden onchange="setupUp(this)"></label>`
+      : `<b>📷 Teaching setup check · ${esc(mName(ym()))}</b><div class="small" style="margin-top:4px">Once a month: open your class screen (camera on) and send one screenshot.</div><div class="small mute">${RULES}</div><label class="btn sm" style="margin-top:8px">Send screenshot<input type="file" accept="image/*" hidden onchange="setupUp(this)"></label>`;
+    if(!c){ c = document.createElement('section'); c.id = 'setupCard'; c.className = 'card'; c.style.cssText = 'padding:12px 14px;margin:0 0 12px'; const lead = v.querySelector('.lead'); if(lead) lead.after(c); else v.prepend(c); }
+    if(c.dataset.h !== h){ c.innerHTML = h; c.dataset.h = h; } c.style.borderLeft = st === 'Fix needed' ? '4px solid #C0392B' : st === 'Waiting' ? '4px solid #F2C46D' : '4px solid var(--teal)'; }
+  function shrink(file){ return new Promise((ok, no) => { const fr = new FileReader(); fr.onerror = no; fr.onload = () => { const im = new Image(); im.onerror = no; im.onload = () => {
+    const k = Math.min(1, 1600 / Math.max(im.width, im.height)), cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k);
+    cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); ok(cv.toDataURL('image/jpeg', 0.82)); }; im.src = fr.result; }; fr.readAsDataURL(file); }); }
+  window.setupUp = async function(inp){ const f = inp.files && inp.files[0]; if(!f) return; const lab = inp.parentNode; const was = lab.firstChild.textContent; lab.firstChild.textContent = 'Sending…';
+    try{ const b64 = await shrink(f); const r = await call({ op: 'setupUpload', b64, type: 'image/jpeg' }); if(!r || !r.ok) throw r;
+      toast('✓ Setup screenshot sent · Operations will check it'); loadMe(true); }
+    catch(e){ lab.firstChild.textContent = was; toast('Not sent · ' + ((e && e.error) || 'check the connection and try again')); } inp.value = ''; };
+  const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const x = _rt.apply(this, arguments); try{ card(); loadMe(); }catch(e){} return x; };
+  // ── management ──
+  let ALL = null, ALLat = 0; const URLS = {};
+  function loadAll(force){ if(!isM() || (!force && Date.now() - ALLat < 2 * 6e4)) return; ALLat = Date.now(); post('mgmtSetupAll', [ym()]).then(d => { ALL = d || []; mPanel(); }).catch(() => { ALLat = 0; }); }
+  function thumb(path, el){ if(URLS[path]){ el.src = URLS[path]; return; } call({ op: 'setupUrl', path }).then(r => { if(r && r.ok){ URLS[path] = r.url; el.src = r.url; } }); }
+  window.setupView = function(path, who){ openSheet(`<h1>Teaching setup · ${esc(who)}</h1><div class="small mute">${RULES}</div><img id="setupBig" style="width:100%;border-radius:12px;margin-top:10px;background:#eee;min-height:200px">`); thumb(path, $('setupBig')); };
+  window.setupDo = function(t, st){ let note = ''; if(st === 'Fix needed'){ note = prompt('What should ' + t + ' fix? (she sees this)', 'Please use a solid white background.'); if(note == null) return; }
+    post('mgmtSetupReview', [t, ym(), st, note]).then(() => { toast(st === 'Approved' ? '✓ Approved · ' + t : 'Sent back to ' + t + ' to fix'); loadAll(true); }).catch(() => toast('Not saved · try again')); };
+  function mPanel(){ const v = $('v-perf'); if(!v || VIEW !== 'perf' || !ALL) return; let p = $('setupPanel');
+    const n = s => ALL.filter(x => (x.status || '') === s).length, wait = ALL.filter(x => x.status === 'Waiting');
+    if(!p){ p = document.createElement('section'); p.id = 'setupPanel'; p.className = 'card'; p.style.cssText = 'padding:12px 14px;margin:0 0 14px'; const after = $('qaRc') || v.querySelector('.lead'); if(after) after.after(p); else v.prepend(p); }
+    p.innerHTML = `<details${wait.length ? ' open' : ''}><summary><b>📷 Teaching setup · ${esc(mName(ym()))}</b> <span class="small mute">· ${n('Approved')} approved · ${wait.length} to check · ${n('Fix needed')} to fix · ${ALL.filter(x => !x.status).length} not sent</span></summary>
+${ALL.map(x => `<div class="row small" style="gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)">${x.path ? `<img data-p="${esc(x.path)}" onclick="setupView('${esc(x.path)}','${esc(x.teacher)}')" style="width:72px;height:44px;object-fit:cover;border-radius:6px;background:#eee;cursor:pointer">` : '<div style="width:72px;height:44px;border-radius:6px;background:#f3f3f3"></div>'}
+<div class="grow"><b>${esc(x.teacher)}</b> ${x.status === 'Approved' ? '<span class="chip green">Approved</span>' : x.status === 'Waiting' ? '<span class="chip amber">To check</span>' : x.status === 'Fix needed' ? '<span class="chip red">Fix needed</span>' : '<span class="mute">not sent yet</span>'}${x.note ? `<div class="mute">${esc(x.note)}</div>` : ''}</div>
+${x.status === 'Waiting' ? `<button class="btn sm teal" onclick="setupDo('${esc(x.teacher)}','Approved')">Approve</button><button class="btn sm ghost" onclick="setupDo('${esc(x.teacher)}','Fix needed')">Ask for a fix</button>` : x.status === 'Approved' ? `<button class="btn sm ghost" onclick="setupDo('${esc(x.teacher)}','Fix needed')">Ask for a fix</button>` : ''}</div>`).join('')}</details>`;
+    p.querySelectorAll('img[data-p]').forEach(im => thumb(im.dataset.p, im)); }
+  const _rp = window.renderPerf; if(_rp) window.renderPerf = function(){ const x = _rp.apply(this, arguments); try{ mPanel(); loadAll(); }catch(e){} return x; };
+  setTimeout(() => { if(isT()){ loadMe(); card(); } }, 3500);
+})();
+</script>
+<script>
+/* 19 Oct · 328 · Trial results per teacher + first 90 days for new teachers (Misty: "do all")
+   Performance (management): "Trials by teacher · last 120 days" (trials, enrolled %, median hours to the trial report, reports later than 12 h,
+   not-enrolled trials with a follow-up) from TR-DATA (coe_trial_stats), and "New teachers · first 90 days" (coe_first90).
+   Teacher · My growth: "My first 90 days" checklist while she is in her first 120 days. */
+(function(){
+  const post = (fn, args) => fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'screen', fn, args: args || [], token: TOKEN }) }).then(x => x.json()).then(r => { if(!(r && r.ok)) throw new Error(fn); return r.data; });
+  const isT = () => !!(typeof D !== 'undefined' && D && !D.mgr && TOKEN), isM = () => !!(typeof D !== 'undefined' && D && D.mgr && TOKEN);
+  let TS = null, TSat = 0, F9 = null, F9at = 0, ME = null, MEat = 0;
+  const bar = (n, t) => `<span style="display:inline-block;width:90px;height:8px;border-radius:4px;background:#e9ecef;vertical-align:middle;overflow:hidden"><span style="display:block;height:100%;width:${Math.round(100 * n / Math.max(1, t))}%;background:${n / t >= .8 ? '#2a9d8f' : n / t >= .5 ? '#e9c46a' : '#e76f51'}"></span></span>`;
+  function itemsH(x){ return x.items.map(i => `<div class="small" style="padding:3px 0">${i.done ? '<b style="color:#1E7A55">✓</b>' : '<span style="color:#B03A2E">○</span>'} ${esc(i.label)}${i.n != null && !i.done ? ` <span class="mute">(${i.n} so far)</span>` : ''}</div>`).join(''); }
+  // management
+  function perf(){ const v = $('v-perf'); if(!v || VIEW !== 'perf') return;
+    if(TS){ let p = $('trialStats'); if(!p){ p = document.createElement('section'); p.id = 'trialStats'; p.className = 'card'; p.style.cssText = 'padding:12px 14px;margin:0 0 14px'; v.appendChild(p); }
+      const L = (TS.teachers || []).filter(x => x.trials >= 2);
+      p.innerHTML = `<details><summary><b>🎯 Trials by teacher · last ${TS.days} days</b> <span class="small mute">· who turns trials into students, and how fast the report goes out</span></summary>
+<table class="small" style="width:100%;border-collapse:collapse;margin-top:8px"><tr class="mute"><td style="padding:4px 6px 4px 0">Teacher</td><td>Trials</td><td>Enrolled</td><td>Report after</td><td>Late &gt;12 h</td><td>Not enrolled · followed up</td></tr>
+${L.map(x => `<tr style="border-top:1px solid var(--line)"><td style="padding:6px 6px 6px 0"><b>${esc(x.teacher)}</b></td><td>${x.trials}</td><td><b style="color:${x.rate >= 75 ? '#1E7A55' : x.rate >= 50 ? '#7a5a00' : '#B03A2E'}">${x.rate}%</b> <span class="mute">(${x.enrolled})</span></td><td>${x.reportHrs == null ? '—' : x.reportHrs + ' h'}</td><td>${x.late ? `<b style="color:#B03A2E">${x.late}</b>` : '0'}</td><td>${x.notEnrolled ? x.followUp + ' of ' + x.notEnrolled : '—'}</td></tr>`).join('')}</table>
+<div class="small mute" style="margin-top:6px">From TR-DATA · "Enrolled? (auto)" and "Follow-up (pick)" · report time is from the trial start to the report submitted (middle value).</div></details>`; }
+    if(F9){ let p = $('first90'); if(!F9.length){ if(p) p.remove(); } else { if(!p){ p = document.createElement('section'); p.id = 'first90'; p.className = 'card'; p.style.cssText = 'padding:12px 14px;margin:0 0 14px'; v.appendChild(p); }
+      p.innerHTML = `<details open><summary><b>🌱 New teachers · first 90 days</b> <span class="small mute">· hired in the last 120 days</span></summary>${F9.map(x => `<details style="margin-top:8px;border-top:1px solid var(--line);padding-top:6px"><summary class="small"><b>${esc(x.name)}</b> · day ${x.days} · ${bar(x.done, x.total)} ${x.done} of ${x.total} <span class="mute">· still open: ${esc(x.items.filter(i => !i.done).map(i => i.label.split(' (')[0]).slice(0, 3).join(', '))}${x.items.filter(i => !i.done).length > 3 ? '…' : ''}</span></summary>${itemsH(x)}</details>`).join('')}</details>`; } } }
+  function loadM(){ if(!isM()) return; if(Date.now() - TSat > 10 * 6e4){ TSat = Date.now(); post('mgmtTrialStats', [120]).then(d => { TS = d; perf(); }).catch(() => { TSat = 0; }); }
+    if(Date.now() - F9at > 10 * 6e4){ F9at = Date.now(); post('mgmtFirst90', ['']).then(d => { F9 = d || []; perf(); }).catch(() => { F9at = 0; }); } }
+  const _rp = window.renderPerf; if(_rp) window.renderPerf = function(){ const x = _rp.apply(this, arguments); try{ perf(); loadM(); }catch(e){} return x; };
+  // teacher
+  try{ ME = JSON.parse(localStorage.getItem('coe.first90') || 'null'); }catch(e){}
+  function mine(){ const v = $('v-growth'); if(!v || !isT()) return; let c = $('first90Me'); const x = ME && ME[0];
+    if(!x || x.days > 120){ if(c) c.remove(); return; }
+    if(!c){ c = document.createElement('section'); c.id = 'first90Me'; c.className = 'card'; c.style.cssText = 'padding:14px 16px;margin:0 0 14px'; const k = $('kxCard') || v.querySelector('.lead'); if(k) k.after(c); else v.prepend(c); }
+    c.innerHTML = `<div class="small mute" style="letter-spacing:.06em;text-transform:uppercase">My first 90 days · day ${x.days}</div><div class="row" style="align-items:center;gap:10px;margin:6px 0 8px"><b style="font-size:22px">${x.done} of ${x.total}</b> ${bar(x.done, x.total)}<span class="small mute">${x.done === x.total ? 'All done · well done! 🎉' : 'steps done'}</span></div>${itemsH(x)}<div class="small mute" style="margin-top:6px">Your start at CupOfEnglish, step by step. Ask Operations if anything is unclear.</div>`; }
+  function loadT(){ if(!isT() || Date.now() - MEat < 10 * 6e4) return; MEat = Date.now(); post('tFirst90').then(d => { ME = d || []; try{ localStorage.setItem('coe.first90', JSON.stringify(ME)); }catch(e){} mine(); }).catch(() => { MEat = 0; }); }
+  const _pg = window.paintGrowth; if(_pg) window.paintGrowth = function(){ const x = _pg.apply(this, arguments); try{ mine(); loadT(); }catch(e){} return x; };
+  setTimeout(() => { if(isT()) loadT(); }, 5000);
 })();
 </script>
 
