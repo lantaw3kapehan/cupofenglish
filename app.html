@@ -6108,7 +6108,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 623;
+const COE_V = 624;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12342,6 +12342,8 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
   const MED = { Gold: '🥇', Silver: '🥈', Bronze: '🥉', Developing: '🌱' };
   const chip = l => l ? `<span class="chip" style="${LV[l] || ''};font-weight:600">${MED[l] || ''} ${esc(l)}</span>` : '';
   const mShort = ym => { try{ return new Date(ym + '-15T12:00:00').toLocaleDateString('en-GB', { month: 'long' }); }catch(e){ return ym; } };
+  const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] || 'th'));
+  const gap = me => { const t = Number(me && me.total); if(!(t >= 0)) return ''; const nx = t < 55 ? ['Bronze', 55] : t < 70 ? ['Silver', 70] : t < 85 ? ['Gold', 85] : null; return nx ? (Math.round((nx[1] - t) * 10) / 10) + ' points to ' + nx[0] : 'top level reached'; };
   const isT = () => !!(typeof D !== 'undefined' && D && !D.mgr && TOKEN);
   const cur = () => K && K.months && K.months.length ? K.months[K.months.length - 1] : null;
   function load(force){ if(Kbusy || !isT() || (!force && Date.now() - Kat < 10 * 6e4)) return; Kbusy = true;
@@ -12350,7 +12352,7 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
   // 1 · the header badge
   function badge(){ const el = $('hRank'); if(!el || !isT()) return; const old = el.querySelector('.kxb'); if(old) old.remove(); const m = cur(); if(!K || !K.on || !m) return;
     const me = m.me || {}, when = mShort(m.month) + (m.final ? '' : ' so far');
-    const txt = me.rank ? `${MED[me.level] || ''} ${esc(me.level || '')} · #${me.rank} of ${m.n} · ${when}` : `${when} · not ranked yet`;
+    const txt = me.rank ? `${MED[me.level] || ''} ${esc(me.level || '')} · ${gap(me)} · ${when}` : `${when} · not ranked yet`;
     const s = document.createElement('span'); s.className = 'kxb'; s.style.cssText = 'cursor:pointer;white-space:nowrap'; s.title = 'Teacher Excellence · tap for details';
     s.innerHTML = ' · <u style="text-decoration-style:dotted;text-underline-offset:3px">' + txt + '</u>'; s.onclick = e => { e.stopPropagation(); try{ go('growth'); setTimeout(() => { const c = $('kxCard'); if(c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250); }catch(x){} };
     el.appendChild(s); }
@@ -12360,8 +12362,8 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
   const bar = v => v == null ? '<span class="mute small">no data yet</span>' : `<span style="display:inline-block;width:90px;height:8px;border-radius:4px;background:#e9ecef;vertical-align:middle;overflow:hidden"><span style="display:block;height:100%;width:${Math.max(0, Math.min(100, v))}%;background:${v >= 80 ? '#2a9d8f' : v >= 60 ? '#e9c46a' : '#e76f51'}"></span></span> <b class="small">${v}</b>`;
   const clip = (s, n) => { s = String(s || '').split(/\n/)[0].trim(); return s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') + '…' : s; };
   function cardHtml(){ const m = cur(); if(!K || !K.on || !m) return ''; const me = m.me || {}, pl = me.pillars || {}, q = K.qa;
-    const head = me.rank ? `<div style="font-size:30px;font-weight:700;line-height:1">${me.total}</div><div class="small mute">#${me.rank} of ${m.n} teachers</div>` : `<div class="small mute">Not ranked this month (20 hours or more to be ranked)</div>`;
-    const tl = K.months.slice().reverse().map(x => `<tr><td style="padding:5px 8px 5px 0">${esc(x.label)}${x.final ? '' : ' <span class="mute small">so far</span>'}</td><td>${x.me.rank ? chip(x.me.level) : '<span class="mute small">not ranked</span>'}</td><td class="num" style="text-align:right">${x.me.rank ? '#' + x.me.rank + ' of ' + x.n : ''}</td><td class="num" style="text-align:right"><b>${x.me.total == null ? '—' : x.me.total}</b></td></tr>`).join('');
+    const head = me.rank ? `<div style="font-size:30px;font-weight:700;line-height:1">${me.total}</div><div class="small mute">${ord(me.rank)} place${m.final ? '' : ' so far'}</div><div class="small" style="color:#2a9d8f;font-weight:600">${gap(me)}</div>` : `<div class="small mute">Not ranked this month (20 hours or more to be ranked)</div>`;
+    const tl = K.months.slice().reverse().map(x => `<tr><td style="padding:5px 8px 5px 0">${esc(x.label)}${x.final ? '' : ' <span class="mute small">so far</span>'}</td><td>${x.me.rank ? chip(x.me.level) : '<span class="mute small">not ranked</span>'}</td><td class="num" style="text-align:right">${x.me.rank ? ord(x.me.rank) + ' place' : ''}</td><td class="num" style="text-align:right"><b>${x.me.total == null ? '—' : x.me.total}</b></td></tr>`).join('');
     return `<section class="card" id="kxCard" style="padding:14px 16px;margin:0 0 14px">
 <div class="small mute" style="letter-spacing:.06em;text-transform:uppercase">Teacher Excellence · ${esc(m.label)}${m.final ? '' : ' (so far)'}</div>
 ${(() => { if(m.final) return '<div class="small mute" style="margin-top:2px">Final for ' + esc(m.label) + '</div>'; const d = new Date(), end = new Date(d.getFullYear(), d.getMonth() + 1, 0), left = end.getDate() - d.getDate(), at = new Date(Kat || Date.now()).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); return '<div class="small" style="margin-top:4px;color:#2a9d8f"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2a9d8f;margin-right:5px;vertical-align:middle"></span>Live · updated today ' + at + ' · your place updates every day' + (left > 0 ? ' · ' + left + ' day' + (left > 1 ? 's' : '') + ' left in ' + esc(mShort(m.month)) : ' · last day of ' + esc(mShort(m.month))) + '</div>'; })()}
