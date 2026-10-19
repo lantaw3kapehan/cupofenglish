@@ -1,0 +1,2 @@
+// 19 Oct · 306 · Teacher Excellence: My months chart is drawn at its own size on a laptop (with two months it was stretched to 640 px and the text became very big).
+require('../tools/lib.js')(process.argv[2], [['preserveAspectRatio="xMidYMid meet" style="width:100%;max-width:640px;height:auto;display:block"', 'preserveAspectRatio="xMidYMid meet" style="width:100%;max-width:${W}px;height:auto;display:block"']]);
