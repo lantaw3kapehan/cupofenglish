@@ -487,7 +487,7 @@ body.printing #printArea *{-webkit-print-color-adjust:exact;print-color-adjust:e
 #printArea .mini{font-size:11px;break-inside:avoid} #printArea .tl>div{break-inside:avoid}
 }
 
-main > div:not(.hide){animation:rise .28s ease both}
+main > div:not(.hide){animation:none}   /* 19 Oct · 321: no slide-in (the 0.28 s rise made letters look blurry and fought the stable Today) */
 @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){main > div{animation:none!important}}
 
@@ -6108,7 +6108,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 650;
+const COE_V = 651;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12528,13 +12528,13 @@ ${m.top && m.top.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-
    with the time the app last looked (the video check log, coe_vid_mine). So a teacher sees at once whether her upload reached the folder,
    before 23:59, and management has the same record. Shown only when there is something to show. */
 (function(){
-  let V = null, at = 0, busy = false;
+  let V = (() => { try{ const y = new Date(Date.now() + 8 * 3600e3 - 864e5).toISOString().slice(0, 10), L = JSON.parse(localStorage.getItem('coe.vid.mine') || 'null'); return Array.isArray(L) ? L.filter(x => String(x.day).slice(0, 10) >= y) : null; }catch(e){ return null; } })(), at = 0, busy = false;   // 321: last list kept, shown at once
   const hm = s => { try{ return new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' }); }catch(e){ return ''; } };
   const dd = s => { try{ return new Date(String(s).slice(0, 10) + 'T12:00:00+08:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }catch(e){ return s; } };
   const today = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
   function load(){ if(busy || !TOKEN || !(typeof D !== 'undefined' && D && !D.mgr) || Date.now() - at < 3 * 6e4) return; busy = true;
     fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'screen', fn: 'tVidMine', args: [], token: TOKEN }) })
-      .then(x => x.json()).then(r => { if(r && r.ok && Array.isArray(r.data)){ V = r.data; at = Date.now(); paint(); } }).catch(() => {}).finally(() => { busy = false; }); }
+      .then(x => x.json()).then(r => { if(r && r.ok && Array.isArray(r.data)){ V = r.data; at = Date.now(); try{ localStorage.setItem('coe.vid.mine', JSON.stringify(V)); }catch(e){} paint(); } }).catch(() => {}).finally(() => { busy = false; }); }
   function paint(){ const root = document.getElementById('v-today'); if(!root || !V || typeof VIEW === 'undefined' || VIEW !== 'today') return;
     let box = document.getElementById('vidMine'); if(!V.length){ if(box) box.remove(); return; }
     const t = today(), miss = V.filter(x => !x.found), days = [...new Set(V.map(x => String(x.day).slice(0, 10)))].sort().reverse();
