@@ -6115,7 +6115,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 663;
+const COE_V = 664;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12718,9 +12718,10 @@ ${last && curPer() && norm(curPer()) === norm(last.period) ? `<div style="margin
   document.head.appendChild(css);
 
   // ── teacher ──
-  let ACK = null; try{ ACK = JSON.parse(localStorage.getItem('coe.qa.ack') || 'null'); }catch(e){}
+  let ACK = null, ACKW = '', ACKT = 0; const meN = () => String((D && D.me && D.me.name) || '').toLowerCase();   /* 334: per person */
+  function ackSoon(){ if(Date.now() - ACKT < 8e3) return; ACKT = Date.now(); const w = meN(); try{ const c = JSON.parse(localStorage.getItem('coe.qa.ack.' + w) || 'null'); if(c){ ACK = c; ACKW = w; } }catch(e){} loadAck(); }
   const latest = () => { const g = (typeof GR !== 'undefined' && GR) || (typeof kept === 'function' && kept('growth')); return g && g.evals && g.evals[0] || null; };
-  function pending(){ if(!isT() || !ACK) return null; const e = latest(); if(!e || !e.ts || e.ts < FROM || !e.period) return null;
+  function pending(){ if(!isT()) return null; if(ACKW !== meN()){ ackSoon(); if(ACKW !== meN()) return null; } if(!ACK) return null; const e = latest(); if(!e || !e.ts || e.ts < FROM || !e.period) return null;
     const a = ACK.find(x => String(x.period).toLowerCase() === String(e.period).toLowerCase());
     return a && a.acked_at && Date.parse(a.acked_at) >= e.ts - 5 * 6e4 ? null : e; }
   function gate(){ const old = $('qaGate'), e = pending(); if(!e || VIEW === 'qa'){ if(old) old.remove(); return; } if(old) return;
@@ -12742,9 +12743,9 @@ ${last && curPer() && norm(curPer()) === norm(last.period) ? `<div style="margin
     if(all.length) all[0].before(b); else v.appendChild(b); }
   window.qaAck = function(){ const e = pending(); if(!e) return; const b = $('qaAckGo'); if(b){ b.disabled = true; b.textContent = 'Saving…'; }
     post('tQaAck', [e.period, 'ack']).then(r => { ACK = (ACK || []).filter(x => String(x.period).toLowerCase() !== String(e.period).toLowerCase()).concat([{ period: e.period, acked_at: (r && r.acked_at) || new Date().toISOString() }]);
-      try{ localStorage.setItem('coe.qa.ack', JSON.stringify(ACK)); }catch(x){} bar(); gate(); toast('✓ Thank you · management can see you have read your ' + e.period + ' feedback'); })
+      ACKW = meN(); try{ localStorage.setItem('coe.qa.ack.' + ACKW, JSON.stringify(ACK)); }catch(x){} bar(); gate(); toast('✓ Thank you · management can see you have read your ' + e.period + ' feedback'); })
     .catch(() => { if(b){ b.disabled = false; b.textContent = '✓ I have read and understood my ' + e.period + ' feedback'; } toast('Not saved · check your connection and tap again'); }); };
-  function loadAck(){ if(!isT()) return; post('tQaAckMe').then(d => { ACK = d || []; try{ localStorage.setItem('coe.qa.ack', JSON.stringify(ACK)); }catch(x){} gate(); bar(); }).catch(() => {}); }
+  function loadAck(){ if(!isT()) return; const w = meN(); post('tQaAckMe').then(d => { if(w !== meN()) return; ACK = d || []; ACKW = w; try{ localStorage.setItem('coe.qa.ack.' + w, JSON.stringify(ACK)); }catch(x){} gate(); bar(); }).catch(() => {}); }
   function freshGrowth(){ if(!isT()) return; api('tGrowth', TOKEN).then(v => { if(!v) return; try{ keep('growth', v); }catch(x){} const was = (latest() || {}).ts; GR = v; if((v.evals && v.evals[0] || {}).ts !== was && (VIEW === 'qa' || VIEW === 'growth')) paintGrowth(); gate(); bar(); }).catch(() => {}); }
   const _go = window.go; window.go = function(v){ const x = _go.apply(this, arguments); try{ if(isT()){ gate(); if(v === 'qa') setTimeout(bar, 0); } }catch(e){} return x; };
   const _pg = window.paintGrowth; window.paintGrowth = function(){ const x = _pg.apply(this, arguments); try{ bar(); }catch(e){} return x; };
