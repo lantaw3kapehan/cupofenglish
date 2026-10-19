@@ -6113,7 +6113,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 658;
+const COE_V = 659;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12092,8 +12092,8 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
    reads from Google for 5 minutes (the database copy follows within a few minutes). */
 (function(){
   const base = api, until = {};
-  const KIND = { mgmtEnqList: 'enq', mgmtAgreeMap: 'agr', mgmtReminders: 'rem', mgmtAvail: 'av', tAvail: 'av', mgmtLeaveClasses: 'cls', tLeaveClasses: 'cls', mgmtWeekSum: 'cls' };
-  const SAVES = [[/^mgmtEnq(Save|Status|Del\w*)$/, ['enq']], [/^mgmtAgree(Save|Del\w*)$/, ['agr']], [/^(mgmt|t)RemindLog$/, ['rem', 'cls']],
+  const KIND = { mgmtEnqList: 'enq', mgmtAgreeMap: 'agr', mgmtReminders: 'rem', mgmtAvail: 'av', tAvail: 'av', mgmtLeaveClasses: 'cls', tLeaveClasses: 'cls', mgmtWeekSum: 'cls', mgmtActive: 'pkg' };   /* 329: Active from the database (coe_active_screen) */
+  const SAVES = [[/^mgmt(EnrolPaid|RenewPaid|Renewal|PkgFix|SetCourse|Fix)$/, ['pkg']], [/^mgmtEnq(Save|Status|Del\w*)$/, ['enq']], [/^mgmtAgree(Save|Del\w*)$/, ['agr']], [/^(mgmt|t)RemindLog$/, ['rem', 'cls']],
     [/^(mgmt|t)AvailSave$/, ['av']], [/^(mgmtEditClass|editClass|mgmtAddClass|addClass|mgmtCancelClass|cancelClass|mgmtMoveClass|moveClass|tCancel\w*|mgmtSub\w*|mgmtSetBook)$/, ['cls', 'av']]];
   async function viaDb(fn, args){
     const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 8000) : 0;
@@ -13037,6 +13037,21 @@ ${L.map(x => `<tr style="border-top:1px solid var(--line)"><td style="padding:6p
   function loadT(){ if(!isT() || Date.now() - MEat < 10 * 6e4) return; MEat = Date.now(); post('tFirst90').then(d => { ME = d || []; try{ localStorage.setItem('coe.first90', JSON.stringify(ME)); }catch(e){} mine(); }).catch(() => { MEat = 0; }); }
   const _pg = window.paintGrowth; if(_pg) window.paintGrowth = function(){ const x = _pg.apply(this, arguments); try{ mine(); loadT(); }catch(e){} return x; };
   setTimeout(() => { if(isT()) loadT(); }, 5000);
+})();
+</script>
+<script>
+/* 19 Oct · 329 · Class visits straight into the database (Misty: "save Celine's class visits straight to the database")
+   The moment a visit is saved, the same row goes into the database copy of S-MONITOR (coe-mgmt mgmtMonRow → coe_mon_row_put; newest at the top,
+   the same event saved again updates its row). Visit coverage, Teacher Excellence, QA history and first 90 days see it at once; Google still writes the sheet row. */
+(function(){
+  const post = (fn, args) => fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'screen', fn, args: args || [], token: TOKEN }) }).then(x => x.json()).then(r => { if(!(r && r.ok)) throw new Error(fn); return r.data; });
+  const now = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 19);
+  function rowOf(p){ const t = String(p.time || '').match(/^(\d{1,2}):(\d{2})/); const by = (typeof D !== 'undefined' && D && D.me && D.me.name) || '';
+    return [now(), String(p.date || '').slice(0, 10) + 'T00:00:00', t ? '1899-12-30T' + t[1].padStart(2, '0') + ':' + t[2] + ':00' : '', p.code || '', p.student || '', p.teacher || '', p.eventId || '',
+      [].concat(p.checks || []).join(' · '), p.note || '', by, '', '']; }
+  const _api = api; api = function(fn, ...args){
+    if(fn === 'mgmtMonitor' && typeof D !== 'undefined' && D && D.mgr){ try{ const p = args[1] || {}; if(p.eventId && p.teacher && !p.ack) post('mgmtMonRow', [rowOf(p)]).catch(() => {}); }catch(e){} }
+    return _api(fn, ...args); };
 })();
 </script>
 
