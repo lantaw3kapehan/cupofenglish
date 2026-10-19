@@ -6108,7 +6108,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 636;
+const COE_V = 637;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -9280,10 +9280,11 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     const seenAt = v => acked[v.id] ? 1 : ackT(v.ack, v.date);
     const unread = V.filter(v => !seenAt(v) && late(tms(v.date + ' ' + (v.time || ''))) >= 2);
     if(unread.length){ const ds = [...new Set(unread.map(v => sd(tms(v.date))))]; items.push({ kind: 'QA visit', text: (unread.length === 1 ? '1 class visit' : unread.length + ' class visits') + ' not read (' + ds.slice(0, 4).join(', ') + (ds.length > 4 ? '…' : '') + ') · open each and tap Got it', days: Math.max(...unread.map(v => late(tms(v.date)))), overdue: 1 }); }
-    let repeat = 0; const since = Date.now() - 30 * DAY, fu = {};
+    let repeat = 0; const since = Date.now() - 30 * DAY, fu = {}, last = {};
+    V.forEach(v => { const m = String(v.note || '').match(/Follow-up on (\S+)\s*\(([\s\S]*?)\):\s*(Improved|Not yet|Partly)\b/); if(m){ const k = norm(m[2]); if(!last[k]) last[k] = m[3]; } });   /* V is newest first */
     V.forEach(v => { const t = tms(v.date + ' ' + (v.time || '')); if(t < since) return; const m = String(v.note || '').match(/Follow-up on (\S+)\s*\(([\s\S]*?)\):\s*(Not yet|Partly)\b/); if(!m) return;
       const before = V.filter(x => x.date === m[1]); if(!before.some(x => { const s = seenAt(x); return s && s <= t; })) return;   // not read before this visit → not "seen but not acted"
-      const k = norm(m[2]); if(fu[k]) return; fu[k] = 1; const w = m[3] === 'Not yet' ? 1 : 0.5; repeat += w;
+      const k = norm(m[2]); if(fu[k] || last[k] === 'Improved') return; fu[k] = 1; const w = m[3] === 'Not yet' ? 1 : 0.5; repeat += w;
       items.push({ kind: 'Not fixed', text: '“' + short(m[2]) + '” · raised ' + sd(tms(m[1])) + ', still ' + m[3].toLowerCase() + ' on ' + sd(t), days: 0, weight: w }); });
     const area = {}; V.filter(v => tms(v.date) >= since).forEach(v => String(v.checks || '').split(' · ').forEach(c => { const m = c.match(/^(.*?):\s*(Needs work|Not yet)$/); if(m) (area[m[1]] = area[m[1]] || []).push(v); }));
     Object.keys(area).forEach(k => { const L = area[k]; for(let i = 0; i < L.length - 1; i++){ const later = L[i], earlier = L[i + 1], s = seenAt(earlier);
