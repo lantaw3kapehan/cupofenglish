@@ -4864,7 +4864,7 @@ c.fillStyle = '#6F6B85'; c.font = '400 22px ' + F; c.fillText('Student · 学生
 c.fillStyle = '#2B2253'; { const nm = String(e.student || e.title || '').replace(/\s+X$/i, ''); let fs = 54; c.font = '400 54px ' + B; while(fs > 26 && c.measureText(nm).width > W - 160){ fs -= 2; c.font = '400 ' + fs + 'px ' + B; } c.fillText(nm, 80, y + 82); }
 if(idLine){ c.fillStyle = '#4C4868'; c.font = '400 28px ' + F; c.fillText(idLine, 80, y + 126); }
 y += 130 + (idLine ? 44 : 0);
-if(bl){ const b = P.bal, shared = b.left === '' || b.left == null, ns = shared ? '—' : (!P.renew && +b.left < 0 ? '+' + Math.round(-b.left * 10) / 10 : String(b.left)), tot = Math.round(((+b.enrolled || 0) + (+b.carry || 0)) * 10) / 10, used = +b.finished || 0;
+if(bl){ const b = P.bal, shared = b.left === '' || b.left == null, ns = shared ? '—' : (!P.renew && +b.left < 0 ? '+' + Math.round(-b.left * 10) / 10 : String(P.renew && P.renew.now != null ? P.renew.now : b.left)), tot = Math.round(((+b.enrolled || 0) + (+b.carry || 0)) * 10) / 10, used = +b.finished || 0;
 rr(80, y, W - 160, 176, 24); c.fillStyle = '#E3F6F6'; c.fill();
 c.fillStyle = !shared && !P.renew && +b.left < 0 ? '#C0392B' : '#00737B'; c.font = '400 88px ' + B; c.fillText(ns, 112, y + 104); const nw = c.measureText(ns).width;
 c.fillStyle = '#2B2253'; c.font = '700 28px ' + F; const ov = !shared && !P.renew && +b.left < 0; c.fillText(shared ? 'shared package' : P.renew ? 'lessons now' : ov ? 'over the package' : 'lessons left', 136 + nw, y + 66); const lw = c.measureText(shared ? 'shared package' : P.renew ? 'lessons now' : ov ? 'over the package' : 'lessons left').width; c.fillStyle = '#4C4868'; c.font = '400 24px ' + F; c.fillText(shared ? '共享课时包' : P.renew ? '现有课时' : ov ? '超出课程包课时' : '剩余课时', 136 + nw, y + 100);
@@ -6115,7 +6115,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 670;
+const COE_V = 671;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -6388,7 +6388,9 @@ function rnDays(cl){ const now = Date.now(), up = (Array.isArray(cl) ? cl : []).
 const wk = d => new Date(d).toLocaleString('en-GB', { timeZone: 'Asia/Shanghai', weekday: 'short' }), hm = d => new Date(d).toLocaleTimeString('en-GB', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit' }), O = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], pat = {};
 up.slice(0, 12).forEach(c => { const k = wk(c.start) + ' ' + hm(c.start); pat[k] = (pat[k] || 0) + 1; }); const d = Object.keys(pat).filter(k => pat[k] > 1).sort((a, b) => O.indexOf(a.slice(0, 3)) - O.indexOf(b.slice(0, 3))); return d.length ? d : [wk(up[0].start) + ' ' + hm(up[0].start)]; }
 const _cxdRN = cxDraw;
-cxDraw = async function(){ const P = CXP; if(P && P.kind === 'bal') P.renew = rnFor(P) || null; const r = await _cxdRN.apply(this, arguments);
+cxDraw = async function(){ const P = CXP; if(P && P.kind === 'bal') P.renew = rnFor(P) || null;
+  try{ const Q = P && P.renew, b = P && P.bal; if(Q && b && b.left !== '' && b.left != null){ const dl = String(b.deadline || '').slice(0, 10), old = !/^\d{4}-\d{2}-\d{2}$/.test(dl) || dl < Q.paid;   /* 341 */
+    if(old){ Q.carry = Math.round(+b.left * 10) / 10; Q.now = Math.round((+b.left + Q.tot) * 10) / 10; } else Q.now = +b.left; } }catch(x){} const r = await _cxdRN.apply(this, arguments);
 try{ if(P === CXP && P.kind === 'bal'){ const im = $('cxImg'), old = $('rnTog'); if(old) old.remove();
 const h = document.querySelector('#sheet h1'); if(h && P.renew) h.textContent = 'Renewal confirmed · 续费成功';
 if(P.renew && !P.renew.en && !P._rnF){ P._rnF = 1; const code = P.renew.code; api('mgmtStuClasses', TOKEN, code).then(cl => { const d = rnDays(cl); if(!d.length) return; RN_DAYS[code] = d; if(CXP === P){ P.url = ''; cxDraw(); } }).catch(() => {}); }
