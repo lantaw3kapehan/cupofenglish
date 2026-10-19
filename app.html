@@ -6108,7 +6108,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 625;
+const COE_V = 627;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12350,7 +12350,7 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
     post('tKpi').then(d => { K = d || null; Kat = Date.now(); try{ localStorage.setItem('coe.kx.me', JSON.stringify(K)); }catch(e){} paintAll(); }).catch(() => {}).finally(() => { Kbusy = false; }); }
 
   // 1 · the header badge
-  function badge(){ const el = $('hRank'); if(!el || !isT()) return; const old = el.querySelector('.kxb'); if(old) old.remove(); const m = cur(); if(!K || !K.on || !m) return;
+  function badge(){ const el = $('hRank'); if(!el || !isT()) return; const old = el.querySelector('.kxb'); if(old) old.remove(); if(sideOn()) return; const m = cur(); if(!K || !K.on || !m) return;
     const me = m.me || {}, when = mShort(m.month) + (m.final ? '' : ' so far');
     const txt = me.rank ? `${MED[me.level] || ''} ${esc(me.level || '')} · ${gap(me)} · ${when}` : `${when} · not ranked yet`;
     const s = document.createElement('span'); s.className = 'kxb'; s.style.cssText = 'cursor:pointer;white-space:nowrap'; s.title = 'Teacher Excellence · tap for details';
@@ -12375,10 +12375,27 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
       const r = 21, c = 2 * Math.PI * r, d = pos(v) / 100 * c, col = v >= 80 ? '#2a9d8f' : v >= 60 ? '#e9c46a' : '#e76f51';
       return `<svg viewBox="0 0 52 52" style="width:52px;height:52px;flex:none"><circle cx="26" cy="26" r="${r}" fill="none" stroke="#eef0f2" stroke-width="6"/><circle cx="26" cy="26" r="${r}" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${d} ${c}" transform="rotate(-90 26 26)"/><text x="26" y="31" text-anchor="middle" style="font:700 14px var(--brand);fill:var(--ink)">${v}</text></svg>`; };
     const qsub = me => { const x = me.parts || {}, f = me.facts || {}, L = [];
-      if(x.qa != null) L.push(`QA ${x.qa}` + (f.qaPeriod ? ` <span style="opacity:.8">(${esc(f.qaPeriod)})</span>` : ''));
-      if(x.visits != null) L.push(`Class visits ${x.visits} <span style="opacity:.8">(${f.visits || 0} visit${f.visits == 1 ? '' : 's'}${me.visitStrong ? ' · ' + me.visitStrong + ' Strong' : ''}${me.visitNeeds ? ' · ' + me.visitNeeds + ' Needs work' : ''})</span> · <a href="#" onclick="event.preventDefault();kxVisits()">see visits</a>`);
+      if(x.qa != null) L.push(`Monthly QA (President) <b style="color:var(--ink)">${x.qa}</b>` + (f.qaPeriod ? ` <span style="opacity:.8">(${esc(f.qaPeriod)})</span>` : ''));
+      if(x.visits != null) L.push(`Daily visits (Ops) <b style="color:var(--ink)">${x.visits}</b> <span style="opacity:.8">(${f.visits || 0} visit${f.visits == 1 ? '' : 's'}${me.visitStrong ? ' · ' + me.visitStrong + ' Strong' : ''}${me.visitNeeds ? ' · ' + me.visitNeeds + ' Needs work' : ''})</span> · <a href="#" style="color:#2a9d8f;font-weight:600;text-decoration:none" onclick="event.preventDefault();kxVisits()">see visits ›</a>`);
+      if(f.peerReviews >= 2) L.push('Peers <b style="color:var(--ink)">' + f.peerPct + '</b> <span style="opacity:.8">(' + f.peerReviews + ' reviews)</span>');
       return L.length ? L.join('<br>') : 'your QA and class visits'; };
-    const tiles = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:14px">${P.map(p => `<div style="display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:10px 12px">${ring(pl[p[0]])}<div><b class="small">${p[1]}</b><div class="small mute" style="line-height:1.3">${pl[p[0]] == null ? 'no data yet this month' : p[0] === 'quality' && me.parts ? qsub(me) : p[2]}</div></div></div>`).join('')}</div>`;
+    const psub = (k, me) => { const x = me.parts || {}, f = me.facts || {}, B = v => '<b style="color:var(--ink)">' + v + '</b>', L = [];
+      if(k === 'progress'){
+        const st = []; if(f.progressChecks) st.push(f.progressChecks + ' progress check' + (f.progressChecks > 1 ? 's' : '')); if(f.notes) st.push(f.notes + ' class note' + (f.notes > 1 ? 's' : '')); if(f.bookUps3m) st.push(f.bookUps3m + ' new book' + (f.bookUps3m > 1 ? 's' : ''));
+        L.push('Your students · ' + (st.length ? st.join(' · ') : 'no progress checks or notes yet'));
+        L.push('Your growth · ' + (f.followUps ? B(f.followUpsImproved || 0) + ' of ' + f.followUps + ' visit points improved' : 'no follow-up yet'));
+      } else if(k === 'trust'){
+        if(f.trials) L.push('Trials · ' + B(f.trialsEnrolled || 0) + ' of ' + f.trials + ' enrolled');
+        if(f.keptFrom) L.push('Students still with us · ' + B(f.kept) + ' of ' + f.keptFrom);
+        L.push('Recognitions · ' + B(f.recognitions || 0));
+      } else if(k === 'reliability'){
+        if(f.timeIns) L.push('Time-ins on time · ' + B(f.onTime) + ' of ' + f.timeIns);
+        L.push('Hours · ' + B(f.units || 0) + ' taught' + (f.freeHoursMonth != null ? ' + ' + B(Math.round(f.freeHoursMonth)) + ' open (not yet booked)' : ''));
+        L.push('Demerits · ' + B(f.demerits || 0));
+        if(f.peerAsked) L.push('Peer evaluation · ' + (f.peerDone >= f.peerAsked ? B('done') : (f.peerDone || 0) + ' of ' + f.peerAsked + ' done · <b style="color:#e76f51">to do</b>'));
+      }
+      return L.join('<br>'); };
+    const tiles = `<div style="display:grid;grid-template-columns:repeat(var(--kxc,2),minmax(0,1fr));gap:10px;margin-top:14px">${P.map(p => `<div style="display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:10px 12px">${ring(pl[p[0]])}<div><b class="small">${p[1]}</b><div class="small mute" style="line-height:1.3">${pl[p[0]] == null ? 'no data yet this month' : me.parts ? (p[0] === 'quality' ? qsub(me) : (psub(p[0], me) || p[2])) : p[2]}</div></div></div>`).join('')}</div>`;
     // 2 · history: a small timeline of every month (dots coloured by level, lines at 55 / 70 / 85)
     const H = K.months.filter(x => x.me && x.me.total != null).slice(-12), W = 600, HH = 150, lo = Math.max(0, Math.min(40, ...H.map(x => Number(x.me.total) - 5))), px = i => H.length < 2 ? (W + 50) / 2 : 70 + i * (W - 110) / (H.length - 1), py = v => 18 + (100 - Math.max(lo, Math.min(100, v))) / (100 - lo) * (HH - 46);
     const chart = H.length ? `<div style="margin-top:8px"><svg viewBox="0 0 ${W} ${HH}" preserveAspectRatio="xMidYMid meet" style="width:100%;max-width:640px;height:auto;display:block">
@@ -12416,8 +12433,30 @@ ${m.top && m.top.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-
 <button class="btn sm ghost" style="margin-top:8px" onclick="go('growth')">See my month</button></section>`;
     const c = t.firstElementChild, lead = el.querySelector('.lead'); if(lead && lead.nextSibling) el.insertBefore(c, lead.nextSibling); else el.insertBefore(c, el.firstChild); }
 
-  function paintAll(){ try{ badge(); }catch(e){} try{ if(VIEW === 'growth') growthCard(); }catch(e){} try{ if(VIEW === 'today') totm(); }catch(e){} }
-  const _r = window.render; if(_r) window.render = function(){ const x = _r.apply(this, arguments); try{ badge(); }catch(e){} try{ load(); }catch(e){} return x; };
+  try{ if(!document.getElementById("kxCss")){ const st = document.createElement("style"); st.id = "kxCss"; st.textContent = "#kxCard{--kxc:2}@media (max-width:640px){#kxCard{--kxc:1}}"; document.head.appendChild(st); } }catch(e){}
+  // 296 · on a laptop (wide side menu) the live summary sits in the side menu under Pay, instead of the header line
+  const sideOn = () => { const n = document.querySelector('nav'); return !!(n && n.offsetWidth >= 200 && isT()); };
+  function side(){ const nav = $('navIn'); if(!nav) return; let box = $('kxSide'); const m = cur();
+    if(!sideOn() || !K || !K.on || !m){ if(box) box.remove(); return; }
+    const me = m.me || {}, t = Number(me.total), LC = { Developing: '#9aa5b1', Bronze: '#c98a4b', Silver: '#8f9bab', Gold: '#d4a017' }, pos = v => Math.max(0, Math.min(100, v));
+    const at = new Date(Kat || Date.now()).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const H = K.months.filter(x => x.me && x.me.total != null).slice(-6), W = 180, HH = 44, lo = 40, px = i => H.length < 2 ? W / 2 : 8 + i * (W - 16) / (H.length - 1), py = v => 6 + (100 - Math.max(lo, Math.min(100, v))) / (100 - lo) * (HH - 12);
+    const spark = H.length ? `<svg viewBox="0 0 ${W} ${HH}" style="width:100%;height:${HH}px;display:block;margin-top:8px">${[[55, 'Bronze'], [70, 'Silver'], [85, 'Gold']].map(l => `<line x1="0" x2="${W}" y1="${py(l[0])}" y2="${py(l[0])}" stroke="${LC[l[1]]}" stroke-dasharray="2 3" opacity=".7"/>`).join('')}${H.length > 1 ? `<polyline fill="none" stroke="var(--ink)" stroke-width="1.6" opacity=".5" points="${H.map((x, i) => px(i) + ',' + py(x.me.total)).join(' ')}"/>` : ''}${H.map((x, i) => `<circle cx="${px(i)}" cy="${py(x.me.total)}" r="4.5" fill="${LC[x.me.level] || '#bbb'}" stroke="#fff" stroke-width="1.5"><title>${esc(x.label)} · ${x.me.total}</title></circle>`).join('')}</svg><div class="row" style="justify-content:space-between;font-size:10px;color:#999">${H.map(x => `<span>${esc(mShort(x.month).slice(0, 3))}${x.final ? '' : '*'}</span>`).join('')}</div>` : '';
+    const html = `<div style="font-size:10px;letter-spacing:.12em;color:#9a9aae;text-transform:uppercase">Excellence · this month</div>
+<div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="font-size:26px;line-height:1">${me.rank ? (MED[me.level] || '') : '🌱'}</span><div><b style="font-size:16px">${me.rank ? esc(me.level) : 'Not ranked yet'}</b><div class="small mute">${esc(mShort(m.month))}${m.final ? '' : ' so far'}${me.rank ? ' · ' + ord(me.rank) + ' place' : ''}</div></div></div>
+${me.rank && t >= 0 ? `<div style="position:relative;height:6px;border-radius:4px;overflow:hidden;background:#eef0f2;margin-top:10px">${[[0, 55, 'Developing'], [55, 70, 'Bronze'], [70, 85, 'Silver'], [85, 100, 'Gold']].map(s => `<div style="position:absolute;left:${s[0]}%;width:${s[1] - s[0]}%;top:0;bottom:0;background:${LC[s[2]]};opacity:${me.level === s[2] ? 1 : .3}"></div>`).join('')}<div style="position:absolute;left:${pos(t)}%;top:-1px;width:8px;height:8px;border-radius:50%;background:var(--ink);transform:translateX(-50%)"></div></div>
+<div class="small" style="color:#2a9d8f;font-weight:700;margin-top:6px">${gap(me)}</div>` : ''}
+${spark}
+<div style="font-size:11px;color:#2a9d8f;margin-top:6px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#2a9d8f;margin-right:4px;vertical-align:middle"></span>${m.final ? 'Final' : 'Live · updated ' + at}</div>`;
+    if(!box){ box = document.createElement('div'); box.id = 'kxSide'; box.title = 'Teacher Excellence · tap for details';
+      box.style.cssText = 'margin:16px 4px 8px;padding:12px 12px 10px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#fbfaf7,#fff);cursor:pointer';
+      box.onclick = () => { try{ go('growth'); setTimeout(() => { const c = $('kxCard'); if(c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250); }catch(e){} }; }
+    if(box.innerHTML !== html) box.innerHTML = html;
+    if(box.parentNode !== nav || nav.lastElementChild !== box) nav.appendChild(box); }
+  addEventListener('resize', () => { try{ side(); badge(); }catch(e){} });
+  const _bn = window.buildNav; if(_bn) window.buildNav = function(){ const x = _bn.apply(this, arguments); try{ side(); }catch(e){} return x; };
+  function paintAll(){ try{ side(); }catch(e){} try{ badge(); }catch(e){} try{ if(VIEW === 'growth') growthCard(); }catch(e){} try{ if(VIEW === 'today') totm(); }catch(e){} }
+  const _r = window.render; if(_r) window.render = function(){ const x = _r.apply(this, arguments); try{ side(); }catch(e){} try{ badge(); }catch(e){} try{ load(); }catch(e){} return x; };
   const _pg = window.paintGrowth; if(_pg) window.paintGrowth = function(){ const x = _pg.apply(this, arguments); try{ growthCard(); }catch(e){} try{ load(); }catch(e){} return x; };
   const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const x = _rt.apply(this, arguments); try{ totm(); }catch(e){} return x; };
   window.kxMeReload = () => load(true);
