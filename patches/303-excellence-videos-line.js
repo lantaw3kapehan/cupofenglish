@@ -1,0 +1,3 @@
+// 19 Oct · 303 · Teacher Excellence · Reliability tile: class videos by 23:59 as their own line (Misty: important for daily operations) — late −15, missing −30.
+const A = "        L.push('Attendance · ' + (at.length ? at.join(' · ') : B('perfect') + ' (no absence, late, cancellation or schedule change)'));";
+require('../tools/lib.js')(process.argv[2], [[A, A + "\n        L.push('Class videos by 23:59 · ' + ((+f.videosLate || +f.videosMissing) ? [f.videosLate ? B(f.videosLate) + ' late' : '', f.videosMissing ? B(f.videosMissing) + ' missing' : ''].filter(Boolean).join(' · ') : B('all on time')));"]]);
