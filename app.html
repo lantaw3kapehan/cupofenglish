@@ -6108,7 +6108,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 649;
+const COE_V = 650;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12762,6 +12762,35 @@ ${last && curPer() && norm(curPer()) === norm(last.period) ? `<div style="margin
       return `<div class="row small" style="gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)"><div class="grow"><b>${esc(tName(x.teacher.replace(/^./, c => c.toUpperCase())))}</b> <span class="mute">· ${esc(x.period)} · sent ${esc(ago(x.sent_at))}</span></div>${st}</div>`; }).join(''); }
   function rcLoad(){ if(!isM()) return; if(RC && Date.now() - RCat < 6e4){ rcPaint(); return; } RCat = Date.now(); post('mgmtQaAcks').then(d => { RC = d || []; rcPaint(); }).catch(() => {}); }
   const _rp = window.renderPerf; if(_rp) window.renderPerf = function(){ const x = _rp.apply(this, arguments); try{ rcPaint(); rcLoad(); }catch(e){} return x; };
+})();
+</script>
+<script>
+/* 19 Oct · 320 · Today without jumping (Misty: "whenever I go to TODAY screen, it is moving adjusting the boxes, flickers before it becomes stable")
+   Every redraw of Today is followed by several tidy-ups (0–600 ms: boxes grouped, duplicates removed, videos, names, Teacher of the Month).
+   Now the last finished Today stays on screen while the new one is drawn and tidied underneath; after ~0.7 s it is swapped in at once. */
+(function(){
+  const HOLD = 700, MAX = 1600;
+  let snap = null, tmr = 0, t0 = 0, last = '';
+  function release(){ clearTimeout(tmr); const v = $('v-today');
+    if(v){ v.style.opacity = ''; v.style.pointerEvents = ''; v.style.minHeight = ''; if(typeof VIEW !== 'undefined' && VIEW === 'today' && v.offsetParent !== null && !document.hidden) last = v.innerHTML; }
+    if(snap){ snap.remove(); snap = null; } }
+  function hold(){ const v = $('v-today'); if(!v || snap || v.offsetParent === null || document.hidden) return false;
+    const html = last || (v.childElementCount ? v.innerHTML : '');
+    if(!html){ snap = { remove(){} }; v.style.opacity = '0'; v.style.pointerEvents = 'none'; t0 = Date.now(); return true; }   // first draw: show it once it is tidy
+    const par = v.parentNode; if(getComputedStyle(par).position === 'static') par.style.position = 'relative';
+    const r = v.getBoundingClientRect(), pr = par.getBoundingClientRect();
+    snap = document.createElement('div'); snap.className = v.className; snap.setAttribute('aria-hidden', 'true'); snap.innerHTML = html;
+    snap.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+    snap.style.cssText = `position:absolute;left:${r.left - pr.left + par.scrollLeft - par.clientLeft}px;top:${r.top - pr.top + par.scrollTop - par.clientTop}px;width:${r.width}px;margin:0;pointer-events:none;z-index:4`;
+    par.insertBefore(snap, v);
+    v.style.minHeight = Math.max(r.height, 200) + 'px'; v.style.opacity = '0'; v.style.pointerEvents = 'none'; t0 = Date.now(); return true; }
+  const _rt = window.renderToday;
+  window.renderToday = function(){ try{ if(typeof VIEW !== 'undefined' && VIEW === 'today') hold(); }catch(e){}
+    const x = _rt.apply(this, arguments);
+    try{ if(snap){ clearTimeout(tmr); tmr = setTimeout(release, Math.max(0, Math.min(HOLD, MAX - (Date.now() - t0)))); } else if(VIEW === 'today'){ clearTimeout(tmr); tmr = setTimeout(release, HOLD); } }catch(e){}
+    return x; };
+  const _go = window.go; window.go = function(v){ if(v !== 'today' && snap) release(); return _go.apply(this, arguments); };
+  addEventListener('resize', () => { if(snap) release(); });
 })();
 </script>
 
