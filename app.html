@@ -6096,7 +6096,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 606;
+const COE_V = 607;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12064,6 +12064,29 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
       if(r.done === false) toast(`${r.book}${who} from ${r.from} · ${r.n} classes changed now, the rest within a few minutes`); else toast(r.n ? `${r.n} upcoming class${r.n === 1 ? '' : 'es'}${who} now ${r.book}${r.first ? ' · from ' + r.first : ''}` : (r.same ? 'The upcoming classes already use ' + r.book : 'No upcoming classes found from that day'));
       try{ if(STU && STU.code === code && STU.s && !window._cbMulti){ STU.s.book = r.book; stuRender(); } }catch(e){}
     }catch(e){ if(btn){ btn.disabled = false; btn.textContent = 'Change the book'; } toast((e && (e.msg || e.error)) || 'Not changed · check your internet and try again'); } };
+})();
+</script>
+<script>
+/* 19 Oct · 278 · more screens from the database (coe-mgmt › screen), each checked equal to Google's answer first:
+   enquiries (mgmtEnqList), agreements (mgmtAgreeMap), reminders sent (mgmtReminders), a teacher's hours and classes
+   (mgmtAvail / tAvail), the classes a leave covers (mgmtLeaveClasses / tLeaveClasses) and the week summary (mgmtWeekSum).
+   Google answers if the database does not answer in 8 s or is not ready. After a save on this device the screen it changes
+   reads from Google for 5 minutes (the database copy follows within a few minutes). */
+(function(){
+  const base = api, until = {};
+  const KIND = { mgmtEnqList: 'enq', mgmtAgreeMap: 'agr', mgmtReminders: 'rem', mgmtAvail: 'av', tAvail: 'av', mgmtLeaveClasses: 'cls', tLeaveClasses: 'cls', mgmtWeekSum: 'cls' };
+  const SAVES = [[/^mgmtEnq(Save|Status|Del\w*)$/, ['enq']], [/^mgmtAgree(Save|Del\w*)$/, ['agr']], [/^(mgmt|t)RemindLog$/, ['rem', 'cls']],
+    [/^(mgmt|t)AvailSave$/, ['av']], [/^(mgmtEditClass|editClass|mgmtAddClass|addClass|mgmtCancelClass|cancelClass|mgmtMoveClass|moveClass|tCancel\w*|mgmtSub\w*|mgmtSetBook)$/, ['cls', 'av']]];
+  async function viaDb(fn, args){
+    const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 8000) : 0;
+    try{ const r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'screen', fn: fn, args: args, token: TOKEN }), signal: ac ? ac.signal : undefined }).then(x => x.json());
+      if(!(r && r.ok && r.data != null)) throw new Error('no screen'); return r.data; }
+    finally{ clearTimeout(tid); } }
+  api = function(fn, ...args){
+    const k = KIND[fn];
+    if(k && TOKEN && Date.now() > (until[k] || 0)) return viaDb(fn, args.slice(1)).catch(() => base(fn, ...args));
+    for(const s of SAVES) if(s[0].test(fn)) s[1].forEach(x => until[x] = Date.now() + 5 * 6e4);
+    return base(fn, ...args); };
 })();
 </script>
 
