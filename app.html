@@ -6106,7 +6106,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 614;
+const COE_V = 615;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12214,6 +12214,22 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
           try{ Object.keys(SCC || {}).forEach(k => { SCC[k]._t = 0; }); }catch(e){}
           return d; })
         .catch(() => base(fn, ...args)).finally(() => clearTimeout(tid)); }
+    return base(fn, ...args); };
+})();
+</script>
+<script>
+/* 19 Oct · 285 · Management hours (mgmtHours) from the database (coe_mgmt_hours: T-TIMEIN + TIME-IN, checked equal to Google's answer);
+   the pay base only for the President or the person herself, as on Google. Google answers if the database does not answer in 8 s,
+   and for 5 minutes after a time-in / time-out on this device. */
+(function(){
+  const base = api; let until = 0;
+  api = function(fn, ...args){
+    if(fn === 'mgmtHours' && TOKEN && Date.now() > until){
+      const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 8000) : 0;
+      return fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'screen', fn: fn, args: args.slice(1), token: TOKEN }), signal: ac ? ac.signal : undefined })
+        .then(x => x.json()).then(r => { if(!(r && r.ok && r.data && Array.isArray(r.data.people))) throw new Error('no hours'); return r.data; })
+        .catch(() => base(fn, ...args)).finally(() => clearTimeout(tid)); }
+    if(/^(timeIn|timeOut|mgmtTimeFix\w*)$/.test(fn)) until = Date.now() + 5 * 6e4;
     return base(fn, ...args); };
 })();
 </script>
