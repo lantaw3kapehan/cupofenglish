@@ -1,0 +1,2 @@
+// 19 Oct · 338 follow-up: the month numbers were already right (Mia October 2.5); only used / left had today's class twice. Stop taking today off the month.
+require('../tools/lib.js')(process.argv[2], [["        if(C.months != null && Array.isArray(r[C.months]) && r[C.months].length){ const k = r[C.months].length - 1; if(+r[C.months][k] >= t) r[C.months][k] = r1(+r[C.months][k] - t); }\n", "        /* 340: the months already match the records · leave them */\n"]]);
