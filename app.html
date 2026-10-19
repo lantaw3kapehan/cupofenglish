@@ -6115,7 +6115,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 666;
+const COE_V = 667;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12357,7 +12357,7 @@ ${t.facts ? `<div class="kxf" hidden>${facts(t)}</div>` : ''}</div>`; }
   const gap = me => { const t = Number(me && me.total); if(!(t >= 0)) return ''; const nx = t < 65 ? ['Bronze', 65] : t < 78 ? ['Silver', 78] : t < 88 ? ['Gold', 88] : null; return nx ? (Math.round((nx[1] - t) * 10) / 10) + ' points to ' + nx[0] : 'top level reached'; };
   const isT = () => !!(typeof D !== 'undefined' && D && !D.mgr && TOKEN);
   const cur = () => K && K.months && K.months.length ? K.months[K.months.length - 1] : null;
-  function load(force){ if(Kbusy || !isT() || (!force && Date.now() - Kat < 10 * 6e4)) return; Kbusy = true;
+  function load(force){ if(Kbusy || !isT() || (!force && Date.now() - Kat < 10 * 6e4)) return; Kbusy = true; Kat = Date.now();   /* 337: back off even when it fails */
     post('tKpi').then(d => { K = d || null; Kat = Date.now(); try{ localStorage.setItem('coe.kx.me', JSON.stringify(K)); }catch(e){} paintAll(); }).catch(() => {}).finally(() => { Kbusy = false; }); }
 
   // 1 · the header badge
@@ -12974,7 +12974,7 @@ ${OPEN ? act.map(rowH).join('') + (off.length ? `<details style="margin-top:8px"
   const RULES = 'Solid white background · face lit and centred · headset on · camera at eye level · nothing personal behind you';
   // ── teacher ──
   let ME = null, MEat = 0; try{ ME = JSON.parse(localStorage.getItem('coe.setup.me') || 'null'); }catch(e){}
-  function loadMe(force){ if(!isT() || (!force && Date.now() - MEat < 5 * 6e4)) return; MEat = Date.now(); post('tSetupMe').then(d => { ME = d; try{ localStorage.setItem('coe.setup.me', JSON.stringify(d)); }catch(e){} card(); }).catch(() => { MEat = 0; }); }
+  function loadMe(force){ if(!isT() || (!force && Date.now() - MEat < 5 * 6e4)) return; MEat = Date.now(); post('tSetupMe').then(d => { ME = d; try{ localStorage.setItem('coe.setup.me', JSON.stringify(d)); }catch(e){} card(); }).catch(() => { /* 337: wait before retrying */ }); }
   function card(){ const v = $('v-today'); if(!v || !isT()) return; let c = $('setupCard'); const cur = ME && (ME.rows || []).find(x => x.ym === ym()), st = cur ? cur.status : '';
     if(!ME || st === 'Approved'){ if(c) c.remove(); return; }
     const h = st === 'Waiting' ? `<b>📷 Teaching setup · ${esc(mName(ym()))}</b> <span class="chip amber">Waiting for Operations</span><div class="small mute" style="margin-top:4px">Sent ${esc(new Date(cur.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))} · you can send a better one any time</div><label class="btn sm ghost" style="margin-top:8px">Send another<input type="file" accept="image/*" hidden onchange="setupUp(this)"></label>`
@@ -12992,7 +12992,7 @@ ${OPEN ? act.map(rowH).join('') + (off.length ? `<details style="margin-top:8px"
   const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const x = _rt.apply(this, arguments); try{ card(); loadMe(); }catch(e){} return x; };
   // ── management ──
   let ALL = null, ALLat = 0; const URLS = {};
-  function loadAll(force){ if(!isM() || (!force && Date.now() - ALLat < 2 * 6e4)) return; ALLat = Date.now(); post('mgmtSetupAll', [ym()]).then(d => { ALL = d || []; mPanel(); }).catch(() => { ALLat = 0; }); }
+  function loadAll(force){ if(!isM() || (!force && Date.now() - ALLat < 2 * 6e4)) return; ALLat = Date.now(); post('mgmtSetupAll', [ym()]).then(d => { ALL = d || []; mPanel(); }).catch(() => { /* 337: wait before retrying */ }); }
   function thumb(path, el){ if(URLS[path]){ el.src = URLS[path]; return; } call({ op: 'setupUrl', path }).then(r => { if(r && r.ok){ URLS[path] = r.url; el.src = r.url; } }); }
   window.setupView = function(path, who){ openSheet(`<h1>Teaching setup · ${esc(who)}</h1><div class="small mute">${RULES}</div><img id="setupBig" style="width:100%;border-radius:12px;margin-top:10px;background:#eee;min-height:200px">`); thumb(path, $('setupBig')); };
   window.setupDo = function(t, st){ let note = ''; if(st === 'Fix needed'){ note = prompt('What should ' + t + ' fix? (she sees this)', 'Please use a solid white background.'); if(note == null) return; }
@@ -13030,8 +13030,8 @@ ${L.map(x => `<tr style="border-top:1px solid var(--line)"><td style="padding:6p
 <div class="small mute" style="margin-top:6px">From TR-DATA · "Enrolled? (auto)" and "Follow-up (pick)" · report time is from the trial start to the report submitted (middle value).</div></details>`; }
     if(F9){ let p = $('first90'); if(!F9.length){ if(p) p.remove(); } else { if(!p){ p = document.createElement('section'); p.id = 'first90'; p.className = 'card'; p.style.cssText = 'padding:12px 14px;margin:0 0 14px'; v.appendChild(p); }
       p.innerHTML = `<details open><summary><b>🌱 New teachers · first 90 days</b> <span class="small mute">· hired in the last 120 days</span></summary>${F9.map(x => `<details style="margin-top:8px;border-top:1px solid var(--line);padding-top:6px"><summary class="small"><b>${esc(x.name)}</b> · day ${x.days} · ${bar(x.done, x.total)} ${x.done} of ${x.total} <span class="mute">· still open: ${esc(x.items.filter(i => !i.done).map(i => i.label.split(' (')[0]).slice(0, 3).join(', '))}${x.items.filter(i => !i.done).length > 3 ? '…' : ''}</span></summary>${itemsH(x)}</details>`).join('')}</details>`; } } }
-  function loadM(){ if(!isM()) return; if(Date.now() - TSat > 10 * 6e4){ TSat = Date.now(); post('mgmtTrialStats', [120]).then(d => { TS = d; perf(); }).catch(() => { TSat = 0; }); }
-    if(Date.now() - F9at > 10 * 6e4){ F9at = Date.now(); post('mgmtFirst90', ['']).then(d => { F9 = d || []; perf(); }).catch(() => { F9at = 0; }); } }
+  function loadM(){ if(!isM()) return; if(Date.now() - TSat > 10 * 6e4){ TSat = Date.now(); post('mgmtTrialStats', [120]).then(d => { TS = d; perf(); }).catch(() => { /* 337: wait before retrying */ }); }
+    if(Date.now() - F9at > 10 * 6e4){ F9at = Date.now(); post('mgmtFirst90', ['']).then(d => { F9 = d || []; perf(); }).catch(() => { /* 337: wait before retrying */ }); } }
   const _rp = window.renderPerf; if(_rp) window.renderPerf = function(){ const x = _rp.apply(this, arguments); try{ perf(); loadM(); }catch(e){} return x; };
   // teacher
   try{ ME = JSON.parse(localStorage.getItem('coe.first90') || 'null'); }catch(e){}
@@ -13039,7 +13039,7 @@ ${L.map(x => `<tr style="border-top:1px solid var(--line)"><td style="padding:6p
     if(!x || x.days > 120){ if(c) c.remove(); return; }
     if(!c){ c = document.createElement('section'); c.id = 'first90Me'; c.className = 'card'; c.style.cssText = 'padding:14px 16px;margin:0 0 14px'; const k = $('kxCard') || v.querySelector('.lead'); if(k) k.after(c); else v.prepend(c); }
     c.innerHTML = `<div class="small mute" style="letter-spacing:.06em;text-transform:uppercase">My first 90 days · day ${x.days}</div><div class="row" style="align-items:center;gap:10px;margin:6px 0 8px"><b style="font-size:22px">${x.done} of ${x.total}</b> ${bar(x.done, x.total)}<span class="small mute">${x.done === x.total ? 'All done · well done! 🎉' : 'steps done'}</span></div>${itemsH(x)}<div class="small mute" style="margin-top:6px">Your start at CupOfEnglish, step by step. Ask Operations if anything is unclear.</div>`; }
-  function loadT(){ if(!isT() || Date.now() - MEat < 10 * 6e4) return; MEat = Date.now(); post('tFirst90').then(d => { ME = d || []; try{ localStorage.setItem('coe.first90', JSON.stringify(ME)); }catch(e){} mine(); }).catch(() => { MEat = 0; }); }
+  function loadT(){ if(!isT() || Date.now() - MEat < 10 * 6e4) return; MEat = Date.now(); post('tFirst90').then(d => { ME = d || []; try{ localStorage.setItem('coe.first90', JSON.stringify(ME)); }catch(e){} mine(); }).catch(() => { /* 337: wait before retrying */ }); }
   const _pg = window.paintGrowth; if(_pg) window.paintGrowth = function(){ const x = _pg.apply(this, arguments); try{ mine(); loadT(); }catch(e){} return x; };
   setTimeout(() => { if(isT()) loadT(); }, 5000);
 })();
@@ -13114,7 +13114,7 @@ ${L.map(x => `<tr style="border-top:1px solid var(--line)"><td style="padding:6p
     if(!s){ const k = await call({ op: 'key' }); if(!k || !k.key) return false; s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: k8(k.key) }); first = true; }
     const r = await call({ op: 'sub', sub: s.toJSON() }); if(r && r.ok && first) call({ op: 'test' }).catch(() => {}); return !!(r && r.ok); }
   let PR = null, PRat = 0;
-  function loadPr(force){ if(!isM() || (!force && Date.now() - PRat < 5 * 6e4)) return; PRat = Date.now(); call({ op: 'prefs' }).then(d => { if(d && d.ok){ PR = d; home(); } }).catch(() => { PRat = 0; }); }
+  function loadPr(force){ if(!isM() || (!force && Date.now() - PRat < 5 * 6e4)) return; PRat = Date.now(); call({ op: 'prefs' }).then(d => { if(d && d.ok){ PR = d; home(); } }).catch(() => { /* 337: wait before retrying */ }); }
   function home(){ const v = $('v-home'); if(!v || !isM()) return; let c = $('pushAl'); if(!c){ c = document.createElement('div'); c.id = 'pushAl'; c.className = 'card small'; c.style.cssText = 'padding:8px 14px;margin:0 0 12px;cursor:pointer;display:flex;align-items:center;gap:10px';
       const lead = v.querySelector('.lead'); if(lead) lead.after(c); else v.prepend(c); c.onclick = () => window.pushAlSheet(); }
     const on = can() && Notification.permission === 'granted' && PR && PR.phones > 0, n = (PR && PR.kinds || []).length;
@@ -13136,7 +13136,7 @@ ${L.map(x => `<tr style="border-top:1px solid var(--line)"><td style="padding:6p
     catch(e){ toast((e && e.msg) || 'Not saved · try again'); if(b){ b.disabled = false; b.textContent = 'Save'; } } };
   // who has phone reminders (Performance)
   let WH = null, WHat = 0;
-  function perf(){ const v = $('v-perf'); if(!v || VIEW !== 'perf' || !isM()) return; if(Date.now() - WHat > 5 * 6e4){ WHat = Date.now(); call({ op: 'who' }).then(d => { if(d && d.ok){ WH = d.list || []; perf(); } }).catch(() => { WHat = 0; }); }
+  function perf(){ const v = $('v-perf'); if(!v || VIEW !== 'perf' || !isM()) return; if(Date.now() - WHat > 5 * 6e4){ WHat = Date.now(); call({ op: 'who' }).then(d => { if(d && d.ok){ WH = d.list || []; perf(); } }).catch(() => { /* 337: wait before retrying */ }); }
     if(!WH) return; let p = $('pushWho'); if(!p){ p = document.createElement('section'); p.id = 'pushWho'; p.className = 'card'; p.style.cssText = 'padding:12px 14px;margin:0 0 14px'; const a = $('setupPanel') || $('qaRc') || v.querySelector('.lead'); if(a) a.after(p); else v.prepend(p); }
     const on = WH.filter(x => x.phones), off = WH.filter(x => !x.phones);
     p.innerHTML = `<details><summary><b>📱 Phone reminders · ${on.length} of ${WH.length} teachers</b> <span class="small mute">· first class 2 h before, and after the last class if something is missing</span></summary>
