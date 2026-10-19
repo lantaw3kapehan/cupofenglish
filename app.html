@@ -6115,7 +6115,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 682;
+const COE_V = 683;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12187,7 +12187,7 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
   }
   api = function(fn, ...args){
     const f = args[2];
-    if(fn === 'editClass' && TOKEN && D && D.mgr && f && /^(cancel|restore|move)$/.test(f.action) && !f.forward && !(f.action === 'cancel' && f.makeup)){
+    if(fn === 'editClass' && TOKEN && D && D.mgr && f && /^(cancel|restore|move)$/.test(f.action) && (!f.forward || f.action === 'cancel') && !(f.action === 'cancel' && f.makeup)){   /* 353: Stop this schedule too */
       const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 9000) : 0;
       const rid = 'ce' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
       return fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'classEdit', id: args[1], f: f, rid: rid, token: TOKEN }), signal: ac ? ac.signal : undefined })
@@ -13480,15 +13480,17 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
   let LAST = null;
   window.csRun = async function(){ sync(); const o = JSON.parse(JSON.stringify(CS)), S = series().filter(x => o.stop[x.k]), R = o.rows.filter(r => okT(r.time));
     if(!o.nw || (!S.length && !R.length)) return;
-    openSheet(`<h1>Saving the new schedule…</h1><div class="small mute">${esc(o.name)} · please keep this open</div><div class="card" style="margin-top:12px;padding:12px 14px"><div id="csProg">Starting…</div></div>`);
-    const prog = t => { const g = $('csProg'); if(g) g.innerHTML = t; }, res = [];
+    closeSheet(); const pk = svPill(null, '⏳ <b>' + esc(o.name) + '</b> · saving the new schedule…', 'wait');   /* 353: in the background, the screen is free */
+    const prog = t => { try{ svPill(pk, '⏳ <b>' + esc(o.name) + '</b> · ' + t, 'wait'); }catch(e){} }, res = [];
     for(const x of S){ prog('Stopping ' + DL[x.d] + ' ' + esc(x.time) + ' with Teacher ' + esc(x.teacher) + '…');
       const c = x.first, f = { action: 'cancel', start: c.start, date: ymd(c.start), time: hm(c.start), mins: String(x.mins), teacher: x.teacher, makeup: false, reason: 'Changed to Teacher ' + cap(o.nw), forward: true, force: false };
       try{ const r = await api('editClass', TOKEN, c.id, f); res.push({ t: 'stop', x, ok: !!(r && r.ok), msg: (r && r.msg) || '' }); }
       catch(e){ res.push({ t: 'stop', x, ok: false, msg: String((e && (e.msg || e.error)) || 'not saved') }); } }
     for(const r of R){ prog('Adding ' + DL[r.d] + ' ' + esc(okT(r.time)) + ' with Teacher ' + esc(cap(o.nw)) + '…'); const a = await addRow(o, r, false); res.push(Object.assign({ t: 'add', r }, a)); }
     LAST = { o, res }; try{ Object.keys(SCC).forEach(k => { SCC[k]._t = 0; }); delete CLSM[o.code]; store('del', 'coe.cls.' + o.code); }catch(e){}
-    done(); };
+    const bad = res.filter(x => !x.ok).length; try{ svPill(pk, (bad ? '⚠ <b>' : '✓ <b>') + esc(o.name) + '</b> · ' + (bad ? bad + ' not saved · tap to see' : 'new schedule saved') + ' <a href="#" onclick="csShow();return false" style="color:inherit;text-decoration:underline">Details</a>', bad ? 'bad' : 'ok'); if(!bad) ding('msg'); }catch(e){}
+    const show = () => { if($('sheet') && $('sheet').classList.contains('on')) return setTimeout(show, 1500); done(); }; if(bad) show(); };
+  window.csShow = () => { if(LAST) done(); };
   window.csForce = async function(i){ const it = LAST && LAST.res[i]; if(!it || it.t !== 'add') return; const b = $('csFx' + i); if(b){ b.disabled = true; b.textContent = 'Adding…'; }
     const a = await addRow(LAST.o, it.r, true); Object.assign(it, a, { conflict: false }); done(); };
   function done(){ const { o, res } = LAST, bad = res.filter(x => !x.ok).length;
