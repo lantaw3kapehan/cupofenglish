@@ -6112,7 +6112,8 @@ try{ const r = await api('setActiveTick', TOKEN, row, code, v); if(!r.ok) throw 
 catch(e){ if(x){ x[8] = !v; keep('active', AT); } renderActive(); toast((e&&e.msg)||'Not saved. Try again.'); }
 }
 
-function openSheet(html){ if(!/class="paper/.test(html)) $('sheet').classList.remove('wide'); $('sheetBody').innerHTML = html; $('scrim').classList.add('on'); $('sheet').classList.add('on'); }
+function openSheet(html){ if(!/class="paper/.test(html)) $('sheet').classList.remove('wide'); $('sheetBody').innerHTML = html; $('scrim').classList.add('on'); $('sheet').classList.add('on');
+  try{ const R = window._tlRet; if(R && R.i > -1 && Date.now() - R.at < 30 * 6e4 && !/<h1>Trial report|id="tlPdf"|tl4/.test(html)) $('sheetBody').insertAdjacentHTML('afterbegin', '<button type="button" class="btn ghost sm" style="margin:0 0 10px" onclick="window._tlRet=null;tlOpen(' + R.i + ')">‹ Back to ' + esc(R.name || 'the') + '\'s trial</button>'); }catch(e){} }
 function closeSheet(){ if(NKEEP){ const k = NKEEP; NKEEP = null; if(k.dirty && noteDraft(k.code, k.day)){ toast('Note kept on this phone · open it and tap Save'); setTimeout(() => { try{ render(); }catch(e){} }, 300); } } if(SC_PEND){ SC_PEND = 0; setTimeout(() => loadSchedule(0, true), 50); } $('scrim').classList.remove('on'); $('sheet').classList.remove('on'); if(window._upd) setTimeout(() => { if(typeof applyUpdate==='function') applyUpdate(); }, 400); setTimeout(() => { if(!$('sheet').classList.contains('on')) $('sheet').classList.remove('wide'); }, 250); }
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeSheet(); });
 /* 14 Oct: phone Back button closes the open card (one step), it doesn't leave the app or lose what was typed */
@@ -6122,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 707;
+const COE_V = 708;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -13605,13 +13606,25 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
     const fr = document.createElement('div'); fr.className = 'tl4-r tl4-f';
     fr.innerHTML = '<div class="tl4-n">·</div><div class="tl4-t"><b>Follow up</b><span>' + esc((el.querySelector('.tlStep:nth-child(3) .mute') || {}).textContent || '').replace(/^\s*·\s*/, '') + '</span></div><div class="tl4-fu"></div>';
     fu.forEach(b => { b.classList.remove('grow', 'block'); fr.querySelector('.tl4-fu').appendChild(b); }); if(fu.length) A.appendChild(fr);
-    const en = enrol || enrolT; if(en){ const r = document.createElement('div'); r.className = 'tl4-r';
+    const en = enrol || enrolT; if(en && !(D && D.mgr && t.code)){ const r = document.createElement('div'); r.className = 'tl4-r';
       r.innerHTML = '<div class="tl4-n">·</div><div class="tl4-t"><b>Enrol</b><span>When the student has paid, or lessons are transferred</span></div><div class="tl4-a"></div>';
       en.classList.remove('grow', 'block', 'teal'); en.textContent = en.textContent.replace(/\s*·\s*record the first package/, ''); r.querySelector('.tl4-a').appendChild(en); A.appendChild(r); }
-    if(sched || agree){ const r = document.createElement('div'); r.className = 'tl4-r';
+    if(D && D.mgr && t.code){   /* 378 */
+      const nm = esc(String(t.student || '').replace(/'/g, '')), tc = esc(String(t.teacher || '').replace(/'/g, '')), cd = esc(t.code);
+      const has = (() => { try{ const i = AT.cols.indexOf('code'); return AT.rows.some(x => String(x[i]).toUpperCase() === String(t.code).toUpperCase()); }catch(e){ return false; } })();
+      const row = (k, title, sub, btns) => { const r = document.createElement('div'); r.className = 'tl4-r' + (S[k] ? ' done' : ''); r.innerHTML = '<div class="tl4-n">' + (S[k] ? '✓' : '·') + '</div><div class="tl4-t"><b>' + title + '</b><span>' + sub + '</span></div><div class="tl4-a">' + btns + '</div>';
+        r.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { mark(t, k); try{ window._tlRet = { i: (TRL.rows || []).indexOf(t), name: t.student, at: Date.now() }; }catch(e){} }, true)); A.appendChild(r); };
+      row('paid', 'Paid', has ? 'A returning student · record the new package' : 'Record the first package · SALES, ACTIVE and DATABASE in one save',
+        has ? '<button class="btn teal" onclick="renPaidSheet(\'' + cd + '\',\'' + nm + '\',\'' + tc + '\')">Renewed · paid</button><button class="btn ghost sm" onclick="enSheet(\'' + cd + '\',\'' + nm + '\',\'' + tc + '\')">First package</button>'
+            : '<button class="btn teal" onclick="enSheet(\'' + cd + '\',\'' + nm + '\',\'' + tc + '\')">Enrolled · paid</button>');
+      row('sched', 'Class schedule', 'The weekly classes of the package', '<button class="btn ghost" onclick="tlSched()">Set class schedule</button>');
+      row('notice', 'Class notice', 'The schedule picture for the parent', '<button class="btn ghost" onclick="cnOpen(\'' + cd + '\')">Class notice</button>');
+      row('agree', 'Agreement', 'The learning agreement to sign', '<button class="btn ghost" onclick="agrOpen({code:\'' + cd + '\'})">Agreement</button>');
+      row('page', 'Student page', 'Package, classes and notes', '<button class="btn ghost" onclick="closeSheet();openStudent(\'' + cd + '\')">Open ' + nm + '\'s page</button>'); }
+    else if(sched || agree){ const r = document.createElement('div'); r.className = 'tl4-r';
       r.innerHTML = '<div class="tl4-n">·</div><div class="tl4-t"><b>Get started</b><span>After enrolling</span></div><div class="tl4-a"></div>';
       r.classList.add('tl4-w'); [sched, agree].filter(Boolean).forEach(b => { b.classList.remove('grow', 'block', 'teal'); r.querySelector('.tl4-a').appendChild(b); }); A.appendChild(r); }
-    const left = all.filter(x => !used.has(x));
+    const left = all.filter(x => !used.has(x) && !(D && D.mgr && t.code && /^(Class notice|Agreement|Set class schedule|Enrolled · paid|Open .*page)/.test(x.textContent.trim())));   /* 378: already in the steps */
     el.innerHTML = ''; el.appendChild(wrap); left.forEach(b => wrap.querySelector('#tl4A').lastChild ? wrap.querySelector('#tl4A').lastChild.querySelector('.tl4-a, .tl4-fu').appendChild(b) : 0);
     el.classList.add('tl4'); el.dataset.tl4 = '1';
     /* Level + redo (they sit right after the actions) → More */
