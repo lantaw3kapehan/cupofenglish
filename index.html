@@ -25,26 +25,32 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
 /* CupOfEnglish app: the screens live here (app.html); data still comes from Apps Script. Kept on the phone so it opens instantly. */
 (function () {
   var API = 'https://script.google.com/macros/s/AKfycbyqAYrjEQ3CdeTzogP8mZ8tMRx59nV0vMvOHtoQ0wudTBNNXV7YeE_mJPYcqIRhmRbu/exec';
-  var KEY = 'coe.app', cached = null;
+  var KEY = 'coe.app', CK = 'coe-4', CU = 'app-copy.html', cached = null, painted = false;
   try { cached = localStorage.getItem(KEY); } catch (e) {}
-  function paint(h) { document.open(); document.write(h); document.close(); }
+  function paint(h) { if (painted) return; painted = true; document.open(); document.write(h); document.close(); }
   function ver(x) { var m = /const COE_V = (\d+);/.exec(x || ''); return m ? +m[1] : 0; }
   function get(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('bad'); return r.text(); }).then(function (h) { if (h.indexOf('COE_API') < 0) throw new Error('bad'); return h; }); }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
-  /* 20 Oct · the app is now ~2.5 million characters, close to the browser's storage limit (about 5 MB) with the screens' own saved data
-     next to it. Saving a new version could fail silently, leaving that browser on an old copy for good. Now: if the save fails, the old
-     copy is removed first and the save tried again; if it still does not fit, no copy is kept, so the next open loads the newest from
-     the internet instead of an old one. */
+  /* 20 Oct · the app is ~2.5 million characters: Safari and iPhones allow a site only about 5 MB of this storage, so the saved copy did not
+     fit and those browsers stayed on an old version. The copy now goes to the browser's file storage (Cache Storage, much larger) when it
+     does not fit; if neither works, no copy is kept and the newest loads from the internet each time. */
+  function cGet() { try { return caches.open(CK).then(function (c) { return c.match(CU); }).then(function (r) { return r ? r.text() : null; }).catch(function () { return null; }); } catch (e) { return Promise.resolve(null); } }
+  function cPut(h) { try { return caches.open(CK).then(function (c) { return c.put(CU, new Response(h, { headers: { 'Content-Type': 'text/html;charset=utf-8' } })); }).catch(function () {}); } catch (e) { return Promise.resolve(); } }
   function save(h) {
     try { localStorage.setItem(KEY, h); return true; } catch (e) {}
     try { localStorage.removeItem(KEY); localStorage.setItem(KEY, h); return true; } catch (e) {}
     try { localStorage.removeItem(KEY); } catch (e) {}
-    return false;
+    cPut(h); return false;
   }
-  get('app.html').catch(function () { return get(API + '?app=1'); }).then(function (h) {   // backup: the old Apps Script copy
-    if (h !== cached && ver(h) >= ver(cached)) { save(h); if (!cached) paint(h); }   // a newer version shows next time · never step back to an older copy (stale CDN or the old backup)
-  }).catch(function () { if (!cached) document.getElementById('m').textContent = 'No connection. Check your internet and reopen.'; });
-  if (cached) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { paint(cached); }); else paint(cached); }
+  var net = get('app.html').catch(function () { return get(API + '?app=1'); });   // backup: the old Apps Script copy
+  function boot(have) {
+    net.then(function (h) {
+      if (h !== have && ver(h) >= ver(have)) { save(h); if (!have) paint(h); }   // a newer version shows next time · never step back to an older copy (stale CDN or the old backup)
+    }).catch(function () { if (!have && !painted) document.getElementById('m').textContent = 'No connection. Check your internet and reopen.'; });
+    if (have) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { paint(have); }); else paint(have); }
+  }
+  if (cached) boot(cached);
+  else cGet().then(function (c) { boot(c && c.indexOf('COE_API') > -1 ? c : null); });
 })();
 </script>
 </body>
