@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 777;
+const COE_V = 778;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -17392,18 +17392,19 @@ body #v-teachers .tc2-line .pg{height:6px!important}
       '<div class="hd"><div class="av">' + esc(String(name).replace(/^teacher\s+/i, '').slice(0, 2).toUpperCase()) + '</div><div><h1 data-tch="' + esc(name) + '">' + esc(tName(name)) + '</h1><div class="sub">' + (me.rank ? '<span class="rk">' + esc(me.rank) + '</span>' : '') + esc([me.rate ? peso(me.rate) + '/lesson' : '', (me.lifetime || 0).toLocaleString() + ' lifetime units'].filter(Boolean).join(' · ')) + '</div></div></div>' +
       '<div class="act"><button class="btn sm teal" onclick="growthSheet(\'' + q(name) + '\')">Growth</button><button class="btn ghost sm" onclick="payslip(\'' + q(name) + '\')">Payslip</button><button class="btn ghost sm" onclick="avOpen(\'' + q(name) + '\')">Open slots</button><button class="btn ghost sm" onclick="profOpen(\'' + q(name) + '\')">Profile card</button><button class="btn ghost sm" onclick="pwSet(\'' + q(name) + '\')">Password · access</button><button class="btn ghost sm" onclick="closeSheet();go(\'teachers\');loadTT(\'' + q(name) + '\')">TEACHERS tab</button></div>';
     const du = prev ? units - num(prev.units) : null;
-    h += '<div class="kp"><div><b>' + units + (prev ? '<em style="color:#8A86A0;font-weight:400">' + esc(String(prev.month).split(' ')[0]) + ' ' + num(prev.units) + '</em>' : '') + '</b><span>units this month</span></div>' +
-      '<div><b>' + peso(nowPayOf(me) + (me.monthBonus || 0) - (me.monthDeduct || 0)) + '</b><span>pay so far' + (me.monthBonus ? ' · <span style="color:#1E8A5E">+' + peso(me.monthBonus) + '</span>' : '') + (me.monthDeduct ? ' · <span style="color:#C0563F">−' + peso(me.monthDeduct) + '</span>' : '') + '</span></div>' +
-      '<div><b>' + S.length + '</b><span>students</span></div>' +
-      '<div><b style="color:' + (tp == null ? 'var(--ink)' : tp >= 90 ? '#1E8A5E' : tp >= 75 ? '#B07A10' : '#C0563F') + '">' + (tp == null ? '—' : tp + '%') + '</b><span>time-ins on time · last ' + T.length + '</span></div>' +
-      (FBO ? '<div><b style="color:' + (fb ? '#C0563F' : '#1E8A5E') + '">' + fb + '</b><span>monthly feedback due</span></div></div>' : '<div><b style="color:#8A86A0">25th</b><span>monthly feedback opens · ' + (25 - new Date().getDate()) + ' day' + (25 - new Date().getDate() === 1 ? '' : 's') + ' to go</span></div></div>');
+    const pace = (() => { const d = new Date(), dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); return d.getDate() > 2 ? Math.round(units / d.getDate() * dim) : null; })(), pu = prev ? num(prev.units) : null;   /* 450 */
+    h += '<div class="kp"><div class="k50 ku"><small>Units · ' + MN[new Date().getMonth()] + '</small><b>' + units + '</b><span>' + (pace != null && pu ? 'pace ~' + pace + ' <em style="color:' + (pace >= pu ? '#1E8A5E' : '#C0563F') + ';font-style:normal;font-weight:700">' + (pace >= pu ? '▲' : '▼') + '</em> ' + esc(String(prev.month).split(' ')[0]) + ' ' + pu : 'units this month') + '</span></div>' +
+      '<div class="k50 kpay"><small>Pay so far</small><b>' + peso(nowPayOf(me) + (me.monthBonus || 0) - (me.monthDeduct || 0)) + '</b><span>pay so far' + (me.monthBonus ? ' · <span style="color:#1E8A5E">+' + peso(me.monthBonus) + '</span>' : '') + (me.monthDeduct ? ' · <span style="color:#C0563F">−' + peso(me.monthDeduct) + '</span>' : '') + '</span></div>' +
+      '<div class="k50 kst"><small>Students</small><b>' + S.length + '</b><span>' + S.filter(s => s.left != null && s.left <= 5).length + ' with 5 or fewer lessons</span></div>' +
+      '<div class="k50 ktime"><small>Time-ins</small><b style="color:' + (tp == null ? 'var(--ink)' : tp >= 90 ? '#1E8A5E' : tp >= 75 ? '#B07A10' : '#C0563F') + '">' + (tp == null ? '—' : tp + '%') + '</b><span>time-ins on time · last ' + T.length + '</span></div>' +
+      (FBO ? '<div class="k50 kfb"><small>Monthly feedback</small><b style="color:' + (fb ? '#C0563F' : '#1E8A5E') + '">' + fb + '</b><span>due now</span></div></div>' : '<div class="k50 kfb"><small>Monthly feedback</small><b>' + (25 - new Date().getDate()) + ' day' + (25 - new Date().getDate() === 1 ? '' : 's') + '</b><span>until it opens on the 25th</span></div></div>');
     /* today + pay chart */
     const now = new Date(), hm = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-    const tdy = today.length ? today.map(c => { const s = new Date(c.start), past = new Date(c.end || c.start) < now; return '<div class="r' + (c.cancelled ? ' x' : '') + (past ? ' past' : '') + '" style="--c:' + (c.cancelled ? '#C9C6D6' : bookCol(c.book)) + '"><b>' + tm(c.start) + '</b><i></i><span class="ell">' + esc(c.student || c.title) + (c.book ? ' <span class="mute">· ' + esc(c.book) + '</span>' : '') + '</span>' + (c.type && c.type !== 'Regular' ? '<span class="chip">' + esc(c.type) + '</span>' : '<span></span>') + '</div>'; }).join('') : '<div class="mute small">No classes today.</div>';
+    const tdy = today.length ? today.map(c => { const s = new Date(c.start), past = new Date(c.end || c.start) < now; return '<div class="r' + (c.cancelled ? ' x' : '') + (past ? ' past' : '') + '" style="--c:' + (c.cancelled ? '#C9C6D6' : bookCol(c.book)) + '"><b>' + tm(c.start) + '</b><i></i><span class="ell">' + esc(c.student || c.title) + (c.book ? ' <span class="bk50">' + esc(c.book) + '</span>' : '') + (c.cancelled ? ' <span class="st50 sx">cancelled</span>' : past ? ' <span class="st50 sd">done</span>' : new Date(c.start) <= now ? ' <span class="st50 sn">now</span>' : '') + '</span>' + (c.type && c.type !== 'Regular' ? '<span class="chip">' + esc(c.type) + '</span>' : '<span></span>') + '</div>'; }).join('') : '<div class="mute small">No classes today.</div>';
     const P6 = pay.slice(0, 6).reverse(), pm = Math.max(1, ...P6.map(x => num(x.units)));
     const chart = P6.length ? '<div class="cs">' + P6.map((x, i) => { const u = num(x.units), paid = /paid/i.test(x.status || ''); return '<div class="' + (i === P6.length - 1 && !paid ? 'cur' : paid ? 'pd' : '') + '" title="' + esc(x.month) + ': ' + u + ' units · ' + peso(x.net) + ' · ' + esc(paid ? (x.paidOn || 'Paid') : (x.status || 'Pending')) + '"><i style="height:' + Math.max(2, u / pm * 96) + 'px"></i><b style="bottom:' + (u / pm * 96 + 3) + 'px">' + u + '</b></div>'; }).join('') + '</div><div class="ax">' + P6.map(x => '<span>' + esc(String(x.month).split(' ')[0]) + '<em>' + peso(x.net) + '</em></span>').join('') + '</div>' : '<div class="mute small">No payroll rows yet.</div>';
     h += '<div class="g2"><div class="cd td46"><h3><span>Today · ' + today.length + ' class' + (today.length === 1 ? '' : 'es') + '</span><span>' + WD[now.getDay()] + ' ' + now.getDate() + ' ' + MN[now.getMonth()] + '</span></h3>' + tdy + '</div>' +
-      '<div class="cd pc"><h3><span>Units &amp; pay · last ' + P6.length + ' months</span><span>green = paid</span></h3>' + chart + '</div></div>';
+      '<div class="cd pc"><h3><span>Units &amp; pay · last ' + P6.length + ' months</span><span class="lg50"><i style="background:#2E9E6F"></i>paid <i style="background:#00A3AD"></i>this month <i style="background:#9ED9DD"></i>pending</span></h3>' + chart + '</div></div>';
     /* time-ins */
     const bad = t => { const m = String(t.speed || '').match(/(\d+(?:\.\d+)?)\s*ms\s*·\s*jitter\s*(\d+(?:\.\d+)?)/); return m && (+m[1] > 300 || +m[2] > 100); };
     h += '<div class="sh"><span>Time-ins · last ' + Math.min(12, T.length) + '</span><span><b>' + onT + '</b> of ' + T.length + ' on time</span></div>';
@@ -17520,6 +17521,29 @@ body #v-teachers .tc2-line .pg{height:6px!important}
       setTimeout(() => fill(name, me), 0); }catch(e){ console.warn('jy49', e); }
     return h; };
 })();
+</script>
+<script>
+/* 20 Oct · 450 · teacher card colours (Misty: "can it be better visually, especially colour labels?") */
+(function(){ const css = document.createElement('style'); css.textContent = `
+.t46 .kp .k50{position:relative;padding:10px 12px 10px 14px!important;background:var(--bg50)!important;border-left:4px solid var(--c50)}
+.t46 .kp .k50 small{display:flex;align-items:center;gap:6px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--c50);font-weight:700}
+.t46 .kp .k50 small:before{content:'';width:8px;height:8px;border-radius:4px;background:var(--c50)}
+.t46 .kp .k50 b{margin-top:2px}
+.t46 .kp .k50 span{font-size:12px!important}
+.t46 .kp .ku{--c50:#00A3AD;--bg50:#EEF8F9}
+.t46 .kp .kpay{--c50:#2E9E6F;--bg50:#EEF8F3}
+.t46 .kp .kst{--c50:#6C5FC7;--bg50:#F2F0FB}
+.t46 .kp .ktime{--c50:#3B82B5;--bg50:#EEF4FA}
+.t46 .kp .kfb{--c50:#D9962B;--bg50:#FCF6EA}
+.t46 .td46 .r .bk50{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:999px;margin-left:4px;background:color-mix(in srgb,var(--c) 14%,#fff);color:color-mix(in srgb,var(--c) 80%,#1E1A3A)}
+.t46 .td46 .r .st50{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:1px 7px;border-radius:999px;margin-left:6px;text-decoration:none}
+.t46 .td46 .r .sd{background:#F1F0F6;color:#8A86A0}.t46 .td46 .r .sn{background:#00A3AD;color:#fff}.t46 .td46 .r .sx{background:#FDF1EE;color:#C0563F}
+.t46 .td46 .r.past .bk50{opacity:.6}
+.t46 .lg50{display:inline-flex;align-items:center;gap:5px;letter-spacing:0;text-transform:none}
+.t46 .lg50 i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-left:6px}
+.t46 .pc .cs>div:not(.pd):not(.cur) i{background:#9ED9DD}
+.t46 .jy49 .ms:nth-child(2) i{box-shadow:inset 0 0 0 4px var(--rc)}
+.t46 .jy49 .ms:nth-child(2) b{color:var(--rt)}`; document.head.appendChild(css); })();
 </script>
 
 </body>
