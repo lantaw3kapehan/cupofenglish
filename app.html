@@ -6123,10 +6123,10 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 805;
+const COE_V = 807;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
-function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
+function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
 function updQuiet(){ try{ if(typeof D === 'undefined' || !D || performance.now() < 15000) return false;   /* audit 13 Oct: management too */ const h = new Date().getHours(); return h >= 16; }   /* 14 Oct: quiet until midnight (late trial classes), was 22:00 */catch(e){ return false; } }
 let UPD_AT = 0;
 function fetchUpdate(){ if(!API_URL || GAS || Date.now() - UPD_AT < 10*60000) return; UPD_AT = Date.now();
@@ -6134,7 +6134,10 @@ fetch('version.txt', {cache:'no-store'}).then(r => r.text()).then(v => { if(+v >
 function fetchUpdateFull(){ setTimeout(fetchUpdateNow, (typeof D !== 'undefined' && D && D.mgr) ? 500 : Math.random() * 90000); }   /* spread out: not every phone downloads the new version in the same second */
 function fetchUpdateNow(){
 fetch('app.html', {cache:'no-store'}).then(r => r.text()).then(h => { if(h.indexOf('COE_API') < 0) return;
-const m = h.match(/const COE_V = (\d+);/); if(m && +m[1] > COE_V){ try{ localStorage.setItem('coe.app', h); }catch(e){} applyUpdate(); } }).catch(()=>{}); }
+const m = h.match(/const COE_V = (\d+);/); if(m && +m[1] > COE_V){ let ok = false; try{ localStorage.setItem('coe.app', h); ok = true; }catch(e){}
+  /* 20 Oct · 478 · storage full: drop the old copy and try again; if it still does not fit, keep no copy, so reopening loads the newest from the internet (index.html does the same) */
+  if(!ok){ try{ localStorage.removeItem('coe.app'); localStorage.setItem('coe.app', h); ok = true; }catch(e){ try{ localStorage.removeItem('coe.app'); }catch(x){} } }
+  if(ok) applyUpdate(); else { window._updNet = 1; applyUpdate(); } } }).catch(()=>{}); }
 if(API_URL && !GAS){ setTimeout(applyUpdate, 2500); setTimeout(applyUpdate, 8000); setInterval(fetchUpdate, 20*60000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden) fetchUpdate(); }); }
 try{ if(!NAV_T.some(x => x[0] === 'tinbox')) NAV_T.splice(2, 0, ['tinbox', 'Messages', 'send']); if(VIEWS.indexOf('tinbox') < 0) VIEWS.push('tinbox');

@@ -31,8 +31,18 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
   function ver(x) { var m = /const COE_V = (\d+);/.exec(x || ''); return m ? +m[1] : 0; }
   function get(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('bad'); return r.text(); }).then(function (h) { if (h.indexOf('COE_API') < 0) throw new Error('bad'); return h; }); }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+  /* 20 Oct · the app is now ~2.5 million characters, close to the browser's storage limit (about 5 MB) with the screens' own saved data
+     next to it. Saving a new version could fail silently, leaving that browser on an old copy for good. Now: if the save fails, the old
+     copy is removed first and the save tried again; if it still does not fit, no copy is kept, so the next open loads the newest from
+     the internet instead of an old one. */
+  function save(h) {
+    try { localStorage.setItem(KEY, h); return true; } catch (e) {}
+    try { localStorage.removeItem(KEY); localStorage.setItem(KEY, h); return true; } catch (e) {}
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    return false;
+  }
   get('app.html').catch(function () { return get(API + '?app=1'); }).then(function (h) {   // backup: the old Apps Script copy
-    if (h !== cached && ver(h) >= ver(cached)) { try { localStorage.setItem(KEY, h); } catch (e) {} if (!cached) paint(h); }   // a newer version shows next time · never step back to an older copy (stale CDN or the old backup)
+    if (h !== cached && ver(h) >= ver(cached)) { save(h); if (!cached) paint(h); }   // a newer version shows next time · never step back to an older copy (stale CDN or the old backup)
   }).catch(function () { if (!cached) document.getElementById('m').textContent = 'No connection. Check your internet and reopen.'; });
   if (cached) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { paint(cached); }); else paint(cached); }
 })();
