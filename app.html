@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 732;
+const COE_V = 733;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -9445,7 +9445,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     let h = `<section class="o2-hero"><img class="ov-cup" src="${esc(ovCup())}" alt=""><div style="position:relative;min-width:0"><div class="o2-eye">${now.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' })} · ${tm(now.toISOString())}</div><h1>${hi}</h1>
 <div class="o2-tag"><span>Learn with the best to be the best</span><span class="zh">与优秀者同行，遇见更好的自己</span></div></div>
 <div class="o2-st">
-<a class="o2-s ${hot ? 'hot' : ''}" onclick="document.getElementById('ovDecide').scrollIntoView({behavior:'smooth'})"><span>Needs you</span><b>${hot ? hot : '✓'}</b><small>${hot ? (hotQ[0] ? esc(hotQ[0].t) : '') : Q.length ? 'Nothing urgent · ' + Q.length + ' to look at' : 'All clear'}</small></a>
+<a class="o2-s ${hot ? 'hot' : ''}" onclick="go('mtoday')"><span>Needs you</span><b>${hot ? hot : '✓'}</b><small>${hot ? (hotQ[0] ? esc(hotQ[0].t) : '') : Q.length ? 'Nothing urgent · ' + Q.length + ' to look at' : 'All clear'}</small></a>
 ${E ? `<a class="o2-s" onclick="go('schedule')"><span>${on.length ? 'Live now' : 'Next class'}</span><b>${on.length ? '<i class="ov-live"></i>' + on.length : next.length ? tm(next[0].start) : '—'}</b><small>${on.length ? on.map(e => esc(tName(e.teacher))).join(' · ') : next.length ? esc(tName(next[0].teacher)) + ' · ' + esc(next[0].student || next[0].title || '') : 'No more classes today'}</small></a>
 <a class="o2-s" onclick="go('schedule')"><span>Left today</span><b>${next.length + on.length}</b><small>${done.length} done · ${live.length} in all${E.length - live.length ? ' · ' + (E.length - live.length) + ' cancelled' : ''}</small></a>` : ''}
 </div></section>`;
@@ -9481,7 +9481,10 @@ ${x.s ? `<div class="ov-who">${who(x.s).map(w => `<span>${esc(w)}</span>`).join(
     const wait = W.length || ok.length ? `<section class="ov-sec" style="gap:0"><div class="o2-hd"><h2>Waiting on teachers</h2><span>nudge in WeChat</span></div><div class="o2-w">
 ${W.map(x => `<a class="o2-wr" onclick="${x.go}" title="${esc(x.s || '')}"><span>${esc(x.t)}${x.s ? `<small>${esc(String(x.s).split(' · ').slice(0, 3).join(' · '))}</small>` : ''}</span><b>${esc(String(x.n))}</b><em>›</em></a>`).join('')}
 ${ok.length ? `<div class="o2-ok"><b>✓ All clear</b> · ${ok.map(esc).join(' · ')}</div>` : ''}</div></section>` : '';
-    h += `<div class="o2-mid ${wait ? '' : 'solo'}">${dec}${wait}</div>`;
+    void dec; void wait;   /* 403: the lists themselves are on To do */
+    { const nQ = Q.length, nW = W.length, names = Q.slice(0, 3).map(x => x.t).concat(W.slice(0, 2).map(x => x.t));
+      h += `<a class="o2-todo ${nQ ? 'hot' : ''}" onclick="go('mtoday')"><div class="o2-tl"><span>To do</span><b>${nQ ? nQ + ' need' + (nQ === 1 ? 's' : '') + ' you' : '✓ Nothing urgent'}</b>${nW ? `<small>${nW} waiting on teachers</small>` : ''}</div>` +
+        `<div class="o2-tn">${names.length ? names.map(t => `<span>${esc(t)}</span>`).join('') : '<span class="ok">All clear</span>'}</div><em>Open To do ›</em></a>`; }
 
     if(E && E.length){ h += ovTl(E, now); }
     else if(!E) h += `<section class="ov-sec ov-card"><div class="sk"></div></section>`;
@@ -14972,6 +14975,9 @@ section.sec{border-color:var(--line)}
 #pushAl{background:#fff!important;border:1px solid var(--line)!important;border-radius:var(--r-md)!important;box-shadow:none!important;padding:8px 14px!important;font-size:13px!important}`;
   document.head.appendChild(css);
 })();
+</script>
+<script>
+(function(){ const s = document.createElement('style'); s.textContent = `.ov2 .o2-todo{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh1);padding:16px 20px;cursor:pointer;color:var(--ink)!important;text-decoration:none}.ov2 .o2-todo:hover{box-shadow:0 0 0 1px var(--teal) inset,var(--sh1)}.ov2 .o2-todo.hot{border-left:4px solid #D4705A}.ov2 .o2-tl{display:flex;flex-direction:column;gap:2px;min-width:180px}.ov2 .o2-tl span{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#8A86A0;font-weight:600}.ov2 .o2-tl b{font-family:var(--brand);font-weight:400;font-size:22px;color:var(--ink)}.ov2 .o2-todo.hot .o2-tl b{color:#B4513B}.ov2 .o2-tl small{font-size:12.5px;color:#8A86A0}.ov2 .o2-tn{flex:1;display:flex;flex-wrap:wrap;gap:6px;min-width:0}.ov2 .o2-tn span{font-size:13px;padding:5px 11px;border-radius:999px;background:var(--soft);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}.ov2 .o2-tn span.ok{background:var(--tint);color:#00737B}.ov2 .o2-todo em{font-style:normal;font-weight:700;color:var(--teal);white-space:nowrap}`; document.head.appendChild(s); })();
 </script>
 
 </body>
