@@ -6115,7 +6115,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 696;
+const COE_V = 697;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12362,7 +12362,17 @@ ${t.facts ? `<div class="kxf" hidden>${facts(t)}</div>` : ''}</div>`; }
   const chip = l => l ? `<span class="chip" style="${LV[l] || ''};font-weight:600">${MED[l] || ''} ${esc(l)}</span>` : '';
   const mShort = ym => { try{ return new Date(ym + '-15T12:00:00').toLocaleDateString('en-GB', { month: 'long' }); }catch(e){ return ym; } };
   const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] || 'th'));
-  const gap = me => { const t = Number(me && me.total); if(!(t >= 0)) return ''; const nx = t < 65 ? ['Bronze', 65] : t < 78 ? ['Silver', 78] : t < 88 ? ['Gold', 88] : null; return nx ? (Math.round((nx[1] - t) * 10) / 10) + ' points to ' + nx[0] : 'top level reached'; };
+  const gap0 = me => { const t = Number(me && me.total); if(!(t >= 0)) return ''; const nx = t < 65 ? ['Bronze', 65] : t < 78 ? ['Silver', 78] : t < 88 ? ['Gold', 88] : null; return nx ? (Math.round((nx[1] - t) * 10) / 10) + ' points to ' + nx[0] : 'top level reached'; };
+  const gap = me => { try{ const t = Number(me && me.total); if(!(t >= 0)) return '';
+    const m = (K && K.months || []).find(x => x.me === me), live = m && !m.final;
+    const nx = t < 65 ? ['Bronze', 65] : t < 78 ? ['Silver', 78] : t < 88 ? ['Gold', 88] : null, pts = nx ? Math.round((nx[1] - t) * 10) / 10 : 0;
+    if(!live) return gap0(me);
+    if(me.rank === 1 && (me.level === 'Silver' || me.level === 'Gold')) return 'Keep ' + me.level + ' and 1st place → Teacher of the Month';
+    if(!nx) return 'Gold · keep it to the end of the month';
+    if(pts <= 3) return pts + ' points to ' + nx[0] + ' · within reach this month';
+    const P = me.pillars || {}, NM = { quality: 'Quality', progress: 'Progress', trust: 'Trust', reliability: 'Reliability' };
+    const low = Object.keys(NM).filter(k => P[k] != null).sort((a, b) => P[a] - P[b])[0];
+    return 'Path to ' + nx[0] + (low ? ' · biggest step: ' + NM[low] + ' (' + Math.round(P[low]) + ')' : ' · step by step'); }catch(e){ return gap0(me); } };
   const isT = () => !!(typeof D !== 'undefined' && D && !D.mgr && TOKEN);
   const cur = () => K && K.months && K.months.length ? K.months[K.months.length - 1] : null;
   function load(force){ try{ if(K && isT() && K.who !== ((D.me && D.me.name) || '')){ K = null; Kat = 0; } }catch(e){} if(Kbusy || !isT() || (!force && Date.now() - Kat < 10 * 6e4)) return; Kbusy = true; Kat = Date.now();   /* 337: back off even when it fails */
