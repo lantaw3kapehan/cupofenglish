@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 759;
+const COE_V = 760;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -16652,6 +16652,24 @@ details.lv28>summary{font-size:12.5px;color:#2F6F77;font-weight:700;cursor:point
   const _r = window.renderEnq; if(_r) window.renderEnq = function(){ const r = _r.apply(this, arguments); try{ paint(); }catch(e){ console.warn('eq31', e); } return r; };
   const _l = window.enqLoad; if(_l) window.enqLoad = function(){ const p = _l.apply(this, arguments); Promise.resolve(p).then(() => { try{ const b = $('enqBox'); const f = b && b.querySelector('.fn31'); if(f){ f.remove(); paint(); } }catch(e){} }); return p; };
   try{ if(typeof VIEW !== 'undefined' && VIEW === 'enquiry') renderEnq(); }catch(e){}
+})();
+</script>
+<script>
+/* 20 Oct · 432 · Misty: "remove the Chinese words here since this is management, inside it is the Chinese so it's okay".
+   The Pictures & messages card titles drop their Chinese part ("Price list · 课程价格" → "Price list"). The buttons, descriptions and the pictures themselves are unchanged. */
+(function(){
+  const CJK = /[\u3400-\u9fff\u3000-\u303f\uff00-\uffef]/;
+  function clean(root){ root.querySelectorAll('#v-enquiry .eq2-t').forEach(card => {
+    if(card.dataset.en32) return; card.dataset.en32 = 1;
+    const w = document.createTreeWalker(card, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement && n.parentElement.closest('button, .small.mute') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    const T = []; while(w.nextNode()) T.push(w.currentNode);
+    T.forEach(n => { if(!CJK.test(n.nodeValue)) return; let v = n.nodeValue.replace(/[\u3400-\u9fff\u3000-\u303f\uff00-\uffef]+/g, '').replace(/(^|\s)@(\s|$)/g, ' ').replace(/(\s*·\s*)+/g, ' · ').replace(/^\s*·\s*|\s*·\s*$/g, '');
+      n.nodeValue = v; if(!v.trim() && n.parentElement && n.parentElement !== card && !n.parentElement.textContent.trim()) n.parentElement.style.display = 'none'; });
+    /* a separator left at the end of the title (e.g. "kids & teens ·") */
+    card.querySelectorAll('b, strong').forEach(b => { b.textContent = b.textContent.replace(/\s*·\s*$/, ''); });
+    const t = T.filter(n => n.nodeValue.trim()); const last = t.filter(n => !(n.parentElement && n.parentElement.closest('.small.mute')))[0]; if(last) last.nodeValue = last.nodeValue.replace(/\s*·\s*$/, ''); }); }
+  const _r = window.renderEnq; if(_r) window.renderEnq = function(){ const r = _r.apply(this, arguments); try{ clean(document); }catch(e){ console.warn('en32', e); } return r; };
+  try{ if(typeof VIEW !== 'undefined' && VIEW === 'enquiry') clean(document); }catch(e){}
 })();
 </script>
 
