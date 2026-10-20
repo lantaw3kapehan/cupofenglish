@@ -1,0 +1,4 @@
+// 20 Oct · Web feel: Back / Forward and addresses per screen, no blur (faster), one card and button style, laptop widths.
+const inc = require('fs').readFileSync(require('path').join(__dirname, '396-web-feel.inc'), 'utf8');
+require('../tools/lib.js')(process.argv[2], [
+  ["try{ if(!(history.state && history.state.coe)) history.pushState({ coe: 1 }, ''); window.addEventListener('popstate', () => { if($('sheet').classList.contains('on')){ closeSheet(); try{ history.pushState({ coe: 1 }, ''); }catch(e){} } }); const _os = openSheet; openSheet = function(h){ try{ if(!(history.state && history.state.coe)) history.pushState({ coe: 1 }, ''); }catch(e){} return _os.apply(this, arguments); }; }catch(e){}", '/* 396: Back closes the card, then goes to the screen before · see "Web feel" below */'],["\n</script>\n\n</body>", "\n</script>\n<script>\n" + inc + "</script>\n\n</body>"]]);
