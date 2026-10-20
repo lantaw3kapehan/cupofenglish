@@ -1,4 +1,4 @@
-// 20 Oct · Student flow tiles show the current month first, arrows vs last month at the same day of the month.
+// 20 Oct · Student flow tiles show the current month first; tiles and month columns open the students, arrows vs last month at the same day of the month.
 const fs = require('fs'), inc = fs.readFileSync(require('path').join(__dirname, '424-student-flow.inc'), 'utf8');
 const f = process.argv[2]; let h = fs.readFileSync(f, 'utf8');
 const a = h.indexOf('/* 20 Oct · 424 · Overview › "Student flow"'), b = h.indexOf('</script>', a);
