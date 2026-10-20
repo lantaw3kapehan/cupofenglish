@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 709;
+const COE_V = 710;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -13609,11 +13609,17 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
     const en = enrol || enrolT; if(en && !(D && D.mgr && t.code)){ const r = document.createElement('div'); r.className = 'tl4-r';
       r.innerHTML = '<div class="tl4-n">·</div><div class="tl4-t"><b>Enrol</b><span>When the student has paid, or lessons are transferred</span></div><div class="tl4-a"></div>';
       en.classList.remove('grow', 'block', 'teal'); en.textContent = en.textContent.replace(/\s*·\s*record the first package/, ''); r.querySelector('.tl4-a').appendChild(en); A.appendChild(r); }
+    if(D && D.mgr && !t.code && !t._find){ t._find = 1; fetch(FAST_URL + '-trials', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, find: { date: t.date, student: t.student } }) }).then(x => x.json()).then(r => { if(!r || !r.ok) return; t._cands = r.list || []; if(r.code) t.code = r.code; if(TLD === t){ const o = $('tlAct'); if(o) o.dataset.tl4 = ''; tlBtns(); } }).catch(() => {}); }   /* 380 */
+    if(D && D.mgr && !t.code && t._cands){ const r = document.createElement('div'); r.className = 'tl4-r'; r.innerHTML = '<div class="tl4-n">?</div><div class="tl4-t"><b>Which student is this?</b><span>' + (t._cands.length ? t._cands.length + ' students are called ' + esc(t.student) + ' · choose one to pay, schedule and send' : 'No student called ' + esc(t.student) + ' yet · add the student first') + '</span></div><div class="tl4-a" style="flex-wrap:wrap"></div>';
+      const a = r.querySelector('.tl4-a'); t._cands.slice(0, 8).forEach(c => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ghost sm'; b.textContent = c.code + (c.cn ? ' · ' + c.cn : '') + (c.trial ? ' · trial ' + c.trial : '') + (c.teacher ? ' · ' + c.teacher : ''); b.onclick = () => tlSetCode(c.code); a.appendChild(b); });
+      if(!t._cands.length){ const b = document.createElement('button'); b.type = 'button'; b.className = 'btn teal sm'; b.textContent = '+ New student'; b.onclick = () => { try{ stuForm(); }catch(e){} }; a.appendChild(b); } A.appendChild(r); }
     if(D && D.mgr && t.code){   /* 378 */
       const nm = esc(String(t.student || '').replace(/'/g, '')), tc = esc(String(t.teacher || '').replace(/'/g, '')), cd = esc(t.code);
       const has = (() => { try{ const i = AT.cols.indexOf('code'); return AT.rows.some(x => String(x[i]).toUpperCase() === String(t.code).toUpperCase()); }catch(e){ return false; } })();
       const row = (k, title, sub, btns) => { const r = document.createElement('div'); r.className = 'tl4-r' + (S[k] ? ' done' : ''); r.innerHTML = '<div class="tl4-n">' + (S[k] ? '✓' : '·') + '</div><div class="tl4-t"><b>' + title + '</b><span>' + sub + '</span></div><div class="tl4-a">' + btns + '</div>';
         r.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { mark(t, k); try{ window._tlRet = { i: (TRL.rows || []).indexOf(t), name: t.student, at: Date.now() }; }catch(e){} }, true)); A.appendChild(r); };
+      row('details', 'Student details', '<span id="tlCt">' + cd + ' · checking emails…</span>', '<button class="btn ghost" onclick="stuEdit(\'' + cd + '\')">Edit details</button><button class="btn ghost" onclick="ctSheet(\'' + cd + '\',\'' + nm + '\')">Emails</button>');
+      ctGet(t.code).then(c => { const el = $('tlCt'); if(el) el.textContent = t.code + ' · ' + (c && (c.parent || c.student) ? [c.parent ? 'Parent: ' + c.parent : '', c.student ? 'Student: ' + c.student : ''].filter(Boolean).join(' · ') : 'no email yet'); }).catch(() => {});
       row('paid', 'Paid', has ? 'A returning student · record the new package' : 'Record the first package · SALES, ACTIVE and DATABASE in one save',
         has ? '<button class="btn teal" onclick="renPaidSheet(\'' + cd + '\',\'' + nm + '\',\'' + tc + '\')">Renewed · paid</button><button class="btn ghost sm" onclick="enSheet(\'' + cd + '\',\'' + nm + '\',\'' + tc + '\')">First package</button>'
             : '<button class="btn teal" onclick="enSheet(\'' + cd + '\',\'' + nm + '\',\'' + tc + '\')">Enrolled · paid</button>');
@@ -14120,6 +14126,21 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
   const _rr = window.renderReports; if(_rr) window.renderReports = function(){ const r = _rr.apply(this, arguments); try{ if(RP_F === 'making') document.querySelectorAll('#v-reports .rp-row').forEach((row, i) => { row.style.cursor = 'pointer'; row.onclick = () => rpAppOpen(i); }); }catch(e){} return r; };
   const _mk = window.rpMark; if(_mk) window.rpMark = function(){ if(RPD && RPD.report && !RPD.report.key){ toast('Sent · it is listed under "To check" in a few minutes, then mark it there'); return; } return _mk.apply(this, arguments); };
 })();
+</script>
+<script>
+/* 380 · choose the student of a trial · emails */
+window.tlSetCode = function(c){ if(typeof TLD === 'undefined' || !TLD) return; TLD.code = c; const o = $('tlAct'); if(o) o.dataset.tl4 = ''; try{ tlBtns(); }catch(e){} toast(c + ' · ' + TLD.student); };
+const CT380 = {}; window.ctGet = function(code){ if(CT380[code]) return CT380[code]; CT380[code] = fetch(FAST_URL + '-fb', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, code, op: 'contact' }) }).then(x => x.json()).then(r => (r && r.ok && r.data && r.data.contact) || null).catch(() => { delete CT380[code]; return null; }); return CT380[code]; };
+window.ctSheet = async function(code, name){ openSheet('<h1>' + esc(name || code) + ' · emails</h1><div class="mute small">' + esc(code) + ' · for class invitations and reports · only management sees them</div>' +
+  '<label style="margin-top:12px">Parent\'s email</label><input id="ctP" class="in-t" type="email" placeholder="e.g. parent@gmail.com" autocomplete="off">' +
+  '<label style="margin-top:10px">Student\'s email</label><input id="ctS" class="in-t" type="email" placeholder="e.g. student@gmail.com" autocomplete="off">' +
+  '<button class="btn teal block" id="ctB" style="margin-top:14px" onclick="ctSave(\'' + esc(code) + '\')">Save</button><div id="ctW" class="small mute" style="margin-top:6px"></div>');
+  const c = await ctGet(code); if(c){ if($('ctP')) $('ctP').value = c.parent || ''; if($('ctS')) $('ctS').value = c.student || ''; if($('ctW') && c.by) $('ctW').textContent = 'Last saved by ' + c.by + ' · ' + String(c.at || '').slice(0, 10); } };
+window.ctSave = async function(code){ const b = $('ctB'); if(b){ b.disabled = true; b.textContent = 'Saving…'; }
+  try{ const r = await fetch(FAST_URL + '-fb', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, code, op: 'contact', set: { parent: ($('ctP') || {}).value || '', student: ($('ctS') || {}).value || '' } }) }).then(x => x.json());
+    if(!(r && r.ok && r.data)) throw 0; if(r.data.ok === false){ toast(r.data.msg || 'Check the email'); if(b){ b.disabled = false; b.textContent = 'Save'; } return; }
+    CT380[code] = Promise.resolve(r.data.contact); toast('✓ Emails saved'); const R = window._tlRet; if(R && R.i > -1){ window._tlRet = null; tlOpen(R.i); } else closeSheet(); }
+  catch(e){ toast('Not saved · check the connection'); if(b){ b.disabled = false; b.textContent = 'Save'; } } };
 </script>
 
 </body>
