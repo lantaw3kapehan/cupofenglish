@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 772;
+const COE_V = 773;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -17233,11 +17233,12 @@ body #v-teachers .tc2-line .pg{height:6px!important}
     g += '<text x="' + (W - R) + '" y="' + (H - 4) + '" font-size="11" fill="#8A86A0" text-anchor="end">units this month →</text>';
     g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yg + '" y2="' + yg + '" stroke="#2E9E6F" stroke-dasharray="5 4"/><text x="' + (L + 4) + '" y="' + (yg - 5) + '" font-size="11" fill="#2E9E6F">goal 85%</text>';
     g += '<line x1="' + xa + '" x2="' + xa + '" y1="' + Tp + '" y2="' + (H - B) + '" stroke="#C9C6D6" stroke-dasharray="5 4"/><text x="' + (xa + 4) + '" y="' + (H - B - 6) + '" font-size="11" fill="#8A86A0">team average ' + Math.round(avg * 10) / 10 + '</text>';
-    g += zone(W - R - 6, Tp + 16, 'CARRYING THE TEAM', 'end') + zone(W - R - 6, H - B - 8, 'BUSY · CHECK COMPLETION', 'end') + zone(L + 8, Tp + 16, 'ROOM TO TAKE MORE', 'start') + zone(L + 8, yg + 18, 'NEEDS A TALK', 'start');
+    g += zone(W - R - 6, Tp + 16, 'CARRYING THE TEAM', 'end') + zone(W - R - 6, H - B - 8, 'BUSY · CHECK COMPLETION', 'end') + zone(xa - 8, Tp + 16, 'ROOM TO TAKE MORE', 'end') + zone(xa - 8, yg + 18, 'NEEDS A TALK', 'end');
     const pts = P.map(x => ({ x, cx: X(+x.units || 0), cy: Y(Math.round(x.done / x.sch * 100)), r: 6 + Math.sqrt((+x.students || 0) / smax) * 12 })).sort((a, b) => b.r - a.r);
+    { const S = pts.slice().sort((a, b) => a.cy - b.cy), placed = []; S.forEach(p => { let ly = p.cy + 4, lx = p.cx + p.r + 4; for(let k = 0; k < 8; k++){ const hit = placed.find(q => Math.abs(q.x - lx) < 70 && Math.abs(q.y - ly) < 13); if(!hit) break; ly = hit.y + 13; } p.ly = ly; p.lx = lx; placed.push({ x: lx, y: ly }); }); }   /* 445: labels step down instead of overlapping */
     g += pts.map(p => { const c = rk(p.x.rank)[2], pc = Math.round(p.x.done / p.x.sch * 100), nm = String(p.x.name).replace(/^teacher\s+/i, '');
       return '<g><circle class="dot" cx="' + p.cx + '" cy="' + p.cy + '" r="' + p.r + '" fill="' + c + '" fill-opacity=".85" stroke="#fff" stroke-width="1.5" onclick="openTeacher(\'' + esc(p.x.name).replace(/'/g, '') + '\')"><title>' + esc(nm) + ' · ' + p.x.units + ' units · ' + pc + '% completed · ' + p.x.students + ' students · ' + (p.x.late || 0) + ' late · ' + esc(rk(p.x.rank)[0]) + '</title></circle>' +
-        '<text x="' + (p.cx + p.r + 4) + '" y="' + (p.cy + 4) + '" font-size="11.5" fill="#2B2253" pointer-events="none">' + esc(nm) + '</text></g>'; }).join('');
+        (Math.abs(p.ly - p.cy - 4) > 1 ? '<line x1="' + (p.cx + p.r) + '" y1="' + p.cy + '" x2="' + (p.lx - 1) + '" y2="' + (p.ly - 4) + '" stroke="#C9C6D6" stroke-width="1"/>' : '') + '<text x="' + p.lx + '" y="' + p.ly + '" font-size="11.5" fill="#2B2253" pointer-events="none">' + esc(nm) + '</text></g>'; }).join('');
     const used = RK.filter(k => P.some(x => rk(x.rank) === k));
     return '<div class="mp43"><div class="h"><span>Team map · workload and completion</span><span>dot size = students · click a dot to open</span></div><svg viewBox="0 0 ' + W + ' ' + H + '">' + g + '</svg>' +
       '<div class="lg">' + used.map(k => '<span><i style="background:' + k[2] + '"></i>' + k[0] + '</span>').join('') + '</div></div>'; }
@@ -17281,6 +17282,21 @@ body #v-teachers .tc2-line .pg{height:6px!important}
           M.map(a => { const q = pc(a); return '<div class="r" title="' + esc(a.label) + ': ' + a.s + ' scheduled · ' + a.c + ' completed · ' + a.x + ' cancelled' + (a.l ? ' · ' + a.l + ' leave' : '') + '"><span><b>' + esc(a.label) + '</b>' + (a.cur ? ' <small style="color:#8A86A0">so far</small>' : '') + '</span><div class="b" style="width:' + Math.max(4, a.s / mx * 100) + '%">' + (a.c ? '<i style="flex:' + a.c + ';background:#4A9BAA"></i>' : '') + (a.x ? '<i style="flex:' + a.x + ';background:#D4705A"></i>' : '') + '</div><span class="n">' + a.c + ' done · ' + a.x + ' cancelled · ' + a.u + ' u<b class="' + cls(q) + '">' + (q == null ? '—' : q + '%') + '</b></span></div>'; }).join('') +
           '<div class="att-lg small" style="margin-top:6px"><span><i class="c"></i>Completed</span><span><i class="x"></i>Cancelled</span></div></section>'; } }catch(e){ console.warn('att44', e); }
     return _a.apply(this, arguments); };
+})();
+</script>
+<script>
+/* 20 Oct · 445 · small tidy: "1 students" → "1 student"; the attendance headline starts at the left edge; the bonus tile reads "+₱300 bonus · −₱0 deductions" on two clear lines. */
+(function(){
+  const css = document.createElement('style');
+  css.textContent = '.att44 .hd{padding:0!important;margin-left:0!important}.att44 .hd>b{min-width:0!important;width:auto!important;text-align:left!important;padding:0!important}' +
+    '#v-teachers #ttBody>.card .stat .b45{font-family:var(--brand);font-size:20px;color:#1E8A5E;display:block;line-height:1.2}#v-teachers #ttBody>.card .stat .d45{font-size:12px;color:#8A86A0}';
+  document.head.appendChild(css);
+  function tidy(){ const v = document.getElementById('v-teachers'); if(!v) return;
+    v.querySelectorAll('.tc2-f span').forEach(s => { if(/^1 students$/.test(s.textContent)) s.textContent = '1 student'; });
+    v.querySelectorAll('#ttBody>.card .stat').forEach(st => { if(st.dataset.b45) return; const t = st.textContent.replace(/\s+/g, ' '); const m = t.match(/\+\s*₱\s*([\d,]+)\s*bonus\s*·\s*[−-]\s*₱\s*([\d,]+)/); if(!m) return; st.dataset.b45 = 1;
+      st.innerHTML = '<span class="b45">+₱' + m[1] + '</span><span class="d45">bonus · ' + (m[2] === '0' ? 'no deductions' : '<b style="color:#C0563F">−₱' + m[2] + '</b> deductions') + '</span>'; }); }
+  ['renderTeachers', 'loadTT'].forEach(f => { const o = window[f]; if(typeof o === 'function') window[f] = function(){ const r = o.apply(this, arguments); try{ tidy(); }catch(e){} Promise.resolve(r).then(() => { try{ tidy(); }catch(e){} }); return r; }; });
+  try{ tidy(); }catch(e){}
 })();
 </script>
 
