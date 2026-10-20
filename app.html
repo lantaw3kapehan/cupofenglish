@@ -1150,7 +1150,7 @@ const API_BG = /^(mgmtAvailAll|mgmtPayChecks|mgmtVisitCoverage|mgmtMonDay|mgmtRe
 function apiPump(){ while(API_N < 3 && API_Q.length){ API_N++; API_Q.shift()().finally(() => { API_N--; apiPump(); }); } }
 const FAST_URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe', FAST_USERS = ['misty', 'julia'], FAST_W = { saveNote: 1, markHomework: 1, tNoteTag: 1, tGoalsSave: 1, timeIn: 1, classIn: 1, tFbSubmit: 1, tPcSubmit: 1, tTrialSubmit: 1, tPeerSubmit: 1, tSetMeet: 1, tMsgAck: 1, tVisitAck: 1, tMsgSeen: 1, tHwFlag: 1, tMsgSend: 1, tLeaveRequest: 1, tPayVerify: 1 };
 const FAST_M = { mgmtRenewal: 1, mgmtRenewPaid: 1, mgmtEnrolPaid: 1, mgmtReportSent: 1, mgmtTrialFu: 1, setCaseDone: 1, mgmtMsgSeen: 1, mgmtMsgSend: 1, mgmtMsgReply: 1 };   /* 14 Oct night: management saves */
-function fastOnM(fn, args){ try{ if(localStorage.getItem('coe.fast') === '0') return false; }catch(e){} return !!(D && D.mgr && TOKEN && FAST_M[fn] && !(fn === 'mgmtTrialFu' && args[2] === 'Enrolling') && !(fn === 'mgmtMsgSend' && args[4]) && !(fn === 'saveStudent' && (!args[1] || args[1].linkTrial || (!Number(args[2]) && !/^ST-\d{4}-\d{3}$/.test(String(args[1].code || '').trim())))) && !(fn === 'addSale' && args[1] && args[1].file) && !(/^mgmt(Renew|Enrol)Paid$/.test(fn) && (!args[1] || args[1].dry || args[1].file || args[1].transfer))); }   /* memos, new students and a sale with an invoice file: Google */
+function fastOnM(fn, args){ try{ if(localStorage.getItem('coe.fast') === '0') return false; }catch(e){} return !!(D && D.mgr && TOKEN && FAST_M[fn] && !(fn === 'mgmtTrialFu' && args[2] === 'Enrolling') && !(fn === 'mgmtMsgSend' && args[4]) && !(fn === 'saveStudent' && (!args[1] || args[1].linkTrial || (!Number(args[2]) && !/^ST-\d{4}-\d{3}$/.test(String(args[1].code || '').trim())))) && !(fn === 'addSale' && args[1] && args[1].file) && !(/^mgmt(Renew|Enrol)Paid$/.test(fn) && (!args[1] || args[1].dry || (args[1].file && !(args[1].file.b64 && args[1].file.b64.length <= 3.4e6)) || args[1].transfer))); }   /* memos, new students and a sale with an invoice file: Google */
 FAST_M.saveStudent = 1;
 FAST_M.addExpense = 1; FAST_M.addSale = 1;   /* 16 Oct: money entries through the database (a sale with an invoice file: Google) */   /* 15 Oct night: edits of a student record */
 function fastOn(){ try{ const o = localStorage.getItem('coe.fast'); if(o === '0') return false; if(o === '1') return true; }catch(e){} return !!(D && !D.mgr && D.me && D.me.name); }   /* 14 Oct pm: every teacher (was FAST_USERS only) */
@@ -1215,8 +1215,8 @@ async function watchChk(){ try{ if(!D || !D.mgr || !TOKEN) return; const r = awa
   el.innerHTML = '⚠ ' + msg + ' · new classes and sheet changes may not show yet · tell Claude <span style="cursor:pointer;margin-left:8px;opacity:.8" onclick="this.parentNode.remove()">✕</span>'; }catch(e){} }
 setTimeout(watchChk, 8000); setInterval(() => { if(!document.hidden) watchChk(); }, 300000);
 async function fastWrite(fn, args){ const rid = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  for(let a = 0; a < 2; a++){ try{ const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), fn === 'timeIn' || fn === 'classIn' ? 15000 : 6000) : 0;   /* the screen proof needs longer */
-    const r = await fetch(/^mgmt((Renew|Enrol)Paid|Renewal)$/.test(fn) ? FAST_URL + '-mgmt' : FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'write', fn, args, rid }), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid));
+  for(let a = 0; a < 2; a++){ try{ const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), fn === 'timeIn' || fn === 'classIn' || (args[1] && args[1].file) ? 20000 : 6000) : 0;   /* the screen proof needs longer */
+    const r = await fetch(/^mgmt(Renew|Enrol)Paid$/.test(fn) && args[1] && args[1].file ? FAST_URL + '-pay' : /^mgmt((Renew|Enrol)Paid|Renewal)$/.test(fn) ? FAST_URL + '-mgmt' : FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'write', fn, args, rid }), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid));
     if(r && r.ok && r.queued) return fastAns(fn, args); break; }catch(e){ if(a) break; await new Promise(z => setTimeout(z, 800)); } }
   return apiNow(fn, ...args); }   /* not ready, not signed in there yet, or no answer → the normal save, exactly as today */
 const SB_R = /^(mgmt(Overview|Students|Student|Schedule|Teacher|Actions|Active|Renewals|Trials|TrialFus|Reports|ReportsWait|Performance|TeacherCard|PayChecks|PayReady|AvailAll|Health|Night|Msgs|Tab|Database|Payroll|Leave|Peer|Hours|StuClasses|Urls|EnqList|MonDay|VisitCoverage|AgreeMap|Growth)|schedLists|moneyLists|dbLists|dbRecord|mgmt(Agree|Avail|ClassInfo|FixIgnored|LeaveClasses|MemoInfo|PeerClasses|PlanFlags|Profiles|QaForm|QaLast|Reminders|Report|ShiftTasks|SlipPeople|TrialSearch|WeekSum|TeacherWeek|TeacherVisits)|t(Student|StuClasses|FbStatus|Growth|Schedule|PayCheck|PayReady|Msgs|Leave|LeaveClasses|MyVisits|MyComments|HwHist|Goals|NoteComments|Reminders|FbForm|PcForm|TrialForm|PeerForm))$/;   /* 14 Oct pm: + teachers' screens, − pulse */
@@ -5920,7 +5920,7 @@ const f = { code: S.code, name: S.name, teacher: $('enT').value, start: ($('enSx
 if(S.tr){ const fr = enTrFrom(), n = +($('enTn') || {}).value || 0, typed = String(($('enTf') || {}).value || '').trim(), out = !fr && typed && ($('enTx') || {}).checked; if(!fr && !out) return toast(typed ? 'Pick ' + typed + ' from the list, or tick "Not in our sheet"' : 'Type who the lessons come from'); if(!(n > 0)) return toast('Type how many lessons'); f.transfer = out ? { from: '', name: typed, n: n, outside: true } : { from: fr, n: n }; f.saleRow = 0; }
 else if(!(S.pkg + S.free > 0) && !S.sale) return toast('Type the number of lessons');
 if(!S.sale && !S.tr){ Object.assign(f, { pkg: +S.pkg || 0, free: +S.free || 0, date: $('enD').value, method: $('enM').value.trim(), partner: $('enPa').value.trim(), invoice: $('enI').value.trim() });
-const fl = $('enF') && $('enF').files[0]; if(fl){ if(fl.size > 8e6) return toast('The invoice file is too big (8 MB max)'); f.file = await new Promise(res => { const rd = new FileReader(); rd.onload = () => res({ name: fl.name, mime: fl.type, b64: String(rd.result).split(',')[1] }); rd.readAsDataURL(fl); }); }
+const fl = $('enF') && $('enF').files[0]; if(fl){ if(fl.size > 8e6) return toast('The invoice file is too big (8 MB max)'); f.file = await invFile(fl); }
 try{ if(f.method) localStorage.setItem('coe.rpM', f.method); }catch(e){} }
 const bk = 'e:' + S.code; if(BUSY[bk]) return toast('Still saving ' + S.name + '\'s enrolment · wait a moment'); BUSY[bk] = 1;
 const body = $('sheetBody'), snap = body.innerHTML, vals = {}; body.querySelectorAll('input,select,textarea').forEach(el => { if(el.id && el.type !== 'file') vals[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value; });
@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 711;
+const COE_V = 712;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -6359,7 +6359,7 @@ const b = $('rpS'); if(b){ b.disabled = true; b.textContent = 'Saving…'; }
 const f = { code: S.code, teacher: S.teacher, pkg: +S.pkg || 0, free: +S.free || 0, date: $('rpD').value, method: (() => { const v = $('rpM').value.trim(); try{ if(v) localStorage.setItem('coe.rpM', v); }catch(e){} return v; })(), partner: $('rpPa').value.trim(), invoice: $('rpI').value.trim() };
 const fl = $('rpF') && $('rpF').files[0];
 if(fl){ if(fl.size > 8e6){ if(b){ b.disabled = false; b.textContent = 'Save renewal'; } return toast('The invoice file is too big (8 MB max)'); }
-f.file = await new Promise(res => { const rd = new FileReader(); rd.onload = () => res({ name: fl.name, mime: fl.type, b64: String(rd.result).split(',')[1] }); rd.readAsDataURL(fl); }); }
+f.file = await invFile(fl); }
 try{ const r = await api('mgmtRenewPaid', TOKEN, f); if(!r || !r.saleRow) throw r;
 try{ REN[String(S.code).toUpperCase()] = r.status; localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){}
 RN_PIC = { code: String(S.code).toUpperCase(), pkg: r.pkg, free: r.free, tot: r.pkg + r.free, carry: r.left, paid: f.date, days: S.days || [], t: Date.now() };
@@ -14153,6 +14153,13 @@ window.ctSave = async function(code){ const b = $('ctB'); if(b){ b.disabled = tr
     el.replaceWith(s);
     if(typeof ML === 'undefined' || !ML){ try{ lists().then(() => { const x = $(id); if(x && x.tagName === 'SELECT'){ const v = x.value; fill(x, v === '__o' ? '' : v); } }).catch(() => {}); }catch(e){} } }); };
 })();
+</script>
+<script>
+/* 382 · an invoice photo is made small before it is sent (a PDF is sent as it is) */
+window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onload = () => { const raw = { name: fl.name, mime: fl.type, b64: String(rd.result).split(',')[1] };
+  if(!/^image\/(jpe?g|png|webp|heic)/i.test(fl.type) || fl.size < 500e3) return res(raw); const im = new Image(); im.onerror = () => res(raw);
+  im.onload = () => { try{ const k = Math.min(1, 1800 / Math.max(im.width, im.height)), cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+    const b = cv.toDataURL('image/jpeg', 0.85).split(',')[1]; res(b && b.length < raw.b64.length ? { name: fl.name.replace(/\.[a-z0-9]+$/i, '') + '.jpg', mime: 'image/jpeg', b64: b } : raw); }catch(e){ res(raw); } }; im.src = rd.result; }; rd.readAsDataURL(fl); });
 </script>
 
 </body>
