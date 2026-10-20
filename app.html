@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 730;
+const COE_V = 731;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -14832,17 +14832,22 @@ section.sec{border-color:var(--line)}
 @media(min-width:1280px){.wrap,.hd{max-width:1180px}}`;
   document.head.appendChild(css);
 
+  /* 401 · plain words in the address bar */
+  const HN = { mtoday: 'todo', astudents: 'students', students: 'my-students', home: 'overview', msgs: 'messages', tinbox: 'inbox', enquiry: 'enquiries', perf: 'performance', db: 'database', money: 'sales', tsched: 'my-schedule', mypay: 'my-pay', active: 'active-students' };
+  const HV = {}; Object.keys(HN).forEach(k => { HV[HN[k]] = k; });
+  window.coeH = v => '#' + (HN[v] || v);
+  window.coeHV = () => { const h = (location.hash || '').slice(1); return HV[h] || h; };
   /* ── 1. Back / Forward ── */
   let FROMPOP = 0, IGN = 0;
   const isView = v => typeof VIEWS !== 'undefined' && VIEWS.indexOf(v) > -1;
   const sheetOn = () => { const s = $('sheet'); return !!(s && s.classList.contains('on')); };
   const g0 = window.go;
   if(g0) window.go = function(v){ const was = VIEW; const r = g0.apply(this, arguments);
-    try{ if(!FROMPOP && isView(v) && location.hash.slice(1) !== v) history.pushState({ v }, '', '#' + v); if(was !== v) window.scrollTo(0, 0); }catch(e){}
+    try{ if(!FROMPOP && isView(v) && coeHV() !== v) history.pushState({ v }, '', coeH(v)); if(was !== v) window.scrollTo(0, 0); }catch(e){}
     return r; };
   const o0 = window.openSheet;
   if(o0) window.openSheet = function(){ const was = sheetOn(); const r = o0.apply(this, arguments);
-    try{ if(!was && !(history.state && history.state.sh)) history.pushState({ v: VIEW, sh: 1 }, '', location.hash || ('#' + VIEW)); }catch(e){}
+    try{ if(!was && !(history.state && history.state.sh)) history.pushState({ v: VIEW, sh: 1 }, '', location.hash || coeH(VIEW)); }catch(e){}
     return r; };
   const c0 = window.closeSheet;
   if(c0) window.closeSheet = function(){ const r = c0.apply(this, arguments);
@@ -14851,13 +14856,13 @@ section.sec{border-color:var(--line)}
   window.addEventListener('popstate', () => {
     if(IGN){ IGN = 0; return; }
     if(sheetOn()){ FROMPOP = 1; try{ c0 ? window.closeSheet() : 0; }catch(e){} FROMPOP = 0; return; }
-    const v = (location.hash || '').slice(1);
+    const v = coeHV();
     if(isView(v) && v !== VIEW){ FROMPOP = 1; try{ window.go(v); }catch(e){} FROMPOP = 0; }
-    try{ if(history.state && history.state.base) history.pushState({ v: VIEW }, '', '#' + VIEW); }catch(e){} });
+    try{ if(history.state && history.state.base) history.pushState({ v: VIEW }, '', coeH(VIEW)); }catch(e){} });
   /* the first entry is a floor: Back there keeps you in the app (phones too) */
-  try{ history.replaceState({ v: VIEW, base: 1 }, '', '#' + VIEW); history.pushState({ v: VIEW }, '', '#' + VIEW); }catch(e){}
+  try{ history.replaceState({ v: VIEW, base: 1 }, '', coeH(VIEW)); history.pushState({ v: VIEW }, '', coeH(VIEW)); }catch(e){}
   /* open the screen in the address on reload */
-  setTimeout(() => { try{ const v = (location.hash || '').slice(1);
+  setTimeout(() => { try{ const v = coeHV();
     if(isView(v) && v !== VIEW && D && $('v-' + v)){ FROMPOP = 1; window.go(v); FROMPOP = 0; } }catch(e){} }, 1500);
 })();
 </script>
