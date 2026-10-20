@@ -6115,7 +6115,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 703;
+const COE_V = 704;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -9185,7 +9185,9 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
   function paint(){ if(!D || D.mgr) return; const root = $('v-today'); if(!root) return; if(!MYV) myVisits();
     let acked = {}; try{ acked = JSON.parse(store('get', 'coe.vack') || '{}'); }catch(e){}
     const R = ftCheck(MYV || [], (TMSG && TMSG.threads) || [], { acked, pcDone: window.PCDONE || {} }); R.sig = R.items.map(x => x.kind + x.text).join('|'); window._FT = R;
-    const old = $('ftBox'); if(old) old.remove(); if(R.level < 2) return;
+    const old = $('ftBox'); if(old) old.remove();
+    if(!(MYV && typeof TMSG !== 'undefined' && TMSG && TMSG.threads)){ if(window._FTLAST){ const l0 = root.querySelector('.lead'); if(l0) l0.insertAdjacentHTML('afterend', window._FTLAST); } return; }   /* 374: not loaded yet */
+    if(R.level < 2){ window._FTLAST = ''; return; }
     let plan = null; try{ plan = JSON.parse(localStorage.getItem(planKey()) || 'null'); }catch(e){} let sent = plan && plan.sig === R.sig && Date.now() - plan.at < 3 * DAY;
     if(!sent){ try{ const P = ((TMSG && TMSG.threads) || []).map(t => t.root).filter(r => r && r.role !== 'mgmt' && /^⚠ My follow-up plan/.test(String(r.text || ''))).map(r => tms(r.at)).filter(x => x && Date.now() - x < 7 * DAY).sort((a, b) => b - a);   /* 370: a plan sent from any device */
       if(P.length){ sent = true; plan = { at: P[0] }; } }catch(e){} }
@@ -9195,7 +9197,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     const box = '<div id="ftBox"' + (sent ? ' class="ftSent"' : '') + '><h3>' + head + '</h3><div class="small" style="color:#8E1F12;margin-top:2px">' + sub + '</div><ul>' + R.items.slice(0, 6).map(x => '<li class="small"><b>' + esc(x.kind) + '</b> · ' + esc(x.text) + (x.overdue && x.days >= 2 ? ' · ' + x.days + ' days' : '') + '</li>').join('') + (R.items.length > 6 ? '<li class="small">+' + (R.items.length - 6) + ' more</li>' : '') + '</ul>' +
       (sent ? '<div class="small" style="margin-top:10px;color:#1E7A55"><b>✓ Your plan was sent ' + esc(sd(plan.at)) + '.</b> This stays until the items above are done or fixed at the next visit.</div>'
         : '<label style="margin-top:10px">What did you change, or what will you do and by when?</label><textarea id="ftP" class="in-t" rows="2" placeholder="e.g. I moved my camera back and checked it with a test call. From today I will…"></textarea><button class="btn teal block" id="ftB" style="margin-top:8px" onclick="ftSend()">Send my plan to management</button>') + '</div>';
-    const lead = root.querySelector('.lead'); if(lead) lead.insertAdjacentHTML('afterend', box); else root.insertAdjacentHTML('afterbegin', box); }
+    window._FTLAST = box; const lead = root.querySelector('.lead'); if(lead) lead.insertAdjacentHTML('afterend', box); else root.insertAdjacentHTML('afterbegin', box); }
   const _rt = window.renderToday; window.renderToday = function(){ const r = _rt.apply(this, arguments); try{ paint(); }catch(e){ console.warn('follow-through', e); } return r; };
   setTimeout(() => { try{ if(D && !D.mgr && TOKEN) myVisits(); }catch(e){} }, 4000);
 
