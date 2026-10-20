@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 788;
+const COE_V = 790;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -17984,6 +17984,52 @@ section.sec .gr-kpi{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!imp
   function run(){ const v = document.getElementById('v-payroll'); if(!v) return; chart(v); rows(); }
   const _r = window.renderPayroll; if(_r) window.renderPayroll = function(){ const r = _r.apply(this, arguments); try{ run(); }catch(e){ console.warn('pm60', e); } return r; };
   let q = 0; new MutationObserver(() => { if(q) return; q = requestAnimationFrame(() => { q = 0; try{ if(typeof VIEW !== 'undefined' && VIEW === 'payroll') run(); }catch(e){} }); }).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+<script>
+/* 20 Oct · 461 · Misty: "this design can be improved to align with the screens we redesigned". Style only.
+   The dark payroll card becomes a white card like Overview, Teachers and Trials: small grey label, big ink total, the three tiles with a
+   coloured edge and label (last month green · pending amber · largest purple); the progress bar and key in the same calm colours. */
+(function(){
+  const css = document.createElement('style');
+  css.textContent = `
+#v-payroll .py-hero{background:#fff!important;color:var(--ink)!important;border:1px solid var(--line);box-shadow:var(--sh1)!important;border-radius:var(--r-lg)!important;padding:16px 20px 14px!important}
+#v-payroll .py-cup{display:none!important}
+#v-payroll .py-hero .r1 span{color:#8A86A0!important;font-weight:400!important;letter-spacing:.08em!important}
+#v-payroll .py-hero .big{font-size:34px!important;color:var(--ink)}
+#v-payroll .py-hero .bs{color:#55526E!important}
+#v-payroll .py-3{gap:10px!important;margin-top:12px!important}
+#v-payroll .py-3>div{background:var(--bg61)!important;border:0!important;border-left:4px solid var(--c61)!important;border-radius:12px!important;padding:9px 14px!important}
+#v-payroll .py-3>div:nth-child(1){--c61:#2E9E6F;--bg61:#EEF8F3}#v-payroll .py-3>div:nth-child(2){--c61:#D9962B;--bg61:#FCF6EA}#v-payroll .py-3>div:nth-child(3){--c61:#6C5FC7;--bg61:#F2F0FB}
+#v-payroll .py-3 span{color:var(--c61)!important;letter-spacing:.08em!important}
+#v-payroll .py-3 b{color:var(--ink)!important;font-size:21px!important}
+#v-payroll .py-3 small{color:#55526E!important}
+#v-payroll .py-bar{background:var(--soft)!important}
+#v-payroll .py-key{color:#55526E!important}`;
+  document.head.appendChild(css);
+})();
+</script>
+<script>
+/* 20 Oct · 462 · Misty: "better improve the visual through graphs or charts" (Payroll history list). */
+(function(){
+  const css = document.createElement('style');
+  css.textContent = `
+#v-payroll details.py-h>summary{display:grid!important;grid-template-columns:minmax(170px,240px) minmax(0,1fr) 150px 130px 16px!important;align-items:center;gap:14px}
+#v-payroll details.py-h .hb62{height:10px;border-radius:5px;background:var(--soft);overflow:hidden;position:relative}
+#v-payroll details.py-h .hb62 i{display:block;height:100%;border-radius:5px;background:#2E9E6F}
+#v-payroll details.py-h .hb62 i.pd{background:repeating-linear-gradient(45deg,#E0A030 0 6px,#EDB95A 6px 12px)}
+#v-payroll details.py-h .hb62 i.ng{background:#D4705A}
+#v-payroll details.py-h>summary .s{text-align:right}#v-payroll details.py-h>summary .t{text-align:right}
+#v-payroll details.py-h .hb62 u{position:absolute;top:-3px;bottom:-3px;width:2px;background:#2B2253;opacity:.35;text-decoration:none}
+@media(max-width:760px){#v-payroll details.py-h>summary{grid-template-columns:1fr auto 16px!important}#v-payroll details.py-h .hb62,#v-payroll details.py-h>summary .s{display:none}}`;
+  document.head.appendChild(css);
+  const num = s => { const n = parseFloat(String(s || '').replace(/[^\d.-]/g, '')); return isNaN(n) ? 0 : n; };
+  function run(){ const box = document.getElementById('plList'); if(!box) return; const D = [...box.querySelectorAll('details.py-h')]; if(!D.length || D.every(d => d.querySelector('.hb62'))) return;
+    const V = D.map(d => num((d.querySelector('summary .t') || {}).textContent)), mx = Math.max(1, ...V.map(Math.abs)), P = V.filter(v => v > 0), avg = P.length ? P.reduce((a, b) => a + b, 0) / P.length : 0;
+    D.forEach((d, i) => { if(d.querySelector('.hb62')) return; const s = d.querySelector('summary'), first = s && s.firstElementChild; if(!first) return; const v = V[i], all = /All paid/.test(s.textContent);
+      first.insertAdjacentHTML('afterend', '<span class="hb62" title="' + (v < 0 ? 'only deductions so far' : Math.round(v / mx * 100) + '% of the largest month') + '"><i class="' + (v < 0 ? 'ng' : all ? '' : 'pd') + '" style="width:' + Math.max(2, Math.abs(v) / mx * 100) + '%"></i>' + (avg ? '<u style="left:' + (avg / mx * 100) + '%" title="average month"></u>' : '') + '</span>'); }); }
+  const _l = window.payLedger; if(_l) window.payLedger = function(){ const r = _l.apply(this, arguments); try{ run(); }catch(e){ console.warn('hb62', e); } return r; };
+  try{ run(); }catch(e){}
 })();
 </script>
 
