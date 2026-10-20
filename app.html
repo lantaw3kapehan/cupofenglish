@@ -5865,7 +5865,7 @@ openSheet('<h1>' + esc(name) + ' · Enrolled · paid</h1><div class="mute small"
 '<div id="enO" class="row hide" style="gap:8px"><div class="grow"><label>Lessons paid</label><input id="enOp" class="in-t" type="number" min="0.5" step="0.5" placeholder="e.g. 13" oninput="enOth()"></div><div class="grow"><label>+ free lessons</label><input id="enOf" class="in-t" type="number" min="0" step="0.5" placeholder="0" oninput="enOth()"></div></div>' +
 '<div class="row" style="gap:8px"><div class="grow"><label>Paid on</label><input id="enD" class="in-t" type="date" value="' + today + '"></div><div class="grow"><label>Payment method</label><input id="enM" class="in-t" value="' + esc((() => { try{ return localStorage.getItem('coe.rpM') || 'Alipay'; }catch(e){ return 'Alipay'; } })()) + '"><div class="skc" style="margin-top:6px">' + ['Alipay','WeChat Pay','Bank transfer','Cash'].map(x => '<button type="button" onclick="$(\'enM\').value=\'' + x + '\'">' + x + '</button>').join('') + '</div></div></div>' +
 '<label>Partner</label><input id="enPa" class="in-t" value="CupOfEnglish"><label>Invoice</label><input id="enI" class="in-t" placeholder="e.g. Invoice1739_' + esc(String(name || '').split(/\s+/)[0]) + '"><input id="enF" type="file" accept="application/pdf,image/*" class="in-t" style="margin-top:6px"></div>' +
-'<div class="row" style="gap:8px"><div class="grow"><label>Teacher</label><select id="enT" class="in-t">' + T.map(t => '<option' + (t === teacher ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></div><div class="grow"><label>First class</label><input id="enS" class="in-t" type="date" onchange="enPrev()" value="' + esc(first || today) + '"><label class="small" style="display:flex;gap:6px;align-items:center;margin-top:6px;font-weight:400"><input type="checkbox" id="enSx" onchange="enSxT()" style="width:auto;margin:0"> Not set yet · the student hasn\'t agreed a time</label></div></div>' +
+'<div class="row" style="gap:8px"><div class="grow"><label>Teacher</label><select id="enT" class="in-t">' + T.map(t => '<option' + (t === teacher ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></div><div class="grow"><label>First class</label><input id="enS" class="in-t" type="date" onchange="enPrev()" value="' + esc(first && first >= new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10) ? first : today) + '"><label class="small" style="display:flex;gap:6px;align-items:center;margin-top:6px;font-weight:400"><input type="checkbox" id="enSx" onchange="enSxT()" style="width:auto;margin:0"> Not set yet · the student hasn\'t agreed a time</label></div></div>' +
 '<label>Course</label>' + bkHtml('enC', [...new Set((ENS.cls || []).map(c => String(c.book || '').trim()).filter(Boolean))]) +
 '<div id="enP" class="card" style="margin-top:14px;background:#F1FAF9;border-color:#BFE6E3"></div><button id="enGo" class="btn teal block" style="margin-top:14px" onclick="enSave()">Save enrolment</button>' +
 '<p class="small mute" style="margin-top:8px">Same as doing it by hand: the payment in SALES · a new ACTIVE row near the top (formulas copied, ACTIVE ticked, ENROLLED = that SALES row) · DATABASE › first class and lessons if empty. The calendar is not changed.</p>');
@@ -6112,7 +6112,7 @@ try{ const r = await api('setActiveTick', TOKEN, row, code, v); if(!r.ok) throw 
 catch(e){ if(x){ x[8] = !v; keep('active', AT); } renderActive(); toast((e&&e.msg)||'Not saved. Try again.'); }
 }
 
-function openSheet(html){ if(!/class="paper/.test(html)) $('sheet').classList.remove('wide'); $('sheetBody').innerHTML = html; $('scrim').classList.add('on'); $('sheet').classList.add('on');
+function openSheet(html){ if(!/class="paper/.test(html)) $('sheet').classList.remove('wide'); $('sheetBody').innerHTML = html; $('scrim').classList.add('on'); $('sheet').classList.add('on'); try{ if(window.paPick) paPick(); }catch(e){}
   try{ const R = window._tlRet; if(R && R.i > -1 && Date.now() - R.at < 30 * 6e4 && !/<h1>Trial report|id="tlPdf"|tl4/.test(html)) $('sheetBody').insertAdjacentHTML('afterbegin', '<button type="button" class="btn ghost sm" style="margin:0 0 10px" onclick="window._tlRet=null;tlOpen(' + R.i + ')">‹ Back to ' + esc(R.name || 'the') + '\'s trial</button>'); }catch(e){} }
 function closeSheet(){ if(NKEEP){ const k = NKEEP; NKEEP = null; if(k.dirty && noteDraft(k.code, k.day)){ toast('Note kept on this phone · open it and tap Save'); setTimeout(() => { try{ render(); }catch(e){} }, 300); } } if(SC_PEND){ SC_PEND = 0; setTimeout(() => loadSchedule(0, true), 50); } $('scrim').classList.remove('on'); $('sheet').classList.remove('on'); if(window._upd) setTimeout(() => { if(typeof applyUpdate==='function') applyUpdate(); }, 400); setTimeout(() => { if(!$('sheet').classList.contains('on')) $('sheet').classList.remove('wide'); }, 250); }
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeSheet(); });
@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 710;
+const COE_V = 711;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -13615,7 +13615,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
       if(!t._cands.length){ const b = document.createElement('button'); b.type = 'button'; b.className = 'btn teal sm'; b.textContent = '+ New student'; b.onclick = () => { try{ stuForm(); }catch(e){} }; a.appendChild(b); } A.appendChild(r); }
     if(D && D.mgr && t.code){   /* 378 */
       const nm = esc(String(t.student || '').replace(/'/g, '')), tc = esc(String(t.teacher || '').replace(/'/g, '')), cd = esc(t.code);
-      const has = (() => { try{ const i = AT.cols.indexOf('code'); return AT.rows.some(x => String(x[i]).toUpperCase() === String(t.code).toUpperCase()); }catch(e){ return false; } })();
+      const unk = !(typeof AT !== 'undefined' && AT && AT.rows && AT.rows.length), has = unk || (() => { try{ const i = AT.cols.indexOf('code'); return AT.rows.some(x => String(x[i]).toUpperCase() === String(t.code).toUpperCase()); }catch(e){ return false; } })();
       const row = (k, title, sub, btns) => { const r = document.createElement('div'); r.className = 'tl4-r' + (S[k] ? ' done' : ''); r.innerHTML = '<div class="tl4-n">' + (S[k] ? '✓' : '·') + '</div><div class="tl4-t"><b>' + title + '</b><span>' + sub + '</span></div><div class="tl4-a">' + btns + '</div>';
         r.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { mark(t, k); try{ window._tlRet = { i: (TRL.rows || []).indexOf(t), name: t.student, at: Date.now() }; }catch(e){} }, true)); A.appendChild(r); };
       row('details', 'Student details', '<span id="tlCt">' + cd + ' · checking emails…</span>', '<button class="btn ghost" onclick="stuEdit(\'' + cd + '\')">Edit details</button><button class="btn ghost" onclick="ctSheet(\'' + cd + '\',\'' + nm + '\')">Emails</button>');
@@ -14141,6 +14141,18 @@ window.ctSave = async function(code){ const b = $('ctB'); if(b){ b.disabled = tr
     if(!(r && r.ok && r.data)) throw 0; if(r.data.ok === false){ toast(r.data.msg || 'Check the email'); if(b){ b.disabled = false; b.textContent = 'Save'; } return; }
     CT380[code] = Promise.resolve(r.data.contact); toast('✓ Emails saved'); const R = window._tlRet; if(R && R.i > -1){ window._tlRet = null; tlOpen(R.i); } else closeSheet(); }
   catch(e){ toast('Not saved · check the connection'); if(b){ b.disabled = false; b.textContent = 'Save'; } } };
+</script>
+<script>
+/* 381 · partner dropdown */
+(function(){
+  const BASE = ['CupOfEnglish', 'Jinan - Ms. Spring', 'Jinan - Ms. Rose', 'Inner Mongolia - Ms. Jane', 'Inner Mongolia - Ms. Jane Adult', 'Chengdu - Mr. Clark', 'Panpacific University', 'IELTS', 'TOEFL', 'Adult English', 'Adult English - Ph', 'IELTS - Ms. Spring', 'Adults - Ms. Spring', 'Reading Program'];
+  const names = () => { const L = (typeof ML !== 'undefined' && ML && Array.isArray(ML.partner) && ML.partner.length) ? ML.partner : BASE; return L.slice(); };
+  function fill(sel, cur){ const L = names(); if(cur && L.indexOf(cur) < 0) L.unshift(cur); sel.innerHTML = L.map(x => '<option' + (x === cur ? ' selected' : '') + '>' + esc(x) + '</option>').join('') + '<option value="__o">Other…</option>'; if(!cur) sel.value = L.indexOf('CupOfEnglish') > -1 ? 'CupOfEnglish' : L[0]; }
+  window.paPick = function(){ ['enPa', 'rpPa'].forEach(id => { const el = $(id); if(!el || el.tagName !== 'INPUT') return; const cur = el.value.trim(), s = document.createElement('select'); s.id = id; s.className = el.className; fill(s, cur);
+    s.onchange = () => { if(s.value !== '__o') return; const v = (prompt('Partner name') || '').trim(); if(!v){ fill(s, cur); return; } const o = document.createElement('option'); o.textContent = v; s.insertBefore(o, s.firstChild); s.value = v; };
+    el.replaceWith(s);
+    if(typeof ML === 'undefined' || !ML){ try{ lists().then(() => { const x = $(id); if(x && x.tagName === 'SELECT'){ const v = x.value; fill(x, v === '__o' ? '' : v); } }).catch(() => {}); }catch(e){} } }); };
+})();
 </script>
 
 </body>
