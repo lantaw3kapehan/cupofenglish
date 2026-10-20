@@ -6115,7 +6115,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 700;
+const COE_V = 701;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12369,12 +12369,13 @@ ${t.facts ? `<div class="kxf" hidden>${facts(t)}</div>` : ''}</div>`; }
     const m = (K && K.months || []).find(x => x.me === me), live = m && !m.final;
     const nx = t < 65 ? ['Bronze', 65] : t < 78 ? ['Silver', 78] : t < 88 ? ['Gold', 88] : null, pts = nx ? Math.round((nx[1] - t) * 10) / 10 : 0;
     if(!live) return gap0(me);
-    if(me.rank === 1 && (me.level === 'Silver' || me.level === 'Gold')) return 'Keep ' + me.level + ' and 1st place → Teacher of the Month';
-    if(!nx) return 'Gold · keep it to the end of the month';
-    if(pts <= 3) return pts + ' points to ' + nx[0] + ' · within reach this month';
+    if(me.rank === 1 && (me.level === 'Silver' || me.level === 'Gold')) return 'Keep ' + me.level + ' and first place|to become Teacher of the Month.';
+    if(!nx) return 'You are at Gold.|Keep it to the end of the month.';
+    if(pts <= 3) return 'Only ' + pts + ' points to ' + nx[0] + '.|It is within reach this month.';
     const P = me.pillars || {}, NM = { quality: 'Quality', progress: 'Progress', trust: 'Trust', reliability: 'Reliability' };
     const low = Object.keys(NM).filter(k => P[k] != null).sort((a, b) => P[a] - P[b])[0];
-    return 'Path to ' + nx[0] + (low ? ' · biggest step: ' + NM[low] + ' (' + Math.round(P[low]) + ')' : ' · step by step'); }catch(e){ return gap0(me); } };
+    return 'Your path to ' + nx[0] + ':|' + (low ? 'grow ' + NM[low] + ' (' + Math.round(P[low]) + ') first.' : 'one step at a time.'); }catch(e){ return gap0(me); } };
+  const gapT = me => String(gap(me)).replace('|', ' ');
   const isT = () => !!(typeof D !== 'undefined' && D && !D.mgr && TOKEN);
   const cur = () => K && K.months && K.months.length ? K.months[K.months.length - 1] : null;
   function load(force){ try{ if(K && isT() && K.who !== ((D.me && D.me.name) || '')){ K = null; Kat = 0; } }catch(e){} if(Kbusy || !isT() || (!force && Date.now() - Kat < 10 * 6e4)) return; Kbusy = true; Kat = Date.now();   /* 337: back off even when it fails */
@@ -12383,7 +12384,7 @@ ${t.facts ? `<div class="kxf" hidden>${facts(t)}</div>` : ''}</div>`; }
   // 1 · the header badge
   function badge(){ const el = $('hRank'); if(!el || !isT()) return; const old = el.querySelector('.kxb'); if(old) old.remove(); if(sideOn()) return; const m = cur(); if(!K || !K.on || !m) return;
     const me = m.me || {}, when = mShort(m.month) + (m.final ? '' : ' so far');
-    const txt = me.rank ? `${MED[me.level] || ''} ${esc(me.level || '')} · ${gap(me)} · ${when}` : `${when} · not ranked yet`;
+    const txt = me.rank ? `${MED[me.level] || ''} ${esc(me.level || '')} · ${gapT(me)} · ${when}` : `${when} · not ranked yet`;
     const s = document.createElement('span'); s.className = 'kxb'; s.style.cssText = 'cursor:pointer;white-space:nowrap'; s.title = 'Teacher Excellence · tap for details';
     s.innerHTML = ' · <u style="text-decoration-style:dotted;text-underline-offset:3px">' + txt + '</u>'; s.onclick = e => { e.stopPropagation(); try{ go('growth'); setTimeout(() => { const c = $('kxCard'); if(c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250); }catch(x){} };
     el.appendChild(s); }
@@ -12449,7 +12450,7 @@ ${H.map((x, i) => `<circle cx="${px(i)}" cy="${py(x.me.total)}" r="8" fill="${LC
 <div style="flex:1;min-width:200px"><div class="small mute" style="letter-spacing:.08em;text-transform:uppercase;font-weight:600">Teacher Excellence · this month</div>
 <div style="font-size:22px;font-weight:700;margin:2px 0">${esc(m.label)}${m.final ? '' : ' <span class="mute" style="font-size:15px;font-weight:400">so far</span>'}</div>${live}</div>
 <div style="text-align:right;margin-left:auto">${me.rank ? `<div style="font:800 26px/1 var(--brand,inherit);color:var(--ink)">${esc(me.level)}</div><span style="display:inline-block;margin-top:6px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:#eef7f5;color:#1e7a6e">${me.rank <= 3 ? ['🥇', '🥈', '🥉'][me.rank - 1] + ' ' : ''}${ord(me.rank)} place${m.final ? '' : ' so far'}</span>` : '<div class="small mute">Not ranked this month<br>(20 hours or more to be ranked)</div>'}</div></div>
-${track}${me.rank ? `<div style="text-align:center;color:#2a9d8f;font-weight:700;margin:2px 0 0">${gap(me)}</div>` : ''}
+${track}${me.rank ? `<div style="text-align:center;color:#2a9d8f;font-weight:700;margin:2px 0 0">${esc(gapT(me))}</div>` : ''}
 ${tiles}
 ${q && (q.strength || q.next) ? `<div style="margin-top:14px">${q.strength ? `<p class="small" style="margin:4px 0"><b>Keep doing</b> · ${esc(clip(q.strength, 220))}</p>` : ''}${q.next ? `<p class="small" style="margin:4px 0"><b>Next focus</b> · ${esc(clip(q.next, 220))}</p>` : ''}<div class="small mute">From your ${esc(q.period)} QA · the full notes are in QA feedback</div></div>` : ''}
 ${m.top && m.top.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:14px"><b class="small" style="margin-right:4px">Top 3 · ${esc(mShort(m.month))}${m.final ? '' : ' so far'}</b>${m.top.map((t, i) => `<span class="chip" style="${t.rank === me.rank && me.rank ? 'background:#e6f4f2;outline:2px solid #2a9d8f;' : ''}font-weight:600">${['🥇', '🥈', '🥉'][i] || ''} ${esc(tName(t.name))}</span>`).join('')}</div>` : ''}
@@ -12493,7 +12494,7 @@ ${m.top && m.top.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-
       + (me.rank ? `<span style="display:inline-block;white-space:nowrap;margin-top:6px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:#eef7f5;color:#1e7a6e">${me.rank <= 3 ? ['🥇', '🥈', '🥉'][me.rank - 1] + ' ' : ''}${ord(me.rank)} place</span>` : '') + `</div></div>`
       + (me.rank && t >= 0 ? `<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:10px;color:#9a9aae;margin-bottom:4px"><span>${esc(band[0])}</span><span>${nxt ? esc(nxt[0]) + ' ' + nxt[1] : 'Top level'}</span></div>`
         + `<div style="height:8px;border-radius:6px;background:#eef0f2;overflow:hidden"><div style="height:100%;width:${inBand}%;border-radius:6px;background:linear-gradient(90deg,${g[0]},${g[1]})"></div></div>`
-        + (g => { const p = String(g).split(/ → | · /), arrow = / → /.test(g); return `<div style="margin-top:10px;padding:8px 10px;border-radius:12px;background:${me.level === 'Gold' ? '#fff7e0' : '#eef7f5'};font-size:12px;line-height:1.4;color:${me.level === 'Gold' ? '#6b4a00' : '#1e6b61'}"><div style="font-weight:700">${esc(p[0])}</div>${p.length > 1 ? `<div style="opacity:.85;margin-top:1px">${arrow ? 'for ' : ''}${esc(p.slice(1).join(' · '))}</div>` : ''}</div>`; })(gap(me)) + `</div>` : '')
+        + (g => { const p = String(g).split('|'), arrow = false; return `<div style="margin-top:10px;padding:8px 10px;border-radius:12px;background:${me.level === 'Gold' ? '#fff7e0' : '#eef7f5'};font-size:12px;line-height:1.4;color:${me.level === 'Gold' ? '#6b4a00' : '#1e6b61'}"><div style="font-weight:700">${esc(p[0])}</div>${p.length > 1 ? `<div style="opacity:.85;margin-top:1px">${arrow ? 'for ' : ''}${esc(p.slice(1).join(' · '))}</div>` : ''}</div>`; })(gap(me)) + `</div>` : '')
       + (H.length > 1 ? `<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--line)">${spark}</div>` : '')
       + `<div style="font-size:11px;color:#2a9d8f;font-weight:600;margin-top:8px;text-align:right">See my month ›</div>`;
     if(!box){ box = document.createElement('div'); box.id = 'kxSide'; box.title = 'Teacher Excellence · tap for details';
@@ -13916,21 +13917,21 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
     '.cm-line{border-radius:14px;padding:10px 14px;margin:0 0 12px;font-size:14px;background:#f5fbfa;border:1px dashed #2a9d8f;color:#1e5e56}' +
     '.cm-line.g{background:#fffaf0;border-color:#d4a017;color:#6b4a00}';
     document.head.appendChild(s); };
-  function goldHtml(m){ return `<section class="cm-card cm-gold" data-cm="1"><span class="cm-ic">🥇</span><div class="cm-k">Gold Excellence · ${esc(m.label)}</div>
+  function goldHtml(m){ return `<section class="cm-card cm-gold" data-cm="1"><span class="cm-ic">🥇</span><div class="cm-k">Gold Excellence — ${esc(m.label)}</div>
 <h3>You reached Gold, our highest standard.</h3><p>A score of ${esc(String(m.me.total))} puts you among the very best teachers at CupOfEnglish. Gold is earned, not given: excellent lessons, being there on time for every student, and students who truly grow with you. Thank you for setting the standard for the whole team.</p>
-<div class="cm-sig">With pride and gratitude · CupOfEnglish management</div></section>`; }
+<div class="cm-sig">With pride and gratitude, CupOfEnglish Management</div></section>`; }
   function totmHtml(m, mine){ const w = m.top[0], gold = w.level === 'Gold';
-    return mine ? `<section class="cm-card cm-totm" data-cm="1"><span class="cm-ic">🏆</span><div class="cm-k">Teacher of the Month · ${esc(m.label)}</div>
-<h3>Congratulations · you are our Teacher of the Month!</h3><p>First place among all our teachers${gold ? ', at Gold' : ''}. Your care, consistency and the progress of your students made the difference this month. Thank you for leading by example.</p>
-<div class="cm-sig">With thanks · CupOfEnglish management</div></section>`
-    : `<section class="cm-card cm-totm" data-cm="1"><span class="cm-ic">🏆</span><div class="cm-k">Teacher of the Month · ${esc(m.label)}</div>
+    return mine ? `<section class="cm-card cm-totm" data-cm="1"><span class="cm-ic">🏆</span><div class="cm-k">Teacher of the Month — ${esc(m.label)}</div>
+<h3>Congratulations! You are our Teacher of the Month.</h3><p>First place among all our teachers${gold ? ', at Gold' : ''}. Your care, consistency and the progress of your students made the difference this month. Thank you for leading by example.</p>
+<div class="cm-sig">With thanks, CupOfEnglish Management</div></section>`
+    : `<section class="cm-card cm-totm" data-cm="1"><span class="cm-ic">🏆</span><div class="cm-k">Teacher of the Month — ${esc(m.label)}</div>
 <h3>Congratulations, ${esc(T(w.name))}!</h3><p>First place among all our teachers${gold ? ', at Gold' : ''}. Thank you for the care and consistency you brought to every class.</p>
-<div class="cm-sig">${m.top.map((t, i) => ['1st', '2nd', '3rd'][i] + ' · ' + esc(T(t.name)) + (t.level ? ' (' + esc(t.level) + ')' : '')).join(' · ')}</div>
+<div class="cm-sig">${m.top.map((t, i) => ['First', 'Second', 'Third'][i] + ': ' + esc(T(t.name)) + (t.level ? ' (' + esc(t.level) + ')' : '')).join('; ')}</div>
 <button class="btn sm ghost" style="margin-top:10px" onclick="go('growth')">See my month</button></section>`; }
   function liveLine(m){ const me = m.me || {}; if(!me.rank) return '';
     const end = (() => { try{ return new Date(m.month + '-15T12:00:00').toLocaleDateString('en-GB', { month: 'long' }); }catch(e){ return 'the month'; } })();
-    if(me.level === 'Gold') return `<div class="cm-line g" data-cm="1">✨ <b>Gold standard so far.</b> Hold it to the end of ${esc(end)} for the Gold Excellence commendation${me.rank === 1 ? ', and you are leading the team too' : ''}.</div>`;
-    if(me.rank === 1) return `<div class="cm-line" data-cm="1">🥇 <b>You are leading the team this month.</b> ${UP[me.level] ? 'Finish strong to be Teacher of the Month for ' + esc(end) + '.' : 'Reach Silver (78) by the end of ' + esc(end) + ' to be Teacher of the Month.'}</div>`;
+    if(me.level === 'Gold') return `<div class="cm-line g" data-cm="1">✨ <b>You are at Gold so far.</b> Hold it to the end of ${esc(end)} to earn the Gold Excellence commendation${me.rank === 1 ? '. You are also leading the team!' : '.'}</div>`;
+    if(me.rank === 1) return `<div class="cm-line" data-cm="1">🥇 <b>You are leading the team this month.</b> ${UP[me.level] ? 'Finish strong to become Teacher of the Month for ' + esc(end) + '!' : 'Reach Silver (78) by the end of ' + esc(end) + ' to become Teacher of the Month.'}</div>`;
     return ''; }
   const put = (el, html) => { const t = document.createElement('div'); t.innerHTML = html; const lead = el.querySelector('.lead'); [...t.children].reverse().forEach(c => { if(lead && lead.nextSibling) el.insertBefore(c, lead.nextSibling); else el.insertBefore(c, el.firstChild); }); };
   window.kxCommend = function(K){ try{
@@ -13956,12 +13957,12 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
   const mon = ym => { try{ return new Date(ym + '-15T12:00:00').toLocaleDateString('en-GB', { month: 'long' }); }catch(e){ return ''; } };
   function msg(K){ if(!K || !K.on) return null; const L = K.months || [], F = L.filter(x => x.final), f = F[F.length - 1], lv = L[L.length - 1];
     if(f && f.month === prevYm() && f.me && f.me.rank){ const w = f.top && f.top[0];
-      if(f.me.rank === 1 && w && (w.level === 'Silver' || w.level === 'Gold')) return { c: 'g', t: '🏆 Teacher of the Month · ' + mon(f.month), s: '🏆 Teacher of the Month' };
-      if(f.me.level === 'Gold') return { c: 'g', t: '🥇 Gold Excellence · ' + mon(f.month), s: '🥇 Gold Excellence' }; }
+      if(f.me.rank === 1 && w && (w.level === 'Silver' || w.level === 'Gold')) return { c: 'g', t: '🏆 You are our Teacher of the Month for ' + mon(f.month) + '!', s: '🏆 Teacher of the Month' };
+      if(f.me.level === 'Gold') return { c: 'g', t: '🥇 Gold Excellence for ' + mon(f.month) + '. Congratulations!', s: '🥇 Gold Excellence' }; }
     if(lv && !lv.final && lv.me && lv.me.rank){ const me = lv.me, t = Number(me.total), nx = t < 65 ? ['Bronze', 65] : t < 78 ? ['Silver', 78] : t < 88 ? ['Gold', 88] : null, pts = nx ? Math.round((nx[1] - t) * 10) / 10 : 0;
-      if(me.level === 'Gold') return { c: 'g', t: '✨ Gold standard so far · hold it to the end of ' + mon(lv.month), s: '✨ Gold so far' };
-      if(me.rank === 1) return { c: '', t: '🥇 Leading the team this month · ' + ((me.level === 'Silver') ? 'finish strong to be Teacher of the Month' : 'reach Silver to be Teacher of the Month'), s: '🥇 Leading the team' };
-      if(nx && pts <= 3) return { c: '', t: '⭐ ' + pts + ' points to ' + nx[0] + ' · within reach this month', s: '⭐ ' + pts + ' to ' + nx[0] }; }
+      if(me.level === 'Gold') return { c: 'g', t: '✨ You are at Gold so far. Hold it to the end of ' + mon(lv.month) + '.', s: '✨ Gold so far' };
+      if(me.rank === 1) return { c: '', t: '🥇 You are leading the team this month. ' + ((me.level === 'Silver') ? 'Finish strong to become Teacher of the Month!' : 'Reach Silver to become Teacher of the Month.'), s: '🥇 Leading the team' };
+      if(nx && pts <= 3) return { c: '', t: '⭐ Only ' + pts + ' points to ' + nx[0] + '. It is within reach this month!', s: '⭐ ' + pts + ' to ' + nx[0] }; }
     return null; }
   function head(K){ try{ const sp = document.querySelector('header .hd .sp'); if(!sp) return; let el = $('cmHead');
     const m = isT() ? msg(K) : null; if(!m){ if(el) el.remove(); return; }
