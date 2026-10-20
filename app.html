@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 774;
+const COE_V = 775;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -17386,7 +17386,8 @@ body #v-teachers .tc2-line .pg{height:6px!important}
     const units = (me.nowReg || 0) + (me.nowTrial || 0) + (me.nowSub || 0), pay = (p.pay || []);
     const prev = pay.find(x => !/^\s*$/.test(String(x.month)) && pay.indexOf(x) > 0 && num(x.units)) || null;
     const T = p.timeIns || [], onT = T.filter(t => t.status === 'On time').length, tp = T.length ? Math.round(onT / T.length * 100) : null;
-    const S = (p.students || []).slice(), fb = S.filter(s => s.feedbackDue).length;
+    const FBO = new Date().getDate() >= 25;   /* 447: monthly feedback opens on the 25th */
+    const S = (p.students || []).map(s => FBO ? s : Object.assign({}, s, { feedbackDue: false })), fb = S.filter(s => s.feedbackDue).length;
     let h = '<div class="t46" style="--rt:' + k[1] + ';--rb:' + k[2] + ';--rc:' + k[3] + '">' +
       '<div class="hd"><div class="av">' + esc(String(name).replace(/^teacher\s+/i, '').slice(0, 2).toUpperCase()) + '</div><div><h1 data-tch="' + esc(name) + '">' + esc(tName(name)) + '</h1><div class="sub">' + (me.rank ? '<span class="rk">' + esc(me.rank) + '</span>' : '') + esc([me.rate ? peso(me.rate) + '/lesson' : '', (me.lifetime || 0).toLocaleString() + ' lifetime units'].filter(Boolean).join(' · ')) + '</div></div></div>' +
       '<div class="act"><button class="btn sm teal" onclick="growthSheet(\'' + q(name) + '\')">Growth</button><button class="btn ghost sm" onclick="payslip(\'' + q(name) + '\')">Payslip</button><button class="btn ghost sm" onclick="avOpen(\'' + q(name) + '\')">Open slots</button><button class="btn ghost sm" onclick="profOpen(\'' + q(name) + '\')">Profile card</button><button class="btn ghost sm" onclick="pwSet(\'' + q(name) + '\')">Password · access</button><button class="btn ghost sm" onclick="closeSheet();go(\'teachers\');loadTT(\'' + q(name) + '\')">TEACHERS tab</button></div>';
@@ -17395,7 +17396,7 @@ body #v-teachers .tc2-line .pg{height:6px!important}
       '<div><b>' + peso(nowPayOf(me) + (me.monthBonus || 0) - (me.monthDeduct || 0)) + '</b><span>pay so far' + (me.monthBonus ? ' · <span style="color:#1E8A5E">+' + peso(me.monthBonus) + '</span>' : '') + (me.monthDeduct ? ' · <span style="color:#C0563F">−' + peso(me.monthDeduct) + '</span>' : '') + '</span></div>' +
       '<div><b>' + S.length + '</b><span>students</span></div>' +
       '<div><b style="color:' + (tp == null ? 'var(--ink)' : tp >= 90 ? '#1E8A5E' : tp >= 75 ? '#B07A10' : '#C0563F') + '">' + (tp == null ? '—' : tp + '%') + '</b><span>time-ins on time · last ' + T.length + '</span></div>' +
-      '<div><b style="color:' + (fb ? '#C0563F' : '#1E8A5E') + '">' + fb + '</b><span>feedback due</span></div></div>';
+      (FBO ? '<div><b style="color:' + (fb ? '#C0563F' : '#1E8A5E') + '">' + fb + '</b><span>monthly feedback due</span></div></div>' : '<div><b style="color:#8A86A0">25th</b><span>monthly feedback opens · ' + (25 - new Date().getDate()) + ' day' + (25 - new Date().getDate() === 1 ? '' : 's') + ' to go</span></div></div>');
     /* today + pay chart */
     const now = new Date(), hm = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     const tdy = today.length ? today.map(c => { const s = new Date(c.start), past = new Date(c.end || c.start) < now; return '<div class="r' + (c.cancelled ? ' x' : '') + (past ? ' past' : '') + '" style="--c:' + (c.cancelled ? '#C9C6D6' : bookCol(c.book)) + '"><b>' + tm(c.start) + '</b><i></i><span class="ell">' + esc(c.student || c.title) + (c.book ? ' <span class="mute">· ' + esc(c.book) + '</span>' : '') + '</span>' + (c.type && c.type !== 'Regular' ? '<span class="chip">' + esc(c.type) + '</span>' : '<span></span>') + '</div>'; }).join('') : '<div class="mute small">No classes today.</div>';
@@ -17411,7 +17412,7 @@ body #v-teachers .tc2-line .pg{height:6px!important}
         (t.device || t.net || t.note || (typeof placeHtml === 'function' && placeHtml(t)) ? '<details><summary>details · device, speed, location</summary>' + (t.device || t.net ? '<div class="small mute">' + esc([t.device, t.ip, t.net, t.speed].filter(Boolean).join(' · ')) + '</div>' : '') + (typeof placeHtml === 'function' ? placeHtml(t) : '') + (t.note ? '<div class="small">' + esc(t.note) + '</div>' : '') + '</details>' : '') + '</div>').join('') + '</div>' : '<div class="mute small">No time-ins yet.</div>';
     /* students */
     S.sort((a, b) => (b.feedbackDue ? 1 : 0) - (a.feedbackDue ? 1 : 0) || (a.left == null ? 999 : a.left) - (b.left == null ? 999 : b.left));
-    h += '<div class="sh"><span>Students · ' + S.length + '</span><span>' + (fb ? '<b style="color:#C0563F">' + fb + '</b> feedback due · ' : '') + 'fewest lessons left first</span></div><div class="st">' +
+    h += '<div class="sh"><span>Students · ' + S.length + '</span><span>' + (fb ? '<b style="color:#C0563F">' + fb + '</b> monthly feedback due · ' : '') + 'fewest lessons left first</span></div><div class="st">' +
       S.map(s => { const lf = s.left, lc = lf == null ? '#C9C6D6' : lf <= 5 ? '#D4705A' : lf <= 10 ? '#E0A030' : '#2E9E6F';
         return '<div class="s' + (s.feedbackDue ? ' fb' : '') + '" onclick="closeSheet();openStudent(\'' + q(s.code) + '\')"><div style="min-width:0"><div class="n"><b>' + esc(s.name) + '</b> <span>' + esc(s.code) + (s.book ? ' · ' + esc(s.book) : '') + '</span></div><div class="e">' + (s.note ? 'ended ' + esc(s.note.ended) : '&nbsp;') + '</div></div>' +
           '<div class="lf" style="color:' + (lf != null && lf <= 5 ? '#C0563F' : 'var(--ink)') + '">' + (lf == null ? '<small>shared</small>' : lf + '<small>left</small>') + (s.feedbackDue ? '<small style="color:#C0563F;font-weight:700">feedback</small>' : '') + '</div>' +
