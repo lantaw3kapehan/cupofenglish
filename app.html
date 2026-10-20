@@ -4617,7 +4617,7 @@ const ds = (r.dates && r.dates.length ? r.dates : [r.date || f.date]).filter(Boo
 const at = d => { const x = new Date(d + 'T' + (f.time.length === 4 ? '0' + f.time : f.time) + ':00'); return x; };
 const st = at(ds[0]), en = new Date(st.getTime() + mins * 6e4), kind = r.kind || f.kind || '';
 const e = { start: st.toISOString(), end: en.toISOString(), student: s.name.replace(/-/g, ' '), code: s.code, teacher: f.teacher, book: f.book, title: r.title || '', type: kind === 'TC' ? 'Trial' : kind === 'SC' ? 'Sub' : '', meet: '' };
-CXP = { kind: 'class', e, why: '', by: '', zh: '', cn: cxCnOf(s.code) || f.cn || '', url: '', added: 1 };
+CXP = { kind: 'class', e, why: '', by: '', zh: '', cn: (window.NAMEFIX && NAMEFIX[String(s.code).toUpperCase()]) ? (NAMEFIX['cn:' + String(s.code).toUpperCase()] || f.cn || '') : (cxCnOf(s.code) || f.cn || ''), url: '', added: 1 };
 if(ds.length > 1){ const W = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], WZ = '日一二三四五六', dd = [...new Set(ds.map(d => at(d).getDay()))].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)), last = at(ds[ds.length - 1]);
 const lu = Math.round(ds.length * mins / 50 * 10) / 10;   /* 25-min class = half a lesson: the parent sees the lessons too, and the last class is not read as the package end */
 CXP.pkg = { en: ds.length + ' classes' + (mins < 50 ? ' (= ' + lu + ' lessons)' : '') + ' · every ' + (window._mxLbl ? window._mxLbl.en : dd.map(d => W[d]).join(' & ')) + ' · last class ' + last.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
@@ -5936,7 +5936,7 @@ async function tlSched(){ const x = TLD; if(!x) return; if(!x.code) return toast
 await classForm(x.code); if(!$('cS')) return;
 try{ classKind(''); }catch(e){}   /* a regular class, even if the student was added as a trial */
 const t = $('cT'); if(t && x.teacher && [...t.options].some(o => o.value === x.teacher)) t.value = x.teacher;
-const d = new Date(); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); const dd = $('cD'); if(dd) dd.value = ymdLocal(d);   /* next Monday */
+const d = new Date(); d.setDate(d.getDate() + 1); const dd = $('cD'); if(dd) dd.value = ymdLocal(d);   /* 387: from tomorrow · the first chosen day after it is the first class */
 const r = $('cR'); if(r && !r.checked){ r.checked = true; classRep(); } document.querySelectorAll('#cDays button.on').forEach(b => b.classList.remove('on'));   /* the parent's days are picked by hand */
 const h = $('sheetBody').querySelector('h1'); if(h) h.insertAdjacentHTML('afterend', '<div class="mini" style="margin-top:8px"><b>' + esc(x.student) + ' · first schedule after the trial</b><div class="small">Tap the days (e.g. Sat + Sun), then each day’s time (e.g. Sat 15:30, Sun 11:00), the length (25 or 50 min), then the number of classes in the package. The parent picture comes up after you add them.</div></div>');
 try{ classPrev(); }catch(e){} }
@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 716;
+const COE_V = 717;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -14441,7 +14441,7 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
   const fixForm = (code, nm) => { try{ const cs = $('cS'); if(cs && cs.value.toUpperCase().indexOf(code) === 0) cs.value = code + ' · ' + nm; const h = $('sheetBody').querySelector('h1'); if(h && /^New class/.test(h.textContent)) h.textContent = 'New class · ' + nm; classPrev(); }catch(e){} };
   const baseT = window.tlSched;
   if(baseT) window.tlSched = async function(){ const x = (typeof TLD !== 'undefined') ? TLD : null, code = x && String(x.code || '').toUpperCase(), nm = x && String(x.student || '').trim();
-    if(code && nm) NAMEFIX[code] = nm;
+    if(code && nm){ NAMEFIX[code] = nm; NAMEFIX['cn:' + code] = String(x.cn || '').trim(); }
     const r = await baseT.apply(this, arguments);
     if(code && nm){ fixForm(code, nm); setTimeout(() => fixForm(code, nm), 1500); }   /* again after the student list reloads */
     return r; };
@@ -14450,6 +14450,10 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
   /* book chips: hide placeholders */
   const bp = window.classPrev; window.classPrev = function(){ const r = bp.apply(this, arguments); try{ const B = $('cBk'); if(B) B.querySelectorAll('.bk button:not(.more)').forEach(b => { if(/^(N\/?A|REF|#?REF!?|-+|none|tbd)$/i.test(b.textContent.trim())) b.remove(); }); }catch(e){} return r; };
 })();
+</script>
+<script>
+/* 387 · with Weekly package on, Date reads "Starting from" */
+(function(){ const bp = window.classPrev; window.classPrev = function(){ const r = bp.apply(this, arguments); try{ const d = $('cD'), l = d && d.closest('.grow') && d.closest('.grow').querySelector('label'); if(l){ const on = $('cR') && $('cR').checked; const t = on ? 'Starting from' : 'Date'; if(l.textContent !== t) l.textContent = t; } }catch(e){} return r; }; })();
 </script>
 
 </body>
