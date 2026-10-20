@@ -6115,7 +6115,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 699;
+const COE_V = 700;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -9160,7 +9160,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     (threads || []).forEach(t => { const r = t.root; if(!r || r.role !== 'mgmt') return; const a = age(tms(r.at));
       if(isTask(r) && !/^✅/.test(r.react || '') && a >= 2) items.push({ kind: 'Task', text: 'Task from ' + r.from + ' not done since ' + sd(tms(r.at)) + ' · ' + short(r.text), days: a, overdue: 1 });
       else if(r.kind === 'memo' && !r.ack && a >= 1) items.push({ kind: 'Memorandum', text: 'Memorandum ' + (r.memoNo || '') + ' not acknowledged since ' + sd(tms(r.at)), days: a, overdue: 1 });
-      else if(!isTask(r) && r.kind !== 'memo' && pcOf(r) && !done[pcOf(r)] && !(t.replies || []).some(x => x.role !== 'mgmt' && /sent|done/i.test(x.text)) && a >= 3) items.push({ kind: 'Progress check', text: 'Progress check (' + pcOf(r) + ') asked ' + sd(tms(r.at)) + ', not sent yet', days: a, overdue: 1 });
+      else if(!isTask(r) && r.kind !== 'memo' && pcOf(r) && !done[pcOf(r)] && !(window.pcSentAfter && pcSentAfter(pcOf(r), r.at)) && !(t.replies || []).some(x => x.role !== 'mgmt' && /sent|done/i.test(x.text)) && a >= 3) items.push({ kind: 'Progress check', text: 'Progress check (' + pcOf(r) + ') asked ' + sd(tms(r.at)) + ', not sent yet', days: a, overdue: 1 });
       else if(!isTask(r) && r.kind !== 'memo' && !pcOf(r) && r.need && !r.ack && a >= 2) items.push({ kind: 'Message', text: 'Message from ' + r.from + ' not answered since ' + sd(tms(r.at)) + ' · ' + short(r.text), days: a, overdue: 1 }); });
     const V = (visits || []).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
     V.forEach(v => { const t = tms(v.date + ' ' + (v.time || '')), a = age(t); if(!v.ack && !acked[v.id] && a >= 2) items.push({ kind: 'QA visit', text: 'Class visit ' + sd(t) + (v.student ? ' (' + v.student + ')' : '') + ' not read · tap Got it', days: a, overdue: 1 }); });
@@ -9186,11 +9186,13 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     let acked = {}; try{ acked = JSON.parse(store('get', 'coe.vack') || '{}'); }catch(e){}
     const R = ftCheck(MYV || [], (TMSG && TMSG.threads) || [], { acked, pcDone: window.PCDONE || {} }); R.sig = R.items.map(x => x.kind + x.text).join('|'); window._FT = R;
     const old = $('ftBox'); if(old) old.remove(); if(R.level < 2) return;
-    let plan = null; try{ plan = JSON.parse(localStorage.getItem(planKey()) || 'null'); }catch(e){} const sent = plan && plan.sig === R.sig && Date.now() - plan.at < 3 * DAY;
-    if(!document.getElementById('ftCss')) document.head.insertAdjacentHTML('beforeend', '<style id="ftCss">#ftBox{border:2px solid #C0392B;background:#FDECEA;border-radius:18px;padding:14px 16px;margin:14px 0 6px}#ftBox h3{margin:0;font-size:17px;color:#8E1F12}#ftBox ul{margin:8px 0 0 18px;padding:0}#ftBox li{margin:3px 0}</style>');
-    const head = R.level >= 3 ? '⛔ Final warning · management has been told' : '⚠ Warning · management’s comments need action';
-    const sub = R.level >= 3 ? 'These were raised more than once or have waited too long. Management may send a memorandum.' : 'These have waited 2 days or more, or were not fixed after the last class visit.';
-    const box = '<div id="ftBox"><h3>' + head + '</h3><div class="small" style="color:#8E1F12;margin-top:2px">' + sub + '</div><ul>' + R.items.slice(0, 6).map(x => '<li class="small"><b>' + esc(x.kind) + '</b> · ' + esc(x.text) + (x.overdue && x.days >= 2 ? ' · ' + x.days + ' days' : '') + '</li>').join('') + (R.items.length > 6 ? '<li class="small">+' + (R.items.length - 6) + ' more</li>' : '') + '</ul>' +
+    let plan = null; try{ plan = JSON.parse(localStorage.getItem(planKey()) || 'null'); }catch(e){} let sent = plan && plan.sig === R.sig && Date.now() - plan.at < 3 * DAY;
+    if(!sent){ try{ const P = ((TMSG && TMSG.threads) || []).map(t => t.root).filter(r => r && r.role !== 'mgmt' && /^⚠ My follow-up plan/.test(String(r.text || ''))).map(r => tms(r.at)).filter(x => x && Date.now() - x < 7 * DAY).sort((a, b) => b - a);   /* 370: a plan sent from any device */
+      if(P.length){ sent = true; plan = { at: P[0] }; } }catch(e){} }
+    if(!document.getElementById('ftCss')) document.head.insertAdjacentHTML('beforeend', '<style id="ftCss">#ftBox{border:2px solid #C0392B;background:#FDECEA;border-radius:18px;padding:14px 16px;margin:14px 0 6px}#ftBox h3{margin:0;font-size:17px;color:#8E1F12}#ftBox ul{margin:8px 0 0 18px;padding:0}#ftBox li{margin:3px 0}#ftBox.ftSent{border:1px solid #cfe7df;background:#f3faf7;padding:10px 14px}#ftBox.ftSent h3{color:#1E7A55;font-size:15px}#ftBox.ftSent .small{color:#3d6b5e!important}#ftBox.ftSent ul,#ftBox.ftSent>div:last-child,#ftBox.ftSent .ftW{display:none}</style>');
+    const head = sent ? '✓ Your follow-up plan is with management' : R.level >= 3 ? '⛔ Final warning · management has been told' : '⚠ Warning · management’s comments need action';
+    const sub = sent ? 'Sent ' + sd(plan.at) + ' · management will check it at your next class visit.' : R.level >= 3 ? 'These were raised more than once or have waited too long. Management may send a memorandum.' : 'These have waited 2 days or more, or were not fixed after the last class visit.';
+    const box = '<div id="ftBox"' + (sent ? ' class="ftSent"' : '') + '><h3>' + head + '</h3><div class="small" style="color:#8E1F12;margin-top:2px">' + sub + '</div><ul>' + R.items.slice(0, 6).map(x => '<li class="small"><b>' + esc(x.kind) + '</b> · ' + esc(x.text) + (x.overdue && x.days >= 2 ? ' · ' + x.days + ' days' : '') + '</li>').join('') + (R.items.length > 6 ? '<li class="small">+' + (R.items.length - 6) + ' more</li>' : '') + '</ul>' +
       (sent ? '<div class="small" style="margin-top:10px;color:#1E7A55"><b>✓ Your plan was sent ' + esc(sd(plan.at)) + '.</b> This stays until the items above are done or fixed at the next visit.</div>'
         : '<label style="margin-top:10px">What did you change, or what will you do and by when?</label><textarea id="ftP" class="in-t" rows="2" placeholder="e.g. I moved my camera back and checked it with a test call. From today I will…"></textarea><button class="btn teal block" id="ftB" style="margin-top:8px" onclick="ftSend()">Send my plan to management</button>') + '</div>';
     const lead = root.querySelector('.lead'); if(lead) lead.insertAdjacentHTML('afterend', box); else root.insertAdjacentHTML('afterbegin', box); }
@@ -13973,6 +13975,9 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
     el.className = m.c; const h = '<span class="l">' + esc(m.t) + '</span><span class="s">' + esc(m.s) + '</span><span class="i">' + esc(m.s.split(' ')[0]) + '</span>'; if(el.innerHTML !== h) el.innerHTML = h; }catch(e){} }
   const k0 = window.kxCommend; window.kxCommend = function(K){ const r = k0 ? k0.apply(this, arguments) : undefined; head(K); return r; };
 })();
+</script>
+<script>
+/* 370 */ window.pcSentAfter = function(code, at){ try{ const st = (D.students || []).concat(D.moved || []).find(s => s.code === code), lc = st && st.lastCheck; return !!(lc && String(lc).slice(0, 10) >= String(at || '').slice(0, 10)); }catch(e){ return false; } };
 </script>
 
 </body>
