@@ -6115,7 +6115,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 694;
+const COE_V = 695;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12365,8 +12365,8 @@ ${t.facts ? `<div class="kxf" hidden>${facts(t)}</div>` : ''}</div>`; }
   const gap = me => { const t = Number(me && me.total); if(!(t >= 0)) return ''; const nx = t < 65 ? ['Bronze', 65] : t < 78 ? ['Silver', 78] : t < 88 ? ['Gold', 88] : null; return nx ? (Math.round((nx[1] - t) * 10) / 10) + ' points to ' + nx[0] : 'top level reached'; };
   const isT = () => !!(typeof D !== 'undefined' && D && !D.mgr && TOKEN);
   const cur = () => K && K.months && K.months.length ? K.months[K.months.length - 1] : null;
-  function load(force){ if(Kbusy || !isT() || (!force && Date.now() - Kat < 10 * 6e4)) return; Kbusy = true; Kat = Date.now();   /* 337: back off even when it fails */
-    post('tKpi').then(d => { K = d || null; Kat = Date.now(); try{ localStorage.setItem('coe.kx.me', JSON.stringify(K)); }catch(e){} paintAll(); }).catch(() => {}).finally(() => { Kbusy = false; }); }
+  function load(force){ try{ if(K && isT() && K.who !== ((D.me && D.me.name) || '')){ K = null; Kat = 0; } }catch(e){} if(Kbusy || !isT() || (!force && Date.now() - Kat < 10 * 6e4)) return; Kbusy = true; Kat = Date.now();   /* 337: back off even when it fails */
+    post('tKpi').then(d => { K = d || null; if(K) K.who = (D.me && D.me.name) || ''; Kat = Date.now(); try{ localStorage.setItem('coe.kx.me', JSON.stringify(K)); }catch(e){} paintAll(); }).catch(() => {}).finally(() => { Kbusy = false; }); }
 
   // 1 · the header badge
   function badge(){ const el = $('hRank'); if(!el || !isT()) return; const old = el.querySelector('.kxb'); if(old) old.remove(); if(sideOn()) return; const m = cur(); if(!K || !K.on || !m) return;
@@ -12982,8 +12982,8 @@ ${OPEN ? act.map(rowH).join('') + (off.length ? `<details style="margin-top:8px"
   const RULES = 'Solid white background · face lit and centred · headset on · camera at eye level · nothing personal behind you';
   // ── teacher ──
   let ME = null, MEat = 0; try{ ME = JSON.parse(localStorage.getItem('coe.setup.me') || 'null'); }catch(e){}
-  function loadMe(force){ if(!isT() || (!force && Date.now() - MEat < 5 * 6e4)) return; MEat = Date.now(); post('tSetupMe').then(d => { ME = d; try{ localStorage.setItem('coe.setup.me', JSON.stringify(d)); }catch(e){} card(); }).catch(() => { /* 337: wait before retrying */ }); }
-  function card(){ const v = $('v-today'); if(!v || !isT()) return; let c = $('setupCard'); const cur = ME && (ME.rows || []).find(x => x.ym === ym()), st = cur ? cur.status : '';
+  function loadMe(force){ if(!isT() || (!force && Date.now() - MEat < 5 * 6e4)) return; MEat = Date.now(); post('tSetupMe').then(d => { ME = d; if(ME) ME.who = (D.me && D.me.name) || ''; try{ localStorage.setItem('coe.setup.me', JSON.stringify(d)); }catch(e){} card(); }).catch(() => { /* 337: wait before retrying */ }); }
+  function card(){ const v = $('v-today'); if(!v || !isT()) return; if(ME && ME.who !== undefined && ME.who !== ((D.me && D.me.name) || '')){ ME = null; MEat = 0; setTimeout(() => loadMe(), 0); } if(ME && ME.who === undefined){ ME = null; MEat = 0; setTimeout(() => loadMe(), 0); } let c = $('setupCard'); const cur = ME && (ME.rows || []).find(x => x.ym === ym()), st = cur ? cur.status : '';
     if(!ME || st === 'Approved'){ if(c) c.remove(); return; }
     const h = st === 'Waiting' ? `<b>📷 Teaching setup · ${esc(mName(ym()))}</b> <span class="chip amber">Waiting for Operations</span><div class="small mute" style="margin-top:4px">Sent ${esc(new Date(cur.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))} · you can send a better one any time</div><label class="btn sm ghost" style="margin-top:8px">Send another<input type="file" accept="image/*" hidden onchange="setupUp(this)"></label>`
       : st === 'Fix needed' ? `<b>📷 Teaching setup · ${esc(mName(ym()))}</b> <span class="chip red">Fix needed</span><div class="small" style="margin-top:4px;color:#B03A2E">${esc(cur.note || 'Please fix your setup and send a new screenshot.')}</div><div class="small mute">${RULES}</div><label class="btn sm" style="margin-top:8px">Send a new screenshot<input type="file" accept="image/*" hidden onchange="setupUp(this)"></label>`
@@ -13874,6 +13874,10 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
     BUSY = 0; if(r && r.ok && Array.isArray(r.list)){ LIST = r.list; AT = Date.now(); apply(); } }catch(e){ BUSY = 0; } }
   const _r = window.render; if(_r) window.render = function(){ const o = _r.apply(this, arguments); setTimeout(check, 0); return o; };
 })();
+</script>
+<script>
+/* 365 */ (function(){ const f0 = window.fetch; if(!f0) return; window.fetch = function(u, o){ try{ if(typeof u === 'string' && u === FAST_URL + '-mgmt' && o && typeof o.body === 'string' && typeof D !== 'undefined' && D && !D.mgr && D.me && D.me.name){
+  const b = JSON.parse(o.body); if(b && b.op === 'screen' && /^t[A-Z]/.test(String(b.fn || '')) && !b.as){ b.as = D.me.name; o = Object.assign({}, o, { body: JSON.stringify(b) }); } } }catch(e){} return f0.call(this, u, o); }; })();
 </script>
 
 </body>
