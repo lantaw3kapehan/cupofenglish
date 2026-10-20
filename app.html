@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 804;
+const COE_V = 805;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -18724,6 +18724,21 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
       return r;
     });
   };
+})();
+</script>
+<script>
+/* 20 Oct · 477 · Teacher Pay showed "Estimated October ₱13,350" and, in History, "Oct 2026 · ₱13,260 · Pending" — two numbers for the
+   same month. The month in progress is the estimate at the top; History keeps the finished months only (the row is still one tap away
+   through "This month's filed row" under the table, for Ops checking). */
+(function(){
+  const now = new Date(), M = now.toLocaleDateString('en-US', { month: 'long' }), S = now.toLocaleDateString('en-US', { month: 'short' }), Y = String(now.getFullYear());
+  const isCur = t => { t = String(t || '').trim(); return (t.indexOf(M) === 0 || t.indexOf(S + ' ') === 0) && t.indexOf(Y) > -1; };
+  function tidy(id){ const v = document.getElementById(id); if(!v) return; const tb = v.querySelector('table'); if(!tb || tb.dataset.p77) return; tb.dataset.p77 = 1;
+    const rows = [...tb.querySelectorAll('tr')].filter(r => r.querySelector('td') && isCur(r.querySelector('td').textContent)); if(!rows.length) return;
+    rows.forEach(r => r.style.display = 'none');
+    tb.insertAdjacentHTML('afterend', '<div class="small mute" style="margin-top:6px">' + esc(M) + ' is the estimate at the top until it is final. <a href="javascript:void 0" style="color:var(--teal);font-weight:700;text-decoration:none" onclick="this.parentNode.previousElementSibling.querySelectorAll(\'tr\').forEach(r => r.style.display = \'\');this.parentNode.remove()">Show ' + esc(M) + '\'s filed row</a></div>'); }
+  const _a = window.renderPay; if(_a) window.renderPay = function(){ const r = _a.apply(this, arguments); try{ tidy('v-pay'); }catch(e){} return r; };
+  const _b = window.renderMyPay; if(_b) window.renderMyPay = function(){ const r = _b.apply(this, arguments); try{ tidy('v-mypay'); }catch(e){} return r; };
 })();
 </script>
 
