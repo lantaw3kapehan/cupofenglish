@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 803;
+const COE_V = 804;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -18280,7 +18280,11 @@ section.sec .gr-kpi{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!imp
 })();
 </script>
 <script>
-/* 20 Oct · 473 + 474 polish · Sales & costs, executive view (Misty: "the best screen of all, because this is money — top-executive point of
+/* 20 Oct · 473 + 474 + 476 dashboard · Sales & costs, executive view.
+   476: four tabs (Overview · Months & years · Income & spending · Dues & checks) so the first view is one calm screen; tiles carry
+   their own mini charts; a Profit-by-month chart (each month's net either side of zero, with the running total since the first
+   month as a line); What to do next as cards. Every section from before is kept, one tap away.
+   Earlier note: (Misty: "the best screen of all, because this is money — top-executive point of
    view: when we see it, it's easy to understand what to do and how to plan").
    Same MONEY data as before; nothing removed, only shown better:
    · "The picture": four answers first — this month vs last, 12-month net, the break-even level, 2026 vs 2025.
@@ -18305,7 +18309,37 @@ const css = `
 .x73 .kp b{display:block;font-family:var(--brand);font-weight:400;font-size:25px;color:var(--ink);margin:4px 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .x73 .kp small{display:block;font-size:12px;color:#55526E;line-height:1.35}
 .x73 .t-ok{--c:#2E9E6F;--b:#EEF8F3} .x73 .t-bad{--c:#C4553D;--b:#FCEFEB} .x73 .t-s{--c:#00828B;--b:#E9F6F6} .x73 .t-w{--c:#6C5FC7;--b:#F2F0FB} .x73 .t-g{--c:#B97F17;--b:#FCF6EA}
-.x73 .todo{margin-top:12px}
+.x73 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 6px;padding:4px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh1);width:max-content;max-width:100%}
+.x73 .tabs button{border:0;background:none;font:inherit;font-size:13.5px;color:#55526E;padding:8px 14px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.x73 .tabs button.on{background:var(--ink);color:#fff} .x73 .tabs button b{font-size:11px;background:#FBE7E1;color:#9A3B26;border-radius:999px;padding:1px 7px} .x73 .tabs button.on b{background:rgba(255,255,255,.2);color:#fff}
+.x73[data-tab="o"] .tp:not([data-t="o"]),.x73[data-tab="m"] .tp:not([data-t="m"]),.x73[data-tab="i"] .tp:not([data-t="i"]),.x73[data-tab="d"] .tp:not([data-t="d"]){display:none}
+.x73 .kp .sk{margin-top:9px}
+.x73 .sn{display:flex;align-items:center;gap:3px;height:34px;background:linear-gradient(transparent calc(50% - .5px),rgba(0,0,0,.12) calc(50% - .5px),rgba(0,0,0,.12) calc(50% + .5px),transparent calc(50% + .5px))}
+.x73 .sn i{flex:1;border-radius:2px;align-self:flex-end;margin-bottom:17px} .x73 .sn i.u{background:#2E9E6F} .x73 .sn i.d{background:#D4705A;align-self:flex-start;margin:17px 0 0}
+.x73 .sb{position:relative;display:flex;align-items:flex-end;gap:3px;height:34px} .x73 .sb i{flex:1;border-radius:2px 2px 0 0} .x73 .sb i.u{background:#2E9E6F} .x73 .sb i.d{background:#E8A493}
+.x73 .sb em{position:absolute;left:0;right:0;border-top:2px dashed #6C5FC7}
+.x73 .sl2{font-size:10.5px;color:var(--mu);margin-top:4px}
+.x73 .sc{position:relative;display:flex;height:12px;border-radius:6px;background:rgba(255,255,255,.75);overflow:visible} .x73 .sc i{display:block;height:100%;background:#2E9E6F} .x73 .sc i:first-child{border-radius:6px 0 0 6px} .x73 .sc i.o{background:#A7D8BF}
+.x73 .sc em{position:absolute;top:-4px;bottom:-4px;width:2px;background:#6C5FC7;border-radius:2px}
+.x73 .sy{display:grid;grid-template-columns:34px 1fr;gap:6px;align-items:center;font-size:10.5px;color:var(--mu);margin-top:3px} .x73 .sy i{display:block;height:9px;border-radius:5px;background:#2E9E6F} .x73 .sy.p i{background:#B9B7C8}
+.x73 .todo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.x73 .todo .ac{background:#fff;border:1px solid var(--line);border-top:1px solid var(--line)!important;border-left:4px solid var(--c);border-radius:14px;padding:12px 14px;box-shadow:var(--sh1);transition:transform .12s}
+.x73 .todo .ac:hover{transform:translateY(-1px)}
+.x73 .ov2{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px;margin-top:26px;align-items:start}
+.x73 .ov2 .hero .t3{grid-template-columns:1fr} .x73 .ov2 .hero .t3>div{padding:8px 12px} .x73 .ov2 .hero .t3 b{font-size:21px}
+.x73 .ov2 .hero .nt{flex-direction:column;gap:5px}
+.x73 .pfc{position:relative;height:230px;margin:30px 50px 0 0}
+.x73 .pfc .z{position:absolute;left:0;right:0;border-top:1px solid #CFCDDA}
+.x73 .pfc .pb{position:absolute;top:0;bottom:0} .x73 .pfc .pb i{position:absolute;left:22%;right:22%;border-radius:4px} .x73 .pfc .pb.u i{background:#7CC4A0} .x73 .pfc .pb.d i{background:#EDA593} .x73 .pfc .pb.so i{opacity:.55}
+.x73 .pfc .pb .v{position:absolute;left:0;right:0;text-align:center;font-size:10.5px;font-weight:700;color:#3C7A57;transform:translateY(-15px)} .x73 .pfc .pb.d .v{color:#9A3B26;transform:translateY(3px)}
+.x73 .pfc svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.x73 .pfc .dt2{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#2B2253;box-shadow:0 0 0 2px #fff;pointer-events:none}
+.x73 .pfc .pb.u.fl .v{transform:translateY(3px)} .x73 .pfc .pb.d.fl .v{transform:translateY(-15px)}
+.x73 .pfc .dt2.ho{background:#fff;box-shadow:0 0 0 2px #2B2253}
+.x73 .pfc .end small{display:block;font-size:10px;font-weight:400;color:var(--mu)}
+.x73 .pfc .end{position:absolute;left:100%;margin-left:8px;transform:translateY(-50%);font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap}
+.x73 .pfl{display:flex;margin:8px 50px 0 0} .x73 .pfl span{flex:1;text-align:center;font-size:11.5px;color:var(--mu)} .x73 .pfl span.cu{color:var(--ink);font-weight:700}
+.x73 .tp>.cap:first-child{margin-top:14px}
 .x73 .todo h4{margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--mu)}
 .x73 .ac{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid #F1F0F5;cursor:pointer}
 .x73 .ac:first-of-type{border-top:0}
@@ -18413,8 +18447,8 @@ const css = `
 .x73 .mg{display:inline-block;min-width:42px;text-align:center;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
 .x73 .mg.hi{background:#DDF2E7;color:#1F6B45} .x73 .mg.ok{background:#EEF6F0;color:#3C7A57} .x73 .mg.lo{background:#FCF4E4;color:#946312} .x73 .mg.bad{background:#FBE7E1;color:#9A3B26}
 .x73 .vt tr.avg73 td{border-top:2px solid var(--line);font-weight:700;color:#55526E;background:#FAFAFC} .x73 table.mt td.mu{color:#A3A0B5} .x73 table.mt tr.cu td{background:#F6FAFA}
-@media(max-width:1000px){ .x73 .kp{grid-template-columns:repeat(2,minmax(0,1fr))} .x73 .bd,.x73 .two{grid-template-columns:minmax(0,1fr)} }
-@media(max-width:640px){ .x73 .kp b{font-size:21px} .x73 .t3{grid-template-columns:1fr 1fr} .x73 .t3>div:first-child{grid-column:1/-1} .x73 .t3 b{font-size:21px}
+@media(max-width:1000px){ .x73 .kp{grid-template-columns:repeat(2,minmax(0,1fr))} .x73 .bd,.x73 .two,.x73 .ov2{grid-template-columns:minmax(0,1fr)} }
+@media(max-width:640px){ .x73 .cap{flex-wrap:wrap;gap:2px 8px} .x73 .pfc .end{font-size:10.5px;margin-left:4px} .x73 .pfc .end small{display:none} .x73 .todo{grid-template-columns:minmax(0,1fr)} .x73 .tabs{width:100%;overflow-x:auto;flex-wrap:nowrap} .x73 .tabs button{white-space:nowrap;padding:7px 11px} .x73 .pfc{height:190px;margin-right:44px} .x73 .pfc .pb .v{font-size:8.5px} .x73 .pfl{margin-right:44px} .x73 .pfl span{font-size:9.5px} .x73 .kp b{font-size:21px} .x73 .t3{grid-template-columns:1fr 1fr} .x73 .t3>div:first-child{grid-column:1/-1} .x73 .t3 b{font-size:21px}
   .x73 .ch{height:210px;gap:2px} .x73 .ac em{display:none} .x73 .vt .cb{min-width:0} .x73 .vt .cb i{display:none} .x73 table.mt{font-size:12.5px} .x73 .hd73 h3{flex-basis:100%} .x73 .ch .n{font-size:8.5px;padding:1px 3px} .x73 .ch .lb{font-size:10px} .x73 .ch .bw{gap:1px} .x73 .ch .bw>i,.x73 .ch .bw>u{width:44%}
   .x73 .yr{grid-template-columns:64px minmax(0,1fr) 96px;gap:6px 8px} .x73 .yr .y{font-size:15px} .x73 .yr .v b{font-size:14px}
   .x73 .gv{grid-template-columns:62px minmax(0,1fr) 68px} .x73 .gv .pd{grid-column:2/-1;justify-self:start;margin-top:-4px} .x73 .cd{padding:16px 14px 14px;border-radius:18px} .x73 .hide-s{display:none} }`;
@@ -18433,7 +18467,9 @@ function sec(R, re){
     if(r[0] && r.slice(1).every(x => !x)) notes.push(r[0]); else rows.push(r); }
   return { title: R[i][0], head, rows, notes, col: re2 => head.findIndex(h => re2.test(h)) };
 }
-const go = id => { const el = document.getElementById(id); if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+let TAB = (() => { try{ return localStorage.getItem('coe.mxTab') || 'o'; }catch(e){ return 'o'; } })();
+window.x73Tab = t => { TAB = t; try{ localStorage.setItem('coe.mxTab', t); }catch(e){} const x = document.querySelector('#v-money .x73'); if(x){ x.dataset.tab = t; x.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); } try{ window.__x73place && window.__x73place(); }catch(e){} };
+const go = id => { const el = document.getElementById(id); if(!el) return; const tp = el.closest('.tp'); if(tp && tp.dataset.t !== TAB) window.x73Tab(tp.dataset.t); setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30); };
 window.x73Go = go;
 let SEL = null, CKF = '';
 
@@ -18457,7 +18493,7 @@ window.renderMoney = function(){
   const prof = full.filter(m => (m.net || 0) > 0), loss = full.filter(m => (m.net || 0) < 0);
   const net12 = full.reduce((s, m) => s + (m.net || 0), 0);
   const Y = sec(R, /^BY YEAR/i), Pt = sec(R, /^SALES BY PARTNER/i), X = sec(R, /^EXPENSES BY CATEGORY/i), G = sec(R, /^GOVERNMENT DUES/i), K = sec(R, /^CHECKS/i);
-  let h = top + '<div class="x73">';
+  let h = top + '<div class="x73" data-tab="' + TAB + '">%%TABS%%<div class="tp" data-t="o">';
 
   // ── this month numbers used twice (picture + card)
   const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(), day = now.getDate(), left = dim - day;
@@ -18492,17 +18528,24 @@ window.renderMoney = function(){
   if(K){ const cd = K.col(/^DATE/), ci = K.col(/^ITEM/), cs = K.col(/^ISSUE/); cks = K.rows.map(r => ({ d: r[cd], i: r[ci], s: T(r[cs]), k: kind(T(r[cs]) + ' ' + T(r[ci])) })); }
 
   // ── 1 · the picture
-  const t = (cls, lab, val, sub, to) => `<div class="${cls}" onclick="x73Go('${to}')"><span>${lab}</span><b>${val}</b><small>${sub}</small></div>`;
-  h += `<div class="cap" style="margin-top:4px"><h3>The picture</h3><span>the four answers first · tap a tile for the detail</span></div><div class="kp">`;
-  if(cur) h += t(estNet != null && estNet < 0 ? 't-bad' : ofP != null && ofP >= Math.round(day / dim * 100) ? 't-ok' : 't-g', mon(cur) + ' · expected net', '≈ ' + P(estNet != null ? estNet : cur.net), still ? `what ${esc(mon(cur))} should end with, after about ${P(still)} in salaries still to pay` : `${esc(mon(cur))}'s profit so far`, 'x73m');
-  h += t(net12 >= 0 ? 't-ok' : 't-bad', `Net · last ${full.length} months`, P(net12), `profit after the losing months · ${prof.length} up, ${loss.length} down`, 'x73c');
-  if(be != null) h += t('t-w', 'Break-even', P(be) + '<small style="display:inline;font-size:13px;color:#6F6C85"> / month</small>', `sales needed each month just to cover all costs`, 'x73c');
-  if(yNow) h += t(yPrev && yNow.net >= yPrev.net ? 't-ok' : 't-s', yNow.y + ' net so far', P(yNow.net), yPrev ? (yNow.net >= yPrev.net ? `profit this year · already ${P(yNow.net - yPrev.net)} more than all of ${yPrev.y}` : `${P(yPrev.net - yNow.net)} to reach ${yPrev.y}'s ${P(yPrev.net)}`) : esc(yNow.mg || ''), 'x73y');
+  const t = (cls, lab, val, sub, to, sk) => `<div class="${cls}" onclick="x73Go('${to}')"><span>${lab}</span><b>${val}</b><small>${sub}</small>${sk ? `<div class="sk">${sk}</div>` : ''}</div>`;
+  const FC = full.slice().reverse(), nMx = Math.max(1, ...FC.map(m => Math.abs(m.net || 0))), sMx = Math.max(1, be || 0, ...FC.map(m => m.sales || 0));
+  const skNet = `<div class="sn">${FC.map(m => `<i class="${(m.net || 0) < 0 ? 'd' : 'u'}" style="height:${Math.max(4, Math.abs(m.net || 0) / nMx * 50).toFixed(0)}%" title="${esc(m.m)} ${P(m.net)}"></i>`).join('')}</div>`;
+  const skBe = be != null ? `<div class="sb">${FC.map(m => `<i class="${(m.sales || 0) >= be ? 'u' : 'd'}" style="height:${((m.sales || 0) / sMx * 100).toFixed(0)}%" title="${esc(m.m)} sales ${P(m.sales)}"></i>`).join('')}<em style="bottom:${(be / sMx * 100).toFixed(0)}%"></em></div><div class="sl2">${FC.filter(m => (m.sales || 0) >= be).length} of ${FC.length} months reached it</div>` : '';
+  const skCur = cur && be != null ? (() => { const W = Math.max(be, cur.sales || 0) * 1.05, u = Math.max(0, usual != null ? usual : cur.sales || 0);
+    return `<div class="sc"><i style="width:${(u / W * 100).toFixed(1)}%"></i>${oneAmt ? `<i class="o" style="width:${(oneAmt / W * 100).toFixed(1)}%"></i>` : ''}<em style="left:${(be / W * 100).toFixed(1)}%"></em></div><div class="sl2">sales so far${oneAmt ? ' · light = one-off' : ''} · line = break-even</div>`; })() : '';
+  const skYr = yNow && yPrev ? (() => { const W = Math.max(Math.abs(yNow.net || 0), Math.abs(yPrev.net || 0), 1);
+    return `<div class="sy"><span>${esc(yNow.y)}</span><i style="width:${(Math.max(0, yNow.net) / W * 100).toFixed(0)}%"></i></div><div class="sy p"><span>${esc(yPrev.y)}</span><i style="width:${(Math.max(0, yPrev.net) / W * 100).toFixed(0)}%"></i></div>`; })() : '';
+  h += `<div class="cap" style="margin-top:2px"><h3>The picture</h3><span>the four answers first · tap a tile for the detail</span></div><div class="kp">`;
+  if(cur) h += t(estNet != null && estNet < 0 ? 't-bad' : ofP != null && ofP >= Math.round(day / dim * 100) ? 't-ok' : 't-g', mon(cur) + ' · expected net', '≈ ' + P(estNet != null ? estNet : cur.net), still ? `what ${esc(mon(cur))} should end with, after about ${P(still)} in salaries still to pay` : `${esc(mon(cur))}'s profit so far`, 'x73m', skCur);
+  h += t(net12 >= 0 ? 't-ok' : 't-bad', `Net · last ${full.length} months`, P(net12), `profit after the losing months · ${prof.length} up, ${loss.length} down`, 'x73pf', skNet);
+  if(be != null) h += t('t-w', 'Break-even', P(be) + '<small style="display:inline;font-size:13px;color:#6F6C85"> / month</small>', `sales needed each month just to cover all costs`, 'x73c', skBe);
+  if(yNow) h += t(yPrev && yNow.net >= yPrev.net ? 't-ok' : 't-s', yNow.y + ' net so far', P(yNow.net), yPrev ? (yNow.net >= yPrev.net ? `profit this year · already ${P(yNow.net - yPrev.net)} more than all of ${yPrev.y}` : `${P(yPrev.net - yNow.net)} to reach ${yPrev.y}'s ${P(yPrev.net)}`) : esc(yNow.mg || ''), 'x73y', skYr);
   h += `</div>`;
 
   // ── 2 · what to do next
   const A = [];
-  const add = (c, ic, b, s, to) => A.push(`<div class="ac" style="--c:${c}" onclick="x73Go('${to}')"><span class="ic">${ic}</span><div class="w"><b>${b}</b><span>${s}</span></div><em>See ›</em></div>`);
+  const add = (c, ic, b, s, to) => A.push(`<div class="ac" style="--c:${c}" onclick="x73Go('${to}')"><span class="ic">${ic}</span><div class="w"><b>${b}</b><span>${s}</span></div></div>`);
   if(one.length && be != null) add('#2F6FD0', '★', `${esc(mon(cur))} includes a one-off ${P(oneAmt)} (${esc(one.map(x => x.n).join(', '))})`, `Without it, ${esc(mon(cur))}'s sales are <b>${P(usual)}</b>${usual < be ? ' — under break-even' : ''}. Don't plan on it repeating every month.`, 'x73m');
   if(cur && still > 0) add('#6C5FC7', '₱', `Set aside about ${P(still)} for ${esc(mon(cur))}'s remaining salaries${stillG ? ' and dues' : ''}`, `Net is ${P(cur.net)} so far; after them ${esc(mon(cur))} should land near <b>${P(estNet)}</b>.`, 'x73m');
   const seen = {}; exs.filter(e => e.a && e.l && e.l - e.a >= 5000 && e.l > e.a * 1.3).sort((a, b) => (b.l - b.a) - (a.l - a.a)).slice(0, 2).forEach(e =>
@@ -18512,17 +18555,34 @@ window.renderMoney = function(){
   if(loss.length && be != null){ const under = loss.map(m => mon(m)); add('#C4553D', '↓', `Keep monthly sales above ${P(Math.ceil(be / 1000) * 1000)}`, `${loss.length} of the last ${full.length} months lost money (${esc(under.join(', '))}) ${loss.every(m => (m.sales || 0) < be) ? ' — each had sales under the break-even line.' : '.'}`, 'x73c'); }
   if(prs.length >= 3 && top2 >= 60) add('#2F6FD0', '◐', `${Math.round(top2)}% of ${esc((Pt.title.match(/\d{4}/) || [''])[0])} sales come from two sources`, `${esc(prs[0].n)} and ${esc(prs[1].n)}. Growing the others makes income steadier.`, 'x73p');
   const nl = cks.filter(c => c.k === 'Not linked to a student').length; if(nl) add('#E0A43A', '⇄', `Link ${nl} payment${nl === 1 ? '' : 's'} to ${nl === 1 ? 'its student' : 'their students'} in ACTIVE`, `Paid lessons not linked yet don't count toward the students' packages.`, 'x73k');
-  if(A.length) h += `<section class="cd todo"><h4>What to do next</h4>${A.slice(0, 7).join('')}</section>`;
+  if(A.length) h += `<div class="cap"><h3>What to do next</h3><span>worked out from the numbers · tap one to see why</span></div><div class="todo">${A.slice(0, 8).join('')}</div>`;
 
   // ── 3 · this month
+  let mh = '';
   if(cur){ const tickL = Math.round(day / dim * 100);
-    h += `<div class="cap" id="x73m"><h3>${now.toLocaleDateString('en-US', { month: 'long' })} so far</h3><span>day ${day} of ${dim} · ${left} day${left === 1 ? '' : 's'} to go</span></div><section class="cd hero">
+    mh = `<section class="cd hero" id="x73m"><div class="hd73"><h3>${now.toLocaleDateString('en-US', { month: 'long' })} so far</h3><span>day ${day} of ${dim} · ${left} day${left === 1 ? '' : 's'} to go</span></div>
     <div class="t3"><div class="t-s"><span>Sales</span><b>${P(cur.sales)}</b><small>${ofP != null ? ofP + '% of ' + esc(mon(p)) + ' (' + P(p.sales) + ')' : ''}</small></div>
       <div class="t-bad"><span>Costs so far</span><b>${P(cur.costs)}</b><small>expenses ${P(cur.exp)} · salaries ${P(cur.sal)}</small></div>
       <div class="${cur.net < 0 ? 't-bad' : 't-ok'}"><span>Net so far</span><b>${P(cur.net)}</b><small>${estNet != null && still ? 'about ' + P(estNet) + ' after the salaries to come' : (mg(cur) != null ? mg(cur) + '% margin' : '')}</small></div></div>
     ${ofP != null ? `<div class="pace" title="Sales so far against ${esc(mon(p))}'s whole month"><i style="width:${Math.min(100, ofP)}%"></i><em style="left:${tickL}%" class="${tickL > 85 ? 'r' : ''}" data-l="today"></em>${ofP <= 96 ? `<em style="left:100%;background:#B9B7C8" class="r" data-l="${esc(mon(p))} total"></em>` : ''}</div>` : ''}
     <div class="nt">${ofP != null ? `<div>${ofP >= 100 ? `<b>Already past ${esc(mon(p))}</b> with ${left} days to go` : `<b>${P(p.sales - cur.sales)}</b> more to match ${esc(mon(p))}`}</div>` : ''}${be != null ? `<div>${cur.sales >= be ? (one.length && usual < be ? `<b>Above break-even</b> (${P(be)}) only with the one-off` : `<b>Above break-even</b> (${P(be)})`) : `<b>${P(be - cur.sales)}</b> to break-even`}</div>` : ''}${one.length ? `<div>Includes a one-off <b>${P(oneAmt)}</b> · usual sales <b>${P(usual)}</b></div>` : ''}<div>Salaries usually arrive after month end${gPaid ? ' · government dues paid' : ''}</div></div></section>`; }
 
+  // ── 3b · profit by month: each month's net either side of zero, and the running total as a line
+  const PM = L.slice(0, 12).reverse(); let run = 0; const cum = PM.map(m => (run += (m.net || 0)));
+  const lo = Math.min(0, ...PM.map(m => m.net || 0), ...cum), hi = Math.max(1, ...PM.map(m => m.net || 0), ...cum), rg = hi - lo || 1, YP = n => ((hi - n) / rg * 100);
+  const z0 = YP(0), cx = i => ((i + .5) / PM.length * 100);
+  const pf = `<section class="cd" id="x73pf"><div class="hd73"><h3>Profit by month</h3><span>bars = each month's net · line = running total since ${esc(PM[0] ? PM[0].m : '')}</span></div>
+    <div class="pfc"><div class="z" style="top:${z0.toFixed(1)}%"></div>
+      ${PM.map((m, i) => { const n = m.net || 0, top = n >= 0 ? YP(n) : z0, hgt = Math.abs(YP(n) - z0);
+        const lt = n >= 0 ? top : top + hgt, clash = Math.abs(YP(cum[i]) - lt) < 9 || Math.abs(YP(cum[i]) - (lt + (n >= 0 ? -6 : 6))) < 9;
+        return `<div class="pb ${n < 0 ? 'd' : 'u'} ${m === cur ? 'so' : ''} ${clash ? 'fl' : ''}" style="left:${(i / PM.length * 100).toFixed(2)}%;width:${(100 / PM.length).toFixed(2)}%" title="${esc(m.m)} · net ${P(n)} · running total ${P(cum[i])}"><i style="top:${top.toFixed(1)}%;height:${Math.max(.6, hgt).toFixed(1)}%"></i><span class="v" style="top:${(clash ? z0 : lt).toFixed(1)}%">${k(n)}</span></div>`; }).join('')}
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${cum.map((c, i) => cx(i).toFixed(2) + ',' + YP(c).toFixed(2)).join(' ')}" fill="none" stroke="#2B2253" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>
+      ${cum.map((c, i) => `<b class="dt2 ${PM[i] === cur ? 'ho' : ''}" style="left:${cx(i).toFixed(2)}%;top:${YP(c).toFixed(2)}%"></b>`).join('')}
+      <span class="end" style="top:${YP(cum[cum.length - 1]).toFixed(1)}%">${P(cum[cum.length - 1])}${PM[PM.length - 1] === cur ? '<small>with ' + esc(mon(cur)) + ' so far</small>' : ''}</span></div>
+    <div class="pfl">${PM.map(m => `<span class="${m === cur ? 'cu' : ''}">${esc(m.m.slice(0, 3))}${m === cur ? '*' : ''}</span>`).join('')}</div>
+    <div class="foot">${(() => { const lw = cum.indexOf(Math.min(...cum)); return cum[lw] < 0 ? `The running total was lowest in <b>${esc(PM[lw].m)}</b> (${P(cum[lw])}) and has been climbing since.` : `The running total stayed above zero the whole time.`; })()}${cur ? ` * ${esc(mon(cur))} so far, before salaries.` : ''}</div></section>`;
+  h += `<div class="ov2">${pf}${mh}</div>`;
+  h += '</div><div class="tp" data-t="m">';
   // ── 4 · 12 months, clickable
   const C = L.slice(0, 12).reverse(); if(SEL == null || SEL >= C.length) SEL = Math.max(0, C.indexOf(p));
   const mx = Math.max(1, ...C.map(m => Math.max(m.sales || 0, m.costs || 0)), be || 0);
@@ -18546,6 +18606,7 @@ window.renderMoney = function(){
       <div class="v"><b class="${(y.net || 0) < 0 ? 'neg' : ''}">${P(y.net)}</b><small>${esc(y.mg || '')} margin · sales ${P(y.sales)}</small></div>${y.note ? `<div class="bt">${esc(y.note)}</div>` : ''}</div>`).join('')}
     ${tot.length ? `<div class="foot">${tot.map(r => `<b>${esc(r[0])}:</b> net ${esc(r[cn] || '—')}${cm > -1 && r[cm] ? ' (' + esc(r[cm]) + ')' : ''}${r[8] ? ' — ' + esc(r[8]) : ''}`).join('<br>')}</div>` : ''}</section>`; }
 
+  h += '</div><div class="tp" data-t="i">';
   // ── 6 · where it comes from and goes
   const PC = ['#00939D', '#6C5FC7', '#E0A43A', '#2F6FD0', '#2E9E6F'], pc = i => i < PC.length ? PC[i] : '#C9C6D6';
   let two = '';
@@ -18564,6 +18625,7 @@ window.renderMoney = function(){
       ${X.notes.length ? `<div class="foot">${X.notes.map(esc).join('<br>')}</div>` : ''}</section>`; }
   if(two) h += `<div class="cap"><h3>Where it comes from and goes</h3></div><div class="two">${two}</div>`;
 
+  h += '</div><div class="tp" data-t="d">';
   // ── 7 · government dues
   if(G && G.rows.length){ const cols = G.head.map((x, i) => ({ x, i })).filter(o => o.x && !/^GO$/.test(o.x) && o.i > 0), cpd = G.col(/PAID ON/), ctot = G.col(/^TOTAL/);
     const parts = cols.filter(o => o.i !== cpd && o.i !== ctot), GC = ['#2F6FD0', '#00939D', '#2E9E6F', '#E0A43A', '#B9B7C8'];
@@ -18583,6 +18645,7 @@ window.renderMoney = function(){
       <div class="fl"><button class="${CKF ? '' : 'on'}" onclick="x73F('')">All<b>${cks.length}</b></button>${Object.keys(kinds).sort((a, b) => kinds[b] - kinds[a]).map(kk => `<button class="${CKF === kk ? 'on' : ''}" onclick="x73F('${esc(kk)}')">${esc(kk)}<b>${kinds[kk]}</b></button>`).join('')}</div>
       <div id="x73ck"></div></section>`; }
 
+  h += '</div><div class="tp" data-t="m">';
   // ── 9 · every month: a table with bars in it (sales, costs, net either side of zero, margin)
   const tM = Math.max(1, ...L.map(m => Math.max(m.sales || 0, m.costs || 0))), nM = Math.max(1, ...L.map(m => Math.abs(m.net || 0)));
   const fs = full.reduce((a, m) => ({ s: a.s + (m.sales || 0), c: a.c + (m.costs || 0), n: a.n + (m.net || 0) }), { s: 0, c: 0, n: 0 }), fn = full.length || 1;
@@ -18595,9 +18658,12 @@ window.renderMoney = function(){
       <td class="hide-s"><div class="cb"><b>${P(m.costs)}</b><i style="width:${((m.costs || 0) / tM * 100).toFixed(1)}%;background:var(--e)"></i></div></td>
       <td class="hide-s">${nb(m.net)}</td><td style="font-weight:700;color:${m.net < 0 ? '#C4553D' : '#23885A'}">${P(m.net)}</td><td>${mc(mg(m))}</td></tr>`).join('')}
     <tr class="avg73"><td>Average · ${fn} full months</td><td>${P(fs.s / fn)}</td><td class="hide-s">${P(fs.c / fn)}</td><td class="hide-s"></td><td style="color:${fs.n < 0 ? '#C4553D' : '#23885A'}">${P(fs.n / fn)}</td><td>${mc(fs.s ? Math.round(fs.n / fs.s * 100) : null)}</td></tr></table></details>`;
+  h += '</div>';
   const iM = R.findIndex(r => /^MONTH$/i.test(r[0])); let end = iM + 1; while(end < R.length && R[end][0] && /\d{4}/.test(R[end][0])) end++;
   const unknown = [Y, Pt, X, G, K].some(s => !s) ? MN.rows.slice(end).filter(r => r.some(x => T(x))) : [];
   if(unknown.length) h += `<details class="cd" style="margin-top:14px"><summary><h3 style="margin:0;font-family:var(--brand);font-weight:400;font-size:18px">More from the MONEY tab</h3><span class="chev">›</span></summary><div style="margin-top:12px">${grid(unknown)}</div></details>`;
+  const tabs = [['o', 'Overview', ''], ['m', 'Months & years', ''], ['i', 'Income & spending', ''], ['d', 'Dues & checks', cks.length ? String(cks.length) : '']];
+  h = h.replace('%%TABS%%', `<div class="tabs">${tabs.map(([k, l, n]) => `<button data-t="${k}" class="${TAB === k ? 'on' : ''}" onclick="x73Tab('${k}')">${l}${n ? `<b>${n}</b>` : ''}</button>`).join('')}</div>`);
   v.innerHTML = h + '</div>';
 
   // the break-even line sits on the bars' own scale (measured, since the net chips and month labels take room)
@@ -18618,7 +18684,7 @@ window.renderMoney = function(){
       <div class="ln" style="margin-top:8px"><span>Net</span>${pv && pv.net != null ? `<span class="c ${m.net >= pv.net ? 'up' : 'dn'}">${m.net >= pv.net ? '▲' : '▼'} ${P(Math.abs(m.net - pv.net))}</span>` : ''}<b class="${m.net < 0 ? 'bad' : 'ok'}">${P(m.net)}</b></div>
       <div class="ln"><span>Margin</span>${pv && mg(pv) != null && mg(m) != null ? chip(mg(m) - mg(pv), 1, ' pts') : ''}<b>${mg(m) == null ? '—' : mg(m) + '%'}</b></div>
       ${be != null ? `<div class="foot">${(m.sales || 0) >= be ? `Sales were <b>${P(m.sales - be)}</b> above break-even.` : `Sales were <b>${P(be - m.sales)}</b> under break-even.`}${cov ? ` Every ₱1 of cost brought in ₱${cov.toFixed(2)} of sales.` : ''}</div>` : ''}`; }
-  paint(); place();
+  paint(); place(); window.__x73place = place;
   // checks list with a filter
   window.x73F = f => { CKF = f; v.querySelectorAll('.x73 .fl button').forEach(b => b.classList.toggle('on', (b.getAttribute('onclick').match(/x73F\('(.*)'\)/) || [])[1] === esc(f))); ck(); };
   function ck(){ const el = $('x73ck'); if(!el) return; const list = cks.filter(c => !CKF || c.k === CKF), show = list.slice(0, 6), rest = list.slice(6);
