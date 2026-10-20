@@ -4598,7 +4598,7 @@ $('cR').checked = true; $('cRep').classList.remove('hide'); document.querySelect
 classPrev(); toast('Filled in from previous classes · check before adding');
 }
 const bookOnly = b => { b = String(b || '').trim(); const m = b.match(/^(pre-?a1|a1|a2|b1|b2|c1|c2)\s*[,·]\s*(.+)$/i); return m ? m[2].trim() : b; };
-const classBooks = () => { const seen = {}, out = []; const add = b => { b = bookOnly(b).replace(/\s+/g, ''); const k = b.toUpperCase().replace(/[^A-Z0-9]/g, ''); if(!k || seen[k]) return; seen[k] = 1; out.push(b); };
+const classBooks = () => { const seen = {}, out = []; const add = b => { b = bookOnly(b).replace(/\s+/g, ''); const k = b.toUpperCase().replace(/[^A-Z0-9]/g, ''); if(!k || seen[k] || (b => /^#|error|^n\/?a$|^-+$|→|borderline|^(pre-?a1|a1|a2|b1|b2|c1|c2)([^a-z0-9]|$)/i.test(String(b || '').trim()) || String(b || '').trim().length < 2)(b)) return; seen[k] = 1; out.push(b); };
 ((SC && SC.events) || []).forEach(e => add(e.book)); ((SL && SL.books) || []).forEach(add); ((SL && SL.students) || []).forEach(s => add(s.book));
 return out.sort((a, b) => a.localeCompare(b)).map(b => `<option value="${esc(b)}"></option>`).join(''); };
 const classOpts = () => SL.students.map(x => `<option value="${esc(x.code)} · ${esc(x.name)}">${x.trial?'Trial · ':''}${esc(x.teachers.join(', '))}</option>`).join('');
@@ -6123,7 +6123,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 750;
+const COE_V = 751;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved()){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -14405,11 +14405,11 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
   document.head.appendChild(css);
   const norm = b => { try{ return bookOnly(b).replace(/\s+/g, ''); }catch(e){ return String(b || '').trim(); } };
   const K = b => String(b || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  function lists(){ const cnt = {}, name = {}; const add = (b, w) => { b = norm(b); const k = K(b); if(!k) return; name[k] = name[k] || b; cnt[k] = (cnt[k] || 0) + (w || 1); };
+  function lists(){ const cnt = {}, name = {}; const add = (b, w) => { b = norm(b); const k = K(b); if(!k || (b => /^#|error|^n\/?a$|^-+$|→|borderline|^(pre-?a1|a1|a2|b1|b2|c1|c2)([^a-z0-9]|$)/i.test(String(b || '').trim()) || String(b || '').trim().length < 2)(b)) return; name[k] = name[k] || b; cnt[k] = (cnt[k] || 0) + (w || 1); };
     ((typeof SC !== 'undefined' && SC && SC.events) || []).forEach(e => add(e.book, 1)); ((SL && SL.students) || []).forEach(s => add(s.book, 2)); ((SL && SL.books) || []).forEach(b => add(b, 0));
     const s = (typeof classStu === 'function') ? classStu() : null, mine = [];
     if(s){ const c = String(s.code || '').toUpperCase(), L = ((typeof CLSM !== 'undefined' && CLSM) || {})[c] || [];
-      [s.book].concat((Array.isArray(L) ? L : []).slice().reverse().map(e => e.book)).forEach(b => { b = norm(b); const k = K(b); if(k && mine.indexOf(k) < 0){ mine.push(k); name[k] = name[k] || b; } }); }
+      [s.book].concat((Array.isArray(L) ? L : []).slice().reverse().map(e => e.book)).forEach(b => { b = norm(b); const k = K(b); if(k && !(b => /^#|error|^n\/?a$|^-+$|→|borderline|^(pre-?a1|a1|a2|b1|b2|c1|c2)([^a-z0-9]|$)/i.test(String(b || '').trim()) || String(b || '').trim().length < 2)(b) && mine.indexOf(k) < 0){ mine.push(k); name[k] = name[k] || b; } }); }
     const top = Object.keys(cnt).filter(k => mine.indexOf(k) < 0 && cnt[k] > 0).sort((a, b) => cnt[b] - cnt[a]).slice(0, Math.max(0, 10 - mine.length));
     const all = Object.keys(name).sort((a, b) => name[a].localeCompare(name[b]));
     return { mine: mine.slice(0, 4), top, all, name }; }
