@@ -7,7 +7,7 @@
 //   mailed { no }               → { ok }                 (email sent time)
 //   bir    { no, bir_no }       → { ok }                 (printed BIR invoice number, once)
 //   void   { no, reason }       → { ok, invoice }
-//   list   { code?, limit? }    → { ok, invoices }
+//   list   { code?, limit?, history? } → { ok, invoices, history }   (history = QuickBooks numbers from SALES, read only)
 //   verify { no, code }         → { ok, valid, no, day, total, currency, status }   (public, no sign-in; for the verify page)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -19,6 +19,7 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 const ORIGINS = ["https://app.cupofenglishatph.com"];
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
+async function sales() { const all: any[] = []; for (let i = 0; i < 10; i++) { const { data } = await db.from("coe_ledger").select("data").eq("kind", "sale").is("removed_at", null).order("id").range(i * 1000, i * 1000 + 999); all.push(...(data || [])); if (!data || data.length < 1000) break; } return { data: all }; }
 const str = (x: unknown, n = 200) => String(x == null ? "" : x).trim().slice(0, n);
 
 Deno.serve(async (req: Request) => {
@@ -85,8 +86,12 @@ Deno.serve(async (req: Request) => {
     if (a === "list") {
       let q = db.from("coe_invoices").select("*").order("no", { ascending: false }).limit(Math.min(+b.limit || 60, 300));
       if (b.code) q = q.eq("code", str(b.code, 20));
-      const { data, error } = await q;
-      return out(error ? { ok: false, error: "db" } : { ok: true, invoices: (data || []).map(withVq) });
+      const [{ data, error }, hx] = await Promise.all([q, b.history && !b.code ? sales() : Promise.resolve({ data: null })]);
+      // History: the QuickBooks invoices (1–1747) as recorded in SALES — read only, nothing is issued for them.
+      const history = ((hx as any).data || []).map((r: any) => { const d = r.data || [], f = String(d[1] || ""), m = f.match(/invoice\s*#?\s*(\d{1,6})/i); if (!m) return null;
+        return { no: +m[1], day: String(d[0] || "").slice(0, 10), name: f.slice((m.index || 0) + m[0].length).replace(/\.pdf$/i, "").replace(/^[\s_\-#·:]+/, "").replace(/_/g, " ").replace(/^student\s+/i, "").trim(), file: f, pkg: d[2] ?? "", free: d[3] ?? "", partner: String(d[4] || ""), method: String(d[5] || ""), amt: +d[6] || 0 }; })
+        .filter(Boolean).sort((x: any, y: any) => y.no - x.no || (y.day > x.day ? 1 : -1));
+      return out(error ? { ok: false, error: "db" } : { ok: true, invoices: (data || []).map(withVq), history });
     }
     return out({ ok: false, error: "unknown action" }, 400);
   } catch (e) { return out({ ok: false, error: String((e as Error).message || e) }, 500); }
