@@ -11,6 +11,10 @@
 //   verify { no, code }         → { ok, valid, no, day, total, currency, status }   (public, no sign-in; for the verify page)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
+import qrcode from "npm:qrcode-generator@1.4.4";
+/* the verify QR on the PAID stamp: module grid for https://app.cupofenglishatph.com/verify/?no=…&c=… (drawn sharp by the app) */
+const vq = (no: number, ver: string) => { try { const q = (qrcode as any)(0, "M"); q.addData("https://app.cupofenglishatph.com/verify/?no=" + no + "&c=" + ver); q.make(); const n = q.getModuleCount(), out: string[] = []; for (let r = 0; r < n; r++) { let l = ""; for (let c = 0; c < n; c++) l += q.isDark(r, c) ? "1" : "0"; out.push(l); } return out; } catch { return null; } };
+const withVq = (x: any) => x && x.ver ? { ...x, vq: vq(x.no, x.ver) } : x;
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const ORIGINS = ["https://app.cupofenglishatph.com"];
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
@@ -64,7 +68,7 @@ Deno.serve(async (req: Request) => {
       const p = { code: str(v.code, 20), day: str(v.day, 10), bill_name: str(v.bill_name, 120), bill_addr: str(v.bill_addr, 300), email: em, reimb: r && Object.keys(r).length ? r : null, items, paid: v.paid !== false, currency: str(v.currency, 5) || "CNY", partner: str(v.partner, 60), method: str(v.method, 30), bir_no: str(v.bir_no, 30) };
       const { data, error } = await db.rpc("coe_inv_issue", { p, p_by: who });
       if (error) return out({ ok: false, error: error.message || "db" });
-      return out({ ok: true, invoice: data });
+      return out({ ok: true, invoice: withVq(data) });
     }
     if (a === "file" || a === "mailed" || a === "bir") {
       const no = +b.no; if (!(no > 0)) return out({ ok: false, error: "no" });
@@ -76,13 +80,13 @@ Deno.serve(async (req: Request) => {
     if (a === "void") {
       const no = +b.no, why = str(b.reason, 200); if (!(no > 0) || !why) return out({ ok: false, error: "A reason is needed to void." });
       const { data, error } = await db.from("coe_invoices").update({ status: "void", void_reason: why, void_by: who, void_at: new Date().toISOString() }).eq("no", no).select().maybeSingle();
-      return out(error ? { ok: false, error: error.message } : { ok: true, invoice: data });
+      return out(error ? { ok: false, error: error.message } : { ok: true, invoice: withVq(data) });
     }
     if (a === "list") {
       let q = db.from("coe_invoices").select("*").order("no", { ascending: false }).limit(Math.min(+b.limit || 60, 300));
       if (b.code) q = q.eq("code", str(b.code, 20));
       const { data, error } = await q;
-      return out(error ? { ok: false, error: "db" } : { ok: true, invoices: data });
+      return out(error ? { ok: false, error: "db" } : { ok: true, invoices: (data || []).map(withVq) });
     }
     return out({ ok: false, error: "unknown action" }, 400);
   } catch (e) { return out({ ok: false, error: String((e as Error).message || e) }, 500); }
