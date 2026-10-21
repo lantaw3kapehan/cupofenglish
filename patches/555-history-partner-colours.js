@@ -1,0 +1,9 @@
+// 21 Oct · Misty: colour labels on the QuickBooks history: CupOfEnglish (teal) and each partner its own colour
+// (Ms. Spring / Jinan purple, Ms. Jane / Inner Mongolia amber, Mr. Clark / Chengdu blue, Ms. Rose pink, Xiaolan orange, Panpacific green).
+// Own programmes recorded by name (IELTS, TOEFL, Adult English, Reading Program) count as CupOfEnglish.
+require('../tools/lib.js')(process.argv[2], [
+["${e([h.pkg ? h.pkg + ' units' + (+h.free ? ' + ' + h.free + ' free' : '') : '', h.partner].filter(Boolean).join(' · '))}</div>", "${e(h.pkg ? h.pkg + ' units' + (+h.free ? ' + ' + h.free + ' free' : '') : '')} ${ptag(h.partner)}</div>"],
+["(h.partner && !/cupofenglish/i.test(h.partner) ? '<div class=\"small mute\">received · partner price</div>' : '')", "(isPartner(h.partner) ? '<div class=\"small mute\">received · partner price</div>' : '')"],
+["let Q = '', SUM0 = '', HIST = [];", "let Q = '', SUM0 = '', HIST = [];\nconst PCOL = [[/spring/i, '#EFE9FB', '#5B3FA8'], [/jane|mongolia/i, '#FFF3DC', '#8A5A00'], [/clark|chengdu/i, '#E6F0FB', '#2D5E9A'], [/rose/i, '#FCE8EF', '#A23A64'], [/xiaolan/i, '#FDEEE2', '#A8551A'], [/panpacific/i, '#E8F5EA', '#2F7A3C']];\nconst isPartner = p => /ms\\.|mr\\.|mrs\\.|xiaolan|panpacific|jinan|mongolia|chengdu/i.test(String(p || ''));\nconst ptag = p => { p = String(p || '').trim(); if(!p) return ''; const c = isPartner(p) ? (PCOL.find(x => x[0].test(p)) || [0, '#ECEBF2', '#55516E']) : [0, '#E3F4F2', '#14756F'];\n  return `<span class=\"ptag\" style=\"background:${c[1]};color:${c[2]}\">${e(isPartner(p) ? p : /^cupofenglish$/i.test(p) ? 'CupOfEnglish' : 'CupOfEnglish · ' + p)}</span>`; };"],
+["#ivM .pill.qbp{background:#ECEBF2;color:#55516E}", "#ivM .pill.qbp{background:#ECEBF2;color:#55516E}#ivM .ptag{display:inline-block;margin-left:4px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.6;white-space:nowrap}"],
+]);
