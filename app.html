@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 878;
+const COE_V = 879;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -20057,6 +20057,9 @@ const r2 = x => Math.round((+x || 0) * 100) / 100;
 const taxOf = t => r2(t * 3 / 103);
 const today = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
 /* 544: generation time in 24-hour Manila time (like the lesson summary), from the moment the database issued it; date shown too when it differs from the paid date */
+/* the stamp's fine print repeats this confirmation's own number and amount, so a stamp cut from one confirmation never fits another */
+const stampMt = inv => { const t = ('CUPOFENGLISH · PAID 已付款 · No. ' + inv.no + ' · ' + (inv.currency || 'CNY') + ' ' + n2(inv.total) + ' · ' + (inv.ver || '') + ' · ').repeat(6); return '<i class="mt">' + e(t) + '</i>'; };
+const PMZ = { 'alipay': '支付宝', 'wechat pay': '微信支付', 'wechat': '微信支付', 'bank transfer': '银行转账', 'cash': '现金' };
 const genAt = inv => { const t = inv && inv.created_at ? new Date(inv.created_at) : new Date(), m = new Date(t.getTime() + 8 * 3600e3), hm = String(m.getUTCHours()).padStart(2, '0') + ':' + String(m.getUTCMinutes()).padStart(2, '0'), d = m.toISOString().slice(0, 10);
   return d === String(inv && inv.day || '').slice(0, 10) ? hm : hm + ' · ' + dmy(d); };
 const dmy = d => { const [y, m, dd] = String(d).slice(0, 10).split('-'); return m + '/' + dd + '/' + y; };
@@ -20074,7 +20077,7 @@ const logo = () => { const i = document.querySelector('#login img, .tagl img, im
 /* ---------- the invoice page (same layout as the preview Misty approved) ---------- */
 function page(inv){
   const cur = inv.currency || 'CNY', due = Math.max(0, r2((+inv.total || 0) - (+inv.paid || 0))), R = inv.reimb || null, isVoid = inv.status === 'void';
-  const lines = (inv.items || []).map(x => `<tr><td class="d">${dmy(inv.day)}</td><td class="p"><b>${e(x.name)}</b>${e(x.descr).replace(/\n/g, '<br>')}</td><td class="n">${+x.qty}</td><td class="n">${n2(x.rate)}</td><td class="n">${+x.amt ? n2(x.amt) : ''}</td></tr>`).join('');
+  const lines = (inv.items || []).map(x => `<tr><td class="d">${dmy(inv.day)}</td><td class="p"><b>${e(x.name)}</b>${x.zh ? `<span class="pz zh">${e(x.zh)}</span>` : ''}${e(x.descr).replace(/\n/g, '<br>')}</td><td class="n">${+x.qty}</td><td class="n">${n2(x.rate)}</td><td class="n">${+x.amt ? n2(x.amt) : ''}</td></tr>`).join('');
   const it = (k, zh, v) => v ? `<div><dt>${k} <span>${zh}</span></dt><dd>${v}</dd></div>` : '';
   const two = (zh, en) => (zh ? `<b class="zh">${e(zh)}</b>` : '') + (en ? `<i>${e(en)}</i>` : '');
   const rb = R && (R.company_zh || R.company_en || R.tax_id) ? `<div class="rb"><h3>Reimbursement Information <span>报销信息</span></h3><dl>
@@ -20084,14 +20087,14 @@ function page(inv){
 ${isVoid ? '<div class="stamp void">VOID</div>' : ''}
 <div class="top"><img class="logo" src="${logo()}" alt="CupOfEnglish"><div class="co"><b>CupOfEnglish Philippines</b>MS2 102&amp;103 Bayani Hall Centrale, San Vicente East<br>Urdaneta, Pangasinan, Philippines 2428<br>+63 927 854 8503 · works@cupofenglishatph.com<br>TIN 609-400-950-00000 · Govt. UID 2022050053289-14</div></div>
 <div class="bar"></div>
-<div class="ivhd"><div class="to"><h4>Bill to</h4><p><b>${e(inv.bill_name || '—')}</b></p>${inv.bill_addr ? `<p>${e(inv.bill_addr).replace(/\n/g, '<br>')}</p>` : ''}</div>
-<div class="meta"><div class="tt">Payment Confirmation ${e(inv.no)}<small class="zh">付款确认单</small></div><table><tr><td>Date</td><td>${dmy(inv.day)}</td></tr><tr><td>Generated <span class="zh">生成时间</span></td><td>${genAt(inv)}</td></tr>${inv.method ? `<tr><td>Paid via</td><td>${e(inv.method)}</td></tr>` : ''}${inv.bir_no ? `<tr><td>Official invoice no. <span class="zh">正式发票号</span></td><td>${e(inv.bir_no)}</td></tr>` : ''}</table></div></div>
+<div class="ivhd"><div class="to"><h4>Bill to <span class="zh">付款方</span></h4><p><b>${e(inv.bill_name || '—')}</b></p>${inv.bill_addr ? `<p>${e(inv.bill_addr).replace(/\n/g, '<br>')}</p>` : ''}</div>
+<div class="meta"><div class="tt">Payment Confirmation ${e(inv.no)}<small class="zh">付款确认单</small></div><table><tr><td>Date <span class="zh">日期</span></td><td>${dmy(inv.day)}</td></tr><tr><td>Generated <span class="zh">生成时间</span></td><td>${genAt(inv)}</td></tr>${inv.method ? `<tr><td>Paid via <span class="zh">付款方式</span></td><td>${e(inv.method)}${PMZ[String(inv.method).toLowerCase()] ? ` <span class="zh">${PMZ[String(inv.method).toLowerCase()]}</span>` : ''}</td></tr>` : ''}${inv.bir_no ? `<tr><td>Official invoice no. <span class="zh">正式发票号码</span></td><td>${e(inv.bir_no)}</td></tr>` : ''}</table></div></div>
 <table class="ivli"><tr><th>Date</th><th>Product / service</th><th class="n">Qty</th><th class="n">Rate</th><th class="n">Amount</th></tr>${lines}</table>
-<div class="sum"><div class="ty"><p>We sincerely appreciate your business and the opportunity to serve you.<span class="zh">我们衷心感谢您的支持与信任，并感谢您给予我们服务的机会。</span></p>
+<div class="sum"><div class="ty"><p>We sincerely appreciate your business and the opportunity to serve you.<span class="zh">衷心感谢您的支持与信任，感谢您给予我们服务的机会。</span></p>
 <p>Should you have any questions or concerns regarding this payment confirmation, please feel free to reach out.<span class="zh">如对本付款确认单有任何疑问，请随时与我们联系。</span></p>
 <p>Your satisfaction is our priority, and we look forward to continuing our partnership.<span class="zh">您的满意是我们的首要任务，我们期待继续与您合作。</span></p></div>
-<div class="tot"><div><span>Includes tax (3%)</span><span>${n2(inv.tax)}</span></div><div><span>Total</span><span>${n2(inv.total)}</span></div><div><span>Payment</span><span>${n2(inv.paid)}</span></div>
-<div class="due"><span>Total due</span><b>${cur} ${n2(due)}</b></div>${!isVoid && due === 0 ? `<div class="pstamp"><b>PAID</b><span class="zh">已付款</span><small>${dmy(inv.day)}</small></div>` : ''}</div></div>
+<div class="tot"><div><span>Includes tax (3%) <span class="zh">含税</span></span><span>${n2(inv.tax)}</span></div><div><span>Total <span class="zh">合计</span></span><span>${n2(inv.total)}</span></div><div><span>Payment <span class="zh">已付金额</span></span><span>${n2(inv.paid)}</span></div>
+<div class="due"><span>Total due <span class="zh">待付金额</span></span><b>${cur} ${n2(due)}</b></div>${!isVoid && due === 0 ? `<div class="pstamp">${stampMt(inv)}<b>PAID</b><span class="zh">已付款</span><small>No. ${e(inv.no)} · ${cur} ${n2(inv.total)} · ${dmy(inv.day)}</small><em>Security code 防伪码 <strong>${inv.ver ? e(String(inv.ver).replace(/^(.{4})/, '$1-')) : '····-····'}</strong></em>${stampMt(inv)}</div><div class="pver">Verify 验证 · app.cupofenglishatph.com/verify</div>` : ''}</div></div>
 ${rb}
 <div class="ft"><div class="ivnote">This document confirms payment for online English language education services provided by CupOfEnglish Online Tutorial Services OPC, Philippines. It may support corporate reimbursement, subject to the receiving organization's&nbsp;approval.<span class="zh">本文件确认学员已向菲律宾 CupOfEnglish Online Tutorial Services OPC 支付在线英语<span style="white-space:nowrap">教育服务费用</span>，可作为企业报销的辅助凭证，具体以报销单位审核结果为准。</span></div>
 <div class="seal"><span><b>Business Registration Verification</b><span class="zh">企业税务登记核验</span><small>RSN 006RC20240000005450</small></span><div class="qr"><img src="${QR_()}" alt="Business Registration Verification QR code"></div></div></div>
@@ -20186,7 +20189,8 @@ function guessCat(st, course){
 let S = null;
 const prod = c => S && S.products.find(p => p.code === c);
 function unitsText(descr, q){ return String(descr || '').replace(/\b\d+(\.\d+)?\s+Units\b/, (+q) + ' Units'); }
-function mkLine(p, qty, auto){ return { pcode: p.code, name: p.name, descr: qty && !p.free ? unitsText(p.descr, qty) : p.descr, qty: qty || p.units || 1, rate: +p.rate, auto: !!auto, open: !p.free && !(+p.rate) }; }
+const zhOf = (p, q) => String(p.zh || '').replace('{n}', +(q || p.units || 1));
+function mkLine(p, qty, auto){ return { pcode: p.code, name: p.name, zh: zhOf(p, qty || p.units), descr: qty && !p.free ? unitsText(p.descr, qty) : p.descr, qty: qty || p.units || 1, rate: +p.rate, auto: !!auto, open: !p.free && !(+p.rate) }; }
 function freeLines(main, bonusQty){
   const out = [], b = bonusQty == null ? +main.bonus_units : +bonusQty;
   if(b > 0 && prod('BONUS')) out.push(mkLine(prod('BONUS'), b, true));
@@ -20200,8 +20204,8 @@ function pickFor(cat, units){
   const L = S.products.filter(p => p.category === cat && !p.free);
   return L.find(p => +p.units === +units) || L.find(p => +p.units === 30) || L[0]; }
 const totals = () => { const t = r2(S.lines.reduce((s, l) => s + r2((+l.qty || 0) * (+l.rate || 0)), 0)); return { total: t, tax: taxOf(t) }; };
-function draft(){ const t = totals(); return { no: S.next, day: S.day, method: S.ctx && S.ctx.method, bir_no: S.bir_no, bill_name: S.bill_name, bill_addr: S.bill_addr, email: S.email, reimb: S.useR ? S.reimb : null,
-  items: S.lines.map(l => ({ pcode: l.pcode, name: l.name, descr: l.descr, qty: +l.qty, rate: +l.rate, amt: r2((+l.qty || 0) * (+l.rate || 0)) })), total: t.total, tax: t.tax, paid: S.paid ? t.total : 0, currency: 'CNY' }; }
+function draft(){ const t = totals(); return { no: S.next, day: S.day, method: S.method, bir_no: S.bir_no, bill_name: S.bill_name, bill_addr: S.bill_addr, email: S.email, reimb: S.useR ? S.reimb : null,
+  items: S.lines.map(l => ({ pcode: l.pcode, name: l.name, zh: l.zh || '', descr: l.descr, qty: +l.qty, rate: +l.rate, amt: r2((+l.qty || 0) * (+l.rate || 0)) })), total: t.total, tax: t.tax, paid: S.paid ? t.total : 0, currency: 'CNY' }; }
 
 const CSS = `
 #ivM{position:fixed;inset:0;z-index:60;background:rgba(45,42,74,.42);display:flex;align-items:stretch;justify-content:center;padding:18px}
@@ -20216,6 +20220,7 @@ const CSS = `
 #ivM label{display:block;font-size:12px;font-weight:700;color:var(--ink2);margin:12px 0 4px;letter-spacing:.02em}
 #ivM .in-t{width:100%}#ivM textarea.in-t{height:auto;min-height:54px;padding:8px 12px;background-image:none;resize:vertical}
 #ivM .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#ivM .ivpm{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}#ivM .ivpm button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:48px;padding:6px 4px;border:1.5px solid var(--line);border-radius:12px;background:#fff;line-height:1.2}#ivM .ivpm button b{font-size:13px}#ivM .ivpm button .zh{font-size:11px;color:var(--mute)}#ivM .ivpm button.on{border-color:var(--teal);background:var(--tint);color:#2F6F76}#ivM .ivpm button.on .zh{color:#2F6F76}
 #ivM .ln{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px;background:#fff}
 #ivM .ln.auto{background:var(--soft)}
 #ivM .ln .top{display:flex;gap:8px;align-items:center}#ivM .ln select{flex:1;min-width:0}
@@ -20254,7 +20259,7 @@ const CSS = `
 .ivp table.ivli th{background:#2E2650;color:#fff;font:700 10.5px Rockwell,Arvo,Georgia,serif;letter-spacing:.1em;text-transform:uppercase;padding:9px 10px;text-align:left}
 .ivp table.ivli th:first-child{border-radius:8px 0 0 8px}.ivp table.ivli th:last-child{border-radius:0 8px 8px 0}
 .ivp table.ivli td{padding:9px 10px;vertical-align:top;border-bottom:1px solid #E7E5EF}.ivp td.p b{display:block;color:#2E2650;font-size:13.5px;margin-bottom:2px}
-.ivp td.p{color:#55516E;font-size:12.5px}.ivp .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.ivp td.d{white-space:nowrap;color:#55516E}
+.ivp td.p{color:#55516E;font-size:12.5px}.ivp td.p .pz{display:block;margin:1px 0 3px;font-size:11.5px;font-weight:700;color:#1B7F79}.ivp .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.ivp td.d{white-space:nowrap;color:#55516E}
 .ivp .sum{display:flex;justify-content:space-between;gap:28px;margin-top:14px}
 .ivp .ty{flex:1;font-size:12px;color:#55516E}.ivp .ty p{margin:0 0 6px}.ivp .ty .zh{display:block;color:#2B2742;font-weight:600}
 .ivp .tot{width:290px}.ivp .tot>div{display:flex;justify-content:space-between;padding:5px 2px;font-size:13px;font-variant-numeric:tabular-nums}
@@ -20264,7 +20269,7 @@ const CSS = `
 .ivp .rb dl{display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;margin:0}.ivp .rb dt{font-size:11px;color:#55516E;margin-bottom:1px}.ivp .rb dd{margin:0;font-size:13px}.ivp .rb dd b,.ivp .rb dd i{display:block}.ivp .rb dd i{font-style:normal;color:#55516E;font-size:12px}
 .ivp .mono{font-family:Menlo,Consolas,monospace;letter-spacing:.04em}
 .ivp .stamp{position:absolute;top:360px;left:300px;transform:rotate(-24deg);font:64px "Fredoka One",Fredoka,Arial,sans-serif;letter-spacing:.08em;border:5px solid;border-radius:14px;padding:2px 18px;opacity:.16}
-.ivp .tot>div.pstamp{display:block;width:170px;margin:18px auto 0;padding:8px 0 7px;font-size:inherit;text-align:center;color:#1B8F5A;border:3px solid #1B8F5A;border-radius:12px;transform:rotate(-7deg);background:rgba(27,143,90,.05)}.ivp .pstamp b{display:block;font:34px/1 "Fredoka One",Fredoka,Arial,sans-serif;letter-spacing:.14em;padding-left:.14em}.ivp .pstamp .zh{display:block;margin-top:3px;font-size:13px;font-weight:700;letter-spacing:.35em;padding-left:.35em}.ivp .pstamp small{display:block;margin-top:3px;padding-top:3px;border-top:1px solid rgba(27,143,90,.45);font-size:10px;letter-spacing:.08em;margin-left:22px;margin-right:22px}.ivp .stamp.void{color:#C0392B;opacity:.3}
+.ivp .tot>div.pstamp{display:block;width:236px;margin:16px auto 0;position:relative;padding:4px 0;font-size:inherit;text-align:center;color:#1B8F5A;border:3px solid #1B8F5A;border-radius:12px;transform:rotate(-6deg);background:rgba(240,249,244,.92);overflow:hidden}.ivp .pstamp .mt{display:block;white-space:nowrap;overflow:hidden;font:700 5.5px/1.35 Arial,sans-serif;letter-spacing:.06em;color:rgba(27,143,90,.55);font-style:normal}.ivp .pstamp em{display:block;margin:4px 14px 4px;font-style:normal;font-size:9px;letter-spacing:.04em}.ivp .pstamp em strong{font:700 11px Menlo,Consolas,monospace;letter-spacing:.12em;color:#126B43}.ivp .tot>div.pver{display:block;margin-top:9px;text-align:center;font-size:8.5px;color:#8A879C;letter-spacing:.02em}.ivp .pstamp b{display:block;margin-top:5px;font:34px/1 "Fredoka One",Fredoka,Arial,sans-serif;letter-spacing:.14em;padding-left:.14em}.ivp .pstamp .zh{display:block;margin-top:3px;font-size:13px;font-weight:700;letter-spacing:.35em;padding-left:.35em}.ivp .pstamp small{display:block;margin:4px 14px 0;padding-top:4px;border-top:1px solid rgba(27,143,90,.45);font-size:9.5px;letter-spacing:.04em;font-variant-numeric:tabular-nums}.ivp .stamp.void{color:#C0392B;opacity:.3}
 .ivp .ft{margin-top:auto;padding-top:16px;border-top:1px solid #E7E5EF;display:flex;align-items:stretch;gap:28px}.ivp .ft .ivnote{flex:1;display:flex;flex-direction:column;justify-content:center;font-size:8.5px;color:#7A7790;text-align:left;line-height:1.8;letter-spacing:.01em;padding-right:6px}.ivp .ft .ivnote .zh{display:block;margin-top:8px;line-height:1.85;font-size:8.5px;letter-spacing:.02em}.ivp .ft .ivnote .nv{display:block;margin-top:3px;color:#2E2650;letter-spacing:.04em;font-size:10px}
 .ivp .ft .seal{flex:none;width:290px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 12px 12px 16px;border:1px solid #E7E5EF;border-left:4px solid #1BA8A0;border-radius:10px;background:#F7FBFB}
 .ivp .ft .seal>img{height:68px}.ivp .ft .qr{text-align:center}.ivp .ft .qr img{display:block;width:96px;height:96px;image-rendering:pixelated;margin:0;background:#fff;border-radius:4px}.ivp .ft .qr small{display:block;font-size:8.5px;color:#2E2650;letter-spacing:.03em}
@@ -20315,6 +20320,8 @@ function formHtml(){
   const t = totals(), R = S.reimb || {};
   return `${S.student ? `<div class="small mute">${e(S.code)}${S.student.source ? ' · ' + e(S.student.source) : ''}</div>` : ''}
   <div class="row2"><div><label>Confirmation no.</label><input class="in-t" value="${e(S.next)}" readonly title="Given by the system when you issue"></div><div><label>Date</label><input class="in-t" type="date" value="${e(S.day)}" onchange="ivSet('day',this.value)"></div></div>
+  <label>Paid via 付款方式</label><div class="ivpm">${PMS.map(x => `<button type="button" class="${x[0] === S.method ? 'on' : ''}" onclick="ivPm('${x[0]}')"><b>${x[0]}</b><span class="zh">${x[1]}</span></button>`).join('')}<button type="button" class="${PMS.some(x => x[0] === S.method) ? '' : 'on'}" onclick="ivPm('')"><b>Other</b><span class="zh">其他</span></button></div>
+  ${PMS.some(x => x[0] === S.method) ? '' : `<input class="in-t" style="margin-top:8px" value="${e(S.method)}" placeholder="Type the payment method" oninput="ivPmT(this.value)">`}
   <label>Bill to</label><input class="in-t" value="${e(S.bill_name)}" oninput="ivSet('bill_name',this.value)" placeholder="Student Abner (Wang Yihao)">
   <label>Address</label><textarea class="in-t" rows="2" oninput="ivSet('bill_addr',this.value)" placeholder="Jinan City, Shandong Province,&#10;China">${e(S.bill_addr)}</textarea>
   <label>Email (the confirmation is sent here)</label><input class="in-t" type="email" value="${e(S.email)}" oninput="ivSet('email',this.value)" placeholder="parent@qq.com"><label class="chk" id="ivMailRow"${S.email ? '' : ' style="display:none"'}><input type="checkbox" ${S.mail !== false ? 'checked' : ''} onchange="ivMailOpt(this.checked)"> Email it to them too 同时发送邮件</label>
@@ -20340,13 +20347,20 @@ function totalsOnly(){ const t = totals(); const a = document.getElementById('iv
 function redraw(){ const f = document.querySelector('#ivM .iv-f'); if(f){ const y = f.scrollTop; f.innerHTML = formHtml(); f.scrollTop = y; } preview(); }
 const goLbl = () => 'Issue Payment Confirmation ' + S.next + (S.email && S.mail !== false ? ' and email it' : '');
 const goUpd = () => { const b = document.getElementById('ivGo'); if(b && !b.disabled) b.textContent = goLbl(); const r = document.getElementById('ivMailRow'); if(r) r.style.display = String(S.email || '').trim() ? '' : 'none'; };
+const PMS = [['Alipay', '支付宝'], ['WeChat Pay', '微信支付'], ['Bank transfer', '银行转账'], ['GCash', ''], ['PayPal', ''], ['Cash', '现金']];
+function pmSync(v){ try{ localStorage.setItem('coe.rpM', v); }catch(x){}
+  /* the same method goes into the form underneath, so SALES records it too */
+  const c = S.ctx || {}, el = document.getElementById(c.kind === 'en' ? 'enM' : c.kind === 'rp' ? 'rpM' : c.kind === 'sale' ? 'fM' : '');
+  if(!el || !v) return; if(el.tagName === 'SELECT'){ const o = [...el.options].find(o => o.value.toLowerCase() === v.toLowerCase() || o.text.toLowerCase() === v.toLowerCase()); if(o) el.value = o.value; } else el.value = v; }
+window.ivPm = v => { S.method = v; S.dirty = 1; if(v) pmSync(v); redraw(); };
+window.ivPmT = v => { S.method = v.trim(); S.dirty = 1; pmSync(S.method); preview(); };
 window.ivMailOpt = v => { S.mail = !!v; goUpd(); };
 window.ivSet = (k, v, re) => { S[k] = v; S.dirty = 1; if(re) redraw(); else preview(); if(k === 'email') goUpd(); };   /* 543: typing the email no longer redraws the form (kept the cursor in the box) */
 window.ivR = (k, v) => { S.reimb = Object.assign({}, S.reimb || {}, { [k]: v }); S.dirty = 1; preview(); };
 window.ivLine = (i, k, v) => { const l = S.lines[i]; if(!l) return; S.dirty = 1;
   if(k === 'rm'){ S.lines.splice(i, 1); if(!S.lines.length) S.lines.push(mkLine(S.products.find(p => !p.free), null)); return redraw(); }
   if(k === 'pcode'){ const p = prod(v); if(!p) return; if(i === 0 && !p.free) setMain(v, +p.units || l.qty); else S.lines[i] = mkLine(p, p.free ? l.qty : (+p.units || l.qty), l.auto); return redraw(); }
-  if(k === 'qty'){ l.qty = v; const p = prod(l.pcode); if(p && !p.free) l.descr = unitsText(p.descr, v); }
+  if(k === 'qty'){ l.qty = v; const p = prod(l.pcode); if(p){ if(!p.free) l.descr = unitsText(p.descr, v); l.zh = zhOf(p, v); } }
   if(k === 'rate') l.rate = v;
   totalsOnly(); preview();
   const b = document.querySelectorAll('#ivLines .ln')[i]; if(b){ const s = b.querySelector('.q b'); if(s) s.innerHTML = (+l.rate) ? '¥' + n2((+l.qty || 0) * (+l.rate || 0)) : '<span class="fr">Free</span>'; } };
@@ -20400,8 +20414,10 @@ function fill(r){
   const st = S.student, p = r.profile || {}, c = S.ctx;
   S.bill_name = p.bill_name || (st ? 'Student ' + (st.en || '') + (st.zh ? ' (' + st.zh + ')' : '') : '');
   S.bill_addr = p.bill_addr || (st && st.city ? st.city + (/city$/i.test(st.city) ? '' : ' City') + ',\nChina' : '');
+  S.method = c.method || (() => { try{ return localStorage.getItem('coe.rpM') || ''; }catch(x){ return ''; } })() || 'Alipay';
   S.email = p.email || ''; S.reimb = p.reimb || null; S.useR = !!(p.reimb && Object.keys(p.reimb).length);
-  const cat = guessCat(st, c.course), main = pickFor(cat, c.pkg || 30);
+  let cat = guessCat(st, c.course); if(cat === 'Adult English' && /xiaolan/i.test(((st && st.source) || '') + ' ' + (c.partner || ''))) cat = 'Adult English · Xiaolan price';   /* Xiaolan's adult students pay her center's prices */
+  const main = pickFor(cat, c.pkg || 30);
   if(main){ const units = c.pkg > 0 ? c.pkg : +main.units; setMain(main.code, units, c.free != null && !isNaN(c.free) ? c.free : null); }
   S.dirty = 0;
   const f = document.querySelector('#ivM .iv-f'); if(!f) return;
@@ -20418,8 +20434,8 @@ window.ivIssue = async () => {
   if(!confirm(`Issue Payment Confirmation ${S.next} to ${S.bill_name} for ¥${n2(d.total)}?\n\nAfter this it can't be edited or deleted, only voided.`)) return;
   b.disabled = true; b.textContent = 'Issuing…';
   /* the page is drawn while the database gives the number; if the answer matches (it nearly always does), that drawing is used, so no second wait */
-  try{ both(Object.assign({}, d, { code: S.code, partner: S.ctx.partner, method: S.ctx.method, status: 'issued', created_at: new Date().toISOString(), email: String(S.email || '').trim().toLowerCase() || null })).catch(() => {}); }catch(x){}
-  let inv; try{ inv = (await call('issue', { inv: Object.assign({ code: S.code, partner: S.ctx.partner, method: S.ctx.method }, d) })).invoice; }
+  try{ both(Object.assign({}, d, { code: S.code, partner: S.ctx.partner, method: S.method, status: 'issued', created_at: new Date().toISOString(), email: String(S.email || '').trim().toLowerCase() || null })).catch(() => {}); }catch(x){}
+  let inv; try{ inv = (await call('issue', { inv: Object.assign({ code: S.code, partner: S.ctx.partner }, d) })).invoice; }
   catch(x){ b.disabled = false; b.textContent = 'Issue Payment Confirmation ' + S.next; return tst(x.message); }
   S.issued = inv; b.textContent = 'Finishing…';
   let blob; try{ blob = (await both(inv)).pdf; }catch(x){ return done(inv, null, x.message); }
