@@ -8,6 +8,7 @@
 //   bir    { no, bir_no }       → { ok }                 (printed BIR invoice number, once)
 //   void   { no, reason }       → { ok, invoice }
 //   list   { code?, limit? }    → { ok, invoices }
+//   verify { no, code }         → { ok, valid, no, day, total, currency, status }   (public, no sign-in; for the verify page)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -22,6 +23,13 @@ Deno.serve(async (req: Request) => {
   const out = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...h, "Content-Type": "application/json" } });
   if (req.method !== "POST") return out({ ok: false, error: "POST only" }, 405);
   let b: any; try { b = JSON.parse(await req.text()); } catch { return out({ ok: false, error: "bad request" }, 400); }
+  if (b && b.action === "verify") {   // public: anyone holding a confirmation can check its number + security code (no names returned)
+    const no = +b.no, code = str(b.code, 12).toUpperCase().replace(/[^0-9A-F]/g, "");
+    if (!(no > 0) || code.length !== 8) return out({ ok: true, valid: false });
+    const { data } = await db.from("coe_invoices").select("no,day,total,currency,status,created_at,ver").eq("no", no).maybeSingle();
+    if (!data || data.ver !== code) return out({ ok: true, valid: false });
+    return out({ ok: true, valid: true, no: data.no, day: data.day, total: data.total, currency: data.currency, status: data.status, created_at: data.created_at });
+  }
   const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
   const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
   if (!s || new Date(s.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
@@ -32,7 +40,7 @@ Deno.serve(async (req: Request) => {
     if (a === "boot") {
       const code = str(b.code, 20);
       const [p, n, pr, st, rc, cx] = await Promise.all([
-        db.from("coe_inv_products").select("code,name,descr,category,units,rate,free,bonus_units,extras,sort").eq("active", true).order("sort"),
+        db.from("coe_inv_products").select("code,name,zh,descr,category,units,rate,free,bonus_units,extras,sort").eq("active", true).order("sort"),
         db.rpc("coe_inv_last"),
         code ? db.from("coe_bill_profiles").select("bill_name,bill_addr,email,reimb").eq("code", code).maybeSingle() : Promise.resolve({ data: null }),
         code ? db.from("coe_students").select("code,data").eq("code", code).is("removed_at", null).limit(1).maybeSingle() : Promise.resolve({ data: null }),
@@ -49,7 +57,7 @@ Deno.serve(async (req: Request) => {
     }
     if (a === "issue") {
       const v = b.inv || {};
-      const items = Array.isArray(v.items) ? v.items.slice(0, 20).map((x: any) => ({ pcode: str(x.pcode, 30), name: str(x.name, 120), descr: str(x.descr, 400), qty: +x.qty, rate: +x.rate })) : [];
+      const items = Array.isArray(v.items) ? v.items.slice(0, 20).map((x: any) => ({ pcode: str(x.pcode, 30), name: str(x.name, 120), zh: str(x.zh, 120), descr: str(x.descr, 400), qty: +x.qty, rate: +x.rate })) : [];
       if (!items.length || items.some((x: any) => !(x.qty > 0) || !(x.rate >= 0) || !x.name)) return out({ ok: false, error: "Check the lines: each needs a product, a quantity and a rate." });
       const em = str(v.email, 120); if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return out({ ok: false, error: "The email address looks wrong." });
       const r = v.reimb && typeof v.reimb === "object" ? Object.fromEntries(["company_zh", "company_en", "tax_id", "bank_zh", "bank_en", "account"].map((k) => [k, str(v.reimb[k], 120)]).filter(([, x]) => x)) : null;
