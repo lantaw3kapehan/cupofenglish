@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 875;
+const COE_V = 876;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -20056,6 +20056,9 @@ const n2 = x => (+x || 0).toLocaleString('en-US', { minimumFractionDigits: 2, ma
 const r2 = x => Math.round((+x || 0) * 100) / 100;
 const taxOf = t => r2(t * 3 / 103);
 const today = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+/* 544: generation time in 24-hour Manila time (like the lesson summary), from the moment the database issued it; date shown too when it differs from the paid date */
+const genAt = inv => { const t = inv && inv.created_at ? new Date(inv.created_at) : new Date(), m = new Date(t.getTime() + 8 * 3600e3), hm = String(m.getUTCHours()).padStart(2, '0') + ':' + String(m.getUTCMinutes()).padStart(2, '0'), d = m.toISOString().slice(0, 10);
+  return d === String(inv && inv.day || '').slice(0, 10) ? hm : hm + ' · ' + dmy(d); };
 const dmy = d => { const [y, m, dd] = String(d).slice(0, 10).split('-'); return m + '/' + dd + '/' + y; };
 const tok = () => { try{ return TOKEN; }catch(x){ return ''; } };
 const tst = m => { try{ toast(m); }catch(x){ alert(m); } };
@@ -20082,7 +20085,7 @@ ${isVoid ? '<div class="stamp void">VOID</div>' : due === 0 ? '<div class="stamp
 <div class="top"><img class="logo" src="${logo()}" alt="CupOfEnglish"><div class="co"><b>CupOfEnglish Philippines</b>MS2 102&amp;103 Bayani Hall Centrale, San Vicente East<br>Urdaneta, Pangasinan, Philippines 2428<br>+63 927 854 8503 · works@cupofenglishatph.com<br>TIN 609-400-950-00000 · Govt. UID 2022050053289-14</div></div>
 <div class="bar"></div>
 <div class="hd"><div class="to"><h4>Bill to</h4><p><b>${e(inv.bill_name || '—')}</b></p>${inv.bill_addr ? `<p>${e(inv.bill_addr).replace(/\n/g, '<br>')}</p>` : ''}</div>
-<div class="meta"><div class="tt">Payment Confirmation ${e(inv.no)}<small class="zh">付款确认单</small></div><table><tr><td>Date</td><td>${dmy(inv.day)}</td></tr>${inv.method ? `<tr><td>Paid via</td><td>${e(inv.method)}</td></tr>` : ''}${inv.bir_no ? `<tr><td>Official invoice no. <span class="zh">正式发票号</span></td><td>${e(inv.bir_no)}</td></tr>` : ''}</table></div></div>
+<div class="meta"><div class="tt">Payment Confirmation ${e(inv.no)}<small class="zh">付款确认单</small></div><table><tr><td>Date</td><td>${dmy(inv.day)}</td></tr><tr><td>Generated <span class="zh">生成时间</span></td><td>${genAt(inv)}</td></tr>${inv.method ? `<tr><td>Paid via</td><td>${e(inv.method)}</td></tr>` : ''}${inv.bir_no ? `<tr><td>Official invoice no. <span class="zh">正式发票号</span></td><td>${e(inv.bir_no)}</td></tr>` : ''}</table></div></div>
 <table class="li"><tr><th>Date</th><th>Product / service</th><th class="n">Qty</th><th class="n">Rate</th><th class="n">Amount</th></tr>${lines}</table>
 <div class="sum"><div class="ty"><p>We sincerely appreciate your business and the opportunity to serve you.<span class="zh">我们衷心感谢您的支持与信任，并感谢您给予我们服务的机会。</span></p>
 <p>Should you have any questions or concerns regarding this payment confirmation, please feel free to reach out.<span class="zh">如对本付款确认单有任何疑问，请随时与我们联系。</span></p>
