@@ -1,0 +1,8 @@
+// 21 Oct · Misty chose option 1: one QR on the payment confirmation. The footer card keeps Business Registration Verification and the RSN,
+// with "✓ Included in “Scan to verify” above · 已包含在上方“扫码验证真伪”中" instead of its own QR; the verify page shows the business registration
+// and a button to BIR's official check after a genuine result.
+require('../tools/lib.js')(process.argv[2], [
+["<div class=\"seal\"><span><b>Business Registration Verification</b><span class=\"zh\">\u4f01\u4e1a\u7a0e\u52a1\u767b\u8bb0\u6838\u9a8c</span><small>RSN 006RC20240000005450</small></span><div class=\"qr\"><img data-q=\"bir\" src=\"${QR_()}\" alt=\"Business Registration Verification QR code\"></div></div></div>", "<div class=\"seal\"><span><b>Business Registration Verification</b><span class=\"zh\">\u4f01\u4e1a\u7a0e\u52a1\u767b\u8bb0\u6838\u9a8c</span><small>RSN 006RC20240000005450</small><em class=\"via\">\u2713 Included in \u201cScan to verify\u201d above<span class=\"zh\">\u5df2\u5305\u542b\u5728\u4e0a\u65b9\u201c\u626b\u7801\u9a8c\u8bc1\u771f\u4f2a\u201d\u4e2d</span></em></span></div></div>"],
+[".ivp .ft .seal{flex:none;width:290px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 12px 12px 16px;", ".ivp .ft .seal{flex:none;width:290px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px 12px 16px;"],
+[".ivp .ft .seal>span small{", ".ivp .ft .seal .via{display:block;margin-top:7px;font-style:normal;font-size:8.5px;color:#168F88;font-weight:700;line-height:1.4}.ivp .ft .seal .via .zh{display:block;font-weight:700;color:#168F88;margin:0;letter-spacing:0}.ivp .ft .seal>span small{"]
+]);
