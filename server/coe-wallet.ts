@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-wallet (21 Oct 2026): Alipay and WeChat balances, President only (sensitive).
+// CupOfEnglish · coe-wallet (21 Oct 2026): Alipay, WeChat and CCB balances, President only (sensitive).
 // Balance = last balance check + Alipay/WeChat sales in SALES since that check + money in − remittances − other money out − charges (¥50 per remittance).
 // POST { token, action, ... }
 //   get                                   → { ok, wallets: [{ wallet, balance, base, base_day, sales, sales_n, in, out, fees }], entries, sales }
@@ -14,7 +14,7 @@ const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 const str = (x: unknown, n = 200) => String(x == null ? "" : x).trim().slice(0, n);
 const money = (x: unknown) => Math.round((+String(x ?? "").replace(/[^0-9.\-]/g, "") || 0) * 100) / 100;
-const WALLETS = ["Alipay", "WeChat", "ChinaBank", "CCB"], KINDS = ["check", "remit", "out", "in", "transfer"];
+const WALLETS = ["Alipay", "WeChat", "CCB"], KINDS = ["check", "remit", "out", "in", "transfer"];
 
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
       const W = await state();
       const since = W.map((w: any) => w.base_day).filter(Boolean).sort()[0] || new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
       const [en, sl] = await Promise.all([
-        db.from("coe_wallet").select("*").order("created_at", { ascending: false }).limit(80),
+        db.from("coe_wallet").select("*").neq("wallet", "ChinaBank").order("created_at", { ascending: false }).limit(80),
         db.from("coe_ledger").select("day,created_at,data").eq("kind", "sale").is("removed_at", null).gte("day", since).order("day", { ascending: false }).limit(200),
       ]);
       const sales = (sl.data || []).map((r: any) => ({ day: r.day, at: r.created_at, name: str(r.data?.[1], 80), partner: str(r.data?.[4], 60), method: str(r.data?.[5], 30), cny: money(r.data?.[6]) }))
