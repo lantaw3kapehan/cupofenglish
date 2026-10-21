@@ -1115,6 +1115,9 @@ await idbDo('readonly', s => { const c = s.openCursor(); c.onsuccess = () => { c
 try{ storeTidy(); }catch(e){ console.warn('tidy', e); }
 })();
 let TOKEN = store('get', KEY_T), D = null, VIEW = 'today', STU_FILTER = 'all', PROOF = null;
+/* 515 · write a box only when its content really changes (what we wrote, and the box still shows it) */
+window.__same = (el, h) => !!el && el._sh === h && el.innerHTML === el._sv;
+window.__put = (el, h) => { el.innerHTML = h; el._sh = h; el._sv = el.innerHTML; };
 /* 500 · signed in: Today stays invisible until it has settled (revealed once by the settle step near the end; 3 s safety) */
 if(TOKEN){ try{ const r = document.documentElement, s = document.createElement('style'); s.textContent = 'html.st500 #v-today{opacity:0!important;pointer-events:none}'; document.head.appendChild(s); r.classList.add('st500'); setTimeout(() => r.classList.remove('st500'), 3000); }catch(e){} }
 let MODE = store('get','coe.mode') === 'mgmt' ? 'mgmt' : 'teacher';
@@ -1666,7 +1669,7 @@ later.forEach(d => { const a = byDay[d], x = a.filter(c=>c.cancelled).length;
 h += `<details class="card" style="padding:10px 14px;margin-top:8px"><summary class="row" style="list-style:none;cursor:pointer"><b class="grow">${dayLabel(d)}</b><span class="mute small">${a.length-x} class${a.length-x===1?'':'es'}${x?` · ${x} cancelled`:''}</span></summary>
 <div style="margin-top:6px">${a.map(c=>classRow(c, stuBy)).join('')}</div></details>`; });
 }
-$('v-today').innerHTML = h;
+{ const _v = $('v-today'); if(!(_v._h0 === h && _v.firstElementChild && _v.firstElementChild === _v._f0 && _v.isConnected)){ _v.innerHTML = h; _v._h0 = h; _v._f0 = _v.firstElementChild; } }   /* 514: same drawing → keep the screen as it is */
 }
 
 function classRow(c, stuBy, now){
@@ -2343,7 +2346,7 @@ h += `<h2>Bonuses &amp; deductions <span class="c">90 days</span></h2>${adj.map(
 <div class="small mute">${esc(a.date)}${a.student?' · '+esc(a.student):''}${a.by?' · tagged by '+esc(a.by):''}</div>${a.detail&&a.by?`<div class="small mute ell">${esc(a.detail)}</div>`:''}</div>
 <b class="num ${a.plus?'plus':'minus'}">${a.plus?'+'+peso(a.plus):'−'+peso(a.minus)}</b></div>`).join('')}`;
 }
-$('v-pay').innerHTML = h;
+{ const _v = $('v-pay'); if(!(_v._h0 === h && _v.firstElementChild && _v.firstElementChild === _v._f0 && _v.isConnected)){ _v.innerHTML = h; _v._h0 = h; _v._f0 = _v.firstElementChild; } }   /* 514: same drawing → keep the screen as it is */
 }
 let MYP = null;
 async function loadMyPay(quiet){
@@ -5547,7 +5550,7 @@ setTimeout(() => bg(() => { if(!PF) loadPerf(true); if(!RP) loadReports(true); a
 }
 
 let GR = null, GR_I = 0;
-function paintGrowth(){ $('v-growth').innerHTML = growthHtml(GR, 0, false, 'growth'); $('v-qa').innerHTML = growthHtml(GR, GR_I, false, 'qa'); }
+function paintGrowth(){ const put = (id, h) => { const _v = $(id); if(!(_v._h0 === h && _v.firstElementChild && _v.firstElementChild === _v._f0)){ _v.innerHTML = h; _v._h0 = h; _v._f0 = _v.firstElementChild; } }; put('v-growth', growthHtml(GR, 0, false, 'growth') || '<div class="lead"><h1>My growth</h1><div class="mute small">Your career path, progress and recognition</div></div><div class="empty">Your growth page fills in as your classes, feedback and evaluations come in. Pull to refresh if it should be here already.</div>'); put('v-qa', growthHtml(GR, GR_I, false, 'qa') || '<div class="lead"><h1>QA feedback</h1><div class="mute small">Your monthly teaching evaluation from management</div></div><div class="empty">Your first QA evaluation appears here as soon as management submits it.</div>'); }   /* 518: never a blank page */   /* 514: same drawing → keep */
 async function loadGrowth(){
 if(!GR){ $('v-growth').innerHTML = loading('My growth'); $('v-qa').innerHTML = loading('QA feedback'); }
 try{ await swr('growth', () => api('tGrowth', TOKEN), v => GR = v, paintGrowth); }
@@ -6125,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 845;
+const COE_V = 850;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -9002,10 +9005,10 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     if(!D || D.mgr) return; const root = $('v-today'); if(!root) return;
     const L = harvest(root); window._MUST = L; L.forEach((x, i) => x.li.dataset.must = String(i));
     const n = L.length; try{ document.title = (n ? '(' + n + ') ' : '') + 'CupOfEnglish'; if(navigator.setAppBadge) n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); }catch(e){}
-    const old = $('mustBox'); if(old) old.remove(); if(!n) return;
+    const old = $('mustBox'); if(!n){ if(old) old.remove(); return; }   /* 515: kept when unchanged */
     if(!document.getElementById('mustCss')) document.head.insertAdjacentHTML('beforeend', '<style id="mustCss">#mustBox{border:2px solid #E4846B;background:#FFF6F2;border-radius:18px;padding:14px 16px;margin:14px 0 6px}#mustBox h3{margin:0 0 4px;font-size:17px}.must-r{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px dashed #F0C9BC}.must-r:first-of-type{border-top:0}.must-r .btn{flex:none;white-space:nowrap}@media(max-width:520px){.must-r{flex-wrap:wrap}.must-r .btn{width:100%}}</style>');
     const box = '<div id="mustBox"><h3>⚠ Management is waiting for ' + (n === 1 ? '1 thing' : n + ' things') + '</h3><div class="small mute" style="margin-bottom:6px">Please do ' + (n === 1 ? 'it' : 'these') + ' before your next class · ' + (n === 1 ? 'it leaves' : 'each one leaves') + ' this list once done</div>' + L.map((x, i) => row(x, i)).join('') + '</div>';
-    const lead = root.querySelector('.lead'); if(lead) lead.insertAdjacentHTML('afterend', box); else root.insertAdjacentHTML('afterbegin', box);
+    if(!(old && old._box === box && root.contains(old))){ if(old) old.remove(); const lead = root.querySelector('.lead'); if(lead) lead.insertAdjacentHTML('afterend', box); else root.insertAdjacentHTML('afterbegin', box); const nb = $('mustBox'); if(nb) nb._box = box; }
     // Pop up once when the app opens (and again when something new arrives), never during a class, "Later" = 2 hours.
     const sig = L.map(x => x.key).sort().join('¦'); window._mustSig = sig;
     const popH = () => '<h1 id="mustPop">Before you start</h1><p class="small mute" style="margin:8px 0 6px">Management is waiting for ' + (n === 1 ? 'this' : 'these ' + n + ' things') + '. It only takes a minute.</p>' + L.map((x, i) => row(x, i, true)).join('') +
@@ -12532,7 +12535,7 @@ ${m.top && m.top.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-
     if(!box){ box = document.createElement('div'); box.id = 'kxSide'; box.title = 'Teacher Excellence · tap for details';
       box.style.cssText = 'margin:16px 4px 8px;padding:14px 14px 12px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,#fdfcf9,#fff);box-shadow:0 4px 14px rgba(43,34,83,.06);cursor:pointer;transition:box-shadow .15s';
       box.onclick = () => { try{ go('growth'); setTimeout(() => { const c = $('kxCard'); if(c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250); }catch(e){} }; }
-    if(box.innerHTML !== html) box.innerHTML = html;
+    if(!__same(box, html)) __put(box, html);
     if(box.parentNode !== nav || nav.lastElementChild !== box) nav.appendChild(box); }
   addEventListener('resize', () => { try{ side(); badge(); }catch(e){} });
   const _bn = window.buildNav; if(_bn) window.buildNav = function(){ const x = _bn.apply(this, arguments); try{ side(); }catch(e){} return x; };
@@ -14038,7 +14041,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
       document.head.appendChild(s); }
     if(!el){ el = document.createElement('span'); el.id = 'cmHead'; el.title = 'Teacher Excellence · tap for details'; el.onclick = () => { try{ go('growth'); }catch(e){} }; sp.appendChild(el); }
     el.className = m.c; const tx = String(m.t), cut = tx.search(/[.!] /), ic = tx.split(' ')[0], a = cut > 0 ? tx.slice(ic.length + 1, cut + 1) : tx.slice(ic.length + 1), bb = cut > 0 ? tx.slice(cut + 2) : '';
-    const h = '<span class="l"><span class="ic">' + esc(ic) + '</span><span class="tx"><b>' + esc(a) + '</b>' + (bb ? '<span class="sub">' + esc(bb) + '</span>' : '') + '</span></span><span class="s">' + esc(m.s) + '</span><span class="i">' + esc(m.s.split(' ')[0]) + '</span>'; if(el.innerHTML !== h) el.innerHTML = h; }catch(e){} }
+    const h = '<span class="l"><span class="ic">' + esc(ic) + '</span><span class="tx"><b>' + esc(a) + '</b>' + (bb ? '<span class="sub">' + esc(bb) + '</span>' : '') + '</span></span><span class="s">' + esc(m.s) + '</span><span class="i">' + esc(m.s.split(' ')[0]) + '</span>'; if(!__same(el, h)) __put(el, h); }catch(e){} }
   const k0 = window.kxCommend; window.kxCommend = function(K){ const r = k0 ? k0.apply(this, arguments) : undefined; head(K); return r; };
 })();
 </script>
@@ -14637,7 +14640,7 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
     if(!cnt[TABK]){ TABK = 'ov'; kids.forEach(el => el.classList.toggle('stu-hide', el.dataset.stab !== 'ov')); }
     const nNotes = ((STU.r && STU.r.notes) || []).length;
     const html = TABS.filter(([k]) => cnt[k] || k === 'ov').map(([k, t]) => '<button type="button" class="' + (k === TABK ? 'on' : '') + '" onclick="stuTab(\'' + k + '\')">' + t + (k === 'no' && nNotes ? '<i>' + nNotes + '</i>' : '') + '</button>').join('');
-    if(tabs.innerHTML !== html) tabs.innerHTML = html; }
+    if(!__same(tabs, html)) __put(tabs, html); }
   window.stuTab = function(k){ TABK = k; try{ localStorage.setItem('coe.stab', k); }catch(e){} apply(); const t = document.querySelector('#sheetBody .stu-tabs'); if(t){ const sh = $('sheet'); try{ const top = t.offsetTop - 8; const sc = t.closest('.sheet, #sheet') || sh; if(sc && sc.scrollTop > top) sc.scrollTop = top; }catch(e){} } };
   const r0 = window.stuRender; window.stuRender = function(){ const r = r0.apply(this, arguments); try{ apply(); }catch(e){} setTimeout(() => { try{ apply(); }catch(e){} }, 30); return r; };
   /* sections added later (status, changes, profile, schedule refresh) take their tab too */
@@ -14737,7 +14740,7 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
         '<span class="mt">' + esc(M.map(m => m + ' min').join(' / ')) + (T.length === 1 ? ' · ' + esc(T[0]) : '') + '</span>' + (nxs ? '<span class="nx">Next · ' + esc(nxs) + '</span>' : '')
       : '<span class="lb"><svg class="lic" width="14" height="14" style="display:inline-block;width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Every week</span><span class="mt">No weekly schedule yet' + (nxs ? ' · next class ' + esc(nxs) : '') + '</span>' + (D && D.mgr ? '<button class="btn sm ghost" style="margin-left:auto" onclick="classForm(\'' + esc(STU.code) + '\')">+ Class</button>' : '');
     let el = hero.querySelector('.shwk'); if(!el){ hero.insertAdjacentHTML('beforeend', '<div class="shwk"></div>'); el = hero.querySelector('.shwk'); }
-    el.classList.toggle('none', !S.length); if(el.innerHTML !== html) el.innerHTML = html; }
+    el.classList.toggle('none', !S.length); if(!__same(el, html)) __put(el, html); }
   const r0 = window.stuRender; window.stuRender = function(){ const r = r0.apply(this, arguments); setTimeout(paint, 70); return r; };
   try{ const sb = $('sheetBody'); let t = 0; if(sb) new MutationObserver(() => { clearTimeout(t); t = setTimeout(paint, 120); }).observe(sb, { childList: true, subtree: true }); }catch(e){}
 })();
@@ -15465,7 +15468,7 @@ section.sec{border-color:var(--line)}
         const ok = L.filter(x => x[C.available] === '' || +x[C.available] > 5).length; if(L.length) parts.push('<b>' + Math.round(ok / L.length * 100) + '%</b> of ' + L.length + ' packages healthy'); } }catch(e){}
       try{ const t0 = PF && (PF.team || [])[0]; if(t0 && t0.avg != null) parts.push('QA average <b>' + esc(String(t0.avg)) + '</b> of 5'); }catch(e){}
       try{ const tp = $('tp2fun'); const tiles = tp ? tp.querySelectorAll('.tp3t b') : []; if(tiles.length >= 2 && +tiles[0].textContent) parts.push('trials convert <b>' + Math.round(+tiles[1].textContent / +tiles[0].textContent * 100) + '%</b>'); }catch(e){}
-      let g = top.querySelector('.x-glance'); if(parts.length){ const html = '<em>Month at a glance</em><span>' + parts.join(' · ') + '.</span>'; if(!g){ const td = top.querySelector('.x-todo'); if(td) td.insertAdjacentHTML('beforebegin', '<div class="x-glance"></div>'); else top.insertAdjacentHTML('beforeend', '<div class="x-glance"></div>'); g = top.querySelector('.x-glance'); } if(g.innerHTML !== html) g.innerHTML = html; } else if(g) g.remove();
+      let g = top.querySelector('.x-glance'); if(parts.length){ const html = '<em>Month at a glance</em><span>' + parts.join(' · ') + '.</span>'; if(!g){ const td = top.querySelector('.x-todo'); if(td) td.insertAdjacentHTML('beforebegin', '<div class="x-glance"></div>'); else top.insertAdjacentHTML('beforeend', '<div class="x-glance"></div>'); g = top.querySelector('.x-glance'); } if(!__same(g, html)) __put(g, html); } else if(g) g.remove();
       /* pay line → small card at the top of the right column */
       const pay = (MO && MO.payroll) || [], side = box.querySelector('.ov-side') || (box.querySelector('.ov-two') && box.querySelector('.ov-two').lastElementChild);
       if(pay.length && side && !box.querySelector('.x-pay') && isPres()){ const un = typeof unpaidN === 'function' ? unpaidN(pay) : 0, paid = pay.length - un;
@@ -15714,7 +15717,7 @@ section.sec{border-color:var(--line)}
   function paint(){ const v = $('v-team'); if(!v) return; const C = cards(); let bd = v.querySelector('.bd14');
     if(!C.length){ if(bd) bd.remove(); return; }
     const html = C.join(''); if(!bd){ const anchor = v.querySelector('.tgrp-h') || v.querySelector('.t13h'); if(!anchor) return; anchor.insertAdjacentHTML('beforebegin', '<div class="bd14"></div>'); bd = v.querySelector('.bd14'); }
-    if(bd.innerHTML !== html){ bd.innerHTML = html; bd.querySelectorAll('.c').forEach(c => c.onclick = () => bd14Open(c.dataset.k)); }
+    if(!__same(bd, html)){ __put(bd, html); bd.querySelectorAll('.c').forEach(c => c.onclick = () => bd14Open(c.dataset.k)); }
     const m = v.querySelector('.tgrp-h'); if(m && m.textContent !== 'Full details') m.textContent = 'Full details'; }
   let t = 0; const later = () => { clearTimeout(t); t = setTimeout(() => { try{ paint(); }catch(e){} }, 150); };
   const r0 = window.renderTeam; if(r0) window.renderTeam = function(){ const r = r0.apply(this, arguments); later(); try{ ['hrsBox', 'ngBox', 'hlBox', 'feed'].forEach(id => { const b = $(id); if(b && !b._o14){ b._o14 = 1; new MutationObserver(later).observe(b, { childList: true }); } }); }catch(e){} return r; };
@@ -15750,7 +15753,7 @@ section.sec{border-color:var(--line)}
     let bar = f.previousElementSibling && f.previousElementSibling.classList.contains('fd14') ? f.previousElementSibling : null;
     if(!bar){ f.insertAdjacentHTML('beforebegin', '<div class="fd14"></div>'); bar = f.previousElementSibling; }
     const html = '<button class="' + (F ? '' : 'on') + '" onclick="fd14(\'\')">All · ' + items.length + '</button>' + K.filter(x => seen[x[1]]).map(x => '<button class="' + (F === x[1] ? 'on' : '') + '" onclick="fd14(\'' + x[1] + '\')"><i style="background:' + x[2] + '"></i>' + x[1] + ' · ' + seen[x[1]] + '</button>').join('') + (seen.Other ? '<button class="' + (F === 'Other' ? 'on' : '') + '" onclick="fd14(\'Other\')">Other · ' + seen.Other + '</button>' : '');
-    if(bar.innerHTML !== html) bar.innerHTML = html; }
+    if(!__same(bar, html)) __put(bar, html); }
   let t = 0; const later = () => { clearTimeout(t); t = setTimeout(() => { try{ tag(); }catch(e){} }, 120); };
   const r0 = window.renderTeam; if(r0) window.renderTeam = function(){ const r = r0.apply(this, arguments); later(); try{ const f = $('feed'); if(f && !f._o15){ f._o15 = 1; new MutationObserver(m => { if(m.some(x => [...x.addedNodes].some(n => n.classList && n.classList.contains('it')))) later(); }).observe(f, { childList: true }); } }catch(e){} return r; };
 })();
@@ -15937,7 +15940,7 @@ section.sec{border-color:var(--line)}
     if(!d){ if(!hrsD) return; const O = (() => { try{ return JSON.parse(localStorage.getItem('coe.tgrp') || '{}') || {}; }catch(e){ return {}; } })();
       d = document.createElement('details'); d.className = 'tgrp tp17d'; if(O.tp17) d.open = true; d.setAttribute('ontoggle', "tgrpT('tp17',this);if(this.open&&!window._tp17)tp17Load()");
       d.innerHTML = '<summary>Teachers’ time-ins<span>day by day this month · minutes before class, late</span></summary><div id="tp17Box"></div>'; hrsD.insertAdjacentElement('beforebegin', d); }
-    const b = $('tp17Box'); if(b){ const x = html(); if(b.innerHTML !== x) b.innerHTML = x; }
+    const b = $('tp17Box'); if(b){ const x = html(); if(!__same(b, x)) __put(b, x); }
     if(d.open && !TP && !busy) load(TPM); }
   const r0 = window.renderTeam; if(r0) window.renderTeam = function(){ const r = r0.apply(this, arguments); try{ paint(); }catch(e){ console.warn('tp17', e); } return r; };
   try{ if(typeof VIEW !== 'undefined' && VIEW === 'team') renderTeam(); }catch(e){}
@@ -19245,7 +19248,7 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
   const css = document.createElement('style');
   css.textContent = `
 body:not(.mgr){background:radial-gradient(1200px 600px at 85% -10%,#EEF7F8 0,transparent 60%),radial-gradient(900px 500px at -10% 20%,#F4F2FB 0,transparent 55%),#FAFAFC!important}
-body:not(.mgr) header{background:rgba(255,255,255,.72)!important;backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);border-bottom:1px solid rgba(43,34,83,.06)!important;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 8px 24px -18px rgba(43,34,83,.25)!important}
+body:not(.mgr) header{background:rgba(255,255,255,.94)!important;backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);border-bottom:1px solid rgba(43,34,83,.06)!important;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 8px 24px -18px rgba(43,34,83,.25)!important}
 body:not(.mgr) main h1{letter-spacing:-.4px!important}
 body:not(.mgr) .num,body:not(.mgr) .cls .t b,body:not(.mgr) .wk94 b{font-variant-numeric:tabular-nums}
 body:not(.mgr) .card,body:not(.mgr) section.sec,body:not(.mgr) .yd92,body:not(.mgr) .ps92,body:not(.mgr) .tin,body:not(.mgr) .wk94 a,body:not(.mgr) #v-today .cls{border-radius:18px!important;border:1px solid rgba(43,34,83,.07)!important;box-shadow:0 1px 2px rgba(43,34,83,.04),0 10px 28px -16px rgba(43,34,83,.16)!important;transition:box-shadow .2s ease,transform .2s ease,background .2s ease}
@@ -19754,11 +19757,29 @@ body:not(.mgr) #v-pay{background:none!important;border:0!important;box-shadow:no
       else if(L.length){ const box = document.createElement('div'); box.className = 'bd509'; hb.after(box);
         L.forEach(li => { const amt = li.querySelector('b.num'), plus = amt && amt.classList.contains('plus'); li.insertAdjacentHTML('afterbegin', `<span class="sg ${plus ? 'p' : 'm'}">${plus ? '+' : '−'}</span>`);
           const sm = li.querySelector('.grow .small.mute'); if(sm && sm.firstChild && sm.firstChild.nodeType === 3) sm.firstChild.textContent = sm.firstChild.textContent.replace(/^\d{4}-\d{2}-\d{2}/, m => day(m)); box.appendChild(li); }); } } }
+  let PAYALL = (() => { try{ const o = JSON.parse(store('get', 'coe.payall') || 'null'); return o && o.who === String((D && D.me && D.me.name) || '').toLowerCase() ? o : null; }catch(e){ return null; } })(), payAllAt = 0;
+  let payAllBusy = 0; function payAllLoad(){ if(!TOKEN || !D || D.mgr || payAllBusy || Date.now() - payAllAt < 30 * 6e4) return; payAllBusy = 1;   /* 517: every paid month since the start (PAYROLL), not only the months on this screen */
+    fetch(FAST_URL + '-payall', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN }) }).then(x => x.json()).then(r => { payAllAt = Date.now(); if(!r || !r.ok || !r.months) return;
+      r.who = String((D.me && D.me.name) || '').toLowerCase(); const ch = JSON.stringify(r) !== JSON.stringify(PAYALL); PAYALL = r; try{ store('set', 'coe.payall', JSON.stringify(r)); }catch(e){} if(ch && VIEW === 'pay') allTime(); }).catch(() => {}).finally(() => { payAllBusy = 0; }); }
+  function allTime(){ const v = $('v-pay'); if(!v || !D || D.mgr) return; payAllLoad(); const num = x => { const n = parseFloat(String(x == null ? '' : x).replace(/[^\d.-]/g, '')); return isNaN(n) ? 0 : n; };
+    const ym = x => { const s = String((x && (x.m || x.month)) || ''); let m = s.match(/^(\d{4})-(\d{2})/); if(m) return m[1] + '-' + m[2]; m = s.match(/([A-Za-z]{3})[a-z]*\.?\s+(\d{4})/); if(!m) return ''; const i = 'janfebmaraprmayjunjulaugsepoctnovdec'.indexOf(m[1].toLowerCase()); return i < 0 ? '' : m[2] + '-' + String(i / 3 + 1).padStart(2, '0'); };
+    const now = new Date(), k0 = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'), mLab = k => new Date(+k.slice(0, 4), +k.slice(5) - 1, 1).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+    let tot, n, first, last, wt, years = null;
+    if(PAYALL && PAYALL.months){ tot = +PAYALL.net || 0; n = PAYALL.months; first = PAYALL.first; last = PAYALL.last; wt = +PAYALL.waiting || 0; years = PAYALL.byYear || null; }
+    else { const R = (D.pay || []).map(x => ({ k: ym(x), n: num(x.net), paid: /paid/i.test(String(x.status || '')) || x.paid === true })).filter(o => o.k && o.k < k0).sort((a, b) => a.k.localeCompare(b.k)), P = R.filter(o => o.paid);
+      if(!P.length) return; tot = P.reduce((s, o) => s + o.n, 0); n = P.length; first = P[0].k; last = P[P.length - 1].k; wt = R.filter(o => !o.paid).reduce((s, o) => s + o.n, 0); }
+    const Y = years ? Object.keys(years).sort() : [], ymx = Math.max(1, ...Y.map(y => +years[y] || 0)), sh = x => x >= 1000 ? '₱' + (x / 1000).toFixed(x >= 100000 ? 0 : 1) + 'k' : '₱' + Math.round(x);
+    const bars = Y.length ? `<div class="yr"><div class="bs">${Y.map(y => `<div title="${esc(y)} · ${esc(peso(+years[y] || 0))}"><s>${esc(sh(+years[y] || 0))}</s><i style="height:${Math.max(6, Math.round((+years[y] || 0) / ymx * 44))}px"></i><span>${esc(y)}</span></div>`).join('')}</div></div>` : '';
+    const h = `<div class="card at516"><div class="tx"><span>Total earned with CupOfEnglish</span><b>${esc(peso(tot))}</b><em>net, all time · ${n} paid month${n === 1 ? '' : 's'} · ${esc(mLab(first))} – ${esc(mLab(last))}${wt ? ` · <i>+${esc(peso(wt))} finished, not paid yet</i>` : ''}</em></div>${bars}</div>`;
+    const old = v.querySelector('.at516'); if(old && old._h === h) return; if(old) old.remove();
+    const est = [...v.querySelectorAll('.card')].find(c => /^\s*Estimated/.test(c.textContent)); if(!est) return; est.insertAdjacentHTML('afterend', h); const nb = v.querySelector('.at516'); if(nb) nb._h = h; }   /* 516 · 517 */
+  css.textContent += `#v-pay .at516 .yr{flex:none}#v-pay .at516 .bs{display:flex;align-items:flex-end;gap:12px;height:78px;padding-top:16px}#v-pay .at516 .bs>div{position:relative;width:46px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}#v-pay .at516 .bs i{flex:none;display:block;width:30px;border-radius:7px 7px 2px 2px;background:linear-gradient(180deg,#47B985,#2F9A68)}#v-pay .at516 .bs s{text-decoration:none;font-size:11px;font-weight:700;color:#1E6B4A;margin-bottom:3px;white-space:nowrap}#v-pay .at516 .bs span{font-size:11px;color:#8A87A0;margin-top:3px}`;
+  css.textContent += `#v-pay .at516{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:12px;padding:16px 18px;background:linear-gradient(135deg,#F1FAF5,#fff 65%)!important}#v-pay .at516 .tx{flex:1;min-width:200px}#v-pay .at516 span{display:block;font-size:12.5px;color:#4F8A6E;font-weight:700;letter-spacing:.02em}#v-pay .at516 b{display:block;font-size:30px;color:#1E6B4A;font-variant-numeric:tabular-nums;letter-spacing:-.5px;margin:2px 0}#v-pay .at516 em{font-style:normal;font-size:12.5px;color:#6B6884}#v-pay .at516 em i{font-style:normal;color:#B5793A;font-weight:700}#v-pay .at516 .sp{width:220px;max-width:100%;height:46px;flex:none}@media(max-width:560px){#v-pay .at516 .sp{width:100%}}`;
   function paidLine(){ const v = $('v-pay'); if(!v || v.querySelector('.pl512')) return; const p = typeof PCK !== 'undefined' && PCK; if(!p || !p.me || !p.me.paid) return;
     const est = [...v.querySelectorAll('.card')].find(c => /^\s*Estimated/.test(c.textContent)); if(!est) return;
     est.insertAdjacentHTML('beforeend', `<div class="pl512"><span>✓</span><b>${esc(p.month)} pay · ${esc(peso(p.me.net))}</b><em>paid</em></div>`); }   /* 512 */
   css.textContent += `#v-pay .pl512{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px dashed #E9E7F1;font-size:13px;color:#4A4766}#v-pay .pl512 span{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#E8F5EF;color:#1E7A55;font-weight:700;font-size:12px}#v-pay .pl512 em{font-style:normal;color:#1E7A55;font-weight:700;font-size:12px;margin-left:auto;padding:2px 9px;border-radius:999px;background:#E8F5EF}`;
-  const _a = window.renderPay; if(_a) window.renderPay = renderPay = function(){ const r = _a.apply(this, arguments); try{ polish(); paidLine(); }catch(e){ console.warn('pay 509', e); } return r; };
+  const _a = window.renderPay; if(_a) window.renderPay = renderPay = function(){ const r = _a.apply(this, arguments); try{ polish(); paidLine(); allTime(); }catch(e){ console.warn('pay 509', e); } return r; };
   try{ if(typeof VIEW !== 'undefined' && VIEW === 'pay') renderPay(); }catch(e){}
 })();
 </script>

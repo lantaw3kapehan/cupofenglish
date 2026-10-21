@@ -1,0 +1,5 @@
+// 21 Oct · QA: Growth and QA feedback were completely blank when there is no growth data yet (a new teacher, or the data did
+// not come back). They now show the page title and a short line instead of an empty screen.
+require('../tools/lib.js')(process.argv[2], [[
+"put('v-growth', growthHtml(GR, 0, false, 'growth')); put('v-qa', growthHtml(GR, GR_I, false, 'qa')); }",
+"put('v-growth', growthHtml(GR, 0, false, 'growth') || '<div class=\"lead\"><h1>My growth</h1><div class=\"mute small\">Your career path, progress and recognition</div></div><div class=\"empty\">Your growth page fills in as your classes, feedback and evaluations come in. Pull to refresh if it should be here already.</div>'); put('v-qa', growthHtml(GR, GR_I, false, 'qa') || '<div class=\"lead\"><h1>QA feedback</h1><div class=\"mute small\">Your monthly teaching evaluation from management</div></div><div class=\"empty\">Your first QA evaluation appears here as soon as management submits it.</div>'); }   /* 518: never a blank page */"]]);
