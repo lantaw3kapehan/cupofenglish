@@ -4424,7 +4424,7 @@ const pckState = p => { if(!p || !p.me) return ''; const c = p.check || {}; if(c
 function payPaid(mon){ const k = s => { const t = String(s || '').trim(), m = t.match(/([A-Za-z]{3})[a-z]*\.?\s+(\d{4})/); return m ? m[1].toLowerCase() + m[2] : t.toLowerCase(); }, key = k(mon); if(!key) return false;
   return !!(PCK && PCK.me && PCK.me.paid && k(PCK.month) === key) || ((D && D.pay) || []).some(x => k(x.month) === key && /paid/i.test(String(x.status || ''))); }   /* 14 Oct */
 function payChkHtml(){ const p = PCK; if(!p || !p.me) return ''; const x = p.me, c = p.check || {}, st = pckState(p);
-if(x.paid) return '<div class="card" style="margin-top:14px;padding:12px 16px"><div class="row" style="gap:10px;align-items:center"><b class="grow">✓ ' + esc(p.month) + ' pay · <span class="num">' + peso(x.net) + '</span></b><span class="chip teal">Paid</span></div></div>';   /* 14 Oct: paid → one line */
+if(x.paid) return '';   /* 512: a paid month is not the top of Pay any more · one line under the estimate (pckPaidLine) */   /* 14 Oct: paid → one line */
 const L = [['Units', x.units + ' × ' + peso(x.rate)], ['Lesson pay', peso(x.lessonPay)], x.base ? ['Base', peso(x.base)] : null, ['Bonus', '+' + peso(x.bonus)], ['Deductions', '−' + peso(x.deduct)], x.gov ? ['Gov contributions', '−' + peso(x.gov)] : null].filter(Boolean);
 const chip = st === 'Verified' ? '<span class="chip teal">Verified ✓</span>' : st === 'Disputed' ? '<span class="chip coral">Question sent</span>' : st === 'Answered' ? '<span class="chip amber">Answered · check again</span>' : st === 'Changed' ? '<span class="chip amber">Changed · check again</span>' : '<span class="chip amber">Please check</span>';
 const thread = (c.note ? '<div class="mini" style="margin-top:10px;white-space:pre-line"><b>You wrote</b><br>' + esc(c.note) + '</div>' : '') + (c.reply ? '<div class="mini" style="margin-top:8px;background:var(--tint);white-space:pre-line"><b>' + esc(c.replyBy || 'Management') + '</b> · ' + esc(String(c.replyAt).slice(5)) + '<br>' + esc(c.reply) + '</div>' : '');
@@ -6125,7 +6125,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 843;
+const COE_V = 844;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -18281,7 +18281,7 @@ section.sec .gr-kpi{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!imp
   function pace(card, so, L){ if(!card || card.querySelector('.pc70')) return; const d = now.getDate(), p = Math.round(so / Math.max(1, d) * dim / 10) * 10;
     const prev = L.map(x => ({ x, k: ym(x) })).filter(o => o.k && o.k < k0).sort((a, b) => b.k.localeCompare(a.k))[0], pv = prev ? num(prev.x.net) : 0;
     card.insertAdjacentHTML('beforeend', '<div class="pc70"><div class="bar"><i style="width:' + (d / dim * 100) + '%"></i></div><div class="t"><span>day <b>' + d + '</b> of ' + dim + '</span><span>on pace for about <b>' + peso(p) + '</b>' + (pv ? ' · ' + esc(String(prev.x.month || '').split(' ')[0]) + ' ' + peso(pv) + ' <span class="' + (p >= pv ? 'up' : 'dn') + '">' + (p >= pv ? '▲' : '▼') + '</span>' : '') + '</span></div></div>'); }
-  function teacher(){ const v = document.getElementById('v-pay'); if(!v || !D || !D.me) return; const card = v.querySelector('.card'); const me = D.me, so = nowPayOf(me) + (me.monthBonus || 0) - (me.monthDeduct || 0);
+  function teacher(){ const v = document.getElementById('v-pay'); if(!v || !D || !D.me) return; const card = [...v.querySelectorAll('.card')].find(c => /^\s*Estimated/.test(c.textContent)) || v.querySelector('.card');   /* 512: the pace bar belongs to the estimate */ const me = D.me, so = nowPayOf(me) + (me.monthBonus || 0) - (me.monthDeduct || 0);
     pace(card, so, D.pay || []); if(!v.querySelector('.pm70')){ const h = [...v.querySelectorAll('h2')].find(x => /^History/.test(x.textContent.trim())); const c = chart(D.pay || [], 't'); if(h && c) h.insertAdjacentHTML('beforebegin', c); } }
   function mine(){ const v = document.getElementById('v-mypay'); if(!v || typeof MYP === 'undefined' || !MYP || !MYP.pay) return; const card = v.querySelector('.card'), cur = MYP.pay.find(x => x.m === MYP.month);
     if(cur) pace(card, num(cur.net), MYP.pay.filter(x => x !== cur)); if(!v.querySelector('.pm70')){ const h = [...v.querySelectorAll('h2')].find(x => /^History/.test(x.textContent.trim())); const c = chart(MYP.pay, 'm'); if(h && c) h.insertAdjacentHTML('beforebegin', c); } }
@@ -19719,7 +19719,11 @@ body:not(.mgr) #v-pay{background:none!important;border:0!important;box-shadow:no
       if(L.length){ const box = document.createElement('div'); box.className = 'bd509'; hb.after(box);
         L.forEach(li => { const amt = li.querySelector('b.num'), plus = amt && amt.classList.contains('plus'); li.insertAdjacentHTML('afterbegin', `<span class="sg ${plus ? 'p' : 'm'}">${plus ? '+' : '−'}</span>`);
           const sm = li.querySelector('.grow .small.mute'); if(sm && sm.firstChild && sm.firstChild.nodeType === 3) sm.firstChild.textContent = sm.firstChild.textContent.replace(/^\d{4}-\d{2}-\d{2}/, m => day(m)); box.appendChild(li); }); } } }
-  const _a = window.renderPay; if(_a) window.renderPay = renderPay = function(){ const r = _a.apply(this, arguments); try{ polish(); }catch(e){ console.warn('pay 509', e); } return r; };
+  function paidLine(){ const v = $('v-pay'); if(!v || v.querySelector('.pl512')) return; const p = typeof PCK !== 'undefined' && PCK; if(!p || !p.me || !p.me.paid) return;
+    const est = [...v.querySelectorAll('.card')].find(c => /^\s*Estimated/.test(c.textContent)); if(!est) return;
+    est.insertAdjacentHTML('beforeend', `<div class="pl512"><span>✓</span><b>${esc(p.month)} pay · ${esc(peso(p.me.net))}</b><em>paid</em></div>`); }   /* 512 */
+  css.textContent += `#v-pay .pl512{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px dashed #E9E7F1;font-size:13px;color:#4A4766}#v-pay .pl512 span{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#E8F5EF;color:#1E7A55;font-weight:700;font-size:12px}#v-pay .pl512 em{font-style:normal;color:#1E7A55;font-weight:700;font-size:12px;margin-left:auto;padding:2px 9px;border-radius:999px;background:#E8F5EF}`;
+  const _a = window.renderPay; if(_a) window.renderPay = renderPay = function(){ const r = _a.apply(this, arguments); try{ polish(); paidLine(); }catch(e){ console.warn('pay 509', e); } return r; };
   try{ if(typeof VIEW !== 'undefined' && VIEW === 'pay') renderPay(); }catch(e){}
 })();
 </script>
