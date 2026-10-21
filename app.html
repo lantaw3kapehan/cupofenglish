@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 874;
+const COE_V = 875;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -20313,7 +20313,7 @@ function formHtml(){
   <div class="row2"><div><label>Confirmation no.</label><input class="in-t" value="${e(S.next)}" readonly title="Given by the system when you issue"></div><div><label>Date</label><input class="in-t" type="date" value="${e(S.day)}" onchange="ivSet('day',this.value)"></div></div>
   <label>Bill to</label><input class="in-t" value="${e(S.bill_name)}" oninput="ivSet('bill_name',this.value)" placeholder="Student Abner (Wang Yihao)">
   <label>Address</label><textarea class="in-t" rows="2" oninput="ivSet('bill_addr',this.value)" placeholder="Jinan City, Shandong Province,&#10;China">${e(S.bill_addr)}</textarea>
-  <label>Email (the confirmation is sent here)</label><input class="in-t" type="email" value="${e(S.email)}" oninput="ivSet('email',this.value)" placeholder="parent@qq.com">
+  <label>Email (the confirmation is sent here)</label><input class="in-t" type="email" value="${e(S.email)}" oninput="ivSet('email',this.value)" placeholder="parent@qq.com"><label class="chk" id="ivMailRow"${S.email ? '' : ' style="display:none"'}><input type="checkbox" ${S.mail !== false ? 'checked' : ''} onchange="ivMailOpt(this.checked)"> Email it to them too 同时发送邮件</label>
   <label style="margin-top:16px">Lines</label><div id="ivLines">${linesHtml()}</div>
   <button class="btn ghost sm" style="margin-top:8px" onclick="ivAdd()">+ Add a line</button>
   <label class="chk"><input type="checkbox" ${S.paid ? 'checked' : ''} onchange="ivSet('paid',this.checked)"> Paid in full (PAID stamp, total due ¥0.00)</label>
@@ -20326,7 +20326,7 @@ function formHtml(){
     <div class="small mute" style="margin-top:6px">Saved with the student, so the next confirmation fills them in.</div></div>` : ''}
   <div class="ivt"><div><span>Includes tax (3%)</span><span id="ivTax">${n2(t.tax)}</span></div><div class="big"><span>Total</span><span id="ivTot">¥${n2(t.total)}</span></div></div>
   <label>BIR invoice no. (printed booklet, optional)</label><input class="in-t" value="${e(S.bir_no || '')}" oninput="ivSet('bir_no',this.value)" placeholder="Can be added later in All payment confirmations">
-  <button class="btn go" id="ivGo" onclick="ivIssue()">Issue Payment Confirmation ${e(S.next)}${S.email ? ' and email it' : ''}</button>
+  <button class="btn go" id="ivGo" onclick="ivIssue()">${goLbl()}</button>
   <div class="small mute" style="margin-top:8px">An issued confirmation can't be edited or deleted, only voided with a reason. The official invoice is still the BIR printed one.</div>`; }
 let pv = 0;
 function preview(){ clearTimeout(pv); pv = setTimeout(() => { const v = document.querySelector('#ivM .iv-v'); if(!v) return;
@@ -20334,7 +20334,10 @@ function preview(){ clearTimeout(pv); pv = setTimeout(() => { const v = document
   v.innerHTML = `<div class="pg" style="transform:scale(${k});height:${1123 * k}px;width:794px;flex:none;margin:0 ${-(794 - 794 * k) / 2}px">${page(draft())}</div>`; }, 120); }
 function totalsOnly(){ const t = totals(); const a = document.getElementById('ivTax'), b = document.getElementById('ivTot'); if(a) a.textContent = n2(t.tax); if(b) b.textContent = '¥' + n2(t.total); }
 function redraw(){ const f = document.querySelector('#ivM .iv-f'); if(f){ const y = f.scrollTop; f.innerHTML = formHtml(); f.scrollTop = y; } preview(); }
-window.ivSet = (k, v, re) => { S[k] = v; S.dirty = 1; if(k === 'email' || re) redraw(); else preview(); if(k === 'email'){ const b = document.getElementById('ivGo'); if(b) b.textContent = 'Issue Payment Confirmation ' + S.next + (v ? ' and email it' : ''); } };
+const goLbl = () => 'Issue Payment Confirmation ' + S.next + (S.email && S.mail !== false ? ' and email it' : '');
+const goUpd = () => { const b = document.getElementById('ivGo'); if(b && !b.disabled) b.textContent = goLbl(); const r = document.getElementById('ivMailRow'); if(r) r.style.display = String(S.email || '').trim() ? '' : 'none'; };
+window.ivMailOpt = v => { S.mail = !!v; goUpd(); };
+window.ivSet = (k, v, re) => { S[k] = v; S.dirty = 1; if(re) redraw(); else preview(); if(k === 'email') goUpd(); };   /* 543: typing the email no longer redraws the form (kept the cursor in the box) */
 window.ivR = (k, v) => { S.reimb = Object.assign({}, S.reimb || {}, { [k]: v }); S.dirty = 1; preview(); };
 window.ivLine = (i, k, v) => { const l = S.lines[i]; if(!l) return; S.dirty = 1;
   if(k === 'rm'){ S.lines.splice(i, 1); if(!S.lines.length) S.lines.push(mkLine(S.products.find(p => !p.free), null)); return redraw(); }
@@ -20409,7 +20412,7 @@ window.ivIssue = async () => {
   S.blob = blob; const att = attach(S.ctx, inv, blob);
   call('file', { no: inv.no, file_name: fileName(inv) }).catch(() => {});
   done(inv, blob, '', att);
-  if(inv.email){ const s = document.getElementById('ivMail'); try{ await mail(inv, blob); if(s) s.innerHTML = '✓ Emailed to <b>' + e(inv.email) + '</b> (copy to works@).'; }
+  if(inv.email && S.mail !== false){ const s = document.getElementById('ivMail'); try{ await mail(inv, blob); if(s) s.innerHTML = '✓ Emailed to <b>' + e(inv.email) + '</b> (copy to works@).'; }
     catch(x){ if(s) s.innerHTML = `<span style="color:var(--red)">Not emailed: ${e(x.message)}</span> <button class="btn ghost sm" onclick="ivMailAgain()">Try again</button>`; } }
 };
 function done(inv, blob, err, att){
@@ -20418,7 +20421,7 @@ function done(inv, blob, err, att){
   f.innerHTML = `<div class="done"><h3>Payment Confirmation ${e(inv.no)} issued</h3>
     <div>¥${n2(inv.total)} · includes tax ${n2(inv.tax)} · ${e(inv.bill_name)}</div>
     ${err ? `<div class="warn">The confirmation is saved, but the PDF could not be made here: ${e(err)}. Open All payment confirmations and tap PDF.</div>` : ''}
-    <div id="ivMail" class="small" style="margin-top:10px">${inv.email ? 'Sending the email…' : '<span class="mute">No email address, so nothing was emailed.</span>'}</div>
+    <div id="ivMail" class="small" style="margin-top:10px">${inv.email ? (S.mail !== false ? 'Sending the email…' : '<span class="mute">Not emailed (you chose not to). You can email it later from All payment confirmations.</span>') : '<span class="mute">No email address, so nothing was emailed.</span>'}</div>
     <button class="btn" onclick="ivPicDone()">Copy picture for WeChat 复制图片</button>${blob ? `<button class="btn ghost" onclick="ivDl()">Download PDF</button>` : ''}
     ${att && back ? `<div class="warn" style="background:var(--tint);color:#2F6F76">The PDF is attached to the form. Close this and tap <b>${back}</b> to record the payment.</div><button class="btn ghost" onclick="ivFin()">Back to the form</button>` : `<button class="btn ghost" onclick="ivFin()">Close</button>`}</div>`;
   const v = document.querySelector('#ivM .iv-v'); if(v){ const k = Math.min(1, (v.clientWidth - 24) / 794); v.innerHTML = `<div class="pg" style="transform:scale(${k});height:${1123 * k}px;width:794px;flex:none;margin:0 ${-(794 - 794 * k) / 2}px">${page(inv)}</div>`; } }
