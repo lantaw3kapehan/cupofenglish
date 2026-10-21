@@ -3,6 +3,8 @@
 // POST { token, action, ... }
 //   get                                   → { ok, wallets: [{ wallet, balance, base, base_day, sales, sales_n, in, out, fees }], entries, sales }
 //   add  { kind, wallet, day, cny, fee?, php?, note? }   kind: check | remit | out | in   → { ok, entry, wallets }
+//   add  { kind: "transfer", wallet (from), to, cny, fee? }  (the charge can be added later with "fee")
+//   fee  { id, fee }                      → { ok, wallets }   (charge of a transfer/remittance, once, after it shows)
 //   undo { id }                           → { ok, wallets }
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -12,7 +14,7 @@ const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 const str = (x: unknown, n = 200) => String(x == null ? "" : x).trim().slice(0, n);
 const money = (x: unknown) => Math.round((+String(x ?? "").replace(/[^0-9.\-]/g, "") || 0) * 100) / 100;
-const WALLETS = ["Alipay", "WeChat"], KINDS = ["check", "remit", "out", "in"];
+const WALLETS = ["Alipay", "WeChat", "ChinaBank", "CCB"], KINDS = ["check", "remit", "out", "in", "transfer"];
 
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
@@ -42,16 +44,25 @@ Deno.serve(async (req: Request) => {
     if (a === "add") {
       const kind = str(b.kind, 10), wallet = str(b.wallet, 10), day = str(b.day, 10), cny = money(b.cny);
       if (!KINDS.includes(kind) || !WALLETS.includes(wallet)) return out({ ok: false, error: "Choose the wallet." });
+      const to = kind === "transfer" ? str(b.to, 12) : null;
+      if (kind === "transfer" && (!WALLETS.includes(to!) || to === wallet)) return out({ ok: false, error: "Choose where the money goes." });
       if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return out({ ok: false, error: "Choose the date." });
       if (!(cny >= 0) || (kind !== "check" && !(cny > 0))) return out({ ok: false, error: "Type the amount in ¥." });
       const W = await state(), cur = W.find((w: any) => w.wallet === wallet);
       const row: any = { kind, wallet, day, cny, by_name: who, note: str(b.note, 300) || null,
-        fee: kind === "remit" ? Math.max(0, money(b.fee ?? 50)) : kind === "out" ? Math.max(0, money(b.fee ?? 0)) : 0,
+        fee: kind === "remit" ? Math.max(0, money(b.fee ?? 50)) : kind === "out" || kind === "transfer" ? Math.max(0, money(b.fee ?? 0)) : 0, to_wallet: to,
         php: kind === "remit" && money(b.php) > 0 ? money(b.php) : null,
         expected: kind === "check" && cur ? cur.balance : null };
       const { data, error } = await db.from("coe_wallet").insert(row).select().single();
       if (error) return out({ ok: false, error: error.message });
       return out({ ok: true, entry: data, wallets: await state() });
+    }
+    if (a === "fee") {
+      const id = +b.id, fee = money(b.fee); if (!(id > 0) || !(fee > 0)) return out({ ok: false, error: "Type the charge in ¥." });
+      const { data, error } = await db.from("coe_wallet").update({ fee }).eq("id", id).eq("fee", 0).is("void_at", null).select("id");
+      if (error) return out({ ok: false, error: error.message });
+      if (!data || !data.length) return out({ ok: false, error: "The charge is already set." });
+      return out({ ok: true, wallets: await state() });
     }
     if (a === "undo") {
       const id = +b.id; if (!(id > 0)) return out({ ok: false, error: "id" });
