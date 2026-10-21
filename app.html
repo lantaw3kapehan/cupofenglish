@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 876;
+const COE_V = 877;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -20099,9 +20099,16 @@ ${rb}
 
 /* ---------- PDF: the page drawn at 2× and placed on one A4 sheet ---------- */
 const lib = (src, ok) => ok() ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Could not load the PDF maker. Check the internet.')); document.head.appendChild(s); });
-async function pdfOf(inv){
-  await Promise.all([lib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', () => window.html2canvas),
+/* 545 · speed: the page is drawn ONCE (at the picture size, 1800 px) and gives both the PDF and the WeChat picture; results are kept per confirmation */
+const LIBS = () => Promise.all([lib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', () => window.html2canvas),
     lib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', () => window.jspdf && window.jspdf.jsPDF)]);
+const MADE = {};
+const madeKey = inv => inv.no + ':' + (inv.status || '') + ':' + (inv.bir_no || '');
+function both(inv){ const k = madeKey(inv); if(MADE[k] && MADE[k].html !== page(inv)) delete MADE[k]; if(!MADE[k]){ const p = render(inv).catch(x => { delete MADE[k]; throw x; }); p.html = page(inv); MADE[k] = p; } return MADE[k]; }
+async function pdfOf(inv){ return (await both(inv)).pdf; }
+async function picOf(inv){ return (await both(inv)).png; }
+async function render(inv){
+  await LIBS();
   try{ await document.fonts.ready; }catch(x){}
   const box = document.createElement('div'); box.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;background:#fff;z-index:-1';
   box.innerHTML = page(inv); document.body.appendChild(box);
@@ -20109,7 +20116,8 @@ async function pdfOf(inv){
     await Promise.all([...box.querySelectorAll('img')].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
     const pg = box.firstElementChild, qi = pg.querySelector('.qr img'); let qp = null;
     if(qi){ const A = pg.getBoundingClientRect(), B = qi.getBoundingClientRect(); qp = { x: B.left - A.left, y: B.top - A.top, w: B.width }; }
-    const cv = await window.html2canvas(pg, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
+    const cv = await window.html2canvas(pg, { scale: 1800 / 794, backgroundColor: '#ffffff', useCORS: true, logging: false });
+    const png = new Promise(r => cv.toBlob(r, 'image/png'));
     const doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4', compress: true }), W = 595.28, H = 841.89;
     const h = W * cv.height / cv.width, k = h > H ? H / h : 1;
     doc.addImage(cv.toDataURL('image/jpeg', 0.93), 'JPEG', (W - W * k) / 2, 0, W * k, h * k);
@@ -20117,7 +20125,7 @@ async function pdfOf(inv){
       doc.setFillColor(255, 255, 255); doc.rect(X, Y, qp.w * sc, qp.w * sc, 'F'); doc.setFillColor(0, 0, 0);
       QRM.forEach((r, j) => { for(let i = 0; i < r.length; i++){ if(r[i] !== '1') continue; let t = i; while(t + 1 < r.length && r[t + 1] === '1') t++; doc.rect(X + (i + 2) * m, Y + (j + 2) * m, (t - i + 1) * m, m + 0.02, 'F'); i = t; } }); }
     doc.setProperties({ title: 'CupOfEnglish Payment Confirmation ' + inv.no, author: 'CupOfEnglish Philippines', subject: 'Payment Confirmation 付款确认单 ' + inv.no });
-    return doc.output('blob');
+    return { pdf: doc.output('blob'), png: await png };
   } finally { box.remove(); } }
 const fileName = inv => 'PaymentConfirmation' + inv.no + '_' + (String(inv.bill_name || '').replace(/^Student\s+/i, '').split(/[\s(]/)[0].replace(/[^\w-]/g, '') || 'Student') + '.pdf';
 const b64 = blob => new Promise(res => { const rd = new FileReader(); rd.onload = () => res(String(rd.result).split(',')[1]); rd.readAsDataURL(blob); });
@@ -20140,22 +20148,14 @@ ${R && (R.company_zh || R.company_en || R.tax_id) ? `<div class="box rb"><h3>Rei
 <div class="ver"><div><b>Business Registration Verification</b><span>企业税务登记核验</span><small>RSN 006RC20240000005450</small></div><img src="${QR_()}" alt="Business Registration Verification QR code"></div>
 <div class="co">CupOfEnglish Philippines · works@cupofenglishatph.com · +63 927 854 8503<br>TIN 609-400-950-00000 · Govt. UID 2022050053289-14</div></div>
 </div>`; }
-async function picOf(inv){
-  await lib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', () => window.html2canvas);
-  try{ await document.fonts.ready; }catch(x){}
-  const box = document.createElement('div'); box.style.cssText = 'position:fixed;left:-12000px;top:0;width:794px;background:#fff;z-index:-1';
-  box.innerHTML = page(inv); document.body.appendChild(box);   /* 540: the same page as the PDF (Misty prefers it), 1800 px wide like the lesson summary picture */
-  try{ await Promise.all([...box.querySelectorAll('img')].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
-    const cv = await window.html2canvas(box.firstElementChild, { scale: 1800 / 794, backgroundColor: '#ffffff', useCORS: true, logging: false });
-    return await new Promise(r => cv.toBlob(r, 'image/png'));
-  } finally { box.remove(); } }
 async function picCopy(inv, save){
-  const blob = await picOf(inv), name = fileName(inv).replace(/\.pdf$/, '.png');
-  if(!save && window.ClipboardItem){ try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); return tst('Picture copied · paste it in WeChat'); }catch(x){} }
+  const pp = picOf(inv), name = fileName(inv).replace(/\.pdf$/, '.png');
+  if(!save && window.ClipboardItem){ try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': pp })]); return tst('Picture copied · paste it in WeChat'); }catch(x){} }   /* the picture promise goes straight to the clipboard, so the tap still counts on Safari */
+  const blob = await pp;
   const f = new File([blob], name, { type: 'image/png' });
   if(navigator.canShare && navigator.canShare({ files: [f] })){ try{ await navigator.share({ files: [f] }); return; }catch(x){ if(x && x.name === 'AbortError') return; } }
   download(blob, name); }
-window.ivPicDone = async save => { if(!S || !S.issued) return; tst('Making the picture…'); try{ await picCopy(S.issued, save); }catch(x){ tst(x.message || 'Could not make the picture'); } };
+window.ivPicDone = async save => { if(!S || !S.issued) return; try{ await picCopy(S.issued, save); }catch(x){ tst(x.message || 'Could not make the picture'); } };
 
 /* ---------- email (sent by Google from works@, like QuickBooks did) ---------- */
 function mailParts(inv){
@@ -20369,22 +20369,30 @@ function attach(c, inv, blob){
   }catch(x){ console.warn('530 attach', x); }
   return 0; }
 
+const BC = {};   /* boot answers kept 2 minutes, filled before the click */
+function warm(){
+  const idle = window.requestIdleCallback || (f => setTimeout(f, 300));
+  idle(() => { LIBS().catch(() => {}); try{ document.fonts.load('20px "Fredoka One"'); }catch(x){} });
+  const code = ctx().code || ''; if(BC[code] && Date.now() - BC[code].t < 12e4) return;
+  BC[code] = { t: Date.now(), p: call('boot', { code }).catch(x => { delete BC[code]; throw x; }) }; BC[code].p.catch(() => {}); }
+function boot(code){ const b = BC[code]; if(b && Date.now() - b.t < 12e4){ delete BC[code]; return b.p; } return call('boot', { code }); }
 window.ivOpen = async function(code){
   const c = ctx(); code = code || c.code || '';
   S = { ctx: c, code, lines: [], day: c.date || today(), paid: true, dirty: 0 };
   const m = shell('Make payment confirmation · 付款确认单', `<div class="iv-b"><div class="iv-f"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div><div class="iv-v"></div></div>`);
-  let r; try{ r = await call('boot', { code }); }catch(x){ m.querySelector('.iv-f').innerHTML = `<div class="warn">${e(x.message)}</div>`; return; }
+  let r; try{ r = await boot(code); }catch(x){ m.querySelector('.iv-f').innerHTML = `<div class="warn">${e(x.message)}</div>`; return; }
   if(!S) return; Object.assign(S, { products: r.products || [], next: r.next, student: r.student, recent: r.recent || [] });
   if(!code){ return pickStudent(r.students || []); }
   fill(r);
 };
 function pickStudent(L){
   const f = document.querySelector('#ivM .iv-f');
-  f.innerHTML = `<label>Student</label><input class="in-t" id="ivStu" list="ivStuL" placeholder="Type a name or ST code" autocomplete="off"><datalist id="ivStuL">${L.map(s => `<option value="${e(s.code)} · ${e(s.en)}${s.zh ? ' (' + e(s.zh) + ')' : ''}"></option>`).join('')}</datalist>
+  f.innerHTML = `<label>Student</label><input class="in-t" id="ivStu" list="ivStuL" placeholder="Type a name or ST code" autocomplete="off" oninput="ivStuPre(this.value)" onkeydown="if(event.key==='Enter')ivStuGo()"><datalist id="ivStuL">${L.map(s => `<option value="${e(s.code)} · ${e(s.en)}${s.zh ? ' (' + e(s.zh) + ')' : ''}"></option>`).join('')}</datalist>
   <button class="btn go" onclick="ivStuGo()">Continue</button><button class="btn ghost block" style="margin-top:8px" onclick="ivNoStu()">Not a student (company or other)</button>`;
   setTimeout(() => { const i = document.getElementById('ivStu'); if(i) i.focus(); }, 50); }
+window.ivStuPre = v => { const m = String(v || '').match(/ST-\d{4}-\d{3}/i); if(!m) return; const c = m[0].toUpperCase(); if(BC[c]) return; BC[c] = { t: Date.now(), p: call('boot', { code: c }) }; BC[c].p.catch(() => { delete BC[c]; }); };
 window.ivStuGo = async () => { const v = (document.getElementById('ivStu') || {}).value || '', m = v.match(/ST-\d{4}-\d{3}/i); if(!m) return tst('Choose a student from the list');
-  const c = S.ctx; S.code = m[0].toUpperCase(); let r; try{ r = await call('boot', { code: S.code }); }catch(x){ return tst(x.message); }
+  const c = S.ctx; S.code = m[0].toUpperCase(); let r; try{ r = await boot(S.code); }catch(x){ return tst(x.message); }
   Object.assign(S, { student: r.student, recent: r.recent || [] }); S.ctx = c; fill(r); };
 window.ivNoStu = () => { S.code = ''; S.student = null; fill({ profile: null }); };
 function fill(r){
@@ -20408,10 +20416,12 @@ window.ivIssue = async () => {
   if(S.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(S.email)) return tst('The email address looks wrong');
   if(!confirm(`Issue Payment Confirmation ${S.next} to ${S.bill_name} for ¥${n2(d.total)}?\n\nAfter this it can't be edited or deleted, only voided.`)) return;
   b.disabled = true; b.textContent = 'Issuing…';
+  /* the page is drawn while the database gives the number; if the answer matches (it nearly always does), that drawing is used, so no second wait */
+  try{ both(Object.assign({}, d, { code: S.code, partner: S.ctx.partner, method: S.ctx.method, status: 'issued', created_at: new Date().toISOString(), email: String(S.email || '').trim().toLowerCase() || null })).catch(() => {}); }catch(x){}
   let inv; try{ inv = (await call('issue', { inv: Object.assign({ code: S.code, partner: S.ctx.partner, method: S.ctx.method }, d) })).invoice; }
   catch(x){ b.disabled = false; b.textContent = 'Issue Payment Confirmation ' + S.next; return tst(x.message); }
-  S.issued = inv; b.textContent = 'Making the PDF…';
-  let blob; try{ blob = await pdfOf(inv); }catch(x){ return done(inv, null, x.message); }
+  S.issued = inv; b.textContent = 'Finishing…';
+  let blob; try{ blob = (await both(inv)).pdf; }catch(x){ return done(inv, null, x.message); }
   S.blob = blob; const att = attach(S.ctx, inv, blob);
   call('file', { no: inv.no, file_name: fileName(inv) }).catch(() => {});
   done(inv, blob, '', att);
@@ -20460,7 +20470,7 @@ function addBtns(){
   const b = document.getElementById('sheetBody'); if(!b || b.querySelector('.ivBtn') || !(b.querySelector('#fDrop, #enF, #rpF'))) return;
   try{ if(!(D && D.mgr)) return; }catch(x){ return; }
   const a = b.querySelector('#fDrop') || b.querySelector('#enI') || b.querySelector('#rpI'); if(!a) return;
-  a.insertAdjacentHTML('beforebegin', btnHtml());
+  a.insertAdjacentHTML('beforebegin', btnHtml()); try{ warm(); }catch(x){}
   if(b.querySelector('#fDrop') && !b.querySelector('.ivAll')) b.querySelector('#fDrop').insertAdjacentHTML('afterend', '<button type="button" class="btn ghost sm ivAll" style="margin-top:6px" onclick="ivList()">All payment confirmations</button>'); }
 const ob = new MutationObserver(() => { try{ addBtns(); }catch(x){} });
 const go = () => { const b = document.getElementById('sheetBody'); if(b) ob.observe(b, { childList: true, subtree: true }); else setTimeout(go, 500); };
