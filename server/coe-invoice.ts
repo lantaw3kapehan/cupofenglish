@@ -1,9 +1,11 @@
-// CupOfEnglish · coe-invoice (21 Oct 2026): invoicing in the app (replaces QuickBooks; numbers continue from 1747).
+// CupOfEnglish · coe-invoice (21 Oct 2026): Payment Confirmations 付款确认单 made in the app (replaces QuickBooks; numbers continue from 1747).
+// The official invoice stays the BIR-authorized printed booklet; its number can be recorded here (bir_no).
 // POST { token, action, ... } — management only.
 //   boot   { code? }            → { ok, products, next, profile, student (with recent books), recent, students (only without code) }
 //   issue  { inv }              → { ok, invoice }        (number, totals and 3% tax are set by the database)
 //   file   { no, file_name }    → { ok }                 (Drive file name, once)
 //   mailed { no }               → { ok }                 (email sent time)
+//   bir    { no, bir_no }       → { ok }                 (printed BIR invoice number, once)
 //   void   { no, reason }       → { ok, invoice }
 //   list   { code?, limit? }    → { ok, invoices }
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -51,19 +53,20 @@ Deno.serve(async (req: Request) => {
       if (!items.length || items.some((x: any) => !(x.qty > 0) || !(x.rate >= 0) || !x.name)) return out({ ok: false, error: "Check the lines: each needs a product, a quantity and a rate." });
       const em = str(v.email, 120); if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return out({ ok: false, error: "The email address looks wrong." });
       const r = v.reimb && typeof v.reimb === "object" ? Object.fromEntries(["company_zh", "company_en", "tax_id", "bank_zh", "bank_en", "account"].map((k) => [k, str(v.reimb[k], 120)]).filter(([, x]) => x)) : null;
-      const p = { code: str(v.code, 20), day: str(v.day, 10), bill_name: str(v.bill_name, 120), bill_addr: str(v.bill_addr, 300), email: em, reimb: r && Object.keys(r).length ? r : null, items, paid: v.paid !== false, currency: str(v.currency, 5) || "CNY", partner: str(v.partner, 60), method: str(v.method, 30) };
+      const p = { code: str(v.code, 20), day: str(v.day, 10), bill_name: str(v.bill_name, 120), bill_addr: str(v.bill_addr, 300), email: em, reimb: r && Object.keys(r).length ? r : null, items, paid: v.paid !== false, currency: str(v.currency, 5) || "CNY", partner: str(v.partner, 60), method: str(v.method, 30), bir_no: str(v.bir_no, 30) };
       const { data, error } = await db.rpc("coe_inv_issue", { p, p_by: who });
       if (error) return out({ ok: false, error: error.message || "db" });
       return out({ ok: true, invoice: data });
     }
-    if (a === "file" || a === "mailed") {
+    if (a === "file" || a === "mailed" || a === "bir") {
       const no = +b.no; if (!(no > 0)) return out({ ok: false, error: "no" });
-      const patch = a === "file" ? { file_name: str(b.file_name, 160) } : { emailed_at: new Date().toISOString() };
+      if (a === "bir" && !str(b.bir_no, 30)) return out({ ok: false, error: "Type the BIR invoice number." });
+      const patch = a === "file" ? { file_name: str(b.file_name, 160) } : a === "bir" ? { bir_no: str(b.bir_no, 30) } : { emailed_at: new Date().toISOString() };
       const { error } = await db.from("coe_invoices").update(patch).eq("no", no);
       return out(error ? { ok: false, error: error.message } : { ok: true });
     }
     if (a === "void") {
-      const no = +b.no, why = str(b.reason, 200); if (!(no > 0) || !why) return out({ ok: false, error: "A reason is needed to void an invoice." });
+      const no = +b.no, why = str(b.reason, 200); if (!(no > 0) || !why) return out({ ok: false, error: "A reason is needed to void." });
       const { data, error } = await db.from("coe_invoices").update({ status: "void", void_reason: why, void_by: who, void_at: new Date().toISOString() }).eq("no", no).select().maybeSingle();
       return out(error ? { ok: false, error: error.message } : { ok: true, invoice: data });
     }
