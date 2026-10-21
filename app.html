@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 888;
+const COE_V = 889;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -20515,7 +20515,7 @@ window.addEventListener('resize', () => { if(S && !S.issued && document.getEleme
 </script>
 
 <script>
-/* 556 · 21 Oct · Wallets 钱包 — Alipay and WeChat balances on Sales & costs, President only (Misty: sensitive).
+/* 556 + 557 · 21 Oct · Wallets 钱包 — Alipay, WeChat, ChinaBank and CCB balances on Sales & costs, President only (Misty: sensitive).
    Balance = last balance check + Alipay/WeChat sales in SALES since then + money in − remittances − other money out − charges.
    Remit: ¥ sent + ¥50 charge (changeable) + ₱ received (optional, gives the rate). Check balance: type what the Alipay/WeChat app shows;
    the difference is saved and shown. Entries can't be edited or deleted, only undone. Server: Supabase function coe-wallet (President only). */
@@ -20534,7 +20534,8 @@ async function call(action, body){
   let j = null; try{ j = await r.json(); }catch(x){}
   if(!j || !j.ok) throw new Error((j && j.error) || 'Could not reach the wallet (' + r.status + ')');
   return j; }
-const WL = { Alipay: { zh: '支付宝', c: '#1677FF', b: '#EEF5FF' }, WeChat: { zh: '微信', c: '#07A35A', b: '#EAF8F0' } };
+const WL = { Alipay: { zh: '支付宝', c: '#1677FF', b: '#EEF5FF' }, WeChat: { zh: '微信', c: '#07A35A', b: '#EAF8F0' }, ChinaBank: { zh: '', c: '#B8322A', b: '#FCEFEE' }, CCB: { zh: '建设银行', c: '#1F4E9C', b: '#EDF1F9' } };
+const ALL = ['Alipay', 'WeChat', 'ChinaBank', 'CCB'], LBL = w => w + (WL[w].zh ? ' ' + WL[w].zh : '');
 let ST = null, AT = 0, BUSY = null;
 async function load(force){
   if(BUSY) return BUSY;
@@ -20548,17 +20549,19 @@ function tile(w){
   const x = W(w), s = WL[w], since = [];
   if(+x.sales) since.push(`+¥${n2(x.sales)} from ${x.sales_n} sale${x.sales_n == 1 ? '' : 's'}`);
   if(+x.in) since.push(`+¥${n2(x.in)} in`);
+  if(+x.tin) since.push(`+¥${n2(x.tin)} transferred in${+x.tfee ? ` (after ¥${n2(x.tfee)} charges)` : ''}`);
+  if(+x.tout) since.push(`−¥${n2(x.tout)} transferred out`);
   if(+x.out) since.push(`−¥${n2(x.out)} sent out`);
   if(+x.fees) since.push(`−¥${n2(x.fees)} charges`);
   return `<div class="wl-t" style="--c:${s.c};--b:${s.b}"><div class="wl-h"><span class="wl-dot"></span>${w} <i>${s.zh}</i></div>
-    <b>¥${n2(x.balance)}</b><small>${x.base_day ? `Checked ${dm(x.base_day)}: ¥${n2(x.base)}` : 'Not checked yet'}${since.length ? ' · ' + since.join(' · ') : ''}</small></div>`; }
+    <b>¥${n2(x.balance)}</b><small>${x.base_day ? `Checked ${dm(x.base_day)}: ¥${n2(x.base)}` : 'Not checked yet'}${since.length ? ' · ' + since.join(' · ') : ''}</small>${+x.nofee ? `<em class="wl-nf" onclick="wlHist()">${x.nofee} transfer${x.nofee == 1 ? '' : 's'} out waiting for the charge · add it</em>` : ''}</div>`; }
 function card(){
-  if(!ST) return `<section id="wlCard" class="wl"><div class="wl-top"><h2>Wallets 钱包</h2><span class="mute small">President only</span></div><div class="wl-g"><div class="wl-t sk"></div><div class="wl-t sk"></div></div></section>`;
+  if(!ST) return `<section id="wlCard" class="wl"><div class="wl-top"><h2>Wallets 钱包</h2><span class="mute small">President only</span></div><div class="wl-g"><div class="wl-t sk"></div><div class="wl-t sk"></div><div class="wl-t sk"></div><div class="wl-t sk"></div></div></section>`;
   const last = (ST.entries || []).find(x => x.kind === 'remit' && !x.void_at);
   const tot = (ST.wallets || []).reduce((s, x) => s + (+x.balance || 0), 0);
   return `<section id="wlCard" class="wl"><div class="wl-top"><h2>Wallets 钱包</h2><span class="mute small">¥${n2(tot)} in total · only you see this</span>
-    <div class="wl-act"><button class="btn teal sm" onclick="wlForm('remit')">Remit</button><button class="btn ghost sm" onclick="wlForm('check')">Check balance</button><button class="btn ghost sm" onclick="wlForm('out')">Other in / out</button><button class="btn ghost sm" onclick="wlHist()">History</button></div></div>
-    <div class="wl-g">${tile('Alipay')}${tile('WeChat')}</div>
+    <div class="wl-act"><button class="btn teal sm" onclick="wlForm('transfer')">Transfer</button><button class="btn teal sm" onclick="wlForm('remit')">Remit</button><button class="btn ghost sm" onclick="wlForm('check')">Check balance</button><button class="btn ghost sm" onclick="wlForm('out')">Other in / out</button><button class="btn ghost sm" onclick="wlHist()">History</button></div></div>
+    <div class="wl-g">${ALL.map(tile).join('')}</div>
     ${last ? `<div class="wl-last">Last remittance: ${dm(last.day)} · ¥${n2(last.cny)} from ${e(last.wallet)} + ¥${n2(last.fee)} charge${last.php ? ` → ₱${n2(last.php)} (rate ${(last.php / last.cny).toFixed(2)})` : ''}${last.note ? ' · ' + e(last.note) : ''}</div>` : ''}</section>`; }
 function paint(){
   const v = document.getElementById('v-money'); if(!v) return;
@@ -20586,24 +20589,28 @@ const num = s => +String(s || '').replace(/[^0-9.]/g, '') || 0;
 function keep(){ ['wlA', 'wlFee', 'wlP', 'wlN', 'wlD'].forEach(id => { const el = document.getElementById(id); if(el) F[id] = el.value; }); }
 function after(){
   const x = W(F.wallet), a = num(F.wlA), fee = F.kind === 'remit' ? num(F.wlFee != null ? F.wlFee : 50) : F.kind === 'out' ? 0 : 0;
+  if(F.kind === 'transfer'){ const y = W(F.to), fee2 = num(F.wlFee); return `${F.wallet} after: <b>¥${n2(x.balance - a)}</b> · ${F.to} receives ¥${n2(a - fee2)} → <b>¥${n2(y.balance + a - fee2)}</b>${fee2 ? '' : ' · charge not added yet'}`; }
   if(F.kind === 'check'){ if(F.wlA === '' || F.wlA == null) return `App figure now: <b>¥${n2(x.balance)}</b>`;
     const d = Math.round((a - x.balance) * 100) / 100; return `App figure now: ¥${n2(x.balance)} · ${d === 0 ? '<b style="color:#2E9E6F">matches ✓</b>' : `<b style="color:#C4553D">difference ${d > 0 ? '+' : '−'}¥${n2(Math.abs(d))}</b> (it becomes the new starting point)`}`; }
   const nb = F.kind === 'in' ? x.balance + a : x.balance - a - fee;
   return `${F.wallet} after this: <b>¥${n2(nb)}</b>${F.kind === 'remit' && a ? ` · total leaving ¥${n2(a + fee)}` : ''}${F.kind === 'remit' && a && num(F.wlP) ? ` · rate ${(num(F.wlP) / a).toFixed(2)}` : ''}${nb < 0 ? ' <b style="color:#C4553D">· more than the balance</b>' : ''}`; }
 function draw(){
   keep(); const k = F.kind;
-  const T = { remit: 'Record a remittance', check: 'Check balance', out: 'Other money in or out', in: 'Other money in or out' }[k];
+  const T = { transfer: 'Transfer between accounts', remit: 'Record a remittance', check: 'Check balance', out: 'Other money in or out', in: 'Other money in or out' }[k];
+  if(k === 'transfer' && (!F.to || F.to === F.wallet)) F.to = F.wallet === 'Alipay' ? 'ChinaBank' : F.wallet === 'WeChat' ? 'CCB' : ALL.find(w => w !== F.wallet);
   const body = `${k === 'out' || k === 'in' ? chips('kind', [['out', 'Money out'], ['in', 'Money in']], k) : ''}
-    <label>Wallet</label>${chips('wallet', [['Alipay', 'Alipay 支付宝'], ['WeChat', 'WeChat 微信']], F.wallet)}
-    <label>${k === 'check' ? 'What the ' + F.wallet + ' app shows now (¥)' : k === 'remit' ? 'Amount sent (¥)' : 'Amount (¥)'}</label>
+    <label>${k === 'transfer' ? 'From' : 'Account'}</label>${chips('wallet', ALL.map(w => [w, LBL(w)]), F.wallet)}
+    ${k === 'transfer' ? `<label>To</label>${chips('to', ALL.filter(w => w !== F.wallet).map(w => [w, LBL(w)]), F.to)}` : ''}
+    <label>${k === 'check' ? 'What the ' + F.wallet + ' app shows now (¥)' : k === 'remit' ? 'Amount sent (¥)' : k === 'transfer' ? 'Amount transferred (¥)' : 'Amount (¥)'}</label>
     <input id="wlA" class="in-t" inputmode="decimal" placeholder="0.00" value="${e(F.wlA || '')}" oninput="wlLive()">
     ${k === 'remit' ? `<div class="wl-2"><div><label>Charge (¥)</label><input id="wlFee" class="in-t" inputmode="decimal" value="${e(F.wlFee != null ? F.wlFee : '50')}" oninput="wlLive()"></div>
       <div><label>Received in pesos (₱, optional)</label><input id="wlP" class="in-t" inputmode="decimal" placeholder="e.g. 50,000" value="${e(F.wlP || '')}" oninput="wlLive()"></div></div>` : ''}
+    ${k === 'transfer' ? `<label>Charge (¥) · leave empty if you don't see it yet</label><input id="wlFee" class="in-t" inputmode="decimal" placeholder="add it later" value="${e(F.wlFee || '')}" oninput="wlLive()">` : ''}
     <label>Date</label><input id="wlD" class="in-t" type="date" value="${e(F.wlD || today())}">
     <label>${k === 'remit' ? 'Note (who sent it, where to)' : k === 'check' ? 'Note (optional)' : 'What is it for?'}</label>
     <input id="wlN" class="in-t" placeholder="${k === 'remit' ? 'e.g. Celine · to BPI' : k === 'check' ? '' : k === 'in' ? 'e.g. refund received' : 'e.g. refund to a parent'}" value="${e(F.wlN || '')}">
     <div id="wlAfter" class="wl-af">${after()}</div>
-    <button id="wlGo" class="btn teal block" onclick="wlSave()">${k === 'remit' ? 'Save remittance' : k === 'check' ? 'Save balance' : 'Save'}</button>`;
+    <button id="wlGo" class="btn teal block" onclick="wlSave()">${k === 'remit' ? 'Save remittance' : k === 'check' ? 'Save balance' : k === 'transfer' ? 'Save transfer' : 'Save'}</button>`;
   const m = document.getElementById('wlM'); if(m){ m.querySelector('h3').textContent = T; m.querySelector('.wl-mb').innerHTML = body; } else modal(T, body);
   const a = document.getElementById('wlA'); if(a && !F.focused && innerWidth > 700){ a.focus(); F.focused = 1; } }
 window.wlLive = () => { keep(); const el = document.getElementById('wlAfter'); if(el) el.innerHTML = after(); };
@@ -20616,17 +20623,18 @@ window.wlSave = async () => {
   if(F.kind === 'check' && (F.wlA == null || String(F.wlA).trim() === '')) return msg('Type the balance the app shows.');
   b.disabled = true; b.textContent = 'Saving…';
   try{
-    const r = await call('add', { kind: F.kind, wallet: F.wallet, day: F.wlD || today(), cny: a, fee: F.kind === 'remit' ? num(F.wlFee != null ? F.wlFee : 50) : 0, php: num(F.wlP), note: F.wlN || '' });
-    ST && (ST.wallets = r.wallets); close_(); msg({ remit: 'Remittance saved', check: 'Balance saved', out: 'Saved', in: 'Saved' }[F.kind] + ' · ' + F.wallet + ' ¥' + n2(W(F.wallet).balance));
+    const r = await call('add', { kind: F.kind, wallet: F.wallet, to: F.to, day: F.wlD || today(), cny: a, fee: F.kind === 'remit' ? num(F.wlFee != null ? F.wlFee : 50) : F.kind === 'transfer' ? num(F.wlFee) : 0, php: num(F.wlP), note: F.wlN || '' });
+    ST && (ST.wallets = r.wallets); close_(); msg({ transfer: 'Transfer saved', remit: 'Remittance saved', check: 'Balance saved', out: 'Saved', in: 'Saved' }[F.kind] + ' · ' + F.wallet + ' ¥' + n2(W(F.wallet).balance));
     refresh(true);
   }catch(err){ b.disabled = false; b.textContent = 'Try again'; msg(err.message); } };
 
 /* ---------- history ---------- */
-const KL = { check: 'Balance check', remit: 'Remittance', out: 'Money out', in: 'Money in' };
+const KL = { check: 'Balance check', remit: 'Remittance', out: 'Money out', in: 'Money in', transfer: 'Transfer' };
 window.wlHist = async () => {
   modal('Wallet history', '<div class="sk"></div><div class="sk"></div>');
   try{ await load(true); }catch(err){ document.querySelector('#wlM .wl-mb').innerHTML = `<div class="warn">${e(err.message)}</div>`; return; }
   const rows = [];
+  document.querySelector('#wlM .wl-m').style.width = 'min(680px,100%)';
   (ST.entries || []).forEach(x => rows.push({ t: x.created_at, day: x.day, x }));
   const base = {}; (ST.wallets || []).forEach(w => base[w.wallet] = w);
   (ST.sales || []).forEach(s => { const w = /wechat|weixin|微信/i.test(s.method) ? 'WeChat' : 'Alipay', b = base[w];
@@ -20637,10 +20645,14 @@ window.wlHist = async () => {
     if(r.s) return `<tr class="${r.counted ? '' : 'old'}"><td>${e(dm(r.day))}</td><td><span class="wl-w" style="--c:${WL[r.w].c}">${r.w}</span></td><td>Sale · ${e(r.s.name)}<div class="small mute">${e(r.s.partner)}${r.counted ? '' : ' · before the last check, already in it'}</div></td><td class="n" style="color:#2E9E6F">+¥${n2(r.s.cny)}</td><td></td></tr>`;
     const x = r.x, v = !!x.void_at, sign = x.kind === 'in' ? '+' : x.kind === 'check' ? '=' : '−';
     const amt = x.kind === 'check' ? `¥${n2(x.cny)}${x.expected != null && Math.abs(x.cny - x.expected) >= .01 ? `<div class="small" style="color:#C4553D">app said ¥${n2(x.expected)} · ${x.cny - x.expected > 0 ? '+' : '−'}¥${n2(Math.abs(x.cny - x.expected))}</div>` : x.expected != null ? '<div class="small" style="color:#2E9E6F">matched ✓</div>' : ''}`
-      : `${sign}¥${n2(x.cny)}${+x.fee ? `<div class="small mute">+ ¥${n2(x.fee)} charge</div>` : ''}${x.php ? `<div class="small mute">₱${n2(x.php)} · rate ${(x.php / x.cny).toFixed(2)}</div>` : ''}`;
-    return `<tr class="${v ? 'void' : ''}"><td>${e(dm(x.day))}<div class="small mute">${e(hm(x.created_at))}</div></td><td><span class="wl-w" style="--c:${WL[x.wallet].c}">${e(x.wallet)}</span></td><td>${KL[x.kind]}${x.note ? ` · ${e(x.note)}` : ''}<div class="small mute">${e(x.by_name || '')}${v ? ' · undone' : ''}</div></td><td class="n" style="color:${x.kind === 'in' ? '#2E9E6F' : x.kind === 'check' ? 'inherit' : '#C4553D'}">${amt}</td><td>${v || /^Starting balance/.test(x.note || '') ? '' : `<button class="btn ghost sm" onclick="wlUndo(${x.id})">Undo</button>`}</td></tr>`; };
+      : `${sign}¥${n2(x.cny)}${+x.fee ? `<div class="small mute">+ ¥${n2(x.fee)} charge</div>` : x.kind === 'transfer' && !v ? `<button class="btn ghost sm" style="margin-top:4px" onclick="wlFee(${x.id})">Add charge</button>` : ''}${x.php ? `<div class="small mute">₱${n2(x.php)} · rate ${(x.php / x.cny).toFixed(2)}</div>` : ''}`;
+    return `<tr class="${v ? 'void' : ''}"><td>${e(dm(x.day))}<div class="small mute">${e(hm(x.created_at))}</div></td><td><span class="wl-w" style="--c:${WL[x.wallet].c}">${e(x.wallet)}</span></td><td>${KL[x.kind]}${x.to_wallet ? ` → <b style="color:${WL[x.to_wallet].c}">${e(x.to_wallet)}</b>` : ''}${x.note ? ` · ${e(x.note)}` : ''}<div class="small mute">${e(x.by_name || '')}${v ? ' · undone' : ''}</div></td><td class="n" style="color:${x.kind === 'in' ? '#2E9E6F' : x.kind === 'check' ? 'inherit' : '#C4553D'}">${amt}</td><td>${v || /^Starting balance/.test(x.note || '') ? '' : `<button class="btn ghost sm" onclick="wlUndo(${x.id})">Undo</button>`}</td></tr>`; };
   document.querySelector('#wlM .wl-mb').innerHTML = `<p class="small mute" style="margin:0 0 8px">Newest first. Sales come from SALES (Alipay / WeChat Pay). Grey sales were before the last balance check, so they are already inside it.</p>
     <div style="overflow:auto"><table class="wl-l">${rows.map(li).join('') || '<tr><td class="mute">Nothing yet.</td></tr>'}</table></div>`; };
+window.wlFee = async id => {
+  const x = (ST.entries || []).find(y => y.id === id); if(!x) return;
+  const v = prompt('Charge for the transfer ' + x.wallet + ' → ' + x.to_wallet + ' (¥' + n2(x.cny) + ' on ' + dm(x.day) + '), in ¥:\n\nIt can be set once.'); if(!v || !num(v)) return;
+  try{ await call('fee', { id, fee: num(v) }); msg('Charge saved'); await load(true); paint(); wlHist(); }catch(err){ msg(err.message); } };
 window.wlUndo = async id => {
   const x = (ST.entries || []).find(y => y.id === id); if(!x || !confirm('Undo this ' + KL[x.kind].toLowerCase() + ' (' + x.wallet + ' ¥' + n2(x.cny) + ')? It stays in the history as undone.')) return;
   try{ await call('undo', { id }); msg('Undone'); await load(true); paint(); wlHist(); }catch(err){ msg(err.message); } };
@@ -20649,10 +20661,10 @@ window.wlUndo = async id => {
 document.head.insertAdjacentHTML('beforeend', `<style>
 .wl{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--sh1);padding:16px 20px 16px;margin:4px 0 16px}
 .wl-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}.wl-top h2{margin:0;font-size:17px}.wl-act{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
-.wl-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.wl-g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}@media (max-width:1100px){.wl-g{grid-template-columns:repeat(2,minmax(0,1fr))}}.wl-nf{display:inline-block;margin-top:6px;font-style:normal;font-size:11.5px;font-weight:700;color:#8A5A00;background:#FFF3DC;border-radius:999px;padding:2px 9px;cursor:pointer}
 .wl-t{background:var(--b);border-radius:16px;padding:14px 16px;min-width:0;min-height:86px}.wl-t.sk{background:var(--soft)}
 .wl-h{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;color:var(--c)}.wl-h i{font-style:normal;font-weight:700;opacity:.8}.wl-dot{width:8px;height:8px;border-radius:50%;background:var(--c)}
-.wl-t b{display:block;font:28px/1.2 "Fredoka One",Fredoka,Rockwell,serif;color:#2E2650;margin:4px 0 3px;font-variant-numeric:tabular-nums}.wl-t small{display:block;font-size:11.5px;color:#6B6884;line-height:1.45}
+.wl-t b{display:block;font:26px/1.2 "Fredoka One",Fredoka,Rockwell,serif;color:#2E2650;margin:4px 0 3px;font-variant-numeric:tabular-nums}.wl-t small{display:block;font-size:11.5px;color:#6B6884;line-height:1.45}
 .wl-last{margin-top:10px;font-size:12px;color:#6B6884}
 #wlM{position:fixed;inset:0;background:rgba(31,26,56,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}
 .wl-m{background:#fff;border-radius:20px;width:min(520px,100%);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)}
