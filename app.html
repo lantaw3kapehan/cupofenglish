@@ -6064,7 +6064,7 @@ if(AT_F==='low') L = L.filter(r=>r[C.active] && low(r));
 if(AT_F==='done') L = L.filter(r=>r[C.available]!=='' && r[C.available] <= 0);
 if(AT_F==='off') L = L.filter(r=>!r[C.active]);
 const d30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10), rnS = r => String((typeof REN === 'object' && REN && REN[String(r[C.code]).toUpperCase()]) || ''), isRen = r => r[C.enrolled] !== '' && String(r[C.start] || '') >= d30 && (/^Renewed/.test(rnS(r)) || +r[C.carry] > 0), isNew = r => r[C.enrolled] !== '' && String(r[C.start] || '') >= d30 && !isRen(r);
-if(!AGM && typeof agrMap === 'function' && !window._agmL){ window._agmL = 1; agrMap().then(() => { window._agmL = 0; if(VIEW === 'active') renderActive(); }); }
+if(!AGM && typeof agrMap === 'function' && !window._agmL && Date.now() - (window._agmLt || 0) > 60000){ window._agmL = 1; window._agmLt = Date.now(); agrMap().then(m => { window._agmL = 0; if(m && VIEW === 'active') renderActive(); }).catch(() => { window._agmL = 0; }); }   /* 526 */
 const agR = r => typeof agrOf === 'function' && AGM ? agrOf(r[C.code]) : null, firstRow = {}; R.forEach(r => { const k = String(r[C.code]).toUpperCase(); if(r[C.active] && !firstRow[k]) firstRow[k] = r; });
 const shOwn = r => (String(r[C.shared] || '').toUpperCase().match(/ST-\d{4}-\d{3}/) || [String(r[C.code]).toUpperCase()])[0], noAgr = r => r[C.active] && firstRow[String(r[C.code]).toUpperCase()] === r && shOwn(r) === String(r[C.code]).toUpperCase() && !(agR(r) && agR(r).how !== 'Sent');
 if(AT_F==='agr') L = L.filter(noAgr);
@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 857;
+const COE_V = 859;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -8662,7 +8662,7 @@ if(!$('tpQ')){ el.innerHTML = '<div class="lead"><h1>Trials</h1><div class="mute
 const tabs = [['send', 'To send'], ['follow', 'Follow up'], ['enrolled', 'Enrolled'], ['not', 'Not enrolling'], ['making', 'Being made'], ['wait', 'No report yet'], ['all', 'All']];
 $('tpTabs').innerHTML = TPQ.trim() ? '' : '<div class="seg" style="flex-wrap:wrap;margin-top:10px">' + tabs.map(t => '<button class="' + (TPF === t[0] ? 'on' : '') + '" onclick="tpF(\'' + t[0] + '\')">' + t[1] + ' · ' + (L[t[0]] || []).length + '</button>').join('') + '</div>';
 $('tpList').innerHTML = T ? body() : '<div class="sk"></div><div class="sk"></div>';
-$('tpAt').textContent = T ? 'Updated ' + T.at + 'H · last 45 days here · older trials appear when you search' : ''; };
+$('tpAt').textContent = T ? (T.at ? 'Updated ' + T.at + 'H · ' : '') + 'last 45 days here · older trials appear when you search' : ''; };
 window.tpF = function(f){ TPF = f; renderTP(); };
 window.tpSearch = function(v){ TPQ = v || ''; renderTP(); clearTimeout(TPT); const q = TPQ.trim(); if(q.length < 2){ TPO = []; return; }
 TPT = setTimeout(async () => { TPS = 1; try{ const r = await api('mgmtTrialSearch', TOKEN, q); if(r && r.ok && TPQ.trim() === q){ TPO = r.rows || []; } }catch(e){} TPS = 0; if(VIEW === 'trials') renderTP(); }, 500); };
@@ -8718,10 +8718,10 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
   const agrBit = (o) => { if(!o || !o.active || o.shared) return ''; const a = agr(o.code); if(a === undefined) return ''; const c = esc(o.code);
     return a && a.how !== 'Sent' ? '<span class="chip green" style="font-size:11px">Agreement ✓</span>' : a ? '<span class="chip" style="font-size:11px;cursor:pointer;color:#B7791F" onclick="event.stopPropagation();agrOpen({code:\'' + c + '\'})">Agreement sent ' + esc(typeof tfuDay === 'function' ? tfuDay(a.at) : '') + ' · remind</span>' : '<span class="chip coral" style="font-size:11px;cursor:pointer" onclick="event.stopPropagation();agrOpen({code:\'' + c + '\'})">No agreement · send</span>'; };
   window.stF = function(f){ STF = f; renderAStudents(); };
-  window.renderAStudents = function(){ const el = $('v-astudents'); if(!el) return; if(!MS){ return; }
+  window.renderAStudents = function(){ const el = $('v-astudents'); if(!el) return; if(!Array.isArray(MS)){ return; }   /* 527 */
     const P = pk(), now = Date.now(), q = (($('aq') && $('aq').value) || '').toLowerCase();
-    if(!P && typeof loadActive === 'function' && !window._stAT){ window._stAT = 1; loadActive(true).then(() => { window._stAT = 0; if(VIEW === 'astudents') renderAStudents(); }).catch(() => { window._stAT = 0; }); }
-    if(P && typeof AGM !== 'undefined' && !AGM && typeof agrMap === 'function' && !window._stAG){ window._stAG = 1; agrMap().then(() => { window._stAG = 0; if(VIEW === 'astudents') renderAStudents(); }).catch(() => { window._stAG = 0; }); }
+    if(!P && typeof loadActive === 'function' && !window._stAT && Date.now() - (window._stATt || 0) > 60000){ window._stAT = 1; window._stATt = Date.now(); loadActive(true).then(() => { window._stAT = 0; if(VIEW === 'astudents' && pk()) renderAStudents(); }).catch(() => { window._stAT = 0; }); }   /* 526 */
+    if(P && typeof AGM !== 'undefined' && !AGM && typeof agrMap === 'function' && !window._stAG && Date.now() - (window._stAGt || 0) > 60000){ window._stAG = 1; window._stAGt = Date.now(); agrMap().then(m => { window._stAG = 0; if(m && VIEW === 'astudents') renderAStudents(); }).catch(() => { window._stAG = 0; }); }   /* 526 */
     const byMS = {}; MS.forEach(s => byMS[up(s.code)] = s);
     const items = MS.map(s => ({ s: s, o: P ? P.by[up(s.code)] : null, on: true }));
     if(P) Object.keys(P.by).forEach(k => { if(!byMS[k]) items.push({ s: { code: P.by[k].code, name: P.by[k].name, cn: P.by[k].cn, teachers: P.by[k].teacher ? String(P.by[k].teacher).split(/[,/&]/).map(t => t.trim()).filter(Boolean) : [], left: P.by[k].left }, o: P.by[k], on: false }); });
