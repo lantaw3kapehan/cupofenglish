@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 889;
+const COE_V = 890;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -20515,7 +20515,7 @@ window.addEventListener('resize', () => { if(S && !S.issued && document.getEleme
 </script>
 
 <script>
-/* 556 + 557 · 21 Oct · Wallets 钱包 — Alipay, WeChat, ChinaBank and CCB balances on Sales & costs, President only (Misty: sensitive).
+/* 556 + 557 · 21 Oct · Wallets 钱包 — Alipay, WeChat and CCB (China Construction Bank) balances on Sales & costs, President only (Misty: sensitive).
    Balance = last balance check + Alipay/WeChat sales in SALES since then + money in − remittances − other money out − charges.
    Remit: ¥ sent + ¥50 charge (changeable) + ₱ received (optional, gives the rate). Check balance: type what the Alipay/WeChat app shows;
    the difference is saved and shown. Entries can't be edited or deleted, only undone. Server: Supabase function coe-wallet (President only). */
@@ -20534,8 +20534,8 @@ async function call(action, body){
   let j = null; try{ j = await r.json(); }catch(x){}
   if(!j || !j.ok) throw new Error((j && j.error) || 'Could not reach the wallet (' + r.status + ')');
   return j; }
-const WL = { Alipay: { zh: '支付宝', c: '#1677FF', b: '#EEF5FF' }, WeChat: { zh: '微信', c: '#07A35A', b: '#EAF8F0' }, ChinaBank: { zh: '', c: '#B8322A', b: '#FCEFEE' }, CCB: { zh: '建设银行', c: '#1F4E9C', b: '#EDF1F9' } };
-const ALL = ['Alipay', 'WeChat', 'ChinaBank', 'CCB'], LBL = w => w + (WL[w].zh ? ' ' + WL[w].zh : '');
+const WL = { Alipay: { zh: '支付宝', c: '#1677FF', b: '#EEF5FF' }, WeChat: { zh: '微信', c: '#07A35A', b: '#EAF8F0' }, ChinaBank: { zh: '', c: '#B8322A', b: '#FCEFEE' }, CCB: { zh: '中国建设银行', c: '#1F4E9C', b: '#EDF1F9' } };
+const ALL = ['Alipay', 'WeChat', 'CCB'], LBL = w => w + (WL[w].zh ? ' ' + WL[w].zh : '');
 let ST = null, AT = 0, BUSY = null;
 async function load(force){
   if(BUSY) return BUSY;
@@ -20556,7 +20556,7 @@ function tile(w){
   return `<div class="wl-t" style="--c:${s.c};--b:${s.b}"><div class="wl-h"><span class="wl-dot"></span>${w} <i>${s.zh}</i></div>
     <b>¥${n2(x.balance)}</b><small>${x.base_day ? `Checked ${dm(x.base_day)}: ¥${n2(x.base)}` : 'Not checked yet'}${since.length ? ' · ' + since.join(' · ') : ''}</small>${+x.nofee ? `<em class="wl-nf" onclick="wlHist()">${x.nofee} transfer${x.nofee == 1 ? '' : 's'} out waiting for the charge · add it</em>` : ''}</div>`; }
 function card(){
-  if(!ST) return `<section id="wlCard" class="wl"><div class="wl-top"><h2>Wallets 钱包</h2><span class="mute small">President only</span></div><div class="wl-g"><div class="wl-t sk"></div><div class="wl-t sk"></div><div class="wl-t sk"></div><div class="wl-t sk"></div></div></section>`;
+  if(!ST) return `<section id="wlCard" class="wl"><div class="wl-top"><h2>Wallets 钱包</h2><span class="mute small">President only</span></div><div class="wl-g"><div class="wl-t sk"></div><div class="wl-t sk"></div><div class="wl-t sk"></div></div></section>`;
   const last = (ST.entries || []).find(x => x.kind === 'remit' && !x.void_at);
   const tot = (ST.wallets || []).reduce((s, x) => s + (+x.balance || 0), 0);
   return `<section id="wlCard" class="wl"><div class="wl-top"><h2>Wallets 钱包</h2><span class="mute small">¥${n2(tot)} in total · only you see this</span>
@@ -20597,7 +20597,7 @@ function after(){
 function draw(){
   keep(); const k = F.kind;
   const T = { transfer: 'Transfer between accounts', remit: 'Record a remittance', check: 'Check balance', out: 'Other money in or out', in: 'Other money in or out' }[k];
-  if(k === 'transfer' && (!F.to || F.to === F.wallet)) F.to = F.wallet === 'Alipay' ? 'ChinaBank' : F.wallet === 'WeChat' ? 'CCB' : ALL.find(w => w !== F.wallet);
+  if(k === 'transfer' && (!F.to || F.to === F.wallet)) F.to = F.wallet !== 'CCB' ? 'CCB' : 'Alipay';
   const body = `${k === 'out' || k === 'in' ? chips('kind', [['out', 'Money out'], ['in', 'Money in']], k) : ''}
     <label>${k === 'transfer' ? 'From' : 'Account'}</label>${chips('wallet', ALL.map(w => [w, LBL(w)]), F.wallet)}
     ${k === 'transfer' ? `<label>To</label>${chips('to', ALL.filter(w => w !== F.wallet).map(w => [w, LBL(w)]), F.to)}` : ''}
@@ -20661,7 +20661,7 @@ window.wlUndo = async id => {
 document.head.insertAdjacentHTML('beforeend', `<style>
 .wl{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--sh1);padding:16px 20px 16px;margin:4px 0 16px}
 .wl-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}.wl-top h2{margin:0;font-size:17px}.wl-act{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
-.wl-g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}@media (max-width:1100px){.wl-g{grid-template-columns:repeat(2,minmax(0,1fr))}}.wl-nf{display:inline-block;margin-top:6px;font-style:normal;font-size:11.5px;font-weight:700;color:#8A5A00;background:#FFF3DC;border-radius:999px;padding:2px 9px;cursor:pointer}
+.wl-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}@media (max-width:900px){.wl-g{grid-template-columns:1fr}}.wl-nf{display:inline-block;margin-top:6px;font-style:normal;font-size:11.5px;font-weight:700;color:#8A5A00;background:#FFF3DC;border-radius:999px;padding:2px 9px;cursor:pointer}
 .wl-t{background:var(--b);border-radius:16px;padding:14px 16px;min-width:0;min-height:86px}.wl-t.sk{background:var(--soft)}
 .wl-h{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;color:var(--c)}.wl-h i{font-style:normal;font-weight:700;opacity:.8}.wl-dot{width:8px;height:8px;border-radius:50%;background:var(--c)}
 .wl-t b{display:block;font:26px/1.2 "Fredoka One",Fredoka,Rockwell,serif;color:#2E2650;margin:4px 0 3px;font-variant-numeric:tabular-nums}.wl-t small{display:block;font-size:11.5px;color:#6B6884;line-height:1.45}
