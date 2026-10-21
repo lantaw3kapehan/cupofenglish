@@ -22,6 +22,8 @@ button{width:100%;height:50px;margin-top:18px;border:0;border-radius:12px;backgr
 .ok{background:#EAF7F0;border:2px solid #1B8F5A;color:#14603D}.no{background:#FDECEA;border:2px solid #C0392B;color:#8E2A1F}.vd{background:#FFF4E5;border:2px solid #B5793A;color:#7A4E1D}
 .r b{display:block;font-size:18px}.r dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:10px 0 0;font-size:15px}.r dt{color:inherit;opacity:.8}.r dd{margin:0;font-weight:700;text-align:right}
 .biz{margin-top:14px;padding-top:12px;border-top:1px solid rgba(20,96,61,.25)}.biz b{font-size:14px!important}.biz span{display:block;font-size:13px;opacity:.85;margin-top:2px}.biz a{display:block;margin-top:10px;padding:10px 12px;border-radius:10px;background:#fff;color:#0F6A64;font-weight:700;font-size:14px;text-decoration:none;border:1.5px solid #9BD3CF;text-align:center}.biz a small{font-weight:400}
+.ts{margin-top:10px;font-size:12px;opacity:.7}
+button{touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,.1)}button:active{transform:scale(.98)}button:disabled{opacity:.7}
 .f{text-align:center;color:var(--mute);font-size:12px;margin-top:18px}
 </style>
 </head>
@@ -41,13 +43,15 @@ const fmt = n => (+n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, m
 const dmy = d => { const [y, m, dd] = String(d).slice(0, 10).split('-'); return m + '/' + dd + '/' + y; };
 async function go(){ const no = $('no').value.trim(), cd = $('cd').value.trim().toUpperCase().replace(/[^0-9A-F]/g, ''), r = $('r');
   if(!no || cd.length !== 8){ r.className = 'r on no'; r.innerHTML = '<b>Please enter both · 请填写编号和防伪码</b>The security code has 8 characters. 防伪码为 8 位。'; return; }
-  $('go').disabled = true; $('go').textContent = 'Checking… 正在验证…';
+  $('go').disabled = true; $('go').textContent = 'Checking… 正在验证…'; r.className = 'r'; r.innerHTML = '';
   try{ const x = await (await fetch(U, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'verify', no, code: cd }) })).json();
     if(x && x.valid && x.status !== 'void'){ r.className = 'r on ok'; r.innerHTML = '<b>✓ Genuine · 真实有效</b>This payment confirmation was issued by CupOfEnglish. 本付款确认单由一杯英语开具。<dl><dt>No. 编号</dt><dd>' + x.no + '</dd><dt>Date 日期</dt><dd>' + dmy(x.day) + '</dd><dt>Amount paid 已付金额</dt><dd>' + (x.currency || 'CNY') + ' ' + fmt(x.total) + '</dd></dl>' + BIZ; }
     else if(x && x.valid){ r.className = 'r on vd'; r.innerHTML = '<b>Void · 已作废</b>This payment confirmation was cancelled and is no longer valid. 本付款确认单已作废，不再有效。'; }
     else { r.className = 'r on no'; r.innerHTML = '<b>✕ Not found · 未找到</b>The number and security code do not match our records. Please check them, or contact CupOfEnglish. 编号与防伪码不匹配，请核对或联系一杯英语。'; }
   }catch(e){ r.className = 'r on no'; r.innerHTML = '<b>Could not check · 无法验证</b>Please check your internet connection and try again. 请检查网络后重试。'; }
-  $('go').disabled = false; $('go').textContent = 'Verify · 验证'; }
+  const t = new Date(), hm = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ':' + ('0' + t.getSeconds()).slice(-2);
+  r.insertAdjacentHTML('beforeend', '<div class="ts">Checked at ' + hm + ' · 验证时间 ' + hm + '</div>');
+  $('go').disabled = false; $('go').textContent = 'Verify again · 重新验证'; try{ r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }catch(e){} }
 $('go').onclick = go; ['no', 'cd'].forEach(i => $(i).addEventListener('keydown', e => { if(e.key === 'Enter') go(); }));
 const q = new URLSearchParams(location.search); if(q.get('no')) $('no').value = q.get('no'); if(q.get('c')) $('cd').value = q.get('c'); if(q.get('no') && q.get('c')) go();
 </script>
