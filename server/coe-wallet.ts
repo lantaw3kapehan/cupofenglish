@@ -31,6 +31,8 @@ Deno.serve(async (req: Request) => {
   try {
     const a = String(b.action || "");
     if (a === "get") {
+      // bring sales the sheet already has into the database now, instead of waiting for the hourly check (:45)
+      try { await db.rpc("coe_ledger_sync", { p_kind: "sale" }); } catch (_) { /* the hourly check still runs */ }
       const W = await state();
       const since = W.map((w: any) => w.base_day).filter(Boolean).sort()[0] || new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
       const [en, sl] = await Promise.all([
