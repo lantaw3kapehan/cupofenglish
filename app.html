@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 859;
+const COE_V = 860;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -6500,7 +6500,7 @@ const _fuSaveAG = fuSave;
 fuSave = async function(){ const s = FUS, x = s && s.st === 'Enrolling' ? TDF.find(t => t.k === s.k) : null; const r = await _fuSaveAG.apply(this, arguments);
 try{ if(x){ await agrMap(); const rec = agrOf(x.code, x.k, x.name); if(!rec || rec.how === 'Sent') agrOpen({ code: /^ST-/.test(x.code || '') ? x.code : '', key: x.k, name: x.name, pkg: String(x.sug || '').match(/\d+/g) ? String(x.sug).match(/\d+/g).reduce((a, n) => a + +n, 0) : '' }); } }catch(e){} return r; };
 const _rmtAG = renderMToday;
-renderMToday = function(){ const r = _rmtAG.apply(this, arguments); if(!AGM) agrMap().then(m => { if(m && VIEW === 'mtoday') try{ _rmtAG(); }catch(e){} }); return r; };
+renderMToday = function(){ const r = _rmtAG.apply(this, arguments); if(!AGM) agrMap().then(m => { if(m && VIEW === 'mtoday') try{ renderMToday(); }catch(e){} }); return r; };   /* 528: whole screen */
 
 
 /* ── Leave picture for parents & partners · 老师请假: the teacher is not available on these dates, back on …, please choose another day or teacher.
@@ -11232,7 +11232,7 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
     const oldH = v.innerHTML, kids = [...v.childNodes], y = window.scrollY, r = base();
     try{ if(v.innerHTML === oldH && kids.length) v.replaceChildren(...kids); else if(Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y); }catch(e){}
     last = Date.now(); return r; }
-  window.renderMToday = function(){ if(tmr) return; const gap = Date.now() - last; if(gap > 800) return run(); tmr = setTimeout(run, 800 - gap); };
+  window.renderMToday = function(){ return run(); };   /* 528: merging moved to the outside */
 })();
 </script>
 <script>
@@ -18920,8 +18920,7 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
     try{ if(Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y); }catch(e){}
     return r; }
   window.renderMToday = function(){ const args = arguments, now = Date.now();
-    if(now - userAt < 1500 || now - lastAt > 350){ clearTimeout(t); return run(args); }   // a tap, or the first redraw in a while: at once
-    clearTimeout(t); t = setTimeout(() => { try{ run(args); }catch(e){ console.warn('td89', e); } }, 350); };
+    return run(args); };   /* 528: merging moved to the outside */
 })();
 </script>
 <script>
@@ -20023,6 +20022,21 @@ body.is-mgr #v-home .ov-two .x-pay{max-width:520px}`;
     if(f){ const i = $('acq'); if(i && document.activeElement !== i){ i.focus(); i.setSelectionRange(i.value.length, i.value.length); } } };
   window.PERSON_CLEAR = '';
   try{ if(typeof VIEW !== 'undefined' && VIEW === 'actions') renderActions(); }catch(e){}
+})();
+</script>
+<script>
+/* 21 Oct · 528 · To do "flickering is back, especially in Renewals due" and trial follow-ups still saying "Enrolling" (Elsa twice).
+   Cause: two older helpers redrew To do on a timer by calling an inner copy of the screen, which skipped every later step
+   (Enrolled check, duplicate removal, section icons, the quiet "Paused or not renewing" rows). The bare screen showed, then
+   the steps were added again a moment later → flicker, and sometimes the bare version stayed (raw "Enrolling", Elsa twice).
+   Now every redraw goes through the whole screen, and redraws close together are merged here, at the outside, once. */
+(function(){
+  const inner = window.renderMToday; if(!inner) return; let lastAt = 0, t = 0, userAt = 0;
+  ['click', 'keydown', 'touchend'].forEach(ev => addEventListener(ev, () => { userAt = Date.now(); }, true));
+  const go = a => { lastAt = Date.now(); return inner.apply(window, a); };
+  window.renderMToday = function(){ const a = arguments, now = Date.now(); clearTimeout(t);
+    if(now - userAt < 1500 || now - lastAt > 350) return go(a);
+    t = setTimeout(() => { try{ go(a); }catch(e){ console.warn('528', e); } }, 350); };
 })();
 </script>
 
