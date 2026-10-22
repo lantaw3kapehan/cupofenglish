@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 977;
+const COE_V = 978;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22123,7 +22123,9 @@ go();
       s.done = url; s.at = at; s.t = Date.now(); o = get(); o[id] = s; put(o);
       D.vids = D.vids || {}; D.vids[id] = { url, at };
       try{ if(typeof VIEW !== 'undefined' && VIEW === 'today') renderToday(); }catch(e){}
-      const lateTxt = window.vidLate && vidLate(c) ? '<div class="small" style="margin-top:4px;font-weight:700">Uploaded late (due 23:59 on the class day) · recorded as a late video · management may tag it under the contract</div>' : '';
+      const lc = d && d.late && d.late.caseId ? d.late : null;
+      const lateTxt = lc ? '<div class="small" style="margin-top:4px;font-weight:700">Uploaded late · case ' + esc(lc.caseId) + (lc.amount ? ' · −₱' + esc(lc.amount) : '') + ' (Late Class Video · Unexcused) · management reviews it tomorrow</div>'
+        : window.vidLate && vidLate(c) ? '<div class="small" style="margin-top:4px;font-weight:700">Uploaded late (due 23:59 on the class day) · recorded as a late video</div>' : '';
       show('<b>✓ Class video saved</b>' + lateTxt + '<div class="small">' + esc((d && d.name) || s.name || f.name) + '</div><div class="small" style="opacity:.8">' + esc(note || (d && d.linked ? 'Linked in DAILY' : 'Linked in DAILY once the lesson number is in')) + ' · <a href="' + esc(url) + '" target="_blank" style="color:inherit">Open</a></div>', 'ok');
     }catch(e){
       if(e && e.exp){ o = get(); delete o[id]; put(o); }
@@ -22165,7 +22167,7 @@ go();
     if(!box){ box = document.createElement('section'); box.id = 'vlBox'; box.className = 'sec'; root.insertBefore(box, root.firstChild); }
     box.innerHTML = '<div style="border:1.5px solid #E9B8AC;background:#FFF6F3;border-radius:16px;padding:14px 16px">' +
       '<div class="row" style="gap:8px;align-items:center"><b class="grow" style="color:#9A3B22">Class videos still missing · ' + L.length + '</b></div>' +
-      '<div class="small" style="color:#9A3B22;margin:2px 0 8px">Due by 23:59 on the class day · these are now <b>late</b> and count as late videos in your class record (contract: Teacher Late Class Video Submission).</div>' +
+      '<div class="small" style="color:#9A3B22;margin:2px 0 8px">Due by 23:59 on the class day · uploading now adds a <b>Late Class Video case</b> (contract: Teacher Late Class Video Submission · penalty from POLICY).</div>' +
       L.map(c => '<div class="row" style="gap:10px;align-items:center;padding:8px 0;border-top:1px solid #F1D5CC"><div class="grow ell"><b>' +
         esc(dd(c.start, { weekday: 'short', day: 'numeric', month: 'short' })) + ' · ' + esc(dd(c.start, { hour: '2-digit', minute: '2-digit', hour12: false })) + ' · ' + esc(c.student || c.code) + '</b>' +
         '<div class="small mute">' + esc(c.code) + (c.type ? ' · ' + esc(c.type) : '') + ' · due ' + esc(dd(due(c), { day: 'numeric', month: 'short' })) + ' 23:59</div></div>' +
@@ -22174,7 +22176,7 @@ go();
   window.vidLateAsk = id => { const c = (window.VL_LIST || []).find(x => x.id === id); if(!c) return;
     openSheet('<h3 style="margin:0 0 6px">Upload a late class video</h3><div class="small mute" style="margin-bottom:12px">' + esc(c.student || c.code) + ' · ' + esc(dd(c.start, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false })) + '</div>' +
       '<div style="background:#FFF0EC;border:1.5px solid #E9B8AC;border-radius:14px;padding:12px 14px;color:#9A3B22;line-height:1.45">This video was due by <b>23:59 on ' + esc(dd(due(c), { day: 'numeric', month: 'long' })) + '</b>.<br>' +
-      'Uploading it now still saves it to the student\'s folder and DAILY, but it is recorded as a <b>late video</b> in your class record, and management may tag it under the contract (<b>Teacher Late Class Video Submission</b>, penalty from POLICY).</div>' +
+      'Uploading it now still saves it to the student\'s folder and DAILY, but it is recorded as a <b>late video</b> and a <b>Late Class Video case (Unexcused)</b> is added at once under the contract, with the penalty from POLICY deducted from your pay. Management reviews it the next day and may waive it if there was a valid reason.</div>' +
       '<button class="btn block" style="margin-top:14px;background:#D4705A;color:#fff;border-color:#D4705A" onclick="closeSheet();vidUp(\'' + esc(c.id) + '\')">I understand · choose the video</button>' +
       '<button class="btn ghost block" style="margin-top:8px" onclick="closeSheet()">Cancel</button>'); };
   const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const r = _rt.apply(this, arguments); try{ paint(); load(); }catch(e){} return r; };
