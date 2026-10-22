@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 907;
+const COE_V = 908;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -20541,6 +20541,11 @@ function addMail(){
 (function(){ const _s = window.sendStu; if(typeof _s !== 'function') return;
   window.sendStu = function(row, code){ const el = document.getElementById('sMail');
     if(el){ const v = el.value.trim().toLowerCase(); if(!okMail(v)){ el.focus(); return tst('The email address looks wrong.'); } PEND = { email: v, o: String(el.dataset.o || '').toLowerCase(), code: code || el.dataset.code || '' }; }
+    try{ const b = document.getElementById('sheetBody'), c = b && row ? changed(b) : null;
+      if(c && !c.length) return tst('Nothing changed yet');
+      if(c && c.length === 1 && c[0] === 'sMail' && PEND){ const P = PEND, cd = P.code || code; PEND = null; const go = b.querySelector('#sGo'); if(go){ go.disabled = true; go.textContent = 'Saving\u2026'; }
+        return call('contact_set', { code: cd, email: P.email }).then(() => { EM[cd] = P.email; delete BC[cd]; try{ mailChip.at = 0; }catch(x){} SNAP = null; try{ closeSheet(); }catch(x){} tst(P.email ? 'Email saved \u00b7 ' + P.email : 'Email removed'); try{ if(typeof STU !== 'undefined' && STU && STU.code === cd) mailChip(); }catch(x){} })
+          .catch(err => { if(go){ go.disabled = false; go.textContent = 'Save email'; } tst('Email not saved: ' + err.message); }); } }catch(x){}
     return _s.apply(this, arguments); }; })();
 (function(){ const _a = window.api; if(typeof _a !== 'function') return;
   window.api = function(fn, ...a){ const p = _a.apply(this, [fn, ...a]);
@@ -20548,6 +20553,26 @@ function addMail(){
       Promise.resolve(p).then(r => { if(!r || !r.ok) return; const code = String((a[1] && a[1].code) || r.code || P.code || '').trim(); if(!/^ST-\d{4}-\d{3}$/.test(code) || P.email === P.o) return;
         call('contact_set', { code, email: P.email }).then(() => { EM[code] = P.email; delete BC[code]; try{ mailChip.at = 0; mailChip(); }catch(x){} }).catch(err => tst('Email not saved: ' + err.message)); }).catch(() => {}); }
     return p; }; })();
+/* 576 · enrollment folded when filled; the save button says what will be saved */
+const EF = [['sFc', 'First class', 'd'], ['sLs', 'lessons'], ['sCb', ''], ['sFr', 'free'], ['sRc', 'Recommended', 'd'], ['sEnd', 'Ended', 'd']];
+let SNAP = null;
+const fdate = v => { const d = new Date(String(v).slice(0, 10) + 'T00:00:00'); return isNaN(d) ? v : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
+function foldEnr(b){ const d = b.querySelector('#sEnr'), fc = b.querySelector('#sFc'); if(!d || !fc || !String(fc.value || '').trim() || d.dataset.f) return; d.dataset.f = 1; d.open = true;
+  const tip = [...d.children].find(x => x.tagName === 'DIV' && /Leave this closed/.test(x.textContent)); if(tip) tip.style.display = 'none';
+  const have = EF.filter(([id]) => { const el = b.querySelector('#' + id); return el && String(el.value || '').trim() && !(id === 'sFr' && +el.value === 0); });
+  have.forEach(([id]) => { const g = b.querySelector('#' + id).closest('.grow'); if(g) g.classList.add('sf-h'); });
+  d.querySelectorAll('.row').forEach(r => { const g = [...r.children]; if(g.length && g.every(x => x.classList.contains('sf-h'))) r.classList.add('sf-h'); });
+  const txt = have.map(([id, l, t]) => { const v = String(b.querySelector('#' + id).value).trim(); return t === 'd' ? (l === 'First class' ? 'From ' : l + ' ') + fdate(v) : l === 'lessons' ? v + ' lessons' : l === 'free' ? '+' + v + ' free' : v; });
+  const sm = d.querySelector('summary'); sm.insertAdjacentHTML('afterend', '<div class="sf-sum" id="sfEnr"><div>' + txt.map((x, i) => '<span>' + e(x) + '</span>').join('<i>\u00b7</i>') + '</div><button type="button" class="btn ghost sm" onclick="sfOpenEnr()">Edit</button></div>'); }
+window.sfOpenEnr = () => { const b = document.getElementById('sheetBody'), s = document.getElementById('sfEnr'); if(!b || !s) return; b.querySelectorAll('#sEnr .sf-h').forEach(x => x.classList.remove('sf-h')); s.remove(); };
+const FORM_IDS = ['sEn', 'sCn', 'sBirth', 'sGender', 'sGrade', 'sCity', 'sSrc', 'sMail', 'sTd', 'sTt', 'sTb', 'sTc', 'sTe', 'sFc', 'sLs', 'sCb', 'sFr', 'sRc', 'sEnd'];
+function changed(b){ if(!SNAP) return null; return FORM_IDS.filter(id => { const el = b.querySelector('#' + id); return el && String(el.value || '').trim() !== (SNAP[id] || ''); }); }
+function label(){ const b = document.getElementById('sheetBody'), go = b && b.querySelector('#sGo'); if(!go || !SNAP || go.disabled) return; const c = changed(b) || [];
+  go.textContent = !c.length ? 'Nothing changed yet' : c.length === 1 && c[0] === 'sMail' ? 'Save email' : 'Save changes'; go.style.opacity = c.length ? '' : '.55'; }
+function snap(b){ if(!/saves into this row/.test(b.textContent)) return; SNAP = {}; FORM_IDS.forEach(id => { const el = b.querySelector('#' + id); if(el) SNAP[id] = String(el.value || '').trim(); });
+  const mail = b.querySelector('#sMail'); if(mail && !mail.value && mail.dataset.o) SNAP.sMail = mail.dataset.o;
+  if(!b.dataset.sfl){ b.dataset.sfl = 1; b.addEventListener('input', () => setTimeout(label, 0)); b.addEventListener('change', () => setTimeout(label, 0)); }
+  setTimeout(() => { const m = b.querySelector('#sMail'); if(m && SNAP && !SNAP.sMail) SNAP.sMail = String(m.value || '').trim(); label(); }, 1300); label(); }
 /* 566 · student form: fill what the app already knows, show only what is missing */
 const SF = { Student: [['sEn', 2], ['sCn', 1], ['sBirth', 5, 'd'], ['sGender', 7], ['sGrade', 8], ['sCity', 9], ['sSrc', 22], ['sMail']], 'Trial class': [['sTd', 10, 'd'], ['sTt', 11, 't'], ['sTb', 12], ['sTc', 13], ['sTe', 14]] };
 const STUC = {};
@@ -20579,7 +20604,8 @@ function essentials(){
   if(!document.getElementById('sfCss')) document.head.insertAdjacentHTML('beforeend', '<style id="sfCss">#sheetBody .sf-h{display:none!important}.sf-sum{display:flex;align-items:center;gap:10px;margin:6px 0 4px;padding:12px 14px;border-radius:14px;background:var(--tint,#EEF7F8)}.sf-sum>div{flex:1;min-width:0;font-size:14px;line-height:1.6;color:#2E2650}.sf-sum>div i{font-style:normal;margin:0 6px;color:#9A97AE}.sf-sum>div span:first-child{font-weight:700}.sf-miss{margin:2px 2px 8px;color:#B8553D}</style>');
   const go = () => { if(!document.body.contains(b) || !b.querySelector('#sEn')) return; fold(b);
     const h1 = b.querySelector('h1'), nm = fv(b.querySelector('#sEn')) || fv(b.querySelector('#sCn')); if(newRow && h1 && nm && /^New student/.test(h1.textContent)){ h1.textContent = nm + ' · enrollment'; sub.textContent = code + ' · already in the app · only what is missing is open below'; }
-    if(newRow){ const d = b.querySelector('#sEnr'); if(d && !d.open){ d.open = true; try{ stuBtn(0); }catch(x){} } } };
+    if(newRow){ const d = b.querySelector('#sEnr'); if(d && !d.open){ d.open = true; try{ stuBtn(0); }catch(x){} } } else foldEnr(b);
+    snap(b); };
   const fill = d => { if(!d) return; Object.values(SF).forEach(F => F.forEach(([id, i, t]) => { if(i == null) return; let v = d[i]; if(v == null || v === '') return; v = String(v);
     if(t === 'd') v = v.slice(0, 10); if(t === 't'){ const mm = v.match(/(\d{1,2}):(\d{2})/); v = mm ? mm[1].padStart(2, '0') + ':' + mm[2] : ''; } setv(b.querySelector('#' + id), v); })); };
   const need = !fv(b.querySelector('#sEn')) && !fv(b.querySelector('#sCn'));
