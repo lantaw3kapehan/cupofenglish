@@ -4943,7 +4943,7 @@ else if(!ci && today && now < st) out.push(`<span class="chip">Not yet</span>`);
 if(ci && /not the class laptop/.test(ci.flag||'')) out.push(`<span class="chip coral">${esc((ci.flag.match(/(Phone|Tablet|Unknown device)/)||['Phone'])[0])}</span>`);
 else if(ci && /^http/.test(ci.proof||'')) out.push(`<span class="chip teal">${ci.first?'Proof ✓':'Screen ✓'}</span>`);
 else if(ci && /No screen proof/.test(ci.flag||'')) out.push(`<span class="chip coral">No screen proof</span>`);
-if(v && v.url) out.push(v.app ? `<span class="chip teal">Video ✓ · app</span>` : `<span class="chip amber" title="Uploaded by the teacher in Drive, not in the app">Video ✓ · Drive</span>`);
+if(v && v.url) out.push(v.app === true ? `<span class="chip teal">Video ✓ · app</span>` : v.app === false ? `<span class="chip amber" title="Uploaded by the teacher in Drive, not in the app">Video ✓ · Drive</span>` : `<span class="chip teal">Video ✓</span>`);
 else if(e.code && now > en.getTime() + 15*60000) out.push(`<span class="chip coral">No video yet</span>`);
 return out.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${out.join('')}</div>` : '';
 }
@@ -4955,7 +4955,7 @@ const ciH = ci && ci.time ? `<div class="mon-r"><b>${ci.first?'Time-in':'“I\'m
 ${ci.flag?`<div class="small" style="color:var(--red)">${esc(ci.flag)}</div>`:''}
 ${/^http/.test(ci.proof||'')?`<a class="btn sm teal" style="margin-top:8px" href="${esc(ci.proof)}" target="_blank">Open screen proof</a><div class="small mute" style="margin-top:6px">Check the picture: VooV class · computer date and time · LAN icon, not Wi-Fi</div>`:''}</div>`
 : `<div class="mon-r"><b>${now >= st.getTime() ? (e.first ? 'No time-in yet' : 'No “I\'m in” yet') : 'Class has not started'}</b><div class="small mute">Starts ${tm(e.start)}${now >= st.getTime() ? ' · ' + Math.round((now - st)/60000) + ' min ago' : ' · in ' + (m => m >= 60 ? Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + m % 60 + ' min' : '') : m + ' min')(Math.round((st - now) / 60000))}</div></div>`;
-const vH = v && v.url ? `<div class="mon-r"><b>Class video ✓</b><div class="small mute">${v.app?'Uploaded in the app':'Uploaded by the teacher in Drive (not the app)'}${v.at?' · '+esc(v.at):''}${v.by==='daily'?' · linked in '+esc(new Date(e.start).toLocaleDateString('en-GB',{month:'long'}).toUpperCase())+'-DAILY':''}</div><a class="btn sm" style="margin-top:8px" href="${esc(v.url)}" target="_blank">Open video</a></div>`
+const vH = v && v.url ? `<div class="mon-r"><b>Class video ✓</b><div class="small mute">${v.app === true ? 'Uploaded in the app' : v.app === false ? 'Uploaded by the teacher in Drive (not the app)' : 'Video found'}${v.at?' · '+esc(v.at):''}${v.by==='daily'?' · linked in '+esc(new Date(e.start).toLocaleDateString('en-GB',{month:'long'}).toUpperCase())+'-DAILY':''}</div><a class="btn sm" style="margin-top:8px" href="${esc(v.url)}" target="_blank">Open video</a></div>`
 : now < st.getTime() ? '' : `<div class="mon-r"><b>${now > new Date(e.end) ? 'No class video yet' : 'Video after class'}</b>${v && v.folder?`<div><a class="link small" href="${esc(v.folder)}" target="_blank">Open the student's folder</a></div>`:''}</div>`;
 const dec = ci && ci.decision;
 return `<div class="mon-g">${ciH}${vH}<div class="mon-r"><b>Live class</b><div class="small mute">VooV ${esc(e.meet || '—')}</div>
@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 983;
+const COE_V = 984;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
