@@ -1,0 +1,99 @@
+<script>
+/* 22 Oct · 643 · Class video upload from the app (Misty: teachers' own Google storage keeps running out).
+   "Upload video" on the class card sends the file straight from the phone or laptop to the school Drive (works@ owns it, the shared
+   6 TB), into the same folder and with the same name as before (TEACHERS VIDEO CLASSES › teacher › student › month). The teacher's
+   own storage is not used. The month-DAILY day cell gets the link by itself (server: tVidStart / tVidDone).
+   · Sent in 8 MB pieces: a dropped connection only repeats the last piece; tapping Upload again with the same file continues where it
+     stopped (the upload link is kept on this device for 5½ hours).
+   · The screen is kept awake while it uploads and closing the page asks first. Progress, speed and time left show in a pill. */
+(function(){
+  const LS = 'coe.vup', sleep = ms => new Promise(z => setTimeout(z, ms));
+  const get = () => { try{ return JSON.parse(localStorage.getItem(LS) || '{}') || {}; }catch(e){ return {}; } };
+  const put = o => { try{ const keep = {}, cut = Date.now() - 2 * 864e5; for(const k in o) if((o[k].t || 0) > cut) keep[k] = o[k]; localStorage.setItem(LS, JSON.stringify(keep)); }catch(e){} };
+  const mb = n => n <= 0 ? '0 MB' : n >= 1e9 ? (n / 1e9).toFixed(2) + ' GB' : Math.max(0.1, Math.round(n / 1e5) / 10) + ' MB';
+  const hm = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' });
+  /* finished uploads stay ✓ even when the screen data is a few minutes older than the upload */
+  function merge(){ try{ if(typeof D === 'undefined' || !D || D.mgr) return; const o = get(); D.vids = D.vids || {};
+    for(const k in o){ const x = o[k]; if(x.done && x.day === D.today && !(D.vids[k] && D.vids[k].url)) D.vids[k] = { url: x.done, at: x.at }; } }catch(e){} }
+  const _rt = window.renderToday; if(_rt) window.renderToday = function(){ merge(); return _rt.apply(this, arguments); };
+  let BUSY = null;
+  window.vidUp = id => {
+    if(BUSY) return toast(BUSY === id ? 'This video is still uploading' : 'Another class video is still uploading · wait for it to finish');
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'video/*,.mp4,.mov,.m4v,.mkv,.webm';
+    inp.style.display = 'none'; document.body.appendChild(inp);
+    inp.onchange = () => { const f = inp.files && inp.files[0]; inp.remove(); if(f) go(id, f); };
+    inp.click();
+  };
+  async function go(id, f){
+    const c = (D.schedule || []).find(x => x.id === id); if(!c) return toast('Class not found · refresh the app and try again');
+    if(!/^video\//.test(f.type || '') && !/\.(mp4|mov|m4v|mkv|webm|avi)$/i.test(f.name)) return toast('Choose the class video (MP4, MOV…)');
+    if(f.size > 20 * 2 ** 30) return toast('That file is larger than 20 GB');
+    BUSY = id; let pid = null; const who = esc(c.student || c.title || 'class');
+    const show = (h, k) => { if(pid && !document.getElementById(pid) && k === 'wait') pid = null; pid = svPill(pid, h, k); };   // one pill, updated in place
+    const leave = e => { e.preventDefault(); e.returnValue = ''; return ''; };
+    window.addEventListener('beforeunload', leave);
+    let lock = null; const wake = async () => { try{ if(navigator.wakeLock && document.visibilityState === 'visible') lock = await navigator.wakeLock.request('screen'); }catch(e){} };
+    const vis = () => { if(document.visibilityState === 'visible' && BUSY) wake(); }; document.addEventListener('visibilitychange', vis); wake();
+    let o = get(), s = o[id];
+    try{
+      show('<b>Preparing the upload…</b><div class="small" style="opacity:.8">' + who + ' · ' + esc(f.name) + ' · ' + mb(f.size) + '</div>', 'wait');
+      if(!(s && s.url && !s.done && s.size === f.size && s.fn === f.name && s.lm === f.lastModified && Date.now() - s.t < 5.5 * 36e5)) s = null;
+      if(!s){
+        let r; try{ r = await apiNow('tVidStart', TOKEN, { id: c.id, start: c.start }, { name: f.name, size: f.size, type: f.type || '' }); }
+        catch(e){ throw new Error(/saved on this device|signal|connection/i.test(String(e && e.message)) ? 'Weak internet · the upload did not start. Try again when the signal is better.' : (e && e.message) || 'The upload did not start'); }
+        if(!r || !r.ok) throw new Error((r && r.msg) || 'The upload did not start. Try again.');
+        s = { url: r.url, key: r.key, name: r.name, chunk: r.chunk, size: f.size, fn: f.name, lm: f.lastModified, t: Date.now(), day: c.day };
+        o = get(); o[id] = s; put(o);
+      }
+      const N = f.size, CH = s.chunk || 8388608; let off = 0, fileId = '', fails = 0;
+      const exp = () => Object.assign(new Error('This upload link expired. Tap Upload video again to start over.'), { exp: 1 });
+      const ask = async () => { const r = await fetch(s.url, { method: 'PUT', headers: { 'Content-Range': 'bytes */' + N } });
+        if(r.status === 200 || r.status === 201){ const j = await r.json().catch(() => ({})); return { done: j.id || '' }; }
+        if(r.status === 308){ const g = r.headers.get('Range'); return { off: g ? +g.split('-')[1] + 1 : 0 }; }
+        if(r.status === 404 || r.status === 410) throw exp(); throw new Error('Google answered ' + r.status); };
+      if(s.started){ const q = await ask(); if(q.done) fileId = q.done; else off = q.off; }
+      s.started = 1; o = get(); o[id] = s; put(o);
+      const t0 = Date.now(), off0 = off;
+      const prog = () => { const p = Math.floor(off / N * 100), sec = (Date.now() - t0) / 1000, rate = sec > 2 ? (off - off0) / sec : 0, left = rate ? (N - off) / rate : 0;
+        show('<b>Uploading the class video · ' + p + '%</b><div style="height:6px;border-radius:3px;background:rgba(255,255,255,.25);margin:8px 0 6px"><div style="height:6px;border-radius:3px;background:#5CC8A8;width:' + p + '%"></div></div>' +
+          '<div class="small" style="opacity:.85">' + who + ' · ' + mb(off) + ' of ' + mb(N) + (rate ? ' · ' + mb(rate) + '/s · about ' + (left < 90 ? Math.max(1, Math.round(left)) + ' s' : Math.round(left / 60) + ' min') + ' left' : '') + '</div>' +
+          '<div class="small" style="opacity:.7;margin-top:2px">Keep the app open until it finishes · saved to the school Drive, not your storage</div>', 'wait'); };
+      prog();
+      while(!fileId && off < N){
+        const end = Math.min(off + CH, N);
+        try{
+          const r = await fetch(s.url, { method: 'PUT', headers: { 'Content-Range': 'bytes ' + off + '-' + (end - 1) + '/' + N }, body: f.slice(off, end) });
+          if(r.status === 200 || r.status === 201){ const j = await r.json().catch(() => ({})); fileId = j.id || ''; off = N; if(!fileId){ const q = await ask(); fileId = q.done || ''; } }
+          else if(r.status === 308){ const g = r.headers.get('Range'); off = g ? +g.split('-')[1] + 1 : 0; fails = 0; }
+          else if(r.status === 404 || r.status === 410) throw exp();
+          else throw new Error('Google answered ' + r.status);
+          prog();
+        }catch(e){
+          if(e.exp) throw e;
+          if(++fails > 10) throw new Error('The internet keeps dropping. Tap Upload video again with the same file · it continues where it stopped.');
+          show('<b>Connection dropped · trying again…</b><div class="small" style="opacity:.8">' + who + ' · ' + Math.floor(off / N * 100) + '% sent · nothing is lost</div>', 'wait');
+          await sleep(Math.min(30000, 2000 * fails));
+          try{ const q = await ask(); if(q.done) fileId = q.done; else off = q.off; }catch(x){ if(x.exp) throw x; }
+        }
+      }
+      if(!fileId) throw new Error('Google did not confirm the file. Tap Upload video again.');
+      show('<b>Saving…</b><div class="small" style="opacity:.8">' + who + ' · linking it in DAILY</div>', 'wait');
+      let d = null, note = '';
+      try{ d = await apiNow('tVidDone', TOKEN, s.key, fileId); }
+      catch(e){ if(/saved on this device/i.test(String(e && e.message))) note = 'Uploaded · the link is added when the signal is back'; else throw e; }
+      if(d && !d.ok) throw new Error(d.msg || 'The video uploaded but was not linked. Tell Ops.');
+      const url = (d && d.url) || ('https://drive.google.com/file/d/' + fileId + '/view'), at = hm();
+      s.done = url; s.at = at; s.t = Date.now(); o = get(); o[id] = s; put(o);
+      D.vids = D.vids || {}; D.vids[id] = { url, at };
+      try{ if(typeof VIEW !== 'undefined' && VIEW === 'today') renderToday(); }catch(e){}
+      show('<b>✓ Class video saved</b><div class="small">' + esc((d && d.name) || s.name || f.name) + '</div><div class="small" style="opacity:.8">' + esc(note || (d && d.linked ? 'Linked in DAILY' : 'Linked in DAILY once the lesson number is in')) + ' · <a href="' + esc(url) + '" target="_blank" style="color:inherit">Open</a></div>', 'ok');
+    }catch(e){
+      if(e && e.exp){ o = get(); delete o[id]; put(o); }
+      show('<b>Class video not uploaded</b><div class="small">' + esc((e && e.message) || 'Try again') + '</div>', 'bad');
+    }finally{
+      BUSY = null; window.removeEventListener('beforeunload', leave); document.removeEventListener('visibilitychange', vis);
+      try{ lock && lock.release(); }catch(e){}
+    }
+  }
+})();
+</script>
