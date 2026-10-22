@@ -15,6 +15,7 @@
 //   people_set { teacher, p }             → { ok }                               (President: legal name, address… for the Agreement)
 //   scan_put  { id, name, type, b64 }     → { ok, row }                          (President: notarized scan)
 //   void      { id, reason }              → { ok }                               (President: start this document again)
+//   doc_text  { id, find, replace }       → { ok, hash }                         (President: fix wording before anyone signs)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -167,6 +168,16 @@ Deno.serve(async (req: Request) => {
       const up = await db.storage.from("contracts").upload(path, bin, { contentType: type, upsert: false }); if (up.error) return out({ ok: false, error: up.error.message });
       await db.from("coe_contract_signs").update({ scan_path: path, scan_name: str(b.name, 160) || path, scan_at: now, scan_by: me }).eq("id", r.id);
       return out({ ok: true });
+    }
+    if (a === "doc_text") {   // President: correct a document's wording before anyone has signed it (refused once someone has)
+      const id = +b.id, find = String(b.find || ""), rep = String(b.replace || "");
+      const { data: d } = await db.from("coe_contract_docs").select("id,body").eq("id", id).maybeSingle(); if (!d) return out({ ok: false, error: "Not found" });
+      const { data: signed } = await db.from("coe_contract_signs").select("id").eq("doc_id", id).in("status", ["signed"]).is("void_at", null).limit(1);
+      if (signed && signed.length) return out({ ok: false, error: "Someone has already signed this version. Issue a new version instead." });
+      const n = find ? d.body.split(find).length - 1 : 0; if (n !== 1) return out({ ok: false, error: "The text to change was found " + n + " times (needs exactly 1)." });
+      const body = d.body.replace(find, () => rep);
+      const { error } = await db.from("coe_contract_docs").update({ body, hash: await sha(body) }).eq("id", id); if (error) return out({ ok: false, error: error.message });
+      return out({ ok: true, hash: await sha(body) });
     }
     if (a === "void") {
       const reason = str(b.reason, 300); if (!reason) return out({ ok: false, error: "Give a reason." });
