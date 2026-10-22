@@ -1,0 +1,80 @@
+<script>
+/* 22 Oct · 650 · Class video checks (Misty: catch wrong, reused or manipulated videos — systematic and within policy; honest problems explained).
+   Before upload the app reads the video's length and recording time on the device:
+   · shorter than 80% of the class, recorded before the class started, or a screen proof instead of a video → the teacher picks a reason
+     and writes a short note, then it uploads (one file per class stays).
+   After upload the server adds its own checks (same file as another class, by Drive fingerprint) — see tVidDone / vidCheck_.
+   Teacher: Today › "Video checks" lists her flagged videos with the status (Waiting for review · OK · Needs action) and can explain.
+   Management: Overview › "Videos to check" — open video, the teacher's reason, OK / Needs action. */
+(function(){
+  if(typeof window.vidUp !== 'function') return;
+  const REASONS = ['Forgot to start the recording on time', 'Recording stopped or split in two · uploading the main part', 'Internet or power cut during class', 'Student or parent asked not to record', 'Phone or laptop clock is wrong', 'Other'];
+  const dd = (s, o) => new Date(s).toLocaleString('en-GB', Object.assign({ timeZone: 'Asia/Manila' }, o));
+  const vidDur = f => new Promise(ok => { try{ const v = document.createElement('video'), u = URL.createObjectURL(f); let done = false;
+      const end = d => { if(done) return; done = true; try{ URL.revokeObjectURL(u); }catch(e){} ok(d); };
+      v.preload = 'metadata'; v.muted = true; v.onloadedmetadata = () => end(isFinite(v.duration) ? Math.round(v.duration) : 0); v.onerror = () => end(0);
+      setTimeout(() => end(0), 8000); v.src = u; }catch(e){ ok(0); } });
+  const reasonForm = (pre) => '<div style="margin-top:12px"><b class="small">Why?</b><div id="vcR" style="display:flex;flex-direction:column;gap:6px;margin-top:6px">' +
+    REASONS.map((r, i) => '<label style="display:flex;gap:8px;align-items:flex-start;font-size:14px"><input type="radio" name="vcr" value="' + esc(r) + '"' + (pre && pre.why === r ? ' checked' : '') + '> ' + esc(r) + '</label>').join('') + '</div>' +
+    '<textarea id="vcN" class="in-t" rows="3" style="margin-top:10px;width:100%" placeholder="Explain what happened (required)">' + esc((pre && pre.note) || '') + '</textarea></div>';
+  const readForm = () => { const r = document.querySelector('input[name="vcr"]:checked'), n = (document.getElementById('vcN') || {}).value || '';
+    if(!r){ toast('Choose a reason'); return null; } if(n.trim().length < 5){ toast('Write a short explanation'); return null; } return { why: r.value, note: n.trim() }; };
+  /* called by the upload (643) before anything is sent · resolves {dur, why, note} or null when the teacher cancels */
+  window.vidPre = (c, f) => new Promise(async res => {
+    const img = /^image\//.test(f.type || '') || /\.(jpe?g|png|heic|heif|webp)$/i.test(f.name), fl = [];
+    const st = new Date(c.start).getTime(), len = Math.round((new Date(c.end).getTime() - st) / 6e4);
+    let dur = 0;
+    if(img) fl.push('You are sending a screen proof instead of the class video.');
+    else { dur = await vidDur(f);
+      if(dur > 0 && len > 0 && dur / 60 < len * 0.8) fl.push('This video is ' + Math.max(1, Math.round(dur / 60)) + ' min long, the class is ' + len + ' min.');
+      if(f.lastModified && f.lastModified < st - 10 * 6e4) fl.push('This video was recorded on ' + dd(f.lastModified, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) + ', before the class started.'); }
+    if(!fl.length) return res({ dur });
+    window._vcRes = ok => { if(!ok){ closeSheet(); res(null); return; } const x = readForm(); if(!x) return; closeSheet(); res({ dur, why: x.why, note: x.note }); };
+    openSheet('<h3 style="margin:0 0 6px">Please explain this upload</h3><div class="small mute">' + esc(c.student || c.code || '') + ' · ' + esc(dd(c.start, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })) + '</div>' +
+      '<div style="background:#FFF6E6;border:1.5px solid #F0D29A;border-radius:14px;padding:12px 14px;margin-top:10px;color:#7A5410;line-height:1.45">' + fl.map(esc).join('<br>') +
+      '<div class="small" style="margin-top:6px">It still uploads. Your explanation goes with it, and management reviews it under the contract.</div></div>' + reasonForm() +
+      '<button class="btn teal block" style="margin-top:12px" onclick="_vcRes(1)">Upload with this explanation</button><button class="btn ghost block" style="margin-top:8px" onclick="_vcRes(0)">Cancel</button>');
+  });
+  /* ── Teacher: Video checks on Today ── */
+  let TF = (() => { try{ return JSON.parse(localStorage.getItem('coe.vflags') || '[]') || []; }catch(e){ return []; } })(), tAt = 0, tBusy = false;
+  const stTxt = x => x.st === 'ok' ? ['#1E7A55', 'Reviewed · OK'] : x.st === 'action' ? ['#B03A2E', 'Needs action · management will contact you'] : ['#9A6A12', x.why ? 'Waiting for review' : 'Explain this video'];
+  async function tLoad(force){ if(tBusy || !TOKEN || !D || D.mgr || (!force && Date.now() - tAt < 10 * 6e4)) return; tBusy = true; tAt = Date.now();
+    try{ const r = await api('tVidFlags', TOKEN); if(r && r.ok){ TF = r.list || []; try{ localStorage.setItem('coe.vflags', JSON.stringify(TF)); }catch(e){} tPaint(); } }catch(e){} finally{ tBusy = false; } }
+  function tPaint(){ const root = document.getElementById('v-today'); if(!root || !D || D.mgr) return; let box = document.getElementById('vcBox');
+    const L = TF.filter(x => x.st !== 'ok' || Date.now() - (x.dat || 0) < 3 * 864e5).slice(0, 10);
+    if(!L.length){ if(box) box.remove(); return; }
+    if(!box){ box = document.createElement('section'); box.id = 'vcBox'; box.className = 'sec'; const a = document.getElementById('vlBox'); a ? a.after(box) : root.insertBefore(box, root.firstChild); }
+    box.innerHTML = '<div style="border:1.5px solid #F0D29A;background:#FFFBF2;border-radius:16px;padding:14px 16px"><b>Video checks · ' + L.length + '</b><div class="small mute" style="margin:2px 0 6px">Uploads that management reviews · each check is part of the contract\'s class video rule</div>' +
+      L.map(x => { const [col, s] = stTxt(x); return '<div style="padding:8px 0;border-top:1px solid #F3E3BF"><div class="row" style="gap:8px;align-items:center"><b class="grow ell">' + esc(dd(x.start, { weekday: 'short', day: 'numeric', month: 'short' })) + ' · ' + esc(x.student || x.code) + '</b><span class="small" style="font-weight:700;color:' + col + '">' + esc(s) + '</span></div>' +
+        '<div class="small" style="color:#7A5410">' + x.flags.map(f => '⚠ ' + esc(f.t)).join('<br>') + '</div>' + (x.why ? '<div class="small mute">Your reason: ' + esc(x.why) + (x.note ? ' — ' + esc(x.note) : '') + '</div>' : '') + (x.dnote ? '<div class="small">Management: ' + esc(x.dnote) + '</div>' : '') +
+        (x.st === 'open' ? '<button class="btn sm ghost" style="margin-top:6px" onclick="vcExplain(\'' + esc(x.id) + '\')">' + (x.why ? 'Change explanation' : 'Explain') + '</button>' : '') + '</div>'; }).join('') + '</div>'; }
+  window.vcExplain = id => { const x = TF.find(y => y.id === id); if(!x) return;
+    window._vcRes = async ok => { if(!ok) return closeSheet(); const f = readForm(); if(!f) return; closeSheet();
+      try{ const r = await apiNow('tVidExplain', TOKEN, id, f.why, f.note); if(r && r.ok){ x.why = f.why; x.note = f.note; tPaint(); toast('Explanation sent ✓'); } else toast((r && r.msg) || 'Not saved'); }catch(e){ toast(e.message); } };
+    openSheet('<h3 style="margin:0 0 6px">Explain this video</h3><div class="small" style="color:#7A5410">' + x.flags.map(f => '⚠ ' + esc(f.t)).join('<br>') + '</div>' + reasonForm(x) +
+      '<button class="btn teal block" style="margin-top:12px" onclick="_vcRes(1)">Send explanation</button><button class="btn ghost block" style="margin-top:8px" onclick="_vcRes(0)">Cancel</button>'); };
+  window.vcAdd = (c, url, name, flags, why, note) => { if(!flags || !flags.length) return; TF = TF.filter(x => x.id !== c.id); TF.unshift({ id: c.id, ds: c.day, start: c.start, code: c.code, student: c.student, url, name, flags, why: why || '', note: note || '', st: 'open', at: Date.now() }); try{ localStorage.setItem('coe.vflags', JSON.stringify(TF)); }catch(e){} tPaint(); };
+  const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const r = _rt.apply(this, arguments); try{ tPaint(); tLoad(); }catch(e){} return r; };
+  /* ── Management: Videos to check on Overview ── */
+  let MF = null, mBusy = false;
+  async function mLoad(){ if(mBusy || !TOKEN || !D || !D.mgr) return; mBusy = true; try{ const r = await api('mgmtVidFlags', TOKEN); if(r && r.ok){ MF = r.list || []; mPaint(); } }catch(e){} finally{ mBusy = false; } }
+  function mPaint(){ const root = document.getElementById('v-home'); if(!root || !MF || !D || !D.mgr) return; let box = document.getElementById('vcmBox');
+    const open = MF.filter(x => x.st === 'open'), recent = MF.filter(x => x.st !== 'open').slice(0, 5);
+    if(!open.length && !recent.length){ if(box) box.remove(); return; }
+    if(!box || !root.contains(box)){ box = document.createElement('section'); box.id = 'vcmBox'; box.style.cssText = 'margin:0 0 16px'; root.insertBefore(box, root.firstChild); }
+    const row = x => '<div style="padding:10px 0;border-top:1px solid #F3E3BF"><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b class="grow">' + esc(typeof tName === 'function' ? tName(x.teacher) : x.teacher) + ' · ' + esc(x.student || x.code) + ' · ' + esc(dd(x.start, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })) + '</b>' +
+      '<a class="btn sm ghost" href="' + esc(x.url) + '" target="_blank">Open</a>' + (x.st === 'open' ? '<button class="btn sm teal" onclick="vcSet(\'' + esc(x.id) + '\',\'ok\')">OK</button><button class="btn sm" style="background:#D4705A;color:#fff;border-color:#D4705A" onclick="vcSet(\'' + esc(x.id) + '\',\'action\')">Needs action</button>' : '<span class="small" style="font-weight:700;color:' + (x.st === 'ok' ? '#1E7A55' : '#B03A2E') + '">' + (x.st === 'ok' ? 'OK' : 'Needs action') + ' · ' + esc(x.by || '') + '</span>') + '</div>' +
+      '<div class="small" style="color:#7A5410">' + x.flags.map(f => '⚠ ' + esc(f.t)).join(' · ') + '</div><div class="small mute">' + (x.why ? 'Teacher: ' + esc(x.why) + (x.note ? ' — ' + esc(x.note) : '') : 'No explanation yet') + (x.dnote ? ' · Note: ' + esc(x.dnote) : '') + '</div></div>';
+    box.innerHTML = '<div style="border:1.5px solid #F0D29A;background:#FFFBF2;border-radius:16px;padding:14px 16px"><b>🎬 Videos to check · ' + open.length + '</b><div class="small mute" style="margin:2px 0 6px">Short, recorded before class, same file as another class, or a screen proof · OK = nothing wrong · Needs action = follow up (tag it under the contract from Schedule or Cases)</div>' +
+      (open.length ? open.map(row).join('') : '<div class="small mute" style="padding:6px 0">Nothing waiting.</div>') + (recent.length ? '<details style="margin-top:6px"><summary class="small link">Reviewed recently</summary>' + recent.map(row).join('') + '</details>' : '') + '</div>'; }
+  window.vcSet = (id, st) => { if(st !== 'action') return vcSave(id, st, '');
+    window._vcAct = () => { const n = (document.getElementById('vcAN') || {}).value || ''; closeSheet(); vcSave(id, 'action', n.trim()); };
+    openSheet('<h3 style="margin:0 0 6px">Needs action</h3><div class="small mute">The teacher sees this note on her Today screen. Tag the class under the contract from Schedule or Cases if a penalty applies.</div><textarea id="vcAN" class="in-t" rows="3" style="margin-top:10px;width:100%" placeholder="Note for the teacher"></textarea><button class="btn block" style="margin-top:12px;background:#D4705A;color:#fff;border-color:#D4705A" onclick="_vcAct()">Mark Needs action</button><button class="btn ghost block" style="margin-top:8px" onclick="closeSheet()">Cancel</button>'); };
+  window.vcSave = async (id, st, note) => {
+    try{ const r = await apiNow('mgmtVidFlagSet', TOKEN, id, st, note); if(r && r.ok){ const i = MF.findIndex(x => x.id === id); if(i > -1) MF[i] = r.item; mPaint(); toast(st === 'ok' ? 'Marked OK ✓' : 'Marked Needs action'); } else toast((r && r.msg) || 'Not saved'); }catch(e){ toast(e.message); } };
+  try{ const hv = document.getElementById('v-home'); if(hv) new MutationObserver(() => { if(MF && D && D.mgr && !document.getElementById('vcmBox')) mPaint(); }).observe(hv, { childList: true }); }catch(e){}
+  const _go = window.go; if(_go) window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'home'){ setTimeout(mPaint, 50); setTimeout(mPaint, 800); mLoad(); } }catch(e){} return r; };
+  setTimeout(() => { try{ if(typeof VIEW !== 'undefined'){ if(VIEW === 'home'){ mPaint(); mLoad(); } if(VIEW === 'today'){ tPaint(); tLoad(true); } } }catch(e){} }, 1800);
+  setInterval(() => { try{ if(typeof VIEW !== 'undefined' && VIEW === 'home' && !document.hidden) mLoad(); }catch(e){} }, 5 * 6e4);
+})();
+</script>
