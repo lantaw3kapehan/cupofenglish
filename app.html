@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 903;
+const COE_V = 904;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -20546,7 +20546,7 @@ function addMail(){
   window.api = function(fn, ...a){ const p = _a.apply(this, [fn, ...a]);
     if(fn === 'saveStudent' && PEND){ const P = PEND; PEND = null;
       Promise.resolve(p).then(r => { if(!r || !r.ok) return; const code = String((a[1] && a[1].code) || r.code || P.code || '').trim(); if(!/^ST-\d{4}-\d{3}$/.test(code) || P.email === P.o) return;
-        call('contact_set', { code, email: P.email }).then(() => { EM[code] = P.email; delete BC[code]; }).catch(err => tst('Email not saved: ' + err.message)); }).catch(() => {}); }
+        call('contact_set', { code, email: P.email }).then(() => { EM[code] = P.email; delete BC[code]; try{ mailChip.at = 0; mailChip(); }catch(x){} }).catch(err => tst('Email not saved: ' + err.message)); }).catch(() => {}); }
     return p; }; })();
 /* 566 · student form: fill what the app already knows, show only what is missing */
 const SF = { Student: [['sEn', 2], ['sCn', 1], ['sBirth', 5, 'd'], ['sGender', 7], ['sGrade', 8], ['sCity', 9], ['sSrc', 22], ['sMail']], 'Trial class': [['sTd', 10, 'd'], ['sTt', 11, 't'], ['sTb', 12], ['sTc', 13], ['sTe', 14]] };
@@ -20586,6 +20586,15 @@ function essentials(){
   const mail = () => new Promise(r => { const el = b.querySelector('#sMail'); if(!el || fv(el)) return r(); let k = 0; const t = setInterval(() => { if(fv(el) || ++k > 12){ clearInterval(t); r(); } }, 100); });
   const db = need ? (STU[code] ? Promise.resolve(STU[code]) : call('stu', { code }).then(r => (STU[code] = r.data))).then(fill).catch(() => {}) : Promise.resolve();
   Promise.all([db, mail()]).then(() => setTimeout(go, 0)); }
+/* 572 · the email on the student page (management) */
+function mailChip(){
+  try{ if(!(D && D.mgr) || typeof STU === 'undefined' || !STU || !STU.code) return; }catch(x){ return; }
+  const b = document.getElementById('sheetBody'), row = b && b.querySelector('.shero .row'); if(!row) return;
+  const code = STU.code, put = v => { const old = row.querySelector('.em-chip'); if(!v){ if(old) old.remove(); return; } const h = '<span class="chip em-chip" title="Email for payment confirmations · tap to copy" style="cursor:pointer" onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText(\'' + e(v) + '\').then(()=>tst(\'Email copied\'))">\u2709 ' + e(v) + '</span>'; if(old){ if(old.outerHTML !== h) old.outerHTML = h; } else row.insertAdjacentHTML('beforeend', h); };
+  if(EM[code] != null) put(EM[code]);
+  if(!mailChip.at || mailChip.code !== code || Date.now() - mailChip.at > 6e4){ mailChip.code = code; mailChip.at = Date.now();
+    call('contact', { code }).then(r => { EM[code] = r.email || ''; if(STU && STU.code === code) put(EM[code]); }).catch(() => {}); } }
+(function(){ const _r = window.stuRender; if(typeof _r === 'function') window.stuRender = function(){ const r = _r.apply(this, arguments); try{ mailChip(); }catch(x){} return r; }; })();
 const ob = new MutationObserver(() => { try{ addBtns(); }catch(x){} try{ addMail(); }catch(x){} try{ essentials(); }catch(x){} });
 const go = () => { const b = document.getElementById('sheetBody'); if(b) ob.observe(b, { childList: true, subtree: true }); else setTimeout(go, 500); };
 go();
