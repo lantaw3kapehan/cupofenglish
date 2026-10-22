@@ -6129,7 +6129,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 937;
+const COE_V = 938;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -21521,7 +21521,7 @@ go();
         (signDocs.some(d => !rs.find(x => x.doc_id === d.id)) ? '<button class="btn sm ghost" onclick="ctSet(\'' + e(t) + '\')">Send the full set (new teacher)</button>' : '') + '</div></div>'; }
     const T8 = termOf(rs, AD.docs, pp); b.innerHTML = h.replace('<div class="sub">Signing record · Philippine time</div>', '<div class="sub">Signing record · Philippine time' + (T8 ? ' · <b>term ' + e(ph(T8.start)) + ' to ' + e(ph(T8.end)) + '</b>' + (T8.due ? ' · <b style="color:#9A3A26">renewal due</b>' : '') : ' · two-year term: add the Agreement date (details below) or record the paper Agreement') + '</div>') + '</div>'; b.scrollTop = 0; };
 
-  async function refresh(t){ AD = await call('list'); ctTeacher(t); }
+  async function refresh(t){ AD = await call('list'); CNTT = 0; ctCount(); ctTeacher(t); }
   window.ctReply = async (id, t) => { const v = prompt('Reply to ' + t + ' (they see it with the document):'); if(!v) return; try{ await call('reply', { id, reply: v }); toast('Reply saved'); await refresh(t); }catch(x){ toast(x.message); } };
   window.ctPaper = async (t, ref) => { const v = prompt('Date ' + t + ' signed the ' + (ref === 'agreement' ? 'Agreement' : 'Annex A') + ' on paper (YYYY-MM-DD):', ''); if(v == null) return; if(v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return toast('Use YYYY-MM-DD');
     try{ await call('paper', { teacher: t, ref, date: v }); toast('Recorded · attach the notarized scan'); await refresh(t); }catch(x){ toast(x.message); } };
@@ -21542,8 +21542,15 @@ go();
   window.ctCounterGo = async function(id, t){ const sig = padPng('ctPad2'); if(!sig) return toast('Draw your signature'); const g = $('ctGo2'); g.disabled = true; g.textContent = 'Signing…';
     try{ const loc = await getLoc(); await call('countersign', { id, sig, loc, name: $('cpName').value }); toast('Countersigned ✓'); await refresh(t); }catch(x){ g.disabled = false; g.textContent = 'Countersign as President'; toast(x.message); } };
 
+  let CNT = null, CNTT = 0;
+  async function ctCount(){ if(!isMgmt()) return; try{ if(!CNT || Date.now() - CNTT > 5 * 60e3){ const L = await call('list'); const P = L.pres;
+      const w = (L.rows || []).filter(r => r.status === 'signed' && !r.pres_at).length, q = (L.rows || []).filter(r => /^(question|declined)$/.test(r.status) && !r.reply).length;
+      CNT = { n: (P ? w : 0) + q, txt: [P && w ? w + ' to countersign' : '', q ? q + ' to reply' : ''].filter(Boolean).join(' · ') }; CNTT = Date.now(); }
+    document.querySelectorAll('.ct-cnt').forEach(el => { el.textContent = CNT.txt; el.classList.toggle('hide', !CNT.n); });
+    const b = document.querySelector('nav button[data-v="more"]'); if(b){ let d = b.querySelector('.ct-dot'); if(!d){ d = document.createElement('i'); d.className = 'dot ct-dot'; b.appendChild(d); } d.classList.toggle('hide', !CNT.n); } }catch(x){} }
+  setTimeout(function w(){ if(typeof D !== 'undefined' && D){ if(D.mgr){ ctCount(); setInterval(() => { if(document.visibilityState === 'visible'){ CNTT = 0; ctCount(); } }, 10 * 60e3); } } else setTimeout(w, 2000); }, 4000);
   const _rm = window.renderMore; if(_rm) window.renderMore = function(){ const r = _rm.apply(this, arguments); try{ const m = $('v-more'); if(m && isMgmt() && !m.querySelector('.ct-more')){ const box = m.querySelector('div[style*="margin-top:12px"]') || m;
-    const li = document.createElement('div'); li.className = 'li ct-more'; li.onclick = () => ctAdmin(); li.innerHTML = '<div class="av">' + DOCI + '</div><div class="grow"><b>Contracts</b><div class="small mute">Who has read and signed the contract and addenda; countersign; notarized scans</div></div><span class="mute">›</span>'; box.appendChild(li); } }catch(x){} return r; };
+    const li = document.createElement('div'); li.className = 'li ct-more'; li.onclick = () => ctAdmin(); setTimeout(ctCount, 50); li.innerHTML = '<div class="av">' + DOCI + '</div><div class="grow"><b>Contracts</b> <span class="chip ct-cnt hide" style="margin-left:6px"></span><div class="small mute">Who has read and signed the contract and addenda; countersign; notarized scans</div></div><span class="mute">›</span>'; box.appendChild(li); } }catch(x){} return r; };
 })();
 </script>
 
