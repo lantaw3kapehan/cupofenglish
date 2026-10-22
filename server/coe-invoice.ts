@@ -10,6 +10,8 @@
 //   list   { code?, limit?, history? } → { ok, invoices, history }   (history = QuickBooks numbers from SALES, read only)
 //   stu    { code }             → { ok, data }           (DATABASE record from coe_students, for the student form)
 //   contact { code } → { ok, email } · contact_set { code, email } → { ok }   (Edit student: the email used for payment confirmations)
+//   refund_list { code? } → { ok, refunds } · refund_issue { r } (President) → { ok, refund } · refund_done { no, ok, sheet_row, note } · refund_void { no, reason } (President)
+//     (22 Oct: refunds — the record and its number live here; Apps Script mgmtRefund writes SALES/ACTIVE; a CCB refund is also a wallet 'out')
 //   verify { no, code }         → { ok, valid, no, day, total, currency, status }   (public, no sign-in; for the verify page)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -38,7 +40,7 @@ Deno.serve(async (req: Request) => {
     return out({ ok: true, valid: true, no: data.no, day: data.day, total: data.total, currency: data.currency, status: data.status, created_at: data.created_at });
   }
   const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
-  const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
+  const { data: s } = await db.from("app_sessions").select("name,role,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
   if (!s || new Date(s.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
   if (s.mode !== "mgmt") return out({ ok: false, error: "Management only." }, 403);
   const who = String(s.name || "Management");
@@ -103,6 +105,44 @@ Deno.serve(async (req: Request) => {
       const { error } = ex ? await db.from("coe_bill_profiles").update({ email: em || null, updated_by: who, updated_at: new Date().toISOString() }).eq("code", code)
         : await db.from("coe_bill_profiles").insert({ code, email: em || null, updated_by: who });
       return out(error ? { ok: false, error: error.message } : { ok: true, email: em });
+    }
+    if (a === "refund_list") {
+      let q = db.from("coe_refunds").select("*").order("no", { ascending: false }).limit(Math.min(+b.limit || 100, 300));
+      if (b.code) q = q.eq("code", str(b.code, 20));
+      const { data, error } = await q; return out(error ? { ok: false, error: error.message } : { ok: true, refunds: data || [] });
+    }
+    if (a === "refund_issue" || a === "refund_void") {
+      if (!/president/i.test(String((s as any).role || ""))) return out({ ok: false, error: "Only the President can record refunds." }, 403);
+      if (a === "refund_void") {
+        const no = +b.no, why = str(b.reason, 200); if (!(no > 0) || !why) return out({ ok: false, error: "A reason is needed to void." });
+        const { data, error } = await db.from("coe_refunds").update({ status: "void", void_reason: why, void_by: who, void_at: new Date().toISOString() }).eq("no", no).is("void_at", null).select().maybeSingle();
+        if (error || !data) return out({ ok: false, error: (error && error.message) || "Not found or already void." });
+        if (data.wallet_id) await db.from("coe_wallet").update({ void_at: new Date().toISOString(), void_by: who }).eq("id", data.wallet_id).is("void_at", null);
+        return out({ ok: true, refund: data });
+      }
+      const v = b.r || {}, num = (x: any) => Math.round((+x || 0) * 100) / 100;
+      const code = str(v.code, 20); if (!/^ST-\d{4}-\d{3}$/.test(code)) return out({ ok: false, error: "No student code." });
+      const row: any = { code, name: str(v.name, 60), cn: str(v.cn, 60), teacher: str(v.teacher, 40), sale_invoice: str(v.sale_invoice, 120), sale_row: +v.sale_row || null,
+        left_lessons: num(v.left), free_lessons: num(v.free), refund_lessons: num(v.lessons), rate: num(v.rate), adjust: num(v.adjust), adjust_reason: str(v.reason, 200) || null,
+        amount: num(v.amount), currency: str(v.currency, 5) || "CNY", partner: str(v.partner, 60) || null, pay_to: str(v.pay_to, 80) || null, wallet: str(v.wallet, 20) || null,
+        note: str(v.note, 300) || null, made_by: who, status: "saving" };
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str(v.day, 10))) row.day = str(v.day, 10);
+      if (!(row.amount >= 0) || Math.abs(row.refund_lessons * row.rate + row.adjust - row.amount) > 0.05) return out({ ok: false, error: "The refund amount does not add up. Check the lessons, rate and adjustment." });
+      if (row.adjust && !row.adjust_reason) return out({ ok: false, error: "Add a reason for the adjustment." });
+      const { data: dup } = await db.from("coe_refunds").select("no").eq("code", code).is("void_at", null).gte("created_at", new Date(Date.now() - 864e5).toISOString()).limit(1);
+      if (dup && dup.length && !b.force) return out({ ok: false, error: "A refund for " + code + " was already recorded today (R-" + dup[0].no + ")." });
+      const { data, error } = await db.from("coe_refunds").insert(row).select().single();
+      if (error) return out({ ok: false, error: error.message });
+      if (row.wallet === "CCB" && row.amount > 0) {   // Alipay/WeChat go down through the SALES minus line; the bank (CCB) is not counted from SALES, so it gets an "out"
+        const { data: w } = await db.from("coe_wallet").insert({ kind: "out", wallet: "CCB", day: data.day, cny: row.amount, fee: 0, by_name: who, note: "Refund R-" + data.no + " · " + (row.name || code) + (row.pay_to ? " · to " + row.pay_to : "") }).select("id").single();
+        if (w) { await db.from("coe_refunds").update({ wallet_id: w.id }).eq("no", data.no); data.wallet_id = w.id; }
+      }
+      return out({ ok: true, refund: data });
+    }
+    if (a === "refund_done") {
+      const no = +b.no; if (!(no > 0)) return out({ ok: false, error: "no" });
+      const { data, error } = await db.from("coe_refunds").update({ status: b.ok ? "done" : "sheet?", sheet_row: +b.sheet_row || null, sheet_note: str(b.note, 300) || null }).eq("no", no).select().maybeSingle();
+      return out(error ? { ok: false, error: error.message } : { ok: true, refund: data });
     }
     if (a === "list") {
       let q = db.from("coe_invoices").select("*").order("no", { ascending: false }).limit(Math.min(+b.limit || 60, 300));
