@@ -15,6 +15,7 @@
 //   people_set { teacher, p }             → { ok }                               (President: legal name, address… for the Agreement)
 //   scan_put  { id, name, type, b64 }     → { ok, row }                          (President: notarized scan)
 //   void      { id, reason }              → { ok }                               (President: start this document again)
+//   witness   { id, sig, name }           → { ok, row }                          (Operations: witness for both parties, in the App)
 //   doc_text  { id, find, replace }       → { ok, hash }                         (President: fix wording before anyone signs)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -23,7 +24,7 @@ const ORIGINS = ["https://app.cupofenglishatph.com"];
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 const str = (x: unknown, n = 200) => String(x == null ? "" : x).trim().slice(0, n);
-const LIGHT = "id,teacher,doc_id,sent_at,sent_by,due_at,opened_at,status,note,note_at,reply,reply_at,reply_by,signed_at,typed_name,ip,loc,filled_hash,pres_at,pres_name,pres_ip,pres_loc,scan_name,scan_at,paper_date,void_at";
+const LIGHT = "id,teacher,doc_id,sent_at,sent_by,due_at,opened_at,status,note,note_at,reply,reply_at,reply_by,signed_at,typed_name,ip,loc,filled_hash,pres_at,pres_name,pres_ip,pres_loc,wit_at,wit_name,scan_name,scan_at,paper_date,void_at";
 const peso = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
 const MON = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const longDay = (d: string) => { const m = String(d || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + " " + MON[+m[2] - 1] + " " + m[1] : String(d || ""); };
@@ -129,6 +130,17 @@ Deno.serve(async (req: Request) => {
       const reply = str(b.reply, 2000); if (!reply) return out({ ok: false, error: "Write a reply." });
       await db.from("coe_contract_signs").update({ reply, reply_at: now, reply_by: me }).eq("id", +b.id);
       return out({ ok: true });
+    }
+    if (a === "witness") {   // Operations signs once as witness for both parties, after the teacher has signed (before printing)
+      if (pres) return out({ ok: false, error: "The witness must be someone other than the parties: Operations signs as witness." }, 403);
+      const { data: r } = await db.from("coe_contract_signs").select(LIGHT).eq("id", +b.id).maybeSingle();
+      if (!r || r.status !== "signed") return out({ ok: false, error: "The teacher has not signed yet." });
+      if (r.wit_at) return out({ ok: true, row: r, already: true });
+      const sig = String(b.sig || ""); if (!/^data:image\/png;base64,/.test(sig) || sig.length < 800 || sig.length > 250000) return out({ ok: false, error: "Draw your signature in the box." });
+      const nm = str(b.name, 120); if (nm.length < 4 || !/\s/.test(nm)) return out({ ok: false, error: "Type your full name." });
+      await db.from("coe_contract_signs").update({ wit_at: now, wit_name: nm, wit_sig: sig, wit_ip: ip, wit_ua: ua }).eq("id", r.id);
+      const { data: r2 } = await db.from("coe_contract_signs").select(LIGHT).eq("id", r.id).maybeSingle();
+      return out({ ok: true, row: r2 });
     }
     if (!pres) return onlyPres();
     if (a === "countersign") {
