@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 985;
+const COE_V = 986;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22086,7 +22086,7 @@ go();
         s = { url: r.url, key: r.key, name: r.name, chunk: r.chunk, size: f.size, fn: f.name, lm: f.lastModified, t: Date.now(), day: c.day };
         o = get(); o[id] = s; put(o);
       }
-      const N = f.size, CH = s.chunk || 8388608; let off = 0, fileId = '', fails = 0;
+      const N = f.size, CH0 = s.chunk || 8388608; let CH = CH0, off = 0, fileId = '', fails = 0, t1 = 0;
       const exp = () => Object.assign(new Error('This upload link expired. Tap Upload video again to start over.'), { exp: 1 });
       const ask = async () => { const r = await fetch(s.url, { method: 'PUT', headers: { 'Content-Range': 'bytes */' + N } });
         if(r.status === 200 || r.status === 201){ const j = await r.json().catch(() => ({})); return { done: j.id || '' }; }
@@ -22103,15 +22103,15 @@ go();
       while(!fileId && off < N){
         const end = Math.min(off + CH, N);
         try{
-          const r = await fetch(s.url, { method: 'PUT', headers: { 'Content-Range': 'bytes ' + off + '-' + (end - 1) + '/' + N }, body: f.slice(off, end) });
+          t1 = Date.now(); const r = await fetch(s.url, { method: 'PUT', headers: { 'Content-Range': 'bytes ' + off + '-' + (end - 1) + '/' + N }, body: f.slice(off, end) });
           if(r.status === 200 || r.status === 201){ const j = await r.json().catch(() => ({})); fileId = j.id || ''; off = N; if(!fileId){ const q = await ask(); fileId = q.done || ''; } }
-          else if(r.status === 308){ const g = r.headers.get('Range'); off = g ? +g.split('-')[1] + 1 : 0; fails = 0; }
+          else if(r.status === 308){ const g = r.headers.get('Range'); off = g ? +g.split('-')[1] + 1 : 0; fails = 0; const ms = Date.now() - t1; CH = ms < 4000 ? Math.min(CH * 2, 8 * CH0) : ms > 12000 ? Math.max(CH0, CH / 2) : CH; }
           else if(r.status === 404 || r.status === 410) throw exp();
           else throw new Error('Google answered ' + r.status);
           prog();
         }catch(e){
           if(e.exp) throw e;
-          if(++fails > 10) throw new Error('The internet keeps dropping. Tap Upload video again with the same file · it continues where it stopped.');
+          CH = Math.max(CH0, CH / 2); if(++fails > 10) throw new Error('The internet keeps dropping. Tap Upload video again with the same file · it continues where it stopped.');
           show('<b>Connection dropped · trying again…</b><div class="small" style="opacity:.8">' + who + ' · ' + Math.floor(off / N * 100) + '% sent · nothing is lost</div>', 'wait');
           await sleep(Math.min(30000, 2000 * fails));
           try{ const q = await ask(); if(q.done) fileId = q.done; else off = q.off; }catch(x){ if(x.exp) throw x; }
