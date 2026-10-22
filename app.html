@@ -2072,7 +2072,7 @@ async function classBrief(id){
 const c = (D.schedule||[]).find(x => x.id === id); if(!c) return;
 const s = (D.students||[]).find(x => x.code === c.code) || {}, n = s.note, hw = (D.hw||{})[c.id], fb = FB && (FB.students||[]).find(x => x.code === c.code);
 const head = `<div class="row"><div class="av">${esc((c.student||'?')[0])}</div><div class="grow"><h1>${esc(c.student || c.title)}</h1><div class="mute small">${tm(c.start)}–${tm(c.end)} · ${esc([c.code, c.book || s.book].filter(Boolean).join(' · '))}</div></div></div>
-<div class="stats" style="margin-top:12px"><div class="stat"><b class="num">${s.left==null?'—':s.left}</b><span>lessons left</span></div><div class="stat"><b class="num" id="cbLv">—</b><span>level</span></div>
+<div class="stats" style="margin-top:12px"><div class="stat"><b class="num" style="font-size:15px">${D.mgr ? (s.left==null?'—':s.left) : s.left!=null&&s.left<=3 ? 'Ending soon' : 'Active'}</b><span>${D.mgr ? 'lessons left' : 'package'}</span></div><div class="stat"><b class="num" id="cbLv">—</b><span>level</span></div>
 <div class="stat"><b class="num" style="font-size:15px">${fb ? (fb.done ? '✓ sent' : 'to do') : '—'}</b><span>${esc(FB ? String(FB.label).split(' ')[0] : 'monthly')} feedback</span></div></div>
 <h2>Last class</h2>${n ? `<div class="note"><b>Ended: ${esc(n.ended)}</b>${n.obs?'<br>Noticed: '+esc(n.obs):''}${n.next?'<br>Plan: '+esc(n.next):''}${n.homework?'<br>Homework given: '+esc(n.homework):''}<br><span class="mute small">${esc(tName(n.by||''))} · ${esc(n.date||'')}</span></div>` : '<div class="mute small">No class notes yet.</div>'}
 <div id="cbFocus"><h2>Learning focus</h2><div class="sk"></div></div>
@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 901;
+const COE_V = 902;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -19514,25 +19514,25 @@ body:not(.mgr) #v-students .sm504{background:#fff;border:1px solid rgba(43,34,83
     const fbS = {}; ((typeof FB !== 'undefined' && FB && FB.students) || []).forEach(x => fbS[x.code] = x);
     const hasFB = typeof FB !== 'undefined' && !!FB, open = hasFB && fbOpen();
     const fbMine = all.filter(s => fbS[s.code]), fbDone = fbMine.filter(s => fbS[s.code].done).length, fbFix = fbMine.filter(s => fbS[s.code].fix).length, fbPend = fbMine.filter(s => !fbS[s.code].done).length;
-    const low = all.filter(s => s.left != null && s.left <= 5).length, shared = all.filter(s => s.shared && !(s.left != null && s.left <= 5)).length, plenty = all.length - low - shared;
+    const low = all.filter(s => s.left != null && s.left <= 3).length, shared = all.filter(s => s.shared && !(s.left != null && s.left <= 3)).length, plenty = all.length - low - shared;
     const books = new Set(all.map(s => parts(s.book).bk.join(' ')).filter(Boolean)).size;
     let list = all.slice();
     if(STU_FILTER === 'fb') list = list.filter(s => fbS[s.code] && !fbS[s.code].done);
     if(STU_FILTER === 'due') list = list.filter(fbDue);
-    if(STU_FILTER === 'low') list = list.filter(s => s.left != null && s.left <= 5);
+    if(STU_FILTER === 'low') list = list.filter(s => s.left != null && s.left <= 3);
     if(q) list = list.filter(s => (s.name + ' ' + s.cn + ' ' + s.code + ' ' + (s.book || '')).toLowerCase().includes(q));
     const mv = D.moved || [];
     let h = `<div class="lead"><h1>My students</h1><div class="mute small">${all.length} active${mv.length ? ' · ' + mv.length + ' no longer with you' : ''}</div></div>`;
-    h += `<section class="sm504"><div class="f504"><span>${ic.stu}<b>${all.length}</b> student${all.length === 1 ? '' : 's'}</span><span>${ic.bk}<b>${books}</b> book${books === 1 ? '' : 's'}</span>${low ? `<span class="lo">${ic.lo}<b>${low}</b> with 5 or fewer lessons left</span>` : ''}</div>
-<div class="br504"><span>Lessons left</span><div class="bar">${plenty ? `<i style="flex:${plenty};background:#5EC4CB"></i>` : ''}${shared ? `<i style="flex:${shared};background:#B9B6CC"></i>` : ''}${low ? `<i style="flex:${low};background:#E07A62"></i>` : ''}</div>
-<div class="k"><span style="--c:#5EC4CB">More than 5 <b>${plenty}</b></span>${shared ? `<span style="--c:#B9B6CC">Shared package <b>${shared}</b></span>` : ''}<span style="--c:#E07A62">5 or fewer <b>${low}</b></span></div>`;
+    h += `<section class="sm504"><div class="f504"><span>${ic.stu}<b>${all.length}</b> student${all.length === 1 ? '' : 's'}</span><span>${ic.bk}<b>${books}</b> book${books === 1 ? '' : 's'}</span>${low ? `<span class="lo">${ic.lo}<b>${low}</b> package${low === 1 ? '' : 's'} ending soon</span>` : ''}</div>
+<div class="br504">
+`;
     if(hasFB && fbMine.length){ const lbl = esc(fbLbl() || 'This month');
       h += `<span>${lbl.split(' ')[0]} feedback</span>${open || fbDone ? `<div class="bar">${fbDone ? `<i style="flex:${fbDone};background:#2FA36B"></i>` : ''}${fbPend ? `<i style="flex:${fbPend};background:${open ? '#F0B49F' : '#E4E3EC'}"></i>` : ''}</div>
 <div class="k"><span style="--c:#2FA36B">Written <b>${fbDone}</b></span><span style="--c:${open ? '#F0B49F' : '#E4E3EC'}">${open ? 'To write' : 'Not open yet'} <b>${fbPend}</b></span>${fbFix ? `<span style="--c:#C0533F">To fix <b>${fbFix}</b></span>` : ''}</div>`
         : `<div class="op">○ Opens ${esc((FB && FB.opensLabel) || '25th')} · ${fbMine.length} student${fbMine.length === 1 ? '' : 's'} to write for</div>`}`; }
     h += `</div></section>`;
     h += `<div style="margin-top:14px"><input id="sq" class="search" placeholder="Search name, code or book" value="${esc(q)}" oninput="renderStudents()"></div>
-<div class="seg"><button class="${STU_FILTER === 'all' ? 'on' : ''}" onclick="setFilter('all')">All</button>${hasFB && (open || STU_FILTER === 'fb') ? `<button class="${STU_FILTER === 'fb' ? 'on' : ''}" onclick="setFilter('fb')">${esc(fbLbl().split(' ')[0])} feedback to do · ${fbPend}</button>` : ''}<button class="${STU_FILTER === 'low' ? 'on' : ''}" onclick="setFilter('low')">5 or fewer left · ${low}</button></div>`;
+<div class="seg"><button class="${STU_FILTER === 'all' ? 'on' : ''}" onclick="setFilter('all')">All</button>${hasFB && (open || STU_FILTER === 'fb') ? `<button class="${STU_FILTER === 'fb' ? 'on' : ''}" onclick="setFilter('fb')">${esc(fbLbl().split(' ')[0])} feedback to do · ${fbPend}</button>` : ''}<button class="${STU_FILTER === 'low' ? 'on' : ''}" onclick="setFilter('low')">Ending soon · ${low}</button></div>`;
     const fp = s => { const f = fbS[s.code], c = esc(s.code);
       if(f) return f.fix ? `<span class="fp fx" onclick="event.stopPropagation();fbSheet('${c}')">⚠ Fix feedback</span>` : f.done ? '<span class="fp ok">✓ Feedback</span>'
         : !fbCan(s.code) ? `<span class="fp wt">○ Opens ${esc((FB && FB.opensLabel) || '25th')}</span>` : `<span class="fp do" onclick="event.stopPropagation();fbSheet('${c}')">✎ Write feedback</span>`;
@@ -19540,13 +19540,13 @@ body:not(.mgr) #v-students .sm504{background:#fff;border:1px solid rgba(43,34,83
     const NX = {}; { const now = Date.now(); (D.schedule || []).filter(c => c.code && !c.cancelled && new Date(c.end).getTime() > now).sort((a, b) => String(a.start).localeCompare(String(b.start))).forEach(c => { if(!NX[c.code]) NX[c.code] = c; }); }
     const nxL = c => { if(!c) return ''; const d = new Date(c.start), y = ymdLocal(d), t = ymdLocal(new Date()), tm = ymdLocal(new Date(Date.now() + 864e5)), hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
       return `<div class="nx507 ${y === t ? 't' : ''}"><i></i>${y === t ? 'Today ' + hm : y === tm ? 'Tomorrow ' + hm : esc(d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })) + ' · ' + hm}</div>`; };
-    const card = s => { const P = parts(s.book), bk = P.bk.join(' · '), col = bookCol(s.book), lo = s.left != null && s.left <= 5;
+    const card = s => { const P = parts(s.book), bk = P.bk.join(' · '), col = bookCol(s.book), lo = s.left != null && s.left <= 3;
       const ended = s.note && s.note.ended ? String(s.note.ended).split(' · ').slice(0, 3).join(' · ') : '';
       return `<div class="c504" style="--bc:${col}" onpointerdown="stuPre('${esc(s.code)}')" onclick="openStudent('${esc(s.code)}')"><div class="av">${esc((s.name || '?')[0])}</div>
 <div class="md"><div class="nm"><b>${esc(s.name)}</b>${s.cn ? `<span>${esc(s.cn)}</span>` : ''}</div>
 <div class="tg">${bk ? `<span class="bk">${esc(bk)}</span>` : ''}${P.lv.map(x => `<span class="lv">${esc(x)}</span>`).join('')}<span class="cd">${esc(s.code)}</span></div>
 ${ended ? `<div class="ln" title="${esc(s.note.ended)}"><em>Last class ·</em> ${esc(ended)}</div>` : '<div class="ln"><em>No class note yet</em></div>'}${nxL(NX[s.code])}</div>
-<div class="rt"><span class="lf ${lo ? 'lo' : ''}"><b>${s.left == null ? '—' : esc(s.left)}</b><small>${lo ? '! ' : ''}left${s.shared ? ' · shared' : ''}</small></span>${fp(s)}</div></div>`; };
+<div class="rt">${lo ? '<span class="chip coral">Ending soon</span>' : ''}${fp(s)}</div></div>`; };
     h += list.length ? `<div class="gr504">${list.map(card).join('')}</div>` : '<div class="empty">No students here.</div>';
     if(mv.length && STU_FILTER === 'all') h += `<details class="fbold" style="margin-top:14px"><summary class="small" style="color:#2F6F77;font-weight:700">No longer with you · ${mv.length} ›</summary>
 <div class="small mute" style="margin:6px 0 4px">These students now have their classes with another teacher, so they are not counted for your monthly feedback.</div>
@@ -20785,7 +20785,8 @@ go();
     if(!f.length && !tr.length) return '';
     return '<h2>About</h2><div class="facts">' + f.map(([k, v]) => '<div><span>' + esc(k) + '</span><b>' + esc(v) + '</b></div>').join('') + (tr.length ? '<div class="wide"><span>Trial class</span><b>' + esc(tr.join(' · ')) + '</b></div>' : '') + '</div>'; };
   document.head.insertAdjacentHTML('beforeend', '<style>#sheetBody.tview .kpis>div:first-child{display:none}</style>');
-  const mark = () => { const b = document.getElementById('sheetBody'); if(b) b.classList.toggle('tview', isT()); };
+  const mark = () => { const b = document.getElementById('sheetBody'); if(!b) return; b.classList.toggle('tview', isT());
+    try{ if(isT() && typeof STU !== 'undefined' && STU && STU.s && STU.s.left != null && STU.s.left <= 3){ const row = b.querySelector('.shero .row'); if(row && !row.querySelector('.pk-end')) row.insertAdjacentHTML('beforeend', '<span class="chip coral pk-end">Package ending soon</span>'); } }catch(e){} };
   const _r = window.stuRender; if(typeof _r === 'function') window.stuRender = function(){ mark(); const r = _r.apply(this, arguments); mark(); return r; };
 })();
 </script>
