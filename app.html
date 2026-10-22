@@ -6129,7 +6129,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 914;
+const COE_V = 915;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -21080,7 +21080,7 @@ go();
       (P && x.status !== 'void' ? ' <a href="javascript:void 0" onclick="rfVoid(' + x.no + ')" style="color:#B4442F;margin-left:8px;font-size:12.5px">Void</a>' : '') + '</span></div>').join('');
     if(R.done){ const d = R.done;
       b.innerHTML = '<div class="rf"><h1>Refund R-' + d.no + ' recorded</h1><div class="sub">' + e(R.name) + ' ' + e(R.cn || '') + ' · ' + e(R.code) + '</div>' +
-        (R.sheetOk ? '<div class="ok">✓ ' + e(R.sheetNote || 'Saved') + '<br>SALES has a minus line, lessons left are 0, the status says Refunded, and the ' + e(R.wallet) + ' wallet goes down by ' + yen(d.amount) + '.</div>'
+        (R.sheetBusy ? '<div class="warn" style="background:#F1FAF9;color:#00626A">Refund R-' + d.no + ' is saved. Updating SALES and ACTIVE in Google… (about 30 seconds · you can copy the message now)</div>' : R.sheetOk ? '<div class="ok">✓ ' + e(R.sheetNote || 'Saved') + '<br>SALES has a minus line, lessons left are 0, the status says Refunded, and the ' + e(R.wallet) + ' wallet goes down by ' + yen(d.amount) + '.</div>'
           : '<div class="warn">The refund number is saved, but the sheet was not updated: ' + e(R.sheetNote || '') + '<br><button class="btn sm" style="margin-top:8px" onclick="rfSheet()">Try the sheet again</button></div>') +
         '<div class="box"><h3>Send to ' + (R.payTo && R.payTo !== 'Family' ? e(R.payTo) : 'the family') + '</h3><textarea id="rfMsg">' + e(R.msg) + '</textarea>' +
         '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn teal" onclick="rfCopy()">Copy message 复制消息</button><button class="btn" onclick="rfPic()">Refund note picture</button><button class="btn ghost" onclick="closeSheet();setTimeout(()=>openStudent(\'' + e(R.code) + '\'),150)">Back to ' + e(R.name) + '</button></div></div></div>';
@@ -21134,7 +21134,7 @@ go();
       const S = R.sale || {};
       const j = await call('refund_issue', { r: { code: R.code, name: R.name, cn: R.cn, teacher: R.teacher, sale_invoice: S.invoice, sale_row: S.row, left: R.left, free: R.free, lessons: c.n, rate: R.rate,
         adjust: R.adjust, reason: R.reason, amount: c.amount, partner: S.partner, pay_to: R.payTo === 'Family' ? 'Family' : R.payTo, wallet: R.wallet, day: R.day } });
-      R.done = j.refund; await rfSheet(true);
+      R.done = j.refund; R.sheetBusy = true; paint(); await rfSheet(true);
     }catch(x){ R.busy = 0; toast(x.message || 'Could not record'); if(g){ g.disabled = false; upd(); } } };
   window.rfSheet = async function(first){ if(!R || !R.done) return; const d = R.done, c = calc();
     try{ const r = await api('mgmtRefund', TOKEN, { code: R.code, teacher: R.teacher, no: 'R-' + d.no, lessons: d.refund_lessons, free: d.free_lessons, amount: d.amount, rate: d.rate, adjust: d.adjust, reason: d.adjust_reason || '',
@@ -21143,7 +21143,7 @@ go();
       call('refund_done', { no: d.no, ok: R.sheetOk, sheet_row: r && r.saleRow, note: R.sheetNote }).catch(() => {});
     }catch(x){ R.sheetOk = false; R.sheetNote = x.message || String(x); call('refund_done', { no: d.no, ok: false, note: R.sheetNote }).catch(() => {}); }
     try{ delete STUC[R.code]; }catch(x){}
-    paint(); };
+    R.sheetBusy = false; const keep = ($('rfMsg') || {}).value; if(keep) R.msg = keep; if($('sheetBody') && $('sheetBody').querySelector('.rf')) paint(); toast(R.sheetOk ? 'Refund R-' + d.no + ' · sheet updated' : 'Refund R-' + d.no + ' saved · sheet not updated'); };
   window.rfVoid = async function(no){ const why = prompt('Void refund R-' + no + '?\n\nThe record stays (crossed out). A CCB wallet entry is undone. The SALES minus line and the ACTIVE change stay in the sheet: fix those by hand if needed.\n\nReason:'); if(!why) return;
     try{ await call('refund_void', { no, reason: why }); toast('R-' + no + ' voided'); const p = await call('refund_list', { code: R.code }); R.past = p.refunds || []; paint(); }catch(x){ toast(x.message); } };
 
