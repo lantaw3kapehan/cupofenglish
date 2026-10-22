@@ -8,6 +8,7 @@
 //   bir    { no, bir_no }       → { ok }                 (printed BIR invoice number, once)
 //   void   { no, reason }       → { ok, invoice }
 //   list   { code?, limit?, history? } → { ok, invoices, history }   (history = QuickBooks numbers from SALES, read only)
+//   stu    { code }             → { ok, data }           (DATABASE record from coe_students, for the student form)
 //   contact { code } → { ok, email } · contact_set { code, email } → { ok }   (Edit student: the email used for payment confirmations)
 //   verify { no, code }         → { ok, valid, no, day, total, currency, status }   (public, no sign-in; for the verify page)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -83,6 +84,11 @@ Deno.serve(async (req: Request) => {
       const no = +b.no, why = str(b.reason, 200); if (!(no > 0) || !why) return out({ ok: false, error: "A reason is needed to void." });
       const { data, error } = await db.from("coe_invoices").update({ status: "void", void_reason: why, void_by: who, void_at: new Date().toISOString() }).eq("no", no).select().maybeSingle();
       return out(error ? { ok: false, error: error.message } : { ok: true, invoice: withVq(data) });
+    }
+    if (a === "stu") {   // the student's DATABASE record from the database copy, to fill the student form when the sheet row is not loaded
+      const code = str(b.code, 20); if (!/^ST-\d{4}-\d{3}$/.test(code)) return out({ ok: true, data: null });
+      const { data } = await db.from("coe_students").select("data,updated_at").eq("code", code).is("removed_at", null).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+      return out({ ok: true, data: (data && data.data) || null });
     }
     if (a === "contact") {   // the student's email for payment confirmations (one place: coe_bill_profiles), shown in Edit student
       const code = str(b.code, 20); if (!code) return out({ ok: true, email: "" });
