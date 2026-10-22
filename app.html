@@ -1328,10 +1328,10 @@ reload(false);
 async function reload(force){
 $('rf').classList.add('spin');
 try{
-D = await api(force ? 'refresh' : 'getBootstrap', TOKEN);
+D = await api('getBootstrap', TOKEN);   /* 638: ↻ shows the database copy first (about 2 s); Google's full re-check ('refresh', about 30 s) runs behind it */
 store('set', KEY_D, JSON.stringify(D)); render(); if(!D.mgr){ prefetchTeacher(force); fastFails(); }
 if(force && D.mgr){ await loadMgmt(); if(MS){ MS = null; if(VIEW==='astudents') loadStudents(); } }
-if(force) toast('Up to date');
+if(force){ toast('Up to date'); const tk = TOKEN; api('refresh', tk).then(v => { if(!v || TOKEN !== tk) return; store('set', KEY_D, JSON.stringify(v)); const a = document.activeElement; if(document.querySelector('#sheet.on') || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return; D = v; render(); }).catch(() => {}); }
 }catch(e){ if(!D) toast('Could not load. Check your internet.'); }
 $('rf').classList.remove('spin');
 }
@@ -6154,7 +6154,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 969;
+const COE_V = 970;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
