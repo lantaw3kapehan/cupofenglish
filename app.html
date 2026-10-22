@@ -3232,7 +3232,8 @@ else openSheet(`<div class="paper" style="display:none"></div><h1 id="stuLoad">$
 try{
 const r = await stuPre(code); if(r && r.ok === false) throw r; try{ store('set', k, JSON.stringify(r)); const at = JSON.parse(store('get','coe.stu.@at') || '{}'); at[code] = Date.now(); store('set','coe.stu.@at', JSON.stringify(at)); }catch(e){}
 if(!$('sheet').classList.contains('on') || window._stuOpen !== code || (!$('stuSch') && !$('stuLoad'))) return;   /* 14 Oct: another card is open now (picture, agreement…) */
-STU = {s, r, code, cls: CLSM[code] || (STU && STU.code === code && STU.cls) || cls0}; stuRender();
+if(kept0 && JSON.stringify(kept0) === JSON.stringify(r)) return;   /* 580: same data → no second drawing */
+{ const sh = $('sheet'), y = sh ? sh.scrollTop : 0; STU = {s, r, code, cls: CLSM[code] || (STU && STU.code === code && STU.cls) || cls0}; stuRender(); if(kept0 && sh){ sh.scrollTop = y; requestAnimationFrame(() => { sh.scrollTop = y; }); } }   /* 580: keep the place */
 }catch(e){ if(!kept0) $('sheetBody').innerHTML = '<div class="empty">Could not load. Try again.</div>'; }
 }
 
@@ -6128,7 +6129,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 911;
+const COE_V = 912;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -14644,7 +14645,8 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
   window.stuTab = function(k){ TABK = k; try{ localStorage.setItem('coe.stab', k); }catch(e){} apply(); const t = document.querySelector('#sheetBody .stu-tabs'); if(t){ const sh = $('sheet'); try{ const top = t.offsetTop - 8; const sc = t.closest('.sheet, #sheet') || sh; if(sc && sc.scrollTop > top) sc.scrollTop = top; }catch(e){} } };
   const r0 = window.stuRender; window.stuRender = function(){ const r = r0.apply(this, arguments); try{ apply(); }catch(e){} setTimeout(() => { try{ apply(); }catch(e){} }, 30); return r; };
   /* sections added later (status, changes, profile, schedule refresh) take their tab too */
-  let t = 0; try{ const sb = $('sheetBody'); if(sb) new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { try{ if(sb.querySelector('.shero')) apply(); else sb.classList.remove('stu2'); }catch(e){} }, 40); }).observe(sb, { childList: true }); }catch(e){}
+  /* 580: same frame (an observer runs before the screen is drawn), no 40 ms raw view */
+  try{ const sb = $('sheetBody'); if(sb) new MutationObserver(() => { try{ if(sb.querySelector('.shero')) apply(); else sb.classList.remove('stu2'); }catch(e){} }).observe(sb, { childList: true }); }catch(e){}
 })();
 </script>
 <script>
@@ -14703,9 +14705,9 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
     /* next class */
     const first = body.querySelector('#stuSch .cls:not(.x)'); if(first && !first.classList.contains('nx')){ first.classList.add('nx'); const nm = first.querySelector('.nm'); if(nm && !first.querySelector('.nxb')) nm.insertAdjacentHTML('afterend', '<span class="nxb">Next</span>'); }
   }
-  const r0 = window.stuRender; window.stuRender = function(){ const r = r0.apply(this, arguments); setTimeout(paint, 60); setTimeout(paint, 400); return r; };
+  const r0 = window.stuRender; window.stuRender = function(){ const r = r0.apply(this, arguments); try{ paint(); }catch(e){} setTimeout(paint, 400); return r; };   /* 580: labels in the same frame */
   const t0 = window.stuTab; if(t0) window.stuTab = function(){ const r = t0.apply(this, arguments); paint(); return r; };
-  try{ const sb = $('sheetBody'); let t = 0; if(sb) new MutationObserver(() => { clearTimeout(t); t = setTimeout(paint, 80); }).observe(sb, { childList: true, subtree: true }); }catch(e){}
+  try{ const sb = $('sheetBody'); let t = 0, n = 0, at = 0; if(sb) new MutationObserver(() => { const now = Date.now(); if(now - at > 300){ at = now; n = 0; } if(++n < 12){ try{ paint(); }catch(e){} } else { clearTimeout(t); t = setTimeout(paint, 80); } }).observe(sb, { childList: true, subtree: true }); }catch(e){}   /* 580: same frame; falls back to the old delay if something keeps changing */
 })();
 </script>
 <script>
@@ -20951,7 +20953,8 @@ go();
         if(!el.dataset.hi){ el.dataset.hi = 1; if(k === 'id') el.classList.add('h-code');
           const ic = k === 'tch' ? (el.previousElementSibling && kind(el.previousElementSibling) === 'tch' ? '' : IC.tch) : IC[k];
           if(ic && !el.querySelector('svg')) el.insertAdjacentHTML('afterbegin', ic); }
-        dst.appendChild(el); });
+        (dst._w || (dst._w = [])).push(el); });
+      L.forEach(l => { const w = l._w || []; l._w = null; const cur = [...l.children]; if(w.length !== cur.length || w.some((e, i) => e !== cur[i])) w.forEach(e => l.appendChild(e)); });   /* 580: move only when the order is wrong */
       /* only the first teacher keeps the icon */
       L[1].querySelectorAll('.teal').forEach((el, i) => { const s = el.querySelector('svg'); if(i > 0 && s) s.remove(); if(i === 0 && !s) el.insertAdjacentHTML('afterbegin', IC.tch); });
       L.forEach(l => { l.style.display = l.children.length ? '' : 'none'; });
@@ -20992,6 +20995,16 @@ go();
       const M = S.map((x, i) => [x.d, (i ? 'Added' : 'Started') + (x.p ? ' · ' + x.p : ''), i ? '#2B2253' : '#00A3AD']).concat([[today, 'Today', '#00808A']]);
       const ln = jy.querySelector('.ln'); if(ln) ln.innerHTML = M.map((x, i) => '<div class="ms' + (i === 0 ? ' f' : i === M.length - 1 ? ' l' : '') + '" style="left:' + (i / (M.length - 1) * 100) + '%;--c:' + x[2] + '"><i></i><b>' + esc(x[1]) + '</b><span>' + esc(fdx(x[0])) + '</span></div>').join('');
       return t.innerHTML; }catch(e){ return h; } };
+})();
+</script>
+<script>
+/* 22 Oct · 580 · a newly opened card starts at the top (it kept the last card's scroll place, then jumped) */
+(function(){
+  const o = window.openSheet; if(!o) return;
+  window.openSheet = function(html){ const sh = $('sheet'), was = sh && sh.classList.contains('on'), old = was ? ($('sheetBody') || {}).innerHTML || '' : '';
+    const r = o.apply(this, arguments);
+    try{ if(sh && (!was || String(html || '').slice(0, 160) !== old.slice(0, 160))) sh.scrollTop = 0; }catch(e){}
+    return r; };
 })();
 </script>
 </body>
