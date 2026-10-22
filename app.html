@@ -6154,7 +6154,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 955;
+const COE_V = 956;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -21789,6 +21789,152 @@ go();
     document.querySelectorAll('.nt-cnt').forEach(el => { el.textContent = NC ? NC + ' to decide' : ''; el.classList.toggle('hide', !NC); }); }catch(x){} }
   const _rm = window.renderMore; if(_rm) window.renderMore = function(){ const r = _rm.apply(this, arguments); try{ const m = $('v-more'); if(m && isMgmt() && !m.querySelector('.nt-more')){ const box = m.querySelector('div[style*="margin-top:12px"]') || m;
     const li = document.createElement('div'); li.className = 'li nt-more'; li.onclick = () => ntAdmin(); li.innerHTML = '<div class="av"><span style="font-size:18px" aria-hidden="true">⚠</span></div><div class="grow"><b>Notices of breach</b> <span class="chip nt-cnt hide" style="margin-left:6px"></span><div class="small mute">Notice in the app · teacher explains within 5 days · your written decision</div></div><span class="mute">›</span>'; box.appendChild(li); setTimeout(cnt, 50); } }catch(x){} return r; };
+})();
+</script>
+
+<script>
+/* 22 Oct · 624 · Celebrate 🎉 in management To do (Misty: students and parents). Three kinds, from data the app already has:
+   · Birthdays: active students whose birthday is today or in the next 7 days (DATABASE › BIRTHDATE; 2 days back if not sent yet).
+   · New book: the student's current book (Students list) is a new step on a levelled series (OPW, Raz, Wonders, OD, RE, DK, Pathways,
+     Business Partner, Market Leader). The first time the app sees a student it only remembers their books, so nothing old pops up.
+   · Lesson milestones: 50, 100, 150, 200, 250, 300, 400, 500… lessons taken (DATABASE › ENROLLMENT TOTAL − lessons left).
+   Each row: Picture (bilingual CupOfEnglish card to paste in the class WeChat group) · Copy message · ✓ Sent · Skip.
+   Sent/Skip are shared by everyone in management (Supabase coe_celebrate, via coe-notice). */
+(function(){
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-notice';
+  const call = async (action, body) => { const r = await fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, action }, body || {})) });
+    let j = null; try{ j = await r.json(); }catch(x){} if(!j) throw new Error('No answer from the server. Check the internet and try again.'); if(!j.ok) throw new Error(j.error || 'Could not save'); return j; };
+  const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const up = s => String(s || '').trim().toUpperCase();
+  const isMgmt = () => !!(typeof D !== 'undefined' && D && D.mgr);
+  let STU_L = null, DBX = null, CEL = null, busy = 0, at = 0, ITEMS = [];
+  const MILES = [50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000];
+
+  /* levelled books only (a new exam course or free talk is not a "move up") */
+  const SERIES = [[/^OPW(\d)$/, 'Oxford Phonics World '], [/^RAZ([A-Z]{1,2})$/, 'Raz-Kids '], [/^WONDERS(GK|G\d)$/, 'Wonders '], [/^OD(\d)$/, 'Oxford Discover '],
+    [/^RE-?F$|^REFOUNDATION$/, 'Reading Explorer Foundation', 1], [/^RE(\d)$/, 'Reading Explorer '], [/^DK(\d)$/, 'DK English '], [/^PW(\d)$/, 'Pathways '],
+    [/^B([ABC]\dP?)$/, 'Business Partner '], [/^ML([IUA])$/, 'Market Leader ']];
+  const norm = b => up(b).replace(/\+/g, 'P').replace(/[^A-Z0-9-]/g, '');
+  function bookName(b){ const k = norm(b); for(const s of SERIES){ const m = k.match(s[0]); if(!m) continue; if(s[2]) return s[1];
+      let v = m[1] || ''; if(/^Raz/.test(s[1])) v = v.charAt(0) + v.slice(1).toLowerCase(); if(/^Wonders/.test(s[1])) v = v === 'GK' ? 'GK' : v; if(/^Business/.test(s[1])) v = v.replace(/P$/, '+');
+      if(/^Market/.test(s[1])) v = { I: 'Intermediate', U: 'Upper Intermediate', A: 'Advanced' }[v] || v; return s[1] + v; } return ''; }
+  const booksOf = s => String((s && s.book) || '').split(/[,;&/]+|\s+·\s+/).map(x => norm(x.trim().split(/\s+/)[0])).filter(Boolean);
+
+  function students(){ const ms = (typeof MS !== 'undefined' && MS) ? (Array.isArray(MS) ? MS : (MS.students || MS.rows || null)) : null; return Array.isArray(ms) && ms.length ? ms : STU_L; }
+  function dbx(){ return (typeof DB !== 'undefined' && DB && DB.rows) ? DB : DBX; }
+  const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  function birthYmd(raw){ raw = String(raw == null ? '' : raw).trim(); let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m) return [+m[1], +m[2], +m[3]];
+    m = raw.match(/^(\d{1,2})[-\s\/]([A-Za-z]{3})[a-z]*[-\s\/,]*(\d{4})$/); if(m){ const M = 'janfebmaraprmayjunjulaugsepoctnovdec'.indexOf(m[2].toLowerCase()) / 3 + 1; if(M >= 1) return [+m[3], M, +m[1]]; }
+    m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if(m) return [+m[3], +m[1], +m[2]]; return null; }
+
+  function build(){ const L = students(), X = dbx(); if(!L || !X || !CEL) return null;
+    const H = (X.head || []).map(h => up(h)); let jT = H.findIndex(h => /ENROLLMENT/.test(h) && /TOTAL/.test(h)); if(jT < 0) jT = 18;
+    const R = {}; (X.rows || []).forEach(r => { const c = up(r[0]); if(/^ST-/.test(c) && !R[c]) R[c] = r; });
+    const done = {}; (CEL.marks || []).forEach(m => done[m.k] = m);
+    const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), out = [], seed = {};
+    L.forEach(s => { const c = up(s.code); if(!/^ST-/.test(c)) return; const r = R[c], en = String(s.name || (r && r[2]) || '').trim(), cn = String(s.cn || (r && r[1]) || '').trim();
+      const base = { code: c, en, cn, t: (s.teachers || []).join(', ') };
+      /* birthday */
+      const b = r && birthYmd(r[5]); if(b){ for(const yy of [t0.getFullYear() - 1, t0.getFullYear(), t0.getFullYear() + 1]){ const d = new Date(yy, b[1] - 1, b[2]), days = Math.round((d - t0) / 864e5);
+          if(days >= -2 && days <= 7){ const k = 'B|' + c + '|' + yy; if(!done[k]) out.push(Object.assign({ kind: 'bday', k, days, when: d, age: yy - b[0] }, base)); } } }
+      /* new book */
+      const bk = booksOf(s).filter(x => bookName(x)); const seen = CEL.books[c];
+      if(!seen){ if(bk.length) seed[c] = bk; }
+      else bk.forEach(x => { if(seen.indexOf(x) >= 0) return; const k = 'K|' + c + '|' + x; if(!done[k]) out.push(Object.assign({ kind: 'book', k, book: x, bookN: bookName(x), days: 0 }, base)); });
+      /* lessons */
+      const tot = r ? Number(String(r[jT] == null ? '' : r[jT]).replace(/[^\d.]/g, '')) : 0;
+      if(tot > 0 && s.left != null && !s.shared){ const taken = Math.round(tot - Number(s.left)); const M = MILES.filter(m => m <= taken).pop();
+        if(M && taken - M < 4){ const k = 'L|' + c + '|' + M; if(!done[k]) out.push(Object.assign({ kind: 'miles', k, n: M, taken, days: 0 }, base)); } } });
+    if(Object.keys(seed).length){ Object.assign(CEL.books, seed); call('cel_seed', { map: seed }).catch(() => {}); }
+    const ord = { bday: 0, book: 1, miles: 2 }; out.sort((a, b) => (a.kind === 'bday' && b.kind === 'bday' ? Math.abs(a.days) - Math.abs(b.days) || a.days - b.days : ord[a.kind] - ord[b.kind]));
+    return out; }
+
+  async function load(force){ if(!isMgmt() || busy || (!force && CEL && students() && dbx() && Date.now() - at < 10 * 6e4)) return; busy = 1;
+    try{ const jobs = [call('cel_list').then(j => { CEL = { marks: j.marks || [], books: j.books || {} }; })];
+      if(!students()) jobs.push(api('mgmtStudents', TOKEN).then(v => { STU_L = Array.isArray(v) ? v : (v && (v.students || v.rows)) || null; }));
+      if(!dbx()) jobs.push(api('mgmtDatabase', TOKEN).then(v => { if(v && v.rows) DBX = v; }));
+      await Promise.all(jobs); at = Date.now(); paint(); }
+    catch(x){ console.warn('celebrate', x); } finally { busy = 0; } }
+
+  const KIND = { bday: ['🎂', 'Birthday', '#E0533D', '#FDECE7'], book: ['📚', 'New book', '#2B6CB0', '#E8F0FA'], miles: ['🏅', 'Milestone', '#B7791F', '#FDF3E1'] };
+  const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function what(x){ if(x.kind === 'bday'){ const w = x.days === 0 ? 'today' : x.days === 1 ? 'tomorrow' : x.days < 0 ? (x.days === -1 ? 'yesterday' : x.days * -1 + ' days ago') : WD[x.when.getDay()] + ' ' + x.when.getDate() + ' ' + MO[x.when.getMonth()];
+      return (x.age > 0 && x.age < 100 ? (x.days < 0 ? 'Turned ' : 'Turns ') + x.age + ' · ' : '') + w; }
+    if(x.kind === 'book') return 'Moved up to ' + x.bookN; return x.n + ' lessons with CupOfEnglish'; }
+
+  function rowHtml(x, i){ const K = KIND[x.kind], n = x.kind === 'bday' ? (x.days === 0 ? '🎂' : x.days < 0 ? '!' : x.days) : K[0];
+    return `<div class="tdr ${x.kind === 'bday' && x.days <= 0 ? 'now' : 'later'}"><div class="tdn"><b class="num">${n}</b><span>${x.kind === 'bday' ? (x.days === 0 ? 'today' : x.days < 0 ? 'late' : x.days === 1 ? 'day' : 'days') : ''}</span></div>
+<div class="grow" style="min-width:0"><div><a class="nm" onclick="openStudent('${e(x.code)}')">${e(x.en)}</a> <span class="mute small">${e(x.cn)} · ${e(x.code)}</span></div>
+<div class="small" style="margin-top:2px">${e(what(x))}${x.t ? ' · ' + e(x.t) : ''}</div>
+<div class="tags"><span class="chip" style="background:${K[3]};color:${K[2]};font-weight:700">${K[0]} ${K[1]}</span></div></div>
+<div class="tdb"><button class="btn teal sm" onclick="celPic(${i})">Picture</button><button class="btn ghost sm" onclick="celCopy(${i})">Copy message</button><button class="btn ghost sm" onclick="celMark(${i})">✓ Sent</button><button class="btn ghost sm" onclick="celMark(${i},1)" title="No picture needed">Skip</button></div></div>`; }
+
+  function paint(){ const v = $('v-mtoday'); if(!v || typeof VIEW === 'undefined' || VIEW !== 'mtoday') return; const L = build(), old = $('td-celebrate');
+    if(!L){ if(!old) load(); return; } ITEMS = L;
+    if(!L.length){ if(old) old.remove(); return; }
+    const nb = L.filter(x => x.kind === 'bday').length, nk = L.length - nb;
+    const html = `<section class="sec" id="td-celebrate"><h2>Celebrate 🎉 <span class="c">${nb ? nb + ' birthday' + (nb === 1 ? '' : 's') : ''}${nb && nk ? ' · ' : ''}${nk ? nk + ' new book' + (nk === 1 ? '' : 's') + ' or milestone' + (nk === 1 ? '' : 's') : ''} · make the picture, send it in the class WeChat group, tap ✓ Sent</span></h2>${L.map(rowHtml).join('')}</section>`;
+    if(old) old.outerHTML = html; else v.insertAdjacentHTML('beforeend', html); }
+
+  /* the message (English and Chinese together, as the class reminders) */
+  function msg(x){ const en = x.en.split(/\s+/)[0] || x.en, cn = x.cn || en;
+    if(x.kind === 'bday') return `Happy Birthday, ${en}! 🎂 Wishing you a wonderful year of learning, growing and fun. From all your teachers at CupOfEnglish\n${cn}，生日快乐！🎂 祝你新的一岁快乐成长，学习进步！一杯英语全体老师`;
+    if(x.kind === 'book') return `Congratulations, ${en}! 🎉 You have moved up to ${x.bookN}. Your hard work is paying off. Keep it up!\n恭喜${cn}！🎉 已升级到新教材 ${x.bookN}。你的努力有了回报，继续加油！`;
+    return `Congratulations, ${en}! 🎉 You have completed ${x.n} lessons with CupOfEnglish. We are proud of your progress!\n恭喜${cn}！🎉 已在一杯英语完成${x.n}节课，我们为你的进步感到骄傲！`; }
+  window.celCopy = function(i){ const x = ITEMS[i]; if(!x) return; const t = msg(x);
+    navigator.clipboard.writeText(t).then(() => toast('Copied · paste it in WeChat, then tap ✓ Sent'), () => openSheet(`<h1>Message for ${e(x.en)}</h1><textarea class="in-t" rows="8" style="width:100%">${e(t)}</textarea>`)); };
+  window.celMark = async function(i, skip){ const x = ITEMS[i]; if(!x) return; const m = { k: x.k, kind: x.kind, code: x.code, skipped: !!skip, at: new Date().toISOString(), by: (D.me || {}).name || '' };
+    CEL.marks.push(m); if(x.kind === 'book'){ CEL.books[x.code] = (CEL.books[x.code] || []).concat(x.book); } paint(); closeSheet && closeSheet();
+    toast(x.en + ' · ' + (skip ? 'skipped' : 'marked sent'));
+    try{ await call('cel_mark', { k: x.k, kind: x.kind, code: x.code, name: x.en, detail: what(x), skip: !!skip, book: x.book || '' }); }
+    catch(err){ CEL.marks = CEL.marks.filter(y => y !== m); if(x.kind === 'book') CEL.books[x.code] = (CEL.books[x.code] || []).filter(b => b !== x.book); paint(); toast(err.message || 'Not saved. Try again.'); } };
+
+  /* the picture: portrait card for WeChat (CupOfEnglish logo, confetti, bilingual title, name, detail, wish, tagline) */
+  let PIC = null;
+  window.celPic = async function(i){ const x = ITEMS[i]; if(!x) return; toast('Making the picture…');
+    try{ await document.fonts.ready; await Promise.all(['400 40px "Fredoka One"', '700 20px Arvo', '400 20px Arvo'].map(f => document.fonts.load(f).catch(() => 0))); }catch(z){}
+    const ld = src => new Promise(r => { if(!src) return r(null); const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = src; });
+    const [logo, tag] = await Promise.all([ld((document.querySelector('#login img') || {}).src), ld((document.querySelector('#login .tagl img') || {}).src)]);
+    const S = 2, W = 900, H = 1125, F = '"Rockwell","Rockwell Nova",Arvo,"PingFang SC","Microsoft YaHei",serif', B = '"Fredoka One",' + F, NAVY = '#2B2253', MUTE = '#6F6B85', K = KIND[x.kind];
+    const cv = document.createElement('canvas'); cv.width = W * S; cv.height = H * S; const c = cv.getContext('2d'); c.scale(S, S);
+    const rr = (x0, y0, w, h, r) => { c.beginPath(); c.moveTo(x0 + r, y0); c.arcTo(x0 + w, y0, x0 + w, y0 + h, r); c.arcTo(x0 + w, y0 + h, x0, y0 + h, r); c.arcTo(x0, y0 + h, x0, y0, r); c.arcTo(x0, y0, x0 + w, y0, r); c.closePath(); };
+    c.fillStyle = '#F1F4F6'; c.fillRect(0, 0, W, H);
+    c.save(); c.shadowColor = 'rgba(43,34,83,.10)'; c.shadowBlur = 24; c.shadowOffsetY = 6; c.fillStyle = '#fff'; rr(30, 30, W - 60, H - 60, 36); c.fill(); c.restore();
+    /* confetti (fixed pattern per student, so the same picture comes out each time) */
+    let sd = 0; for(const ch of x.k) sd = (sd * 31 + ch.charCodeAt(0)) % 2147483647; const rnd = () => (sd = (sd * 48271) % 2147483647) / 2147483647;
+    const COL = ['#00A3AD', '#E0533D', '#F2B544', '#2B2253', '#7FD1CF', '#F59A83'];
+    c.save(); rr(30, 30, W - 60, H - 60, 36); c.clip();
+    for(let n = 0; n < 70; n++){ const px = 40 + rnd() * (W - 80), py = 40 + (n < 52 ? rnd() * 300 : 860 + rnd() * 200), r = 4 + rnd() * 7; if(py > 150 && py < 300 && px > 200 && px < 700) continue;
+      c.fillStyle = COL[Math.floor(rnd() * COL.length)]; c.globalAlpha = .55 + rnd() * .4; c.save(); c.translate(px, py); c.rotate(rnd() * Math.PI);
+      if(n % 3) { c.fillRect(-r, -r / 3, r * 2, r / 1.5); } else { c.beginPath(); c.arc(0, 0, r / 1.4, 0, Math.PI * 2); c.fill(); } c.restore(); }
+    c.restore(); c.globalAlpha = 1;
+    if(logo){ const lw = 260, lh = lw * logo.height / logo.width; c.drawImage(logo, (W - lw) / 2, 70, lw, lh); }
+    c.textAlign = 'center';
+    const T = x.kind === 'bday' ? ['Happy Birthday!', '生日快乐！'] : ['Congratulations!', '恭喜你！'];
+    c.fillStyle = K[2]; c.font = '400 76px ' + B; c.fillText(T[0], W / 2, 330); c.font = '700 44px ' + F; c.fillText(T[1], W / 2, 392);
+    c.fillStyle = NAVY; c.font = '400 92px ' + B; let nm = x.en; while(c.measureText(nm).width > W - 160 && nm.length > 3) nm = nm.slice(0, -1); c.fillText(nm, W / 2, 530);
+    if(x.cn){ c.fillStyle = '#4A4766'; c.font = '400 40px ' + F; c.fillText(x.cn, W / 2, 590); }
+    /* the detail pill */
+    const DT = x.kind === 'bday' ? (x.age > 0 && x.age < 100 ? [x.age + ' years old', x.age + '岁啦'] : ['Have a wonderful day', '祝你今天开心']) : x.kind === 'book' ? ['Moved up to ' + x.bookN, '升级到新教材'] : [x.n + ' lessons completed', '已完成' + x.n + '节课'];
+    c.font = '700 34px ' + F; const pw = Math.max(c.measureText(DT[0]).width, c.measureText(DT[1]).width) + 90; rr((W - pw) / 2, 640, pw, 130, 34); c.fillStyle = K[3]; c.fill();
+    c.fillStyle = K[2]; c.fillText(DT[0], W / 2, 694); c.font = '700 30px ' + F; c.fillText(DT[1], W / 2, 744);
+    const WI = x.kind === 'bday' ? ['Wishing you a wonderful year of', 'learning, growing and fun!', '祝你新的一岁快乐成长，学习进步！'] : x.kind === 'book' ? ['Your hard work is paying off.', 'Keep it up!', '你的努力有了回报，继续加油！'] : ['We are proud of your progress.', 'Keep shining!', '我们为你的进步感到骄傲！'];
+    c.fillStyle = '#4A4766'; c.font = '400 30px ' + F; c.fillText(WI[0], W / 2, 830); c.fillText(WI[1], W / 2, 870); c.font = '400 28px ' + F; c.fillText(WI[2], W / 2, 916);
+    c.fillStyle = MUTE; c.font = '400 22px ' + F; c.fillText('From all your teachers at CupOfEnglish · 一杯英语全体老师', W / 2, 972);
+    c.fillStyle = '#EEF0F4'; c.fillRect(110, 998, W - 220, 2);
+    if(tag){ const tw = 200, th = tw * tag.height / tag.width; c.drawImage(tag, (W - tw) / 2, 1012 + (70 - th) / 2, tw, th); }
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png')); if(PIC && PIC.url) URL.revokeObjectURL(PIC.url); PIC = { blob, url: URL.createObjectURL(blob), name: 'CupOfEnglish-' + x.kind + '-' + x.en.replace(/[^\w]+/g, '') + '.png', i };
+    openSheet(`<h1>${e(x.en)} · ${KIND[x.kind][1]}</h1><div class="mute small">${e(what(x))} · paste in the class WeChat group with the message</div><img class="cxp-img" src="${PIC.url}" alt="Celebration picture" style="max-width:420px;display:block;margin:10px auto 0">
+<div class="row" style="gap:8px;margin-top:14px"><button class="btn teal grow" onclick="celSave()">Copy picture</button><button class="btn ghost grow" onclick="celSave(1)">${navigator.share ? 'Share / save' : 'Save picture'}</button></div>
+<div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost grow" onclick="celCopy(${i})">Copy message</button><button class="btn ghost grow" onclick="celMark(${i})">✓ Sent</button></div>`); };
+  window.celSave = async function(save){ const P = PIC; if(!P) return;
+    if(!save && window.ClipboardItem){ try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': P.blob })]); return toast('Picture copied · paste it in WeChat'); }catch(x){} }
+    const f = new File([P.blob], P.name, { type: 'image/png' });
+    if(navigator.canShare && navigator.canShare({ files: [f] })){ try{ await navigator.share({ files: [f] }); return; }catch(x){ if(x && x.name === 'AbortError') return; } }
+    const a = document.createElement('a'); a.href = P.url; a.download = P.name; document.body.appendChild(a); a.click(); a.remove(); toast('Picture saved'); };
+
+  const rt = window.renderMToday; if(rt) window.renderMToday = function(){ const r = rt.apply(this, arguments); try{ paint(); }catch(x){ console.warn('celebrate', x); } return r; };
+  setInterval(() => { if(isMgmt() && typeof VIEW !== 'undefined' && VIEW === 'mtoday') load(); }, 10 * 6e4);
 })();
 </script>
 
