@@ -9,6 +9,7 @@
 //   new     { n:{teacher,case_id,subject,happened,rule,record,consequence,amount,points,final_notice} } → { ok, notice }  (management)
 //   decide  { id, decision: upheld|waived, text } → { ok, notice }   (management)
 //   void    { id, reason }          → { ok }            (management: sent by mistake)
+//   cel_list / cel_mark { k, kind, code, name, detail, skip, book, undo } / cel_seed { map } → Celebrate (management)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -62,6 +63,28 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, url: data.signedUrl });
     }
     if (!mgmt) return out({ ok: false, error: "Management only." }, 403);
+    // ── 22 Oct · Celebrate (birthdays, new books, lesson milestones): what was sent or skipped, and each student's books so far ──
+    if (a === "cel_list") {
+      const since = new Date(Date.now() - 400 * 864e5).toISOString();
+      const [m, k] = await Promise.all([db.from("coe_celebrate").select("k,kind,code,skipped,at,by").gte("at", since).limit(5000), db.from("coe_cel_books").select("code,books").limit(5000)]);
+      if (m.error || k.error) return out({ ok: false, error: (m.error || k.error)!.message });
+      const books: Record<string, string[]> = {}; (k.data || []).forEach((r: any) => books[r.code] = r.books || []);
+      return out({ ok: true, marks: m.data || [], books });
+    }
+    if (a === "cel_mark") {
+      const k = str(b.k, 120), kind = str(b.kind, 20); if (!k || !kind) return out({ ok: false, error: "bad request" }, 400);
+      if (b.undo) { await db.from("coe_celebrate").delete().eq("k", k); return out({ ok: true }); }
+      const row = { k, kind, code: str(b.code, 40).toUpperCase(), name: str(b.name, 80), detail: str(b.detail, 120), skipped: !!b.skip, at: now, by: me };
+      const { error } = await db.from("coe_celebrate").upsert(row); if (error) return out({ ok: false, error: error.message });
+      if (kind === "book" && row.code && b.book) { const bk = str(b.book, 40).toUpperCase(); const { data: cur } = await db.from("coe_cel_books").select("books").eq("code", row.code).maybeSingle();
+        const L = Array.from(new Set([...((cur && cur.books) || []), bk])); await db.from("coe_cel_books").upsert({ code: row.code, books: L, at: now }); }
+      return out({ ok: true, mark: row });
+    }
+    if (a === "cel_seed") {   // first sight of a student: remember the books they already have (no celebration for those)
+      const m = b.map && typeof b.map === "object" ? b.map : {}; const rows = Object.keys(m).slice(0, 2000).map((c) => ({ code: str(c, 40).toUpperCase(), books: (Array.isArray(m[c]) ? m[c] : []).map((x: unknown) => str(x, 40).toUpperCase()).filter(Boolean).slice(0, 20), at: now })).filter((r) => r.code);
+      if (rows.length) { const { error } = await db.from("coe_cel_books").upsert(rows, { onConflict: "code", ignoreDuplicates: true }); if (error) return out({ ok: false, error: error.message }); }
+      return out({ ok: true, n: rows.length });
+    }
     if (a === "new") {
       const p = b.n || {}; const teacher = str(p.teacher, 60), subject = str(p.subject, 120);
       if (!teacher || !subject) return out({ ok: false, error: "Choose the teacher and subject." });
