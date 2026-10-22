@@ -1,0 +1,47 @@
+<script>
+/* 22 Oct · 645 · Missed class videos (Misty: "let them upload, but follow the late rule as per contract · strict · they will see it").
+   Today shows "Class videos still missing · last 7 days" (server tVidList: the teacher's classes from 22 Oct on with no video yet).
+   Each one can still be uploaded, but it is clearly LATE: the class video is due by 23:59 on the class day. Before uploading the teacher
+   confirms they understand it counts as a late video in their class record and may be tagged by management under the contract
+   (Teacher Late Class Video Submission · POLICY penalty). After upload the pill says the same. Nothing shows if the list is empty. */
+(function(){
+  if(typeof window.vidUp !== 'function') return;
+  const K = 'coe.vlist';
+  let VL = (() => { try{ return JSON.parse(localStorage.getItem(K) || 'null'); }catch(e){ return null; } })(), at = 0, busy = false;
+  window.VL_LIST = (VL && VL.list) || [];
+  const done = () => { try{ return JSON.parse(localStorage.getItem('coe.vup') || '{}') || {}; }catch(e){ return {}; } };
+  const due = c => new Date(c.day + 'T23:59:59+08:00');
+  const dd = (s, o) => new Date(s).toLocaleString('en-GB', Object.assign({ timeZone: 'Asia/Manila' }, o));
+  window.vidLate = c => typeof D !== 'undefined' && D && c && c.day && Date.now() > due(c).getTime();
+  async function load(force){
+    if(busy || typeof TOKEN === 'undefined' || !TOKEN || (typeof D !== 'undefined' && D && D.mgr)) return;
+    if(!force && Date.now() - at < 10 * 6e4) return; busy = true; at = Date.now();
+    try{ const r = await api('tVidList', TOKEN); if(r && r.ok){ VL = { list: r.list || [], t: Date.now() }; window.VL_LIST = VL.list; try{ localStorage.setItem(K, JSON.stringify(VL)); }catch(e){} paint(); } }
+    catch(e){ /* server not updated yet, or offline: keep the last list */ } finally{ busy = false; }
+  }
+  function paint(){
+    const root = document.getElementById('v-today'); if(!root || typeof D === 'undefined' || !D || D.mgr) return;
+    let box = document.getElementById('vlBox'); const ok = done();
+    const L = (window.VL_LIST || []).filter(c => !(ok[c.id] && ok[c.id].done) && !((D.vids || {})[c.id] && D.vids[c.id].url));
+    if(!L.length){ if(box) box.remove(); return; }
+    if(!box){ box = document.createElement('section'); box.id = 'vlBox'; box.className = 'sec'; root.insertBefore(box, root.firstChild); }
+    box.innerHTML = '<div style="border:1.5px solid #E9B8AC;background:#FFF6F3;border-radius:16px;padding:14px 16px">' +
+      '<div class="row" style="gap:8px;align-items:center"><b class="grow" style="color:#9A3B22">Class videos still missing · ' + L.length + '</b></div>' +
+      '<div class="small" style="color:#9A3B22;margin:2px 0 8px">Due by 23:59 on the class day · these are now <b>late</b> and count as late videos in your class record (contract: Teacher Late Class Video Submission).</div>' +
+      L.map(c => '<div class="row" style="gap:10px;align-items:center;padding:8px 0;border-top:1px solid #F1D5CC"><div class="grow ell"><b>' +
+        esc(dd(c.start, { weekday: 'short', day: 'numeric', month: 'short' })) + ' · ' + esc(dd(c.start, { hour: '2-digit', minute: '2-digit', hour12: false })) + ' · ' + esc(c.student || c.code) + '</b>' +
+        '<div class="small mute">' + esc(c.code) + (c.type ? ' · ' + esc(c.type) : '') + ' · due ' + esc(dd(due(c), { day: 'numeric', month: 'short' })) + ' 23:59</div></div>' +
+        '<button class="btn sm" style="background:#D4705A;color:#fff;border-color:#D4705A" onclick="vidLateAsk(\'' + esc(c.id) + '\')">Upload late video</button></div>').join('') + '</div>';
+  }
+  window.vidLateAsk = id => { const c = (window.VL_LIST || []).find(x => x.id === id); if(!c) return;
+    openSheet('<h3 style="margin:0 0 6px">Upload a late class video</h3><div class="small mute" style="margin-bottom:12px">' + esc(c.student || c.code) + ' · ' + esc(dd(c.start, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false })) + '</div>' +
+      '<div style="background:#FFF0EC;border:1.5px solid #E9B8AC;border-radius:14px;padding:12px 14px;color:#9A3B22;line-height:1.45">This video was due by <b>23:59 on ' + esc(dd(due(c), { day: 'numeric', month: 'long' })) + '</b>.<br>' +
+      'Uploading it now still saves it to the student\'s folder and DAILY, but it is recorded as a <b>late video</b> in your class record, and management may tag it under the contract (<b>Teacher Late Class Video Submission</b>, penalty from POLICY).</div>' +
+      '<button class="btn block" style="margin-top:14px;background:#D4705A;color:#fff;border-color:#D4705A" onclick="closeSheet();vidUp(\'' + esc(c.id) + '\')">I understand · choose the video</button>' +
+      '<button class="btn ghost block" style="margin-top:8px" onclick="closeSheet()">Cancel</button>'); };
+  const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const r = _rt.apply(this, arguments); try{ paint(); load(); }catch(e){} return r; };
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) load(); });
+  setTimeout(() => { try{ if(typeof VIEW !== 'undefined' && VIEW === 'today'){ paint(); load(true); } }catch(e){} }, 1500);
+  window.vlRefresh = () => load(true);
+})();
+</script>
