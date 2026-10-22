@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 984;
+const COE_V = 985;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22163,7 +22163,7 @@ go();
   async function load(force){
     if(busy || typeof TOKEN === 'undefined' || !TOKEN || (typeof D !== 'undefined' && D && D.mgr)) return;
     if(!force && Date.now() - at < 10 * 6e4) return; busy = true; at = Date.now();
-    try{ const r = await api('tVidList', TOKEN); if(r && r.ok){ VL = { list: r.list || [], t: Date.now() }; window.VL_LIST = VL.list; try{ localStorage.setItem(K, JSON.stringify(VL)); }catch(e){} paint(); } }
+    try{ const r = await api('tVidList', TOKEN); if(r && r.ok){ if(JSON.stringify(r.list || []) === JSON.stringify(window.VL_LIST || [])) return; VL = { list: r.list || [], t: Date.now() }; window.VL_LIST = VL.list; try{ localStorage.setItem(K, JSON.stringify(VL)); }catch(e){} paint(); } }
     catch(e){ /* server not updated yet, or offline: keep the last list */ } finally{ busy = false; }
   }
   function paint(){
@@ -22234,7 +22234,7 @@ go();
   let TF = (() => { try{ return JSON.parse(localStorage.getItem('coe.vflags') || '[]') || []; }catch(e){ return []; } })(), tAt = 0, tBusy = false;
   const stTxt = x => x.st === 'ok' ? ['#1E7A55', 'Reviewed · OK'] : x.st === 'action' ? ['#B03A2E', 'Needs action · management will contact you'] : ['#9A6A12', x.why ? 'Waiting for review' : 'Explain this video'];
   async function tLoad(force){ if(tBusy || !TOKEN || !D || D.mgr || (!force && Date.now() - tAt < 10 * 6e4)) return; tBusy = true; tAt = Date.now();
-    try{ const r = await api('tVidFlags', TOKEN); if(r && r.ok){ TF = r.list || []; try{ localStorage.setItem('coe.vflags', JSON.stringify(TF)); }catch(e){} tPaint(); } }catch(e){} finally{ tBusy = false; } }
+    try{ const r = await api('tVidFlags', TOKEN); if(r && r.ok){ if(JSON.stringify(r.list || []) === JSON.stringify(TF)) return; TF = r.list || []; try{ localStorage.setItem('coe.vflags', JSON.stringify(TF)); }catch(e){} tPaint(); } }catch(e){} finally{ tBusy = false; } }
   function tPaint(){ const root = document.getElementById('v-today'); if(!root || !D || D.mgr) return; let box = document.getElementById('vcBox');
     const L = TF.filter(x => x.st !== 'ok' || Date.now() - (x.dat || 0) < 3 * 864e5).slice(0, 10);
     if(!L.length){ if(box) box.remove(); return; }
@@ -22251,8 +22251,8 @@ go();
   window.vcAdd = (c, url, name, flags, why, note) => { if(!flags || !flags.length) return; TF = TF.filter(x => x.id !== c.id); TF.unshift({ id: c.id, ds: c.day, start: c.start, code: c.code, student: c.student, url, name, flags, why: why || '', note: note || '', st: 'open', at: Date.now() }); try{ localStorage.setItem('coe.vflags', JSON.stringify(TF)); }catch(e){} tPaint(); };
   const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const r = _rt.apply(this, arguments); try{ tPaint(); tLoad(); }catch(e){} return r; };
   /* ── Management: Videos to check on Overview ── */
-  let MF = null, mBusy = false;
-  async function mLoad(){ if(mBusy || !TOKEN || !D || !D.mgr) return; mBusy = true; try{ const r = await api('mgmtVidFlags', TOKEN); if(r && r.ok){ MF = r.list || []; mPaint(); } }catch(e){} finally{ mBusy = false; } }
+  let MF = (() => { try{ return JSON.parse(localStorage.getItem('coe.vflagsm') || 'null'); }catch(e){ return null; } })(), mBusy = false;
+  async function mLoad(){ if(mBusy || !TOKEN || !D || !D.mgr) return; mBusy = true; try{ const r = await api('mgmtVidFlags', TOKEN); if(r && r.ok){ const L = r.list || []; if(MF && JSON.stringify(L) === JSON.stringify(MF)) return; MF = L; try{ localStorage.setItem('coe.vflagsm', JSON.stringify(MF)); }catch(e){} mPaint(); } }catch(e){} finally{ mBusy = false; } }
   function mPaint(){ const root = document.getElementById('v-home'); if(!root || !MF || !D || !D.mgr) return; let box = document.getElementById('vcmBox');
     const open = MF.filter(x => x.st === 'open'), recent = MF.filter(x => x.st !== 'open').slice(0, 5);
     if(!open.length && !recent.length){ if(box) box.remove(); return; }
