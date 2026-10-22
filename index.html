@@ -36,11 +36,13 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
      does not fit; if neither works, no copy is kept and the newest loads from the internet each time. */
   function cGet() { try { return caches.open(CK).then(function (c) { return c.match(CU); }).then(function (r) { return r ? r.text() : null; }).catch(function () { return null; }); } catch (e) { return Promise.resolve(null); } }
   function cPut(h) { try { return caches.open(CK).then(function (c) { return c.put(CU, new Response(h, { headers: { 'Content-Type': 'text/html;charset=utf-8' } })); }).catch(function () {}); } catch (e) { return Promise.resolve(); } }
+  /* 22 Oct · the copy now always goes to Cache Storage. In the small storage (about 5 MB per site) it took 2.9 of the 5 million characters
+     and kept growing with each version, leaving less and less room for the app's own saved screens and drafts. The old copy is removed
+     from the small storage the first time this runs; the app still opens instantly from Cache Storage. */
   function save(h) {
-    try { localStorage.setItem(KEY, h); return true; } catch (e) {}
-    try { localStorage.removeItem(KEY); localStorage.setItem(KEY, h); return true; } catch (e) {}
+    cPut(h);
     try { localStorage.removeItem(KEY); } catch (e) {}
-    cPut(h); return false;
+    return true;
   }
   var net = get('app.html').catch(function () { return get(API + '?app=1'); });   // backup: the old Apps Script copy
   function boot(have) {
