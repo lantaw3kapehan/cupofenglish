@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 971;
+const COE_V = 972;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -21572,7 +21572,7 @@ go();
           (r.status === 'signed' && !r.pres_at && P ? '<button class="btn sm teal" onclick="ctCounter(' + r.id + ',\'' + e(t) + '\')">Countersign as President</button>' : '') +
           (r.status === 'signed' && !r.wit_at && !P ? '<button class="btn sm teal" onclick="ctWitness(' + r.id + ',\'' + e(t) + '\')">Sign as witness</button>' : '') +
           (r.note ? '<button class="btn sm ghost" onclick="ctReply(' + r.id + ',\'' + e(t) + '\')">Reply</button>' : '') +
-          (/signed|paper/.test(r.status) && P ? '<label class="btn sm ghost" style="cursor:pointer">' + (r.scan_at ? 'Replace notarized scan' : 'Attach notarized scan') + '<input type="file" accept="application/pdf,image/*" style="display:none" onchange="ctPut(' + r.id + ',\'' + e(t) + '\',this)"></label>' : '') +
+          (/signed|paper/.test(r.status) ? '<label class="btn sm ghost" style="cursor:pointer">' + (r.scan_at ? 'Replace notarized scan' : 'Attach notarized scan') + '<input type="file" accept="application/pdf,image/*" style="display:none" onchange="ctPut(' + r.id + ',\'' + e(t) + '\',this)"></label>' : '') +
           (r.scan_at ? '<button class="btn sm ghost" onclick="ctScan(' + r.id + ')">View scan</button>' : '') +
           (r.status === 'signed' ? '<button class="btn sm ghost" onclick="ctPrint(' + r.id + ')">Print for notarization</button>' : '') +
           (P ? '<button class="btn sm ghost" style="color:#9A3A26" onclick="ctVoid(' + r.id + ',\'' + e(t) + '\')">Start again</button>' : '') + '</div>';
@@ -21598,10 +21598,13 @@ go();
   window.ctSet = async t => { if(!confirm('Send the Agreement, Annex A and Addendum No. 1 to ' + t + ' to read and sign in the app?\n\nCheck the details for the Agreement first (legal name, address).')) return;
     try{ const j = await call('send_set', { teacher: t }); toast('Sent ' + j.sent + ' documents to ' + t); await refresh(t); }catch(x){ toast(x.message); } };
   window.ctVoid = async (id, t) => { const v = prompt('Start this document again for ' + t + '? The old record is kept, and they sign again.\n\nReason:'); if(!v) return; try{ await call('void', { id, reason: v }); toast('Sent again'); await refresh(t); }catch(x){ toast(x.message); } };
-  window.ctPut = async (id, t, inp) => { const f = inp.files && inp.files[0]; if(!f) return; if(f.size > 15e6) return toast('The file is larger than 15 MB');
-    toast('Uploading ' + f.name + '…');
-    try{ const b64 = await new Promise((ok, no) => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result).split(',')[1]); rd.onerror = no; rd.readAsDataURL(f); });
-      await call('scan_put', { id, name: f.name, type: f.type || 'application/pdf', b64 }); toast('Notarized scan attached ✓'); await refresh(t); }catch(x){ toast(x.message); } };
+  window.ctPut = async (id, t, inp) => { const f = inp.files && inp.files[0]; inp.value = ''; if(!f) return; if(f.size > 50e6) return toast('The file is larger than 50 MB. Scan at a lower resolution and try again.');
+    /* 640: President or Operations · the file goes straight to storage (signed upload link), so large multi-page scans work */
+    const ty = f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : /\.(heic|heif)$/i.test(f.name) ? 'image/heic' : /\.png$/i.test(f.name) ? 'image/png' : 'image/jpeg');
+    toast('Uploading ' + f.name + ' (' + Math.max(1, Math.round(f.size / 1e5) / 10) + ' MB)…');
+    try{ const s = await call('scan_sign', { id, type: ty, size: f.size });
+      const up = await fetch(s.url, { method: 'PUT', headers: { 'Content-Type': ty, 'x-upsert': 'false' }, body: f }); if(!up.ok) throw new Error('Upload failed (' + up.status + '). Check the internet and try again.');
+      await call('scan_done', { id, path: s.path, name: f.name }); toast('Notarized scan attached ✓'); await refresh(t); }catch(x){ toast(x.message); } };
   window.ctCounter = function(id, t){ const b = $('sheetBody'); const r = (AD.rows || []).find(x => x.id === id); const d = r && tDoc(r.doc_id); if(!r || !d) return;
     b.innerHTML = '<div class="ct"><button class="btn ghost sm" style="margin-bottom:10px" onclick="ctTeacher(\'' + e(t) + '\')">‹ ' + e(t) + '</button><h1>Countersign</h1><div class="sub">' + e(d.title) + ' · signed by ' + e(r.typed_name || t) + ' on ' + e(phT(r.signed_at)) + '</div>' +
       '<div class="box sign"><div class="lab">Your name</div><input class="in" id="cpName" value="Misty T. Dagyapen"><div class="lab">Draw your signature</div><div class="pad" id="ctPad2"><span class="hint">Sign here</span><canvas></canvas><button type="button" class="clr" onclick="ctClear(\'ctPad2\')">Clear</button></div>' +
