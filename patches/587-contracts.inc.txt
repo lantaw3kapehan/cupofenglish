@@ -1,0 +1,304 @@
+<script>
+/* 22 Oct · 587 · My Contract (teachers) and Contracts (management)
+   The official contract in the app: the Agreement, Annex A and Addendum No. 1, read, signed in the app (the original, RA 8792),
+   countersigned by the President, and the notarized scan attached. Server: Supabase function coe-contract. */
+(function(){
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-contract';
+  const call = async (action, body) => { const r = await fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, action }, body || {})) });
+    let j = null; try{ j = await r.json(); }catch(x){} if(!j) throw new Error('No answer from the server. Check the internet and try again.'); if(!j.ok) throw new Error(j.error || 'Could not save'); return j; };
+  const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const ph = iso => { if(!iso) return ''; const d = new Date(new Date(iso).getTime() + 8 * 3600e3); return d.getUTCDate() + ' ' + MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); };
+  const phT = iso => { if(!iso) return ''; const d = new Date(new Date(iso).getTime() + 8 * 3600e3); let h = d.getUTCHours(), m = d.getUTCMinutes(), s = d.getUTCSeconds(); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+    return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getUTCDay()] + ' ' + ph(iso) + ', ' + h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + ' ' + ap; };
+  const dayD = iso => iso ? Math.ceil((new Date(iso).getTime() - Date.now()) / 864e5) : null;
+  async function sha(t){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+  const isMgmt = () => !!(D && D.mgr);
+  const pres = () => { try{ return isPres(); }catch(x){ return false; } };
+
+  /* small markdown: headings, paragraphs, **bold**, lists, tables */
+  function inl(s){ return e(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
+  function md(src){ const L = String(src || '').replace(/\r/g, '').split('\n'); let h = '', i = 0;
+    while(i < L.length){ const l = L[i];
+      if(!l.trim()){ i++; continue; }
+      let m = l.match(/^(#{1,3})\s+(.*)$/); if(m){ const n = m[1].length; h += '<h' + (n + 1) + '>' + inl(m[2]) + '</h' + (n + 1) + '>'; i++; continue; }
+      if(/^\|/.test(l)){ const rows = []; while(i < L.length && /^\|/.test(L[i])){ rows.push(L[i]); i++; }
+        const cells = r => r.replace(/^\||\|$/g, '').split('|').map(x => x.trim());
+        const body = rows.filter(r => !/^\|\s*-{3}/.test(r)); const hd = cells(body.shift() || '');
+        h += '<div class="ct-tw"><table class="ct-t"><thead><tr>' + hd.map(x => '<th>' + inl(x) + '</th>').join('') + '</tr></thead><tbody>' + body.map(r => '<tr>' + cells(r).map(x => '<td>' + inl(x) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>'; continue; }
+      if(/^- /.test(l)){ h += '<ul>'; while(i < L.length && /^- /.test(L[i])){ h += '<li>' + inl(L[i].slice(2)) + '</li>'; i++; } h += '</ul>'; continue; }
+      if(/^\d+\. /.test(l)){ h += '<ol>'; while(i < L.length && /^\d+\. /.test(L[i])){ h += '<li>' + inl(L[i].replace(/^\d+\. /, '')) + '</li>'; i++; } h += '</ol>'; continue; }
+      let p = []; while(i < L.length && L[i].trim() && !/^(#{1,3}\s|\||- |\d+\. )/.test(L[i])){ p.push(L[i]); i++; }
+      h += '<p' + (/^[a-z]\. /.test(p[0]) ? ' class="ct-ai"' : '') + '>' + inl(p.join(' ')) + '</p>'; }
+    return h; }
+
+  const css = document.createElement('style');
+  css.textContent = `
+.ct{--ct-ink:#2B2253;--ct-teal:#00737B;--ct-coral:#B4442F;--ct-amber:#8A5A12;--ct-line:#ECEAF1}
+.ct h1{margin:0 0 2px} .ct .sub{color:#6F6B85;font-size:13.5px;margin-bottom:14px}
+.ct .conf{display:flex;gap:10px;background:var(--ct-ink);color:#fff;border-radius:16px;padding:13px 15px;font-size:13px;line-height:1.5;margin-bottom:12px}
+.ct .conf svg{flex:none;margin-top:2px}
+.ct .box{background:#fff;border:1px solid var(--ct-line);border-radius:18px;padding:14px 16px;margin-bottom:12px}
+.ct .box h3{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8A86A0}
+.ct .doc{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid #F0EFF5} .ct .doc:first-of-type{border-top:0}
+.ct .doc .grow{flex:1;min-width:0} .ct .doc b{font-size:14.5px} .ct .doc .s{font-size:12.5px;color:#6F6B85;margin-top:2px;line-height:1.45}
+.ct .pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:4px 10px;white-space:nowrap}
+.ct .p-ok{background:#E8F6EE;color:#1E7A50} .ct .p-wait{background:#FDF4E3;color:#8A5A12} .ct .p-due{background:#FBECE8;color:#9A3A26} .ct .p-grey{background:#F4F3F8;color:#4A4766}
+.ct .text{background:#fff;border:1px solid var(--ct-line);border-radius:18px;padding:6px 20px 14px;font-family:Arvo,Georgia,serif;font-size:14.5px;line-height:1.65;color:#2B2253}
+.ct .text h2{font-family:'Fredoka One',Arvo,serif;font-weight:400;font-size:22px;margin:16px 0 8px;line-height:1.25}
+.ct .text h3{font-size:16px;margin:20px 0 6px} .ct .text h4{font-size:14.5px;margin:16px 0 4px;color:#00626A}
+.ct .text p{margin:0 0 10px} .ct .text p.ct-ai{padding-left:18px;text-indent:-18px} .ct .text ul,.ct .text ol{margin:0 0 10px;padding-left:22px} .ct .text li{margin:3px 0}
+.ct .ct-tw{overflow-x:auto;margin:6px 0 12px} .ct .ct-t{border-collapse:collapse;width:100%;font-size:13px;font-family:inherit} .ct .ct-t th{text-align:left;background:#F6F5FA;font-weight:700}
+.ct .ct-t th,.ct .ct-t td{border:1px solid var(--ct-line);padding:7px 9px;vertical-align:top}
+.ct .sign label.tick{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.5;margin-bottom:12px}
+.ct .sign input[type=checkbox]{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:#00737B}
+.ct .in{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:11px 12px;border:1px solid #DCD9E6;border-radius:12px;background:#FAFAFC}
+.ct textarea.in{min-height:110px;line-height:1.5}
+.ct .pad{position:relative;height:150px;border:1.5px dashed #C9C5D8;border-radius:12px;background:#FAFAFC;touch-action:none;margin-top:6px}
+.ct .pad canvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair} .ct .pad .clr{position:absolute;right:10px;bottom:8px;font-size:12.5px;font-weight:700;color:#00737B;cursor:pointer;background:none;border:0}
+.ct .pad .hint{position:absolute;left:14px;top:12px;font-size:12.5px;color:#9A96AE;pointer-events:none}
+.ct .lab{font-size:12.5px;color:#4A4766;margin:12px 0 6px}
+.ct .go{width:100%;height:50px;font-size:15.5px;margin-top:14px}
+.ct .fine{font-size:12px;line-height:1.55;color:#6F6B85;margin-top:10px}
+.ct .rec{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;line-height:1.45} .ct .rec span:nth-child(odd){color:#6F6B85}
+.ct .sigimg{height:56px;border:1px solid var(--ct-line);border-radius:10px;background:#FAFAFC;padding:4px 10px;margin:6px 0}
+.ct .row2{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ct .tl{display:flex;flex-direction:column} .ct .tl .st{display:flex;gap:12px;padding:10px 0;border-top:1px solid #F0EFF5} .ct .tl .st:first-child{border-top:0}
+.ct .tl .n{width:22px;height:22px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:#F4F3F8;color:#6F6B85} .ct .tl .n.ok{background:#E8F6EE;color:#1E7A50} .ct .tl .n.w{background:#FDF4E3;color:#8A5A12}
+.ct .tr{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid #F0EFF5;cursor:pointer} .ct .tr:first-of-type{border-top:0} .ct .tr .grow{flex:1}
+.ct .note{background:#FDF4E3;color:#6B4A10;border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.5;margin-top:8px}
+.ct .kpis{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px} .ct .kpis div{flex:1;min-width:90px;background:#fff;border:1px solid var(--ct-line);border-radius:14px;padding:10px 12px} .ct .kpis b{display:block;font-size:22px}
+.ct .kpis span{font-size:12px;color:#6F6B85}
+.ct-ban{display:flex;gap:12px;align-items:center;background:#FFF6F2;border:2px solid #E4846B;border-radius:18px;padding:13px 15px;margin:12px 0;cursor:pointer;color:#2B2253}
+.ct-ban b{display:block;font-size:14.5px} .ct-ban span{font-size:12.5px;color:#9A3A26}
+.ct-link{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ECEAF1;border-radius:16px;padding:12px 15px;margin:12px 0;cursor:pointer;color:#2B2253}
+.ct-link .grow{flex:1} .ct-link small{display:block;color:#6F6B85;font-size:12.5px}
+`;
+  document.head.appendChild(css);
+  const LOCK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  const DOCI = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>';
+  const CONF = '<div class="conf">' + LOCK + '<div><b>Confidential.</b> Do not post, screenshot or share your contract, your pay, or anything about our students and parents: not on social media, in group chats, or with anyone outside CupOfEnglish. That is a ground for <b>termination without notice</b> and ₱300,000 damages per breach (Articles IV and XI). You may still show it to your own lawyer, the BIR, DOLE or a court.</div></div>';
+  const MEMOS = [['17', '15 Mar 2026', 'Social media'], ['19', '9 Jul 2026', 'Perfect attendance incentive'], ['20', '26 Jul 2026', 'Wired internet']];
+
+  /* ---------- state ---------- */
+  let MY = null, MYT = 0;
+  const rowOf = docId => MY && (MY.rows || []).find(r => r.doc_id === docId);
+  const docOf = id => MY && (MY.docs || []).find(d => d.id === id);
+  const pending = () => !MY ? [] : (MY.docs || []).filter(d => d.needs_sign).map(d => ({ d, r: rowOf(d.id) })).filter(x => x.r && /^(sent|opened|question)$/.test(x.r.status));
+  async function loadMy(force){ if(isMgmt()) return null; if(MY && !force && Date.now() - MYT < 5 * 60e3) return MY;
+    try{ MY = await call('my'); MYT = Date.now(); try{ localStorage.setItem('coe.ct.my', JSON.stringify({ t: MYT, d: MY })); }catch(x){} }catch(x){ if(!MY){ try{ const k = JSON.parse(localStorage.getItem('coe.ct.my') || 'null'); if(k) MY = k.d; }catch(y){} } }
+    paintBanner(); return MY; }
+
+  function statusPill(r, d){ if(!r) return d.needs_sign ? '<span class="pill p-grey">Reference</span>' : '';
+    if(r.status === 'paper') return '<span class="pill p-ok">Signed on paper' + (r.scan_at ? ' · notarized ✓' : '') + '</span>';
+    if(r.status === 'signed') return '<span class="pill ' + (r.pres_at ? 'p-ok' : 'p-wait') + '">' + (r.pres_at ? 'Signed by both' + (r.scan_at ? ' · notarized ✓' : '') : 'Signed · waiting for the President') + '</span>';
+    if(r.status === 'declined') return '<span class="pill p-grey">You did not agree</span>';
+    if(r.status === 'question') return '<span class="pill p-wait">Question sent</span>';
+    const dd = dayD(r.due_at); return '<span class="pill p-due">Needs your signature' + (dd != null ? ' · ' + (dd > 0 ? dd + ' day' + (dd === 1 ? '' : 's') + ' left' : 'overdue') : '') + '</span>'; }
+  function signedLine(r){ if(!r) return ''; if(r.status === 'paper') return 'Signed on paper' + (r.paper_date ? ' ' + ph(r.paper_date) : '') + (r.scan_at ? ' · notarized copy attached' : '');
+    if(r.status !== 'signed') return r.opened_at ? 'Opened ' + phT(r.opened_at) : '';
+    return 'Signed ' + phT(r.signed_at) + (r.loc && r.loc.place ? ' · ' + r.loc.place : '') + (r.pres_at ? ' · Countersigned ' + ph(r.pres_at) : '') + (r.scan_at ? ' · Notarized copy attached' : ''); }
+
+  /* ---------- teacher: My Contract ---------- */
+  window.ctMy = async function(){ openSheet('<div class="ct"><h1>My Contract</h1><div class="sub">Loading your contract…</div><div class="sk"></div><div class="sk"></div></div>');
+    await loadMy(true); paintMy(); };
+  function paintMy(){ const b = $('sheetBody'); if(!b) return; if(!MY){ b.innerHTML = '<div class="ct"><h1>My Contract</h1><div class="note">Could not load your contract. Check the internet and try again.</div></div>'; return; }
+    const docs = (MY.docs || []).filter(d => d.kind !== 'memo').sort((a, c) => a.sort - c.sort);
+    const pend = pending();
+    b.innerHTML = '<div class="ct"><h1>My Contract</h1><div class="sub">Your official contract with CupOfEnglish as an <b>independent service provider</b>. The text here is the official copy, not a summary.</div>' + CONF +
+      (pend.length ? '<div class="ct-ban" onclick="ctRead(' + pend[0].d.id + ')"><span style="color:#B4442F">' + DOCI + '</span><div class="grow"><b>' + e(pend[0].d.title) + ' needs your signature</b><span>' + (pend[0].r.due_at ? 'Respond by ' + ph(pend[0].r.due_at) + ' · ' : '') + 'it is a legally binding change to your contract</span></div><span>›</span></div>' : '') +
+      '<div class="box"><h3>Your documents</h3>' + docs.map(d => { const r = rowOf(d.id), need = r && /^(sent|opened|question)$/.test(r.status);
+        return '<div class="doc"><div class="grow"><b>' + e(d.title) + '</b><div class="s">' + e(d.short || '') + '</div>' + (signedLine(r) ? '<div class="s">' + e(signedLine(r)) + '</div>' : '') + '<div style="margin-top:6px">' + statusPill(r, d) + '</div></div>' +
+          '<button class="btn sm ' + (need ? 'teal' : 'ghost') + '" onclick="ctRead(' + d.id + ')">' + (need ? 'Read &amp; sign' : 'Read') + '</button></div>'; }).join('') + '</div>' +
+      '<div class="box"><h3>Memoranda named in your contract</h3>' + MEMOS.map(m => '<div class="doc"><div class="grow"><b>Memorandum No. ' + m[0] + ' · ' + e(m[2]) + '</b><div class="s">' + m[1] + ' · restated in Addendum No. 1</div></div></div>').join('') + '</div>' +
+      '<div class="fine">Future updates to your contract come here as a numbered addendum. They bind you only when you sign them; if you decline, your current terms continue.</div></div>'; }
+
+  /* read one document (and sign it if it is waiting) */
+  let CUR = null;
+  window.ctRead = async function(docId){ if(!MY) await loadMy(true); const d = docOf(docId); if(!d) return toast('Document not found');
+    CUR = { d, r: rowOf(docId), hash: await sha(d.body) };
+    openSheet('<div class="ct" id="ctDoc"></div>'); $('sheet').classList.add('wide'); paintDoc();
+    const r = CUR.r; if(r && !r.opened_at){ call('open', { doc_id: docId }).then(j => { if(j.row){ Object.assign(r, j.row); } }).catch(() => {}); } };
+  function paintDoc(){ const el = $('ctDoc'); if(!el || !CUR) return; const { d, r } = CUR; const need = r && /^(sent|opened|question)$/.test(r.status);
+    let h = '<button class="btn ghost sm" style="margin-bottom:10px" onclick="ctMy()">‹ My Contract</button>' +
+      '<div class="sub" style="margin:0 0 6px">Official · ' + e(d.title) + ' · version ' + e(d.version) + (need && r.due_at ? ' · respond by ' + ph(r.due_at) : '') + '</div>';
+    if(need) h += '<div class="conf" style="background:#2B2253">' + DOCI.replace('currentColor', '#fff') + '<div>This is a <b>legally binding change to your contract</b>. It takes effect only when you and CupOfEnglish both sign. Until then, your current Agreement and Annex A apply.</div></div>';
+    if(r && r.status === 'paper') h += '<div class="box"><b>You signed this on paper' + (r.paper_date ? ' on ' + ph(r.paper_date) : '') + '.</b>' + (r.scan_at ? '<div class="row2"><button class="btn sm teal" onclick="ctScan(' + r.id + ')">View the notarized copy</button></div>' : '<div class="s" style="font-size:12.5px;color:#6F6B85;margin-top:4px">The notarized scan will be attached here.</div>') + '</div>';
+    if(r && r.reply) h += '<div class="note"><b>Reply from ' + e(r.reply_by || 'management') + ':</b> ' + e(r.reply) + '</div>';
+    h += '<div class="text">' + md(d.body) + '</div>';
+    if(need) h += signForm();
+    else if(r && r.status === 'signed') h += recordBox(r);
+    else if(r && r.status === 'declined') h += '<div class="box"><b>You did not agree</b><div class="note">' + e(r.note || '') + '</div><div class="fine">Your current terms continue. Management will talk with you. You can still sign below if you change your mind.</div></div>' + signForm();
+    el.innerHTML = h; if(need || (r && r.status === 'declined')) initPad('ctPad'); }
+  function signForm(){ const nm = (MY && MY.people && MY.people.legal_name) || '';
+    return '<div class="box sign" id="ctSign" style="margin-top:12px"><h3>Sign</h3>' +
+      '<label class="tick"><input type="checkbox" id="ctTick"><span>I have read and received ' + e(CUR.d.title) + (CUR.d.kind === 'addendum' ? ', Annex A and the memoranda named in it' : '') + ', I had the chance to ask questions and to consult a lawyer, and I agree that ' + (CUR.d.kind === 'addendum' ? 'they are part of my Agreement' : 'it binds me') + '.</span></label>' +
+      '<div class="lab">Your full name, exactly as in your Agreement</div><input class="in" id="ctName" autocomplete="name" placeholder="e.g. Juana M. Dela Cruz" value="' + e(nm) + '">' +
+      '<div class="lab">Draw your signature</div><div class="pad" id="ctPad"><span class="hint">Sign here with your finger or mouse</span><canvas></canvas><button type="button" class="clr" onclick="ctClear(\'ctPad\')">Clear</button></div>' +
+      '<button class="btn teal go" id="ctGo" onclick="ctSign()">Sign ' + e(CUR.d.title.split(' · ')[0]) + '</button>' +
+      '<div class="fine">This in-app signature is the original (Republic Act 8792). The app records the exact date and time (Philippine time) you opened and signed, the version and your IP address. Your browser may ask for your location; it is recorded only if you allow it. The President then countersigns. A notarized printed copy, if made, confirms this signature and is attached.</div>' +
+      '<div style="border-top:1px solid #F0EFF5;margin-top:14px;padding-top:12px"><b style="font-size:14px">Not ready to sign?</b><div class="row2"><button class="btn sm ghost" onclick="ctAsk(\'question\')">I have a question</button><button class="btn sm ghost" style="color:#9A3A26" onclick="ctAsk(\'declined\')">I do not agree</button></div>' +
+      '<div class="fine">Please respond within 14 days. If you do not agree, your current terms continue and your lessons are not reduced for that reason; you may also end the Agreement with 30 days\' written notice.</div><div id="ctAskBox"></div></div></div>'; }
+  function recordBox(r){ return '<div class="box" style="margin-top:12px"><h3>Signing record · Philippine time</h3><div class="tl">' +
+      '<div class="st"><span class="n ok">1</span><div><b>Sent to you</b><div class="s" style="font-size:12.5px;color:#4A4766">' + e(phT(r.sent_at)) + '</div></div></div>' +
+      '<div class="st"><span class="n ok">2</span><div><b>Opened</b><div class="s" style="font-size:12.5px;color:#4A4766">' + e(phT(r.opened_at)) + '</div></div></div>' +
+      '<div class="st"><span class="n ok">3</span><div><b>Signed by you</b><div class="s" style="font-size:12.5px;color:#4A4766">' + e(phT(r.signed_at)) + ' · ' + e(r.typed_name || '') + (r.ip ? ' · IP ' + e(r.ip) : '') + (r.loc && r.loc.place ? ' · ' + e(r.loc.place) : r.loc && r.loc.lat ? ' · location ' + (+r.loc.lat).toFixed(3) + ', ' + (+r.loc.lng).toFixed(3) : ' · location not shared') + '</div></div></div>' +
+      '<div class="st"><span class="n ' + (r.pres_at ? 'ok' : 'w') + '">4</span><div><b>Countersigned by the President</b><div class="s" style="font-size:12.5px;color:#4A4766">' + (r.pres_at ? e(phT(r.pres_at)) + ' · ' + e(r.pres_name || '') : 'Waiting') + '</div></div></div>' +
+      '<div class="st"><span class="n ' + (r.scan_at ? 'ok' : '') + '">5</span><div><b>Notarized copy</b><div class="s" style="font-size:12.5px;color:#4A4766">' + (r.scan_at ? 'Attached ' + e(ph(r.scan_at)) + ' · <a href="javascript:void 0" onclick="ctScan(' + r.id + ')">View</a>' : 'Not yet attached') + '</div></div></div>' +
+      '</div><div class="row2"><button class="btn sm ghost" onclick="ctPrint(' + r.id + ')">Print or save as PDF</button></div><div class="fine">Use the printout if you are asked to have it notarized: sign it before two witnesses and a notary, then give it to CupOfEnglish.</div></div>'; }
+
+  /* signature pad */
+  const PADS = {};
+  function initPad(id){ const w = $(id); if(!w) return; const c = w.querySelector('canvas'), ctx = c.getContext('2d'), hint = w.querySelector('.hint');
+    const fit = () => { const r = c.getBoundingClientRect(), k = window.devicePixelRatio || 1; c.width = Math.max(1, r.width * k); c.height = Math.max(1, r.height * k); ctx.setTransform(k, 0, 0, k, 0, 0); ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1F1A44'; };
+    fit(); const P = PADS[id] = { c, ctx, ink: 0, down: false };
+    const pt = ev => { const r = c.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; };
+    c.onpointerdown = ev => { ev.preventDefault(); c.setPointerCapture(ev.pointerId); P.down = true; const [x, y] = pt(ev); ctx.beginPath(); ctx.moveTo(x, y); P.lx = x; P.ly = y; if(hint) hint.style.display = 'none'; };
+    c.onpointermove = ev => { if(!P.down) return; ev.preventDefault(); const [x, y] = pt(ev); ctx.lineTo(x, y); ctx.stroke(); P.ink += Math.abs(x - P.lx) + Math.abs(y - P.ly); P.lx = x; P.ly = y; };
+    c.onpointerup = c.onpointercancel = () => { P.down = false; }; }
+  window.ctClear = id => { const P = PADS[id]; if(!P) return; P.ctx.clearRect(0, 0, P.c.width, P.c.height); P.ink = 0; const h = $(id).querySelector('.hint'); if(h) h.style.display = ''; };
+  function padPng(id){ const P = PADS[id]; if(!P || P.ink < 60) return null; const s = P.c, o = document.createElement('canvas'); const W = 600, H = Math.round(W * s.height / s.width); o.width = W; o.height = H;
+    const x = o.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.drawImage(s, 0, 0, W, H); return o.toDataURL('image/png'); }
+
+  /* location only if allowed; a place name when it can be found */
+  function getLoc(){ return new Promise(ok => { if(!navigator.geolocation) return ok({ allowed: false });
+    let done = false; const fin = v => { if(!done){ done = true; ok(v); } }; setTimeout(() => fin({ allowed: false }), 9000);
+    navigator.geolocation.getCurrentPosition(async p => { const L = { allowed: true, lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy) };
+      try{ const ctl = new AbortController(); setTimeout(() => ctl.abort(), 3500); const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&zoom=12&lat=' + L.lat + '&lon=' + L.lng, { signal: ctl.signal }); const j = await r.json(); const a = j.address || {};
+        L.place = [a.city || a.town || a.municipality || a.village || a.suburb, a.province || a.state || a.county].filter(Boolean).join(', '); }catch(x){}
+      fin(L); }, () => fin({ allowed: false }), { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }); }); }
+
+  window.ctSign = async function(){ if(!CUR) return; const g = $('ctGo');
+    if(!$('ctTick').checked) return toast('Tick the box to confirm you have read and agree');
+    const name = ($('ctName').value || '').trim(); if(name.length < 4 || !/\s/.test(name)) return toast('Type your full name, as in your Agreement');
+    const sig = padPng('ctPad'); if(!sig) return toast('Draw your signature in the box');
+    if(!confirm('Sign ' + CUR.d.title + ' as ' + name + '?\n\nThis is your legally binding electronic signature.')) return;
+    g.disabled = true; g.textContent = 'Signing…';
+    try{ const loc = await getLoc(); const hash = await sha(CUR.d.body);
+      const j = await call('sign', { doc_id: CUR.d.id, typed_name: name, sig, loc, hash });
+      const i = MY.rows.findIndex(r => r.doc_id === CUR.d.id); if(i >= 0) MY.rows[i] = j.row; else MY.rows.push(j.row); CUR.r = j.row; MYT = Date.now();
+      toast('Signed ✓ · the President will countersign'); paintDoc(); paintBanner(); $('sheetBody').scrollTop = 0; try{ $('sheet').scrollTop = 0; }catch(x){}
+    }catch(x){ g.disabled = false; g.textContent = 'Sign ' + CUR.d.title.split(' · ')[0]; toast(x.message || 'Could not sign'); } };
+  window.ctAsk = function(kind){ const b = $('ctAskBox'); if(!b) return;
+    b.innerHTML = '<div class="lab">' + (kind === 'declined' ? 'Why you do not agree (management will read this and talk with you)' : 'Your question') + '</div><textarea class="in" id="ctNote"></textarea><div class="row2"><button class="btn sm teal" onclick="ctSend(\'' + kind + '\')">Send</button></div>'; $('ctNote').focus(); };
+  window.ctSend = async function(kind){ const note = ($('ctNote').value || '').trim(); if(!note) return toast('Write it first');
+    try{ const j = await call('respond', { doc_id: CUR.d.id, kind, note }); const i = MY.rows.findIndex(r => r.doc_id === CUR.d.id); if(i >= 0) MY.rows[i] = j.row; CUR.r = j.row;
+      toast(kind === 'declined' ? 'Sent · your current terms continue' : 'Question sent · management will reply here'); paintDoc(); paintBanner(); }catch(x){ toast(x.message); } };
+  window.ctScan = async function(id){ try{ const j = await call('scan_url', { id }); window.open(j.url, '_blank'); }catch(x){ toast(x.message); } };
+
+  /* printable copy with the signing record (for notarization or the file) */
+  window.ctPrint = async function(id){ const w = window.open('', '_blank'); if(!w) return toast('Allow pop-ups to print');
+    w.document.write('<p style="font-family:sans-serif;padding:20px">Preparing…</p>');
+    try{ const j = await call('record', { id }); const r = j.row, d = j.doc;
+      const sigBlock = (who, name, sig, at, ip, loc) => '<td style="width:50%;vertical-align:top;padding:10px;border:1px solid #ccc"><div style="font-size:11px;color:#555">' + who + '</div>' +
+        (sig ? '<img src="' + sig + '" style="height:60px;display:block;margin:6px 0">' : '<div style="height:60px"></div>') + '<div style="border-top:1px solid #333;padding-top:4px"><b>' + e(name || '') + '</b></div>' +
+        '<div style="font-size:11px;color:#555">' + (at ? 'Signed in the App ' + e(phT(at)) + ' (Philippine time)' : '') + (ip ? '<br>IP ' + e(ip) : '') + (loc && loc.allowed ? '<br>Location ' + e(loc.place || ((+loc.lat).toFixed(4) + ', ' + (+loc.lng).toFixed(4))) : at ? '<br>Location not shared' : '') + '</div></td>';
+      w.document.open(); w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + e(d.title) + ' · ' + e(r.typed_name || r.teacher) + '</title><style>body{font-family:Georgia,serif;color:#111;max-width:760px;margin:30px auto;padding:0 20px;font-size:13.5px;line-height:1.55}h2{font-size:20px}h3{font-size:15px;margin-top:18px}h4{font-size:13.5px}table{border-collapse:collapse;width:100%}.ct-t th,.ct-t td{border:1px solid #bbb;padding:5px 7px;font-size:12px;text-align:left}p.ct-ai{padding-left:18px;text-indent:-18px}@media print{.np{display:none}}</style></head><body>' +
+        '<div class="np" style="background:#FDF4E3;padding:10px 14px;border-radius:8px;margin-bottom:16px;font-family:sans-serif;font-size:13px">Print this, or choose “Save as PDF”. <button onclick="print()">Print</button></div>' +
+        '<div style="font-size:11px;color:#555">CupOfEnglish Online Tutorial Services OPC · ' + e(d.title) + ' · version ' + e(d.version) + ' · confidential</div>' + md(d.body) +
+        '<h3>Signatures</h3><table><tr>' + sigBlock('Independent Contractor', r.typed_name || r.teacher, r.sig, r.signed_at, r.ip, r.loc) + sigBlock('For CupOfEnglish Online Tutorial Services OPC · President', r.pres_name || 'Misty T. Dagyapen', r.pres_sig, r.pres_at, r.pres_ip, r.pres_loc) + '</tr></table>' +
+        '<p style="font-size:11px;color:#555;margin-top:8px">Document fingerprint (SHA-256 of the text signed): ' + e(r.filled_hash || d.hash) + '. Sent ' + e(phT(r.sent_at)) + ' · opened ' + e(phT(r.opened_at)) + '.</p>' +
+        '<h3>Signed in the presence of</h3><table><tr><td style="height:50px;border-bottom:1px solid #333;border-top:0;border-left:0;border-right:0"></td><td style="width:40px;border:0"></td><td style="border-bottom:1px solid #333;border-top:0;border-left:0;border-right:0"></td></tr><tr><td style="border:0">Witness</td><td style="border:0"></td><td style="border:0">Witness</td></tr></table>' +
+        '<h3>Acknowledgment</h3><p>REPUBLIC OF THE PHILIPPINES )<br>CITY OF URDANETA ) S.S.</p><p>BEFORE ME, a Notary Public, for and in the City of Urdaneta, personally appeared the aforementioned parties, whom I have identified through competent evidence of identity, who presented this instrument, which they signed electronically in the App on the dates stated above and confirm by their signatures below, and declared that it is their free and voluntary act and deed.</p>' +
+        '<table><tr><td style="height:46px;border-bottom:1px solid #333;border-top:0;border-left:0;border-right:0">' + e(r.typed_name || '') + '</td><td style="width:40px;border:0"></td><td style="border-bottom:1px solid #333;border-top:0;border-left:0;border-right:0">' + e(r.pres_name || 'Misty T. Dagyapen') + '</td></tr><tr><td style="border:0">Independent Contractor · ID ____________</td><td style="border:0"></td><td style="border:0">President · ID ____________</td></tr></table>' +
+        '<p style="margin-top:24px">Doc. No. ____ ; Page No. ____ ; Book No. ____ ; Series of ' + new Date().getFullYear() + '.</p><p style="margin-top:30px;border-top:1px solid #333;width:260px;padding-top:4px">Notary Public</p></body></html>');
+      w.document.close(); }catch(x){ w.document.body.innerHTML = '<p style="font-family:sans-serif;padding:20px">' + e(x.message) + '</p>'; } };
+
+  /* Today banner (teacher) and the pop-up once per app opening while something waits */
+  function paintBanner(){ if(isMgmt()) return; const v = $('v-today'); if(!v) return; let b = v.querySelector('.ct-ban'); const p = pending();
+    if(!p.length){ if(b) b.remove(); return; }
+    const x = p[0], dd = dayD(x.r.due_at), q = x.r.status === 'question';
+    const h = '<span style="color:#B4442F">' + DOCI + '</span><div class="grow"><b>' + (q ? 'Your question about ' + e(x.d.title.split(' · ')[0]) + ' was sent' : e(x.d.title.split(' · ')[0]) + ' needs your signature') + '</b><span>' + (x.r.reply ? 'Management replied · read and sign' : dd != null ? (dd > 0 ? 'Respond within ' + dd + ' day' + (dd === 1 ? '' : 's') : 'Overdue · please respond today') : 'Read and sign') + '</span></div><span>›</span>';
+    if(!b){ b = document.createElement('div'); b.className = 'ct-ban'; b.onclick = () => ctRead(x.d.id); const lead = v.querySelector('.lead'); if(lead) lead.after(b); else v.prepend(b); }
+    if(b._h !== h){ b.innerHTML = h; b._h = h; b.onclick = () => ctRead(x.d.id); }
+    try{ if(!sessionStorage.getItem('coe.ct.pop') && !q && !$('sheet').classList.contains('on')){ sessionStorage.setItem('coe.ct.pop', '1'); setTimeout(() => { if(!$('sheet').classList.contains('on')) ctRead(x.d.id); }, 1200); } }catch(y){} }
+  function paintPayLink(){ if(isMgmt()) return; const v = $('v-pay'); if(!v || v.querySelector('.ct-link')) return; const lead = v.querySelector('.lead'); if(!lead) return;
+    const a = document.createElement('div'); a.className = 'ct-link'; a.onclick = () => ctMy(); a.innerHTML = '<span style="color:#00737B">' + DOCI + '</span><div class="grow"><b>My Contract</b><small>Your Agreement, Annex A and Addendum No. 1 · signed copies</small></div><span>›</span>'; lead.after(a); }
+  const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const r = _rt.apply(this, arguments); try{ paintBanner(); }catch(x){} return r; };
+  const _rp = window.renderPay; if(_rp) window.renderPay = function(){ const r = _rp.apply(this, arguments); try{ paintPayLink(); }catch(x){} return r; };
+  const _go = window.go; if(_go) window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'today') paintBanner(); if(v === 'pay') paintPayLink(); }catch(x){} return r; };
+  let started = 0; const kick = () => { if(started || !TOKEN || !D || isMgmt()) return; started = 1; loadMy(false); setInterval(() => { if(document.visibilityState === 'visible') loadMy(false); }, 10 * 60e3); };
+  setTimeout(function w(){ if(D) kick(); else setTimeout(w, 1500); }, 1500);
+
+  /* ---------- management: Contracts ---------- */
+  let AD = null;
+  const tRows = t => (AD.rows || []).filter(r => r.teacher === t);
+  const tDoc = id => (AD.docs || []).find(d => d.id === id);
+  window.ctAdmin = async function(){ openSheet('<div class="ct"><h1>Contracts</h1><div class="sub">Loading…</div><div class="sk"></div><div class="sk"></div></div>'); $('sheet').classList.add('wide');
+    try{ AD = await call('list'); paintAdmin(); }catch(x){ $('sheetBody').innerHTML = '<div class="ct"><h1>Contracts</h1><div class="note">' + e(x.message) + '</div></div>'; } };
+  function adStatus(r){ if(!r) return ['p-grey', 'Not sent'];
+    if(r.status === 'paper') return ['p-ok', 'Paper' + (r.scan_at ? ' · notarized ✓' : '')];
+    if(r.status === 'signed') return r.pres_at ? ['p-ok', 'Signed by both' + (r.scan_at ? ' · notarized ✓' : '')] : ['p-wait', 'Your signature'];
+    if(r.status === 'question') return ['p-wait', r.reply ? 'Question · replied' : 'Question'];
+    if(r.status === 'declined') return ['p-due', 'Did not agree'];
+    const dd = dayD(r.due_at); if(r.status === 'opened') return [dd != null && dd < 0 ? 'p-due' : 'p-grey', 'Opened · not signed' + (dd != null && dd < 0 ? ' · overdue' : '')];
+    return [dd != null && dd < 0 ? 'p-due' : 'p-grey', 'Not opened' + (dd != null && dd < 0 ? ' · overdue' : '')]; }
+  function paintAdmin(){ const b = $('sheetBody'); if(!b || !AD) return; const signDocs = (AD.docs || []).filter(d => d.needs_sign);
+    const add = signDocs.find(d => d.kind === 'addendum');
+    const all = (AD.rows || []).filter(r => add && r.doc_id === add.id);
+    const k = { signed: all.filter(r => r.status === 'signed').length, wait: all.filter(r => r.status === 'signed' && !r.pres_at).length, open: all.filter(r => /^(sent|opened)$/.test(r.status)).length, q: all.filter(r => /^(question|declined)$/.test(r.status)).length };
+    b.innerHTML = '<div class="ct"><h1>Contracts</h1><div class="sub">Who has read and signed · all times Philippine time' + (signDocs.length ? '' : ' · <b>nothing published yet</b>') + '</div>' +
+      (add ? '<div class="kpis"><div><b>' + k.signed + '</b><span>signed ' + e(add.title.split(' · ')[0]) + '</span></div><div><b>' + k.wait + '</b><span>waiting for your countersign</span></div><div><b>' + k.open + '</b><span>not signed yet</span></div><div><b>' + k.q + '</b><span>questions or did not agree</span></div></div>' : '') +
+      '<div class="box"><h3>Teachers</h3>' + (AD.teachers || []).map(t => { const rs = tRows(t.name);
+        const pills = signDocs.map(d => { const r = rs.find(x => x.doc_id === d.id); if(!r && d.kind !== 'addendum') return ''; const [c, l] = adStatus(r); return '<span class="pill ' + c + '" title="' + e(d.title) + '">' + e(d.kind === 'addendum' ? 'Add. 1' : d.kind === 'agreement' ? 'Agreement' : 'Annex A') + ': ' + e(l) + '</span>'; }).filter(Boolean).join(' ');
+        return '<div class="tr" onclick="ctTeacher(\'' + e(t.name) + '\')"><div class="grow"><b>' + e(t.name) + '</b><div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap">' + (pills || '<span class="pill p-grey">Nothing sent</span>') + '</div></div><span class="mute">›</span></div>'; }).join('') + '</div>' +
+      '<div class="fine">A published addendum reaches every current teacher by itself. For a new teacher, open their name and tap “Send the full set”. Paper Agreements signed before the app can be recorded with their date and notarized scan.</div></div>'; }
+
+  window.ctTeacher = function(t){ const b = $('sheetBody'); if(!b || !AD) return; const P = pres(); const rs = tRows(t); const pp = (AD.people || []).find(x => x.teacher === t) || {};
+    const signDocs = (AD.docs || []).filter(d => d.needs_sign);
+    let h = '<div class="ct"><button class="btn ghost sm" style="margin-bottom:10px" onclick="ctAdmin()">‹ Contracts</button><h1>' + e(t) + '</h1><div class="sub">Signing record · Philippine time</div>';
+    signDocs.forEach(d => { const r = rs.find(x => x.doc_id === d.id); const [c, l] = adStatus(r);
+      h += '<div class="box"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><b>' + e(d.title) + '</b><span class="pill ' + c + '">' + e(l) + '</span></div>';
+      if(r){
+        h += '<div class="rec" style="margin-top:10px"><span>Sent</span><span>' + e(phT(r.sent_at)) + (r.due_at && !/signed|paper/.test(r.status) ? ' · respond by ' + e(ph(r.due_at)) : '') + '</span>' +
+          (r.opened_at ? '<span>Opened</span><span>' + e(phT(r.opened_at)) + '</span>' : '') +
+          (r.status === 'paper' ? '<span>Signed on paper</span><span>' + e(r.paper_date ? ph(r.paper_date) : '') + '</span>' : '') +
+          (r.signed_at && r.status === 'signed' ? '<span>Signed</span><span>' + e(phT(r.signed_at)) + ' · ' + e(r.typed_name || '') + (r.ip ? ' · IP ' + e(r.ip) : '') + (r.loc && r.loc.allowed ? ' · ' + e(r.loc.place || ((+r.loc.lat).toFixed(3) + ', ' + (+r.loc.lng).toFixed(3))) + ' (browser location, allowed)' : ' · location not shared') + '</span>' : '') +
+          (r.pres_at ? '<span>Countersigned</span><span>' + e(phT(r.pres_at)) + ' · ' + e(r.pres_name || '') + '</span>' : '') +
+          (r.scan_at ? '<span>Notarized copy</span><span>' + e(ph(r.scan_at)) + ' · ' + e(r.scan_name || '') + '</span>' : '') + '</div>';
+        if(r.note) h += '<div class="note"><b>' + (r.status === 'declined' ? 'Did not agree' : 'Question') + ' · ' + e(ph(r.note_at)) + ':</b> ' + e(r.note) + (r.reply ? '<br><b>Reply:</b> ' + e(r.reply) : '') + '</div>';
+        h += '<div class="row2">' +
+          (r.status === 'signed' && !r.pres_at && P ? '<button class="btn sm teal" onclick="ctCounter(' + r.id + ',\'' + e(t) + '\')">Countersign as President</button>' : '') +
+          (r.note ? '<button class="btn sm ghost" onclick="ctReply(' + r.id + ',\'' + e(t) + '\')">Reply</button>' : '') +
+          (/signed|paper/.test(r.status) && P ? '<label class="btn sm ghost" style="cursor:pointer">' + (r.scan_at ? 'Replace notarized scan' : 'Attach notarized scan') + '<input type="file" accept="application/pdf,image/*" style="display:none" onchange="ctPut(' + r.id + ',\'' + e(t) + '\',this)"></label>' : '') +
+          (r.scan_at ? '<button class="btn sm ghost" onclick="ctScan(' + r.id + ')">View scan</button>' : '') +
+          (r.status === 'signed' ? '<button class="btn sm ghost" onclick="ctPrint(' + r.id + ')">Print for notarization</button>' : '') +
+          (P ? '<button class="btn sm ghost" style="color:#9A3A26" onclick="ctVoid(' + r.id + ',\'' + e(t) + '\')">Start again</button>' : '') + '</div>';
+      } else if(P && d.kind !== 'addendum'){
+        h += '<div class="row2"><button class="btn sm ghost" onclick="ctPaper(\'' + e(t) + '\',\'' + e(d.ref) + '\')">Signed on paper before · record it</button></div>';
+      }
+      h += '</div>'; });
+    if(P){ h += '<div class="box"><h3>Details for the Agreement</h3><div class="fine" style="margin:0 0 8px">Filled into the Agreement text the teacher reads and signs.</div>' +
+        '<div class="lab">Full legal name</div><input class="in" id="cpN" value="' + e(pp.legal_name || '') + '" placeholder="e.g. Juana M. Dela Cruz">' +
+        '<div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><div class="lab">Civil status</div><input class="in" id="cpC" value="' + e(pp.civil_status || '') + '" placeholder="single"></div><div><div class="lab">Citizenship</div><input class="in" id="cpZ" value="' + e(pp.citizenship || 'Filipino') + '"></div></div>' +
+        '<div class="lab">Address</div><input class="in" id="cpA" value="' + e(pp.address || '') + '">' +
+        '<div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><div class="lab">Agreement date</div><input class="in" type="date" id="cpD" value="' + e(pp.agreement_date || '') + '"></div><div><div class="lab">50-min rate ₱ (Article III)</div><input class="in" type="number" id="cpR" value="' + e(pp.rate50 || '') + '" placeholder="150"></div></div>' +
+        '<div class="row2"><button class="btn sm teal" onclick="ctPeople(\'' + e(t) + '\')">Save details</button>' +
+        (signDocs.some(d => !rs.find(x => x.doc_id === d.id)) ? '<button class="btn sm ghost" onclick="ctSet(\'' + e(t) + '\')">Send the full set (new teacher)</button>' : '') + '</div></div>'; }
+    b.innerHTML = h + '</div>'; b.scrollTop = 0; };
+
+  async function refresh(t){ AD = await call('list'); ctTeacher(t); }
+  window.ctReply = async (id, t) => { const v = prompt('Reply to ' + t + ' (they see it with the document):'); if(!v) return; try{ await call('reply', { id, reply: v }); toast('Reply saved'); await refresh(t); }catch(x){ toast(x.message); } };
+  window.ctPaper = async (t, ref) => { const v = prompt('Date ' + t + ' signed the ' + (ref === 'agreement' ? 'Agreement' : 'Annex A') + ' on paper (YYYY-MM-DD):', ''); if(v == null) return; if(v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return toast('Use YYYY-MM-DD');
+    try{ await call('paper', { teacher: t, ref, date: v }); toast('Recorded · attach the notarized scan'); await refresh(t); }catch(x){ toast(x.message); } };
+  window.ctPeople = async t => { const p = { legal_name: $('cpN').value, civil_status: $('cpC').value, citizenship: $('cpZ').value, address: $('cpA').value, agreement_date: $('cpD').value, rate50: $('cpR').value };
+    try{ await call('people_set', { teacher: t, p }); toast('Saved'); await refresh(t); }catch(x){ toast(x.message); } };
+  window.ctSet = async t => { if(!confirm('Send the Agreement, Annex A and Addendum No. 1 to ' + t + ' to read and sign in the app?\n\nCheck the details for the Agreement first (legal name, address).')) return;
+    try{ const j = await call('send_set', { teacher: t }); toast('Sent ' + j.sent + ' documents to ' + t); await refresh(t); }catch(x){ toast(x.message); } };
+  window.ctVoid = async (id, t) => { const v = prompt('Start this document again for ' + t + '? The old record is kept, and they sign again.\n\nReason:'); if(!v) return; try{ await call('void', { id, reason: v }); toast('Sent again'); await refresh(t); }catch(x){ toast(x.message); } };
+  window.ctPut = async (id, t, inp) => { const f = inp.files && inp.files[0]; if(!f) return; if(f.size > 15e6) return toast('The file is larger than 15 MB');
+    toast('Uploading ' + f.name + '…');
+    try{ const b64 = await new Promise((ok, no) => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result).split(',')[1]); rd.onerror = no; rd.readAsDataURL(f); });
+      await call('scan_put', { id, name: f.name, type: f.type || 'application/pdf', b64 }); toast('Notarized scan attached ✓'); await refresh(t); }catch(x){ toast(x.message); } };
+  window.ctCounter = function(id, t){ const b = $('sheetBody'); const r = (AD.rows || []).find(x => x.id === id); const d = r && tDoc(r.doc_id); if(!r || !d) return;
+    b.innerHTML = '<div class="ct"><button class="btn ghost sm" style="margin-bottom:10px" onclick="ctTeacher(\'' + e(t) + '\')">‹ ' + e(t) + '</button><h1>Countersign</h1><div class="sub">' + e(d.title) + ' · signed by ' + e(r.typed_name || t) + ' on ' + e(phT(r.signed_at)) + '</div>' +
+      '<div class="box sign"><div class="lab">Your name</div><input class="in" id="cpName" value="Misty T. Dagyapen"><div class="lab">Draw your signature</div><div class="pad" id="ctPad2"><span class="hint">Sign here</span><canvas></canvas><button type="button" class="clr" onclick="ctClear(\'ctPad2\')">Clear</button></div>' +
+      '<button class="btn teal go" id="ctGo2" onclick="ctCounterGo(' + id + ',\'' + e(t) + '\')">Countersign as President</button><div class="fine">Your date, time, IP address and (if you allow it) location are recorded the same way.</div>' +
+      '<div class="row2"><button class="btn sm ghost" onclick="ctPrint(' + id + ')">Read what they signed</button></div></div></div>'; initPad('ctPad2'); };
+  window.ctCounterGo = async function(id, t){ const sig = padPng('ctPad2'); if(!sig) return toast('Draw your signature'); const g = $('ctGo2'); g.disabled = true; g.textContent = 'Signing…';
+    try{ const loc = await getLoc(); await call('countersign', { id, sig, loc, name: $('cpName').value }); toast('Countersigned ✓'); await refresh(t); }catch(x){ g.disabled = false; g.textContent = 'Countersign as President'; toast(x.message); } };
+
+  const _rm = window.renderMore; if(_rm) window.renderMore = function(){ const r = _rm.apply(this, arguments); try{ const m = $('v-more'); if(m && isMgmt() && !m.querySelector('.ct-more')){ const box = m.querySelector('div[style*="margin-top:12px"]') || m;
+    const li = document.createElement('div'); li.className = 'li ct-more'; li.onclick = () => ctAdmin(); li.innerHTML = '<div class="av">' + DOCI + '</div><div class="grow"><b>Contracts</b><div class="small mute">Who has read and signed the contract and addenda; countersign; notarized scans</div></div><span class="mute">›</span>'; box.appendChild(li); } }catch(x){} return r; };
+})();
+</script>
