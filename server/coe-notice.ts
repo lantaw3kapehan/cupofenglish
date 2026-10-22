@@ -9,7 +9,7 @@
 //   new     { n:{teacher,case_id,subject,happened,rule,record,consequence,amount,points,final_notice} } → { ok, notice }  (management)
 //   decide  { id, decision: upheld|waived, text } → { ok, notice }   (management)
 //   void    { id, reason }          → { ok }            (management: sent by mistake)
-//   cel_list / cel_mark { k, kind, code, name, detail, skip, book, undo } / cel_seed { map } → Celebrate (management)
+//   cel_list / cel_mark { k, kind, code, name, detail, skip, book, undo } / cel_seed { map } / cel_base { map } → Celebrate (management)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -76,13 +76,21 @@ Deno.serve(async (req: Request) => {
       if (b.undo) { await db.from("coe_celebrate").delete().eq("k", k); return out({ ok: true }); }
       const row = { k, kind, code: str(b.code, 40).toUpperCase(), name: str(b.name, 80), detail: str(b.detail, 120), skipped: !!b.skip, at: now, by: me };
       const { error } = await db.from("coe_celebrate").upsert(row); if (error) return out({ ok: false, error: error.message });
-      if (kind === "book" && row.code && b.book) { const bk = str(b.book, 40).toUpperCase(); const { data: cur } = await db.from("coe_cel_books").select("books").eq("code", row.code).maybeSingle();
+      if ((kind === "book" || kind === "level") && row.code && b.book) { const bk = str(b.book, 40).toUpperCase(); const { data: cur } = await db.from("coe_cel_books").select("books").eq("code", row.code).maybeSingle();
         const L = Array.from(new Set([...((cur && cur.books) || []), bk])); await db.from("coe_cel_books").upsert({ code: row.code, books: L, at: now }); }
       return out({ ok: true, mark: row });
     }
     if (a === "cel_seed") {   // first sight of a student: remember the books they already have (no celebration for those)
       const m = b.map && typeof b.map === "object" ? b.map : {}; const rows = Object.keys(m).slice(0, 2000).map((c) => ({ code: str(c, 40).toUpperCase(), books: (Array.isArray(m[c]) ? m[c] : []).map((x: unknown) => str(x, 40).toUpperCase()).filter(Boolean).slice(0, 20), at: now })).filter((r) => r.code);
       if (rows.length) { const { error } = await db.from("coe_cel_books").upsert(rows, { onConflict: "code", ignoreDuplicates: true }); if (error) return out({ ok: false, error: error.message }); }
+      return out({ ok: true, n: rows.length });
+    }
+    if (a === "cel_base") {   // add items (e.g. "CEFR:A1", the level today) to students already seen, without a celebration
+      const m = b.map && typeof b.map === "object" ? b.map : {}; const codes = Object.keys(m).slice(0, 2000).map((c) => str(c, 40).toUpperCase()).filter(Boolean);
+      if (!codes.length) return out({ ok: true, n: 0 });
+      const { data: cur } = await db.from("coe_cel_books").select("code,books").in("code", codes); const have: Record<string, string[]> = {}; (cur || []).forEach((r: any) => have[r.code] = r.books || []);
+      const rows = codes.map((c) => ({ code: c, books: Array.from(new Set([...(have[c] || []), ...(Array.isArray(m[c]) ? m[c] : Array.isArray(m[c.toLowerCase()]) ? m[c.toLowerCase()] : []).map((x: unknown) => str(x, 40).toUpperCase()).filter(Boolean)])).slice(0, 40), at: now }));
+      const { error } = await db.from("coe_cel_books").upsert(rows); if (error) return out({ ok: false, error: error.message });
       return out({ ok: true, n: rows.length });
     }
     if (a === "new") {
