@@ -8,6 +8,7 @@
 //   bir    { no, bir_no }       → { ok }                 (printed BIR invoice number, once)
 //   void   { no, reason }       → { ok, invoice }
 //   list   { code?, limit?, history? } → { ok, invoices, history }   (history = QuickBooks numbers from SALES, read only)
+//   contact { code } → { ok, email } · contact_set { code, email } → { ok }   (Edit student: the email used for payment confirmations)
 //   verify { no, code }         → { ok, valid, no, day, total, currency, status }   (public, no sign-in; for the verify page)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -82,6 +83,20 @@ Deno.serve(async (req: Request) => {
       const no = +b.no, why = str(b.reason, 200); if (!(no > 0) || !why) return out({ ok: false, error: "A reason is needed to void." });
       const { data, error } = await db.from("coe_invoices").update({ status: "void", void_reason: why, void_by: who, void_at: new Date().toISOString() }).eq("no", no).select().maybeSingle();
       return out(error ? { ok: false, error: error.message } : { ok: true, invoice: withVq(data) });
+    }
+    if (a === "contact") {   // the student's email for payment confirmations (one place: coe_bill_profiles), shown in Edit student
+      const code = str(b.code, 20); if (!code) return out({ ok: true, email: "" });
+      const { data } = await db.from("coe_bill_profiles").select("email").eq("code", code).maybeSingle();
+      return out({ ok: true, email: (data && data.email) || "" });
+    }
+    if (a === "contact_set") {
+      const code = str(b.code, 20), em = str(b.email, 120).toLowerCase();
+      if (!/^ST-\d{4}-\d{3}$/.test(code)) return out({ ok: false, error: "No student code." });
+      if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return out({ ok: false, error: "The email address looks wrong." });
+      const { data: ex } = await db.from("coe_bill_profiles").select("code").eq("code", code).maybeSingle();
+      const { error } = ex ? await db.from("coe_bill_profiles").update({ email: em || null, updated_by: who, updated_at: new Date().toISOString() }).eq("code", code)
+        : await db.from("coe_bill_profiles").insert({ code, email: em || null, updated_by: who });
+      return out(error ? { ok: false, error: error.message } : { ok: true, email: em });
     }
     if (a === "list") {
       let q = db.from("coe_invoices").select("*").order("no", { ascending: false }).limit(Math.min(+b.limit || 60, 300));
