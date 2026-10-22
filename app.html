@@ -6154,7 +6154,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 961;
+const COE_V = 963;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -21818,6 +21818,12 @@ go();
   function bookName(b){ const k = norm(b); for(const s of SERIES){ const m = k.match(s[0]); if(!m) continue; if(s[2]) return s[1];
       let v = m[1] || ''; if(/^Raz/.test(s[1])) v = v.charAt(0) + v.slice(1).toLowerCase(); if(/^Wonders/.test(s[1])) v = v === 'GK' ? 'GK' : v; if(/^Business/.test(s[1])) v = v.replace(/P$/, '+');
       if(/^Market/.test(s[1])) v = { I: 'Intermediate', U: 'Upper Intermediate', A: 'Advanced' }[v] || v; return s[1] + v; } return ''; }
+  const CEFR = ['PRE-A1', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+  /* plain words for parents: level name + the Cambridge exam Chinese families know (剑少 Starters/Movers/Flyers, KET, PET, FCE…) */
+  const LVN = { 'PRE-A1': ['Starter', '启蒙级', 'YLE Starters', '剑少一级'], A1: ['Beginner', '入门级', 'YLE Movers', '剑少二级'], A2: ['Elementary', '初级', 'Flyers / KET', '剑少三级 / KET'],
+    B1: ['Intermediate', '中级', 'PET', 'PET'], B2: ['Upper intermediate', '中高级', 'FCE', 'FCE'], C1: ['Advanced', '高级', 'CAE', 'CAE'], C2: ['Proficient', '精通级', 'CPE', 'CPE'] };
+  const lvEn = l => LVN[l] ? l + ' ' + LVN[l][0] + ' (' + LVN[l][2] + ')' : l, lvZh = l => LVN[l] ? '欧标' + l + ' ' + LVN[l][1] + '（' + LVN[l][3] + '）' : '欧标' + l;
+  const cefrOf = v => { const m = up(v).replace(/\s+/g, '').match(/PRE-?A1|A1|A2|B1|B2|C1|C2/); return m ? (/^PRE/.test(m[0]) ? 'PRE-A1' : m[0]) : ''; };
   const booksOf = s => String((s && s.book) || '').split(/[,;&/]+|\s+·\s+/).map(x => norm(x.trim().split(/\s+/)[0])).filter(Boolean);
 
   function students(){ const ms = (typeof MS !== 'undefined' && MS) ? (Array.isArray(MS) ? MS : (MS.students || MS.rows || null)) : null; return Array.isArray(ms) && ms.length ? ms : STU_L; }
@@ -21831,22 +21837,28 @@ go();
     const H = (X.head || []).map(h => up(h)); let jT = H.findIndex(h => /ENROLLMENT/.test(h) && /TOTAL/.test(h)); if(jT < 0) jT = 18;
     const R = {}; (X.rows || []).forEach(r => { const c = up(r[0]); if(/^ST-/.test(c) && !R[c]) R[c] = r; });
     const done = {}; (CEL.marks || []).forEach(m => done[m.k] = m);
-    const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), out = [], seed = {};
+    const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), out = [], seed = {}, bset = {};
     L.forEach(s => { const c = up(s.code); if(!/^ST-/.test(c)) return; const r = R[c], en = String(s.name || (r && r[2]) || '').trim(), cn = String(s.cn || (r && r[1]) || '').trim();
       const base = { code: c, en, cn, t: (s.teachers || []).join(', '), cefr: String(s.cefr || '').trim() };
       /* birthday */
       const b = r && birthYmd(r[5]); if(b){ for(const yy of [t0.getFullYear() - 1, t0.getFullYear(), t0.getFullYear() + 1]){ const d = new Date(yy, b[1] - 1, b[2]), days = Math.round((d - t0) / 864e5);
           if(days >= -2 && days <= 7){ const k = 'B|' + c + '|' + yy; if(!done[k]) out.push(Object.assign({ kind: 'bday', k, days, when: d, age: yy - b[0] }, base)); } } }
       /* new book */
-      const bk = booksOf(s).filter(x => bookName(x)); const seen = CEL.books[c];
-      if(!seen){ if(bk.length) seed[c] = bk; }
+      const bk = booksOf(s).filter(x => bookName(x)); const seen = CEL.books[c], lv = cefrOf(s.cefr);
+      base.cur = bk.length ? bookName(bk[bk.length - 1]) : String(s.book || '').split(/[,;]/)[0].trim();
+      if(!seen){ const sd = bk.concat(lv ? ['CEFR:' + lv] : []); if(sd.length) seed[c] = sd; }
+      else if(lv){ const prev = seen.filter(y => /^CEFR:/.test(y)).map(y => y.slice(5));   /* level up: a higher CEFR than any level recorded before */
+        if(!prev.length) bset[c] = ['CEFR:' + lv];
+        else if(prev.indexOf(lv) < 0){ const hi = Math.max(...prev.map(y => CEFR.indexOf(y))); if(CEFR.indexOf(lv) > hi){ const k = 'V|' + c + '|' + lv; if(!done[k]) out.push(Object.assign({ kind: 'level', k, from: CEFR[hi], to: lv, book: 'CEFR:' + lv, days: 0 }, base)); } else bset[c] = ['CEFR:' + lv]; } }
+      if(!seen){}
       else bk.forEach(x => { if(seen.indexOf(x) >= 0) return; const k = 'K|' + c + '|' + x; if(!done[k]) out.push(Object.assign({ kind: 'book', k, book: x, bookN: bookName(x), days: 0 }, base)); });
       /* lessons */
       const tot = r ? Number(String(r[jT] == null ? '' : r[jT]).replace(/[^\d.]/g, '')) : 0;
       if(tot > 0 && s.left != null && !s.shared){ const taken = Math.round(tot - Number(s.left)); const M = MILES.filter(m => m <= taken).pop();
         if(M && taken - M < 4){ const k = 'L|' + c + '|' + M; if(!done[k]) out.push(Object.assign({ kind: 'miles', k, n: M, taken, days: 0 }, base)); } } });
     if(Object.keys(seed).length){ Object.assign(CEL.books, seed); call('cel_seed', { map: seed }).catch(() => {}); }
-    const ord = { bday: 0, book: 1, miles: 2 }; out.sort((a, b) => (a.kind === 'bday' && b.kind === 'bday' ? Math.abs(a.days) - Math.abs(b.days) || a.days - b.days : ord[a.kind] - ord[b.kind]));
+    if(Object.keys(bset).length){ Object.keys(bset).forEach(c => CEL.books[c] = (CEL.books[c] || []).concat(bset[c])); call('cel_base', { map: bset }).catch(() => {}); }
+    const ord = { bday: 0, level: 1, book: 2, miles: 3 }; out.sort((a, b) => (a.kind === 'bday' && b.kind === 'bday' ? Math.abs(a.days) - Math.abs(b.days) || a.days - b.days : ord[a.kind] - ord[b.kind]));
     return out; }
 
   async function load(force){ if(!isMgmt() || busy || (!force && CEL && students() && dbx() && Date.now() - at < 10 * 6e4)) return; busy = 1;
@@ -21856,11 +21868,11 @@ go();
       await Promise.all(jobs); at = Date.now(); paint(); }
     catch(x){ console.warn('celebrate', x); } finally { busy = 0; } }
 
-  const KIND = { bday: ['🎂', 'Birthday', '#E0533D', '#FDECE7'], book: ['📚', 'New book', '#2B6CB0', '#E8F0FA'], miles: ['🏅', 'Milestone', '#B7791F', '#FDF3E1'] };
+  const KIND = { bday: ['🎂', 'Birthday', '#E0533D', '#FDECE7'], book: ['📚', 'New book', '#2B6CB0', '#E8F0FA'], miles: ['🏅', 'Milestone', '#B7791F', '#FDF3E1'], level: ['⭐', 'Level up', '#00737B', '#E3F6F6'] };
   const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function what(x){ if(x.kind === 'bday'){ const w = x.days === 0 ? 'today' : x.days === 1 ? 'tomorrow' : x.days < 0 ? (x.days === -1 ? 'yesterday' : x.days * -1 + ' days ago') : WD[x.when.getDay()] + ' ' + x.when.getDate() + ' ' + MO[x.when.getMonth()];
       return (x.age > 0 && x.age < 100 ? (x.days < 0 ? 'Turned ' : 'Turns ') + x.age + ' · ' : '') + w; }
-    if(x.kind === 'book') return 'Moved up to ' + x.bookN; return x.n + ' lessons with CupOfEnglish'; }
+    if(x.kind === 'book') return 'Moved up to ' + x.bookN; if(x.kind === 'level') return 'Moved up from CEFR ' + x.from + ' to ' + x.to + (x.cur ? ' · ' + x.cur : ''); return x.n + ' lessons with CupOfEnglish' + (x.cur ? ' · ' + x.cur : ''); }
 
   function rowHtml(x, i){ const K = KIND[x.kind], n = x.kind === 'bday' ? (x.days === 0 ? '🎂' : x.days < 0 ? '!' : x.days) : K[0];
     return `<div class="tdr ${x.kind === 'bday' && x.days <= 0 ? 'now' : 'later'}"><div class="tdn"><b class="num">${n}</b><span>${x.kind === 'bday' ? (x.days === 0 ? 'today' : x.days < 0 ? 'late' : x.days === 1 ? 'day' : 'days') : ''}</span></div>
@@ -21873,21 +21885,22 @@ go();
     if(!L){ if(!old) load(); return; } ITEMS = L;
     if(!L.length){ if(old) old.remove(); return; }
     const nb = L.filter(x => x.kind === 'bday').length, nk = L.length - nb;
-    const html = `<section class="sec" id="td-celebrate"><h2>Celebrate 🎉 <span class="c">${nb ? nb + ' birthday' + (nb === 1 ? '' : 's') : ''}${nb && nk ? ' · ' : ''}${nk ? nk + ' new book' + (nk === 1 ? '' : 's') + ' or milestone' + (nk === 1 ? '' : 's') : ''} · make the picture, send it in the class WeChat group, tap ✓ Sent</span></h2>${L.map(rowHtml).join('')}</section>`;
+    const html = `<section class="sec" id="td-celebrate"><h2>Celebrate 🎉 <span class="c">${nb ? nb + ' birthday' + (nb === 1 ? '' : 's') : ''}${nb && nk ? ' · ' : ''}${nk ? nk + ' achievement' + (nk === 1 ? '' : 's') + ' (level up, new book or lessons)' : ''} · make the picture, send it in the class WeChat group, tap ✓ Sent</span></h2>${L.map(rowHtml).join('')}</section>`;
     if(old) old.outerHTML = html; else v.insertAdjacentHTML('beforeend', html); }
 
   /* the message (English and Chinese together, as the class reminders) */
   function msg(x){ const en = x.en.split(/\s+/)[0] || x.en, cn = x.cn || en;
     if(x.kind === 'bday') return `Happy Birthday, ${en}! 🎂 Wishing you good health, happiness and great progress in your studies. Your teachers at CupOfEnglish are cheering for you!\n${cn}，生日快乐！🎂 祝你健康快乐，学业进步！一杯英语全体老师为你喝彩！`;
+    if(x.kind === 'level') return `Congratulations, ${en}! 🎉 Your English level has moved up from ${lvEn(x.from)} to ${lvEn(x.to)}. Your English is getting better and better. Your teachers at CupOfEnglish are cheering for you!\n恭喜${cn}！🎉 英语水平从${lvZh(x.from)}提升到${lvZh(x.to)}，你的英语越来越棒了！一杯英语全体老师为你喝彩！`;
     if(x.kind === 'book') return `Congratulations, ${en}! 🎉 You have moved up to ${x.bookN}. Onwards and upwards! Your teachers at CupOfEnglish are cheering for you!\n恭喜${cn}！🎉 已升级到新教材 ${x.bookN}，更上一层楼！一杯英语全体老师为你喝彩！`;
     return `Congratulations, ${en}! 🎉 You have completed ${x.n} lessons with CupOfEnglish. Persistence pays off! Your teachers at CupOfEnglish are cheering for you!\n恭喜${cn}！🎉 已在一杯英语完成${x.n}节课，坚持就是胜利！一杯英语全体老师为你喝彩！`; }
   window.celCopy = function(i){ const x = ITEMS[i]; if(!x) return; const t = msg(x);
     navigator.clipboard.writeText(t).then(() => toast('Copied · paste it in WeChat, then tap ✓ Sent'), () => openSheet(`<h1>Message for ${e(x.en)}</h1><textarea class="in-t" rows="8" style="width:100%">${e(t)}</textarea>`)); };
   window.celMark = async function(i, skip){ const x = ITEMS[i]; if(!x) return; const m = { k: x.k, kind: x.kind, code: x.code, skipped: !!skip, at: new Date().toISOString(), by: (D.me || {}).name || '' };
-    CEL.marks.push(m); if(x.kind === 'book'){ CEL.books[x.code] = (CEL.books[x.code] || []).concat(x.book); } paint(); closeSheet && closeSheet();
+    CEL.marks.push(m); if(x.kind === 'book' || x.kind === 'level'){ CEL.books[x.code] = (CEL.books[x.code] || []).concat(x.book); } paint(); closeSheet && closeSheet();
     toast(x.en + ' · ' + (skip ? 'skipped' : 'marked sent'));
     try{ await call('cel_mark', { k: x.k, kind: x.kind, code: x.code, name: x.en, detail: what(x), skip: !!skip, book: x.book || '' }); }
-    catch(err){ CEL.marks = CEL.marks.filter(y => y !== m); if(x.kind === 'book') CEL.books[x.code] = (CEL.books[x.code] || []).filter(b => b !== x.book); paint(); toast(err.message || 'Not saved. Try again.'); } };
+    catch(err){ CEL.marks = CEL.marks.filter(y => y !== m); if(x.kind === 'book' || x.kind === 'level') CEL.books[x.code] = (CEL.books[x.code] || []).filter(b => b !== x.book); paint(); toast(err.message || 'Not saved. Try again.'); } };
 
   /* the picture: portrait card for WeChat (CupOfEnglish logo, confetti, bilingual title, name, detail, wish, tagline) */
   let PIC = null;
@@ -21903,6 +21916,9 @@ go();
     c.translate(30, 30); const CW = W - 60, CX = 64, MX = CW / 2, IW = CW - CX * 2;
     const fit = (t, px, fam, max) => { let p = px; c.font = p + 'px ' + fam; while(c.measureText(t).width > max && p > 16){ p -= 2; c.font = p + 'px ' + fam; } };
     const wrap = (t, max) => { const out = []; let ln = ''; String(t).split(' ').forEach(w => { const s = ln ? ln + ' ' + w : w; if(c.measureText(s).width > max && ln){ out.push(ln); ln = w; } else ln = s; }); if(ln) out.push(ln); return out; };
+    const wrapB = (t, max) => { const L = wrap(t, max); if(L.length !== 2) return L;   /* two even lines, split at the sentence when it fits */
+      const ss = String(t).match(/[^.!?]+[.!?]+/g); if(ss && ss.length === 2 && ss.every(q => c.measureText(q.trim()).width <= max)) return ss.map(q => q.trim());
+      const w = String(t).split(' '); let best = L, bd = 1e9; for(let k = 1; k < w.length; k++){ const a = w.slice(0, k).join(' '), b = w.slice(k).join(' '), wa = c.measureText(a).width, wb = c.measureText(b).width; if(wa <= max && wb <= max && Math.abs(wa - wb) < bd){ bd = Math.abs(wa - wb); best = [a, b]; } } return best; };
     /* header: logo left, label right, thin line (as the weekly class times and renewal pictures) */
     if(logo){ const lw = 250, lh = lw * logo.height / logo.width; c.drawImage(logo, MX - lw / 2, 44 + (90 - lh) / 2, lw, lh); }
     c.fillStyle = '#EEF0F4'; c.fillRect(CX, 150, IW, 2);
@@ -21920,14 +21936,16 @@ go();
     c.fillStyle = NAVY; fit(x.en, 104, B, IW - 120); c.fillText(x.en, MX, PY + 284);
     if(x.cn){ c.fillStyle = '#4A4766'; c.font = '400 38px ' + F; c.fillText(x.cn, MX, PY + 340); }
     /* label row: what we celebrate + birthday date or English level (from the school, not one teacher) */
-    const L2 = x.kind === 'bday' ? ['Birthday · 生日', WD[x.when.getDay()] + ' ' + x.when.getDate() + ' ' + MO[x.when.getMonth()], (x.when.getMonth() + 1) + '月' + x.when.getDate() + '日（周' + '日一二三四五六'[x.when.getDay()] + '）'] : x.cefr ? ['English level · 英语水平', 'CEFR ' + x.cefr, '欧标 ' + x.cefr] : null;
+    const L2 = x.kind === 'bday' ? ['Birthday · 生日', WD[x.when.getDay()] + ' ' + x.when.getDate() + ' ' + MO[x.when.getMonth()], (x.when.getMonth() + 1) + '月' + x.when.getDate() + '日（周' + '日一二三四五六'[x.when.getDay()] + '）'] : cefrOf(x.cefr) ? ['English level · 英语水平', lvEn(cefrOf(x.cefr)), lvZh(cefrOf(x.cefr))] : null;
     const L1 = x.kind === 'bday' ? (x.age > 0 && x.age < 100 ? ['Age · 年龄', x.age + ' years old', x.age + '岁'] : ['Birthday · 生日', WD[x.when.getDay()] + ' ' + x.when.getDate() + ' ' + MO[x.when.getMonth()], (x.when.getMonth() + 1) + '月' + x.when.getDate() + '日'])
-      : x.kind === 'book' ? ['New book · 新教材', x.bookN, '升级到新教材'] : ['Lessons completed · 已完成课时', x.n + ' lessons', x.n + '节课'];
-    const col = (cx, L, w) => { c.fillStyle = MUTE; c.font = '400 20px ' + F; c.fillText(L[0], cx, 666); c.fillStyle = NAVY; fit(L[1], 38, B, w); c.fillText(L[1], cx, 716); c.fillStyle = '#4A4766'; c.font = '400 24px ' + F; c.fillText(L[2], cx, 754); };
-    if(L2 && !(x.kind === 'bday' && !(x.age > 0 && x.age < 100))){ col(CX + IW / 4, L1, IW / 2 - 30); col(CX + IW * 3 / 4, L2, IW / 2 - 30); c.fillStyle = '#EEF0F4'; c.fillRect(MX - 1, 640, 2, 124); } else col(MX, L1, IW - 60);
+      : x.kind === 'level' ? ['Level up · 级别提升', x.from + ' → ' + x.to + ' ' + (LVN[x.to] ? LVN[x.to][0] : ''), (LVN[x.from] ? LVN[x.from][1] : x.from) + ' → ' + (LVN[x.to] ? LVN[x.to][1] + '（' + LVN[x.to][3] + '）' : x.to)] : x.kind === 'book' ? ['New book · 新教材', x.bookN, '升级到新教材'] : ['Lessons completed · 已完成课时', x.n + ' lessons', x.n + '节课'];
+    const col = (cx, L, w) => { c.fillStyle = MUTE; fit(L[0], 20, F, w); c.fillText(L[0], cx, 666); c.fillStyle = NAVY; fit(L[1], 38, B, w); c.fillText(L[1], cx, 716); c.fillStyle = '#4A4766'; fit(L[2], 24, F, w); c.fillText(L[2], cx, 754); };
+    const BK = x.cur ? ['Book · 教材', x.cur, '当前教材'] : null;
+    const LS = (x.kind === 'bday' ? (x.age > 0 && x.age < 100 ? [L1, L2] : [L1]) : x.kind === 'miles' ? [L1, BK, L2] : x.kind === 'level' ? [L1, BK] : [L1, L2]).filter(Boolean), cw = IW / LS.length;
+    LS.forEach((L, k) => { col(CX + cw * k + cw / 2, L, cw - 24); if(k){ c.fillStyle = '#EEF0F4'; c.fillRect(CX + cw * k - 1, 640, 2, 124); } });
     /* the wish and the signature, full sentences */
-    const WI = x.kind === 'bday' ? ['Wishing you good health, happiness and great progress in your studies!', '祝你健康快乐，学业进步！'] : x.kind === 'book' ? ['Onwards and upwards! Your hard work is paying off.', '更上一层楼！你的努力有了回报。'] : ['Persistence pays off! We are proud of your progress.', '坚持就是胜利！我们为你的进步感到骄傲。'];
-    c.fillStyle = '#4A4766'; c.font = '400 28px ' + F; let wy = 812; wrap(WI[0], IW - 60).forEach(l => { c.fillText(l, MX, wy); wy += 36; }); c.font = '400 26px ' + F; c.fillText(WI[1], MX, wy + 4);
+    const WI = x.kind === 'bday' ? ['Wishing you good health, happiness and great progress in your studies!', '祝你健康快乐，学业进步！'] : x.kind === 'level' ? ['You have reached a new level! Your English is getting better and better.', '英语水平再上新台阶！你的英语越来越棒了。'] : x.kind === 'book' ? ['Onwards and upwards! Your hard work is paying off.', '更上一层楼！你的努力有了回报。'] : ['Persistence pays off! We are proud of your progress.', '坚持就是胜利！我们为你的进步感到骄傲。'];
+    c.fillStyle = '#4A4766'; c.font = '400 28px ' + F; let wy = 812; wrapB(WI[0], IW - 60).forEach(l => { c.fillText(l, MX, wy); wy += 36; }); c.font = '400 26px ' + F; c.fillText(WI[1], MX, wy + 4);
     c.fillStyle = MUTE; c.font = '400 21px ' + F; c.fillStyle = '#00737B'; c.font = '700 22px ' + F; c.fillText('Your teachers at CupOfEnglish are cheering for you!', MX, wy + 52); c.fillText('一杯英语全体老师为你喝彩！', MX, wy + 82);
     c.fillStyle = '#EEF0F4'; c.fillRect(CX, 994, IW, 2);
     if(tag){ const tw = 170, th = tw * tag.height / tag.width; c.drawImage(tag, MX - tw / 2, 1002 + (52 - th) / 2, tw, th); }
