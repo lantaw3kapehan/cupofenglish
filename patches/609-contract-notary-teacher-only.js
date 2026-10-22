@@ -1,0 +1,8 @@
+// 22 Oct · Misty: teachers notarize on their own near where they live and send the copy, so the notary's Acknowledgment names
+// the Independent Contractor only (the President has already signed in the app); the city is left blank for the notary.
+require('../tools/lib.js')(process.argv[2], [
+[`<p>REPUBLIC OF THE PHILIPPINES )<br>CITY OF URDANETA ) S.S.</p><p>BEFORE ME, a Notary Public, for and in the City of Urdaneta, personally appeared the aforementioned parties, whom I have identified through competent evidence of identity, who presented this instrument, which they signed electronically in the App on the dates stated above and signed before me, and declared that it is their free and voluntary act and deed.</p>`,
+ `<p>REPUBLIC OF THE PHILIPPINES )<br>CITY / MUNICIPALITY OF ______________________ ) S.S.</p><p>BEFORE ME, a Notary Public, for and in the above city or municipality, personally appeared the Independent Contractor named below, whom I have identified through competent evidence of identity, who presented this instrument, which the Independent Contractor signed electronically in the App on the date stated above and signed before me, and who declared that it is their free and voluntary act and deed. The instrument bears the signature of the President of CupOfEnglish Online Tutorial Services OPC, affixed in the App on the date stated above.</p>`],
+[`<tr><td>' + pName + '<br><small>President, CupOfEnglish Online Tutorial Services OPC</small></td><td></td><td></td></tr>`, ``],
+[`' at Urdaneta City, Philippines.</p>'`, `' at ______________________, Philippines.</p>'`],
+]);
