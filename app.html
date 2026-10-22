@@ -5359,10 +5359,24 @@ const x = AC.rows.find(y => y.id === id); if(!x) return; const prev = x.done; x.
 try{ const r = await api('setCaseDone', TOKEN, id, v); if(!r.ok) throw r; }
 catch(e){ x.done = prev; keep('actions', AC); renderActions(); toast('Not saved. Try again.'); }
 }
+/* 615 · clause violated + amounts from Addendum No. 1 */
+const CA_AMT = { late: { Excused: [100, 100], Unexcused: [100, 300] }, miss: { Excused: [100, 300], Unexcused: [300, 500] }, video: { Excused: [100, 100], Unexcused: [200, 200] } };
+const CA_KIND = s => /Late Time-in|Late to Class/.test(s) ? 'late' : /Missed Lesson|Class Cancellation|Absence/.test(s) ? 'miss' : /Video Submission/.test(s) ? 'video' : /DSL/.test(s) ? 'dsl' : '';
+const CA_TYPE = s => /Late|Missed|Cancellation|Absence/.test(s) ? 'Attendance' : /Video|DSL|Incomplete/.test(s) ? 'Teaching Compliance' : /Performance|Coaching/.test(s) ? 'Teaching Quality' : /Conversation|Communication|Oversharing|Boundary|Confidentiality/.test(s) ? 'Professional Conduct' : '';
+const CA_PTS = { 'Newly Hired': 2, 'Starting Teacher': 4, 'Newly Qualified': 6, 'Junior Teacher': 8, 'Senior Teacher': 10, 'Master Teacher': 10 };
+const CA_TAG = 'Violation of Addendum No. 1, Clause ';
+window.caseAuto = function(){ const v = id => (($(id) || {}).value || ''), s = v('cS'), R = (window.NT_RULES || {})[s], box = $('cRule');
+  if(box){ box.style.display = R ? '' : 'none'; box.innerHTML = R ? '<b>Clause violated · Addendum No. 1, Clause ' + esc(R[1]) + '</b><br>' + esc(R[0]) : ''; }
+  const x = $('cX'); if(x){ const rest = x.value.split('\n').filter(l => l.indexOf(CA_TAG) !== 0).join('\n').replace(/^\n+/, ''); x.value = R ? CA_TAG + R[1] + ': ' + R[0] + (rest ? '\n' + rest : '') : rest; }
+  const t = $('cT'); if(t && !t.value && CA_TYPE(s) && [...t.options].some(o => o.value === CA_TYPE(s))) t.value = CA_TYPE(s);
+  const k = CA_KIND(s), a = $('cA'), c = v('cC'), st = v('cSt2');
+  if(a && (!a.value || a.dataset.auto === '1')){ let n = ''; if(k === 'dsl') n = '600'; else if(CA_AMT[k] && CA_AMT[k][c] && st) n = String(CA_AMT[k][c][st === 'New' ? 0 : 1]); if(n || a.dataset.auto === '1'){ a.value = n; a.dataset.auto = n ? '1' : ''; } }
+  const d = $('cD'), ti = v('cTi'); if(d && R && (k || /Professional|Teaching/.test(CA_TYPE(s))) && (!d.value || d.dataset.auto === '1') && CA_PTS[ti]){ d.value = String(CA_PTS[ti]); d.dataset.auto = '1'; } };
+document.addEventListener('change', ev => { const t = ev.target; if(t && /^(cC|cSt2|cTi)$/.test(t.id) && $('cS')) caseAuto(); if(t && t.id === 'cA') t.dataset.auto = ''; if(t && t.id === 'cD') t.dataset.auto = ''; });
 function caseSheet(){
 const L = AC.lists;
 openSheet(`<h1>New case</h1><div class="mute small">Added at the top of ACTIONS with the next case ID</div>
-<label>Subject</label><select id="cS" class="in-t"><option></option>${opts(L.subject)}</select>
+<label>Subject</label><select id="cS" class="in-t" onchange="caseAuto('s')"><option></option>${opts(L.subject)}</select><div id="cRule" class="small" style="display:none;margin-top:6px;padding:8px 10px;border-radius:10px;background:#FBECE8;color:#5A2418;line-height:1.45"></div>
 <div class="row" style="gap:10px"><div class="grow"><label>Employee</label><select id="cE" class="in-t"><option></option>${opts(L.employee)}</select></div>
 <div class="grow"><label>Type</label><select id="cT" class="in-t"><option></option>${opts(L.type)}</select></div></div>
 <label>Student (optional)</label><input id="cSt" class="in-t" placeholder="Weiwei ST-2026-118">
@@ -6133,7 +6147,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 946;
+const COE_V = 947;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -21635,6 +21649,7 @@ go();
     'Teacher Performance Concern': ['Follow the assigned book, the class brief and the service standards; attend quality review sessions when asked.', '3.4–3.6'],
     'Teacher Coaching': ['Attend the trainings and quality review sessions the Company schedules.', '3.6']
   };
+  window.NT_RULES = RULES;
   const ruleOf = s => { const r = RULES[s]; return r ? r[0] + ' (Addendum No. 1, Clause ' + r[1] + ')' : 'Addendum No. 1 and Annex A.'; };
 
   /* ---------- teacher ---------- */
