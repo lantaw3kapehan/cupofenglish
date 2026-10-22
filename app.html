@@ -6133,7 +6133,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 944;
+const COE_V = 945;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -21567,6 +21567,177 @@ go();
   setTimeout(function w(){ if(typeof D !== 'undefined' && D){ if(D.mgr){ ctCount(); setInterval(() => { if(document.visibilityState === 'visible'){ CNTT = 0; ctCount(); } }, 10 * 60e3); } } else setTimeout(w, 2000); }, 4000);
   const _rm = window.renderMore; if(_rm) window.renderMore = function(){ const r = _rm.apply(this, arguments); try{ const m = $('v-more'); if(m && isMgmt() && !m.querySelector('.ct-more')){ const box = m.querySelector('div[style*="margin-top:12px"]') || m;
     const li = document.createElement('div'); li.className = 'li ct-more'; li.onclick = () => ctAdmin(); setTimeout(ctCount, 50); li.innerHTML = '<div class="av">' + DOCI + '</div><div class="grow"><b>Contracts</b> <span class="chip ct-cnt hide" style="margin-left:6px"></span><div class="small mute">Who has read and signed the contract and addenda; countersign; notarized scans</div></div><span class="mute">›</span>'; box.appendChild(li); } }catch(x){} return r; };
+})();
+</script>
+
+<script>
+/* 22 Oct · 613 · Notice of breach with Explain (Addendum No. 1, Clause 5.1)
+   Management: Cases › a case › "Send notice of breach" (or More › Notices › New) — the rule and amounts fill in from the subject.
+   Teacher: Today banner + My Contract › Notices › read the notice, explain within 5 days with proof, ask for a call.
+   Management decides in writing (upheld or waived; waiving also waives the case in ACTIONS). Server: Supabase function coe-notice. */
+(function(){
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-notice';
+  const call = async (action, body) => { const r = await fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, action }, body || {})) });
+    let j = null; try{ j = await r.json(); }catch(x){} if(!j) throw new Error('No answer from the server. Check the internet and try again.'); if(!j.ok) throw new Error(j.error || 'Could not save'); return j; };
+  const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const br = s => e(s).replace(/\n/g, '<br>');
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const ph = iso => { if(!iso) return ''; const d = new Date(new Date(iso).getTime() + 8 * 3600e3); return d.getUTCDate() + ' ' + MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); };
+  const phT = iso => { if(!iso) return ''; const d = new Date(new Date(iso).getTime() + 8 * 3600e3); let h = d.getUTCHours(); const m = d.getUTCMinutes(), ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return ph(iso) + ', ' + h + ':' + String(m).padStart(2, '0') + ' ' + ap; };
+  const left = iso => Math.ceil((new Date(iso).getTime() - Date.now()) / 864e5);
+  const isMgmt = () => !!(typeof D !== 'undefined' && D && D.mgr);
+  const peso = n => '₱' + (Math.round((+n || 0) * 100) / 100).toLocaleString('en-US');
+  const no = n => 'N-' + String(n.id).padStart(3, '0');
+
+  /* the rule for each subject (Addendum No. 1) */
+  const RULES = {
+    'Teacher Late Time-in': ['The time-in opens 40 minutes before your first lesson and is on time if made at least 30 minutes before it, with one screenshot showing the student code only.', '2.2'],
+    'Teacher Late to Class': ['Tap I’m in at or before the start of each lesson and be in the classroom at least 1 minute early.', '2.3'],
+    'Teacher Late Class Video Submission': ['The homework, the class note and the lesson video are submitted in the app by 23:59 (Philippine time) on the same day.', '2.5'],
+    'Teacher Missed Lesson': ['A booked lesson is your confirmed schedule and must be attended. If you cannot deliver it, file a notice of unavailability in the app at least 4 hours before.', '2.9 and 2.10'],
+    'Teacher Class Cancellation': ['A booked lesson is your confirmed schedule and must be attended. Closing or cancelling an assigned slot is a cancellation. File a notice of unavailability at least 4 hours before.', '2.9 and 2.10'],
+    'Teacher Absence': ['A booked lesson is your confirmed schedule and must be attended. If you cannot deliver it, file a notice of unavailability in the app at least 4 hours before.', '2.9 and 2.10'],
+    'DSL Policy Violation': ['Use a wired internet connection for every lesson. Wi-Fi may be used only with the Company’s prior written approval for a specific occasion.', '3.2 and 4.1'],
+    'Teacher Incomplete Class': ['A booked lesson is delivered in full; a lesson not delivered is not paid. Keep a working backup plan for power, internet and device.', '2.10, 3.2A and 4.1'],
+    'Inappropriate Classroom Conversation': ['Provide a professional service with courtesy and respect, and use lesson time for the lesson; free talk is limited to 2–3 minutes.', '3.1 and 3.3'],
+    'Unprofessional Communication': ['Provide a professional service with courtesy, patience and respect for students, parents and Company personnel.', '3.1'],
+    'Oversharing Personal Information': ['Do not ask for or share personal details or contact details with students or parents; report any such request to Operations.', '3.10'],
+    'Professional Boundary Concern': ['Keep a professional boundary with students and parents; do not share personal contact details or accept gifts without the Company’s consent.', '3.10'],
+    'Breach of Confidentiality': ['Do not post or share the contract, any Company document, or any information, image or recording of a student or parent.', '3.8 and 3.9'],
+    'Teacher Performance Concern': ['Follow the assigned book, the class brief and the service standards; attend quality review sessions when asked.', '3.4–3.6'],
+    'Teacher Coaching': ['Attend the trainings and quality review sessions the Company schedules.', '3.6']
+  };
+  const ruleOf = s => { const r = RULES[s]; return r ? r[0] + ' (Addendum No. 1, Clause ' + r[1] + ')' : 'Addendum No. 1 and Annex A.'; };
+
+  /* ---------- teacher ---------- */
+  let NT = null, NTT = 0;
+  const openN = () => (NT || []).filter(n => !n.decided_at && !n.explain_at);
+  async function loadNT(force){ if(isMgmt()) return; if(NT && !force && Date.now() - NTT < 5 * 60e3) return NT;
+    try{ NT = (await call('list')).notices; NTT = Date.now(); }catch(x){} paintNBan(); paintNBox(); return NT; }
+  function paintNBan(){ if(isMgmt()) return; const v = $('v-today'); if(!v) return; let b = v.querySelector('.nt-ban'); const o = openN();
+    if(!o.length){ if(b) b.remove(); return; } const n = o[0], d = left(n.due_at);
+    const h = '<span style="color:#B4442F;font-size:20px" aria-hidden="true">⚠</span><div class="grow"><b>Notice of breach · ' + e(n.subject) + '</b><span>' + (d > 0 ? 'Please explain within ' + d + ' day' + (d === 1 ? '' : 's') : 'The time to explain has ended · you can still send it today') + (o.length > 1 ? ' · ' + o.length + ' notices' : '') + '</span></div><span>›</span>';
+    if(!b){ b = document.createElement('div'); b.className = 'ct-ban nt-ban'; const lead = v.querySelector('.lead'); if(lead) lead.after(b); else v.prepend(b); }
+    if(b._h !== h){ b.innerHTML = h; b._h = h; } b.onclick = () => ntView(n.id); }
+  function paintNBox(){ if(isMgmt()) return; const v = $('v-contract'); if(!v || !v.querySelector('.ct h1')) return; let b = v.querySelector('.nt-box');
+    const L = NT || []; if(!L.length){ if(b) b.remove(); return; }
+    const h = '<h3>Notices</h3>' + L.map(n => '<div class="doc" style="cursor:pointer" onclick="ntView(' + n.id + ')"><div class="grow"><b>' + e(no(n)) + ' · ' + e(n.subject) + '</b><div class="s">Sent ' + e(ph(n.sent_at)) + (n.happened ? ' · ' + e(n.happened) : '') + '</div><div style="margin-top:6px">' + pill(n) + '</div></div><span class="mute">›</span></div>').join('');
+    if(!b){ b = document.createElement('div'); b.className = 'box nt-box'; const anchor = v.querySelector('.ct .box'); if(anchor) anchor.after(b); else (v.querySelector('.ct') || v).appendChild(b); }
+    if(b._h !== h){ b.innerHTML = h; b._h = h; } }
+  function pill(n){ if(n.decided_at) return n.decision === 'waived' ? '<span class="pill p-ok">Waived · no penalty</span>' : '<span class="pill p-due">Decision: upheld</span>';
+    if(n.explain_at) return '<span class="pill p-wait">Explanation sent · waiting for the decision</span>';
+    const d = left(n.due_at); return '<span class="pill p-due">' + (d > 0 ? 'Explain within ' + d + ' day' + (d === 1 ? '' : 's') : 'Time to explain has ended') + '</span>'; }
+
+  let CURN = null;
+  window.ntView = async function(id){ if(isMgmt()) return ntAdminView(id);
+    if(!NT) await loadNT(true); CURN = (NT || []).find(n => n.id === id); if(!CURN) return toast('Notice not found');
+    openSheet('<div class="ct" id="ntDoc"></div>'); paintN();
+    if(!CURN.opened_at) call('open', { id }).then(j => { if(j.notice){ Object.assign(CURN, j.notice); } }).catch(() => {}); };
+  function body(n){ return '<div class="box"><h3>What happened</h3><div style="font-size:14px;line-height:1.5">' + br(n.happened || '—') + '</div></div>' +
+      '<div class="box"><h3>The rule</h3><div style="font-size:14px;line-height:1.5">' + br(n.rule || '') + '</div></div>' +
+      (n.record ? '<div class="box"><h3>The record</h3><div style="font-size:14px;line-height:1.5">' + br(n.record) + '</div></div>' : '') +
+      '<div class="box"><h3>What may follow</h3><div style="font-size:14px;line-height:1.5">' + br(n.consequence || '') +
+      ((+n.amount || +n.points) ? '<div style="margin-top:6px"><b>' + (+n.amount ? 'Service credit ' + peso(n.amount) : '') + (+n.amount && +n.points ? ' · ' : '') + (+n.points ? n.points + ' deduction points' : '') + '</b> · or waived with good reason</div>' : '') +
+      (n.final_notice ? '<div class="note" style="margin-top:8px"><b>This is a final notice of breach.</b> A further breach of the same kind may end the Agreement without the 30-day notice (Clause 5.3).</div>' : '') + '</div></div>'; }
+  function paintN(){ const el = $('ntDoc'); const n = CURN; if(!el || !n) return; const d = left(n.due_at);
+    let h = '<div class="sub" style="margin:0 0 4px">' + e(no(n)) + ' · sent ' + e(phT(n.sent_at)) + '</div><h1 style="margin:0 0 6px">Notice of breach</h1><div style="font-size:15px;font-weight:700;margin-bottom:10px">' + e(n.subject) + '</div><div style="margin-bottom:12px">' + pill(n) + '</div>' + body(n);
+    if(n.decided_at){ h += '<div class="box" style="border-color:' + (n.decision === 'waived' ? '#BFE3CF' : '#F0C9BF') + '"><h3>Decision · ' + e(phT(n.decided_at)) + '</h3><div style="font-size:15px;font-weight:700;margin-bottom:6px">' + (n.decision === 'waived' ? 'Waived · no penalty, kept on record' : 'Upheld') + '</div><div style="font-size:14px;line-height:1.5">' + br(n.decision_text) + '</div></div>'; }
+    if(n.explain_at){ h += '<div class="box"><h3>Your explanation · ' + e(phT(n.explain_at)) + '</h3><div style="font-size:14px;line-height:1.5">' + br(n.explain) + '</div>' + (n.conf_req ? '<div class="fine">You asked for a short call. Management will contact you.</div>' : '') +
+        ((n.files || []).length ? '<div class="row2">' + n.files.map((f, i) => '<button class="btn sm ghost" onclick="ntFile(' + n.id + ',' + i + ')">' + e(f.name) + '</button>').join('') + '</div>' : '') + '</div>'; }
+    if(!n.explain_at && !n.decided_at){
+      h += '<div class="box sign"><h3>Your explanation</h3><div class="fine" style="margin:0 0 8px">You have 5 calendar days from receiving this notice' + (d > 0 ? ' (until ' + e(phT(n.due_at)) + ')' : '') + '. Explain what happened and attach any proof (a screenshot, a message, a photo). If you send nothing, management decides on the record.</div>' +
+        '<textarea class="in" id="ntTx" placeholder="What happened, and why…"></textarea>' +
+        '<div class="lab">Proof (optional, up to 5 photos or PDFs)</div><input type="file" id="ntFi" accept="image/*,application/pdf" multiple>' +
+        '<label class="tick" style="margin-top:12px"><input type="checkbox" id="ntCf"><span>I would like a short online call with management about this.</span></label>' +
+        '<button class="btn teal go" id="ntGo" onclick="ntSend()">Send explanation</button></div>';
+    }
+    h += '<div class="fine">After a verified case you may be asked to attend a short quality review session with management (Clause 5.1). Read Section 5 of Addendum No. 1 in My Contract.</div>';
+    el.innerHTML = h; }
+  const b64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = no; r.readAsDataURL(f); });
+  window.ntSend = async function(){ const t = ($('ntTx').value || '').trim(); if(t.length < 5) return toast('Write your explanation first');
+    const fs = [...(($('ntFi') || {}).files || [])].slice(0, 5); if(fs.some(f => f.size > 8e6)) return toast('Each file must be under 8 MB');
+    const g = $('ntGo'); g.disabled = true; g.textContent = 'Sending…';
+    try{ const files = []; for(const f of fs) files.push({ name: f.name, type: f.type || 'image/jpeg', b64: await b64(f) });
+      const j = await call('explain', { id: CURN.id, text: t, conf: $('ntCf').checked, files }); Object.assign(CURN, j.notice); toast('Explanation sent ✓'); paintN(); paintNBan(); paintNBox();
+    }catch(x){ g.disabled = false; g.textContent = 'Send explanation'; toast(x.message); } };
+  window.ntFile = async (id, i) => { try{ const j = await call('file', { id, i }); window.open(j.url, '_blank'); }catch(x){ toast(x.message); } };
+
+  /* hooks (teacher) */
+  const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const r = _rt.apply(this, arguments); try{ paintNBan(); }catch(x){} return r; };
+  const _go = window.go; if(_go) window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'today') paintNBan(); if(v === 'contract') setTimeout(paintNBox, 50); }catch(x){} return r; };
+  setTimeout(function w(){ if(typeof D !== 'undefined' && D){ if(!D.mgr){ loadNT(true); setInterval(() => { if(document.visibilityState === 'visible') loadNT(true); }, 10 * 60e3);
+      const vc = $('v-contract'); if(vc) new MutationObserver(() => { if(!vc.querySelector('.nt-box') && (NT || []).length) paintNBox(); }).observe(vc, { childList: true }); } } else setTimeout(w, 1500); }, 2000);
+
+  /* ---------- management ---------- */
+  let AN = null;
+  const teachers = () => { try{ const L = (typeof AC !== 'undefined' && AC && AC.lists && AC.lists.employee) || []; if(L.length) return L; }catch(x){} return ['April','Ara','Christian','Cy','Dezza','Julia','Kat','Lovely','Martin','Mayi','Pam','Resa','Rose','Virgo']; };
+  window.ntAdmin = async function(){ openSheet('<div class="ct"><h1>Notices of breach</h1><div class="sub">Loading…</div><div class="sk"></div></div>'); $('sheet').classList.add('wide');
+    try{ AN = (await call('list', { all: 1 })).notices; paintAdmin(); }catch(x){ $('sheetBody').innerHTML = '<div class="ct"><div class="note">' + e(x.message) + '</div></div>'; } };
+  function row(n){ return '<div class="tr" onclick="ntAdminView(' + n.id + ')"><div class="grow"><b>' + e(n.teacher) + ' · ' + e(n.subject) + '</b><div class="small mute">' + e(no(n)) + ' · sent ' + e(ph(n.sent_at)) + (n.case_id ? ' · case ' + e(n.case_id) : '') + (n.opened_at ? ' · opened' : ' · not opened') + (n.conf_req ? ' · asked for a call' : '') + '</div><div style="margin-top:5px">' + pill(n).replace(/Explain within/, 'Explanation due in').replace('Time to explain has ended', 'No explanation · 5 days ended') + '</div></div><span class="mute">›</span></div>'; }
+  function paintAdmin(){ const b = $('sheetBody'); if(!b || !AN) return;
+    const dec = AN.filter(n => !n.decided_at && (n.explain_at || left(n.due_at) <= 0)), wait = AN.filter(n => !n.decided_at && !n.explain_at && left(n.due_at) > 0), done = AN.filter(n => n.decided_at);
+    b.innerHTML = '<div class="ct"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1>Notices of breach</h1><button class="btn sm teal" onclick="ntNew()">+ New notice</button></div><div class="sub">Addendum No. 1, Clause 5.1: notice in the app · 5 days to explain · written decision</div>' +
+      '<div class="box"><h3>To decide · ' + dec.length + '</h3>' + (dec.map(row).join('') || '<div class="small mute">Nothing to decide.</div>') + '</div>' +
+      '<div class="box"><h3>Waiting for the teacher · ' + wait.length + '</h3>' + (wait.map(row).join('') || '<div class="small mute">None.</div>') + '</div>' +
+      '<div class="box"><h3>Decided · ' + done.length + '</h3>' + (done.slice(0, 40).map(row).join('') || '<div class="small mute">None yet.</div>') + '</div></div>'; }
+  window.ntAdminView = async function(id){ if(!AN){ try{ AN = (await call('list', { all: 1 })).notices; }catch(x){ return toast(x.message); } }
+    const n = AN.find(x => x.id === id); if(!n) return toast('Not found'); if(!$('sheet').classList.contains('on')) openSheet('<div></div>'); const b = $('sheetBody');
+    let h = '<div class="ct"><button class="btn ghost sm" style="margin-bottom:10px" onclick="ntAdmin()">‹ Notices</button><div class="sub" style="margin:0 0 4px">' + e(no(n)) + ' · sent ' + e(phT(n.sent_at)) + ' by ' + e(n.sent_by || '') + (n.case_id ? ' · case ' + e(n.case_id) : '') + '</div><h1 style="margin:0 0 6px">' + e(n.teacher) + ' · ' + e(n.subject) + '</h1><div style="margin-bottom:12px">' + pill(n) + ' <span class="small mute">' + (n.opened_at ? 'Opened ' + e(phT(n.opened_at)) : 'Not opened yet') + ' · explain by ' + e(phT(n.due_at)) + '</span></div>' + body(n);
+    if(n.explain_at) h += '<div class="box" style="border-color:#E9C98F"><h3>Explanation · ' + e(phT(n.explain_at)) + '</h3><div style="font-size:14px;line-height:1.5">' + br(n.explain) + '</div>' + (n.conf_req ? '<div class="note">Asked for a short online call before the decision.</div>' : '') + ((n.files || []).length ? '<div class="row2">' + n.files.map((f, i) => '<button class="btn sm ghost" onclick="ntFile(' + n.id + ',' + i + ')">' + e(f.name) + '</button>').join('') + '</div>' : '') + '</div>';
+    if(n.decided_at) h += '<div class="box"><h3>Decision · ' + e(phT(n.decided_at)) + ' · ' + e(n.decided_by || '') + '</h3><b>' + (n.decision === 'waived' ? 'Waived' : 'Upheld') + '</b><div style="font-size:14px;line-height:1.5;margin-top:6px">' + br(n.decision_text) + '</div></div>';
+    else { const can = n.explain_at || left(n.due_at) <= 0;
+      h += '<div class="box sign"><h3>Decision in writing</h3>' + (can ? '' : '<div class="note" style="margin:0 0 8px">The teacher has until ' + e(phT(n.due_at)) + ' to explain. You can waive now; to uphold, wait for the explanation or the end of the 5 days.</div>') +
+        '<label class="tick"><input type="radio" name="ntD" value="upheld"' + (can ? ' checked' : ' disabled') + '><span><b>Upheld</b> · the service credit and points stay' + (n.case_id ? ' (case ' + e(n.case_id) + ')' : '') + '</span></label>' +
+        '<label class="tick"><input type="radio" name="ntD" value="waived"' + (can ? '' : ' checked') + '><span><b>Waived</b> · no penalty, kept on record' + (n.case_id ? '; the case in ACTIONS is waived too' : '') + '</span></label>' +
+        '<div class="lab">Reasons (the teacher reads this)</div><textarea class="in" id="ntDx" placeholder="e.g. The record shows… Your explanation… Therefore…"></textarea>' +
+        '<button class="btn teal go" id="ntDg" onclick="ntDecide(' + n.id + ')">Send decision</button>' +
+        '<div class="row2"><button class="btn sm ghost" style="color:#9A3A26" onclick="ntVoid(' + n.id + ')">Sent by mistake · withdraw</button></div></div>'; }
+    b.innerHTML = h + '</div>'; b.scrollTop = 0; };
+  window.ntDecide = async function(id){ const n = AN.find(x => x.id === id); const d = (document.querySelector('input[name="ntD"]:checked') || {}).value; const t = ($('ntDx').value || '').trim();
+    if(!d) return toast('Choose upheld or waived'); if(t.length < 5) return toast('Write the reasons');
+    if(!confirm((d === 'waived' ? 'Waive ' : 'Uphold ') + no(n) + ' for ' + n.teacher + '?\n\nThe teacher reads your reasons in the app.')) return;
+    const g = $('ntDg'); g.disabled = true; g.textContent = 'Sending…';
+    try{ const j = await call('decide', { id, decision: d, text: t }); Object.assign(n, j.notice);
+      if(d === 'waived' && n.case_id){ try{ const r = await api('mgmtCaseWaive', TOKEN, n.case_id, 'Notice ' + no(n) + ': ' + t.slice(0, 120)); if(!r || !r.ok) throw r; toast('Decision sent · case ' + n.case_id + ' waived ✓'); try{ AC = null; }catch(x){} }catch(x){ toast('Decision sent · waive case ' + n.case_id + ' in Cases by hand'); } }
+      else toast('Decision sent ✓');
+      ntAdminView(id); cnt(true);
+    }catch(x){ g.disabled = false; g.textContent = 'Send decision'; toast(x.message); } };
+  window.ntVoid = async id => { const v = prompt('Withdraw this notice? The teacher no longer sees it.\n\nReason:'); if(!v) return; try{ await call('void', { id, reason: v }); toast('Withdrawn'); AN = null; ntAdmin(); cnt(true); }catch(x){ toast(x.message); } };
+
+  /* new notice (from a case or blank) */
+  window.ntNew = function(c){ c = c || {}; const subj = c.subject || '';
+    const amt = c.amount && String(c.amount) !== '0' ? String(c.amount).replace(/[^\d.]/g, '') : '';
+    const happened = c.when ? ph(c.when) + (c.student ? ' · ' + String(c.student).replace(/\n/g, ' ') : '') : '';
+    const cons = 'After your explanation, management decides in writing. A verified case brings the service credit below and the deduction points for your rank (Addendum No. 1, Clauses 4.1–4.2), unless waived with good reason. A third case of the same kind in a month may pause new lesson offers (Clause 5.2).';
+    if(!$('sheet').classList.contains('on')) openSheet('<div></div>'); $('sheet').classList.add('wide');
+    $('sheetBody').innerHTML = '<div class="ct"><button class="btn ghost sm" style="margin-bottom:10px" onclick="ntAdmin()">‹ Notices</button><h1>Send a notice of breach</h1><div class="sub">The teacher sees it in the app and has 5 calendar days to explain (Clause 5.1).' + (c.id ? ' From case ' + e(c.id) + '.' : '') + '</div>' +
+      '<div class="box sign"><div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><div class="lab">Teacher</div><input class="in" id="nwT" list="nwTL" value="' + e(c.employee || '') + '"><datalist id="nwTL">' + teachers().map(t => '<option value="' + e(t) + '">').join('') + '</datalist></div>' +
+      '<div><div class="lab">Subject</div><input class="in" id="nwS" list="nwSL" value="' + e(subj) + '" oninput="ntRule()"><datalist id="nwSL">' + Object.keys(RULES).map(t => '<option value="' + e(t) + '">').join('') + '</datalist></div></div>' +
+      '<div class="lab">What happened (date, class, student)</div><input class="in" id="nwH" value="' + e(happened) + '" placeholder="e.g. 21 Oct 2026 · 21:00 class · Asher">' +
+      '<div class="lab">The rule</div><textarea class="in" id="nwR" style="min-height:70px">' + e(ruleOf(subj)) + '</textarea>' +
+      '<div class="lab">The record (what the app or Operations shows)</div><textarea class="in" id="nwRc" style="min-height:70px">' + e(c.action || '') + '</textarea>' +
+      '<div class="lab">What may follow</div><textarea class="in" id="nwC" style="min-height:70px">' + e(cons) + '</textarea>' +
+      '<div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><div class="lab">Service credit ₱</div><input class="in" id="nwA" inputmode="decimal" value="' + e(amt) + '"></div><div><div class="lab">Deduction points</div><input class="in" id="nwP" inputmode="decimal" value="' + e(c.demerit || '') + '"></div></div>' +
+      '<label class="tick" style="margin-top:12px"><input type="checkbox" id="nwF"' + (/DSL/i.test(subj) ? ' checked' : '') + '><span>This is a <b>final notice of breach</b> (a further breach of the same kind may end the Agreement without notice)</span></label>' +
+      '<input type="hidden" id="nwId" value="' + e(c.id || '') + '"><button class="btn teal go" id="nwGo" onclick="ntSendNew()">Send notice to the teacher</button></div></div>'; };
+  window.ntRule = () => { const s = $('nwS').value, r = $('nwR'); if(r && RULES[s]) r.value = ruleOf(s); const f = $('nwF'); if(f && /DSL/i.test(s)) f.checked = true; };
+  window.ntSendNew = async function(){ const n = { teacher: $('nwT').value.trim(), subject: $('nwS').value.trim(), happened: $('nwH').value.trim(), rule: $('nwR').value.trim(), record: $('nwRc').value.trim(), consequence: $('nwC').value.trim(), amount: $('nwA').value, points: $('nwP').value, final_notice: $('nwF').checked, case_id: $('nwId').value };
+    if(!n.teacher || !n.subject) return toast('Choose the teacher and subject'); if(!n.happened) return toast('Write what happened');
+    if(!confirm('Send this notice of breach to ' + n.teacher + '?\n\nThey get a phone alert and see it in the app, with 5 days to explain.')) return;
+    const g = $('nwGo'); g.disabled = true; g.textContent = 'Sending…';
+    try{ const j = await call('new', { n }); toast('Notice ' + no(j.notice) + ' sent to ' + n.teacher + ' ✓'); AN = null; await ntAdmin(); }catch(x){ g.disabled = false; g.textContent = 'Send notice to the teacher'; toast(x.message); } };
+
+  /* Cases › a case › "Send notice of breach" */
+  const _cv = window.caseView; if(_cv) window.caseView = function(id){ const r = _cv.apply(this, arguments); try{ const x = AC.rows.find(y => y.id === id); const b = $('sheetBody');
+    if(x && b && x.employee && !/^Waived/.test(x.action || '') && !b.querySelector('.nt-cbtn')){ const bt = document.createElement('button'); bt.className = 'btn teal block nt-cbtn'; bt.style.marginTop = '14px'; bt.textContent = 'Send notice of breach to ' + x.employee; bt.onclick = () => ntNew(x); b.appendChild(bt);
+      call('list', { teacher: x.employee }).then(j => { const s = (j.notices || []).find(n => n.case_id === id); if(s){ bt.className = 'btn ghost block nt-cbtn'; bt.textContent = 'Notice ' + no(s) + ' · ' + (s.decided_at ? (s.decision === 'waived' ? 'waived' : 'upheld') : s.explain_at ? 'explained · decide' : 'waiting for the teacher'); bt.onclick = () => { AN = null; ntAdminView(s.id); }; } }).catch(() => {}); } }catch(x){} return r; };
+
+  /* More › Notices with a count of notices to decide */
+  let NC = null;
+  async function cnt(force){ if(!isMgmt()) return; try{ if(force || !NC){ const L = (await call('list', { all: 1 })).notices || []; NC = L.filter(n => !n.decided_at && (n.explain_at || left(n.due_at) <= 0)).length; }
+    document.querySelectorAll('.nt-cnt').forEach(el => { el.textContent = NC ? NC + ' to decide' : ''; el.classList.toggle('hide', !NC); }); }catch(x){} }
+  const _rm = window.renderMore; if(_rm) window.renderMore = function(){ const r = _rm.apply(this, arguments); try{ const m = $('v-more'); if(m && isMgmt() && !m.querySelector('.nt-more')){ const box = m.querySelector('div[style*="margin-top:12px"]') || m;
+    const li = document.createElement('div'); li.className = 'li nt-more'; li.onclick = () => ntAdmin(); li.innerHTML = '<div class="av"><span style="font-size:18px" aria-hidden="true">⚠</span></div><div class="grow"><b>Notices of breach</b> <span class="chip nt-cnt hide" style="margin-left:6px"></span><div class="small mute">Notice in the app · teacher explains within 5 days · your written decision</div></div><span class="mute">›</span>'; box.appendChild(li); setTimeout(cnt, 50); } }catch(x){} return r; };
 })();
 </script>
 
