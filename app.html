@@ -5331,7 +5331,7 @@ if(AC_F==='open') L = L.filter(x=>!x.done);
 if(AC_F==='pen') L = L.filter(x=>x.amount && x.amount!=='0');
 if(AC_F==='bon') L = L.filter(x=>x.incentive && x.incentive!=='0');
 if(q) L = L.filter(x => [x.id,x.subject,x.employee,x.student,x.type,x.action].join(' ').toLowerCase().includes(q));
-const h = `<div class="lead row"><div class="grow"><h1>Cases</h1><div class="mute small">Live from ACTIONS · newest first${sheetLink('ACTIONS')}</div></div><button class="btn sm teal" onclick="caseSheet()">+ New case</button></div>
+const h = `<div class="lead row"><div class="grow"><h1>Cases</h1><div class="mute small">Live from ACTIONS · newest first${sheetLink('ACTIONS')}</div></div><button class="btn sm ghost" onclick="wifiCase()" title="Taught on Wi-Fi without approval · ₱600 (PEN-025)">+ Wi-Fi case</button> <button class="btn sm teal" onclick="caseSheet()">+ New case</button></div>
 <div style="margin-top:12px"><input id="acq" class="search" placeholder="Search case, teacher, student" value="${esc(q)}" oninput="renderActions()"></div>
 <div class="seg">${[['all','All'],['open','Not completed'],['pen','Penalties'],['bon','Bonuses']].map(([k,l])=>`<button class="${AC_F===k?'on':''}" onclick="AC_F='${k}';renderActions()">${l}</button>`).join('')}</div>
 <div>${L.slice(0,150).map(x => `<div class="li" onclick="caseView('${esc(x.id)}')"><div class="grow"><div class="row" style="gap:6px"><b class="ell">${esc(x.subject||'—')}</b>${x.done?'':'<span class="chip coral">Open</span>'}</div>
@@ -5376,6 +5376,10 @@ openSheet(`<h1>New case</h1><div class="mute small">Added at the top of ACTIONS 
 <label class="check"><input type="checkbox" id="cDone" checked><span>Completed</span></label>
 <button class="btn block" id="cGo" style="margin-top:14px" onclick="sendCase()">Add case</button>`);
 }
+function wifiCase(){ caseSheet(); const set = (id, v) => { const el = $(id); if(!el || v == null) return; if(el.tagName === 'SELECT' && ![...el.options].some(o => o.value === v || o.text === v)){ const o = document.createElement('option'); o.value = o.text = v; el.appendChild(o); } el.value = v; };
+  setTimeout(() => { set('cS', 'DSL Policy Violation'); const ty = $('cT'); if(ty){ const o = [...ty.options].find(o => /penalt/i.test(o.text)); if(o) ty.value = o.value; }
+    set('cA', '600'); set('cX', 'Taught on Wi-Fi without prior written approval (Addendum No. 1, Clauses 3.2 and 4.1; POLICY PEN-025). ₱600 per verified incident. First verified incident: final notice of breach. A further incident pauses new lesson offers until Operations verifies the wired connection (Clause 5.2). Notice sent in the app; 5 days to explain.');
+    const d = $('cDone'); if(d) d.checked = false; toast('Choose the teacher, then add the case'); }, 60); }
 async function sendCase(){
 const v = id => ($(id)||{}).value || '';
 const f = {subject:v('cS'),employee:v('cE'),type:v('cT'),student:v('cSt'),source:v('cSo'),assigned:'Operations',condition:v('cC'),status:v('cSt2'),tier:v('cTi'),
@@ -6129,7 +6133,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 943;
+const COE_V = 944;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -10247,7 +10251,7 @@ return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type=
     if(q) L = L.filter(x => [x.id, x.subject, x.employee, x.student, x.type, x.action].join(' ').toLowerCase().includes(q));
     const now = new Date(), thisM = all.filter(x => { const d = dOf(x.when); return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
     const T = [...new Set(all.map(x => String(x.employee || '').trim()).filter(Boolean))].sort();
-    let h = `<div class="lead row"><div class="grow"><h1>Cases</h1><div class="mute small">Live from ACTIONS · newest first${sheetLink('ACTIONS')}</div></div><button class="btn sm teal" onclick="caseSheet()">+ New case</button></div>
+    let h = `<div class="lead row"><div class="grow"><h1>Cases</h1><div class="mute small">Live from ACTIONS · newest first${sheetLink('ACTIONS')}</div></div><button class="btn sm ghost" onclick="wifiCase()" title="Taught on Wi-Fi without approval · ₱600 (PEN-025)">+ Wi-Fi case</button> <button class="btn sm teal" onclick="caseSheet()">+ New case</button></div>
 <div class="ac2-sum"><span>${MON[now.getMonth()]} so far</span><span><b>${thisM.length}</b>cases</span><span class="plus"><b>+${peso2(thisM.reduce((a, x) => a + num(x.incentive), 0))}</b>bonuses</span><span class="minus"><b>${(d => (d ? '−' : '') + peso2(d))(thisM.reduce((a, x) => a + num(x.amount), 0))}</b>deductions</span><span><b>${F.open.length}</b>not completed</span></div>
 <div style="margin-top:12px"><input id="acq" class="search" placeholder="Search case, teacher, student" value="${esc(q)}" oninput="renderActions()"></div>
 <div class="seg">${[['all', 'All'], ['open', 'Not completed'], ['pen', 'Deductions'], ['bon', 'Bonuses']].map(([k, l]) => `<button class="${AC_F === k ? 'on' : ''}" onclick="AC_F='${k}';renderActions()">${l} · ${F[k].length}</button>`).join('')}</div>
@@ -20000,7 +20004,7 @@ body.is-mgr #v-home .ov-two .x-pay{max-width:520px}`;
     const people = [...new Set(all.map(x => String(x.employee || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
     const W = {}; M0.forEach(x => { const n = String(x.employee || '').trim(); if(!n) return; const w = W[n] = W[n] || { b: 0, p: 0, n: 0 }; w.b += num(x.incentive); w.p += num(x.amount); w.n++; });
     const WL = Object.keys(W).sort((a, b) => (W[b].b + W[b].p) - (W[a].b + W[a].p)), wmx = Math.max(1, ...WL.map(n => W[n].b + W[n].p));
-    let h = `<div class="lead row"><div class="grow"><h1>Cases</h1><div class="mute small">Live from ACTIONS · newest first${sheetLink('ACTIONS')}</div></div><button class="btn sm teal" onclick="caseSheet()">+ New case</button></div>
+    let h = `<div class="lead row"><div class="grow"><h1>Cases</h1><div class="mute small">Live from ACTIONS · newest first${sheetLink('ACTIONS')}</div></div><button class="btn sm ghost" onclick="wifiCase()" title="Taught on Wi-Fi without approval · ₱600 (PEN-025)">+ Wi-Fi case</button> <button class="btn sm teal" onclick="caseSheet()">+ New case</button></div>
 <section class="cs524"><div><div class="t"><span>${MON[now.getMonth()]} so far</span></div><div class="k"><div><span>Cases</span><b>${M0.length}</b></div><div class="p"><span>Bonuses</span><b>+${P(b0)}</b></div><div class="m"><span>Deductions</span><b>${p0 ? '−' : ''}${P(p0)}</b></div><div class="o"><span>Not completed</span><b>${open}</b></div></div></div>
 <div><div class="t"><span>Last 6 months</span><span>bonuses ▲ · deductions ▼</span></div><div class="ch524">${mv.map(o => `<div class="${o.k === k0 ? 'cur' : ''}" title="${MON[+o.k.slice(5) - 1]} · +${P(o.b)} · −${P(o.p)}"><div class="up">${o.b ? `<i style="height:${Math.max(4, o.b / mx * 100)}%"></i>` : ''}</div><div class="dn">${o.p ? `<i style="height:${Math.max(4, o.p / mx * 100)}%"></i>` : ''}</div><small>${MON[+o.k.slice(5) - 1]}</small></div>`).join('')}</div></div></section>`;
     if(WL.length) h += `<section class="wh524"><div class="hd"><span>Who, ${MON[now.getMonth()]} · tap a name to see only theirs</span><span>bonuses · deductions</span></div><div class="g">${WL.map(n => { const w = W[n];
