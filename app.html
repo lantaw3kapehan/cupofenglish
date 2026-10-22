@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 980;
+const COE_V = 981;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -12666,6 +12666,7 @@ ${m.top && m.top.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-
   const hm = s => { try{ return new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' }); }catch(e){ return ''; } };
   const dd = s => { try{ return new Date(String(s).slice(0, 10) + 'T12:00:00+08:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }catch(e){ return s; } };
   const today = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  window.vmFound = (code, day, url, name) => { let hit = 0; (V || []).forEach(x => { if(String(x.code).toUpperCase() === String(code).toUpperCase() && String(x.day).slice(0, 10) === day && !x.found){ x.found = true; x.url = url; x.name = name; x.uploaded = new Date().toISOString(); hit = 1; } }); if(hit){ try{ localStorage.setItem('coe.vid.mine', JSON.stringify(V)); }catch(e){} try{ paint(); }catch(e){} } };   /* 649 */
   function load(){ if(busy || !TOKEN || !(typeof D !== 'undefined' && D && !D.mgr) || Date.now() - at < 3 * 6e4) return; busy = true;
     fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'screen', fn: 'tVidMine', args: [], token: TOKEN }) })
       .then(x => x.json()).then(r => { if(r && r.ok && Array.isArray(r.data)){ V = r.data; at = Date.now(); try{ localStorage.setItem('coe.vid.mine', JSON.stringify(V)); }catch(e){} paint(); } }).catch(() => {}).finally(() => { busy = false; }); }
@@ -12682,7 +12683,7 @@ ${m.top && m.top.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-
       return '<div style="padding:8px 0;border-top:1px dashed var(--line)">' + (m.length ? '<div class="small">' + head + '</div>' + missH + (f.length ? '<details style="margin-top:6px"><summary class="small link">Show the ' + f.length + ' found</summary><div>' + f.map(chip).join('') + '</div></details>' : '')
         : '<details><summary class="small">' + head + '</summary><div style="margin-top:4px">' + f.map(chip).join('') + '</div></details>') + '</div>'; };
     const h = '<div class="row" style="align-items:center"><b class="grow">🎬 My class videos</b><span class="small" style="font-weight:700;color:' + (miss.length ? '#B03A2E' : '#1E7A55') + '">' + (miss.length ? miss.length + ' not found yet' : 'all found ✓') + '</span></div>'
-      + '<div class="small mute" style="margin:2px 0 2px">Checked in your Drive class folders · a video shows here about 10 minutes after upload · tap a name to open</div>' + days.map(dayH).join('');
+      + '<div class="small mute" style="margin:2px 0 2px">Upload each video in the app on the class card · it shows here at once · due by 23:59 the same day · tap a name to open</div>' + days.map(dayH).join('');
     if(box && box.dataset.k === h && box.isConnected && root.contains(box)) return;   // nothing new: leave it as it is (no flicker)
     const open = box ? [...box.querySelectorAll('details')].map(x => x.open) : [];
     if(!box){ box = document.createElement('section'); box.className = 'card'; box.id = 'vidMine'; box.style.cssText = 'padding:10px 14px;margin:10px 0 4px'; }
@@ -22122,7 +22123,7 @@ go();
       if(d && !d.ok) throw new Error(d.msg || 'The video uploaded but was not linked. Tell Ops.');
       const url = (d && d.url) || ('https://drive.google.com/file/d/' + fileId + '/view'), at = hm();
       s.done = url; s.at = at; s.t = Date.now(); o = get(); o[id] = s; put(o);
-      D.vids = D.vids || {}; D.vids[id] = { url, at };
+      D.vids = D.vids || {}; D.vids[id] = { url, at }; try{ if(window.vmFound && c.code) vmFound(c.code, c.day, url, (d && d.name) || s.name || ''); }catch(e){}
       try{ if(typeof VIEW !== 'undefined' && VIEW === 'today') renderToday(); }catch(e){}
       const lc = d && d.late && d.late.caseId ? d.late : null;
       const lateTxt = lc ? '<div class="small" style="margin-top:4px;font-weight:700">Uploaded late · case ' + esc(lc.caseId) + (lc.amount ? ' · −₱' + esc(lc.amount) : '') + ' (Late Class Video · Unexcused) · management reviews it tomorrow</div>'
