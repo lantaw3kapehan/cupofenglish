@@ -1,8 +1,10 @@
 // 22 Oct · Addendum No. 1 (3.2, 4.1) / POLICY PEN-025: a one-tap "Wi-Fi case" in Cases — the New case form opens already filled:
 // subject DSL Policy Violation, ₱600 deduction, and the action text (first verified incident = final notice of breach).
-require('../tools/lib.js')(process.argv[2], [
-[`<button class="btn sm teal" onclick="caseSheet()">+ New case</button></div>`,
- `<button class="btn sm ghost" onclick="wifiCase()" title="Taught on Wi-Fi without approval · ₱600 (PEN-025)">+ Wi-Fi case</button> <button class="btn sm teal" onclick="caseSheet()">+ New case</button></div>`],
+const fs = require('fs'); const file = process.argv[2]; let s0 = fs.readFileSync(file, 'utf8');
+const B = `<button class="btn sm teal" onclick="caseSheet()">+ New case</button></div>`;
+if(s0.indexOf(B) < 0){ console.error('Cases button not found'); process.exit(1); }
+s0 = s0.split(B).join(`<button class="btn sm ghost" onclick="wifiCase()" title="Taught on Wi-Fi without approval · ₱600 (PEN-025)">+ Wi-Fi case</button> ` + B); fs.writeFileSync(file, s0);
+require('../tools/lib.js')(file, [
 ["async function sendCase(){",
  `function wifiCase(){ caseSheet(); const set = (id, v) => { const el = $(id); if(!el || v == null) return; if(el.tagName === 'SELECT' && ![...el.options].some(o => o.value === v || o.text === v)){ const o = document.createElement('option'); o.value = o.text = v; el.appendChild(o); } el.value = v; };
   setTimeout(() => { set('cS', 'DSL Policy Violation'); const ty = $('cT'); if(ty){ const o = [...ty.options].find(o => /penalt/i.test(o.text)); if(o) ty.value = o.value; }
