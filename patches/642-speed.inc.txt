@@ -1,0 +1,31 @@
+<script>
+/* 22 Oct · 642 · Speed recorder (Misty: "every screen and every button should be the fastest it can be"). Records what people actually
+   wait for, on their own phone or laptop, so the slowest can be fixed first:
+   · screen:<view> — from tapping a menu item until the screen shows real content (its loading bars are gone), cap 60 s;
+   · <action> — every call made right after a tap (a button or opening something), and any other call slower than 3 s.
+   Sent once a minute in one small batch (Supabase coe_speed via coe-notice "speed"; kept 45 days). Nothing is shown on screen. */
+(function(){
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-notice';
+  let Q = [];
+  const dev = () => (window.innerWidth || 0) < 900 ? 'phone' : 'laptop';
+  const push = (fn, ms, ui) => { if(Q.length >= 400) return; Q.push({ fn: String(fn).slice(0, 40), ms: Math.round(ms), ui: !!ui, view: typeof VIEW !== 'undefined' ? String(VIEW || '') : '', v: typeof COE_V !== 'undefined' ? COE_V : 0, dev: dev(), at: new Date().toISOString() }); };
+  function flush(leaving){ try{ if(!Q.length || typeof TOKEN === 'undefined' || !TOKEN) return; const rows = Q.splice(0, 300);
+      fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'speed', rows }), keepalive: !!leaving }).catch(() => {}); }catch(x){} }
+  setInterval(flush, 60000);
+  document.addEventListener('visibilitychange', () => { if(document.hidden) flush(true); });
+  /* taps and buttons */
+  const baseApi = window.api;
+  if(baseApi) window.api = function(fn){ const t0 = performance.now(), ui = Date.now() - (window._ui || 0) < 1500, p = baseApi.apply(this, arguments);
+    try{ Promise.resolve(p).then(() => { const ms = performance.now() - t0; if(ui || ms > 3000) push(fn, ms, ui); }, () => push(fn + ':err', performance.now() - t0, ui)); }catch(x){}
+    return p; };
+  /* screens */
+  const baseGo = window.go;
+  if(baseGo) window.go = function(v){ const t0 = performance.now(), r = baseGo.apply(this, arguments);
+    try{ const id = 'v-' + v; const chk = () => { const el = document.getElementById(id), ms = performance.now() - t0;
+        if(typeof VIEW !== 'undefined' && VIEW !== v) return;   /* moved on before it finished: not counted */
+        const busy = !el || !el.textContent.trim() || el.querySelector(':scope > .sk');
+        if(!busy || ms > 60000){ push('screen:' + v, ms, true); return; } setTimeout(chk, 50); };
+      setTimeout(chk, 0); }catch(x){}
+    return r; };
+})();
+</script>

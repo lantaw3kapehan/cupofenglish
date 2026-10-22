@@ -10,6 +10,7 @@
 //   decide  { id, decision: upheld|waived, text } → { ok, notice }   (management)
 //   void    { id, reason }          → { ok }            (management: sent by mistake)
 //   cel_list / cel_mark { k, kind, code, name, detail, skip, book, undo } / cel_seed { map } / cel_base { map } → Celebrate (management)
+//   speed { rows:[{fn,ms,ui,view,v,dev,at}] } → { ok, n }   (anyone signed in: waits measured in the app)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -30,6 +31,13 @@ Deno.serve(async (req: Request) => {
   const mgmt = s.mode === "mgmt", me = String(s.name || ""), a = String(b.action || ""), now = new Date().toISOString();
   const get = async (id: number) => { const { data } = await db.from("coe_notices").select("*").eq("id", id).is("void_at", null).maybeSingle(); return data; };
   try {
+    if (a === "speed") {   // 22 Oct · how long each person waited for each screen/button (any signed-in user; batched by the app once a minute)
+      const R = Array.isArray(b.rows) ? b.rows.slice(0, 300) : [];
+      const rows = R.map((x: any) => ({ who: me, mode: String(s.mode || ""), fn: str(x.fn, 40), ms: Math.max(0, Math.min(600000, Math.round(+x.ms || 0))), ui: !!x.ui, view: str(x.view, 30) || null, v: +x.v || null, dev: str(x.dev, 10) || null,
+        at: x.at && !isNaN(Date.parse(x.at)) && Math.abs(Date.now() - Date.parse(x.at)) < 7 * 864e5 ? new Date(x.at).toISOString() : now })).filter((r: any) => r.fn);
+      if (rows.length) { const { error } = await db.from("coe_speed").insert(rows); if (error) return out({ ok: false, error: error.message }); }
+      return out({ ok: true, n: rows.length });
+    }
     if (a === "list") {
       let q = db.from("coe_notices").select("*").is("void_at", null).order("sent_at", { ascending: false }).limit(300);
       if (!mgmt) q = q.eq("teacher", me); else if (b.teacher) q = q.eq("teacher", str(b.teacher, 60));
