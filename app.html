@@ -1715,8 +1715,8 @@ hwH += ndr && !nd ? `<div class="hw due" onclick="noteSheet('${esc(c.code)}','${
 }
 let vidH = '';
 if(isToday && !c.cancelled && (c.code || c.type==='Trial' || c.type==='Sub') && !D.mgr && now && now > en){ const v = (D.vids||{})[c.id], fo = (D.vfold||{})[c.id];
-vidH = v && v.url ? `<div class="hw ok"><span class="ic">✓</span><div class="grow ell">Class video uploaded${v.at?' · '+esc(v.at):''}</div><a class="btn ghost sm" href="${esc(v.url)}" target="_blank">Open</a></div>`
-: `<div class="hw"><span class="ic">▶</span><div class="grow ell"><b>Upload the class video</b> <span class="mute">· here in the app · saved to the school Drive, not your storage · named and filed for you</span></div><button class="btn teal sm" onclick="vidUp('${esc(c.id)}')">Upload video</button></div>`; }
+vidH = v && v.url ? `<div class="hw" style="border-color:#BFE3D2;background:#F3FAF6"><span class="ic" style="background:#2E9E6F;color:#fff">✓</span><div class="grow ell">Class video uploaded${v.at?' · '+esc(v.at):''}</div><a class="btn ghost sm" href="${esc(v.url)}" target="_blank">Open</a><button class="btn ghost sm" onclick="vidUp('${esc(c.id)}')" title="A second recording of the same class">+ Add part</button></div>`
+: `<div class="hw"><span class="ic">▶</span><div class="grow ell"><b>Upload the class video</b> <span class="mute">· here in the app · saved to the school Drive, not your storage · named and filed for you · not recorded? upload a screen proof instead</span></div><button class="btn teal sm" onclick="vidUp('${esc(c.id)}')">Upload video</button></div>`; }
 return `<div class="cls ${c.cancelled?'x':''} ${c.type==='Trial'?'trial':c.type==='Sub'?'sub':''} ${isNow?'now':''}" style="--c:${bookCol(c.book || (s && s.book))}">
 <div class="t"><b class="num">${tm(c.start)}</b><span>${Math.round((en-st)/60000)} min</span></div><div class="bar"></div>
 <div class="grow"><div class="row" style="gap:8px"><span class="nm ell" ${c.code?`style="cursor:pointer" onpointerdown="stuPre('${esc(c.code)}')" onclick="openStudent('${esc(c.code)}')"`:''}>${esc(c.student || c.title)}${c.code?' <span class="mute" style="font-size:13px">›</span>':''}</span>${!D.mgr && c.code && !c.cancelled && (c.book || s.book) ? `<span class="bkchip" style="--c:${bookCol(c.book || s.book)}" onclick="bookSheet('${esc(c.code)}','${esc(c.id)}')" title="Course book">${esc(String(c.book || s.book).replace(/\s*,\s*/g, ' · '))}</span>` : ''}${typ}</div>
@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 978;
+const COE_V = 979;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22056,14 +22056,14 @@ go();
   let BUSY = null;
   window.vidUp = id => {
     if(BUSY) return toast(BUSY === id ? 'This video is still uploading' : 'Another class video is still uploading · wait for it to finish');
-    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'video/*,.mp4,.mov,.m4v,.mkv,.webm';
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'video/*,image/*,.mp4,.mov,.m4v,.mkv,.webm,.jpg,.jpeg,.png,.heic';
     inp.style.display = 'none'; document.body.appendChild(inp);
     inp.onchange = () => { const f = inp.files && inp.files[0]; inp.remove(); if(f) go(id, f); };
     inp.click();
   };
   async function go(id, f){
     const c = (D.schedule || []).find(x => x.id === id) || (window.VL_LIST || []).find(x => x.id === id); if(!c) return toast('Class not found · refresh the app and try again');
-    if(!/^video\//.test(f.type || '') && !/\.(mp4|mov|m4v|mkv|webm|avi)$/i.test(f.name)) return toast('Choose the class video (MP4, MOV…)');
+    if(!/^(video|image)\//.test(f.type || '') && !/\.(mp4|mov|m4v|mkv|webm|avi|jpe?g|png|heic|heif|webp)$/i.test(f.name)) return toast('Choose the class video (MP4, MOV…) or a screen proof picture');
     if(f.size > 20 * 2 ** 30) return toast('That file is larger than 20 GB');
     BUSY = id; window._vupBusy = 1; let pid = null; const who = esc(c.student || c.title || 'class');
     const show = (h, k) => { if(pid && !document.getElementById(pid) && k === 'wait') pid = null; pid = svPill(pid, h, k); };   // one pill, updated in place
@@ -22126,7 +22126,7 @@ go();
       const lc = d && d.late && d.late.caseId ? d.late : null;
       const lateTxt = lc ? '<div class="small" style="margin-top:4px;font-weight:700">Uploaded late · case ' + esc(lc.caseId) + (lc.amount ? ' · −₱' + esc(lc.amount) : '') + ' (Late Class Video · Unexcused) · management reviews it tomorrow</div>'
         : window.vidLate && vidLate(c) ? '<div class="small" style="margin-top:4px;font-weight:700">Uploaded late (due 23:59 on the class day) · recorded as a late video</div>' : '';
-      show('<b>✓ Class video saved</b>' + lateTxt + '<div class="small">' + esc((d && d.name) || s.name || f.name) + '</div><div class="small" style="opacity:.8">' + esc(note || (d && d.linked ? 'Linked in DAILY' : 'Linked in DAILY once the lesson number is in')) + ' · <a href="' + esc(url) + '" target="_blank" style="color:inherit">Open</a></div>', 'ok');
+      show('<b>✓ Class video saved</b>' + lateTxt + '<div class="small">' + esc((d && d.name) || s.name || f.name) + '</div><div class="small" style="opacity:.8">' + esc(note || (d && d.linked ? 'Linked in DAILY' : 'Linked in DAILY once the lesson number is in')) + ' · <a href="' + esc(url) + '" target="_blank" style="color:inherit">Open</a> · <a href="#" onclick="vidUp(\'' + esc(id) + '\');return false" style="color:inherit">+ Add another part</a></div>', 'ok');
     }catch(e){
       if(e && e.exp){ o = get(); delete o[id]; put(o); }
       show('<b>Class video not uploaded</b><div class="small">' + esc((e && e.message) || 'Try again') + '</div>', 'bad');
