@@ -13,7 +13,8 @@
 //   send_set  { teacher }                 → { ok }                               (President: full set for a new teacher)
 //   paper     { teacher, ref, date }      → { ok }                               (President: signed on paper before the app)
 //   people_set { teacher, p }             → { ok }                               (President: legal name, address… for the Agreement)
-//   scan_put  { id, name, type, b64 }     → { ok, row }                          (President: notarized scan)
+//   scan_put  { id, name, type, b64 }     → { ok, row }                          (President: notarized scan, small files)
+//   scan_sign { id, type, size } → { ok, path, url } · scan_done { id, path, name } → { ok }   (President or Operations: notarized scan up to 50 MB)
 //   void      { id, reason }              → { ok }                               (President: start this document again)
 //   witness   { id, sig, name }           → { ok, row }                          (Operations: witness for both parties, in the App)
 //   doc_text  { id, find, replace }       → { ok, hash }                         (President: fix wording before anyone signs)
@@ -141,6 +142,27 @@ Deno.serve(async (req: Request) => {
       await db.from("coe_contract_signs").update({ wit_at: now, wit_name: nm, wit_sig: sig, wit_ip: ip, wit_ua: ua }).eq("id", r.id);
       const { data: r2 } = await db.from("coe_contract_signs").select(LIGHT).eq("id", r.id).maybeSingle();
       return out({ ok: true, row: r2 });
+    }
+    // 22 Oct · notarized scans: the President or Operations (Celine scans them). The file goes straight to storage with a signed upload link
+    // (no size limit from the request body; up to 50 MB), then scan_done records it on the row.
+    if (a === "scan_sign" || a === "scan_done") {
+      if (!mgmt) return out({ ok: false, error: "Management only." }, 403);
+      const { data: r } = await db.from("coe_contract_signs").select("id,teacher,doc_id,status").eq("id", +b.id).maybeSingle(); if (!r) return out({ ok: false, error: "Not found" });
+      if (!/^(signed|paper)$/.test(r.status)) return out({ ok: false, error: "Attach the notarized copy after the document is signed." });
+      const pre = r.teacher.replace(/[^\w-]/g, "_") + "/" + r.doc_id + "-";
+      if (a === "scan_sign") {
+        const type = str(b.type, 60) || "application/pdf"; if (!/^(application\/pdf|image\/(png|jpeg|webp|heic|heif))$/.test(type)) return out({ ok: false, error: "Use a PDF or a photo (JPG, PNG, HEIC)." });
+        if (+b.size > 50e6) return out({ ok: false, error: "The file is larger than 50 MB. Scan at a lower resolution and try again." });
+        const ext = type === "application/pdf" ? "pdf" : type.split("/")[1].replace("jpeg", "jpg");
+        const path = pre + Date.now() + "." + ext;
+        const { data, error } = await db.storage.from("contracts").createSignedUploadUrl(path); if (error) return out({ ok: false, error: error.message });
+        return out({ ok: true, path, url: data.signedUrl });
+      }
+      const path = str(b.path, 200); if (!path.startsWith(pre)) return out({ ok: false, error: "bad request" }, 400);
+      const dir = path.slice(0, path.lastIndexOf("/")), fn = path.slice(path.lastIndexOf("/") + 1);
+      const { data: L } = await db.storage.from("contracts").list(dir, { search: fn, limit: 5 }); if (!L || !L.some((o: any) => o.name === fn)) return out({ ok: false, error: "The upload did not arrive. Try again." });
+      await db.from("coe_contract_signs").update({ scan_path: path, scan_name: str(b.name, 160) || path, scan_at: now, scan_by: me }).eq("id", r.id);
+      return out({ ok: true });
     }
     if (!pres) return onlyPres();
     if (a === "countersign") {
