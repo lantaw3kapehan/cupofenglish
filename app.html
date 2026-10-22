@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 896;
+const COE_V = 897;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -20524,7 +20524,31 @@ function addBtns(){
   const a = b.querySelector('#fDrop') || b.querySelector('#enI') || b.querySelector('#rpI'); if(!a) return;
   a.insertAdjacentHTML('beforebegin', btnHtml()); try{ warm(); }catch(x){}
   if(b.querySelector('#fDrop') && !b.querySelector('.ivAll')) b.querySelector('#fDrop').insertAdjacentHTML('afterend', '<button type="button" class="btn ghost sm ivAll" style="margin-top:6px" onclick="ivList()">All payment confirmations</button>'); }
-const ob = new MutationObserver(() => { try{ addBtns(); }catch(x){} });
+/* 565 · the student's email (for payment confirmations) in the student form; one place: the billing profile */
+const EM = {}; let PEND = null;
+const okMail = m => !m || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m);
+function addMail(){
+  const b = document.getElementById('sheetBody'); if(!b || !b.querySelector('#sEn') || !b.querySelector('#sSrc') || b.querySelector('#sMail')) return;
+  try{ if(!(D && D.mgr)) return; }catch(x){ return; }
+  const sub = [...b.querySelectorAll('.mute.small')].find(x => /DATABASE/.test(x.textContent)), m = sub && /saves into this row|New row for/.test(sub.textContent) ? sub.textContent.match(/ST-\d{4}-\d{3}/) : null, code = m ? m[0] : '';
+  const at = b.querySelector('#sSrcL') || b.querySelector('#sSrc');
+  at.insertAdjacentHTML('afterend', '<label>Email <span class="zh">邮箱</span> <span class="mute small">· parent or student · used for payment confirmations</span></label><input id="sMail" class="in-t" type="email" inputmode="email" autocomplete="off" placeholder="e.g. parent@qq.com">');
+  const el = b.querySelector('#sMail'); el.dataset.code = code; el.addEventListener('input', () => { el.dataset.t = 1; });
+  if(!code) return;
+  const put = v => { el.dataset.o = v || ''; if(!el.dataset.t) el.value = v || ''; };
+  if(EM[code] != null) put(EM[code]);
+  call('contact', { code }).then(r => { EM[code] = r.email || ''; if(document.body.contains(el)) put(EM[code]); }).catch(() => {}); }
+(function(){ const _s = window.sendStu; if(typeof _s !== 'function') return;
+  window.sendStu = function(row, code){ const el = document.getElementById('sMail');
+    if(el){ const v = el.value.trim().toLowerCase(); if(!okMail(v)){ el.focus(); return tst('The email address looks wrong.'); } PEND = { email: v, o: String(el.dataset.o || '').toLowerCase(), code: code || el.dataset.code || '' }; }
+    return _s.apply(this, arguments); }; })();
+(function(){ const _a = window.api; if(typeof _a !== 'function') return;
+  window.api = function(fn, ...a){ const p = _a.apply(this, [fn, ...a]);
+    if(fn === 'saveStudent' && PEND){ const P = PEND; PEND = null;
+      Promise.resolve(p).then(r => { if(!r || !r.ok) return; const code = String((a[1] && a[1].code) || r.code || P.code || '').trim(); if(!/^ST-\d{4}-\d{3}$/.test(code) || P.email === P.o) return;
+        call('contact_set', { code, email: P.email }).then(() => { EM[code] = P.email; delete BC[code]; }).catch(err => tst('Email not saved: ' + err.message)); }).catch(() => {}); }
+    return p; }; })();
+const ob = new MutationObserver(() => { try{ addBtns(); }catch(x){} try{ addMail(); }catch(x){} });
 const go = () => { const b = document.getElementById('sheetBody'); if(b) ob.observe(b, { childList: true, subtree: true }); else setTimeout(go, 500); };
 go();
 window.addEventListener('resize', () => { if(S && !S.issued && document.getElementById('ivM')) preview(); });
