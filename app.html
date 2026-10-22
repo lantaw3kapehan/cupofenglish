@@ -6129,7 +6129,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 928;
+const COE_V = 929;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -21302,9 +21302,9 @@ go();
     return 'Signed ' + phT(r.signed_at) + (r.loc && r.loc.place ? ' · ' + r.loc.place : '') + (r.pres_at ? ' · Countersigned ' + ph(r.pres_at) : '') + (r.scan_at ? ' · Notarized copy attached' : ''); }
 
   /* ---------- teacher: My Contract ---------- */
-  window.ctMy = async function(){ openSheet('<div class="ct"><h1>My Contract</h1><div class="sub">Loading your contract…</div><div class="sk"></div><div class="sk"></div></div>');
+  window.ctMy = async function(){ if(!isMgmt() && $('v-contract')){ try{ if($('sheet').classList.contains('on')) closeSheet(); }catch(x){} go('contract'); return; } openSheet('<div class="ct"><h1>My Contract</h1><div class="sub">Loading your contract…</div><div class="sk"></div><div class="sk"></div></div>');
     await loadMy(true); paintMy(); };
-  function paintMy(){ const b = $('sheetBody'); if(!b) return; if(!MY){ b.innerHTML = '<div class="ct"><h1>My Contract</h1><div class="note">Could not load your contract. Check the internet and try again.</div></div>'; return; }
+  function paintMy(){ const b = (typeof VIEW !== 'undefined' && VIEW === 'contract' && $('v-contract') && !$('sheet').classList.contains('on')) ? $('v-contract') : $('sheetBody'); if(!b) return; if(!MY){ b.innerHTML = '<div class="ct"><h1>My Contract</h1><div class="note">Could not load your contract. Check the internet and try again.</div></div>'; return; }
     const docs = (MY.docs || []).filter(d => d.kind !== 'memo').sort((a, c) => a.sort - c.sort);
     const pend = pending();
     b.innerHTML = '<div class="ct"><h1>My Contract</h1><div class="sub">Your official contract with CupOfEnglish as an <b>independent service provider</b>. The text here is the official copy, not a summary.</div>' + CONF +
@@ -21427,11 +21427,15 @@ go();
     if(!b){ b = document.createElement('div'); b.className = 'ct-ban'; b.onclick = () => ctRead(x.d.id); const lead = v.querySelector('.lead'); if(lead) lead.after(b); else v.prepend(b); }
     if(b._h !== h){ b.innerHTML = h; b._h = h; b.onclick = () => ctRead(x.d.id); }
     try{ if(!sessionStorage.getItem('coe.ct.pop') && !q && !$('sheet').classList.contains('on')){ sessionStorage.setItem('coe.ct.pop', '1'); setTimeout(() => { if(!$('sheet').classList.contains('on')) ctRead(x.d.id); }, 1200); } }catch(y){} }
-  function paintPayLink(){ if(isMgmt()) return; const v = $('v-pay'); if(!v || v.querySelector('.ct-link')) return; const lead = v.querySelector('.lead'); if(!lead) return;
+  function paintPayLink(){ return; const v = $('v-pay'); if(!v || v.querySelector('.ct-link')) return; const lead = v.querySelector('.lead'); if(!lead) return;
     const a = document.createElement('div'); a.className = 'ct-link'; a.onclick = () => ctMy(); a.innerHTML = '<span style="color:#00737B">' + DOCI + '</span><div class="grow"><b>My Contract</b><small>Your Agreement, Annex A and Addendum No. 1 · signed copies</small></div><span>›</span>'; lead.after(a); }
   const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const r = _rt.apply(this, arguments); try{ paintBanner(); }catch(x){} return r; };
   const _rp = window.renderPay; if(_rp) window.renderPay = function(){ const r = _rp.apply(this, arguments); try{ paintPayLink(); }catch(x){} return r; };
-  const _go = window.go; if(_go) window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'today') paintBanner(); if(v === 'pay') paintPayLink(); }catch(x){} return r; };
+  const _go = window.go; if(_go) window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'today') paintBanner(); if(v === 'contract'){ const c = $('v-contract'); if(c){ if(MY) paintMy(); else c.innerHTML = '<div class="ct"><h1>My Contract</h1><div class="sub">Loading your contract…</div><div class="sk"></div><div class="sk"></div></div>'; loadMy(!MY || Date.now() - MYT > 60e3).then(() => { if(VIEW === 'contract') paintMy(); }); } } }catch(x){} return r; };
+  try{ ICON.contract = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M7 3h7l5 5v5"/><path d="M14 3v5h5"/><path d="M6 4v16a1 1 0 0 0 1 1h6"/><path d="M9 12h6M9 16h3"/><path d="m15.5 20.5 4.8-4.8a1.4 1.4 0 0 0-2-2l-4.8 4.8-.5 2.5z"/></svg>';
+    if(!NAV_T.some(x => x[0] === 'contract')) NAV_T.push(['contract', 'My Contract', 'contract', 0, 'Contract']); if(VIEWS.indexOf('contract') < 0) VIEWS.push('contract');
+    if(!$('v-contract') && $('v-today')){ const d0 = document.createElement('div'); d0.id = 'v-contract'; d0.className = 'hide'; $('v-today').parentNode.appendChild(d0); }
+    if(D && !D.mgr) buildNav(); else setTimeout(function w(){ if(D){ if(!D.mgr) buildNav(); } else setTimeout(w, 1000); }, 1000); }catch(x){}
   let started = 0; const kick = () => { if(started || !TOKEN || !D || isMgmt()) return; started = 1; loadMy(false); setInterval(() => { if(document.visibilityState === 'visible') loadMy(false); }, 10 * 60e3); };
   setTimeout(function w(){ if(D) kick(); else setTimeout(w, 1500); }, 1500);
 
