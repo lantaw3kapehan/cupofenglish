@@ -6128,7 +6128,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 890;
+const COE_V = 891;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -20094,9 +20094,7 @@ ${isVoid ? '<div class="stamp void">VOID</div>' : ''}
 <div class="ivhd"><div class="to"><h4>Bill to <span class="zh">付款方</span></h4><p><b>${e(inv.bill_name || '—')}</b></p>${inv.bill_addr ? `<p>${e(inv.bill_addr).replace(/\n/g, '<br>')}</p>` : ''}</div>
 <div class="meta"><div class="tt">Payment Confirmation ${e(inv.no)}<small class="zh">付款确认单</small></div><table><tr><td>Date <span class="zh">日期</span></td><td>${dmy(inv.day)}</td></tr><tr><td>Generated <span class="zh">生成时间</span></td><td>${genAt(inv)}</td></tr>${inv.method ? `<tr><td>Paid via <span class="zh">付款方式</span></td><td>${e(inv.method)}${PMZ[String(inv.method).toLowerCase()] ? ` <span class="zh">${PMZ[String(inv.method).toLowerCase()]}</span>` : ''}</td></tr>` : ''}${inv.bir_no ? `<tr><td>Official invoice no. <span class="zh">正式发票号码</span></td><td>${e(inv.bir_no)}</td></tr>` : ''}</table></div></div>
 <table class="ivli"><tr><th>Date</th><th>Product / service</th><th class="n">Qty</th><th class="n">Rate</th><th class="n">Amount</th></tr>${lines}</table>
-<div class="sum"><div class="ty"><p>We sincerely appreciate your business and the opportunity to serve you.<span class="zh">衷心感谢您的支持与信任，感谢您给予我们服务的机会。</span></p>
-<p>Should you have any questions or concerns regarding this payment confirmation, please feel free to reach out.<span class="zh">如对本付款确认单有任何疑问，请随时与我们联系。</span></p>
-<p>Your satisfaction is our priority, and we look forward to continuing our partnership.<span class="zh">您的满意是我们的首要任务，我们期待继续与您合作。</span></p></div>
+<div class="sum"><div class="ty"></div>
 <div class="tot">${unitsRow(inv)}<div><span>Includes tax (3%) <span class="zh">含税</span></span><span>${n2(inv.tax)}</span></div><div><span>Total <span class="zh">合计</span></span><span>${n2(inv.total)}</span></div><div><span>Payment <span class="zh">已付金额</span></span><span>${n2(inv.paid)}</span></div>
 <div class="due"><span>Total due <span class="zh">待付金额</span></span><b>${cur} ${n2(due)}</b></div>${!isVoid && due === 0 ? `<div class="pstamp">${stampMt(inv)}<b>PAID</b><span class="zh">已付款</span><small>No. ${e(inv.no)} · ${cur} ${n2(inv.total)} · ${dmy(inv.day)}</small><em>Security code 防伪码 <strong>${inv.ver ? e(String(inv.ver).replace(/^(.{4})/, '$1-')) : '····-····'}</strong></em>${stampMt(inv)}</div><div class="pver">${inv.vq ? `<img data-q="ver" src="${qrImg(inv.vq)}" alt="Scan to verify">` : '<i class="vqp">QR</i>'}<span><b>Scan to verify</b><span class="zh">扫码验证真伪</span><small>app.cupofenglishatph.com/verify</small></span></div>` : ''}</div></div>
 ${rb}
@@ -20114,6 +20112,23 @@ const madeKey = inv => inv.no + ':' + (inv.status || '') + ':' + (inv.bir_no || 
 function both(inv){ const k = madeKey(inv); if(MADE[k] && MADE[k].html !== page(inv)) delete MADE[k]; if(!MADE[k]){ const p = render(inv).catch(x => { delete MADE[k]; throw x; }); p.html = page(inv); MADE[k] = p; } return MADE[k]; }
 async function pdfOf(inv){ return (await both(inv)).pdf; }
 async function picOf(inv){ return (await both(inv)).png; }
+/* 559: the WeChat picture without the empty band above the footer, so it reads well on a phone (the PDF keeps the A4 page) */
+function phone(pg, cv){ try{ const A = pg.getBoundingClientRect(), ft = pg.querySelector('.ft'); if(!ft) return cv;
+  const s = cv.width / pg.offsetWidth, fTop = ft.getBoundingClientRect().top - A.top;
+  let end = 0; [...pg.querySelectorAll('*')].forEach(c => { if(ft.contains(c) || c.closest('.stamp')) return; const r = c.getBoundingClientRect(), b = r.bottom - A.top; if(r.height && b < fTop - 2) end = Math.max(end, b); });
+  const gap = 34, cut = fTop - end - gap; if(!(end > 0) || cut < 40) return cv;
+  const y1 = Math.round((end + gap / 2) * s), y2 = Math.round((fTop - gap / 2) * s), c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height - (y2 - y1);
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(cv, 0, 0, cv.width, y1, 0, 0, cv.width, y1); x.drawImage(cv, 0, y2, cv.width, cv.height - y2, 0, y1, cv.width, cv.height - y2); return c; }catch(x){ return cv; } }
+const MSG = x => `您好！附上付款确认单 ${x.no}，请查收。
+衷心感谢您的支持与信任，感谢您给予我们服务的机会。如对本付款确认单有任何疑问，请随时与我们联系。您的满意是我们的首要任务，我们期待继续与您合作。
+
+Hello! Here is Payment Confirmation ${x.no}.
+We sincerely appreciate your business and the opportunity to serve you. Should you have any questions or concerns regarding this payment confirmation, please feel free to reach out. Your satisfaction is our priority, and we look forward to continuing our partnership.
+
+CupOfEnglish 一杯英语`;
+window.ivMsg = async i => { const x = i == null ? (S && S.issued) : LIST[i]; if(!x) return; const t = MSG(x);
+  try{ await navigator.clipboard.writeText(t); return tst('Message copied · paste it in WeChat'); }catch(err){}
+  const a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(a); a.select(); try{ document.execCommand('copy'); tst('Message copied · paste it in WeChat'); }catch(err){ tst('Could not copy'); } a.remove(); };
 async function render(inv){
   await LIBS();
   try{ await document.fonts.ready; }catch(x){}
@@ -20123,7 +20138,7 @@ async function render(inv){
     await Promise.all([...box.querySelectorAll('img')].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
     const pg = box.firstElementChild, A = pg.getBoundingClientRect(), QS = [...pg.querySelectorAll('img[data-q]')].map(q => { const B = q.getBoundingClientRect(); return { x: B.left - A.left, y: B.top - A.top, w: B.width, rows: q.dataset.q === 'bir' ? QRM : inv.vq }; }).filter(q => q.rows && q.w);
     const cv = await window.html2canvas(pg, { scale: 1800 / 794, backgroundColor: '#ffffff', useCORS: true, logging: false });
-    const png = new Promise(r => cv.toBlob(r, 'image/png'));
+    const png = new Promise(r => phone(pg, cv).toBlob(r, 'image/png'));
     const doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4', compress: true }), W = 595.28, H = 841.89;
     const h = W * cv.height / cv.width, k = h > H ? H / h : 1;
     doc.addImage(cv.toDataURL('image/jpeg', 0.93), 'JPEG', (W - W * k) / 2, 0, W * k, h * k);
@@ -20456,7 +20471,7 @@ function done(inv, blob, err, att){
     <div>¥${n2(inv.total)} · includes tax ${n2(inv.tax)} · ${e(inv.bill_name)}</div>
     ${err ? `<div class="warn">The confirmation is saved, but the PDF could not be made here: ${e(err)}. Open All payment confirmations and tap PDF.</div>` : ''}
     <div id="ivMail" class="small" style="margin-top:10px">${inv.email ? (S.mail !== false ? 'Sending the email…' : '<span class="mute">Not emailed (you chose not to). You can email it later from All payment confirmations.</span>') : '<span class="mute">No email address, so nothing was emailed.</span>'}</div>
-    <button class="btn" onclick="ivPicDone()">Copy picture for WeChat 复制图片</button>${blob ? `<button class="btn ghost" onclick="ivDl()">Download PDF</button>` : ''}
+    <button class="btn" onclick="ivPicDone()">Copy picture for WeChat 复制图片</button><button class="btn ghost" onclick="ivMsg()">Copy message 复制消息</button>${blob ? `<button class="btn ghost" onclick="ivDl()">Download PDF</button>` : ''}
     ${att && back ? `<div class="warn" style="background:var(--tint);color:#2F6F76">The PDF is attached to the form. Close this and tap <b>${back}</b> to record the payment.</div><button class="btn ghost" onclick="ivFin()">Back to the form</button>` : `<button class="btn ghost" onclick="ivFin()">Close</button>`}</div>`;
   const v = document.querySelector('#ivM .iv-v'); if(v){ const k = Math.min(1, (v.clientWidth - 24) / 794); v.innerHTML = `<div class="pg" style="transform:scale(${k});height:${1123 * k}px;width:794px;flex:none;margin:0 ${-(794 - 794 * k) / 2}px">${page(inv)}</div>`; } }
 window.ivFin = () => { if(S) S.dirty = 0; ivClose(); };
@@ -20475,7 +20490,7 @@ window.ivList = async function(){
   <table class="lst"><tr><th>No.</th><th>Date</th><th>Bill to</th><th class="n">Total</th><th>BIR invoice</th><th>Status</th><th></th></tr>
   ${LIST.map((x, i) => `<tr data-s="${e(hay(x))}" data-i="${i}" class="${x.status === 'void' ? 'void' : ''}"><td><b>${e(x.no)}</b></td><td>${e(dmy(x.day))}</td><td>${e(x.bill_name)}${x.code ? `<div class="small mute">${e(x.code)}</div>` : ''}</td><td class="n">¥${n2(x.total)}</td><td>${x.bir_no ? e(x.bir_no) : x.status === 'void' ? '' : `<button class="btn ghost sm" onclick="ivBir(${i})">Add</button>`}</td>
   <td>${x.status === 'void' ? `<span class="pill v" title="${e(x.void_reason)}">Void</span>` : x.emailed_at ? '<span class="pill">Emailed</span>' : x.email ? '<span class="pill" style="background:#FFF6E5;color:#8A5A00">Not emailed</span>' : '<span class="pill" style="background:var(--soft);color:var(--mute)">No email</span>'}</td>
-  <td class="act"><button class="btn ghost sm" onclick="ivPic(${i})">Picture</button> <button class="btn ghost sm" onclick="ivPdf(${i})">PDF</button>${x.status !== 'void' && x.email ? ` <button class="btn ghost sm" onclick="ivRemail(${i})">Email</button>` : ''}${x.status !== 'void' ? ` <button class="btn ghost sm" onclick="ivVoid(${i})">Void</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="mute">None yet. The first one will be 1748.</td></tr>'}${HIST.length ? `<tr class="hsep"><td colspan="7">QuickBooks history · from SALES · read only · amounts are what we received</td></tr>` + HIST.map(h => `<tr class="qb" data-s="${e(hayH(h))}"><td><b>${e(h.no)}</b></td><td>${e(dmy(h.day))}</td><td>${e(h.name || h.file)}<div class="small mute">${e(h.pkg ? h.pkg + ' units' + (+h.free ? ' + ' + h.free + ' free' : '') : '')} ${ptag(h.partner)}</div></td><td class="n">${h.amt ? '¥' + n2(h.amt) + (isPartner(h.partner) ? '<div class="small mute">received · partner price</div>' : '') : ''}</td><td></td><td><span class="pill qbp">QuickBooks</span></td><td class="small mute">${e(h.method)}</td></tr>`).join('') : ''}</table><div id="ivNone" class="small mute" style="display:none;padding:14px 2px">No payment confirmation matches that.</div>`;
+  <td class="act"><button class="btn ghost sm" onclick="ivPic(${i})">Picture</button> <button class="btn ghost sm" onclick="ivMsg(${i})">Message</button> <button class="btn ghost sm" onclick="ivPdf(${i})">PDF</button>${x.status !== 'void' && x.email ? ` <button class="btn ghost sm" onclick="ivRemail(${i})">Email</button>` : ''}${x.status !== 'void' ? ` <button class="btn ghost sm" onclick="ivVoid(${i})">Void</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="mute">None yet. The first one will be 1748.</td></tr>'}${HIST.length ? `<tr class="hsep"><td colspan="7">QuickBooks history · from SALES · read only · amounts are what we received</td></tr>` + HIST.map(h => `<tr class="qb" data-s="${e(hayH(h))}"><td><b>${e(h.no)}</b></td><td>${e(dmy(h.day))}</td><td>${e(h.name || h.file)}<div class="small mute">${e(h.pkg ? h.pkg + ' units' + (+h.free ? ' + ' + h.free + ' free' : '') : '')} ${ptag(h.partner)}</div></td><td class="n">${h.amt ? '¥' + n2(h.amt) + (isPartner(h.partner) ? '<div class="small mute">received · partner price</div>' : '') : ''}</td><td></td><td><span class="pill qbp">QuickBooks</span></td><td class="small mute">${e(h.method)}</td></tr>`).join('') : ''}</table><div id="ivNone" class="small mute" style="display:none;padding:14px 2px">No payment confirmation matches that.</div>`;
   SUM0 = document.getElementById('ivSum').innerHTML; const q = document.getElementById('ivQ'); if(Q){ q.value = Q; ivFind(Q); } else if(innerWidth > 700) q.focus(); };
 let Q = '', SUM0 = '', HIST = [];
 const PCOL = [[/spring/i, '#EFE9FB', '#5B3FA8'], [/jane|mongolia/i, '#FFF3DC', '#8A5A00'], [/clark|chengdu/i, '#E6F0FB', '#2D5E9A'], [/rose/i, '#FCE8EF', '#A23A64'], [/xiaolan/i, '#FDEEE2', '#A8551A'], [/panpacific/i, '#E8F5EA', '#2F7A3C']];
