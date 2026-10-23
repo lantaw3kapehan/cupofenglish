@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1027;
+const COE_V = 1028;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22538,6 +22538,10 @@ go();
 .tx .dt{font-size:11px;color:#B4532F}.tx-lg{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:10px}.tx-lg span{display:inline-flex;gap:6px;align-items:center}
 .tx-tg{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#77738C;margin:12px 0 6px}.tx-tg:first-of-type{margin-top:0}.tx-tg span{width:10px;height:3px;border-radius:3px}
 .tx-tb tr.g th,.tx-tb tr.g th span{text-align:center!important}
+.tx-prof{display:flex;gap:16px;align-items:center;background:var(--card,#fff);border:1px solid var(--line);border-radius:20px;padding:16px 18px;margin:14px 0}
+.tx-av{width:54px;height:54px;border-radius:50%;background:#EEF8F7;color:#00737B;display:grid;place-items:center;font-family:"Fredoka One",Fredoka,sans-serif;font-size:24px;flex:none}
+.tx-pn{font-family:"Fredoka One",Fredoka,sans-serif;font-size:20px;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap}.tx-pn .tx-rk{font-family:Arvo,serif}
+.tx-bdg{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.tx-bdg span{font-size:12px;font-weight:700;color:#2B2253;background:#fff;border:1.5px solid var(--c);border-radius:99px;padding:4px 10px}
 .tr-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:16px 0}.tr-chips span{background:#F3F2F7;color:#5E5A75;border-radius:99px;padding:5px 11px;font-size:12px}.tr-chips span.ok{background:#EEF8F7;color:#00626A}
 .tr h2{font-size:18px;margin:20px 0 8px}
 .tr-row{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid #EEEDF3;border-radius:14px;padding:11px 13px;margin-bottom:8px;cursor:pointer}
@@ -22634,6 +22638,11 @@ go();
   /* 689 · ladder path (bottom = first week, top = Master): each rank one row, its trainings as pills */
   const BG = t => /^cw-(phonics|alphabet|shortvowels|longvowels|blends|lettercomb)$/.test(t.id) ? 'Phonics' : /^cw-(raz|re|wonders)$/.test(t.id) ? 'Reading' : /^cw-(pathways|dk|business)$/.test(t.id) ? 'Adults' : /^cw-od/.test(t.id) ? 'Oxford Discover' : t.id === 'inq' || /^spec-/.test(t.id) ? 'Specializations' : t.id === 'trial' ? 'Trial classes' : 'Books';
   const BGC = { 'Phonics': '#3CC8C0', 'Reading': '#E7A65A', 'Oxford Discover': '#5D8FD6', 'Adults': '#2B2253', 'Specializations': '#D67FA3', 'Trial classes': '#8E7FD6', 'Books': '#9A97AE' };
+  function profHtml(d, who, rank){ const U = (d.trainings || []).filter(t => t.kind === 'unlock'), ok = t => ['done', 'excused'].includes((latestRec(d.records, who, t.id) || {}).status);
+    const ORD = ['Specializations', 'Phonics', 'Reading', 'Oxford Discover', 'Adults', 'Books', 'Trial classes'], D0 = U.filter(ok).sort((a, b) => ORD.indexOf(BG(a)) - ORD.indexOf(BG(b)) || a.sort - b.sort);
+    const lab = t => t.id === 'trial' ? 'Trial classes' : t.title.split(' · ')[0].replace(/ Specialization$/, '');
+    return '<div class="tx-prof"><div class="tx-av">' + e(String(who || '?').slice(0, 1).toUpperCase()) + '</div><div class="grow"><div class="tx-pn">Teacher ' + e(who) + (rank ? ' <span class="tx-rk" style="background:' + (RC[rank] || '#9A97AE') + '">' + e(rank) + '</span>' : '') + '</div>'
+      + (D0.length ? '<div class="tx-bdg">' + D0.map(t => '<span style="--c:' + (BGC[BG(t)] || '#9A97AE') + '" title="' + e(BG(t)) + '">' + (BG(t) === 'Specializations' ? '★ ' : '') + e(lab(t)) + '</span>').join('') + '</div>' : '<div class="small mute">Books and specializations you are cleared to teach appear here as management ticks them.</div>') + '</div></div>'; }
   const RC = { 'Newly Hired': '#3CC8C0', 'Starting Teacher': '#3CC8C0', 'Newly Qualified': '#8E7FD6', 'Junior Teacher': '#E7A65A', 'Senior Teacher': '#5D8FD6', 'Master Teacher': '#D67FA3' };
   const RS = { 'Newly Hired': 'First week', 'Starting Teacher': 'Starting', 'Newly Qualified': 'Newly Qualified', 'Junior Teacher': 'Junior', 'Senior Teacher': 'Senior', 'Master Teacher': 'Master' };
   const LOCK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex:none"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
@@ -22655,6 +22664,7 @@ go();
     const ses = nx && (d.sessions || []).find(s => s.training_id === nx.t.id && s.status === 'scheduled' && new Date(s.starts_at).getTime() > Date.now() - 3 * 3600e3);
     const P = nx ? partsOf(d, nx.t.id) : [], pd = P.filter(p => partDone(d, who, p)).length;
     let h = '<div class="tx"><div class="lead row"><div class="grow"><h1>Trainings</h1><div class="mute small">Mandatory trainings unlock your next rank · ' + done + ' of ' + L.length + ' done</div></div></div>';
+    h += profHtml(d, who, R.rank);
     h += '<div class="tx-hero"><div class="tx-ring" style="--p:' + pct + '%"><div><b>' + pct + '%</b><span>units</span></div></div><div class="grow"><div class="k">' + e((R.rank || '').toUpperCase()) + (R.next ? ' → ' + e(R.next.name.toUpperCase()) : '') + '</div>'
       + '<div class="t">' + (nx ? 'Next: ' + e(nx.t.title) : R.next ? 'No training needed · units only' : 'Top rank') + '</div><div class="s">' + (R.next ? life.toLocaleString() + ' of ' + Math.round(units).toLocaleString() + ' units' : 'Thank you for leading the team') + (nx ? ' · ' + (ses ? e(fmtDT(ses.starts_at)) + (ses.facilitator ? ' · ' + e(tName(ses.facilitator)) : '') : nx.t.id === 'way' ? pd + ' of ' + P.length + ' parts done' : 'live training · management will set the date') : '') + '</div></div>'
       + (nx ? (ses && ses.meet_url ? '<a class="btn teal" href="' + e(ses.meet_url) + '" target="_blank" rel="noopener">Join</a>' : '<button class="btn teal" onclick="trOpen(\'' + nx.t.id + '\')">' + (nx.t.id === 'way' ? (pd ? 'Continue' : 'Start') : 'Details') + '</button>') : '') + '</div>';
@@ -22809,7 +22819,7 @@ go();
       await call('sess_set', { s: Object.assign({}, s, { status: 'done' }) }); toast('Saved ✓'); closeSheet(); await loadAll(true); paintAll(); }catch(x){ toast(x.message); b.disabled = false; } };
   window.trListOpen = k => { const L = (window._trLists || {})[k]; if(!L) return; openSheet('<h1>' + L[0] + '</h1><div style="margin-top:10px">' + (L[1].join('') || '<div class="small mute" style="padding:10px 0">Nothing here now.</div>') + '</div>' + (L[2] ? '<div style="margin-top:14px">' + L[2] + '</div>' : '')); };
   window.trView = async function(name){ try{ toast('Opening ' + tName(name) + '…'); TV = await call('my', { teacher: name }); const x = teachers().find(y => y.name === name) || { ix: 0, rank: '', life: 0 };
-      openSheet('<div class="tr"><h1>' + e(tName(name)) + '</h1><div class="sub">' + e(x.rank || '') + '</div>' + ladderHtml(TV, name, { ix: Math.max(0, x.ix), rank: x.rank, life: x.life, next: x.next }) + trUpTo(name) + '<h2>Coaching</h2>' + coachList(TV, name) + '<h2>CupOfEnglish Way</h2>' + partsOf(TV, 'way').map(p => partRow(TV, name, p)).join('') + '</div>'); }catch(x){ toast(x.message); } };
+      openSheet('<div class="tr tx">' + profHtml(TV, name, x.rank) + ladderHtml(TV, name, { ix: Math.max(0, x.ix), rank: x.rank, life: x.life, next: x.next }) + trUpTo(name) + '<h2>Coaching</h2>' + coachList(TV, name) + '<h2>CupOfEnglish Way</h2>' + partsOf(TV, 'way').map(p => partRow(TV, name, p)).join('') + '</div>'); }catch(x){ toast(x.message); } };
   window.trCell = function(name, id){ const d = AL, t = (d.trainings || []).find(x => x.id === id), H = (d.records || []).filter(r => r.teacher === name && r.training_id === id);
     const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
     openSheet('<h1>' + e(tName(name)) + ' · ' + e(t.title) + '</h1><div class="mute small">Needed for ' + e(t.gate || '') + '</div>'
