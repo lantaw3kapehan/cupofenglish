@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1036;
+const COE_V = 1037;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22540,6 +22540,9 @@ go();
 .tx .dt{font-size:11px;color:#B4532F}.tx-lg{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:10px}.tx-lg span{display:inline-flex;gap:6px;align-items:center}
 .tx-tg{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#77738C;margin:12px 0 6px}.tx-tg:first-of-type{margin-top:0}.tx-tg span{width:10px;height:3px;border-radius:3px}
 .tx-tb tr.g th,.tx-tb tr.g th span{text-align:center!important}
+.tx-prof.own{padding:14px 18px}.tx-prof.own .tx-av,.tx-prof.own .tx-pn{display:none}.tx-prof.own .tx-pn + .tx-bdg{margin-top:0}
+.tx-prof .tx-bl{min-width:132px}.tx-bdg span.trn{background:#DDF2F0;border-color:#DDF2F0;color:#00626A}
+@media(max-width:620px){.tx-prof .tx-bl{min-width:0;width:100%}}
 .tx-bl{font-size:12px;font-weight:700;color:var(--ink2,#5E5A75);align-self:center;margin-right:2px}
 .tx-prof{display:flex;gap:16px;align-items:center;background:var(--card,#fff);border:1px solid var(--line);border-radius:20px;padding:16px 18px;margin:14px 0}
 .tx-av{width:54px;height:54px;border-radius:50%;background:#EEF8F7;color:#00737B;display:grid;place-items:center;font-family:"Fredoka One",Fredoka,sans-serif;font-size:24px;flex:none}
@@ -22652,11 +22655,11 @@ go();
   function uSt(d, who, t){ const r = latestRec(d.records, who, t.id), s = r && UST[r.status]; return s && r.status !== 'done' ? '<small style="display:block;font-size:11px;font-weight:700;color:' + s[1] + '">' + s[0] + '</small>' : ''; }
   function uBtns(name, id){ const b = (st, lab, cls) => '<button class="btn ' + cls + '" onclick="trTick(\'' + e(name) + '\',\'' + id + '\',' + (st === 'assigned' ? '\'assigned\'' : 'null') + ',\'' + st + '\')">' + lab + '</button>';
     return '<div class="small mute" style="margin-top:12px">Set status · the badge shows only at <b>Qualified to teach</b></div><div class="row" style="gap:8px;margin-top:6px;flex-wrap:wrap">' + b('done', '✓ Qualified to teach', 'teal grow') + b('completed', 'Training completed', 'ghost') + b('assigned', 'In training', 'ghost') + b('further', 'Requires further training', 'ghost') + '</div>'; }
-  function profHtml(d, who, rank){ const U = (d.trainings || []).filter(t => t.kind === 'unlock'), ok = t => ['done', 'excused'].includes((latestRec(d.records, who, t.id) || {}).status);
+  function profHtml(d, who, rank, own){ const U = (d.trainings || []).filter(t => t.kind === 'unlock'), ok = t => ['done', 'excused'].includes((latestRec(d.records, who, t.id) || {}).status);
     const ORD = ['Specializations', 'Phonics', 'Reading', 'Oxford Discover', 'Adults', 'Books', 'Trial classes'], D0 = U.filter(ok).sort((a, b) => ORD.indexOf(BG(a)) - ORD.indexOf(BG(b)) || a.sort - b.sort);
     const lab = t => t.id === 'trial' ? 'Trial classes' : t.title.split(' · ')[0].replace(/ Specialization$/, '').replace(/^Phonics Training$/, 'Phonics');
-    return '<div class="tx-prof"><div class="tx-av">' + e(String(who || '?').slice(0, 1).toUpperCase()) + '</div><div class="grow"><div class="tx-pn">Teacher ' + e(who) + (rank ? ' <span class="tx-rk" style="background:' + (RC[rank] || '#9A97AE') + '">' + e(rank) + '</span>' : '') + '</div>'
-      + (D0.length || TRN(d, who).length ? '<div class="tx-bdg">' + (D0.length ? '<b class="tx-bl">Qualified to teach:</b>' : '') + D0.map(t => '<span style="--c:' + (BGC[BG(t)] || '#9A97AE') + '" title="' + (t.id !== 'trial' && (latestRec(d.records, who, t.id) || {}).via === 'recognized' ? 'Recognized · already teaching it' : e(BG(t))) + '">' + (BG(t) === 'Specializations' ? '★ ' : '') + e(lab(t)) + '</span>').join('') + '</div>' + (TRN(d, who).length ? '<div class="tx-bdg"><b class="tx-bl" style="color:#00737B">Teacher trainer:</b>' + TRN(d, who).map(x => '<span style="--c:#00737B;background:#EEF8F7" title="Facilitates this training">' + e(x) + '</span>').join('') + '</div>' : '') : '<div class="small mute">Books and specializations you are qualified to teach appear here as management marks them.</div>') + '</div></div>'; }
+    return '<div class="tx-prof' + (own ? ' own' : '') + '"><div class="tx-av">' + e(String(who || '?').slice(0, 1).toUpperCase()) + '</div><div class="grow"><div class="tx-pn">Teacher ' + e(who) + (rank ? ' <span class="tx-rk" style="background:' + (RC[rank] || '#9A97AE') + '">' + e(rank) + '</span>' : '') + '</div>'
+      + (D0.length || TRN(d, who).length ? '<div class="tx-bdg">' + (D0.length ? '<b class="tx-bl">Qualified to teach:</b>' : '') + D0.map(t => '<span style="--c:' + (BGC[BG(t)] || '#9A97AE') + '" title="' + (t.id !== 'trial' && (latestRec(d.records, who, t.id) || {}).via === 'recognized' ? 'Recognized · already teaching it' : e(BG(t))) + '">' + (BG(t) === 'Specializations' ? '★ ' : '') + e(lab(t)) + '</span>').join('') + '</div>' + (TRN(d, who).length ? '<div class="tx-bdg"><b class="tx-bl" style="color:#00737B">Teacher trainer:</b>' + TRN(d, who).map(x => '<span class="trn" title="Facilitates this training">' + e(x) + '</span>').join('') + '</div>' : '') : '<div class="small mute">Books and specializations you are qualified to teach appear here as management marks them.</div>') + '</div></div>'; }
   const RC = { 'Newly Hired': '#3CC8C0', 'Starting Teacher': '#3CC8C0', 'Newly Qualified': '#8E7FD6', 'Junior Teacher': '#E7A65A', 'Senior Teacher': '#5D8FD6', 'Master Teacher': '#D67FA3' };
   const RS = { 'Newly Hired': 'First week', 'Starting Teacher': 'Starting', 'Newly Qualified': 'Newly Qualified', 'Junior Teacher': 'Junior', 'Senior Teacher': 'Senior', 'Master Teacher': 'Master' };
   const LOCK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="flex:none"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
@@ -22678,7 +22681,7 @@ go();
     const ses = nx && (d.sessions || []).find(s => s.training_id === nx.t.id && s.status === 'scheduled' && new Date(s.starts_at).getTime() > Date.now() - 3 * 3600e3);
     const P = nx ? partsOf(d, nx.t.id) : [], pd = P.filter(p => partDone(d, who, p)).length;
     let h = '<div class="tx"><div class="lead row"><div class="grow"><h1>Trainings</h1><div class="mute small">Mandatory trainings unlock your next rank · ' + done + ' of ' + L.length + ' done</div></div></div>';
-    h += profHtml(d, who, R.rank);
+    h += profHtml(d, who, R.rank, 1);
     h += '<div class="tx-hero"><div class="tx-ring" style="--p:' + pct + '%"><div><b>' + pct + '%</b><span>units</span></div></div><div class="grow"><div class="k">' + e((R.rank || '').toUpperCase()) + (R.next ? ' → ' + e(R.next.name.toUpperCase()) : '') + '</div>'
       + '<div class="t">' + (nx ? 'Next: ' + e(nx.t.title) : R.next ? 'No training needed · units only' : 'Top rank') + '</div><div class="s">' + (R.next ? life.toLocaleString() + ' of ' + Math.round(units).toLocaleString() + ' units' : 'Thank you for leading the team') + (nx ? ' · ' + (ses ? e(fmtDT(ses.starts_at)) + (ses.facilitator ? ' · ' + e(tName(ses.facilitator)) : '') : nx.t.id === 'way' ? pd + ' of ' + P.length + ' parts done' : 'live training · management will set the date') : '') + '</div></div>'
       + (nx ? (ses && ses.meet_url ? '<a class="btn teal" href="' + e(ses.meet_url) + '" target="_blank" rel="noopener">Join</a>' : '<button class="btn teal" onclick="trOpen(\'' + nx.t.id + '\')">' + (nx.t.id === 'way' ? (pd ? 'Continue' : 'Start') : 'Details') + '</button>') : '') + '</div>';
@@ -22845,7 +22848,7 @@ go();
     const t = '★ ' + n; if(b.textContent !== t){ b.textContent = t; b.title = 'Qualified to teach ' + n + ' · open Trainings'; } }
   function txTrn(){ const r = $('hRank'); if(!r) return; let b = $('txTrn'); const L = txT() && MY ? TRN(MY, MY.me) : [];
     if(!L.length){ if(b) b.remove(); return; }
-    if(!b){ r.insertAdjacentHTML('beforeend', '<button id="txTrn" type="button" onclick="event.stopPropagation();go(\'train\')">Trainer</button>'); b = $('txTrn'); }
+    if(!b){ r.insertAdjacentHTML('beforeend', '<button id="txTrn" type="button" onclick="event.stopPropagation();go(\'train\')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>Trainer</button>'); b = $('txTrn'); }
     const ti = 'Teacher trainer · ' + L.join(', '); if(b.title !== ti) b.title = ti; }
   function txGrow(){ const g = $('v-growth'); if(!g) return; const c = $('txGrow'), L = txT() ? txOk() : [];
     if(!L.length){ if(c) c.remove(); return; }
@@ -22855,7 +22858,7 @@ go();
     const d = document.createElement('div'); d.id = 'txGrow'; d.innerHTML = h; d._h = h; const ld = g.querySelector(':scope > .lead');
     if(ld) ld.after(d); else g.prepend(d); }
   function txUp(){ try{ txStar(); }catch(x){} try{ txTrn(); }catch(x){} try{ txGrow(); }catch(x){} }
-  (function(){ const st = document.createElement('style'); st.textContent = '#txTrn{border:1.5px solid #00A3AD;background:#EEF8F7;color:#00626A;font:inherit;font-weight:700;font-size:12px;border-radius:99px;padding:1px 8px;margin-left:6px;cursor:pointer;vertical-align:1px}#txStar{border:1.5px solid #D67FA3;background:#FBEFF4;color:#8A3B6A;font:inherit;font-weight:700;font-size:12px;border-radius:99px;padding:1px 8px;margin-left:6px;cursor:pointer;vertical-align:1px}'
+  (function(){ const st = document.createElement('style'); st.textContent = '#txTrn,#txStar{display:inline-flex;align-items:center;gap:4px;height:22px;box-sizing:border-box;font:inherit;font-weight:700;font-size:12px;line-height:1;border-radius:99px;padding:0 9px;margin-left:6px;cursor:pointer;vertical-align:middle}#txTrn{border:1.5px solid #00A3AD;background:#EEF8F7;color:#00626A}#txStar{border:1.5px solid #D67FA3;background:#FBEFF4;color:#8A3B6A}'
       + '#txGrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card,#fff);border:1px solid var(--line);border-radius:18px;padding:12px 16px;margin:12px 0}#txGrow .k{font-size:12px;font-weight:700;color:var(--ink2,#5E5A75)}#txGrow .tx-bdg{margin:0;flex:1}';
     document.head.appendChild(st);
     let q = 0; const later = () => { if(q) return; q = requestAnimationFrame(() => { q = 0; txUp(); }); };
