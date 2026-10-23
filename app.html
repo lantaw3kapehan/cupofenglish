@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 988;
+const COE_V = 989;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22305,10 +22305,12 @@ go();
       '<div class="row" style="gap:8px;margin-top:16px"><button class="btn teal grow" onclick="bbPic()"' + (r.sb_cover ? '' : ' disabled') + '>Picture for parents</button><button class="btn ghost grow" onclick="bbCopy()">Copy search words</button></div>' +
       (r.sb_cover ? '' : '<div class="small mute" style="margin-top:8px">' + (M ? 'No covers for this book yet · tap "Take covers again from COURSEWARE" or add a picture.' : 'Covers are not ready yet.') + '</div>')); }
   window.bbOpen = async (book, en, cn) => { CUR = { code: key(book), en: en || '', cn: cn || '' }; if(!rowOf(CUR.code)) await load(true); else load(); sheet();
-    if(mgr() && !rowOf(CUR.code)){ toast('Taking the covers from COURSEWARE…'); try{ const r = await api('mgmtBookCovers', TOKEN, [CUR.code]); await load(true); const z = r && r.list && r.list[0]; if(z && (z.msg || z.sbErr)) toast(z.msg || z.sbErr); if(CUR) sheet(); }catch(e){ toast(e.message); } } };
+    if(mgr() && !rowOf(CUR.code)){ toast('Taking the covers from COURSEWARE…'); try{ const r = await api('mgmtBookCovers', TOKEN, [CUR.code]); const z = r && r.list && r.list[0]; if(z && (z.sbErr || z.wbErr) && window.bbFillMissing){ toast('Drawing page 1 of the book…'); await bbFillMissing([z]); } await load(true); if(z && z.msg) toast(z.msg); if(CUR) sheet(); }catch(e){ toast(e.message); } } };
   window.bbCopy = () => { const r = rowOf(CUR.code) || {}; const t = (r.search_cn || r.title || '').trim(); try{ navigator.clipboard.writeText(t); toast('Copied · ' + t); }catch(e){ toast(t); } };
   window.bbSaveText = async () => { try{ const j = await call('book_buy_set', { code: CUR.code, f: { title: ($('bbT') || {}).value || '', search_cn: ($('bbS') || {}).value || '' } }); BB = (BB || []).filter(x => x.code !== CUR.code).concat(j.item); toast('Saved ✓'); }catch(e){ toast(e.message); } };
-  window.bbRetake = async () => { toast('Taking the covers again…'); try{ const r = await api('mgmtBookCovers', TOKEN, [CUR.code], true); await load(true); const z = r && r.list && r.list[0]; toast(z && (z.msg || z.sbErr || z.wbErr) || 'Covers updated ✓'); sheet(); }catch(e){ toast(e.message); } };
+  window.bbRetake = async () => { toast('Taking the covers again…'); try{ const r = await api('mgmtBookCovers', TOKEN, [CUR.code], true); const z = r && r.list && r.list[0];
+    if(z && (z.sbErr || z.wbErr) && window.bbFillMissing){ toast('Drawing page 1 of the book…'); const f = await bbFillMissing([z]); if(f.bad.length) toast('Not drawn: ' + f.bad.join(', ')); }   /* 657 */
+    await load(true); toast(z && z.msg || 'Covers updated ✓'); sheet(); }catch(e){ toast(e.message); } };
   window.bbPut = async (side, inp) => { const f = inp.files && inp.files[0]; if(!f) return; if(f.size > 5e6) return toast('The picture must be under 5 MB');
     try{ const b64 = await new Promise((ok, no) => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result).split(',')[1]); rd.onerror = no; rd.readAsDataURL(f); });
       const j = await call('book_cover_put', { code: CUR.code, side, type: f.type || 'image/jpeg', b64 }); BB = (BB || []).filter(x => x.code !== CUR.code).concat(j.item); toast('Cover saved ✓'); sheet(); }catch(e){ toast(e.message); } };
@@ -22352,7 +22354,8 @@ go();
     openSheet('<h1>Books to buy · all books</h1><div class="mute small">' + L.length + ' books · ' + L.filter(x => x.sb_cover).length + ' with covers</div><button class="btn teal sm" style="margin:10px 0" onclick="bbTakeAll(this)">Take every cover from COURSEWARE</button>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px">' + L.map(x => '<div style="text-align:center;cursor:pointer" onclick="bbOpen(\'' + esc(x.code) + '\')">' + (x.sb_cover ? '<img src="' + esc(x.sb_cover) + '" alt="" loading="lazy" style="width:100%;height:140px;object-fit:contain">' : '<div class="mute small" style="height:140px;display:grid;place-items:center;border:1.5px dashed var(--line);border-radius:8px">No cover</div>') + '<div class="small ell">' + esc(x.title || x.code) + '</div></div>').join('') + '</div>'); };
   window.bbTakeAll = async btn => { if(btn){ btn.disabled = true; btn.textContent = 'Taking the covers… (a few minutes)'; } let left = null, n = 0;
-    try{ for(let k = 0; k < 8; k++){ const r = await api('mgmtBookCovers', TOKEN, left || []); const L = (r && r.list) || []; n += L.filter(x => !x.later).length; left = L.filter(x => x.later).map(x => x.code); if(btn) btn.textContent = n + ' books done…'; if(!left.length) break; } }catch(e){ toast(e.message); }
+    try{ for(let k = 0; k < 8; k++){ const r = await api('mgmtBookCovers', TOKEN, left || []); const L = (r && r.list) || []; n += L.filter(x => !x.later).length;
+      if(window.bbFillMissing){ const M = L.filter(x => x.sbErr || x.wbErr); if(M.length) await bbFillMissing(M, (c, sd) => { if(btn) btn.textContent = 'Drawing page 1 · ' + c + ' ' + (sd === 'wb' ? 'Workbook' : 'Student Book') + '…'; }); }   /* 657 */ left = L.filter(x => x.later).map(x => x.code); if(btn) btn.textContent = n + ' books done…'; if(!left.length) break; } }catch(e){ toast(e.message); }
     toast('Covers taken ✓'); bbAll(); };
   /* entry points: To do › New book, and the student page (management) */
   try{ const css = document.createElement('style'); css.textContent = '.tdb .bb656{margin-top:6px}'; document.head.appendChild(css); }catch(e){}
@@ -22361,6 +22364,40 @@ go();
       if(row) row.insertAdjacentHTML('beforeend', '<button class="btn ghost sm" id="bbBtn" onclick="bbOpen(\'' + esc(b0) + '\',\'' + esc(STU.s.name || '') + '\',\'' + esc(STU.s.cn || STU.s.chinese || '') + '\')">Books to buy</button>'); } }catch(e){}
     return r; };
   setTimeout(() => { try{ if(mgr()) load(); }catch(e){} }, 3000);
+})();
+</script>
+
+<script>
+/* 23 Oct · 657 · Book covers when Google has no preview of the PDF: the app reads only the needed parts of the PDF from Drive
+   (server mgmtBookRange, 1 MB at a time) and draws page 1 with PDF.js, then saves it as the cover (coe-notice book_cover_put).
+   Used by "Take covers again from COURSEWARE" and "Take every cover" (management). */
+(function(){
+  if(typeof window.bbOpen !== 'function') return;
+  const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  let ready = null;
+  const loadPdf = () => ready || (ready = new Promise((ok, no) => { if(window.pdfjsLib) return ok(window.pdfjsLib);
+    const s = document.createElement('script'); s.src = PDFJS + 'pdf.min.js'; s.onload = async () => { try{ const w = await fetch(PDFJS + 'pdf.worker.min.js').then(r => r.text());
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([w], { type: 'text/javascript' })); ok(window.pdfjsLib); }catch(e){ no(e); } }; s.onerror = () => { ready = null; no(new Error('PDF reader did not load')); }; document.head.appendChild(s); }));
+  const u8 = b64 => { const s = atob(b64), a = new Uint8Array(s.length); for(let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; };
+  const CH = 1048576;
+  async function range(id, a, b){ for(let k = 0; k < 3; k++){ try{ const r = await apiNow('mgmtBookRange', TOKEN, id, a, b); if(r && r.ok) return r; throw new Error((r && r.msg) || 'Drive'); }catch(e){ if(k === 2) throw e; await new Promise(z => setTimeout(z, 1500)); } } }
+  /* page 1 of a Drive PDF → JPEG blob (about 1400 px wide) */
+  window.pdfPage1 = async id => { const lib = await loadPdf(); const first = await range(id, 0, CH - 1), init = u8(first.b64);
+    const tr = new lib.PDFDataRangeTransport(first.size, init);
+    tr.requestDataRange = (a, b) => { range(id, a, b - 1).then(r => tr.onDataRange(a, u8(r.b64))).catch(e => console.warn('range', e)); };
+    const doc = await lib.getDocument({ range: tr, length: first.size, rangeChunkSize: CH, disableAutoFetch: true, disableStream: true, isEvalSupported: false }).promise;
+    const pg = await doc.getPage(1), v1 = pg.getViewport({ scale: 1 }), sc = Math.min(3, 1400 / v1.width), vp = pg.getViewport({ scale: sc });
+    const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height); const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height);
+    await pg.render({ canvasContext: c, viewport: vp }).promise; try{ doc.destroy(); }catch(e){}
+    return await new Promise(z => cv.toBlob(z, 'image/jpeg', 0.9)); };
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-notice';
+  async function put(code, side, blob){ const b64 = await new Promise((ok, no) => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result).split(',')[1]); rd.onerror = no; rd.readAsDataURL(blob); });
+    const j = await fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'book_cover_put', code, side, type: 'image/jpeg', b64 }) }).then(r => r.json()); if(!j || !j.ok) throw new Error((j && j.error) || 'Not saved'); return j.item; }
+  /* fill the covers Google could not make: list = mgmtBookCovers results */
+  window.bbFillMissing = async (list, onStep) => { let n = 0, bad = [];
+    for(const x of list || []){ for(const side of ['sb', 'wb']){ const id = x[side + 'Id']; if(!id || !x[side + 'Err']) continue;
+      try{ onStep && onStep(x.code, side); const blob = await pdfPage1(id); await put(x.code, side, blob); n++; }catch(e){ bad.push(x.code + ' ' + side + ' (' + (e.message || e) + ')'); } } }
+    return { n, bad }; };
 })();
 </script>
 
