@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 989;
+const COE_V = 990;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11205,8 +11205,15 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
   document.head.insertAdjacentHTML('beforeend', '<style>.cxo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;padding:6px 10px;border-radius:10px;background:#EAF8F6;color:#0B5F59;font-size:13px;font-weight:700;opacity:1}.cxo i{width:7px;height:7px;border-radius:50%;background:#16BCB0}.cxo .btn{padding:3px 12px}.cls.x .cxo{filter:none}.cls.x:has(.cxo){opacity:1}.cls.x:has(.cxo)>*:not(.grow),.cls.x:has(.cxo) .grow>*:not(.cxo){opacity:.55}</style>');
   const key = n => String(n || '').replace(/^teacher\s+/i, '').trim().toLowerCase();
   function freed(e){ if(!e || !e.cancelled || !SC) return false; const s = +new Date(e.start), en = +new Date(e.end); if(s < Date.now()) return false;
+    if(window.lvOn && lvOn(e.teacher, e.start, e.end)) return false;   /* 658: on leave = not free */
     return !SC.events.some(x => !x.cancelled && x !== e && key(x.teacher) === key(e.teacher) && +new Date(x.start) < en && +new Date(x.end) > s); }
   window.scFreed = freed;
+  /* 658 · the teacher's leave (Approved or Pending) covering this class: whole days, or the hours of a part-day leave */
+  window.lvOn = (t, s, en) => { try{ let L = (typeof LV !== 'undefined' && LV && LV.rows) || null; if(!L){ try{ L = (JSON.parse(localStorage.getItem('coe.m.leave') || 'null') || {}).rows || null; }catch(x){} }
+    if(!window._lv658 && typeof loadLeave === 'function'){ window._lv658 = 1; Promise.resolve(loadLeave(true)).then(() => { try{ if(VIEW === 'schedule') renderSchedule(); }catch(x){} }); }   /* fresh leave list once per open */
+    if(!L) return null;
+    const day = ymdLocal(new Date(s)), a = tm(s), b = tm(en);
+    return L.find(r => /^(Approved|Pending)$/.test(r.status) && key(typeof tName === 'function' ? tName(r.teacher) : r.teacher) === key(t) && r.from <= day && r.to >= day && (() => { const w = typeof lvWin === 'function' ? lvWin(r) : []; return !w.length || (w[0] < b && w[1] > a); })()) || null; }catch(x){ return null; } };
   window.cxBook = async function(i){ const e = SC && SC.events[i]; if(!e) return; const x = new Date(e.start), mins = Math.round((new Date(e.end) - x) / 6e4); await classForm();
     const set = (id, v) => { const el = $(id); if(!el) return; if(el.tagName === 'SELECT' && ![...el.options].some(op => op.value === String(v))) el.insertAdjacentHTML('beforeend', '<option value="' + esc(v) + '">' + esc(v) + '</option>'); el.value = String(v); el.dispatchEvent(new Event('input')); el.dispatchEvent(new Event('change')); };
     set('cD', ymdLocal(x)); set('cH', tm(e.start)); set('cT', e.teacher); set('cM', mins); try{ classPrev(); }catch(err){}
@@ -11214,7 +11221,10 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
   const base = window.renderSchedule;
   window.renderSchedule = function(){ const r = base.apply(this, arguments);
     try{ const v = $('v-schedule'); if(!v || !SC) return r;
-      v.querySelectorAll('.cls.x').forEach(c => { const m = /classEdit\((\d+)/.exec(c.getAttribute('onclick') || ''), e = m && SC.events[+m[1]]; if(!e || !freed(e) || c.querySelector('.cxo')) return;
+      v.querySelectorAll('.cls.x').forEach(c => { const m = /classEdit\((\d+)/.exec(c.getAttribute('onclick') || ''), e = m && SC.events[+m[1]];
+        try{ const lv = e && +new Date(e.end) > Date.now() - 864e5 && lvOn(e.teacher, e.start, e.end), g0 = c.querySelector('.grow'); if(lv && g0 && !c.querySelector('.cxl')){ const f = d => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+          g0.insertAdjacentHTML('beforeend', `<div class="cxo cxl" style="background:#F4F3F8;color:#5B5675"><i style="background:#8A86A0"></i><span class="grow">Teacher ${esc(e.teacher)} on ${esc(String(lv.type || 'leave').toLowerCase())}${lv.status === 'Pending' ? ' (waiting for approval)' : ''} · ${esc(lv.from === lv.to ? f(lv.from) : f(lv.from) + '–' + f(lv.to))}</span></div>`); } }catch(x){}
+        if(!e || !freed(e) || c.querySelector('.cxo')) return;
         const g = c.querySelector('.grow'); if(!g) return;
         const s0 = +new Date(e.start), n = Math.max(1, Math.ceil((+new Date(e.end) - s0) / 18e5)), e1 = s0 + (n - 1) * 18e5 + 15e5;
         const clash = SC.events.some(x => !x.cancelled && x !== e && key(x.teacher) === key(e.teacher) && +new Date(x.start) < e1 && +new Date(x.end) > s0), endT = clash ? tm(e.end) : tm(new Date(e1).toISOString());
