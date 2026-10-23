@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1077;
+const COE_V = 1078;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23350,6 +23350,47 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const _sr = window.stuRender; if(typeof _sr === 'function') window.stuRender = function(){ const r = _sr.apply(this, arguments); try{ if(typeof D === 'undefined' || !D || !D.mgr || !STU) return r;
       const b = $('sheetBody'), h = b && b.querySelector('h1'); if(!h || b.querySelector('#wxG')) return r; const g = wxGroup(STU.s && STU.s.name || STU.code, STU.code);
       h.insertAdjacentHTML('afterend', '<div id="wxG" class="small" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 0 8px;color:#5E5A75">WeChat group: <b style="color:#2B2253">' + esc(g) + '</b><button type="button" class="btn ghost sm" style="padding:3px 10px" onclick="wxCopy(\'' + esc(STU.s && STU.s.name || STU.code).replace(/\\/g, '') + '\',\'' + esc(STU.code) + '\')">Copy</button></div>'); }catch(e){} return r; };
+})();
+</script>
+
+<script>
+/* 23 Oct · 746 · (Misty) siblings / shared packages. On a student's card: "Shares a WeChat group with…" → type the sibling's code once.
+   Then the group name is the family's (一杯英语 Una & Levin (ST-2023-046)), reminders point to it, and the class notice lists both
+   children with each child's own schedule and teacher. Saved in the database (coe-train wx_set), same for every manager. */
+(function(){
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-train';
+  const call = b => fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, b)) }).then(x => x.json());
+  window.WXF = window.WXF || {};
+  const up = c => String(c || '').trim().toUpperCase();
+  function stuNm(code){ code = up(code); try{ const s = (typeof MS !== 'undefined' && MS && (MS.students || MS)) || []; const x = Array.isArray(s) ? s.find(y => up(y.code) === code) : null; if(x) return { name: x.name || code, cn: x.cn || '' }; }catch(e){}
+    try{ if(typeof AT !== 'undefined' && AT && AT.cols){ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const r = AT.rows.find(r => up(r[C.code]) === code); if(r) return { name: r[C.name] || code, cn: r[C.cn] || '' }; } }catch(e){}
+    try{ if(window.CN && up(CN.code) === code) return { name: CN.name, cn: CN.cn }; }catch(e){} return { name: code, cn: '' }; }
+  function fam(code){ code = up(code); const main = (WXF[code] && WXF[code].to) || code, M = [main].concat(Object.keys(WXF).filter(k => WXF[k] && WXF[k].to === main && k !== main)); return M.length > 1 ? { main, M } : null; }
+  window.wxFam = fam;
+  const en = n => String(n || '').replace(/[　-鿿＀-￯].*$/, '').trim() || String(n || '').trim();
+  const _g = window.wxGroup; window.wxGroup = (name, code) => { const f = fam(code); if(!f) return _g(name, code); return '一杯英语 ' + f.M.map(c => en(up(c) === up(code) ? name : stuNm(c).name)).join(' & ') + ' (' + f.main + ')'; };
+  async function load(){ try{ if(typeof D === 'undefined' || !D || !D.mgr || !TOKEN) return; const r = await call({ action: 'wx_get' }); if(r && r.ok) window.WXF = r.map || {}; }catch(e){} }
+  (function w(){ if(typeof D !== 'undefined' && D && TOKEN){ load(); setInterval(load, 10 * 6e4); } else setTimeout(w, 1500); })();
+  /* student card: the family link */
+  window.wxLink = function(code){ code = up(code); const cur = WXF[code] && WXF[code].to, f = fam(code);
+    openSheet('<h1>Shared WeChat group</h1><div class="mute small">For siblings or a shared package: one family group, named after the first child\'s code.</div>'
+      + (f ? '<div class="card" style="margin-top:12px"><b>' + esc(wxGroup(stuNm(code).name, code)) + '</b><div class="small mute">' + f.M.map(c => esc(stuNm(c).name) + ' · ' + esc(c)).join('<br>') + '</div></div>' : '')
+      + '<label style="margin-top:12px;display:block">The other child\'s student code</label><input id="wxTo" class="in-t" placeholder="e.g. ST-2023-046" value="' + esc(cur || (f && f.main !== code ? f.main : '')) + '" style="width:100%">'
+      + '<div class="small mute" style="margin-top:4px">Type the code of the child the group is already named after (the one who enrolled first).</div>'
+      + '<button class="btn teal block" style="margin-top:12px" onclick="wxLinkSave(\'' + code + '\')">Save</button>' + (cur ? '<button class="btn ghost block" style="margin-top:8px" onclick="wxLinkSave(\'' + code + '\',1)">Not shared · own group</button>' : '')); };
+  window.wxLinkSave = async function(code, clear){ const to = clear ? '' : up(($('wxTo') || {}).value);
+    try{ const r = await call({ action: 'wx_set', code, to }); if(!r || !r.ok) throw new Error((r && r.error) || 'Not saved'); window.WXF = r.map || {}; toast(clear ? 'Own group now' : 'Saved · ' + wxGroup(stuNm(code).name, code)); closeSheet(); }catch(e){ toast(e.message); } };
+  const _sr = window.stuRender; if(typeof _sr === 'function') window.stuRender = function(){ const r = _sr.apply(this, arguments); try{ const w = $('wxG'); if(w && STU && !w.querySelector('.wxl')){ const f = fam(STU.code);
+      w.insertAdjacentHTML('beforeend', '<button type="button" class="btn ghost sm wxl" style="padding:3px 10px" onclick="wxLink(\'' + esc(STU.code) + '\')">' + (f ? 'Shared with ' + esc(f.M.filter(c => c !== up(STU.code)).map(c => en(stuNm(c).name)).join(', ')) : 'Shares a group with…') + '</button>'); } }catch(e){} return r; };
+  /* class notice: every child in the family, each with their own schedule */
+  const _open = window.cnOpen; if(typeof _open === 'function') window.cnOpen = async function(code){ const r = await _open.apply(this, arguments); try{ const f = fam(code); if(!f || !window.CN || up(CN.code) !== up(code)) return r;
+      const others = f.M.filter(c => c !== up(code)), L = await Promise.all(others.map(c => api('mgmtStuClasses', TOKEN, c).catch(() => [])));
+      CN.fam = [{ code: up(code), name: CN.name, cn: CN.cn, sch: CN.sch }].concat(others.map((c, i) => { const n = stuNm(c); return { code: c, name: n.name, cn: n.cn, sch: cnSched((Array.isArray(L[i]) ? L[i] : []).filter(x => !/trial/i.test(String(x.title || '')))) }; }));
+      CN.fam.sort((a, b) => (a.code === f.main ? -1 : b.code === f.main ? 1 : 0));
+      CN.sch = CN.fam.map(m => String(m.sch || '').trim().split('\n').map((l, j) => j === 0 && /^Teacher /.test(l) ? en(m.name) + ' · ' + l : l).join('\n')).filter(Boolean).join('\n\n');
+      cnPaint(); }catch(e){} return r; };
+  const _txt = window.cnText; if(typeof _txt === 'function') window.cnText = function(){ let t = _txt.apply(this, arguments); try{ const x = window.CN; if(x && x.fam && x.fam.length > 1)
+      t = t.replace(/^👤 .*$/m, x.fam.map(m => '👤 ' + en(m.name) + (m.cn ? ' ' + m.cn : '') + ' · ' + m.code).join('\n')); }catch(e){} return t; };
 })();
 </script>
 
