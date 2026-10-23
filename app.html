@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1054;
+const COE_V = 1055;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22933,7 +22933,10 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       + '<div id="tcLg" class="hide"><label class="small mute">Notes for the teacher · what we worked on, next steps</label><textarea id="tcN" rows="5" style="width:100%;margin:4px 0 10px"></textarea><label class="small mute">Recording link (optional · e.g. Google Drive, shared with the teacher)</label><input id="tcV" placeholder="https://…" style="width:100%;margin:4px 0 10px">' + fileIn('tcF', 'tcFP') + '</div></div>'
       + '<button class="btn teal block" id="tcS" style="margin-top:12px" onclick="trCoachSave()">Book coaching</button>'); window._tcMode = 0; };
   window.trCoachMode = m => { window._tcMode = m; $('tcB').classList.toggle('on', !m); $('tcL').classList.toggle('on', !!m); $('tcBk').classList.toggle('hide', !!m); $('tcLg').classList.toggle('hide', !m); $('tcS').textContent = m ? 'Save coaching' : 'Book coaching'; };
-  window.trCoachSave = async function(){ const v = id => ($(id) || {}).value || '', t = v('tcT'), p = v('tcP').trim(), d = v('tcD'); if(!t || !p) return toast('Choose the teacher and write the topic'); if(!d) return toast('Pick the date');
+  window.trCoachSave = async function(force){ const v = id => ($(id) || {}).value || '', t = v('tcT'), p = v('tcP').trim(), d = v('tcD'); if(!t || !p) return toast('Choose the teacher and write the topic'); if(!d) return toast('Pick the date');
+    if(window._tcMode && force !== 1){ const day = d.slice(0, 10), same = ((AL && AL.records) || []).filter(r => r.training_id === 'coach' && r.teacher === t && r.status === 'done' && fmtD(r.done_at) === fmtD(day + 'T12:00:00+08:00'));
+      if(same.length){ let w = $('tcDup'); if(!w){ w = document.createElement('div'); w.id = 'tcDup'; w.className = 'card'; w.style.cssText = 'margin-top:12px;border:1.5px solid #F0C9BD;background:#FBEDE8'; const b0 = $('tcS'); b0.parentNode.insertBefore(w, b0); }
+        w.innerHTML = '<b>' + e(tName(t)) + ' already has a coaching on ' + e(fmtD(same[0].done_at)) + '</b><div class="small" style="margin:4px 0 10px">' + e(splitN(same[0].note).topic) + ' · to add the recording, use + Recording on that coaching instead of logging it again.</div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sm teal" onclick="trCoachRec(' + same[0].id + ')">+ Recording on that one</button><button class="btn sm ghost" onclick="trCoachSave(1)">It\'s a different session · save</button></div>'; return; } }
     const b = $('tcS'); b.disabled = true; try{
       if(window._tcMode){ const fp = await coachFile('tcF', t, 'tcFP'); await call('rec_add', { teacher: t, training_id: 'coach', status: 'done', via: 'live', done_at: d + ':00+08:00', note: packN(p, v('tcN').trim(), v('tcC'), v('tcV').trim(), fp) }); }
       else await call('sess_set', { s: { training_id: 'coach', starts_at: d + ':00+08:00', mins: +v('tcM') || 30, facilitator: v('tcC') || (D.me || {}).name || '', meet_url: v('tcU'), note: p, invited: [t] } });
