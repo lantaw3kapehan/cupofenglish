@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1007;
+const COE_V = 1008;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22541,11 +22541,13 @@ go();
   /* ---------- teacher: the path ---------- */
   function pathHtml(d, who, R){
     const L = statusList(d, who, R.ix), W = 390, X = [0.5, 0.72, 0.5, 0.28]; let y = 10, k = 0; const pills = [], nodes = [], pts = [];
-    let gPrev = null;
-    L.forEach(x => {
-      if(x.t.gate !== gPrev){ gPrev = x.t.gate; const gi = x.gi, cls = gi <= R.ix ? 'ok' : gi === R.ix + 1 ? 'nx' : '';
-        const lab = e(x.t.gate) + (gi < R.ix ? ' ✓' : gi === R.ix ? ' ✓ · you are here' : gi === R.ix + 1 && R.next ? ' · ' + (Math.round(R.life * 10) / 10).toLocaleString() + ' / ' + (+R.next.units).toLocaleString() + ' units' : '');
-        pills.push('<div class="tr-pill ' + cls + '" style="top:' + y + 'px"><span>' + lab + '</span></div>'); y += 50; }
+    const G = []; L.forEach(x => { const g = G[G.length - 1]; if(g && g.gate === x.t.gate) g.items.push(x); else G.push({ gate: x.t.gate, gi: x.gi, items: [x] }); });
+    const rows = []; G.forEach(g => { g.items.forEach(x => rows.push({ x })); rows.push({ pill: g }); }); rows.reverse();
+    rows.forEach(row => {
+      if(row.pill){ const gi = row.pill.gi, gname = row.pill.gate, cls = gi <= R.ix ? 'ok' : gi === R.ix + 1 ? 'nx' : '';
+        const lab = e(gname) + (gi < R.ix ? ' ✓' : gi === R.ix ? ' ✓ · you are here' : gi === R.ix + 1 && R.next ? ' · ' + (Math.round(R.life * 10) / 10).toLocaleString() + ' / ' + (+R.next.units).toLocaleString() + ' units' : '');
+        pills.push('<div class="tr-pill ' + cls + '" style="top:' + (y + 6) + 'px"><span>' + lab + '</span></div>'); y += 50; return; }
+      const x = row.x;
       const cx = Math.round(W * X[k % 4]), cy = y + 34; k++; pts.push([cx, cy, x.st === 'done']);
       const facil = x.t.id === 'facil', way = x.t.id === 'way', P = way ? partsOf(d, 'way') : [], pd = P.filter(p => partDone(d, who, p)).length;
       const ic = x.st === 'done' ? IC.ok : x.st === 'next' ? IC.play : facil ? IC.cup : x.st === 'open' ? IC.open : IC.lock;
@@ -22574,7 +22576,7 @@ go();
     const M = partsOf(d, 'model').filter(p => p.video_path);
     if(M.length) h += '<h2>Self-study <span class="mute small" style="font-weight:400">· free</span></h2>' + M.map(p => partRow(d, who, p)).join('');
     h += '</div>'; if(v._h !== h){ v.innerHTML = h; v._h = h; }
-    if(!v._sc){ v._sc = 1; setTimeout(() => { try{ const n = v.querySelector('.tr-n.next'); if(n && n.getBoundingClientRect().top > innerHeight * 0.7) n.scrollIntoView({ block: 'center', behavior: 'smooth' }); }catch(x){} }, 300); } }
+    if(!v._sc){ v._sc = 1; setTimeout(() => { try{ const n = v.querySelector('.tr-n.next'); if(n) n.scrollIntoView({ block: 'center', behavior: 'smooth' }); }catch(x){} }, 300); } }
   function partRow(d, who, p){ const g = progOf(d, who, p), q = bestQ(d, who, p), dn = partDone(d, who, p), wait = g && g.done_at && p.approve && !g.approved_at;
     const st = []; if(g && g.pct) st.push('<span class="' + (g.pct >= 90 ? 'ok' : '') + '">Watched ' + g.pct + '%</span>'); if(g && g.secs) st.push('<span>' + mins(g.secs) + ' min</span>'); if(g && g.views) st.push('<span>Opened ' + g.views + '×</span>');
     if(q) st.push('<span class="' + (q.passed ? 'ok' : '') + '">Quiz ' + q.score + '/' + q.total + (q.passed ? ' ✓' : '') + '</span>'); if(wait) st.push('<span>Waiting for approval</span>');
