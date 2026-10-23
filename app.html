@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 991;
+const COE_V = 992;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22305,7 +22305,7 @@ go();
   const img = u => new Promise(ok => { if(!u) return ok(null); const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = () => ok(null); i.src = u; });
   function sheet(){ const x = CUR, r = rowOf(x.code) || {}, M = mgr();
     const cov = (side, lab) => { const u = r[side + '_cover']; return '<div style="flex:1;min-width:0;text-align:center">' + (u ? '<img src="' + esc(u) + '" alt="" style="width:100%;max-height:300px;object-fit:contain;border-radius:8px;box-shadow:0 4px 14px rgba(43,34,83,.15)">' : '<div class="mute small" style="padding:40px 8px;border:1.5px dashed var(--line);border-radius:10px">No cover yet</div>') +
-      '<div class="small" style="margin-top:6px;font-weight:700">' + lab + '</div>' + (u ? '<button class="btn ghost sm" style="margin-top:4px" onclick="bbSaveCover(\'' + side + '\')">Save cover</button>' : '') +
+      '<div class="small" style="margin-top:6px;font-weight:700">' + lab + '</div>' + (u ? '<button class="btn ghost sm" style="margin-top:4px" onclick="bbSaveCover(\'' + side + '\')">Copy cover</button>' : '') +
       (M ? '<label class="btn ghost sm" style="margin-top:4px;cursor:pointer">' + (u ? 'Replace' : 'Add picture') + '<input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="bbPut(\'' + side + '\',this)"></label>' : '') + '</div>'; };
     openSheet('<h1>Books to buy · 教材购买</h1><div class="mute small">' + esc(x.en || '') + (x.cn ? ' ' + esc(x.cn) : '') + ' · ' + esc(r.title || x.code) + '</div>' +
       '<div class="row" style="gap:14px;margin-top:14px;align-items:flex-start">' + cov('sb', 'Student Book · 学生用书') + (r.wb_cover || M ? cov('wb', 'Workbook · 练习册') : '') + '</div>' +
@@ -22331,8 +22331,11 @@ go();
     if(navigator.canShare && navigator.canShare({ files: [f] })){ try{ await navigator.share({ files: [f] }); return; }catch(x){ if(x && x.name === 'AbortError') return; } }
     try{ if(window.ClipboardItem && navigator.clipboard && navigator.clipboard.write && blob.type === 'image/png'){ await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Picture copied · paste it in WeChat'); return; } }catch(e){}
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); toast('Saved'); }
-  window.bbSaveCover = async side => { const r = rowOf(CUR.code) || {}, u = r[side + '_cover']; if(!u) return;
-    try{ const b = await fetch(u).then(x => x.blob()); await give(b, (r.title || CUR.code).replace(/[^\w.-]+/g, '-') + (side === 'wb' ? '-Workbook' : '-Student-Book') + (b.type === 'image/png' ? '.png' : '.jpg')); }catch(e){ toast('Could not save the cover'); } };
+  /* 660 · copy to the clipboard first (paste in WeChat); the clipboard call is made at once in the tap, the picture follows */
+  const toPng = b => b && b.type === 'image/png' ? Promise.resolve(b) : createImageBitmap(b).then(bm => new Promise(ok => { const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; c.getContext('2d').drawImage(bm, 0, 0); c.toBlob(ok, 'image/png'); }));
+  function copyImg(pBlob, name){ try{ if(window.ClipboardItem && navigator.clipboard && navigator.clipboard.write){ return navigator.clipboard.write([new ClipboardItem({ 'image/png': pBlob.then(toPng) })]).then(() => toast('Picture copied ✓ · paste it in WeChat'), () => pBlob.then(b => give(b, name))); } }catch(e){} return pBlob.then(b => give(b, name)); }
+  window.bbSaveCover = side => { const r = rowOf(CUR.code) || {}, u = r[side + '_cover']; if(!u) return;
+    copyImg(fetch(u).then(x => x.blob()), (r.title || CUR.code).replace(/[^\w.-]+/g, '-') + (side === 'wb' ? '-Workbook' : '-Student-Book') + '.png'); };
   /* the parent picture */
   window.bbPic = async () => { const r = rowOf(CUR.code) || {}; toast('Making the picture…');
     try{ await document.fonts.ready; await Promise.all(['400 40px "Fredoka One"', '700 20px Arvo', '400 20px Arvo'].map(f => document.fonts.load(f).catch(() => 0))); }catch(z){}
@@ -22358,10 +22361,10 @@ go();
     if(tag){ const tw = 170, th = tw * tag.height / tag.width; c.drawImage(tag, W / 2 - tw / 2, H - 60 - th - 10, tw, th); }
     const blob = await new Promise(z => cv.toBlob(z, 'image/png')); if(PICB && PICB.url) URL.revokeObjectURL(PICB.url); PICB = { blob, url: URL.createObjectURL(blob), name: 'CupOfEnglish-books-' + CUR.code + '.png' };
     openSheet('<h1>Books to buy</h1><div class="mute small">' + esc(r.title || CUR.code) + ' · send it in the class WeChat group</div><img src="' + PICB.url + '" alt="" style="width:100%;border-radius:12px;margin-top:10px">' +
-      '<div class="row" style="gap:8px;margin-top:14px"><button class="btn teal grow" onclick="bbGive()">' + (navigator.share ? 'Share / save' : 'Copy picture') + '</button><button class="btn ghost grow" onclick="bbCopy()">Copy search words</button></div>' +
-      '<div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost grow" onclick="bbSaveCover(\'sb\')">Student Book cover alone</button>' + (two ? '<button class="btn ghost grow" onclick="bbSaveCover(\'wb\')">Workbook cover alone</button>' : '') + '</div>' +
-      '<div class="small mute" style="margin-top:6px">The covers alone are for Taobao photo search (拍立淘).</div><button class="btn ghost block" style="margin-top:10px" onclick="bbOpen(\'' + esc(CUR.code) + '\',\'' + esc(CUR.en) + '\',\'' + esc(CUR.cn) + '\')">Back</button>'); };
-  window.bbGive = () => PICB && give(PICB.blob, PICB.name);
+      '<div class="row" style="gap:8px;margin-top:14px"><button class="btn teal grow" onclick="bbGive()">Copy picture</button><button class="btn ghost grow" onclick="bbCopy()">Copy search words</button></div>' +
+      '<div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost grow" onclick="bbSaveCover(\'sb\')">Copy Student Book cover</button>' + (two ? '<button class="btn ghost grow" onclick="bbSaveCover(\'wb\')">Copy Workbook cover</button>' : '') + '</div>' +
+      '<div class="small mute" style="margin-top:6px">Copy, then paste in the class WeChat group · the covers alone are for Taobao photo search (拍立淘).</div><button class="btn ghost block" style="margin-top:10px" onclick="bbOpen(\'' + esc(CUR.code) + '\',\'' + esc(CUR.en) + '\',\'' + esc(CUR.cn) + '\')">Back</button>'); };
+  window.bbGive = () => PICB && copyImg(Promise.resolve(PICB.blob), PICB.name);
   /* every book at a glance (management): covers present or missing · take all covers */
   window.bbAll = async () => { await load(true); const L = (BB || []).slice().sort((a, b) => String(a.title || a.code).localeCompare(String(b.title || b.code), undefined, { numeric: true }));
     openSheet('<h1>Books to buy · all books</h1><div class="mute small">' + L.length + ' books · ' + L.filter(x => x.sb_cover).length + ' with covers</div><button class="btn teal sm" style="margin:10px 0" onclick="bbTakeAll(this)">Take every cover from COURSEWARE</button>' +
