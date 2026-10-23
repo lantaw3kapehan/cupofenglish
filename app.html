@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 990;
+const COE_V = 991;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22314,7 +22314,10 @@ go();
       (M ? '<div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost sm" onclick="bbSaveText()">Save title and words</button><button class="btn ghost sm" onclick="bbRetake()">Take covers again from COURSEWARE</button><button class="btn ghost sm" onclick="bbAll()">All books</button></div>' : '') +
       '<div class="row" style="gap:8px;margin-top:16px"><button class="btn teal grow" onclick="bbPic()"' + (r.sb_cover ? '' : ' disabled') + '>Picture for parents</button><button class="btn ghost grow" onclick="bbCopy()">Copy search words</button></div>' +
       (r.sb_cover ? '' : '<div class="small mute" style="margin-top:8px">' + (M ? 'No covers for this book yet · tap "Take covers again from COURSEWARE" or add a picture.' : 'Covers are not ready yet.') + '</div>')); }
-  window.bbOpen = async (book, en, cn) => { CUR = { code: key(book), en: en || '', cn: cn || '' }; if(!rowOf(CUR.code)) await load(true); else load(); sheet();
+  /* 659 · from a book field like "A1, OD2 → OD3": not levels, the current book first (before the arrow), one with covers when possible */
+  window.bbPick = f => { const P = String(f || '').split(/\s*(?:,|;|→|->|\/|·)\s*/).map(x => x.trim()).filter(x => x && !/^(pre[-\s]?)?[abc][12]\+?$/i.test(x) && !/^cefr/i.test(x));
+    return P.find(x => { const r = rowOf(x); return r && r.sb_cover && !r.hidden; }) || P.find(x => rowOf(x)) || P[0] || ''; };
+  window.bbOpen = async (book, en, cn) => { if(/[,→]|^\s*(pre[-\s]?)?[abc][12]\+?\s*$/i.test(String(book || ''))) book = bbPick(book) || book; CUR = { code: key(book), en: en || '', cn: cn || '' }; if(!rowOf(CUR.code)) await load(true); else load(); sheet();
     if(mgr() && !rowOf(CUR.code)){ toast('Taking the covers from COURSEWARE…'); try{ const r = await api('mgmtBookCovers', TOKEN, [CUR.code]); const z = r && r.list && r.list[0]; if(z && (z.sbErr || z.wbErr) && window.bbFillMissing){ toast('Drawing page 1 of the book…'); await bbFillMissing([z]); } await load(true); if(z && z.msg) toast(z.msg); if(CUR) sheet(); }catch(e){ toast(e.message); } } };
   window.bbCopy = () => { const r = rowOf(CUR.code) || {}; const t = (r.search_cn || r.title || '').trim(); try{ navigator.clipboard.writeText(t); toast('Copied · ' + t); }catch(e){ toast(t); } };
   window.bbSaveText = async () => { try{ const j = await call('book_buy_set', { code: CUR.code, f: { title: ($('bbT') || {}).value || '', search_cn: ($('bbS') || {}).value || '' } }); BB = (BB || []).filter(x => x.code !== CUR.code).concat(j.item); toast('Saved ✓'); }catch(e){ toast(e.message); } };
@@ -22370,7 +22373,7 @@ go();
   /* entry points: To do › New book, and the student page (management) */
   try{ const css = document.createElement('style'); css.textContent = '.tdb .bb656{margin-top:6px}'; document.head.appendChild(css); }catch(e){}
   const sr0 = window.stuRender; if(sr0) window.stuRender = function(){ const r = sr0.apply(this, arguments);
-    try{ if(mgr() && STU && STU.code && STU.s && STU.s.book && !$('bbBtn')){ const row = document.querySelector('#sheetBody .row.noprint'); const b0 = String(STU.s.book).split(/\s*,\s*/)[0];
+    try{ if(mgr() && STU && STU.code && STU.s && STU.s.book && !$('bbBtn')){ const row = document.querySelector('#sheetBody .row.noprint'); const b0 = window.bbPick ? bbPick(STU.s.book) : String(STU.s.book).split(/\s*,\s*/)[0];
       if(row) row.insertAdjacentHTML('beforeend', '<button class="btn ghost sm" id="bbBtn" onclick="bbOpen(\'' + esc(b0) + '\',\'' + esc(STU.s.name || '') + '\',\'' + esc(STU.s.cn || STU.s.chinese || '') + '\')">Books to buy</button>'); } }catch(e){}
     return r; };
   setTimeout(() => { try{ if(mgr()) load(); }catch(e){} }, 3000);
