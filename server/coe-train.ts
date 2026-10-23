@@ -125,7 +125,7 @@ Deno.serve(async (req: Request) => {
     }
     if (a === "rec_add") {
       need(); const r = { teacher: str(b.teacher, 60), training_id: str(b.training_id, 40), status: str(b.status, 20) || "done", via: str(b.via, 20) || "manual",
-        note: str(b.note, 500) || null, done_at: b.done_at && !isNaN(Date.parse(b.done_at)) ? new Date(b.done_at).toISOString() : (b.status === "done" || !b.status ? now : null), by_who: me };
+        note: str(b.note, b.training_id === "coach" ? 4000 : 500) || null, done_at: b.done_at && !isNaN(Date.parse(b.done_at)) ? new Date(b.done_at).toISOString() : (b.status === "done" || !b.status ? now : null), by_who: me };
       if (!r.teacher || !r.training_id) return out({ ok: false, error: "Teacher and training needed" });
       const { data, error } = await db.from("coe_training_records").insert(r).select().single(); return out({ ok: !error, error: error && error.message, record: data });
     }
@@ -164,6 +164,25 @@ Deno.serve(async (req: Request) => {
       if (p.video_path) { await db.storage.from(BUCKET).remove([p.video_path]); }
       const row: any = { video_path: null, dur_sec: 0, updated_at: now }; if (b.what === "part") row.active = false;
       const { data, error } = await db.from("coe_training_parts").update(row).eq("id", p.id).select().single(); return out({ ok: !error, error: error && error.message, part: data });
+    }
+    // 23 Oct · coaching recordings: uploaded into the private bucket under coach/<teacher>/…; the record keeps "§file:<path>" in its note.
+    if (a === "coach_upload_url") {
+      need(); const t = str(b.teacher, 60); if (!t) return out({ ok: false, error: "Teacher needed" });
+      const ext = (str(b.name, 100).match(/\.(mp4|webm|mov|m4v)$/i) || [".mp4"])[0].toLowerCase(), path = "coach/" + t.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "/" + Date.now() + ext;
+      const { data, error } = await db.storage.from(BUCKET).createSignedUploadUrl(path); if (error) return out({ ok: false, error: error.message });
+      return out({ ok: true, path, url: data.signedUrl, token: data.token });
+    }
+    if (a === "coach_video") {   // the teacher watches their own coaching recording; management any
+      const { data: r } = await db.from("coe_training_records").select("id,teacher,note").eq("id", +b.id).eq("training_id", "coach").maybeSingle();
+      if (!r || (!mgmt && r.teacher !== me)) return out({ ok: false, error: "Not found" }, 404);
+      const path = ((String(r.note || "").match(/\n§file:(.*)/) || [])[1] || "").trim(); if (!path.startsWith("coach/")) return out({ ok: false, error: "No recording" }, 404);
+      const { data, error } = await db.storage.from(BUCKET).createSignedUrl(path, 7200); return out({ ok: !error, error: error && error.message, url: data && data.signedUrl });
+    }
+    if (a === "coach_attach") {   // management adds or replaces the recording of a coaching already logged
+      need(); const { data: r } = await db.from("coe_training_records").select("id,note").eq("id", +b.id).eq("training_id", "coach").maybeSingle(); if (!r) return out({ ok: false, error: "Not found" }, 404);
+      let n = String(r.note || "").replace(/\n§(file|video):.*/g, ""); const f = str(b.path, 300), v = str(b.url, 500);
+      if (f.startsWith("coach/")) n += "\n§file:" + f; else if (/^https?:\/\//.test(v)) n += "\n§video:" + v;
+      const { data, error } = await db.from("coe_training_records").update({ note: n.slice(0, 4000) }).eq("id", r.id).select().single(); return out({ ok: !error, error: error && error.message, record: data });
     }
     if (a === "upload_url") {
       need(); const p = await part(+b.part_id); if (!p) return out({ ok: false, error: "Not found" }, 404);
