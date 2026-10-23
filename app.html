@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1063;
+const COE_V = 1064;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22893,7 +22893,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     const CR = T.map(x => coachRecs(d, x.name).length), CT = CR.reduce((a, b) => a + b, 0); window._trLists.coach = ['Coaching record', [coachRows(d, T)], '<button class="btn teal" onclick="trCoach()">+ Coaching</button>'];
     const cnt = (k, lab, sub, warn) => { const n = window._trLists[k][1].length; return '<button type="button" class="tx-cnt' + (warn && n ? ' warn' : '') + '" onclick="trListOpen(\'' + k + '\')"><span>' + lab + '</span><b>' + n + '</b><small>' + sub + '</small></button>'; };
     let h = '<div class="trm tx"><div class="lead row"><div class="grow"><h1>Trainings</h1><div class="mute small">Mandatory trainings unlock the next rank (Clause 3.6)</div></div><button class="btn" onclick="trSched()">+ Schedule</button> <button class="btn teal" onclick="trCoach()">+ Coaching</button> <button class="btn ghost" onclick="trList()">Videos &amp; quizzes</button></div>';
-    h += '<div class="tx-cnts c5">' + cnt('coming', 'Coming up', 'sessions scheduled') + cnt('need', 'Needs you', 'approve · tick', 1) + cnt('blocked', 'Blocked', 'enough units, training missing', 1) + cnt('self', 'Self-study', 'model lessons · + add') + '<button type="button" class="tx-cnt" onclick="trListOpen(\'coach\')"><span>Coaching</span><b>' + CT + '</b><small>sessions · ' + CR.filter(n => n).length + ' teachers coached</small></button></div>';
+    h += teamLadder(d, T, CT, CR);
     // table
     const short = { way: 'Way', demo: 'Demo', track: 'TRACK', ct: 'Crit.', comm: 'Comm.', collab: 'Collab.', creat: 'Creat.', integ: 'Integ.', phon: 'Phon.', gram: 'Gram.', prog: 'Progress', spec: 'Special.', facil: 'Trainer', trial: 'Trials', 'cw-alphabet': 'Alphabet', 'cw-shortvowels': 'Short V.', 'cw-longvowels': 'Long V.', 'cw-blends': 'Blends', 'cw-lettercomb': 'Letter C.', 'cw-raz': 'Raz-Kids', 'cw-odf': 'OD Futures', 'cw-wonders': 'Wonders', 'cw-pathways': 'Pathways', 'cw-dk': 'DK English', 'cw-business': 'Business', 'spec-yle': 'YLE', 'spec-ielts': 'IELTS', 'spec-toefl': 'TOEFL', 'spec-ket': 'KET', 'spec-pet': 'PET', inq: 'Inquiry', 'cw-phonics': 'Phonics', 'cw-od1': 'OD 1', 'cw-od2': 'OD 2', 'cw-re': 'Reading Expl.' };
     const tab = ['path', 'books', 'spec'].includes(window._trTab) ? window._trTab : 'path', GO = ['Phonics', 'Reading', 'Oxford Discover', 'Adults', 'Books', 'Specializations', 'Trial classes'], U = (d.trainings || []).filter(t => t.kind === 'unlock').sort((a, b) => GO.indexOf(BG(a)) - GO.indexOf(BG(b)) || a.sort - b.sort), C = tab === 'path' ? M : tab === 'books' ? U.filter(t => !['Specializations', 'Trial classes'].includes(BG(t))) : U.filter(t => ['Specializations', 'Trial classes'].includes(BG(t)));
@@ -22911,6 +22911,38 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     h += '</tbody></table></div><div class="tx-lg"><span><i class="d y"></i>' + (tab === 'path' ? 'done' : 'qualified to teach') + '</span>' + (tab === 'path' ? '' : '<span><i class="d c"></i>training completed</span><span><b class="dt">in training</b></span><span><i class="d f"></i>requires further training</span>') + '<span><b class="dt">4 Nov</b>booked</span><span><i class="d b"></i>needed now</span><span><i class="d n"></i>not yet</span><span><i class="d x"></i>excused</span></div></section></div>';
     if(v._h !== h){ v.innerHTML = h; v._h = h; } }
   window.paintTrAll = () => paintAll();
+  /* 732 · Team ladder (management) */
+  function teamLadder(d, T, CT, CR){ const LS = window._trLists || {}, n = key => ((LS[key] || [])[1] || []).length;
+    const chip = x => { const nx = x.next, units = nx ? (nx.units != null ? +nx.units : (+x.life || 0) + (+nx.need || 0)) : 0, pct = nx ? Math.min(100, Math.round((+x.life || 0) / Math.max(1, units) * 100)) : 100;
+      const L = statusList(d, x.name, Math.max(0, x.ix)), miss = L.filter(y => y.st !== 'done' && y.st !== 'lock' && y.t.id !== 'spec' && y.t.id !== 'way' && y.gi <= x.ix).length;
+      const blk = nx && +nx.need <= 0 && L.some(y => y.gi === x.ix + 1 && y.st !== 'done');
+      return '<button type="button" class="tl-c' + (blk ? ' blk' : '') + '" onclick="trView(\'' + e(x.name) + '\')" title="' + e(nx ? Math.round((+x.life || 0) * 10) / 10 + ' / ' + Math.round(units) + ' units to ' + nx.name : 'Top rank') + '"><b>' + e(x.name) + '</b>'
+        + (nx ? '<span class="tl-b"><i style="width:' + pct + '%"></i></span>' : '<span class="tl-top">top</span>') + (blk ? '<em class="r">ready · training missing</em>' : miss ? '<em>! ' + miss + '</em>' : '') + '</button>'; };
+    const rows = RANKS.map((rk, ix) => ({ rk, ix, L: T.filter(x => x.ix === ix).sort((p, q) => (+q.life || 0) - (+p.life || 0)) })).reverse();
+    const none = T.filter(x => x.ix < 0);
+    const act = (key, lab, sub, warn) => '<button type="button" class="tl-a' + (warn && n(key) ? ' warn' : '') + '" onclick="trListOpen(\'' + key + '\')"><span class="grow"><b>' + lab + '</b><small>' + sub + '</small></span><strong>' + n(key) + '</strong><span class="mute">›</span></button>';
+    return '<section class="tl"><div class="tl-l"><div class="tx-h"><b>Team ladder</b><span>' + T.filter(x => x.ix >= 0).length + ' teachers · tap a name for their path</span></div>'
+      + rows.map(r => '<div class="tl-r" style="--c:' + (RC[r.rk] || '#00A3AD') + '"><div class="tl-rk"><span>' + e(RS[r.rk] || r.rk) + '</span><small>' + r.L.length + '</small></div><div class="tl-t">' + (r.L.length ? r.L.map(chip).join('') : '<span class="tl-e">—</span>') + '</div></div>').join('')
+      + (none.length ? '<div class="tl-r" style="--c:#C9C6D6"><div class="tl-rk"><span>Rank not set</span><small>' + none.length + '</small></div><div class="tl-t">' + none.map(x => '<button type="button" class="tl-c" onclick="trView(\'' + e(x.name) + '\')"><b>' + e(x.name) + '</b></button>').join('') + '</div></div>' : '')
+      + '<div class="tl-lg"><span><i class="tl-b"><i style="width:60%"></i></i> units to the next rank</span><span><em>! 2</em> trainings not recorded yet</span><span><em class="r">ready · training missing</em> units enough, training blocks the rank</span></div></div>'
+      + '<div class="tl-rt"><div class="tx-h"><b>To act on</b></div>' + act('need', 'Needs you', 'approve reflections · tick recordings', 1) + act('blocked', 'Blocked from the next rank', 'enough units · a training is missing', 1)
+      + act('coming', 'Coming up', 'scheduled sessions') + '<button type="button" class="tl-a" onclick="trListOpen(\'coach\')"><span class="grow"><b>Coaching</b><small>' + CR.filter(x => x).length + ' teachers coached</small></span><strong>' + CT + '</strong><span class="mute">›</span></button>'
+      + act('self', 'Self-study', 'model lessons · + add') + '</div></section>'; }
+  (function(){ const st = document.createElement('style'); st.textContent = '.tl{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px;margin-top:14px;align-items:start}'
+    + '.tl-l,.tl-rt{background:#fff;border:1px solid rgba(236,234,241,.9);border-radius:20px;padding:16px 18px;box-shadow:0 1px 2px rgba(43,34,83,.04),0 12px 30px -20px rgba(43,34,83,.2)}'
+    + '.tl-r{display:grid;grid-template-columns:132px 1fr;gap:12px;align-items:center;padding:8px 0;position:relative}'
+    + '.tl-r:not(:last-of-type):before{content:"";position:absolute;left:18px;top:50%;height:100%;border-left:2px dashed #E4E2EC;z-index:0}'
+    + '.tl-rk{position:relative;z-index:1;display:flex;align-items:center;gap:8px;background:#fff;border:2px solid var(--c);border-radius:12px;padding:6px 10px;font-size:12.5px;font-weight:700;color:#2B2253}'
+    + '.tl-rk span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tl-rk small{background:var(--c);color:#fff;border-radius:99px;padding:1px 7px;font-size:11px}'
+    + '.tl-t{display:flex;flex-wrap:wrap;gap:6px}.tl-e{color:#C9C6D6;font-size:13px}'
+    + '.tl-c{display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:92px;padding:7px 10px;border-radius:12px;border:1px solid #ECEAF1;background:#FAFAFC;font:inherit;font-size:12.5px;color:#2B2253;cursor:pointer;text-align:left}'
+    + '.tl-c:hover{border-color:var(--c);background:#fff}.tl-c.blk{border-color:#F0C9BD;background:#FFF6F3}'
+    + '.tl-b{display:block;width:100%;height:5px;border-radius:99px;background:#EEEDF3;overflow:hidden}.tl-b i{display:block;height:100%;background:var(--c);border-radius:99px}'
+    + '.tl-c em{font-style:normal;font-size:10.5px;font-weight:700;color:#C27A22}.tl-c em.r,.tl-lg em.r{color:#C2483A}.tl-top{font-size:10.5px;color:#9A97AE}'
+    + '.tl-lg{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;padding-top:10px;border-top:1px solid #F0EFF5;font-size:11.5px;color:#77738C}.tl-lg em{font-style:normal;font-weight:700;color:#C27A22}.tl-lg .tl-b{display:inline-block;width:36px;vertical-align:middle;--c:#00A3AD}'
+    + '.tl-a{display:flex;gap:10px;align-items:center;width:100%;padding:11px 0;border:0;border-bottom:1px solid #F0EFF5;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}.tl-a:last-child{border-bottom:0}'
+    + '.tl-a b{display:block;font-size:13.5px}.tl-a small{display:block;font-size:11.5px;color:#77738C}.tl-a strong{font-family:"Fredoka One",Fredoka,sans-serif;font-weight:400;font-size:22px;color:#2B2253;min-width:28px;text-align:right}.tl-a.warn strong{color:#C2483A}'
+    + '@media(max-width:900px){.tl{grid-template-columns:1fr}.tl-r{grid-template-columns:104px 1fr}}'; document.head.appendChild(st); })();
   /* 693 · coaching */
   const coachRecs = (d, who) => (d.records || []).filter(r => r.training_id === 'coach' && r.teacher === who && r.status === 'done').sort((a, b) => String(b.done_at).localeCompare(String(a.done_at)));
   const coachUp = (d, who) => (d.sessions || []).filter(s => s.training_id === 'coach' && s.status === 'scheduled' && (s.invited || []).includes(who) && new Date(s.starts_at).getTime() > Date.now() - 3 * 3600e3);
