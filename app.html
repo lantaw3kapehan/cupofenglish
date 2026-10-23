@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 994;
+const COE_V = 995;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22317,8 +22317,10 @@ go();
   /* 659 · from a book field like "A1, OD2 → OD3": not levels, the current book first (before the arrow), one with covers when possible */
   window.bbPick = f => { const P = String(f || '').split(/\s*(?:,|;|→|->|\/|·)\s*/).map(x => x.trim()).filter(x => x && !/^(pre[-\s]?)?[abc][12]\+?$/i.test(x) && !/^cefr/i.test(x));
     return P.find(x => { const r = rowOf(x); return r && r.sb_cover && !r.hidden; }) || P.find(x => rowOf(x)) || P[0] || ''; };
-  window.bbOpen = async (book, en, cn) => { if(/[,→]|^\s*(pre[-\s]?)?[abc][12]\+?\s*$/i.test(String(book || ''))) book = bbPick(book) || book; CUR = { code: key(book), en: en || '', cn: cn || '' }; if(!rowOf(CUR.code)) await load(true); else load(); sheet();
-    if(mgr() && !rowOf(CUR.code)){ toast('Taking the covers from COURSEWARE…'); try{ const r = await api('mgmtBookCovers', TOKEN, [CUR.code]); const z = r && r.list && r.list[0]; if(z && (z.sbErr || z.wbErr) && window.bbFillMissing){ toast('Drawing page 1 of the book…'); await bbFillMissing([z]); } await load(true); if(z && z.msg) toast(z.msg); if(CUR) sheet(); }catch(e){ toast(e.message); } } };
+  window.bbOpen = async (book, en, cn) => { if(/[,→]|^\s*(pre[-\s]?)?[abc][12]\+?\s*$/i.test(String(book || ''))) book = bbPick(book) || book; CUR = { code: key(book), en: en || '', cn: cn || '' }; if(!rowOf(CUR.code)) await load(true); else load();
+    if((rowOf(CUR.code) || {}).sb_cover) return bbPic();   /* 663: straight to the picture */
+    sheet();
+    if(mgr() && !rowOf(CUR.code)){ toast('Taking the covers from COURSEWARE…'); try{ const r = await api('mgmtBookCovers', TOKEN, [CUR.code]); const z = r && r.list && r.list[0]; if(z && (z.sbErr || z.wbErr) && window.bbFillMissing){ toast('Drawing page 1 of the book…'); await bbFillMissing([z]); } await load(true); if(z && z.msg) toast(z.msg); if(CUR){ if((rowOf(CUR.code) || {}).sb_cover) bbPic(); else sheet(); } }catch(e){ toast(e.message); } } };
   window.bbCopy = () => { const r = rowOf(CUR.code) || {}; const t = (r.search_cn || r.title || '').trim(); try{ navigator.clipboard.writeText(t); toast('Copied · ' + t); }catch(e){ toast(t); } };
   window.bbSaveText = async () => { try{ const j = await call('book_buy_set', { code: CUR.code, f: { title: ($('bbT') || {}).value || '', search_cn: ($('bbS') || {}).value || '' } }); BB = (BB || []).filter(x => x.code !== CUR.code).concat(j.item); toast('Saved ✓'); }catch(e){ toast(e.message); } };
   window.bbRetake = async () => { toast('Taking the covers again…'); try{ const r = await api('mgmtBookCovers', TOKEN, [CUR.code], true); const z = r && r.list && r.list[0];
@@ -22364,7 +22366,8 @@ go();
     openSheet('<h1>Course books</h1><div class="mute small">' + esc(r.title || CUR.code) + ' · send it in the class WeChat group</div><img src="' + PICB.url + '" alt="" style="width:100%;border-radius:12px;margin-top:10px">' +
       '<div class="row" style="gap:8px;margin-top:14px"><button class="btn teal grow" onclick="bbGive()">Copy picture</button><button class="btn ghost grow" onclick="bbCopy()">Copy search words</button></div>' +
       '<div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost grow" onclick="bbSaveCover(\'sb\')">Copy Student Book cover</button>' + (two ? '<button class="btn ghost grow" onclick="bbSaveCover(\'wb\')">Copy Workbook cover</button>' : '') + '</div>' +
-      '<div class="small mute" style="margin-top:6px">Copy, then paste in the class WeChat group · the covers alone are for Taobao photo search (拍立淘).</div><button class="btn ghost block" style="margin-top:10px" onclick="bbOpen(\'' + esc(CUR.code) + '\',\'' + esc(CUR.en) + '\',\'' + esc(CUR.cn) + '\')">Back</button>'); };
+      '<div class="small mute" style="margin-top:6px">Copy, then paste in the class WeChat group · the covers alone are for Taobao photo search (拍立淘).</div>' + (mgr() ? '<div style="text-align:center;margin-top:10px"><a class="link small" onclick="bbEdit()">Edit title, search words or covers</a> · <a class="link small" onclick="bbAll()">All books</a></div>' : '') + ''); };
+  window.bbEdit = () => { if(CUR) sheet(); };
   window.bbGive = () => PICB && copyImg(Promise.resolve(PICB.blob), PICB.name);
   /* every book at a glance (management): covers present or missing · take all covers */
   window.bbAll = async () => { await load(true); const L = (BB || []).slice().sort((a, b) => String(a.title || a.code).localeCompare(String(b.title || b.code), undefined, { numeric: true }));
