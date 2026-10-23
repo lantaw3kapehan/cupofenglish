@@ -1,0 +1,44 @@
+<script>
+/* 23 Oct · 687 · (Misty) Who is using the app now. Every signed-in device sends a tiny "I'm here" once a minute while the app is open
+   and on screen (coe-train ping → coe_presence). Management sees "● n online" in the header; tap it for the list: name, phone or
+   laptop, the screen they are on, since when; then who was on earlier today. */
+(function(){
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-train';
+  const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const post = (action, o) => fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, action }, o || {})) }).then(r => r.json());
+  const hasD = () => typeof D !== 'undefined' && !!D;
+  const dev = () => { const ua = navigator.userAgent || '', ph = /Mobi|Android|iPhone|iPod/i.test(ua), tab = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1); let app = false; try{ app = matchMedia('(display-mode: standalone)').matches || navigator.standalone; }catch(x){} return (ph ? 'phone' : tab ? 'tablet' : 'laptop') + (app ? '·app' : ''); };
+  let last = 0;
+  function ping(force){ if(!TOKEN || !hasD() || document.visibilityState !== 'visible') return; if(!force && Date.now() - last < 55000) return; last = Date.now();
+    post('ping', { dev: dev(), view: typeof VIEW !== 'undefined' ? VIEW : '', v: +(window.COE_V || 0) || null }).catch(() => {}); }
+  setInterval(() => ping(), 60000); document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') ping(true); });
+  setTimeout(function w(){ if(hasD() && TOKEN) ping(true); else setTimeout(w, 2000); }, 2000);
+  /* management: header pill + list */
+  const css = document.createElement('style');
+  css.textContent = `#onlN{display:none;align-items:center;gap:6px;border:0;border-radius:999px;font:inherit;font-weight:700;font-size:13px;padding:7px 13px;margin-right:8px;cursor:pointer;background:#EEF8F7;color:#00737B;white-space:nowrap}
+#onlN i{width:8px;height:8px;border-radius:50%;background:#2FB36B;box-shadow:0 0 0 3px rgba(47,179,107,.18)}
+.onl-it{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #F0EFF5;font-size:14px}.onl-it .d{width:9px;height:9px;border-radius:50%;flex:none}.onl-it small{display:block;color:#5E5A75;font-size:12px}
+@media(max-width:620px){#onlN{padding:6px 10px;font-size:12px}}`;
+  document.head.appendChild(css);
+  let ROWS = null, NOW = 0;
+  const VN = { today: 'Today', tsched: 'Schedule', students: 'Students', books: 'Books', tinbox: 'Messages', growth: 'Growth', qa: 'QA feedback', pay: 'Pay', contract: 'My Contract', train: 'Trainings', home: 'Overview', mtoday: 'To do', team: 'Time-ins', schedule: 'Schedule', msgs: 'Messages', astudents: 'Students', teachers: 'Teachers', perf: 'Performance', payroll: 'Payroll', money: 'Sales & costs' };
+  const hm = t => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' });
+  const devL = d => { const [k, a] = String(d || '').split('·'); return (k === 'phone' ? 'Phone' : k === 'tablet' ? 'Tablet' : 'Laptop') + (a ? ' app' : ''); };
+  const on = r => Date.now() - new Date(r.at).getTime() < 3 * 60e3;
+  async function load(){ if(!hasD() || !D.mgr) return; try{ const j = await post('online'); if(j && j.ok){ ROWS = j.rows; NOW = Date.now(); paint(); } }catch(x){} }
+  function people(){ const by = {}; (ROWS || []).forEach(r => { const k = r.name; (by[k] = by[k] || []).push(r); }); return Object.keys(by).map(n => ({ name: n, rows: by[n], on: by[n].some(on), at: by[n][0].at, mode: by[n][0].mode })); }
+  function paint(){ const rf = document.getElementById('rf'); if(!rf || !hasD() || !D.mgr) return; let b = document.getElementById('onlN');
+    if(!b){ rf.insertAdjacentHTML('beforebegin', '<button id="onlN" type="button" title="Who is using the app now"></button>'); b = document.getElementById('onlN'); b.onclick = () => window.onlOpen(); const t = document.getElementById('tinNag'); if(t) t.before(b); }
+    const P = people(), n = P.filter(p => p.on).length; b.style.display = 'inline-flex'; b.innerHTML = '<i></i>' + n + ' online';
+    if(document.getElementById('onlL')) window.onlOpen(true); }
+  window.onlOpen = function(keep){ const P = people(), me = (D.me || {}).name || '', on1 = P.filter(p => p.on), off = P.filter(p => !p.on);
+    const row = p => { const r = p.rows.filter(on).concat(p.rows.filter(x => !on(x)))[0], t = p.mode === 'mgmt' ? 'Management' : 'Teacher';
+      return '<div class="onl-it"><span class="d" style="background:' + (p.on ? '#2FB36B' : '#CFCDD9') + '"></span><div style="flex:1"><b>' + e(p.name) + (p.name === me ? ' (you)' : '') + '</b> <span class="mute small">' + t + '</span><small>'
+        + (p.on ? p.rows.filter(on).map(x => devL(x.dev) + (x.view ? ' · ' + e(VN[x.view] || x.view) : '') + ' · since ' + hm(x.since)).join(' &nbsp;|&nbsp; ') : 'Last seen ' + hm(r.at) + ' · ' + devL(r.dev)) + '</small></div></div>'; };
+    const h = '<h1>Online now</h1><div class="mute small" id="onlL">Using the app in the last 3 minutes · updates every minute</div>'
+      + '<div style="margin-top:10px">' + (on1.length ? on1.map(row).join('') : '<div class="small mute" style="padding:10px 0">No one right now.</div>') + '</div>'
+      + (off.length ? '<h2 style="font-size:15px;margin-top:16px">Earlier today</h2>' + off.map(row).join('') : '');
+    if(keep){ const b = document.getElementById('sheetBody'); if(b && document.getElementById('onlL')) b.innerHTML = h; return; } openSheet(h); };
+  setTimeout(function w(){ if(hasD()){ if(D.mgr){ load(); setInterval(() => { if(document.visibilityState === 'visible') load(); }, 60000); } } else setTimeout(w, 1500); }, 3000);
+})();
+</script>

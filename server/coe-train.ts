@@ -52,6 +52,16 @@ Deno.serve(async (req: Request) => {
     return g;
   }
   try {
+    if (a === "ping") {   // 23 Oct · who is using the app now (every signed-in device, once a minute while the app is open and visible)
+      const dev = str(b.dev, 20) || "web"; const { data: o } = await db.from("coe_presence").select("at,since").eq("name", me).eq("dev", dev).maybeSingle();
+      const fresh = o && Date.now() - new Date(o.at).getTime() < 5 * 60e3;
+      const { error } = await db.from("coe_presence").upsert({ name: me, mode: String(s.mode || ""), dev, view: str(b.view, 30) || null, v: +b.v || null, at: now, since: fresh ? o!.since : now });
+      return out({ ok: !error, error: error && error.message });
+    }
+    if (a === "online") {
+      need(); const { data, error } = await db.from("coe_presence").select("*").gte("at", new Date(Date.now() - 24 * 3600e3).toISOString()).order("at", { ascending: false });
+      return out({ ok: !error, error: error && error.message, now, rows: data || [] });
+    }
     if (a === "my" || a === "all") {
       if (a === "all") need(); const who = a === "my" ? (mgmt && b.teacher ? str(b.teacher, 60) : me) : null;
       const [T, P, S, R, G, Q] = await Promise.all([
