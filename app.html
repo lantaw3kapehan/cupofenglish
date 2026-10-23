@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1002;
+const COE_V = 1003;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22452,6 +22452,301 @@ go();
     } else { b.className = 'on'; b.innerHTML = IC + 'In ' + (ti.time || ''); b.title = 'Timed in · tap to time out'; b.onclick = () => timeOutSheet(); }
   }catch(e){} }
   window.tinNag = paint; setInterval(paint, 5000); setTimeout(paint, 800);
+})();
+</script>
+
+<script>
+/* 23 Oct · 671 · Trainings (Addendum No. 1, Clause 3.6). Server: Supabase function coe-train; tables coe_trainings, coe_training_parts,
+   coe_training_sessions, coe_training_records, coe_training_progress, coe_training_quiz (records permanent; progress only grows).
+   Teachers: "Trainings" screen — a winding path by rank (done ✓ / next / locked), the next training card, CupOfEnglish Way parts with
+   in-app videos (no download, watch tracking: % watched, minutes, views), mini-quiz (80% to pass, shuffled), reflections; Today banner
+   "Start here" for new teachers. Management: "Trainings" screen — coming up (schedule, attendance), needs you (approvals, ticks),
+   teachers × trainings table (tap a cell to tick done / assign / excuse), trainings list (parts, videos, quizzes).
+   Every training except CupOfEnglish Way is done only when management ticks it (live, or recording + reflection). Pay is not shown. */
+(function(){
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-train';
+  const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const call = async (action, o) => { const r = await fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, action }, o || {})) });
+    let j = null; try{ j = await r.json(); }catch(x){} if(!j || !j.ok) throw new Error((j && j.error) || 'Could not reach the server'); return j; };
+  const hasD = () => typeof D !== 'undefined' && !!D; const isM = () => hasD() && !!D.mgr;
+  const RANKS = ['Newly Hired', 'Starting Teacher', 'Newly Qualified', 'Junior Teacher', 'Senior Teacher', 'Master Teacher'];
+  const rix = n => RANKS.findIndex(x => x.toLowerCase() === String(n || '').toLowerCase());
+  const fmtD = t => { try{ return new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Manila' }); }catch(x){ return ''; } };
+  const fmtDT = t => { try{ return new Date(t).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' }); }catch(x){ return ''; } };
+  const mins = s => Math.max(0, Math.round((+s || 0) / 60));
+  const css = document.createElement('style');
+  css.textContent = `
+.tr{max-width:760px;margin:0 auto}.tr h1{margin:0}.tr .sub{color:#5E5A75;font-size:13.5px;margin-top:2px}
+.tr-bar{height:6px;background:#EEEDF3;border-radius:99px;margin:10px 0 4px}.tr-bar i{display:block;height:6px;border-radius:99px;background:#00A3AD}
+.tr-next{background:#fff;border:1.5px solid #F0C9BD;border-radius:18px;padding:14px 16px;margin:14px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.tr-next .k{font-size:11px;font-weight:700;color:#B4532F;letter-spacing:.06em}.tr-next b{font-size:16px}.tr-next .grow{min-width:200px}
+.tr-path{position:relative;max-width:390px;margin:6px auto 0}.tr-path svg{position:absolute;left:0;top:0;pointer-events:none}
+.tr-pill{position:absolute;left:0;right:0;display:flex;justify-content:center}.tr-pill span{background:#fff;border:1px solid #E4E2EC;color:#77738C;border-radius:99px;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.tr-pill.ok span{border-color:#D3EEEB;color:#00737B}.tr-pill.nx span{border:1.5px solid #F0C9BD;color:#B4532F}
+.tr-n{position:absolute;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;border:0;padding:0;cursor:pointer;font:inherit}
+.tr-n.done{background:#00A3AD;box-shadow:0 4px 0 #00737B}.tr-n.lock{background:#EEEDF3;box-shadow:0 4px 0 #DCDAE5}.tr-n.open{background:#fff;border:3px solid #9ED6D3;box-shadow:0 4px 0 #D3EEEB}
+.tr-n.next{background:#D4705A;box-shadow:0 4px 0 #A9513A,0 0 0 8px #FBEDE8}.tr-n.next{animation:trP 2.2s infinite}
+@keyframes trP{0%,100%{box-shadow:0 4px 0 #A9513A,0 0 0 6px #FBEDE8}50%{box-shadow:0 4px 0 #A9513A,0 0 0 12px rgba(251,237,232,.5)}}
+.tr-n svg{width:24px;height:24px}.tr-l{position:absolute;font-size:12.5px;font-weight:700;width:140px;line-height:1.25;cursor:pointer}.tr-l small{display:block;font-weight:400;color:#77738C;font-size:11px}
+.tr-l.r{text-align:right}.tr-l.dim{color:#77738C;font-weight:400}
+.tr-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:16px 0}.tr-chips span{background:#F3F2F7;color:#5E5A75;border-radius:99px;padding:5px 11px;font-size:12px}.tr-chips span.ok{background:#EEF8F7;color:#00626A}
+.tr h2{font-size:18px;margin:20px 0 8px}
+.tr-row{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid #EEEDF3;border-radius:14px;padding:11px 13px;margin-bottom:8px;cursor:pointer}
+.tr-row .ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;background:#EEEDF3;color:#77738C;font-size:13px}.tr-row .ic.ok{background:#00A3AD;color:#fff}.tr-row .ic.go{background:#D4705A;color:#fff}
+.tr-row .grow{min-width:0}.tr-row small{display:block;color:#5E5A75;font-size:12px}
+.tr-st{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.tr-st span{font-size:11.5px;background:#F3F2F7;border-radius:99px;padding:2px 8px;color:#4A4566}.tr-st span.ok{background:#EEF8F7;color:#00626A}
+.tr-vid{width:100%;max-height:60vh;background:#000;border-radius:14px;display:block}
+.tr-q{border:1px solid #EEEDF3;border-radius:14px;padding:12px;margin:10px 0}.tr-q label{display:flex;gap:8px;align-items:flex-start;padding:7px 4px;cursor:pointer;font-size:14px}.tr-q .why{font-size:12.5px;color:#5E5A75;margin-top:4px}
+.tr-q.ok{border-color:#9ED6D3;background:#F4FBFA}.tr-q.no{border-color:#F0C9BD;background:#FDF6F3}
+.trm{max-width:1200px;margin:0 auto}.trm-top{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin:14px 0}
+.trm-card{background:#fff;border:1px solid #EEEDF3;border-radius:18px;padding:14px 16px;flex:1 1 340px;min-width:0}.trm-card .k{font-size:11px;font-weight:700;letter-spacing:.06em;color:#5E5A75;margin-bottom:4px}
+.trm-card .k.c{color:#B4532F}.trm-it{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #F0EFF5;font-size:13.5px}.trm-it:last-child{border-bottom:0}
+.trm-it small{display:block;color:#5E5A75;font-size:12px}
+.trm-tb{background:#fff;border:1px solid #EEEDF3;border-radius:18px;padding:12px;overflow-x:auto}.trm-tb table{border-collapse:collapse;width:100%;min-width:820px;font-size:13px}
+.trm-tb th{font-size:11px;color:#5E5A75;font-weight:700;padding:6px 4px;text-align:center;vertical-align:bottom}.trm-tb th:first-child{text-align:left}
+.trm-tb td{border-top:1px solid #F0EFF5;padding:8px 4px;text-align:center}.trm-tb td:first-child{text-align:left;white-space:nowrap}.trm-tb td small{color:#5E5A75;font-size:11px}
+.trm-tb td.c{cursor:pointer}.trm-tb td.c:hover{background:#F6F5FA}.trm-tb .y{color:#00737B;font-weight:700}.trm-tb .s{color:#D4705A;font-size:11.5px;font-weight:700}.trm-tb .n{color:#B9B6C8}.trm-tb .b{color:#B4532F;font-weight:700;font-size:11.5px}
+.trm-tb tr.blk td{background:#FDF6F3}
+@media(max-width:620px){.tr-l{width:118px;font-size:12px}}`;
+  document.head.appendChild(css);
+  const IC = { ok: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg>',
+    lock: '<svg viewBox="0 0 24 24" fill="none" stroke="#9A97AE" stroke-width="2.4" stroke-linecap="round" style="width:20px;height:20px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="#fff" style="width:22px;height:22px"><path d="M8 5v14l11-7z"/></svg>',
+    open: '<svg viewBox="0 0 24 24" fill="none" stroke="#00A3AD" stroke-width="2.4" stroke-linecap="round" style="width:20px;height:20px"><circle cx="12" cy="12" r="3"/></svg>',
+    cup: '<svg viewBox="0 0 24 24" fill="none" stroke="#B88A1E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M9 20h6"/></svg>' };
+  ICON.train = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M6 9.5V15c0 1.6 2.7 3 6 3s6-1.4 6-3V9.5M21 7.5V13"/></svg>';
+
+  /* ---------- data ---------- */
+  let MY = null, MYT = 0, AL = null, ALT = 0;
+  const latestRec = (recs, t, id) => { let r = null; (recs || []).forEach(x => { if(x.teacher === t && x.training_id === id) r = x; }); return r; };
+  const partsOf = (d, id) => (d.parts || []).filter(p => p.training_id === id).sort((a, b) => a.sort - b.sort);
+  const progOf = (d, t, p) => (d.progress || []).find(g => g.teacher === t && g.part_id === p.id && g.ver === p.ver);
+  const bestQ = (d, t, p) => { let b = null; (d.quiz || []).forEach(q => { if(q.teacher === t && q.part_id === p.id && q.ver === p.ver && (!b || q.score > b.score)) b = q; }); return b; };
+  const triesQ = (d, t, p) => (d.quiz || []).filter(q => q.teacher === t && q.part_id === p.id && q.ver === p.ver).length;
+  const partDone = (d, t, p) => { const g = progOf(d, t, p); return !!(g && g.done_at && (!p.approve || g.approved_at)); };
+  function myRank(){ const c = (typeof GR !== 'undefined' && GR && GR.career) || ((typeof kept === 'function' && kept('growth')) || {}).career || null; return c ? { ix: c.index, rank: c.rank, life: c.lifetime, next: c.next } : null; }
+  async function loadMy(force){ if(!force && MY && Date.now() - MYT < 60000) return MY; MY = await call('my'); MYT = Date.now(); return MY; }
+  async function loadAll(force){ if(!force && AL && Date.now() - ALT < 60000) return AL; AL = await call('all'); ALT = Date.now(); return AL; }
+
+  /* status of each mandatory training for one teacher → [{t, st: done|next|open|lock|assigned, rec, gi}] */
+  function statusList(d, who, ix){
+    const T = (d.trainings || []).filter(t => t.kind === 'mandatory').sort((a, b) => a.sort - b.sort);
+    const L = T.map(t => { const gi = rix(t.gate), rec = latestRec(d.records, who, t.id); let st;
+      if(rec && (rec.status === 'done' || rec.status === 'excused')) st = 'done'; else if(gi > ix + 1) st = 'lock'; else st = 'open';
+      return { t, st, rec, gi }; });
+    // next: an assigned one first, then the first one the next rank needs (or, for a new teacher, CupOfEnglish Way), then catch-up
+    const nx = L.find(x => x.st !== 'done' && x.rec && x.rec.status === 'assigned') || L.find(x => x.st !== 'done' && (ix === 0 ? x.gi <= 1 : x.gi === ix + 1)) || L.find(x => x.st === 'open' && x.t.id !== 'way');
+    if(nx) nx.st = 'next'; return L; }
+
+  /* ---------- teacher: the path ---------- */
+  function pathHtml(d, who, R){
+    const L = statusList(d, who, R.ix), W = 390, X = [0.5, 0.72, 0.5, 0.28]; let y = 10, k = 0; const pills = [], nodes = [], pts = [];
+    let gPrev = null;
+    L.forEach(x => {
+      if(x.t.gate !== gPrev){ gPrev = x.t.gate; const gi = x.gi, cls = gi <= R.ix ? 'ok' : gi === R.ix + 1 ? 'nx' : '';
+        const lab = e(x.t.gate) + (gi < R.ix ? ' ✓' : gi === R.ix ? ' ✓ · you are here' : gi === R.ix + 1 && R.next ? ' · ' + (Math.round(R.life * 10) / 10).toLocaleString() + ' / ' + (+R.next.units).toLocaleString() + ' units' : '');
+        pills.push('<div class="tr-pill ' + cls + '" style="top:' + y + 'px"><span>' + lab + '</span></div>'); y += 50; }
+      const cx = Math.round(W * X[k % 4]), cy = y + 34; k++; pts.push([cx, cy, x.st === 'done']);
+      const facil = x.t.id === 'facil', way = x.t.id === 'way', P = way ? partsOf(d, 'way') : [], pd = P.filter(p => partDone(d, who, p)).length;
+      const ic = x.st === 'done' ? IC.ok : x.st === 'next' ? IC.play : facil ? IC.cup : x.st === 'open' ? IC.open : IC.lock;
+      const ses = (d.sessions || []).find(s => s.training_id === x.t.id && s.status === 'scheduled' && new Date(s.starts_at).getTime() > Date.now() - 3 * 3600e3);
+      const sub = x.st === 'done' ? (x.rec && x.rec.done_at ? fmtD(x.rec.done_at) : 'Done') : ses ? fmtDT(ses.starts_at) : way && P.length ? pd + ' of ' + P.length + ' parts' : x.st === 'open' && x.gi <= R.ix && x.t.id !== 'way' ? 'Catch up · not blocking' : x.st === 'lock' ? '' : x.rec && x.rec.status === 'assigned' ? 'Assigned to you' : 'Live · date to follow';
+      nodes.push('<button type="button" class="tr-n ' + (facil && x.st !== 'done' ? 'lock' : x.st) + '" style="left:' + (cx - 28) + 'px;top:' + (cy - 28) + 'px' + (facil && x.st !== 'done' ? ';border-radius:16px;background:#FFF6E0;box-shadow:0 4px 0 #EBD9A8' : '') + '" aria-label="' + e(x.t.title) + '" onclick="trOpen(\'' + x.t.id + '\')">' + ic + '</button>');
+      const right = X[(k - 1) % 4] !== 0.72, lx = right ? cx + 38 : cx - 38 - 140;
+      nodes.push('<div class="tr-l' + (right ? '' : ' r') + (x.st === 'lock' ? ' dim' : '') + '" style="left:' + lx + 'px;top:' + (cy - 16) + 'px" onclick="trOpen(\'' + x.t.id + '\')">' + e(x.t.title) + (sub ? '<small>' + e(sub) + '</small>' : '') + '</div>');
+      y += 84; });
+    let dOk = '', dNo = ''; for(let i = 1; i < pts.length; i++){ const [x1, y1] = pts[i - 1], [x2, y2, ok2] = pts[i], m = (y1 + y2) / 2, seg = 'M' + x1 + ' ' + y1 + ' C' + x1 + ' ' + m + ' ' + x2 + ' ' + m + ' ' + x2 + ' ' + y2 + ' ';
+      if(pts[i - 1][2] && ok2) dOk += seg; else dNo += seg; }
+    const H = y + 10;
+    return '<div class="tr-path" style="height:' + H + 'px"><svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true"><path d="' + dOk + '" fill="none" stroke="#9ED6D3" stroke-width="4" stroke-linecap="round"/><path d="' + dNo + '" fill="none" stroke="#E4E2EC" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 10"/></svg>' + pills.join('') + nodes.join('') + '</div>';
+  }
+  function paintMy(){ const v = $('v-train'); if(!v || !MY) return; const d = MY, who = d.me, R = myRank() || { ix: 0, rank: 'Newly Hired', life: 0, next: null };
+    const L = statusList(d, who, R.ix), done = L.filter(x => x.st === 'done').length, nx = L.find(x => x.st === 'next');
+    let h = '<div class="tr"><div class="lead row"><div class="grow"><h1>Trainings</h1><div class="sub">' + e(R.rank || '') + (R.next ? ' → ' + e(R.next.name) : '') + ' · ' + done + ' of ' + L.length + ' done</div></div></div>';
+    h += '<div class="tr-bar"><i style="width:' + Math.round(done / Math.max(1, L.length) * 100) + '%"></i></div>';
+    if(nx){ const ses = (d.sessions || []).find(s => s.training_id === nx.t.id && s.status === 'scheduled' && new Date(s.starts_at).getTime() > Date.now() - 3 * 3600e3);
+      const P = partsOf(d, nx.t.id), pd = P.filter(p => partDone(d, who, p)).length;
+      h += '<div class="tr-next"><div class="grow"><div class="k">NEXT · MANDATORY</div><b>' + e(nx.t.title) + '</b><div class="small mute">' + (ses ? e(fmtDT(ses.starts_at)) + (ses.facilitator ? ' · ' + e(tName(ses.facilitator)) : '') : nx.t.id === 'way' ? pd + ' of ' + P.length + ' parts done' : 'Live training · management will set the date') + '</div></div>'
+        + (ses && ses.meet_url ? '<a class="btn" href="' + e(ses.meet_url) + '" target="_blank" rel="noopener">Join</a>' : '<button class="btn" onclick="trOpen(\'' + nx.t.id + '\')">' + (nx.t.id === 'way' ? (pd ? 'Continue' : 'Start') : 'Details') + '</button>') + '</div>'; }
+    h += pathHtml(d, who, R);
+    const trial = latestRec(d.records, who, 'trial'), spec = latestRec(d.records, who, 'spec');
+    h += '<div class="tr-chips"><span class="' + (trial && trial.status === 'done' ? 'ok' : '') + '">' + (trial && trial.status === 'done' ? '✓ ' : '') + 'Trial classes</span><span class="' + (spec && spec.status === 'done' ? 'ok' : '') + '">' + (spec && spec.status === 'done' ? '✓ ' : '') + 'Exam students</span></div>';
+    const M = partsOf(d, 'model').filter(p => p.video_path);
+    if(M.length) h += '<h2>Self-study <span class="mute small" style="font-weight:400">· free</span></h2>' + M.map(p => partRow(d, who, p)).join('');
+    h += '</div>'; if(v._h !== h){ v.innerHTML = h; v._h = h; } }
+  function partRow(d, who, p){ const g = progOf(d, who, p), q = bestQ(d, who, p), dn = partDone(d, who, p), wait = g && g.done_at && p.approve && !g.approved_at;
+    const st = []; if(g && g.pct) st.push('<span class="' + (g.pct >= 90 ? 'ok' : '') + '">Watched ' + g.pct + '%</span>'); if(g && g.secs) st.push('<span>' + mins(g.secs) + ' min</span>'); if(g && g.views) st.push('<span>Opened ' + g.views + '×</span>');
+    if(q) st.push('<span class="' + (q.passed ? 'ok' : '') + '">Quiz ' + q.score + '/' + q.total + (q.passed ? ' ✓' : '') + '</span>'); if(wait) st.push('<span>Waiting for approval</span>');
+    return '<div class="tr-row" onclick="trPart(' + p.id + ')"><span class="ic ' + (dn ? 'ok' : g ? 'go' : '') + '">' + (dn ? '✓' : p.sort || '▶') + '</span><div class="grow"><b>' + e(p.title) + '</b>' + (p.video_path ? '' : '<small>Video coming soon</small>') + (st.length ? '<div class="tr-st">' + st.join('') + '</div>' : '') + '</div><span class="mute">›</span></div>'; }
+
+  /* one training (teacher) */
+  window.trOpen = function(id){ const d = isM() && TV ? TV : MY; if(!d) return; const who = d.me, t = (d.trainings || []).find(x => x.id === id); if(!t) return;
+    const rec = latestRec(d.records, who, id), P = partsOf(d, id), ses = (d.sessions || []).filter(s => s.training_id === id && s.status === 'scheduled' && new Date(s.starts_at).getTime() > Date.now() - 3 * 3600e3);
+    let h = '<h1>' + e(t.title) + '</h1><div class="mute small">' + (t.kind === 'mandatory' ? 'Mandatory · needed for ' + e(t.gate) : t.kind === 'selfstudy' ? 'Free self-study' : e(t.descr || '')) + '</div>';
+    if(rec && rec.status === 'done') h += '<div class="card" style="margin-top:12px;background:#F4FBFA"><b style="color:#00737B">✓ Done ' + e(fmtD(rec.done_at)) + '</b><div class="small mute">' + ({ live: 'Attended live', recording: 'Recording + reflection', online: 'Completed in the app', grandfathered: 'Recorded from before the app', manual: 'Ticked by management' }[rec.via] || '') + '</div></div>';
+    else if(rec && rec.status === 'excused') h += '<div class="card" style="margin-top:12px"><b>Excused</b>' + (rec.note ? '<div class="small mute">' + e(rec.note) + '</div>' : '') + '</div>';
+    ses.forEach(s => { h += '<div class="card" style="margin-top:12px"><b>' + e(fmtDT(s.starts_at)) + '</b><div class="small mute">' + s.mins + ' min' + (s.facilitator ? ' · ' + e(tName(s.facilitator)) + (s.facilitator === who ? ' (you facilitate)' : '') : '') + '</div>' + (s.note ? '<div class="small" style="margin-top:6px">' + e(s.note) + '</div>' : '') + (s.meet_url ? '<a class="btn teal sm" style="margin-top:10px" href="' + e(s.meet_url) + '" target="_blank" rel="noopener">Join</a>' : '') + '</div>'; });
+    if(id !== 'way' && t.kind === 'mandatory' && !(rec && rec.status === 'done')) h += '<p class="small mute" style="margin-top:12px">' + (P.length ? 'Missed the live session? Watch the recording below and write your reflection. Management ticks it done after checking.' : 'This is a live training. Management ticks it done after you attend.') + '</p>';
+    if(P.length) h += '<div style="margin-top:12px">' + P.map(p => partRow(d, who, p)).join('') + '</div>';
+    openSheet(h); };
+
+  /* ---------- the player: no download, watch tracking ---------- */
+  let PL = null;
+  window.trPart = async function(pid){ const d = isM() && TV ? TV : MY; if(!d) return; const p = (d.parts || []).find(x => x.id === pid); if(!p) return; const who = d.me, g = progOf(d, who, p), dn = partDone(d, who, p);
+    trStop(); let h = '<h1>' + e(p.title) + '</h1>';
+    if(!p.video_path) h += '<div class="card" style="margin-top:12px"><b>Video coming soon</b><div class="small mute">Management is preparing this part.</div></div>';
+    else h += '<div style="margin-top:12px;position:relative" oncontextmenu="return false"><video id="trV" class="tr-vid" controls playsinline controlsList="nodownload noplaybackrate" disablePictureInPicture disableRemotePlayback preload="metadata"></video></div><div id="trVs" class="small mute" style="margin-top:6px">' + (g ? 'Watched ' + g.pct + '% · ' + mins(g.secs) + ' min · opened ' + g.views + '×' : 'Loading the video…') + '</div>';
+    h += '<div id="trAfter"></div>'; openSheet(h); paintAfter(d, who, p);
+    if(!p.video_path || isM()) { if(p.video_path && isM()) loadVid(p, true); return; }
+    loadVid(p, false, g, dn); };
+  async function loadVid(p, preview, g, dn){ try{ const r = await call('video_url', { part_id: p.id }), v = $('trV'); if(!v) return; v.src = r.url; if(preview) return;
+      const n = Math.max(1, Math.ceil((p.dur_sec || 600) / 10)); let seen = (g && g.seen) || '', maxT = 0, secs = 0, lastSend = Date.now(), first = true, map = new Array(n).fill('0'); for(let i = 0; i < Math.min(seen.length, n); i++) map[i] = seen[i];
+      maxT = (map.lastIndexOf('1') + 1) * 10; const free = !!dn || (g && g.pct >= 90);
+      PL = { p, v, tick: null };
+      const send = async final => { const s = Math.round(secs); secs = 0; lastSend = Date.now(); try{ const r = await call('tick', { part_id: p.id, seen: map.join(''), secs: s, view: first }); first = false;
+          if(r.p && MY){ const G = MY.progress || (MY.progress = []), i = G.findIndex(x => x.part_id === p.id && x.ver === p.ver && x.teacher === MY.me); if(i > -1) Object.assign(G[i], r.p); else G.push(r.p); }
+          const st = $('trVs'); if(st && r.p) st.textContent = 'Watched ' + r.p.pct + '% · ' + mins(r.p.secs) + ' min · opened ' + r.p.views + '×'; if(r.p && r.p.pct >= 90) paintAfter(MY, MY.me, p); }catch(x){} };
+      let lt = 0;
+      v.addEventListener('timeupdate', () => { const t = v.currentTime;
+        if(!free && t > maxT + 2 && !v.seeking){ v.currentTime = maxT; return; }   // first watch: no skipping ahead
+        if(!v.paused && document.visibilityState === 'visible'){ const dt = t - lt; if(dt > 0 && dt < 2) { secs += dt; map[Math.min(n - 1, Math.floor(t / 10))] = '1'; maxT = Math.max(maxT, t); } }
+        lt = t; if(Date.now() - lastSend > 30000) send(); });
+      v.addEventListener('seeking', () => { if(!free && v.currentTime > maxT + 2) v.currentTime = maxT; lt = v.currentTime; });
+      v.addEventListener('pause', () => send()); v.addEventListener('ended', () => send());
+      document.addEventListener('visibilitychange', PL.vis = () => { if(document.visibilityState !== 'visible' && !v.paused) v.pause(); });
+      PL.send = send; if(first) send();
+    }catch(x){ const st = $('trVs'); if(st) st.textContent = x.message; } }
+  function trStop(){ if(PL){ try{ PL.v.pause(); }catch(x){} try{ PL.send && PL.send(true); }catch(x){} try{ document.removeEventListener('visibilitychange', PL.vis); }catch(x){} PL = null; } }
+  const _cs = window.closeSheet; if(_cs) window.closeSheet = function(){ trStop(); return _cs.apply(this, arguments); };
+  function paintAfter(d, who, p){ const el = $('trAfter'); if(!el) return; const g = progOf(d, who, p), watched = !p.video_path ? false : g && g.pct >= 90, Q = p.quiz || [], q = bestQ(d, who, p), dn = partDone(d, who, p);
+    let h = ''; if(isM()){ h += Q.length ? '<p class="small mute" style="margin-top:12px">Quiz: ' + Q.length + ' questions</p>' : ''; el.innerHTML = h; return; }
+    if(dn) h += '<div class="card" style="margin-top:12px;background:#F4FBFA"><b style="color:#00737B">✓ Done</b>' + (q ? '<div class="small mute">Quiz ' + q.score + '/' + q.total + ' · ' + triesQ(d, who, p) + ' attempt' + (triesQ(d, who, p) === 1 ? '' : 's') + '</div>' : '') + '</div>';
+    if(Q.length && !(q && q.passed)) h += watched ? '<button class="btn teal block" style="margin-top:12px" onclick="trQuiz(' + p.id + ')">Take the quiz · ' + Q.length + ' questions</button>' : (p.video_path ? '<p class="small mute" style="margin-top:12px">The quiz opens when you have watched the video.</p>' : '');
+    if(p.approve && !(g && g.reflection) && (watched || !p.video_path) && p.video_path) h += '<div style="margin-top:12px"><b>' + (p.training_id === 'way' && /Workstation/i.test(p.title) ? 'Describe your workstation (room, headset, light, internet, backup)' : 'Your reflection: 2–3 lines on what you will try') + '</b><textarea id="trRf" rows="4" style="width:100%;margin-top:6px"></textarea><button class="btn block" style="margin-top:8px" onclick="trReflect(' + p.id + ')">Send</button></div>';
+    else if(p.approve && g && g.reflection && !g.approved_at) h += '<p class="small mute" style="margin-top:12px">Sent · waiting for management to approve.</p>';
+    el.innerHTML = h; }
+  window.trReflect = async function(pid){ const t = ($('trRf') || {}).value || ''; try{ await call('reflect', { part_id: pid, text: t }); toast('Sent ✓'); await loadMy(true); paintMy(); trPart(pid); }catch(x){ toast(x.message); } };
+  /* quiz: shuffled questions and choices; graded on the server */
+  window.trQuiz = function(pid){ const d = MY, p = (d.parts || []).find(x => x.id === pid); if(!p) return; trStop();
+    const sh = a => { const b = a.slice(); for(let i = b.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+    const order = sh(p.quiz.map((q, i) => i)); window._trQ = { pid, order };
+    openSheet('<h1>' + e(p.title) + ' · quiz</h1><div class="mute small">80% to pass · you can retake it</div>' + order.map((qi, n) => { const q = p.quiz[qi];
+      return '<div class="tr-q" id="trQ' + qi + '"><b>' + (n + 1) + '. ' + e(q.q) + '</b>' + sh(q.choices.map((c, ci) => ci)).map(ci => '<label><input type="radio" name="trq' + qi + '" value="' + ci + '"> <span>' + e(q.choices[ci]) + '</span></label>').join('') + '<div class="why"></div></div>'; }).join('') + '<button class="btn teal block" style="margin-top:8px" id="trQs" onclick="trQuizSend()">Check my answers</button>'); };
+  window.trQuizSend = async function(){ const Z = window._trQ; if(!Z) return; const p = (MY.parts || []).find(x => x.id === Z.pid), ans = p.quiz.map((q, i) => { const c = document.querySelector('input[name="trq' + i + '"]:checked'); return c ? +c.value : -1; });
+    if(ans.some(x => x < 0)) return toast('Answer every question'); const b = $('trQs'); if(b){ b.disabled = true; b.textContent = 'Checking…'; }
+    try{ const r = await call('quiz', { part_id: Z.pid, answers: ans }); r.review.forEach((x, i) => { const el = $('trQ' + i); if(!el) return; el.classList.add(x.ok ? 'ok' : 'no'); el.querySelector('.why').innerHTML = (x.ok ? '<b style="color:#00737B">Correct.</b> ' : '<b style="color:#B4532F">Answer: ' + e(p.quiz[i].choices[x.answer]) + '.</b> ') + e(x.why || ''); el.querySelectorAll('input').forEach(n => n.disabled = true); });
+      if(b){ b.disabled = false; b.textContent = r.passed ? '✓ Passed ' + r.score + '/' + r.total + ' · back' : r.score + '/' + r.total + ' · watch again and retake'; b.onclick = () => trPart(Z.pid); }
+      await loadMy(true); paintMy(); }catch(x){ toast(x.message); if(b){ b.disabled = false; b.textContent = 'Check my answers'; } } };
+
+  /* ---------- teacher: Today banner for new teachers ---------- */
+  function paintBanner(){ if(isM() || !MY) return; const v = $('v-today'); if(!v) return; const R = myRank(); let b = v.querySelector('.tr-ban');
+    const wayRec = latestRec(MY.records, MY.me, 'way'), P = partsOf(MY, 'way'), pd = P.filter(p => partDone(MY, MY.me, p)).length;
+    const show = R && R.ix === 0 && !(wayRec && wayRec.status === 'done') && P.length;
+    if(!show){ if(b) b.remove(); return; }
+    const h = '<span style="color:#B4532F">' + ICON.train + '</span><div class="grow"><b>Start here · CupOfEnglish Way</b><span>' + pd + ' of ' + P.length + ' parts done · your first week</span></div><span>›</span>';
+    if(!b){ b = document.createElement('div'); b.className = 'ct-ban tr-ban'; b.onclick = () => go('train'); const lead = v.querySelector('.lead'); if(lead) lead.after(b); else v.prepend(b); }
+    if(b._h !== h){ b.innerHTML = h; b._h = h; } }
+
+  /* ---------- management ---------- */
+  let TV = null;   // management viewing one teacher's path
+  function teachers(){ const P = (typeof PF !== 'undefined' && PF) || (typeof kept === 'function' && kept('perf')) || null; const T = (P && P.teachers) || [];
+    const names = T.map(x => ({ name: x.name, ix: typeof x.rankIx === 'number' ? x.rankIx : rix(x.rank), rank: x.rank, life: x.lifetime, next: x.next }));
+    (AL && AL.records || []).forEach(r => { if(!names.some(x => x.name === r.teacher)) names.push({ name: r.teacher, ix: -1, rank: '', life: 0 }); }); return names; }
+  async function needPerf(){ if((typeof PF !== 'undefined' && PF) || (typeof kept === 'function' && kept('perf'))) return; try{ const v = await api('mgmtPerformance', TOKEN); if(v){ try{ keep('perf', v); }catch(x){} try{ PF = v; }catch(x){} } }catch(x){} }
+  function paintAll(){ const v = $('v-train'); if(!v || !AL) return; const d = AL, T = teachers(), M = (d.trainings || []).filter(t => t.kind === 'mandatory').sort((a, b) => a.sort - b.sort);
+    const now = Date.now(), up = (d.sessions || []).filter(s => s.status === 'scheduled').sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+    let h = '<div class="trm"><div class="lead row"><div class="grow"><h1>Trainings</h1><div class="mute small">Mandatory trainings unlock the next rank (Clause 3.6). Tap a cell to tick.</div></div><button class="btn" onclick="trSched()">+ Schedule</button> <button class="btn ghost" onclick="trList()">Trainings list</button></div>';
+    h += '<div class="trm-top"><div class="trm-card"><div class="k">COMING UP</div>' + (up.length ? up.slice(0, 6).map(s => { const t = M.concat(d.trainings || []).find(x => x.id === s.training_id) || { title: s.training_id }, past = new Date(s.starts_at).getTime() < now;
+        return '<div class="trm-it"><span><b>' + e(t.title) + '</b><small>' + e(fmtDT(s.starts_at)) + (s.facilitator ? ' · ' + e(tName(s.facilitator)) : '') + ' · ' + (s.invited || []).length + ' teachers</small></span><span style="display:flex;gap:6px"><button class="btn sm ' + (past ? 'teal' : 'ghost') + '" onclick="trAttend(' + s.id + ')">Attendance</button><button class="btn sm ghost" onclick="trSched(' + s.id + ')">Edit</button></span></div>'; }).join('') : '<div class="small mute" style="padding:8px 0">Nothing scheduled.</div>') + '</div>';
+    // needs you
+    const need = [];
+    (d.progress || []).forEach(g => { const p = (d.parts || []).find(x => x.id === g.part_id && x.ver === g.ver); if(p && p.approve && g.reflection && !g.approved_at) need.push('<div class="trm-it"><span><b>' + e(tName(g.teacher)) + '</b> · ' + e(p.title) + '<small>' + e(g.reflection.slice(0, 120)) + (g.reflection.length > 120 ? '…' : '') + '</small></span><span style="display:flex;gap:6px"><button class="btn sm teal" onclick="trApprove(\'' + e(g.teacher) + '\',' + p.id + ',' + p.ver + ',true)">Approve</button><button class="btn sm ghost" onclick="trApprove(\'' + e(g.teacher) + '\',' + p.id + ',' + p.ver + ',false)">Return</button></span></div>'); });
+    M.filter(t => t.id !== 'way').forEach(t => { const P = partsOf(d, t.id); if(!P.length) return; T.forEach(x => { const rec = latestRec(d.records, x.name, t.id); if(rec && rec.status === 'done') return;
+      if(P.every(p => partDone(d, x.name, p))) need.push('<div class="trm-it"><span><b>' + e(tName(x.name)) + '</b> · ' + e(t.title) + '<small>Watched the recording · quiz and reflection done</small></span><button class="btn sm teal" onclick="trTick(\'' + e(x.name) + '\',\'' + t.id + '\',\'recording\')">Tick done</button></div>'); }); });
+    T.forEach(x => { if(!x.next || x.ix < 0 || !(x.next.need <= 0)) return; const gi = x.ix + 1;
+      const miss = M.filter(t => rix(t.gate) === gi && !['done', 'excused'].includes((latestRec(d.records, x.name, t.id) || {}).status)); if(miss.length) need.push('<div class="trm-it"><span><b>' + e(tName(x.name)) + '</b> · enough units for ' + e(x.next.name) + '<small>Missing: ' + miss.map(t => e(t.title)).join(', ') + '</small></span><button class="btn sm ghost" onclick="trSched(0,\'' + miss[0].id + '\',\'' + e(x.name) + '\')">Schedule</button></div>'); });
+    h += '<div class="trm-card"><div class="k ' + (need.length ? 'c' : '') + '">NEEDS YOU' + (need.length ? ' · ' + need.length : '') + '</div>' + (need.join('') || '<div class="small mute" style="padding:8px 0">All clear.</div>') + '</div></div>';
+    // table
+    const short = { way: 'Way', track: 'TRACK', ct: 'Critical<br>Thinking', comm: 'Commun-<br>ication', collab: 'Collab-<br>oration', creat: 'Creat-<br>ivity', phon: 'Phonology', gram: 'Grammar', prog: 'Progress<br>checks', inq: 'Inquiry', spec: 'Special-<br>ization', facil: 'Facilitate' };
+    h += '<div class="trm-tb"><table><thead><tr><th>Teacher</th>' + M.map(t => '<th>' + (short[t.id] || e(t.title)) + '</th>').join('') + '</tr></thead><tbody>';
+    T.sort((a, b) => b.ix - a.ix || String(a.name).localeCompare(b.name)).forEach(x => { const L = statusList(d, x.name, Math.max(0, x.ix)); const blocked = x.next && x.next.need <= 0 && L.some(y => y.gi === x.ix + 1 && y.st !== 'done');
+      h += '<tr class="' + (blocked ? 'blk' : '') + '"><td><b class="link" onclick="trView(\'' + e(x.name) + '\')">' + e(tName(x.name)) + '</b> <small>' + e(x.rank || '') + (blocked ? ' · blocked' : '') + '</small></td>' + M.map(t => { const rec = latestRec(d.records, x.name, t.id), ses = (d.sessions || []).find(s => s.training_id === t.id && s.status === 'scheduled' && (s.invited || []).includes(x.name));
+        const P = t.id === 'way' ? partsOf(d, 'way') : [], pd = P.filter(p => partDone(d, x.name, p)).length;
+        const c = rec && rec.status === 'done' ? '<span class="y" title="' + e(fmtD(rec.done_at) + ' · ' + rec.via) + '">✓</span>' : rec && rec.status === 'excused' ? '<span class="y">Ex</span>' : ses ? '<span class="s">' + e(fmtD(ses.starts_at)) + '</span>' : t.id === 'way' && pd ? '<span class="s">' + pd + '/' + P.length + '</span>' : rec && rec.status === 'assigned' ? '<span class="s">assigned</span>' : rix(t.gate) === x.ix + 1 && blocked ? '<span class="b">needed</span>' : '<span class="n">—</span>';
+        return '<td class="c" onclick="trCell(\'' + e(x.name) + '\',\'' + t.id + '\')">' + c + '</td>'; }).join('') + '</tr>'; });
+    h += '</tbody></table></div><p class="small mute" style="margin-top:8px">Teachers already at a rank are not blocked by that rank\'s trainings: tick them as done before the app (Recorded before) when they already attended.</p></div>';
+    if(v._h !== h){ v.innerHTML = h; v._h = h; } }
+  window.trView = async function(name){ try{ toast('Opening ' + tName(name) + '…'); TV = await call('my', { teacher: name }); const x = teachers().find(y => y.name === name) || { ix: 0, rank: '', life: 0 };
+      openSheet('<div class="tr"><h1>' + e(tName(name)) + '</h1><div class="sub">' + e(x.rank || '') + '</div>' + pathHtml(TV, name, { ix: Math.max(0, x.ix), rank: x.rank, life: x.life, next: x.next }) + '<h2>CupOfEnglish Way</h2>' + partsOf(TV, 'way').map(p => partRow(TV, name, p)).join('') + '</div>'); }catch(x){ toast(x.message); } };
+  window.trCell = function(name, id){ const d = AL, t = (d.trainings || []).find(x => x.id === id), H = (d.records || []).filter(r => r.teacher === name && r.training_id === id);
+    const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+    openSheet('<h1>' + e(tName(name)) + ' · ' + e(t.title) + '</h1><div class="mute small">Needed for ' + e(t.gate || '') + '</div>'
+      + '<div class="card" style="margin-top:12px"><label class="small mute">Date</label><input type="date" id="trCd" value="' + today + '" style="width:100%;margin:4px 0 10px">'
+      + '<label class="small mute">How</label><select id="trCv" style="width:100%;margin:4px 0 10px"><option value="live">Attended live</option><option value="grandfathered">Done before the app</option><option value="recording">Recording + reflection</option><option value="manual">Other</option></select>'
+      + '<label class="small mute">Note (optional)</label><input id="trCn" style="width:100%;margin-top:4px"></div>'
+      + '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn teal grow" onclick="trTick(\'' + e(name) + '\',\'' + id + '\')">✓ Done</button><button class="btn ghost" onclick="trTick(\'' + e(name) + '\',\'' + id + '\',\'assigned\',\'assigned\')">Assign</button><button class="btn ghost" onclick="trTick(\'' + e(name) + '\',\'' + id + '\',\'manual\',\'excused\')">Excuse</button></div>'
+      + (H.length ? '<h2 style="font-size:15px;margin-top:16px">History · kept permanently</h2>' + H.slice().reverse().map(r => '<div class="small" style="padding:6px 0;border-bottom:1px solid #F0EFF5">' + e(r.status) + ' · ' + e(r.via) + (r.done_at ? ' · ' + e(fmtD(r.done_at)) : '') + ' · by ' + e(tName(r.by_who)) + ' ' + e(fmtD(r.created_at)) + (r.note ? '<div class="mute">' + e(r.note) + '</div>' : '') + '</div>').join('') : '')); };
+  window.trTick = async function(name, id, via, status){ try{ const d0 = ($('trCd') || {}).value, v0 = ($('trCv') || {}).value, n0 = ($('trCn') || {}).value;
+      await call('rec_add', { teacher: name, training_id: id, status: status || 'done', via: via || v0 || 'manual', note: n0 || '', done_at: (status || 'done') === 'done' && d0 ? d0 + 'T12:00:00+08:00' : null });
+      toast('Saved ✓'); if($('sheet').classList.contains('on') && $('trCd')) closeSheet(); await loadAll(true); paintAll(); }catch(x){ toast(x.message); } };
+  window.trApprove = async function(name, pid, ver, ok){ try{ await call('approve', { teacher: name, part_id: pid, ver, ok }); toast(ok ? 'Approved ✓' : 'Returned'); await loadAll(true); paintAll(); }catch(x){ toast(x.message); } };
+  window.trSched = function(sid, tid, who){ const d = AL, s = sid ? (d.sessions || []).find(x => x.id === sid) : null, T = teachers().map(x => x.name), M = (d.trainings || []).filter(t => t.kind !== 'selfstudy');
+    const dt = s ? new Date(new Date(s.starts_at).getTime() + 8 * 3600e3).toISOString().slice(0, 16) : '', inv = s ? s.invited || [] : who ? [who] : [];
+    openSheet('<h1>' + (s ? 'Edit session' : 'Schedule a training') + '</h1><div class="card" style="margin-top:12px">'
+      + '<label class="small mute">Training</label><select id="tsT" style="width:100%;margin:4px 0 10px">' + M.map(t => '<option value="' + t.id + '"' + ((s ? s.training_id : tid) === t.id ? ' selected' : '') + '>' + e(t.title) + '</option>').join('') + '</select>'
+      + '<label class="small mute">Date and time (PH)</label><input type="datetime-local" id="tsD" value="' + dt + '" style="width:100%;margin:4px 0 10px">'
+      + '<label class="small mute">Minutes</label><input type="number" id="tsM" value="' + (s ? s.mins : 60) + '" style="width:100%;margin:4px 0 10px">'
+      + '<label class="small mute">Facilitator</label><select id="tsF" style="width:100%;margin:4px 0 10px"><option value="">' + e((D.me || {}).name || 'Management') + '</option>' + T.map(n => '<option' + (s && s.facilitator === n ? ' selected' : '') + '>' + e(n) + '</option>').join('') + '</select>'
+      + '<label class="small mute">Meeting link (VooV)</label><input id="tsU" value="' + e(s ? s.meet_url || '' : '') + '" style="width:100%;margin:4px 0 10px">'
+      + '<label class="small mute">Note to teachers (optional)</label><input id="tsN" value="' + e(s ? s.note || '' : '') + '" style="width:100%;margin-top:4px"></div>'
+      + '<h2 style="font-size:15px;margin-top:14px">Who attends</h2><div class="row" style="flex-wrap:wrap;gap:6px">' + T.map(n => '<label class="chip" style="cursor:pointer"><input type="checkbox" class="tsI" value="' + e(n) + '"' + (inv.includes(n) ? ' checked' : '') + '> ' + e(tName(n)) + '</label>').join('') + '</div>'
+      + '<div class="row" style="gap:8px;margin-top:14px"><button class="btn teal grow" onclick="trSchedSave(' + (sid || 0) + ')">Save</button>' + (s ? '<button class="btn ghost" onclick="trSchedSave(' + sid + ',1)">Cancel session</button>' : '') + '</div>'); };
+  window.trSchedSave = async function(sid, cancel){ const v = id => ($(id) || {}).value || ''; if(!v('tsD')) return toast('Pick the date and time');
+    const s = { id: sid || undefined, training_id: v('tsT'), starts_at: v('tsD') + ':00+08:00', mins: +v('tsM') || 60, facilitator: v('tsF') || (D.me || {}).name || '', meet_url: v('tsU'), note: v('tsN'), invited: [...document.querySelectorAll('.tsI:checked')].map(x => x.value) };
+    if(cancel) s.status = 'cancelled'; try{ await call('sess_set', { s }); toast(cancel ? 'Cancelled' : 'Saved ✓ · it shows on their Trainings'); closeSheet(); await loadAll(true); paintAll(); }catch(x){ toast(x.message); } };
+  window.trAttend = function(sid){ const s = (AL.sessions || []).find(x => x.id === sid); if(!s) return; const T = teachers().map(x => x.name), L = (s.invited || []).concat(T.filter(n => !(s.invited || []).includes(n)));
+    openSheet('<h1>Attendance</h1><div class="mute small">' + e(fmtDT(s.starts_at)) + ' · ticking marks the training done for them' + (s.facilitator ? ' · ' + e(tName(s.facilitator)) + ' gets "Facilitate one training"' : '') + '</div><div style="margin-top:12px">'
+      + L.map(n => '<label class="trm-it" style="cursor:pointer"><span>' + e(tName(n)) + ((s.invited || []).includes(n) ? '' : ' <small style="display:inline">· not invited</small>') + '</span><input type="checkbox" class="taI" value="' + e(n) + '"' + ((s.invited || []).includes(n) ? ' checked' : '') + '></label>').join('') + '</div><button class="btn teal block" style="margin-top:12px" onclick="trAttendSave(' + sid + ')">Save attendance</button>'); };
+  window.trAttendSave = async function(sid){ try{ const r = await call('sess_attend', { id: sid, present: [...document.querySelectorAll('.taI:checked')].map(x => x.value) }); toast(r.n + ' ticked ✓'); closeSheet(); await loadAll(true); paintAll(); }catch(x){ toast(x.message); } };
+  /* trainings list: parts, videos, quizzes */
+  window.trList = function(){ const d = AL; openSheet('<h1>Trainings list</h1><div class="mute small">Parts are videos teachers watch in the app (no download), with an optional quiz.</div>' + (d.trainings || []).map(t => { const P = partsOf(d, t.id);
+      return '<div class="card" style="margin-top:10px"><div class="row"><b class="grow">' + e(t.title) + '</b><span class="mute small">' + e(t.kind === 'mandatory' ? t.gate : t.kind === 'selfstudy' ? 'Self-study' : 'Unlock') + '</span></div>' + P.map(p => '<div class="trm-it"><span>' + e(p.sort + '. ' + p.title) + '<small>' + (p.video_path ? '▶ ' + Math.round(p.dur_sec / 60) + ' min · v' + p.ver : 'No video yet') + ' · ' + (p.quiz || []).length + ' quiz questions' + (p.approve ? ' · approval' : '') + '</small></span><button class="btn sm ghost" onclick="trPartEdit(' + p.id + ')">Edit</button></div>').join('')
+        + '<button class="btn sm ghost" style="margin-top:8px" onclick="trPartEdit(0,\'' + t.id + '\')">+ ' + (t.id === 'way' || t.id === 'model' ? 'Add part' : 'Add recording') + '</button></div>'; }).join('')); $('sheet').classList.add('wide'); };
+  const quizText = Q => (Q || []).map(q => 'Q: ' + q.q + '\n' + q.choices.map((c, i) => (i === q.answer ? '* ' : '- ') + c).join('\n') + (q.why ? '\nWhy: ' + q.why : '')).join('\n\n');
+  const quizParse = t => String(t || '').split(/\n\s*\n/).map(b => { const L = b.split('\n').map(x => x.trim()).filter(Boolean); const q = { q: '', choices: [], answer: 0, why: '' };
+    L.forEach(l => { if(/^Q:/i.test(l)) q.q = l.replace(/^Q:\s*/i, ''); else if(/^\*/.test(l)){ q.answer = q.choices.length; q.choices.push(l.replace(/^\*\s*/, '')); } else if(/^-/.test(l)) q.choices.push(l.replace(/^-\s*/, '')); else if(/^Why:/i.test(l)) q.why = l.replace(/^Why:\s*/i, ''); });
+    return q; }).filter(q => q.q && q.choices.length >= 2);
+  window.trPartEdit = function(pid, tid){ const p = pid ? (AL.parts || []).find(x => x.id === pid) : { training_id: tid, title: '', quiz: [], approve: false, sort: partsOf(AL, tid).length + 1 };
+    openSheet('<h1>' + (pid ? 'Edit part' : 'New part') + '</h1><div class="card" style="margin-top:12px"><label class="small mute">Title</label><input id="tpT" value="' + e(p.title) + '" style="width:100%;margin:4px 0 10px">'
+      + '<label class="small mute">Video (MP4) · ' + (p.video_path ? 'current: v' + p.ver + ', ' + Math.round(p.dur_sec / 60) + ' min · choose a file to replace' : 'none yet') + '</label><input type="file" id="tpV" accept="video/mp4,video/webm,video/quicktime" style="width:100%;margin:4px 0 4px"><div id="tpP" class="small mute"></div>'
+      + '<label style="display:flex;gap:8px;align-items:center;margin:10px 0"><input type="checkbox" id="tpA"' + (p.approve ? ' checked' : '') + '> Management approves (teacher writes a reflection or description)</label>'
+      + '<label class="small mute">Quiz · blank line between questions · <b>Q:</b> question · <b>*</b> right answer · <b>-</b> other choices · <b>Why:</b> explanation</label><textarea id="tpQ" rows="10" style="width:100%;margin-top:4px;font-family:inherit">' + e(quizText(p.quiz)) + '</textarea></div>'
+      + '<button class="btn teal block" style="margin-top:12px" id="tpS" onclick="trPartSave(' + (pid || 0) + ',\'' + e(p.training_id) + '\',' + (p.sort || 1) + ')">Save</button>'); };
+  window.trPartSave = async function(pid, tid, sort){ const b = $('tpS'), f = ($('tpV').files || [])[0], quiz = quizParse($('tpQ').value);
+    if($('tpQ').value.trim() && !quiz.length) return toast('Quiz format: Q: … then * right answer and - other choices');
+    b.disabled = true; b.textContent = 'Saving…';
+    try{ let r = await call('part_set', { p: { id: pid || undefined, training_id: tid, sort, title: $('tpT').value || 'Part', approve: $('tpA').checked, quiz } }); const part = r.part;
+      if(f){ const dur = await new Promise(ok => { const v = document.createElement('video'); v.preload = 'metadata'; v.onloadedmetadata = () => { ok(Math.round(v.duration || 0)); URL.revokeObjectURL(v.src); }; v.onerror = () => ok(0); v.src = URL.createObjectURL(f); });
+        const u = await call('upload_url', { part_id: part.id, name: f.name });
+        await new Promise((ok, no) => { const x = new XMLHttpRequest(); x.open('PUT', u.url); x.setRequestHeader('Content-Type', f.type || 'video/mp4'); x.setRequestHeader('x-upsert', 'true');
+          x.upload.onprogress = ev => { if(ev.lengthComputable) $('tpP').textContent = 'Uploading ' + Math.round(ev.loaded / ev.total * 100) + '%'; };
+          x.onload = () => x.status < 300 ? ok() : no(new Error('Upload failed (' + x.status + ')' + (x.status === 413 ? ': the file is bigger than the storage limit' : ''))); x.onerror = () => no(new Error('Upload failed')); x.send(f); });
+        await call('part_set', { p: { id: part.id, video_path: u.path, dur_sec: dur, newver: !!part.video_path } }); }
+      toast('Saved ✓'); await loadAll(true); trList(); paintAll(); }catch(x){ toast(x.message); b.disabled = false; b.textContent = 'Save'; } };
+
+  /* ---------- the screen ---------- */
+  async function open(force){ const v = $('v-train'); if(!v) return;
+    if(isM()){ if(!AL) v.innerHTML = '<div class="trm"><h1>Trainings</h1><div class="sk"></div><div class="sk"></div></div>'; try{ await Promise.all([loadAll(force), needPerf()]); paintAll(); }catch(x){ if(!AL) v.innerHTML = '<div class="empty">' + e(x.message) + '</div>'; } }
+    else { if(!MY) v.innerHTML = '<div class="tr"><h1>Trainings</h1><div class="sk"></div><div class="sk"></div></div>'; try{ await loadMy(force); paintMy(); paintBanner(); }catch(x){ if(!MY) v.innerHTML = '<div class="empty">' + e(x.message) + '</div>'; } } }
+  try{
+    if(!$('v-train') && $('v-today')){ const d0 = document.createElement('div'); d0.id = 'v-train'; d0.className = 'hide'; $('v-today').parentNode.appendChild(d0); }
+    if(VIEWS.indexOf('train') < 0) VIEWS.push('train');
+    const addNav = () => { if(D.mgr){ if(!NAV_M.some(x => x[0] === 'train')){ const i = NAV_M.findIndex(x => x[0] === 'perf'); NAV_M.splice(i < 0 ? NAV_M.length - 1 : i + 1, 0, ['train', 'Trainings', 'train', 1, (NAV_M[i] || [])[4] || 'Teachers']); } }
+      else if(!NAV_T.some(x => x[0] === 'train')){ const i = NAV_T.findIndex(x => x[0] === 'qa'); NAV_T.splice(i < 0 ? NAV_T.length : i + 1, 0, ['train', 'Trainings', 'train', undefined, 'My growth']); } buildNav(); };
+    setTimeout(function w(){ if(hasD() && typeof NAV_M !== 'undefined'){ addNav(); if(VIEW === 'train') open(false); if(!D.mgr) setTimeout(() => loadMy(false).then(paintBanner).catch(() => {}), 4000); } else setTimeout(w, 800); }, 800);
+  }catch(x){}
+  const _go = window.go; window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'train') open(false); if(v === 'today') paintBanner(); }catch(x){} return r; };
+  const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const r = _rt.apply(this, arguments); try{ paintBanner(); }catch(x){} return r; };
 })();
 </script>
 
