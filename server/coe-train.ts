@@ -76,6 +76,15 @@ Deno.serve(async (req: Request) => {
       let sessions = S.data || []; if (who && !mgmt) sessions = sessions.filter((x: any) => x.facilitator === who || (x.invited || []).includes(who));
       return out({ ok: true, me: who || me, trainings: T.data, parts: mgmt ? P.data : (P.data || []).map(strip), sessions, records: R.data, progress: G.data, quiz: Q.data });
     }
+    if (a === "lates") {   // 23 Oct · a teacher's own late time-ins / late-to-class (last 40 days) with the decision, + the POLICY amounts
+      const who = mgmt && b.teacher ? str(b.teacher, 60) : me, since = new Date(Date.now() + 8 * 3600e3 - 40 * 864e5).toISOString().slice(0, 10);
+      const { data, error } = await db.from("log_rows").select("data").eq("tab", "T-TIMEIN").in("data->>6", ["Late", "Late to class"]).gte("data->>0", since).ilike("data->>1", who).limit(200);
+      if (error) return out({ ok: false, error: error.message });
+      const { data: P } = await db.from("sheet_rows").select("data").eq("tab", "POLICY");
+      const pol = (P || []).map((x: any) => x.data).filter((r: any) => Array.isArray(r) && /^Teacher Late (Time-in|to Class)$/.test(String(r[2])) && /Active/.test(String(r[12] || ""))).map((r: any) => ({ subject: r[2], condition: r[4], tier: r[5], amount: +r[7] || 0 }));
+      const rows = (data || []).map((x: any) => x.data).map((r: any) => ({ day: String(r[0]).slice(0, 10), at: r[3], first: r[4], mins: r[5], kind: r[6], note: r[8] || "", cls: String(r[14] || "").split(" · ")[0] })).sort((p: any, q: any) => String(q.at).localeCompare(String(p.at)));
+      return out({ ok: true, rows, policy: pol, now });
+    }
     if (a === "video_url") {
       const p = await part(+b.part_id); if (!p || !p.video_path) return out({ ok: false, error: "No video yet" });
       const { data, error } = await db.storage.from(BUCKET).createSignedUrl(p.video_path, 7200); if (error) return out({ ok: false, error: error.message });
