@@ -1,0 +1,24 @@
+<script>
+/* 23 Oct · 690 · (Misty: James's 19/21/23 Oct classes were booked under an old student code with the same name, ST-2024-140 instead of
+   ST-2022-004, so they were not counted in his lesson summary.) New class: if the chosen code has no active package but an active
+   student has the same name, the form stops and asks which one — "Use ST-2022-004 (active · Misty · 17 left)" or "Keep the old code". */
+(function(){
+  if(typeof window.sendClass !== 'function') return;
+  const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const _sc = window.sendClass;
+  window.sendClass = async function(){
+    try{ const s = classStu(), A = (typeof MS !== 'undefined' && Array.isArray(MS) && MS.length) ? MS : (typeof kept === 'function' && Array.isArray(kept('stu')) ? kept('stu') : null);
+      if(s && !s.fresh && (typeof CKIND === 'undefined' || CKIND !== 'TC') && A && window._clsOk !== s.code){
+        const up = x => String(x || '').toUpperCase(), nm = x => String(x || '').toLowerCase().replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+        if(!A.some(x => up(x.code) === up(s.code))){ const same = A.filter(x => nm(x.name) === nm(s.name));
+          if(same.length){ const box = $('cPrev'); let w = $('clsWarn'); if(!w && box){ box.insertAdjacentHTML('beforebegin', '<div id="clsWarn"></div>'); w = $('clsWarn'); }
+            if(w){ w.innerHTML = '<div class="card" style="margin:10px 0;background:#FDF6F3;border-color:#F0C9BD"><b style="color:#8A3B22">' + e(s.name) + ' ' + e(s.code) + ' has no active package.</b><div class="small" style="margin:4px 0 8px">Classes under this code are not counted in the active package. Did you mean:</div>'
+              + same.map(x => '<button type="button" class="btn teal sm" style="margin:0 6px 6px 0" onclick="clsUse(\'' + e(x.code) + '\',\'' + e(String(x.name).replace(/'/g, '')) + '\')">Use ' + e(x.name) + ' ' + e(x.code) + (x.teachers && x.teachers.length ? ' · ' + e(x.teachers.join(', ')) : '') + (x.left != null ? ' · ' + x.left + ' left' : '') + '</button>').join('')
+              + '<button type="button" class="btn ghost sm" onclick="window._clsOk=\'' + e(s.code) + '\';sendClass()">Keep ' + e(s.code) + '</button></div>'; w.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+            return toast('Check the student code first'); } } }
+    }catch(x){}
+    return _sc.apply(this, arguments); };
+  window.clsUse = function(code, name){ const i = $('cS'); if(!i) return; const o = [...document.querySelectorAll('#cSL option')].find(x => String(x.value).toUpperCase().indexOf(code.toUpperCase()) === 0);
+    i.value = o ? o.value : code + ' · ' + name; try{ classPick(); }catch(x){} const w = $('clsWarn'); if(w) w.innerHTML = '<div class="small" style="color:#00737B;margin:8px 0">✓ Changed to ' + e(name) + ' ' + e(code) + ' · press Save again</div>'; };
+})();
+</script>
