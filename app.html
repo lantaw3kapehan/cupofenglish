@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1012;
+const COE_V = 1013;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22586,8 +22586,8 @@ go();
     const M = partsOf(d, 'model').filter(p => p.video_path);
     h += '<h2 style="margin-top:14px">Self-study <span class="mute small" style="font-weight:400">· free · for every teacher</span></h2>' + (M.length ? M.map(p => partRow(d, who, p)).join('') : '<div class="tr-row" style="cursor:default"><span class="ic">▶</span><div class="grow"><b>Model lessons</b><small>Videos of our best classes will appear here. Watch them any time and write what you will try.</small></div></div>');
     h += '<h2>My path</h2>' + pathHtml(d, who, R);
-    const trial = latestRec(d.records, who, 'trial'), spec = latestRec(d.records, who, 'spec');
-    h += '<div class="tr-chips"><span class="' + (trial && trial.status === 'done' ? 'ok' : '') + '">' + (trial && trial.status === 'done' ? '✓ ' : '') + 'Trial classes</span><span class="' + (spec && spec.status === 'done' ? 'ok' : '') + '">' + (spec && spec.status === 'done' ? '✓ ' : '') + 'Exam students</span></div>';
+    const U = (d.trainings || []).filter(t => t.kind === 'unlock').sort((a, b) => a.sort - b.sort).concat((d.trainings || []).filter(t => t.id === 'spec')), okU = t => ['done', 'excused'].includes((latestRec(d.records, who, t.id) || {}).status);
+    h += '<div class="tr-chips">' + U.map(t => '<span class="' + (okU(t) ? 'ok' : '') + '" style="cursor:pointer" onclick="trOpen(\'' + t.id + '\')">' + (okU(t) ? '✓ ' : '') + e(t.id === 'trial' ? 'Trial classes' : t.id === 'spec' ? 'Exam students' : t.title) + '</span>').join('') + '</div>';
     h += '</div>'; if(v._h !== h){ v.innerHTML = h; v._h = h; }
     if(!v._sc){ v._sc = 1; setTimeout(() => { try{ const n = v.querySelector('.tr-n.next'); if(n) n.scrollIntoView({ block: 'center', behavior: 'smooth' }); }catch(x){} }, 300); } }
   function partRow(d, who, p){ const g = progOf(d, who, p), q = bestQ(d, who, p), dn = partDone(d, who, p), wait = g && g.done_at && p.approve && !g.approved_at;
@@ -22684,9 +22684,9 @@ go();
     h += '<div class="trm-card"><div class="k ' + (need.length ? 'c' : '') + '">NEEDS YOU' + (need.length ? ' · ' + need.length : '') + '</div>' + (need.join('') || '<div class="small mute" style="padding:8px 0">All clear.</div>') + '</div></div>';
     // table
     const short = { way: 'Way', track: 'TRACK', ct: 'Critical<br>Thinking', comm: 'Commun-<br>ication', collab: 'Collab-<br>oration', creat: 'Creat-<br>ivity', phon: 'Phonology', gram: 'Grammar', prog: 'Progress<br>checks', inq: 'Inquiry', spec: 'Special-<br>ization', facil: 'Facilitate' };
-    h += '<div class="trm-tb"><table><thead><tr><th>Teacher</th>' + M.map(t => '<th class="c" style="cursor:pointer" title="Tick many teachers" onclick="trCol(\'' + t.id + '\')">' + (short[t.id] || e(t.title)) + ' <span style="color:#00A3AD">✓</span></th>').join('') + '</tr></thead><tbody>';
+    h += '<div class="trm-tb"><table><thead><tr><th>Teacher</th>' + M.concat((d.trainings || []).filter(t => t.kind === 'unlock').sort((a, b) => a.sort - b.sort)).map(t => '<th class="c" style="cursor:pointer" title="Tick many teachers" onclick="trCol(\'' + t.id + '\')">' + (short[t.id] || e(t.title)) + ' <span style="color:#00A3AD">✓</span></th>').join('') + '</tr></thead><tbody>';
     T.sort((a, b) => b.ix - a.ix || String(a.name).localeCompare(b.name)).forEach(x => { const L = statusList(d, x.name, Math.max(0, x.ix)); const blocked = x.next && x.next.need <= 0 && L.some(y => y.gi === x.ix + 1 && y.st !== 'done');
-      h += '<tr class="' + (blocked ? 'blk' : '') + '"><td><b class="link" onclick="trView(\'' + e(x.name) + '\')">' + e(tName(x.name)) + '</b> <small>' + e(x.rank || '') + (blocked ? ' · blocked' : '') + '</small></td>' + M.map(t => { const rec = latestRec(d.records, x.name, t.id), ses = (d.sessions || []).find(s => s.training_id === t.id && s.status === 'scheduled' && (s.invited || []).includes(x.name));
+      h += '<tr class="' + (blocked ? 'blk' : '') + '"><td><b class="link" onclick="trView(\'' + e(x.name) + '\')">' + e(tName(x.name)) + '</b> <small>' + e(x.rank || '') + (blocked ? ' · blocked' : '') + '</small></td>' + M.concat((d.trainings || []).filter(t => t.kind === 'unlock').sort((a, b) => a.sort - b.sort)).map(t => { const rec = latestRec(d.records, x.name, t.id), ses = (d.sessions || []).find(s => s.training_id === t.id && s.status === 'scheduled' && (s.invited || []).includes(x.name));
         const P = t.id === 'way' ? partsOf(d, 'way') : [], pd = P.filter(p => partDone(d, x.name, p)).length;
         const c = rec && rec.status === 'done' ? '<span class="y" title="' + e(fmtD(rec.done_at) + ' · ' + rec.via) + '">✓</span>' : rec && rec.status === 'excused' ? '<span class="y">Ex</span>' : ses ? '<span class="s">' + e(fmtD(ses.starts_at)) + '</span>' : t.id === 'way' && pd ? '<span class="s">' + pd + '/' + P.length + '</span>' : rec && rec.status === 'assigned' ? '<span class="s">assigned</span>' : rix(t.gate) === x.ix + 1 && blocked ? '<span class="b">needed</span>' : '<span class="n">—</span>';
         return '<td class="c" onclick="trCell(\'' + e(x.name) + '\',\'' + t.id + '\')">' + c + '</td>'; }).join('') + '</tr>'; });
