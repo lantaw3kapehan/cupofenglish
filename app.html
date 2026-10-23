@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1053;
+const COE_V = 1054;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22278,7 +22278,14 @@ go();
   const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const r = _rt.apply(this, arguments); try{ tPaint(); tLoad(); }catch(e){} return r; };
   /* ── Management: Videos to check on Overview ── */
   let MF = (() => { try{ return JSON.parse(localStorage.getItem('coe.vflagsm') || 'null'); }catch(e){ return null; } })(), mBusy = false;
-  async function mLoad(){ if(mBusy || !TOKEN || !D || !D.mgr) return; mBusy = true; try{ const r = await api('mgmtVidFlags', TOKEN); if(r && r.ok){ const L = r.list || []; if(MF && JSON.stringify(L) === JSON.stringify(MF)) return; MF = L; try{ localStorage.setItem('coe.vflagsm', JSON.stringify(MF)); }catch(e){} mPaint(); } }catch(e){} finally{ mBusy = false; } }
+  /* 722 · decisions in the database first */
+  let VFD = {}; const vfSent = new Set(), vfK = x => x.id + '@' + (x.ds || '');
+  const vfCall = b => fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-train', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, b)) }).then(x => x.json());
+  const vfMerge = L => L.map(x => { const d = VFD[vfK(x)]; if(!d || (d.at || 0) < (x.at || 0)) return x; if(x.st === d.st) return x;
+    if(!vfSent.has(vfK(x))){ vfSent.add(vfK(x)); try{ apiNow('mgmtVidFlagSet', TOKEN, x.id, d.st, d.note || '').catch(() => {}); }catch(e){} }
+    return Object.assign({}, x, { st: d.st, by: d.by, dat: d.at, dnote: d.note || '' }); });
+  async function vfDecs(){ try{ const d = await vfCall({ action: 'vf_decs' }); if(d && d.ok){ VFD = d.dec || {}; if(MF){ MF = vfMerge(MF); mPaint(); } } }catch(e){} }
+  async function mLoad(){ if(mBusy || !TOKEN || !D || !D.mgr) return; mBusy = true; try{ vfDecs(); const r = await api('mgmtVidFlags', TOKEN); if(r && r.ok){ const L = vfMerge(r.list || []); if(MF && JSON.stringify(L) === JSON.stringify(MF)) return; MF = L; try{ localStorage.setItem('coe.vflagsm', JSON.stringify(MF)); }catch(e){} mPaint(); } }catch(e){} finally{ mBusy = false; } }
   function mPaint(){ const root = document.getElementById('v-home'); if(!root || !MF || !D || !D.mgr) return; let box = document.getElementById('vcmBox');
     const open = MF.filter(x => x.st === 'open'), recent = MF.filter(x => x.st !== 'open').slice(0, 5);
     if(!open.length){ if(box) box.remove(); return; }   /* 720: settled → hidden */
@@ -22292,7 +22299,10 @@ go();
     window._vcAct = () => { const n = (document.getElementById('vcAN') || {}).value || ''; closeSheet(); vcSave(id, 'action', n.trim()); };
     openSheet('<h3 style="margin:0 0 6px">Needs action</h3><div class="small mute">The teacher sees this note on her Today screen. Tag the class under the contract from Schedule or Cases if a penalty applies.</div><textarea id="vcAN" class="in-t" rows="3" style="margin-top:10px;width:100%" placeholder="Note for the teacher"></textarea><button class="btn block" style="margin-top:12px;background:#D4705A;color:#fff;border-color:#D4705A" onclick="_vcAct()">Mark Needs action</button><button class="btn ghost block" style="margin-top:8px" onclick="closeSheet()">Cancel</button>'); };
   window.vcSave = async (id, st, note) => {
-    try{ const r = await apiNow('mgmtVidFlagSet', TOKEN, id, st, note); if(r && r.ok){ const i = MF.findIndex(x => x.id === id); if(i > -1) MF[i] = r.item; mPaint(); toast(st === 'ok' ? 'Marked OK ✓' : 'Marked Needs action'); } else toast((r && r.msg) || 'Not saved'); }catch(e){ toast(e.message); } };
+    const i = (MF || []).findIndex(x => x.id === id), x = i > -1 ? MF[i] : { id, ds: '' }, me = ((typeof D !== 'undefined' && D && D.me) || {}).name || 'Management';
+    try{ const d = await vfCall({ action: 'vf_dec', k: vfK(x), st, note: note || '' }); if(!d || !d.ok) throw new Error((d && d.error) || 'Not saved · try again'); VFD = d.dec || VFD; }catch(e){ return toast(e.message); }
+    if(i > -1) MF[i] = Object.assign({}, x, { st, by: me, dat: Date.now(), dnote: note || '' }); mPaint(); toast(st === 'ok' ? 'Marked OK ✓' : 'Marked Needs action');
+    vfSent.add(vfK(x)); try{ apiNow('mgmtVidFlagSet', TOKEN, id, st, note).catch(() => {}); }catch(e){} };
   try{ const hv = document.getElementById('v-home'); if(hv) new MutationObserver(() => { if(MF && D && D.mgr && !document.getElementById('vcmBox')) mPaint(); }).observe(hv, { childList: true }); }catch(e){}
   /* 720: Lates to decide on Overview */
   let LQS = '';
@@ -22313,6 +22323,7 @@ go();
   const _go = window.go; if(_go) window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'home'){ setTimeout(mPaint, 50); setTimeout(mPaint, 800); mLoad(); } }catch(e){} return r; };
   setTimeout(() => { try{ if(typeof VIEW !== 'undefined'){ if(VIEW === 'home'){ mPaint(); mLoad(); } if(VIEW === 'today'){ tPaint(); tLoad(true); } } }catch(e){} }, 1800);
   setInterval(() => { try{ if(typeof VIEW !== 'undefined' && VIEW === 'home' && !document.hidden) mLoad(); }catch(e){} }, 5 * 6e4);
+  setInterval(() => { try{ if(typeof VIEW !== 'undefined' && VIEW === 'home' && !document.hidden && MF && MF.some(x => x.st === 'open')) vfDecs(); }catch(e){} }, 6e4);
 })();
 </script>
 
