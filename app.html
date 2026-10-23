@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1042;
+const COE_V = 1043;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22529,7 +22529,7 @@ go();
 .tx-cnt.warn{background:#FBEDE8;border-color:#F0C9BD;color:#8A3B22}.tx-cnt.warn span,.tx-cnt.warn small{color:#8A3B22}
 .tx-seg{display:inline-flex;background:var(--soft);border-radius:99px;padding:4px}.tx-seg button{font:inherit;font-size:13px;font-weight:700;border:0;background:none;color:var(--ink2);border-radius:99px;padding:7px 14px;cursor:pointer}.tx-seg button.on{background:var(--ink);color:#fff}
 .tx-tb{overflow:auto;max-height:70vh}.tx-tb table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
-.tx-tb thead th{position:sticky;background:var(--card,#fff);z-index:2;font-weight:700}.tx-tb tr.g th{top:0;height:26px;padding:0 3px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:#77738C}.tx-tb tr.g th span{display:block;border-bottom:3px solid;padding-bottom:3px}
+.tx-tb thead th{transform:translateY(var(--hy,0px));position:sticky;background:var(--card,#fff);z-index:2;font-weight:700}.tx-tb tr.g th{top:0;height:26px;padding:0 3px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:#77738C}.tx-tb tr.g th span{display:block;border-bottom:3px solid;padding-bottom:3px}
 .tx-tb tr.t th{top:26px;padding:8px 3px;font-size:11.5px;border-bottom:1px solid var(--line)}.tx-tb tr.t th button{font:inherit;background:none;border:0;color:var(--ink);cursor:pointer;padding:3px 4px;border-radius:8px;white-space:nowrap}.tx-tb tr.t th button:hover{background:var(--soft);text-decoration:underline}
 .tx-tb .st{position:sticky;left:0;z-index:1;background:var(--card,#fff);text-align:left;padding:9px 10px;white-space:nowrap}.tx-tb thead .st{z-index:3}.tx-tb td{border-bottom:1px solid #F3F2F7;text-align:center;padding:8px 3px;cursor:pointer}.tx-tb td.st{cursor:default}.tx-tb tbody tr:hover td{background:#FAFAFC}
 .tx-tb .dn{text-align:right;padding-right:10px;color:var(--ink2);font-size:12px;white-space:nowrap;cursor:default}.tx-tb tr.blk td{background:#FDF6F3}
@@ -23076,5 +23076,16 @@ go();
 })();
 </script>
 
+<script>
+/* 711: Trainings table headers follow the page scroll (below the app's top bar) */
+(function(){ let q = 0;
+  function bar(){ const n = document.getElementById('hName'); let el = n; while(el && el !== document.body){ const p = getComputedStyle(el).position; if(p === 'fixed' || p === 'sticky') return el.getBoundingClientRect().bottom; el = el.parentElement; } return 0; }
+  function run(){ q = 0; const T = document.querySelectorAll('.tx-tb'); if(!T.length) return; const top = bar();
+    T.forEach(t => { const r = t.getBoundingClientRect(), th = t.querySelector('thead'); if(!th) return; const hh = th.getBoundingClientRect().height;
+      const dy = Math.max(0, Math.min(top - r.top, r.height - hh - 40)); t.style.setProperty('--hy', (dy > 0 ? Math.round(dy) : 0) + 'px'); }); }
+  window.addEventListener('scroll', () => { if(!q) q = requestAnimationFrame(run); }, { passive: true });
+  document.addEventListener('scroll', e => { if(e.target && e.target.classList && e.target.classList.contains('tx-tb') && !q) q = requestAnimationFrame(run); }, { passive: true, capture: true });
+})();
+</script>
 </body>
 </html>
