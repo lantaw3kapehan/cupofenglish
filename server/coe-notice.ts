@@ -11,6 +11,7 @@
 //   void    { id, reason }          → { ok }            (management: sent by mistake)
 //   cel_list / cel_mark { k, kind, code, name, detail, skip, book, undo } / cel_seed { map } / cel_base { map } → Celebrate (management)
 //   speed { rows:[{fn,ms,ui,view,v,dev,at}] } → { ok, n }   (anyone signed in: waits measured in the app)
+//   book_buy_list (anyone signed in) / book_buy_set { code, f } / book_cover_put { code, side: sb|wb, type, b64 } → Books to buy (23 Oct)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -70,7 +71,30 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await db.storage.from("contracts").createSignedUrl(f.path, 600); if (error) return out({ ok: false, error: error.message });
       return out({ ok: true, url: data.signedUrl });
     }
+    if (a === "book_buy_list") {   // 23 Oct · Books to buy: covers + Taobao search words per course book (anyone signed in)
+      const { data, error } = await db.from("coe_book_buy").select("code,title,search_cn,isbn_sb,isbn_wb,sb_cover,wb_cover,note,hidden,updated_at").limit(500);
+      if (error) return out({ ok: false, error: error.message }); return out({ ok: true, list: data || [] });
+    }
     if (!mgmt) return out({ ok: false, error: "Management only." }, 403);
+    if (a === "book_buy_set") {   // management edits the title, search words, ISBNs, note, hidden
+      const code = str(b.code, 40).toLowerCase(); if (!code) return out({ ok: false, error: "No book" });
+      const f = b.f || {}, row: any = { code, updated_by: me, updated_at: now };
+      for (const k of ["title", "search_cn", "isbn_sb", "isbn_wb", "note"]) if (k in f) row[k] = str(f[k], k === "note" ? 400 : 200) || null;
+      if ("hidden" in f) row.hidden = !!f.hidden;
+      const { error } = await db.from("coe_book_buy").upsert(row, { onConflict: "code" }); if (error) return out({ ok: false, error: error.message });
+      const { data } = await db.from("coe_book_buy").select("*").eq("code", code).maybeSingle(); return out({ ok: true, item: data });
+    }
+    if (a === "book_cover_put") {   // management replaces a cover with their own picture (screenshot / photo)
+      const code = str(b.code, 40).toLowerCase(), side = b.side === "wb" ? "wb" : "sb", type = str(b.type, 30);
+      if (!code || !/^image\/(png|jpeg|webp)$/.test(type)) return out({ ok: false, error: "Choose a PNG or JPG picture." });
+      const bin = Uint8Array.from(atob(String(b.b64 || "")), (c) => c.charCodeAt(0)); if (bin.length < 2000 || bin.length > 5e6) return out({ ok: false, error: "The picture must be under 5 MB." });
+      const path = code + "-" + side + "-own." + type.split("/")[1].replace("jpeg", "jpg");
+      const up = await db.storage.from("covers").upload(path, bin, { contentType: type, upsert: true }); if (up.error) return out({ ok: false, error: up.error.message });
+      const url = db.storage.from("covers").getPublicUrl(path).data.publicUrl + "?v=" + Date.now();
+      const row: any = { code, updated_by: me, updated_at: now }; row[side + "_cover"] = url; row[side + "_file"] = "own";
+      const { error } = await db.from("coe_book_buy").upsert(row, { onConflict: "code" }); if (error) return out({ ok: false, error: error.message });
+      const { data } = await db.from("coe_book_buy").select("*").eq("code", code).maybeSingle(); return out({ ok: true, item: data });
+    }
     // ── 22 Oct · Celebrate (birthdays, new books, lesson milestones): what was sent or skipped, and each student's books so far ──
     if (a === "cel_list") {
       const since = new Date(Date.now() - 400 * 864e5).toISOString();
