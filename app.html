@@ -6158,13 +6158,17 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1069;
+const COE_V = 1070;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
-function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
+function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
+function updBanner(){ try{ if(document.getElementById('updBn')) return; const b = document.createElement('div'); b.id = 'updBn';
+  b.style.cssText = 'position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:9999;display:flex;gap:10px;align-items:center;background:#2B2253;color:#fff;border-radius:999px;padding:8px 8px 8px 16px;font-size:13.5px;box-shadow:0 10px 30px -10px rgba(43,34,83,.6)';
+  b.innerHTML = '<span>✨ New version ready</span><button type="button" style="border:0;border-radius:999px;background:#3CC8C0;color:#10302F;font:inherit;font-weight:700;padding:6px 14px;cursor:pointer">Update</button><button type="button" aria-label="Later" style="border:0;background:none;color:#fff;opacity:.7;font:inherit;cursor:pointer;padding:4px 6px">✕</button>';
+  b.children[1].onclick = () => location.reload(); b.children[2].onclick = () => b.remove(); document.body.appendChild(b); }catch(e){} }
 function updQuiet(){ try{ if(window._vupBusy || (typeof API_PEND !== 'undefined' && API_PEND > 0)) return true; if(typeof D === 'undefined' || !D || D.mgr || performance.now() < 15000) return false;
   /* 644 · 22 Oct: was quiet from 16:00 to midnight · now only while the teacher is in a class (5 min before start to 5 min after end) */
-  const now = Date.now(); return (D.schedule || []).some(c => c && !c.cancelled && c.day === D.today && now >= new Date(c.start).getTime() - 5 * 6e4 && now <= new Date(c.end).getTime() + 5 * 6e4); }catch(e){ return false; } }
+  const now = Date.now(); return (D.schedule || []).some(c => c && !c.cancelled && c.day === D.today && now >= new Date(c.start).getTime() - 6e4 && now <= new Date(c.end).getTime()); }catch(e){ return false; } }   /* 738: only while the class is running */
 let UPD_AT = 0;
 function fetchUpdate(){ if(!API_URL || GAS || Date.now() - UPD_AT < 10*60000) return; UPD_AT = Date.now();
 fetch('version.txt', {cache:'no-store'}).then(r => r.text()).then(v => { if(+v > COE_V) fetchUpdateFull(); }).catch(()=>{}); }   /* a tiny version check first · the full app only downloads when there is a newer one */
@@ -23192,7 +23196,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const dev = () => { const ua = navigator.userAgent || '', ph = /Mobi|Android|iPhone|iPod/i.test(ua), tab = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1); let app = false; try{ app = matchMedia('(display-mode: standalone)').matches || navigator.standalone; }catch(x){} return (ph ? 'phone' : tab ? 'tablet' : 'laptop') + (app ? '·app' : ''); };
   let last = 0;
   function ping(force){ if(!TOKEN || !hasD() || document.visibilityState !== 'visible') return; if(!force && Date.now() - last < 55000) return; last = Date.now();
-    post('ping', { dev: dev(), view: typeof VIEW !== 'undefined' ? VIEW : '', v: +(window.COE_V || 0) || null }).catch(() => {}); }
+    post('ping', { dev: dev(), view: typeof VIEW !== 'undefined' ? VIEW : '', v: (typeof COE_V !== 'undefined' ? COE_V : null) }).catch(() => {}); }
   setInterval(() => ping(), 60000); document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') ping(true); });
   setTimeout(function w(){ if(hasD() && TOKEN) ping(true); else setTimeout(w, 2000); }, 2000);
   /* management: header pill + list */
@@ -23213,10 +23217,11 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     if(!b){ rf.insertAdjacentHTML('beforebegin', '<button id="onlN" type="button" title="Who is using the app now"></button>'); b = document.getElementById('onlN'); b.onclick = () => window.onlOpen(); const t = document.getElementById('tinNag'); if(t) t.before(b); }
     const P = people(), n = P.filter(p => p.on).length; b.style.display = 'inline-flex'; b.innerHTML = '<i></i>' + n + ' online';
     if(document.getElementById('onlL')) window.onlOpen(true); }
+  const vTag = v => !v || v < COE_V ? ' · <b style="color:#B4532F">old version' + (v ? ' ' + v : '') + '</b>' : ' · <span style="color:#2E9E6F">up to date</span>';
   window.onlOpen = function(keep){ const P = people(), me = (D.me || {}).name || '', on1 = P.filter(p => p.on), off = P.filter(p => !p.on);
     const row = p => { const r = p.rows.filter(on).concat(p.rows.filter(x => !on(x)))[0], t = p.mode === 'mgmt' ? 'Management' : 'Teacher';
       return '<div class="onl-it"><span class="d" style="background:' + (p.on ? '#2FB36B' : '#CFCDD9') + '"></span><div style="flex:1"><b>' + e(p.name) + (p.name === me ? ' (you)' : '') + '</b> <span class="mute small">' + t + '</span><small>'
-        + (p.on ? p.rows.filter(on).map(x => devL(x.dev) + (x.view ? ' · ' + e(VN[x.view] || x.view) : '') + ' · since ' + hm(x.since)).join(' &nbsp;|&nbsp; ') : 'Last seen ' + hm(r.at) + ' · ' + devL(r.dev)) + '</small></div></div>'; };
+        + (p.on ? p.rows.filter(on).map(x => devL(x.dev) + (x.view ? ' · ' + e(VN[x.view] || x.view) : '') + ' · since ' + hm(x.since) + vTag(x.v)).join(' &nbsp;|&nbsp; ') : 'Last seen ' + hm(r.at) + ' · ' + devL(r.dev) + vTag(r.v)) + '</small></div></div>'; };
     const h = '<h1>Online now</h1><div class="mute small" id="onlL">Using the app in the last 3 minutes · updates every minute</div>'
       + '<div style="margin-top:10px">' + (on1.length ? on1.map(row).join('') : '<div class="small mute" style="padding:10px 0">No one right now.</div>') + '</div>'
       + (off.length ? '<h2 style="font-size:15px;margin-top:16px">Earlier today</h2>' + off.map(row).join('') : '');
