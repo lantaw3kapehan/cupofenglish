@@ -45,11 +45,15 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
     return true;
   }
   var net = get('app.html').catch(function () { return get(API + '?app=1'); });   // backup: the old Apps Script copy
+  /* 23 Oct · 738 · opening the app waits up to 2.5 s for the newest screens; if they arrive in time the newest version opens right away
+     (teachers kept seeing an old version because the saved copy always opened first). Slow or no internet → the saved copy, as before. */
+  function show(h) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { paint(h); }); else paint(h); }
   function boot(have) {
+    var done = false, t = have ? setTimeout(function () { if (!done) { done = true; show(have); } }, 2500) : null;
     net.then(function (h) {
-      if (h !== have && ver(h) >= ver(have)) { save(h); if (!have) paint(h); }   // a newer version shows next time · never step back to an older copy (stale CDN or the old backup)
-    }).catch(function () { if (!have && !painted) document.getElementById('m').textContent = 'No connection. Check your internet and reopen.'; });
-    if (have) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { paint(have); }); else paint(have); }
+      if (h !== have && ver(h) >= ver(have)) { save(h); if (!done) { done = true; if (t) clearTimeout(t); show(h); } }   // never step back to an older copy (stale CDN or the old backup)
+      else if (have && !done) { done = true; clearTimeout(t); show(have); }
+    }).catch(function () { if (have && !done) { done = true; clearTimeout(t); show(have); } else if (!have && !painted) document.getElementById('m').textContent = 'No connection. Check your internet and reopen.'; });
   }
   if (cached) boot(cached);
   else cGet().then(function (c) { boot(c && c.indexOf('COE_API') > -1 ? c : null); });
