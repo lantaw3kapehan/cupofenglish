@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1029;
+const COE_V = 1030;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22598,7 +22598,7 @@ go();
   const triesQ = (d, t, p) => (d.quiz || []).filter(q => q.teacher === t && q.part_id === p.id && q.ver === p.ver).length;
   const partDone = (d, t, p) => { const g = progOf(d, t, p); return !!(g && g.done_at && (!p.approve || g.approved_at)); };
   function myRank(){ const c = (typeof GR !== 'undefined' && GR && GR.career) || ((typeof kept === 'function' && kept('growth')) || {}).career || null; return c ? { ix: c.index, rank: c.rank, life: c.lifetime, next: c.next } : null; }
-  async function loadMy(force){ if(!force && MY && Date.now() - MYT < 60000) return MY; MY = await call('my'); MYT = Date.now(); return MY; }
+  async function loadMy(force){ if(!force && MY && Date.now() - MYT < 60000) return MY; MY = await call('my'); MYT = Date.now(); setTimeout(txUp, 0); return MY; }
   async function loadAll(force){ if(!force && AL && Date.now() - ALT < 60000) return AL; AL = await call('all'); ALT = Date.now(); return AL; }
 
   /* status of each mandatory training for one teacher → [{t, st: done|next|open|lock|assigned, rec, gi}] */
@@ -22820,6 +22820,30 @@ go();
     try{ for(const t of (s.invited || [])) await call('rec_add', { teacher: t, training_id: 'coach', status: 'done', via: 'live', done_at: s.starts_at, note: packN(s.note || 'Coaching', n, (($('tcC2') || {}).value || s.facilitator || ''), (($('tcV2') || {}).value || '').trim()) });
       await call('sess_set', { s: Object.assign({}, s, { status: 'done' }) }); toast('Saved ✓'); closeSheet(); await loadAll(true); paintAll(); }catch(x){ toast(x.message); b.disabled = false; } };
   window.trListOpen = k => { const L = (window._trLists || {})[k]; if(!L) return; openSheet('<h1>' + L[0] + '</h1><div style="margin-top:10px">' + (L[1].join('') || '<div class="small mute" style="padding:10px 0">Nothing here now.</div>') + '</div>' + (L[2] ? '<div style="margin-top:14px">' + L[2] + '</div>' : '')); };
+  /* 698: ★ count in the header + "Cleared to teach" on Growth */
+  const txT = () => typeof D !== 'undefined' && D && !D.mgr;
+  function txOk(){ if(!MY) return []; const BO = ['Specializations', 'Phonics', 'Reading', 'Oxford Discover', 'Adults', 'Books', 'Trial classes'];
+    return (MY.trainings || []).filter(t => t.kind === 'unlock' && ['done', 'excused'].includes((latestRec(MY.records, MY.me, t.id) || {}).status)).sort((a, b) => BO.indexOf(BG(a)) - BO.indexOf(BG(b)) || a.sort - b.sort); }
+  function txStar(){ const r = $('hRank'); if(!r) return; let b = $('txStar'); const n = txT() ? txOk().length : 0;
+    if(!n){ if(b) b.remove(); return; }
+    if(!b){ r.insertAdjacentHTML('beforeend', '<button id="txStar" type="button" onclick="event.stopPropagation();go(\'train\')"></button>'); b = $('txStar'); }
+    const t = '★ ' + n; if(b.textContent !== t){ b.textContent = t; b.title = 'Cleared to teach ' + n + ' · open Trainings'; } }
+  function txGrow(){ const g = $('v-growth'); if(!g) return; const c = $('txGrow'), L = txT() ? txOk() : [];
+    if(!L.length){ if(c) c.remove(); return; }
+    const lab = t => t.id === 'trial' ? 'Trial classes' : t.title.split(' · ')[0].replace(/ Specialization$/, '');
+    const h = '<span class="k">Cleared to teach</span><div class="tx-bdg">' + L.map(t => '<span style="--c:' + (BGC[BG(t)] || '#9A97AE') + '">' + (BG(t) === 'Specializations' ? '★ ' : '') + e(lab(t)) + '</span>').join('') + '</div><button type="button" class="btn ghost sm" onclick="go(\'train\')">Trainings ›</button>';
+    if(c && c._h === h && c.parentNode === g) return; if(c) c.remove();
+    const d = document.createElement('div'); d.id = 'txGrow'; d.innerHTML = h; d._h = h; const ld = g.querySelector(':scope > .lead');
+    if(ld) ld.after(d); else g.prepend(d); }
+  function txUp(){ try{ txStar(); }catch(x){} try{ txGrow(); }catch(x){} }
+  (function(){ const st = document.createElement('style'); st.textContent = '#txStar{border:1.5px solid #D67FA3;background:#FBEFF4;color:#8A3B6A;font:inherit;font-weight:700;font-size:12px;border-radius:99px;padding:1px 8px;margin-left:6px;cursor:pointer;vertical-align:1px}'
+      + '#txGrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card,#fff);border:1px solid var(--line);border-radius:18px;padding:12px 16px;margin:12px 0}#txGrow .k{font-size:12px;font-weight:700;color:var(--ink2,#5E5A75)}#txGrow .tx-bdg{margin:0;flex:1}';
+    document.head.appendChild(st);
+    let q = 0; const later = () => { if(q) return; q = requestAnimationFrame(() => { q = 0; txUp(); }); };
+    const w = () => { const r = $('hRank'), g = $('v-growth'); if(!r || !g || !txT()){ setTimeout(w, 1500); return; }
+      new MutationObserver(later).observe(r, { childList: true }); new MutationObserver(later).observe(g, { childList: true });
+      loadMy().catch(() => {}); setInterval(() => { if(document.visibilityState === 'visible' && Date.now() - MYT > 9 * 60e3) loadMy(true).catch(() => {}); }, 10 * 60e3); };
+    setTimeout(w, 4000); })();
   window.trView = async function(name){ try{ toast('Opening ' + tName(name) + '…'); TV = await call('my', { teacher: name }); const x = teachers().find(y => y.name === name) || { ix: 0, rank: '', life: 0 };
       openSheet('<div class="tr tx">' + profHtml(TV, name, x.rank) + ladderHtml(TV, name, { ix: Math.max(0, x.ix), rank: x.rank, life: x.life, next: x.next }) + trUpTo(name) + '<h2>Coaching</h2>' + coachList(TV, name) + '<h2>CupOfEnglish Way</h2>' + partsOf(TV, 'way').map(p => partRow(TV, name, p)).join('') + '</div>'); }catch(x){ toast(x.message); } };
   window.trCell = function(name, id){ const d = AL, t = (d.trainings || []).find(x => x.id === id), H = (d.records || []).filter(r => r.teacher === name && r.training_id === id);
