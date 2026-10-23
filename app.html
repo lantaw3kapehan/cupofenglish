@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1060;
+const COE_V = 1061;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -23252,7 +23252,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const where = r => [r.dev, r.net, r.ip ? 'IP ' + r.ip : '', r.speed].filter(Boolean).join(' · ');
   const map = r => r.lat != null ? 'https://maps.google.com/?q=' + (+r.lat).toFixed(6) + ',' + (+r.lng).toFixed(6) : '';
   let ST = null;
-  async function load(name, day){ ST = { name, day, rows: null }; paint();
+  async function load(name, day, el){ ST = { name, day, rows: null, el: el || null }; paint();
     try{ const r = await call({ action: 'activity', teacher: name || undefined, day }); if(!ST || ST.day !== day) return; if(!r || !r.ok) throw new Error((r && r.error) || 'Could not load'); ST.rows = r.rows || []; ST.who = r.who; }catch(e){ ST.err = e.message; } paint(); }
   function paint(){ if(!ST) return; const s = ST, mine = !(typeof D !== 'undefined' && D && D.mgr), who = s.who || s.name || ((D && D.me && D.me.name) || '');
     const L = (s.rows || []).filter(r => window._alAll || r.fn !== 'tMsgSeen');
@@ -23268,9 +23268,10 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
         + '<div class="al-ref">Ref #' + r.id + '</div></div></div>'; }).join('') + '</div>'
       + '<label class="small mute" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox"' + (window._alAll ? ' checked' : '') + ' onchange="window._alAll=this.checked;actLogPaint()"> Also show "Opened messages"</label>'
       + '<button class="btn teal block" style="margin-top:12px" onclick="actLogCopy()">Copy as proof · paste in WeChat</button>';
-    if($('sheet').classList.contains('on') && $('sheetBody').querySelector('#alBox')) $('sheetBody').querySelector('#alBox').innerHTML = h; else openSheet('<div id="alBox">' + h + '</div>'); }
+    if(s.el){ s.el.innerHTML = '<div class="al-page">' + h + '</div>'; return; } if($('sheet').classList.contains('on') && $('sheetBody').querySelector('#alBox')) $('sheetBody').querySelector('#alBox').innerHTML = h; else openSheet('<div id="alBox">' + h + '</div>'); }
   window.actLog = (name, day) => load(name || '', day || today());
-  window.actLogDay = n => { if(!ST) return; const d = shift(ST.day, n); if(d > today()) return; load(ST.name, d); };
+  window.actLogDay = n => { if(!ST) return; const d = shift(ST.day, n); if(d > today()) return; load(ST.name, d, ST.el); };
+  window.actLogPage = () => { const v = $('v-act'); if(v) load('', (ST && ST.el === v && ST.day) || today(), v); };
   window.actLogPaint = () => paint();
   window.actLogCopy = async () => { if(!ST || !ST.rows) return; const who = ST.who || ST.name, L = ST.rows.filter(r => window._alAll || r.fn !== 'tMsgSeen');
     const t = 'CupOfEnglish · activity log\nTeacher ' + who + ' · ' + dayLab(ST.day) + '\nTimes are from the CupOfEnglish server (Philippine time). Kept permanently; cannot be edited or deleted.\n\n'
@@ -23279,11 +23280,19 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const st = document.createElement('style'); st.textContent = '.al-it{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #F0EFF5;font-size:13.5px}.al-it:last-child{border-bottom:0}.al-t{font-variant-numeric:tabular-nums;min-width:66px;color:#2B2253}.al-ref{font-size:10.5px;color:#B3B0C2;margin-top:2px}'
     + '.al-my{display:flex;gap:12px;align-items:center;margin:12px 0;padding:12px 14px;border-radius:14px;background:#fff;border:1px solid #ECEAF1}'; document.head.appendChild(st);
   /* teacher: Pay › My activity log */
-  function payBtn(){ try{ if(typeof D === 'undefined' || !D || D.mgr) return; const v = $('v-pay'); if(!v || v.classList.contains('hide') || v.querySelector('.al-my')) return;
+  function payBtn(){ return; try{ if(typeof D === 'undefined' || !D || D.mgr) return; const v = $('v-pay'); if(!v || v.classList.contains('hide') || v.querySelector('.al-my')) return;
     const w = document.createElement('div'); w.className = 'al-my'; w.innerHTML = '<div class="grow"><b>📋 My activity log</b><div class="small mute">Every time in, "I\'m in", note and message you save · with the server\'s time · your proof if anything is questioned</div></div><button class="btn sm teal" onclick="actLog()">Open</button>';
     const ld = v.querySelector(':scope > .lead'); if(ld) ld.after(w); else v.prepend(w); }catch(e){} }
   const _go = window.go; if(_go) window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'pay'){ setTimeout(payBtn, 300); setTimeout(payBtn, 1500); } }catch(e){} return r; };
-  setInterval(payBtn, 3000);
+  /* 729 · its own screen */
+  try{ ICON.act = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v2h6V3M9 10h6M9 14h6M9 18h3"/></svg>'; }catch(e){}
+  (function w(){ try{ if(typeof D === 'undefined' || !D || typeof NAV_T === 'undefined' || !$('v-today')){ setTimeout(w, 800); return; }
+    if(!$('v-act')){ const d0 = document.createElement('div'); d0.id = 'v-act'; d0.className = 'hide'; $('v-today').parentNode.appendChild(d0); }
+    if(VIEWS.indexOf('act') < 0) VIEWS.push('act');
+    if(!D.mgr && !NAV_T.some(x => x[0] === 'act')){ const i = NAV_T.findIndex(x => x[0] === 'pay'); NAV_T.splice(i < 0 ? NAV_T.length : i + 1, 0, ['act', 'Activity log', 'act']); buildNav(); }
+    if(typeof VIEW !== 'undefined' && VIEW === 'act') actLogPage(); }catch(e){ setTimeout(w, 1500); } })();
+  const _go2 = window.go; window.go = function(v){ const r = _go2.apply(this, arguments); try{ if(v === 'act') actLogPage(); }catch(e){} return r; };
+  (function(){ const st2 = document.createElement('style'); st2.textContent = '.al-page{max-width:760px}.al-page h1{margin-bottom:2px}.al-page .al{background:#fff;border:1px solid #ECEAF1;border-radius:18px;padding:4px 18px;margin-top:4px}'; document.head.appendChild(st2); })();
 })();
 </script>
 
