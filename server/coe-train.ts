@@ -195,6 +195,22 @@ Deno.serve(async (req: Request) => {
       }
       return out({ ok: true, dec });
     }
+    // 23 Oct · activity log (proof): every save a teacher made, with the server's time and the device/network/location the app sent.
+    // Teacher: own only. Management: any teacher. Read-only — nobody can edit or delete these rows from the app.
+    if (a === "activity") {
+      const who = mgmt && b.teacher ? str(b.teacher, 60) : me, day = /^\d{4}-\d{2}-\d{2}$/.test(str(b.day, 10)) ? str(b.day, 10) : new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+      const from = new Date(day + "T00:00:00+08:00"), to = new Date(from.getTime() + 864e5);
+      const { data, error } = await db.from("writes").select("id,fn,args,status,error,result,created_at,done_at").ilike("who", who).gte("created_at", from.toISOString()).lt("created_at", to.toISOString()).neq("status", "test").order("id").limit(300);
+      if (error) return out({ ok: false, error: error.message });
+      const rows = (data || []).map((w: any) => { const A = Array.isArray(w.args) ? w.args : [], o = (x: any) => (x && typeof x === "object" && !Array.isArray(x)) ? x : {};
+        const c = w.fn === "classIn" ? o(A[1]) : w.fn === "saveNote" ? o(A[1]) : {}, dv = w.fn === "classIn" ? o(A[2]) : w.fn === "timeIn" ? o(A[3]) : {}, r = o(w.result);
+        const ci = o(r.classIn || r.timeIn || r.ti);
+        return { id: w.id, fn: w.fn, at: w.created_at, status: w.status, error: w.error || "", note: str(r.note, 160), rec: str(ci.time, 10), mins: ci.mins ?? null, proof: str(ci.proof, 300), rst: str(ci.status, 30), place: str(ci.place, 160), flag: str(ci.flag, 120),
+          student: str(c.student, 60), code: str(c.code, 20), start: str(c.start || c.date, 30), dev: str(dv.device, 120), ip: str(dv.ip, 60), net: str(dv.net, 120), speed: str(dv.speed, 120),
+          lat: typeof dv.lat === "number" ? dv.lat : null, lng: typeof dv.lng === "number" ? dv.lng : null, acc: typeof dv.acc === "number" ? dv.acc : null,
+          text: w.fn === "tMsgSend" ? str(A[1], 120) : w.fn === "tMsgAck" ? str(A[2], 40) : "" }; });
+      return out({ ok: true, who, day, rows });
+    }
     if (a === "upload_url") {
       need(); const p = await part(+b.part_id); if (!p) return out({ ok: false, error: "Not found" }, 404);
       const ext = (str(b.name, 100).match(/\.(mp4|webm|mov|m4v)$/i) || [".mp4"])[0].toLowerCase(), path = p.training_id + "/" + p.id + "-v" + (p.ver + (p.video_path ? 1 : 0)) + "-" + Date.now() + ext;

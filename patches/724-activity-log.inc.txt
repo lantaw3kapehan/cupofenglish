@@ -1,0 +1,56 @@
+<script>
+/* 23 Oct · 724 · (Misty) Activity log = proof. Every save a teacher makes (time in, "I'm in", notes, homework, messages, Got it…) is kept in the
+   database with the SERVER's time (Philippine time) and the device, network and location the app sent. Nobody can edit or delete it from the app.
+   Management: a teacher's sheet › "Activity log", and "Proof" on each late in Overview. Teachers: Pay › "My activity log" (their own copy).
+   "Copy as proof" gives plain text to paste into WeChat. */
+(function(){
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-train';
+  const call = b => fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, b)) }).then(x => x.json());
+  const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const today = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const shift = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+  const hms = iso => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Manila' });
+  const hm = iso => iso ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' }) : '';
+  const dayLab = d => new Date(d + 'T12:00:00+08:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Manila' });
+  const NAME = { timeIn: 'Time in', classIn: '"I\'m in"', saveNote: 'Class note', markHomework: 'Homework', tMsgSend: 'Message sent', tMsgAck: 'Replied to a notice', tMsgSeen: 'Opened messages', tNoteTag: 'Note tags', tVisitAck: 'Class visit seen',
+    tLeaveRequest: 'Leave request', tFbSubmit: 'Monthly feedback', tPcSubmit: 'Progress check', tPeerSubmit: 'Peer review', tTrialSubmit: 'Trial report', tHwFlag: 'Homework flag', tSetMeet: 'Meeting ID' };
+  const what = r => (NAME[r.fn] || r.fn) + (r.fn === 'classIn' ? ' · ' + (r.student || r.code) + (r.start ? ' ' + hm(r.start) + ' class' : '') : r.fn === 'saveNote' && r.student ? ' · ' + r.student : '') + (r.text ? ' · "' + r.text + '"' : '');
+  const res = r => r.status === 'error' ? ['✕ Not saved' + (r.error ? ' · ' + r.error : ''), '#C2483A'] : r.status !== 'done' ? ['… saving', '#9A6A12']
+    : r.rst ? ['✓ Saved · ' + r.rst + (r.mins != null && r.mins !== '' ? ' (' + (+r.mins >= 0 ? r.mins + ' min before' : Math.abs(+r.mins) + ' min after start') + ')' : ''), /Late/.test(r.rst) ? '#C2483A' : '#1E7A55'] : ['✓ Saved' + (r.note ? ' · ' + r.note : ''), '#1E7A55'];
+  const where = r => [r.dev, r.net, r.ip ? 'IP ' + r.ip : '', r.speed].filter(Boolean).join(' · ');
+  const map = r => r.lat != null ? 'https://maps.google.com/?q=' + (+r.lat).toFixed(6) + ',' + (+r.lng).toFixed(6) : '';
+  let ST = null;
+  async function load(name, day){ ST = { name, day, rows: null }; paint();
+    try{ const r = await call({ action: 'activity', teacher: name || undefined, day }); if(!ST || ST.day !== day) return; if(!r || !r.ok) throw new Error((r && r.error) || 'Could not load'); ST.rows = r.rows || []; ST.who = r.who; }catch(e){ ST.err = e.message; } paint(); }
+  function paint(){ if(!ST) return; const s = ST, mine = !(typeof D !== 'undefined' && D && D.mgr), who = s.who || s.name || ((D && D.me && D.me.name) || '');
+    const L = (s.rows || []).filter(r => window._alAll || r.fn !== 'tMsgSeen');
+    let h = '<h1>' + (mine ? 'My activity log' : 'Activity log') + '</h1><div class="small mute">' + (mine ? '' : 'Teacher ' + E(typeof tName === 'function' ? tName(who) : who) + ' · ') + 'every save, timed by the CupOfEnglish server (Philippine time) · kept permanently · cannot be edited or deleted</div>'
+      + '<div class="row" style="gap:8px;align-items:center;margin:12px 0"><button class="btn sm ghost" onclick="actLogDay(-1)">‹</button><b class="grow" style="text-align:center">' + E(dayLab(s.day)) + '</b><button class="btn sm ghost" onclick="actLogDay(1)"' + (s.day >= today() ? ' disabled' : '') + '>›</button></div>';
+    if(s.err) h += '<div class="empty">' + E(s.err) + '</div>';
+    else if(!s.rows) h += '<div class="sk"></div><div class="sk" style="width:70%"></div>';
+    else if(!L.length) h += '<div class="empty">Nothing saved from the app on this day.</div>';
+    else h += '<div class="al">' + L.map(r => { const [t, c] = res(r), m = map(r);
+      return '<div class="al-it"><b class="al-t">' + E(hms(r.at)) + '</b><div class="grow"><b>' + E(what(r)) + '</b><div class="small" style="color:' + c + ';font-weight:700">' + E(t) + '</div>'
+        + (where(r) ? '<div class="small mute">' + E(where(r)) + '</div>' : '') + (r.place || r.flag ? '<div class="small mute">' + E([r.place, r.flag ? '⚠ ' + r.flag : ''].filter(Boolean).join(' · ')) + '</div>' : '')
+        + ((m || r.proof) ? '<div class="small" style="margin-top:2px">' + (r.proof ? '<a class="link" href="' + E(r.proof) + '" target="_blank" rel="noopener">Screenshot</a>' : '') + (r.proof && m ? ' · ' : '') + (m ? '<a class="link" href="' + E(m) + '" target="_blank" rel="noopener">Map' + (r.acc ? ' (±' + Math.round(r.acc) + ' m)' : '') + '</a>' : '') + '</div>' : '')
+        + '<div class="al-ref">Ref #' + r.id + '</div></div></div>'; }).join('') + '</div>'
+      + '<label class="small mute" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox"' + (window._alAll ? ' checked' : '') + ' onchange="window._alAll=this.checked;actLogPaint()"> Also show "Opened messages"</label>'
+      + '<button class="btn teal block" style="margin-top:12px" onclick="actLogCopy()">Copy as proof · paste in WeChat</button>';
+    if($('sheet').classList.contains('on') && $('sheetBody').querySelector('#alBox')) $('sheetBody').querySelector('#alBox').innerHTML = h; else openSheet('<div id="alBox">' + h + '</div>'); }
+  window.actLog = (name, day) => load(name || '', day || today());
+  window.actLogDay = n => { if(!ST) return; const d = shift(ST.day, n); if(d > today()) return; load(ST.name, d); };
+  window.actLogPaint = () => paint();
+  window.actLogCopy = async () => { if(!ST || !ST.rows) return; const who = ST.who || ST.name, L = ST.rows.filter(r => window._alAll || r.fn !== 'tMsgSeen');
+    const t = 'CupOfEnglish · activity log\nTeacher ' + who + ' · ' + dayLab(ST.day) + '\nTimes are from the CupOfEnglish server (Philippine time). Kept permanently; cannot be edited or deleted.\n\n'
+      + L.map(r => { const m = map(r); return hms(r.at) + ' · ' + what(r) + ' · ' + res(r)[0] + (where(r) ? '\n   ' + where(r) : '') + (m ? '\n   ' + m : '') + (r.proof ? '\n   Screenshot: ' + r.proof : '') + '\n   Ref #' + r.id; }).join('\n') + (L.length ? '' : 'Nothing saved from the app on this day.');
+    try{ await navigator.clipboard.writeText(t); toast('Copied ✓ · paste it in WeChat'); }catch(e){ openSheet('<h1>Copy as proof</h1><textarea style="width:100%;height:60vh">' + E(t) + '</textarea>'); } };
+  const st = document.createElement('style'); st.textContent = '.al-it{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #F0EFF5;font-size:13.5px}.al-it:last-child{border-bottom:0}.al-t{font-variant-numeric:tabular-nums;min-width:66px;color:#2B2253}.al-ref{font-size:10.5px;color:#B3B0C2;margin-top:2px}'
+    + '.al-my{display:flex;gap:12px;align-items:center;margin:12px 0;padding:12px 14px;border-radius:14px;background:#fff;border:1px solid #ECEAF1}'; document.head.appendChild(st);
+  /* teacher: Pay › My activity log */
+  function payBtn(){ try{ if(typeof D === 'undefined' || !D || D.mgr) return; const v = $('v-pay'); if(!v || v.classList.contains('hide') || v.querySelector('.al-my')) return;
+    const w = document.createElement('div'); w.className = 'al-my'; w.innerHTML = '<div class="grow"><b>📋 My activity log</b><div class="small mute">Every time in, "I\'m in", note and message you save · with the server\'s time · your proof if anything is questioned</div></div><button class="btn sm teal" onclick="actLog()">Open</button>';
+    const ld = v.querySelector(':scope > .lead'); if(ld) ld.after(w); else v.prepend(w); }catch(e){} }
+  const _go = window.go; if(_go) window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'pay'){ setTimeout(payBtn, 300); setTimeout(payBtn, 1500); } }catch(e){} return r; };
+  setInterval(payBtn, 3000);
+})();
+</script>
