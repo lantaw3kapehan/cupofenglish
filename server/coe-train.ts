@@ -184,6 +184,17 @@ Deno.serve(async (req: Request) => {
       if (f.startsWith("coach/")) n += "\n§file:" + f; else if (/^https?:\/\//.test(v)) n += "\n§video:" + v;
       const { data, error } = await db.from("coe_training_records").update({ note: n.slice(0, 4000) }).eq("id", r.id).select().single(); return out({ ok: !error, error: error && error.message, record: data });
     }
+    // 23 Oct · video checks: management's OK / Needs action is saved here at once (Google can take a minute); every manager sees it right away
+    if (a === "vf_dec" || a === "vf_decs") {
+      need(); const { data: d0 } = await db.from("docs").select("data").eq("key", "mgmt:vfdec").maybeSingle(); let dec: any = (d0 && d0.data && typeof d0.data === "object") ? d0.data : {};
+      if (a === "vf_dec") {
+        const k = str(b.k, 140), st = str(b.st, 10); if (!k || !["ok", "action", "open"].includes(st)) return out({ ok: false, error: "Choose OK or Needs action" });
+        const cut = Date.now() - 60 * 864e5; dec = Object.fromEntries(Object.entries(dec).filter(([, v]: any) => (v && v.at) > cut));
+        dec[k] = { st, by: me, at: Date.now(), note: str(b.note, 300) };
+        const { error } = await db.from("docs").upsert({ key: "mgmt:vfdec", scope: "mgmt", data: dec, updated_at: now }); if (error) return out({ ok: false, error: error.message });
+      }
+      return out({ ok: true, dec });
+    }
     if (a === "upload_url") {
       need(); const p = await part(+b.part_id); if (!p) return out({ ok: false, error: "Not found" }, 404);
       const ext = (str(b.name, 100).match(/\.(mp4|webm|mov|m4v)$/i) || [".mp4"])[0].toLowerCase(), path = p.training_id + "/" + p.id + "-v" + (p.ver + (p.video_path ? 1 : 0)) + "-" + Date.now() + ext;
