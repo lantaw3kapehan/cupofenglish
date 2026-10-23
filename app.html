@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 986;
+const COE_V = 987;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -11996,7 +11996,7 @@ body:not(.mgr) #v-books .bl-c{border-radius:18px;overflow:hidden;border:1px soli
     const btn = $('cbGo'); if(btn){ btn.disabled = true; btn.textContent = 'Renaming the classes…'; }
     try{ const r = await api('mgmtSetBook', TOKEN, code, b, d); if(!r || !r.ok) throw r;
       closeSheet(); if(r.done === false) toast(`${r.book} from ${r.from} · ${r.n} classes changed now, the rest within a few minutes`); else toast(r.n ? `${r.n} upcoming class${r.n === 1 ? '' : 'es'} now ${r.book}${r.first ? ' · from ' + r.first : ''}` : (r.same ? 'The upcoming classes already use ' + r.book : 'No upcoming classes found from that day'));
-      try{ if(STU && STU.code === code && STU.s){ STU.s.book = r.book; stuRender(); } }catch(e){}
+      try{ if(STU && STU.code === code && STU.s){ STU.s.book = r.book; stuRender(); } }catch(e){} try{ window.celBook && celBook(code, r.book); }catch(e){}
     }catch(e){ if(btn){ btn.disabled = false; btn.textContent = 'Change the book'; } toast((e && (e.msg || e.error)) || 'Not changed · check your internet and try again'); } };
   const sr0 = window.stuRender; if(sr0) window.stuRender = function(){ const r = sr0.apply(this, arguments);
     try{ if(D && D.mgr && STU && STU.code && !$('cbBtn')){ const row = document.querySelector('#sheetBody .row.noprint'); if(row) row.insertAdjacentHTML('beforeend', `<button class="btn ghost sm" id="cbBtn" onclick="cbOpen('${esc(STU.code)}')">Change book</button>`); } }catch(e){}
@@ -12196,7 +12196,7 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
     try{ const r = await api('mgmtSetBook', TOKEN, code, b, d, CB_T || ''); if(!r || !r.ok) throw r;
       closeSheet(); const who = CB_T ? ' · Teacher ' + CB_T : '';
       if(r.done === false) toast(`${r.book}${who} from ${r.from} · ${r.n} classes changed now, the rest within a few minutes`); else toast(r.n ? `${r.n} upcoming class${r.n === 1 ? '' : 'es'}${who} now ${r.book}${r.first ? ' · from ' + r.first : ''}` : (r.same ? 'The upcoming classes already use ' + r.book : 'No upcoming classes found from that day'));
-      try{ if(STU && STU.code === code && STU.s && !window._cbMulti){ STU.s.book = r.book; stuRender(); } }catch(e){}
+      try{ if(STU && STU.code === code && STU.s && !window._cbMulti){ STU.s.book = r.book; stuRender(); } }catch(e){} try{ window.celBook && celBook(code, r.book, !!window._cbMulti); }catch(e){}
     }catch(e){ if(btn){ btn.disabled = false; btn.textContent = 'Change the book'; } toast((e && (e.msg || e.error)) || 'Not changed · check your internet and try again'); } };
 })();
 </script>
@@ -21847,7 +21847,9 @@ go();
   const cefrOf = v => { const m = up(v).replace(/\s+/g, '').match(/PRE-?A1|A1|A2|B1|B2|C1|C2/); return m ? (/^PRE/.test(m[0]) ? 'PRE-A1' : m[0]) : ''; };
   const booksOf = s => String((s && s.book) || '').split(/[,;&/]+|\s+·\s+/).map(x => norm(x.trim().split(/\s+/)[0])).filter(Boolean);
 
-  function students(){ const ms = (typeof MS !== 'undefined' && MS) ? (Array.isArray(MS) ? MS : (MS.students || MS.rows || null)) : null; return Array.isArray(ms) && ms.length ? ms : STU_L; }
+  function students(){ const ms = (typeof MS !== 'undefined' && MS) ? (Array.isArray(MS) ? MS : (MS.students || MS.rows || null)) : null, L = Array.isArray(ms) && ms.length ? ms : STU_L;
+    try{ const O = window._celBk || {}; if(L) Object.keys(O).forEach(c => { if(Date.now() - O[c].t > 30 * 6e4) return; const s = L.find(x => String(x.code || '').toUpperCase() === c); if(s && booksOf(s).indexOf(norm(O[c].b)) < 0) s.book = O[c].multi && s.book ? s.book + ', ' + O[c].b : O[c].b; }); }catch(e){}   /* 655 */
+    return L; }
   function dbx(){ return (typeof DB !== 'undefined' && DB && DB.rows) ? DB : DBX; }
   const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   function birthYmd(raw){ raw = String(raw == null ? '' : raw).trim(); let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m) return [+m[1], +m[2], +m[3]];
@@ -21976,6 +21978,7 @@ go();
     openSheet(`<h1>${e(x.en)} · ${KIND[x.kind][1]}</h1><div class="mute small">${e(what(x))} · paste in the class WeChat group with the message</div><img class="cxp-img" src="${PIC.url}" alt="Celebration picture" style="max-width:420px;display:block;margin:10px auto 0">
 <div class="row" style="gap:8px;margin-top:14px"><button class="btn teal grow" onclick="celSave()">Copy picture</button><button class="btn ghost grow" onclick="celSave(1)">${navigator.share ? 'Share / save' : 'Save picture'}</button></div>
 <div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost grow" onclick="celCopy(${i})">Copy message</button><button class="btn ghost grow" onclick="celMark(${i})">✓ Sent</button></div>`); };
+  window.celBook = (code, b, multi) => { try{ window._celBk = window._celBk || {}; window._celBk[String(code).toUpperCase()] = { b: b, t: Date.now(), multi: !!multi }; students(); paint(); }catch(e){} };   /* 655 */
   window.celSave = async function(save){ const P = PIC; if(!P) return;
     if(!save && window.ClipboardItem){ try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': P.blob })]); return toast('Picture copied · paste it in WeChat'); }catch(x){} }
     const f = new File([P.blob], P.name, { type: 'image/png' });
