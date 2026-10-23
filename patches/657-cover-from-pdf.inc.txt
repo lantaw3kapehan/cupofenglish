@@ -1,0 +1,33 @@
+<script>
+/* 23 Oct · 657 · Book covers when Google has no preview of the PDF: the app reads only the needed parts of the PDF from Drive
+   (server mgmtBookRange, 1 MB at a time) and draws page 1 with PDF.js, then saves it as the cover (coe-notice book_cover_put).
+   Used by "Take covers again from COURSEWARE" and "Take every cover" (management). */
+(function(){
+  if(typeof window.bbOpen !== 'function') return;
+  const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  let ready = null;
+  const loadPdf = () => ready || (ready = new Promise((ok, no) => { if(window.pdfjsLib) return ok(window.pdfjsLib);
+    const s = document.createElement('script'); s.src = PDFJS + 'pdf.min.js'; s.onload = async () => { try{ const w = await fetch(PDFJS + 'pdf.worker.min.js').then(r => r.text());
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([w], { type: 'text/javascript' })); ok(window.pdfjsLib); }catch(e){ no(e); } }; s.onerror = () => { ready = null; no(new Error('PDF reader did not load')); }; document.head.appendChild(s); }));
+  const u8 = b64 => { const s = atob(b64), a = new Uint8Array(s.length); for(let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; };
+  const CH = 1048576;
+  async function range(id, a, b){ for(let k = 0; k < 3; k++){ try{ const r = await apiNow('mgmtBookRange', TOKEN, id, a, b); if(r && r.ok) return r; throw new Error((r && r.msg) || 'Drive'); }catch(e){ if(k === 2) throw e; await new Promise(z => setTimeout(z, 1500)); } } }
+  /* page 1 of a Drive PDF → JPEG blob (about 1400 px wide) */
+  window.pdfPage1 = async id => { const lib = await loadPdf(); const first = await range(id, 0, CH - 1), init = u8(first.b64);
+    const tr = new lib.PDFDataRangeTransport(first.size, init);
+    tr.requestDataRange = (a, b) => { range(id, a, b - 1).then(r => tr.onDataRange(a, u8(r.b64))).catch(e => console.warn('range', e)); };
+    const doc = await lib.getDocument({ range: tr, length: first.size, rangeChunkSize: CH, disableAutoFetch: true, disableStream: true, isEvalSupported: false }).promise;
+    const pg = await doc.getPage(1), v1 = pg.getViewport({ scale: 1 }), sc = Math.min(3, 1400 / v1.width), vp = pg.getViewport({ scale: sc });
+    const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height); const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height);
+    await pg.render({ canvasContext: c, viewport: vp }).promise; try{ doc.destroy(); }catch(e){}
+    return await new Promise(z => cv.toBlob(z, 'image/jpeg', 0.9)); };
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-notice';
+  async function put(code, side, blob){ const b64 = await new Promise((ok, no) => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result).split(',')[1]); rd.onerror = no; rd.readAsDataURL(blob); });
+    const j = await fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'book_cover_put', code, side, type: 'image/jpeg', b64 }) }).then(r => r.json()); if(!j || !j.ok) throw new Error((j && j.error) || 'Not saved'); return j.item; }
+  /* fill the covers Google could not make: list = mgmtBookCovers results */
+  window.bbFillMissing = async (list, onStep) => { let n = 0, bad = [];
+    for(const x of list || []){ for(const side of ['sb', 'wb']){ const id = x[side + 'Id']; if(!id || !x[side + 'Err']) continue;
+      try{ onStep && onStep(x.code, side); const blob = await pdfPage1(id); await put(x.code, side, blob); n++; }catch(e){ bad.push(x.code + ' ' + side + ' (' + (e.message || e) + ')'); } } }
+    return { n, bad }; };
+})();
+</script>
