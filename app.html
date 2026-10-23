@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1023;
+const COE_V = 1024;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22641,7 +22641,8 @@ go();
         + g.items.map(x => { const cls = x.st === 'done' ? 'done' : x.st === 'next' ? 'next' : x.st === 'open' ? 'open' : 'lock';
           if(x.t.id === 'spec'){ const R0 = (d.records || []).filter(r => r.teacher === who && r.status === 'done'), inq = R0.some(r => r.training_id === 'inq'), ex = R0.some(r => /^spec-/.test(r.training_id) || r.training_id === 'spec');
             const one = (ok, id, t) => '<button type="button" class="tx-pill ' + (ok ? 'done' : cls === 'done' ? 'open' : cls) + '" onclick="trOpen(\'' + id + '\')">' + (!ok && cls === 'lock' ? LOCK : '') + '<span>' + (ok ? '✓ ' : cls === 'next' ? '▶ ' : '') + t + '</span></button>';
-            return one(inq, 'inq', 'Inquiry-Based') + one(ex, 'spec-yle', 'Exam · IELTS, TOEFL, KET, PET, YLE') + '<span class="small mute" style="align-self:center">one needed</span>'; }
+            const SP = (d.trainings || []).filter(t => t.id === 'inq' || /^spec-/.test(t.id)).sort((p, q) => (p.id === 'inq' ? 0 : p.id === 'spec-yle' ? 1 : 2) - (q.id === 'inq' ? 0 : q.id === 'spec-yle' ? 1 : 2) || p.sort - q.sort);
+            return SP.map(t => one(R0.some(r => r.training_id === t.id), t.id, t.title.replace(/ Specialization$/, ''))).join('') + '<span class="small mute" style="align-self:center">one needed</span>'; }
           const lab = (cls === 'done' ? '✓ ' : cls === 'next' ? '▶ ' : '') + e(x.t.title) + (cls === 'open' && x.gi <= R.ix && x.t.id !== 'way' ? ' <small>not recorded yet</small>' : '');
           return '<button type="button" class="tx-pill ' + cls + '" onclick="trOpen(\'' + x.t.id + '\')">' + (cls === 'lock' ? LOCK : '') + '<span>' + lab + '</span></button>'; }).join('') + '</div></div>'; }).join('') + '</div>'; }
   function paintMy(){ const v = $('v-train'); if(!v || !MY) return; const d = MY, who = d.me, R = myRank() || { ix: 0, rank: 'Newly Hired', life: 0, next: null };
@@ -22755,7 +22756,7 @@ go();
     let h = '<div class="trm tx"><div class="lead row"><div class="grow"><h1>Trainings</h1><div class="mute small">Mandatory trainings unlock the next rank (Clause 3.6)</div></div><button class="btn" onclick="trSched()">+ Schedule</button> <button class="btn ghost" onclick="trList()">Videos &amp; quizzes</button></div>';
     h += '<div class="tx-cnts">' + cnt('coming', 'Coming up', 'sessions scheduled') + cnt('need', 'Needs you', 'approve · tick', 1) + cnt('blocked', 'Blocked', 'enough units, training missing', 1) + cnt('self', 'Self-study', 'model lessons · + add') + '</div>';
     // table
-    const short = { way: 'Way', demo: 'Demo', track: 'TRACK', ct: 'Crit.', comm: 'Comm.', collab: 'Collab.', creat: 'Creat.', integ: 'Integ.', phon: 'Phon.', gram: 'Gram.', prog: 'Progress', spec: 'Special.', facil: 'Facil.', trial: 'Trials', 'spec-yle': 'YLE', inq: 'Inquiry', 'cw-phonics': 'Phonics', 'cw-od1': 'OD 1', 'cw-od2': 'OD 2', 'cw-re': 'Reading Expl.' };
+    const short = { way: 'Way', demo: 'Demo', track: 'TRACK', ct: 'Crit.', comm: 'Comm.', collab: 'Collab.', creat: 'Creat.', integ: 'Integ.', phon: 'Phon.', gram: 'Gram.', prog: 'Progress', spec: 'Special.', facil: 'Facil.', trial: 'Trials', 'spec-yle': 'YLE', 'spec-ielts': 'IELTS', 'spec-toefl': 'TOEFL', 'spec-ket': 'KET', 'spec-pet': 'PET', inq: 'Inquiry', 'cw-phonics': 'Phonics', 'cw-od1': 'OD 1', 'cw-od2': 'OD 2', 'cw-re': 'Reading Expl.' };
     const tab = window._trTab || 'path', U = (d.trainings || []).filter(t => t.kind === 'unlock').sort((a, b) => a.sort - b.sort), C = tab === 'path' ? M : U;
     const grp = []; C.forEach(t => { const g = tab === 'path' ? (t.gate || '') : 'Books & trials'; const l = grp[grp.length - 1]; if(l && l.g === g) l.n++; else grp.push({ g, n: 1 }); });
     h += '<section class="tx-card" style="margin-top:14px"><div class="row" style="gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><div class="tx-seg"><button class="' + (tab === 'path' ? 'on' : '') + '" onclick="window._trTab=\'path\';paintTrAll()">Path</button><button class="' + (tab === 'unl' ? 'on' : '') + '" onclick="window._trTab=\'unl\';paintTrAll()">Books &amp; trials</button></div><span class="grow"></span><span class="small mute">Tap a heading to tick many · tap a dot for one · tap a name for the path</span></div>';
