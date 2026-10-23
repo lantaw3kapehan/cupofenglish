@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1019;
+const COE_V = 1020;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22809,7 +22809,10 @@ go();
       + '<label class="small mute">Video (MP4) · ' + (p.video_path ? 'current: v' + p.ver + ', ' + Math.round(p.dur_sec / 60) + ' min · choose a file to replace' : 'none yet') + '</label><input type="file" id="tpV" accept="video/mp4,video/webm,video/quicktime" style="width:100%;margin:4px 0 4px"><div id="tpP" class="small mute"></div>'
       + '<label style="display:flex;gap:8px;align-items:center;margin:10px 0"><input type="checkbox" id="tpA"' + (p.approve ? ' checked' : '') + '> Management approves (teacher writes a reflection or description)</label>'
       + '<label class="small mute">Quiz · blank line between questions · <b>Q:</b> question · <b>*</b> right answer · <b>-</b> other choices · <b>Why:</b> explanation</label><textarea id="tpQ" rows="10" style="width:100%;margin-top:4px;font-family:inherit">' + e(quizText(p.quiz)) + '</textarea></div>'
+      + (pid ? '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">' + (p.video_path ? '<button class="btn ghost grow" id="tpDV" onclick="trPartDel(' + pid + ',\'video\')">Delete video</button>' : '') + '<button class="btn ghost grow" id="tpDP" style="color:#B4442F" onclick="trPartDel(' + pid + ',\'part\')">Remove this ' + (p.training_id === 'model' ? 'lesson' : 'part') + '</button></div><p class="small mute" style="margin-top:6px">Teachers\' watch and quiz history is kept.</p>' : '')
       + '<button class="btn teal block" style="margin-top:12px" id="tpS" onclick="trPartSave(' + (pid || 0) + ',\'' + e(p.training_id) + '\',' + (p.sort || 1) + ')">Save</button>'); };
+  window.trPartDel = async function(pid, what){ const b = $(what === 'video' ? 'tpDV' : 'tpDP'); if(!b) return; if(!b.dataset.c){ b.dataset.c = 1; b.textContent = what === 'video' ? 'Tap again to delete the video' : 'Tap again to remove'; return; }
+    b.disabled = true; b.textContent = 'Removing…'; try{ await call('part_remove', { id: pid, what }); toast(what === 'video' ? 'Video deleted' : 'Removed'); await loadAll(true); trList(); paintAll(); }catch(x){ toast(x.message); b.disabled = false; } };
   window.trPartSave = async function(pid, tid, sort){ const b = $('tpS'), f = ($('tpV').files || [])[0], quiz = quizParse($('tpQ').value);
     if($('tpQ').value.trim() && !quiz.length) return toast('Quiz format: Q: … then * right answer and - other choices');
     b.disabled = true; b.textContent = 'Saving…';
@@ -22819,6 +22822,7 @@ go();
         await new Promise((ok, no) => { const x = new XMLHttpRequest(); x.open('PUT', u.url); x.setRequestHeader('Content-Type', f.type || 'video/mp4'); x.setRequestHeader('x-upsert', 'true');
           x.upload.onprogress = ev => { if(ev.lengthComputable) $('tpP').textContent = 'Uploading ' + Math.round(ev.loaded / ev.total * 100) + '%'; };
           x.onload = () => { if(x.status < 300) return ok(); let m = ''; try{ const j = JSON.parse(x.responseText); m = j.message || j.error || ''; }catch(y){} no(new Error(/exceed|too large|size/i.test(m) || x.status === 413 ? 'The video is bigger than the storage upload limit (' + Math.round(f.size / 1048576) + ' MB). Raise the limit in Supabase › Storage › Settings, or export the video smaller.' : 'Upload failed (' + x.status + ')' + (m ? ': ' + m : ''))); }; x.onerror = () => no(new Error('Upload failed')); x.send(f); });
+        if(part.video_path) await call('part_remove', { id: part.id, what: 'video' });   /* 688: the old file goes */
         await call('part_set', { p: { id: part.id, video_path: u.path, dur_sec: dur, newver: !!part.video_path } }); }
       window._trNewPart = 0; toast('Saved ✓'); await loadAll(true); trList(); paintAll(); }catch(x){ toast(x.message); const P = $('tpP'); if(P) P.innerHTML = '<span style="color:#B4442F">' + e(x.message) + '</span>'; b.disabled = false; b.textContent = 'Try again'; } };
 
