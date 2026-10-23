@@ -1,0 +1,26 @@
+<script>
+/* 23 Oct · 668 · (Misty) Office time-in in the header, always in sight: a pulsing "Time in" button until you time in,
+   then a quiet "In 09:02" pill (tap = Time out). Rest day: hidden. Also one reminder toast per day when the app opens. */
+(function(){
+  const css = document.createElement('style');
+  css.textContent = `#tinNag{display:none;align-items:center;gap:7px;border:0;border-radius:999px;font:inherit;font-weight:700;font-size:14px;padding:9px 16px;margin-right:8px;cursor:pointer;white-space:nowrap}
+#tinNag.go{display:inline-flex;background:#D4705A;color:#fff;box-shadow:0 0 0 0 rgba(212,112,90,.5);animation:tinP 2s infinite}
+#tinNag.on{display:inline-flex;background:#EEF8F7;color:#00737B;font-weight:600;font-size:13px;padding:7px 13px}
+#tinNag svg{width:16px;height:16px}
+@keyframes tinP{0%{box-shadow:0 0 0 0 rgba(212,112,90,.45)}70%{box-shadow:0 0 0 10px rgba(212,112,90,0)}100%{box-shadow:0 0 0 0 rgba(212,112,90,0)}}
+@media(max-width:620px){#tinNag{padding:7px 11px;font-size:13px}}`;
+  document.head.appendChild(css);
+  const IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 3h6"/></svg>';
+  function paint(){ try{
+    const rf = document.getElementById('rf'); if(!rf) return; let b = document.getElementById('tinNag');
+    if(!b){ rf.insertAdjacentHTML('beforebegin', '<button id="tinNag" type="button"></button>'); b = document.getElementById('tinNag'); }
+    const DD = typeof D !== 'undefined' ? D : null, S = DD && DD.mgr && DD.shift, ti = DD && DD.timeIn;
+    if(!S || (S.rest && !ti) || (ti && ti.out)){ b.className = ''; return; }
+    if(!ti){ b.className = 'go'; b.innerHTML = IC + 'Time in'; b.title = S.flex ? 'Time in when you start' : 'Shift ' + (S.label || '') + ' · on time at or before ' + (S.start || '');
+      b.onclick = () => timeInSheet();
+      try{ const k = 'tinNag:' + new Date().toISOString().slice(0, 10); if(!sessionStorage.getItem(k)){ sessionStorage.setItem(k, 1); setTimeout(() => { if(!D.timeIn && typeof toast === 'function') toast('You have not timed in yet today · tap Time in at the top'); }, 1500); } }catch(e){}
+    } else { b.className = 'on'; b.innerHTML = IC + 'In ' + (ti.time || ''); b.title = 'Timed in · tap to time out'; b.onclick = () => timeOutSheet(); }
+  }catch(e){} }
+  window.tinNag = paint; setInterval(paint, 5000); setTimeout(paint, 800);
+})();
+</script>
