@@ -1,0 +1,47 @@
+/* 680 · Renewed · paid opens at once: the form is ready immediately (package, date, method, partner, invoice); Google's check of the
+   package (ACTIVE row, last payment, lessons left) fills in when it arrives, and Save waits for it. Hovering the button starts the check early. */
+const RP_PRE = {};
+function rpWarm(code, teacher){ const k = String(code).toUpperCase(), x = RP_PRE[k]; if(x && Date.now() - x.t < 120000) return x.p;
+  const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const p = Promise.all([api('mgmtRenewPaid', TOKEN, { code, teacher, dry: true, date: today }).catch(e => ({ ok: false, msg: String(e && e.message || e) })), api('mgmtStuClasses', TOKEN, code).catch(() => null)]);
+  RP_PRE[k] = { t: Date.now(), p }; p.then(([r]) => { if(!r || !r.ok) delete RP_PRE[k]; }); return p; }
+async function renPaidSheet(code, name, teacher, again){ RPS = { code, name, teacher, pkg: 30, free: 3, info: null, sched: '', again: !!again, touched: false };
+const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), pend = rpWarm(code, teacher);
+const tch0 = teacher || (typeof STU !== 'undefined' && STU && STU.s && (STU.s.teachers || [])[0]) || '';
+const pk = RP_PK.map(([p, f]) => `<button type="button" class="rno rpk${RPS.pkg === p && RPS.free === f ? ' on' : ''}" data-p="${p}" data-f="${f}" onclick="RPS.touched=true;rpPick(${p},${f})"><b>${p}${f ? ' + ' + f : ''}</b><span>${p + f} lessons · ${p + f < 30 ? 4 : p + f < 60 ? 8 : 12} months</span></button>`).join('');
+const m0 = (() => { try{ return localStorage.getItem('coe.rpM') || ''; }catch(e){ return ''; } })();
+openSheet(`<h1>${esc(name)} · Renewed · paid</h1><div id="rpH" class="mute small">${esc(code)}${tch0 ? ' · Teacher ' + esc(tch0) : ''} · <span style="color:#B4532F">checking the package…</span></div>
+<label>Package paid</label><div class="rnl">${pk}<button type="button" class="rno rpk" data-p="o" onclick="RPS.touched=true;rpOther()"><b>Other</b><span>type the lessons</span></button></div>
+<div id="rpO" class="row hide" style="gap:8px"><div class="grow"><label>Lessons</label><input class="in-t" type="number" step="0.5" value="" oninput="RPS.touched=true;RPS.pkg=this.value;rpPrev()"></div><div class="grow"><label>Free lessons</label><input class="in-t" type="number" step="0.5" value="0" oninput="RPS.touched=true;RPS.free=this.value;rpPrev()"></div></div>
+<div class="row" style="gap:8px"><div class="grow"><label>Paid on</label><input id="rpD" class="in-t" type="date" value="${today}" onchange="rpPrev()"></div><div class="grow"><label>Payment method</label><input id="rpM" class="in-t" value="${esc(m0)}" placeholder="e.g. WeChat Pay"><div class="skc" style="margin-top:6px">${['Alipay','WeChat Pay','Bank transfer','Cash'].map(x => `<button type="button" class="${x === m0 ? 'on' : ''}" onclick="$('rpM').value='${x}';$('rpM').dataset.t=1;this.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===this))">${x}</button>`).join('')}</div></div></div>
+<label>Partner</label><input id="rpPa" class="in-t" value="" oninput="this.dataset.t=1">
+<label>Invoice (optional)</label><input id="rpI" class="in-t" placeholder="Invoice no. or name · e.g. Invoice1690_Mia"><input id="rpF" type="file" accept="application/pdf,image/\u002a" class="in-t" style="margin-top:6px">
+<div id="rpP" class="card" style="margin-top:14px;background:#F1FAF9;border-color:#BFE6E3"><div class="small mute">Checking lessons left…</div></div>
+<button id="rpS" class="btn teal block" style="margin-top:14px" disabled onclick="renPaidSave()">Checking the package…</button>
+<p id="rpFoot" class="small mute" style="margin-top:8px">Same as doing it by hand: a new SALES row · the ACTIVE row keeps going with CARRY OVER = what was left · DATABASE › RENEWAL DATE = paid date, so the deadline moves · RENEWAL STATUS = Renewed. The calendar is not changed. If the time or teacher changes: open the next class › Move · reschedule › Moving forward.</p>`);
+const [r, cl] = await pend;
+if(RPS.code !== code || !$('rpS')) return;
+if(!r || !r.ok){ delete RP_PRE[String(code).toUpperCase()]; const h = $('rpH'); if(h) h.innerHTML = esc(code) + ' · <span style="color:#C0533D">' + esc((r && r.msg) || 'Could not read the package.') + '</span>'; const b = $('rpS'); if(b){ b.textContent = 'Try again'; b.disabled = false; b.onclick = () => renPaidSheet(code, name, teacher, again); } return; }
+RPS.info = r; RPS.cls = Array.isArray(cl) ? cl : [];
+{ const pd = r.prev && r.prev.date, rs = String((REN || {})[String(code).toUpperCase()] || ''), cd = (/^Renewing · ([A-Z][a-z]{2} \d{1,2}, \d{4})/.exec(rs) || [])[1], pt = pd ? new Date(pd + 'T12:00:00').getTime() : 0;   /* 14 Oct pm: already paid → no second form */
+  if(pt && !RPS.again && Date.now() - pt < 7 * 864e5 && (!cd || pt >= new Date(cd + ' 00:00').getTime())){
+    const lbl = new Date(pt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    try{ REN[String(code).toUpperCase()] = 'Renewed · ' + r.prev.pkg + (r.prev.free ? '+' + r.prev.free : '') + ' paid · ' + lbl + ' · SALES'; localStorage.setItem('coe.ren', JSON.stringify(REN)); renderMToday(); }catch(e){}
+    return openSheet(`<h1>${esc(name)} · already renewed</h1><div class="card" style="margin-top:10px;background:#F1FAF9;border-color:#BFE6E3"><div style="font-size:20px"><b style="color:#00737B">${r.left} lessons</b> left now</div><div class="small" style="margin-top:4px">Paid ${esc(lbl)} · ${r.prev.pkg}${r.prev.free ? ' + ' + r.prev.free : ''} · ${esc(r.prev.invoice || 'SALES')} · ACTIVE row ${r.row}</div></div>` +
+      `<button class="btn teal block" style="margin-top:14px" onclick="cnOpen('${esc(code)}')">Class notice</button><button class="btn ghost block" style="margin-top:8px" onclick="cxBalance(null,'${esc(code)}')">Renewal picture for the parent · 续费成功</button>` +
+      `<button class="btn ghost block" style="margin-top:8px" onclick="renPaidSheet('${esc(code)}','${esc(String(name)).replace(/'/g, '')}','${esc(String(teacher || '')).replace(/'/g, '')}', true)">Record another payment (a new package)</button>`); } }
+try{ const now = Date.now(), up = (Array.isArray(cl) ? cl : []).filter(c => !c.cancelled && new Date(c.start).getTime() > now).sort((a, b) => new Date(a.start) - new Date(b.start));
+if(up.length){ const fmt = d => new Date(d).toLocaleString('en-GB', { timeZone: 'Asia/Shanghai', weekday: 'short' }), hm = d => new Date(d).toLocaleTimeString('en-GB', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit' });
+const pat = {}; up.slice(0, 12).forEach(c => { const k = fmt(c.start) + ' ' + hm(c.start); pat[k] = (pat[k] || 0) + 1; });
+const days = Object.keys(pat).filter(k => pat[k] > 1).sort((a, b) => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(a.slice(0, 3)) - ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(b.slice(0, 3)));
+RPS.days = days.length ? days.slice() : [fmt(up[0].start) + ' ' + hm(up[0].start)];
+const tch = [...new Set(up.slice(0, 6).map(c => c.teacher).filter(Boolean))].join(' & ');
+RPS.sched = `Schedule stays the same: <b>${esc(days.join(' · ') || fmt(up[0].start) + ' ' + hm(up[0].start))}</b> with Teacher ${esc(tch || r.teacher)} · ${up.length} classes already in the calendar (to ${new Date(up[up.length - 1].start).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}${up.length >= 30 ? '+' : ''}) · <b>nothing to change</b>`; }
+else RPS.sched = '<span style="color:#C0533D">No upcoming classes in the calendar · add them with New class after saving</span>'; }catch(e){}
+if(!RPS.touched && r.prev && r.prev.pkg){ if(RP_PK.some(x => x[0] === r.prev.pkg && x[1] === r.prev.free)) rpPick(r.prev.pkg, r.prev.free); else { rpOther(); const I = document.querySelectorAll('#rpO input'); RPS.pkg = r.prev.pkg; RPS.free = r.prev.free || 0; if(I[0]) I[0].value = RPS.pkg; if(I[1]) I[1].value = RPS.free; } }
+const M = $('rpM'); if(M && !M.dataset.t && r.method){ M.value = r.method; M.parentNode.querySelectorAll('.skc button').forEach(b => b.classList.toggle('on', b.textContent === r.method)); }
+const Pa = $('rpPa'); if(Pa && !Pa.dataset.t && !Pa.value && r.partner) Pa.value = r.partner;
+const H = $('rpH'); if(H) H.innerHTML = esc(code) + ' · Teacher ' + esc(r.teacher) + ' · ACTIVE row ' + r.row + (r.prev && r.prev.date ? ' · last paid ' + esc(r.prev.date) + ' (' + r.prev.pkg + (r.prev.free ? '+' + r.prev.free : '') + ')' : '');
+const F = $('rpFoot'); if(F) F.textContent = 'Same as doing it by hand: a new SALES row · ACTIVE row ' + r.row + ' keeps going with CARRY OVER = what was left, lessons counted again from ' + r.month + ' (older months stay as history) · DATABASE › RENEWAL DATE = paid date, so the deadline moves · RENEWAL STATUS = Renewed. The calendar is not changed. If the time or teacher changes: open the next class › Move · reschedule › Moving forward.';
+const S = $('rpS'); if(S){ S.disabled = false; S.textContent = 'Save renewal'; }
+rpPrev(); }
