@@ -2008,7 +2008,7 @@ FBF = r;
 if(!FBF.ok){ $('sheetBody').innerHTML = `<h1>Monthly feedback</h1><div class="empty">${esc(FBF.msg||'Not available')}</div>`; return; }
 fbStart(code);
 }
-async function fbPrefetch(){
+async function fbPrefetch(){ if(window._fbpAt && Date.now() - window._fbpAt < 30 * 6e4) return; window._fbpAt = Date.now();
 const L = (FB && FB.students || []).filter(x => x.form && !x.done);
 for(const x of L){ if(!TOKEN || D.mgr) return; while(document.hidden) await new Promise(r => setTimeout(r, 5000));
 let c = null; try{ c = JSON.parse(store('get','coe.doc.fbf.'+x.code)||'null'); }catch(e){}
@@ -2384,8 +2384,10 @@ openSheet(`<h1>${esc(p.month)}</h1><div class="mute small">${p.paidOn?'Paid on '
 let MO = null, MS = null, MS_F = 'all';
 
 function todayStr(){ const d = new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10); }
-async function pulse(){
-if(!D || !D.mgr || document.hidden) return;
+let PULSE_BUSY = 0, PULSE_AT = 0, PULSE_RL = 0;   /* 753 */
+async function pulse(){ if(!D || !D.mgr || document.hidden || PULSE_BUSY || Date.now() - PULSE_AT < 30000) return; PULSE_BUSY = 1; PULSE_AT = Date.now(); try{ return await pulse0(); }finally{ PULSE_BUSY = 0; } }
+async function pulse0(){
+if(!D || !D.mgr) return;
 try{
 const r = await api('mgmtPulse', TOKEN, PULSE.since);
 PULSE.time = r.time;
@@ -2396,7 +2398,7 @@ const seen = new Set(PULSE.items.map(x=>x.t)); PULSE.items = r.items.filter(x=>!
 store('set','coe.pulse', JSON.stringify({since:PULSE.since, items:PULSE.items}));
 if(!first){                                   
 const k = new Set(r.items.map(x=>x.kind));
-if(k.has('Time-in')||k.has('Time-out')||k.has('Class check-in')||k.has('Late review')||k.has('Payroll')) loadMgmt(true);
+if((k.has('Time-in')||k.has('Time-out')||k.has('Class check-in')||k.has('Late review')||k.has('Payroll')) && Date.now() - PULSE_RL > 120000){ PULSE_RL = Date.now(); loadMgmt(true); }
 if(k.has('Leave')) loadLeave(true);
 if(k.has('Sale')||k.has('Expense')){ store('del','coe.m.money'); MN = null; if(VIEW==='money') loadMoney(); }
 if(k.has('Case')||k.has('Late review')){ store('del','coe.m.actions'); AC = null; if(VIEW==='actions') loadActions(); }
@@ -2411,7 +2413,7 @@ const lt = $('liveTag'); if(lt) lt.innerHTML = '<i></i>Live · ' + PULSE.time;
 const fd = $('feed'); if(fd) fd.innerHTML = feedHtml();
 }catch(e){}
 }
-setInterval(pulse, 20000);
+setInterval(pulse, 45000);
 document.addEventListener('visibilitychange', () => { if(!document.hidden) pulse(); });
 async function loadMgmt(quiet){
 if(!quiet) setTimeout(() => bg(() => { prefetchMgmt(); pulse(); }), 1500);
@@ -4450,7 +4452,7 @@ async function payDisputeSend(){ const t = ($('pdN') || {}).value || '', b = $('
 if(b){ b.disabled = true; b.textContent = 'Sending…'; }
 try{ const r = await api('tPayVerify', TOKEN, PCK.month, false, t); if(!r.ok) throw r; PCK.check = r.check; PCK.nudge = null; keep('paychk', PCK); closeSheet(); toast('✓ ' + r.note); renderPay(); }
 catch(e){ toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); if(b){ b.disabled = false; b.textContent = 'Send to management'; } } }
-async function loadPayChecks(){ try{ await swr('paychkm', () => api('mgmtPayChecks', TOKEN), v => PCKM = v, () => { if(VIEW === 'payroll') renderPayroll(); }); }catch(e){} }
+async function loadPayChecks(force){ if(!force && window._pckAt && Date.now() - window._pckAt < 3 * 6e4) return; window._pckAt = Date.now(); try{ await swr('paychkm', () => api('mgmtPayChecks', TOKEN), v => PCKM = v, () => { if(VIEW === 'payroll') renderPayroll(); }); }catch(e){} }
 const pchkOf = x => { if(!PCKM || !x) return null; const c = (PCKM.checks || {})[String(x.name).toLowerCase()] || null, nd = (PCKM.nudged || {})[String(x.name).toLowerCase()] || null;
 const st = c && c.status === 'Verified' && c.net && +c.net !== +x.net ? 'Changed' : c ? c.status : ''; return { c, st, nd }; };
 function pchkChip(x){ const k = pchkOf(x); if(!k) return ''; const L = { Verified: ['ok', '✓ Pay verified'], Disputed: ['no', '! Question on pay'], Answered: ['', 'Answered · waiting'], Changed: ['no', 'Amount changed'] }[k.st] || ['', k.nd ? 'Asked to check pay' : 'Pay not checked'];
@@ -4465,7 +4467,7 @@ const _sn = sheetSnap(); closeSheet(); toast('Sending reply to Teacher ' + n + '
 try{ const r = await api('mgmtPayReply', TOKEN, n, t); if(!r.ok) throw r; PCKM.checks[n.toLowerCase()] = r.check; keep('paychkm', PCKM); toast('✓ ' + r.note); renderPayroll(); }
 catch(e){ sheetBack(_sn); toast(((e && (e.msg || e.message)) || 'Not sent') + ' · your reply is back. Try again.'); } }
 async function payVerNudge(names){ if(!names || !names.length) return; closeSheet(); toast('Sending…');
-try{ const r = await api('mgmtPayVerNudge', TOKEN, names); if(!r.ok) throw r; toast('✓ ' + r.note + ' · they see it on Pay and Today'); loadPayChecks(); }catch(e){ toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); } }
+try{ const r = await api('mgmtPayVerNudge', TOKEN, names); if(!r.ok) throw r; toast('✓ ' + r.note + ' · they see it on Pay and Today'); loadPayChecks(1); }catch(e){ toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); } }
 let MYR = null;
 async function loadMyReady(){ if(!TOKEN) return; if(D && !D.mgr){ loadPayCheck(); loadTMsgs(); } try{ await swr('myready', () => api('tPayReady', TOKEN), v => MYR = v, () => { if(VIEW === 'pay') renderPay(); if(VIEW === 'mypay') renderMyPay(); if(VIEW === 'today') renderToday(); }); }catch(e){} }
 function myReadyHtml(){ if(!MYR || !MYR.me || payPaid(MYR.month)) return '';   /* 14 Oct: nothing left to release */ const r = MYR.me, n = rdyCount(r);
@@ -6158,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1084;
+const COE_V = 1085;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
