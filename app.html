@@ -2417,8 +2417,8 @@ async function loadMgmt(quiet){
 if(!quiet) setTimeout(() => bg(() => { prefetchMgmt(); pulse(); }), 1500);
 setTimeout(() => bg(() => { loadHealth(); loadNight(0); }), 600);
 try{ MO = await api('mgmtOverview', TOKEN); store('set','coe.mo', JSON.stringify(MO)); renderTeam(); renderTeachers(); renderPayroll(); homeSoon();
-if(!window._wpT){ window._wpT = 1; setTimeout(async () => { for(const t of (MO.teachers || [])){ if(!TOKEN) break;    
-while(document.hidden) await new Promise(r => setTimeout(r, 5000)); try{ await tchGet(t.name); }catch(e){} await new Promise(r => setTimeout(r, 300)); } }, 6000); } }
+if(!window._wpT){ window._wpT = 1; let _wl = 0; try{ _wl = +localStorage.getItem('coe.wpT') || 0; }catch(e){} if(Date.now() - _wl > 30 * 60000) setTimeout(async () => { try{ localStorage.setItem('coe.wpT', String(Date.now())); }catch(e){} for(const t of (MO.teachers || [])){ if(!TOKEN) break;    
+while(document.hidden) await new Promise(r => setTimeout(r, 5000)); try{ await tchGet(t.name); }catch(e){} await new Promise(r => setTimeout(r, 300)); } }, 20000); } }
 catch(e){ if(!MO) toast('Could not load team data'); }
 }
 const pct = (a,b) => b ? Math.round(a/b*100) + '%' : '—';
@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1045;
+const COE_V = 1046;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22889,9 +22889,9 @@ go();
       + '#txGrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card,#fff);border:1px solid var(--line);border-radius:18px;padding:12px 16px;margin:12px 0}#txGrow .k{font-size:12px;font-weight:700;color:var(--ink2,#5E5A75)}#txGrow .tx-bdg{margin:0;flex:1}';
     document.head.appendChild(st);
     let q = 0; const later = () => { if(q) return; q = requestAnimationFrame(() => { q = 0; txUp(); }); };
-    const w = () => { const r = $('hRank'), g = $('v-growth'); if(!r || !g || !txT()){ setTimeout(w, 1500); return; }
+    const w = () => { if(typeof D !== 'undefined' && D && D.mgr) return; const r = $('hRank'), g = $('v-growth'); if(!r || !g || !txT()){ setTimeout(w, 1500); return; }
       new MutationObserver(later).observe(r, { childList: true }); new MutationObserver(later).observe(g, { childList: true });
-      loadMy().catch(() => {}); setInterval(() => { if(document.visibilityState === 'visible' && Date.now() - MYT > 100e3) loadMy(true).catch(() => {}); }, 120e3); };
+      loadMy().catch(() => {}); setInterval(() => { if(document.visibilityState === 'visible' && Date.now() - MYT > 280e3) loadMy(true).catch(() => {}); }, 300e3); };
     setTimeout(w, 4000); })();
   window.trBooks = () => openSheet(window._trBooksH || '<div class="empty">Open Trainings first.</div>');
   window.trView = async function(name){ try{ toast('Opening ' + tName(name) + '…'); TV = await call('my', { teacher: name }); const x = teachers().find(y => y.name === name) || { ix: 0, rank: '', life: 0 };
