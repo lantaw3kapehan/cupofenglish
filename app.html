@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1017;
+const COE_V = 1018;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22804,7 +22804,7 @@ go();
   const quizParse = t => String(t || '').split(/\n\s*\n/).map(b => { const L = b.split('\n').map(x => x.trim()).filter(Boolean); const q = { q: '', choices: [], answer: 0, why: '' };
     L.forEach(l => { if(/^Q:/i.test(l)) q.q = l.replace(/^Q:\s*/i, ''); else if(/^\*/.test(l)){ q.answer = q.choices.length; q.choices.push(l.replace(/^\*\s*/, '')); } else if(/^-/.test(l)) q.choices.push(l.replace(/^-\s*/, '')); else if(/^Why:/i.test(l)) q.why = l.replace(/^Why:\s*/i, ''); });
     return q; }).filter(q => q.q && q.choices.length >= 2);
-  window.trPartEdit = function(pid, tid){ const p = pid ? (AL.parts || []).find(x => x.id === pid) : { training_id: tid, title: '', quiz: [], approve: false, sort: partsOf(AL, tid).length + 1 };
+  window.trPartEdit = function(pid, tid){ window._trNewPart = 0; const p = pid ? (AL.parts || []).find(x => x.id === pid) : { training_id: tid, title: '', quiz: [], approve: false, sort: partsOf(AL, tid).length + 1 };
     openSheet('<h1>' + (pid ? 'Edit part' : 'New part') + '</h1><div class="card" style="margin-top:12px"><label class="small mute">Title</label><input id="tpT" value="' + e(p.title) + '" style="width:100%;margin:4px 0 10px">'
       + '<label class="small mute">Video (MP4) · ' + (p.video_path ? 'current: v' + p.ver + ', ' + Math.round(p.dur_sec / 60) + ' min · choose a file to replace' : 'none yet') + '</label><input type="file" id="tpV" accept="video/mp4,video/webm,video/quicktime" style="width:100%;margin:4px 0 4px"><div id="tpP" class="small mute"></div>'
       + '<label style="display:flex;gap:8px;align-items:center;margin:10px 0"><input type="checkbox" id="tpA"' + (p.approve ? ' checked' : '') + '> Management approves (teacher writes a reflection or description)</label>'
@@ -22813,14 +22813,14 @@ go();
   window.trPartSave = async function(pid, tid, sort){ const b = $('tpS'), f = ($('tpV').files || [])[0], quiz = quizParse($('tpQ').value);
     if($('tpQ').value.trim() && !quiz.length) return toast('Quiz format: Q: … then * right answer and - other choices');
     b.disabled = true; b.textContent = 'Saving…';
-    try{ let r = await call('part_set', { p: { id: pid || undefined, training_id: tid, sort, title: $('tpT').value || 'Part', approve: $('tpA').checked, quiz } }); const part = r.part;
+    try{ pid = pid || window._trNewPart || 0; let r = await call('part_set', { p: { id: pid || undefined, training_id: tid, sort, title: $('tpT').value || 'Part', approve: $('tpA').checked, quiz } }); const part = r.part; window._trNewPart = part.id;
       if(f){ const dur = await new Promise(ok => { const v = document.createElement('video'); v.preload = 'metadata'; v.onloadedmetadata = () => { ok(Math.round(v.duration || 0)); URL.revokeObjectURL(v.src); }; v.onerror = () => ok(0); v.src = URL.createObjectURL(f); });
         const u = await call('upload_url', { part_id: part.id, name: f.name });
         await new Promise((ok, no) => { const x = new XMLHttpRequest(); x.open('PUT', u.url); x.setRequestHeader('Content-Type', f.type || 'video/mp4'); x.setRequestHeader('x-upsert', 'true');
           x.upload.onprogress = ev => { if(ev.lengthComputable) $('tpP').textContent = 'Uploading ' + Math.round(ev.loaded / ev.total * 100) + '%'; };
-          x.onload = () => x.status < 300 ? ok() : no(new Error('Upload failed (' + x.status + ')' + (x.status === 413 ? ': the file is bigger than the storage limit' : ''))); x.onerror = () => no(new Error('Upload failed')); x.send(f); });
+          x.onload = () => { if(x.status < 300) return ok(); let m = ''; try{ const j = JSON.parse(x.responseText); m = j.message || j.error || ''; }catch(y){} no(new Error(/exceed|too large|size/i.test(m) || x.status === 413 ? 'The video is bigger than the storage upload limit (' + Math.round(f.size / 1048576) + ' MB). Raise the limit in Supabase › Storage › Settings, or export the video smaller.' : 'Upload failed (' + x.status + ')' + (m ? ': ' + m : ''))); }; x.onerror = () => no(new Error('Upload failed')); x.send(f); });
         await call('part_set', { p: { id: part.id, video_path: u.path, dur_sec: dur, newver: !!part.video_path } }); }
-      toast('Saved ✓'); await loadAll(true); trList(); paintAll(); }catch(x){ toast(x.message); b.disabled = false; b.textContent = 'Save'; } };
+      window._trNewPart = 0; toast('Saved ✓'); await loadAll(true); trList(); paintAll(); }catch(x){ toast(x.message); const P = $('tpP'); if(P) P.innerHTML = '<span style="color:#B4442F">' + e(x.message) + '</span>'; b.disabled = false; b.textContent = 'Try again'; } };
 
   /* ---------- the screen ---------- */
   async function open(force){ const v = $('v-train'); if(!v) return;
