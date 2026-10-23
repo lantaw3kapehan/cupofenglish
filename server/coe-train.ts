@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
     const ok = P.every((p) => (G || []).some((g) => g.part_id === p.id && g.ver === p.ver && g.done_at && (!p.approve || g.approved_at))); if (!ok) return false;
     const { data: R } = await db.from("coe_training_records").select("status").eq("teacher", teacher).eq("training_id", tid).order("created_at", { ascending: false }).limit(1);
     if (R && R[0] && R[0].status === "done") return true;
-    await db.from("coe_training_records").insert({ teacher, training_id: tid, status: "done", via: tid === "way" ? "online" : "recording", done_at: now, by_who: "app" });
+    await db.from("coe_training_records").insert({ teacher, training_id: tid, status: "done", via: "online", done_at: now, by_who: "app" });
     return true;
   }
   // a part is done when ≥90% watched (or no video), the quiz is passed (if any) — approval is separate
@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
         db.from("coe_training_parts").select("*").eq("active", true).order("training_id").order("sort"),
         db.from("coe_training_sessions").select("*").neq("status", "cancelled").gte("starts_at", new Date(Date.now() - 60 * 864e5).toISOString()).order("starts_at"),
         who ? db.from("coe_training_records").select("*").eq("teacher", who).order("created_at") : db.from("coe_training_records").select("*").order("created_at"),
-        who ? db.from("coe_training_progress").select("teacher,part_id,ver,pct,secs,views,first_at,last_at,done_at,reflection,approved_by,approved_at").eq("teacher", who)
+        who ? db.from("coe_training_progress").select("teacher,part_id,ver,seen,pct,secs,views,first_at,last_at,done_at,reflection,approved_by,approved_at").eq("teacher", who)
             : db.from("coe_training_progress").select("teacher,part_id,ver,pct,secs,views,first_at,last_at,done_at,reflection,approved_by,approved_at"),
         who ? db.from("coe_training_quiz").select("teacher,part_id,ver,score,total,passed,at").eq("teacher", who).order("at") : db.from("coe_training_quiz").select("teacher,part_id,ver,score,total,passed,at").order("at")]);
       const err = [T, P, S, R, G, Q].find((x) => x.error); if (err) return out({ ok: false, error: err.error!.message });
