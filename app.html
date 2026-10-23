@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1071;
+const COE_V = 1072;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -8497,7 +8497,8 @@ x.tAll = Object.keys(seen).map(k => [k, seen[k]]);
 x.on = (only || x.tAll.map(t => t[0])).filter(k => seen[k]); if(!x.on.length) x.on = x.tAll.map(t => t[0]);
 let sch = cnSched(x.L, x.on.length ? x.on : null); if(!sch) sch = cnSched(x.L);
 const c0 = String(p.co || '').split(',')[0].trim(), bk0 = c0 || up.book;
-Object.assign(x, { book: cnBookPick(bk0) || cnBook(bk0), bo: !!bk0 && !cnBookPick(bk0) ? 1 : 0, units: p.en, carry: p.carry || '', date: p.st, ren: p.carry > 0 || /^Renewed/.test(x.rn) ? 1 : 0, sch: sch });
+const fr = /^Renewed/.test(x.rn) ? String(x.rn).match(/(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)/) : null;
+Object.assign(x, { book: cnBookPick(bk0) || cnBook(bk0), bo: !!bk0 && !cnBookPick(bk0) ? 1 : 0, units: p.en, free: fr && Math.abs(+fr[1] + +fr[2] - +p.en) < 0.01 ? +fr[2] : '', carry: p.carry || '', date: p.st, ren: p.carry > 0 || /^Renewed/.test(x.rn) ? 1 : 0, sch: sch });
 cnPaint();
 }
 function cnTg(k){
@@ -8534,10 +8535,12 @@ cnUse(0);
 }catch(e){ openSheet('<h1>Class notice</h1><div class="empty">Could not load ' + esc(code) + '. Check your internet and try again.</div>'); }
 }
 function cnText(){
-const x = CN, u = +x.units || 0, c = +x.carry || 0, fm = n => String(Math.round(n * 10) / 10);
+const x = CN, u = +x.units || 0, c = +x.carry || 0, f = +x.free || 0, fm = n => String(Math.round(n * 10) / 10);
 return '📢 CLASS NOTICE' + (x.ren ? ' (Renewal)' : '') + '\n\n🪪 ' + x.code + ' – ' + x.name + (x.cn ? ' (' + x.cn + ')' : '') +
-'\n\n📘 ' + (String(x.book || '').trim() ? String(x.book).trim() + ' ' : '') + 'Courseware | ' + fm(u) + ' units (50 min each) = ' + fm(u * 2) + ' × 25-min classes' +
-(c ? '\n📝 ' + fm(c) + (c < 2 ? ' unit' : ' units') + ' × 50-min classes (carried over)' : '') +
+'\n\n📘 ' + (String(x.book || '').trim() ? String(x.book).trim() + ' ' : '') + 'Courseware' +
+'\n🎫 Package: ' + (f > 0 && f < u ? fm(u - f) + ' units + ' + fm(f) + ' free = ' : '') + fm(u) + (u === 1 ? ' unit' : ' units') +
+(c ? '\n➕ Carried over: ' + fm(c) + (c === 1 ? ' unit' : ' units') : '') +
+'\n✅ Total 共计: ' + fm(u + c) + ' units (50 min each) = ' + fm((u + c) * 2) + ' × 25-min classes · 共 ' + fm((u + c) * 2) + ' 节' +
 '\n\n🗓️ Schedule\n' + (String(x.sch || '').trim() || 'Teacher …') +
 (x.date ? '\n\n💳 Purchased Online: ' + cnDate(x.date) : '') +
 '\n\n🔔 Cancellation Policy 温馨提醒\nPlease inform us ≥ 2 hours before class if ' + (x.kid ? 'your child' : 'you') + ' can’t attend.\nLate cancellations will still count as a paid class.\n若无法上课，请提前 2 小时告知。临时取消视为已完成课程。' +
@@ -8552,7 +8555,7 @@ openSheet(`<h1>Class notice · ${esc(x.name)}</h1><div class="mute small">For th
 ${x.pks && x.pks.length > 1 ? `<label>Package <span class="mute small">· ${x.pks.length} packages with different teachers · newest first · pick the one this notice is for</span></label><div class="seg" style="flex-wrap:wrap">${x.pks.map((p, i) => `<button class="${i === x.pi ? 'on' : ''}" onclick="cnUse(${i})">${p.co ? esc(pkCourse(p.co)) + ' · ' : ''}${esc(p.t)} · ${esc(p.en)} units · started ${esc(p.st)}${p.left !== '' && p.left != null ? ' · ' + esc(p.left) + ' left' : ''}</button>`).join('')}</div>` : ''}
 ${x.tAll && x.tAll.length > 1 ? `<label>Teachers in this notice <span class="mute small">· pre-selected for this package · tap to add or remove</span></label><div class="row" style="gap:6px;flex-wrap:wrap">${x.tAll.map(t => { const on = x.on.indexOf(t[0]) > -1; return `<button class="btn sm ${on ? 'teal' : 'ghost'}" onclick="cnTg('${esc(t[0])}')">${on ? '✓ ' : ''}${esc(t[1])}</button>`; }).join('')}</div>` : ''}
 ${cnBookSel(x, inp)}
-<div class="row" style="gap:8px"><div class="grow">${inp('units', 'Units (50 min each)', 'number')}</div><div class="grow">${inp('carry', 'Carried over (units)', 'number')}</div></div>
+<div class="row" style="gap:8px"><div class="grow">${inp('units', 'Package units (50 min each · paid + free)', 'number')}</div><div class="grow">${inp('free', 'of which free', 'number')}</div><div class="grow">${inp('carry', 'Carried over (units)', 'number')}</div></div>
 ${inp('date', 'Purchased online', 'date')}
 <label>Schedule <span class="mute small">· from the calendar · one teacher per block</span></label><textarea class="in-t" rows="5" oninput="CN.sch=this.value;cnPv()">${esc(x.sch)}</textarea>
 <p class="small" id="cnPv" style="white-space:pre-line;margin-top:12px;padding:12px;border-radius:12px;background:#F4FAFA;border:1px solid #DCEFEF">${esc(cnText())}</p>
