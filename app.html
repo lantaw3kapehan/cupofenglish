@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1073;
+const COE_V = 1074;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -8498,7 +8498,7 @@ x.on = (only || x.tAll.map(t => t[0])).filter(k => seen[k]); if(!x.on.length) x.
 let sch = cnSched(x.L, x.on.length ? x.on : null); if(!sch) sch = cnSched(x.L);
 const c0 = String(p.co || '').split(',')[0].trim(), bk0 = c0 || up.book;
 const fr = /^Renewed/.test(x.rn) ? String(x.rn).match(/(\d+(?:\.\d+)?)\s*\+\s*(\d+(?:\.\d+)?)/) : null;
-Object.assign(x, { book: cnBookPick(bk0) || cnBook(bk0), bo: !!bk0 && !cnBookPick(bk0) ? 1 : 0, units: p.en, free: fr && Math.abs(+fr[1] + +fr[2] - +p.en) < 0.01 ? +fr[2] : '', carry: p.carry || '', date: p.st, ren: p.carry > 0 || /^Renewed/.test(x.rn) ? 1 : 0, sch: sch });
+Object.assign(x, { book: cnBookPick(bk0) || cnBook(bk0), bo: !!bk0 && !cnBookPick(bk0) ? 1 : 0, units: p.en, free: fr && Math.abs(+fr[1] + +fr[2] - +p.en) < 0.01 ? +fr[2] : '', until: /^\d{4}-\d{2}-\d{2}$/.test(p.dl || '') ? p.dl : '', carry: p.carry || '', date: p.st, ren: p.carry > 0 || /^Renewed/.test(x.rn) ? 1 : 0, sch: sch });
 cnPaint();
 }
 function cnTg(k){
@@ -8530,21 +8530,25 @@ const ok = (Array.isArray(L) ? L : []).filter(x => !x.cancelled), now = Date.now
 const carry = +pk[C.carry] || 0; let rn = ''; try{ rn = String((typeof REN === 'object' && REN && REN[code]) || ''); }catch(e){}
 const pks = rows.filter(r => r[C.enrolled] !== '').sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])));
 const nf = (window.NAMEFIX || {})[code]; CN = { code: code, name: nf || pk[C.name] || code, cn: nf ? ((window.NAMEFIX || {})['cn:' + code] || '') : (pk[C.cn] || ''), kid: 1, rn: rn, L: (Array.isArray(L) ? L : []).filter(x => !/(^|-)\s*TC(\s+X)?\s*$/i.test(String(x.title || '').trim()) && !/trial/i.test(String(x.title || ''))), pi: 0, extra: rows.filter(r => r[C.enrolled] === '').map(r => cnTn(r[C.teacher])),
-pks: (pks.length ? pks : [pk]).map(r => ({ co: C.course != null ? String(r[C.course] || '') : '', t: String(r[C.teacher] || ''), en: r[C.enrolled], carry: +r[C.carry] || 0, st: (s => s && Date.now() - new Date(s + 'T12:00:00').getTime() > 183 * 864e5 ? '' : s)(String(r[C.start] || '').slice(0, 10)), left: r[C.available] })) };
+pks: (pks.length ? pks : [pk]).map(r => ({ co: C.course != null ? String(r[C.course] || '') : '', t: String(r[C.teacher] || ''), en: r[C.enrolled], carry: +r[C.carry] || 0, st: (s => s && Date.now() - new Date(s + 'T12:00:00').getTime() > 183 * 864e5 ? '' : s)(String(r[C.start] || '').slice(0, 10)), left: r[C.available], dl: C.deadline != null ? String(r[C.deadline] || '').slice(0, 10) : '' })) };
 cnUse(0);
 }catch(e){ openSheet('<h1>Class notice</h1><div class="empty">Could not load ' + esc(code) + '. Check your internet and try again.</div>'); }
 }
 function cnText(){
-const x = CN, u = +x.units || 0, c = +x.carry || 0, f = +x.free || 0, fm = n => String(Math.round(n * 10) / 10);
-return '📢 CLASS NOTICE' + (x.ren ? ' (Renewal)' : '') + '\n\n🪪 ' + x.code + ' – ' + x.name + (x.cn ? ' (' + x.cn + ')' : '') +
-'\n\n📘 ' + (String(x.book || '').trim() ? String(x.book).trim() + ' ' : '') + 'Courseware' +
-'\n🎫 Package 课程包: ' + (f > 0 && f < u ? fm(u - f) + ' paid 购买 + ' + fm(f) + ' free 赠送 = ' : '') + fm(u) + (u === 1 ? ' unit' : ' units') +
-(c ? '\n➕ Carried over 上期结转: ' + fm(c) + (c === 1 ? ' unit' : ' units') : '') +
-'\n✅ Total 共计: ' + fm(u + c) + ' units (50 min each) = ' + fm((u + c) * 2) + ' × 25-min classes · 共 ' + fm((u + c) * 2) + ' 节' +
-'\n\n🗓️ Schedule\n' + (String(x.sch || '').trim() || 'Teacher …') +
-(x.date ? '\n\n💳 Purchased Online: ' + cnDate(x.date) : '') +
-'\n\n🔔 Cancellation Policy 温馨提醒\nPlease inform us ≥ 2 hours before class if ' + (x.kid ? 'your child' : 'you') + ' can’t attend.\nLate cancellations will still count as a paid class.\n若无法上课，请提前 2 小时告知。临时取消视为已完成课程。' +
-'\n\n❤️ Thank you for your understanding and support!\n非常感谢您的理解与支持！';
+const x = CN, u = +x.units || 0, c = +x.carry || 0, f = +x.free || 0, fm = n => String(Math.round(n * 10) / 10), un = n => fm(n) + (n === 1 ? ' unit' : ' units'), tot = u + c;
+const cdz = d => { const y = new Date(String(d || '') + 'T00:00:00'); return isNaN(y) ? '' : cnDate(d) + ' · ' + y.getFullYear() + '年' + (y.getMonth() + 1) + '月' + y.getDate() + '日'; };
+const sch = String(x.sch || '').trim().replace(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/g, '$1–$2');
+return '📢 CLASS NOTICE 课程通知' + (x.ren ? ' · Renewal 续费' : ' · New 新报名') +
+'\n\n🪪 ' + x.name + (x.cn ? ' (' + x.cn + ')' : '') + ' · ' + x.code +
+'\n\n📘 Course 课程: ' + (String(x.book || '').trim() || 'Courseware') +
+'\n🎫 Package 课程包: ' + (f > 0 && f < u ? fm(u - f) + ' paid 购买 + ' + fm(f) + ' free 赠送 = ' : '') + un(u) +
+(c ? '\n➕ Carried over 上期结转: ' + un(c) : '') +
+'\n✅ Total 共计: ' + un(tot) + ' (50 min each) = ' + fm(tot * 2) + ' classes × 25 min（共 ' + fm(tot * 2) + ' 节）' +
+(x.until ? '\n⏳ Valid until 有效期至: ' + cdz(x.until) : '') +
+'\n\n🗓️ Schedule 上课时间\n' + (sch || 'Teacher …') +
+(x.date ? '\n\n💳 Purchased 购买日期: ' + cdz(x.date) : '') +
+'\n\n🔔 Cancellation 请假须知\n• Please tell us at least 2 hours before class if ' + (x.kid ? 'your child' : 'you') + ' can’t attend.\n• A late cancellation counts as a completed class.\n若无法上课，请至少提前 2 小时告知；临时取消视为已上课。' +
+'\n\n❤️ Thank you for your support! 感谢您的理解与支持！';
 }
 function cnPaint(){
 const x = CN, inp = (k, l, t) => `<label>${l}</label><input class="in-t" type="${t || 'text'}" value="${esc(x[k] == null ? '' : x[k])}" oninput="CN['${k}']=this.value;cnPv()">`;
@@ -8556,7 +8560,7 @@ ${x.pks && x.pks.length > 1 ? `<label>Package <span class="mute small">· ${x.pk
 ${x.tAll && x.tAll.length > 1 ? `<label>Teachers in this notice <span class="mute small">· pre-selected for this package · tap to add or remove</span></label><div class="row" style="gap:6px;flex-wrap:wrap">${x.tAll.map(t => { const on = x.on.indexOf(t[0]) > -1; return `<button class="btn sm ${on ? 'teal' : 'ghost'}" onclick="cnTg('${esc(t[0])}')">${on ? '✓ ' : ''}${esc(t[1])}</button>`; }).join('')}</div>` : ''}
 ${cnBookSel(x, inp)}
 <div class="row" style="gap:8px"><div class="grow">${inp('units', 'Package units (50 min each · paid + free)', 'number')}</div><div class="grow">${inp('free', 'of which free', 'number')}</div><div class="grow">${inp('carry', 'Carried over (units)', 'number')}</div></div>
-${inp('date', 'Purchased online', 'date')}
+<div class="row" style="gap:8px"><div class="grow">${inp('date', 'Purchased online', 'date')}</div><div class="grow">${inp('until', 'Valid until', 'date')}</div></div>
 <label>Schedule <span class="mute small">· from the calendar · one teacher per block</span></label><textarea class="in-t" rows="5" oninput="CN.sch=this.value;cnPv()">${esc(x.sch)}</textarea>
 <p class="small" id="cnPv" style="white-space:pre-line;margin-top:12px;padding:12px;border-radius:12px;background:#F4FAFA;border:1px solid #DCEFEF">${esc(cnText())}</p>
 <button class="btn teal" style="width:100%" onclick="cnCopy()">Copy notice</button>`);
