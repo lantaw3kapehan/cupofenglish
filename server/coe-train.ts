@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-train (23 Oct 2026): Trainings (Addendum No. 1, Clause 3.6) — the path, videos with watch tracking, quizzes,
+// CupOfEnglish · coe-train (23 Oct 2026): Trainings (Addendum No. 1, Clause 3.6) + presence + part_remove — the path, videos with watch tracking, quizzes,
 // sessions and permanent records. Records are never deleted (database triggers); progress only grows; quiz attempts never change.
 // POST { token, action, ... }
 //   my        { teacher? }  → { ok, trainings, parts, sessions, records, progress, quiz }   (teacher: own; management: any teacher)
@@ -147,6 +147,12 @@ Deno.serve(async (req: Request) => {
       row.updated_at = now;
       const q = x.id ? db.from("coe_training_parts").update(row).eq("id", +x.id).select().single() : db.from("coe_training_parts").insert({ training_id: str(x.training_id, 40), sort: +x.sort || 1, title: row.title || "Part", ...row }).select().single();
       const { data, error } = await q; return out({ ok: !error, error: error && error.message, part: data });
+    }
+    if (a === "part_remove") {   // 23 Oct · delete a video (file removed from storage) or the whole part (hidden); watch/quiz history is kept
+      need(); const p = await part(+b.id); if (!p) return out({ ok: false, error: "Not found" }, 404);
+      if (p.video_path) { await db.storage.from(BUCKET).remove([p.video_path]); }
+      const row: any = { video_path: null, dur_sec: 0, updated_at: now }; if (b.what === "part") row.active = false;
+      const { data, error } = await db.from("coe_training_parts").update(row).eq("id", p.id).select().single(); return out({ ok: !error, error: error && error.message, part: data });
     }
     if (a === "upload_url") {
       need(); const p = await part(+b.part_id); if (!p) return out({ ok: false, error: "Not found" }, 404);
