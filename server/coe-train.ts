@@ -133,8 +133,10 @@ Deno.serve(async (req: Request) => {
     if (a === "sess_attend") {
       need(); const { data: S } = await db.from("coe_training_sessions").select("*").eq("id", +b.id).maybeSingle(); if (!S) return out({ ok: false, error: "Not found" }, 404);
       const present = (Array.isArray(b.present) ? b.present : []).map((n: any) => str(n, 60)).filter(Boolean);
-      const { data: R } = await db.from("coe_training_records").select("teacher").eq("session_id", S.id).eq("status", "done"); const had = new Set((R || []).map((x) => x.teacher));
-      const rows = present.filter((n: string) => !had.has(n)).map((n: string) => ({ teacher: n, training_id: S.training_id, status: "done", via: "live", session_id: S.id, done_at: S.starts_at, by_who: me }));
+      const { data: R } = await db.from("coe_training_records").select("teacher").eq("session_id", S.id).in("status", ["done", "completed"]); const had = new Set((R || []).map((x) => x.teacher));
+      // 702: a book / specialization session makes it "Training completed"; management then marks "Qualified to teach"
+      const { data: TK } = await db.from("coe_trainings").select("kind").eq("id", S.training_id).maybeSingle(); const st = TK && TK.kind === "unlock" ? "completed" : "done";
+      const rows = present.filter((n: string) => !had.has(n)).map((n: string) => ({ teacher: n, training_id: S.training_id, status: st, via: "live", session_id: S.id, done_at: S.starts_at, by_who: me }));
       if (S.facilitator && !had.has(S.facilitator) && !present.includes(S.facilitator) && b.facil !== false) rows.push({ teacher: S.facilitator, training_id: "facil", status: "done", via: "live", session_id: S.id, done_at: S.starts_at, by_who: me, note: "Facilitated " + S.training_id } as any);
       if (rows.length) { const { error } = await db.from("coe_training_records").insert(rows); if (error) return out({ ok: false, error: error.message }); }
       await db.from("coe_training_sessions").update({ status: "done" }).eq("id", S.id); return out({ ok: true, n: rows.length });
