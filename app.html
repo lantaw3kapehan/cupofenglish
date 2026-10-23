@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 987;
+const COE_V = 988;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -21902,7 +21902,7 @@ go();
 <div class="grow" style="min-width:0"><div><a class="nm" onclick="openStudent('${e(x.code)}')">${e(x.en)}</a> <span class="mute small">${e(x.cn)} · ${e(x.code)}</span></div>
 <div class="small" style="margin-top:2px">${e(what(x))}${x.t ? ' · ' + e(x.t) : ''}</div>
 <div class="tags"><span class="chip" style="background:${K[3]};color:${K[2]};font-weight:700">${K[0]} ${K[1]}</span></div></div>
-<div class="tdb"><button class="btn teal sm" onclick="celPic(${i})">Picture</button><button class="btn ghost sm" onclick="celCopy(${i})">Copy message</button><button class="btn ghost sm" onclick="celMark(${i})">✓ Sent</button><button class="btn ghost sm" onclick="celMark(${i},1)" title="No picture needed">Skip</button></div></div>`; }
+<div class="tdb"><button class="btn teal sm" onclick="celPic(${i})">Picture</button>${x.kind === 'book' && window.bbOpen ? `<button class="btn ghost sm" onclick="bbOpen('${e(x.book)}','${e(x.en)}','${e(x.cn || '')}')">Books to buy</button>` : ''}<button class="btn ghost sm" onclick="celCopy(${i})">Copy message</button><button class="btn ghost sm" onclick="celMark(${i})">✓ Sent</button><button class="btn ghost sm" onclick="celMark(${i},1)" title="No picture needed">Skip</button></div></div>`; }
 
   function paint(){ const v = $('v-mtoday'); if(!v || typeof VIEW === 'undefined' || VIEW !== 'mtoday') return; const L = build(), old = $('td-celebrate');
     if(!L){ if(!old) load(); return; } ITEMS = L;
@@ -22274,6 +22274,93 @@ go();
   const _go = window.go; if(_go) window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'home'){ setTimeout(mPaint, 50); setTimeout(mPaint, 800); mLoad(); } }catch(e){} return r; };
   setTimeout(() => { try{ if(typeof VIEW !== 'undefined'){ if(VIEW === 'home'){ mPaint(); mLoad(); } if(VIEW === 'today'){ tPaint(); tLoad(true); } } }catch(e){} }, 1800);
   setInterval(() => { try{ if(typeof VIEW !== 'undefined' && VIEW === 'home' && !document.hidden) mLoad(); }catch(e){} }, 5 * 6e4);
+})();
+</script>
+
+<script>
+/* 23 Oct · 656 · Books to buy (Misty: parents buy the books on Taobao, often by photo search — send the covers so they find the right one).
+   One picture per book: CupOfEnglish logo, the student's name, the exact title, the Student Book and Workbook covers side by side
+   (just one when there is no workbook), the Taobao search words and "check the cover and edition". The covers are page 1 of the
+   books in Drive › COURSEWARE (server mgmtBookCovers → storage "covers", table coe_book_buy); management can replace a cover with its
+   own picture and edit the title / search words. Each cover can also be saved alone, clean, for Taobao photo search (拍立淘).
+   Opened from To do › New book (Celebrate) and from the student page (management). */
+(function(){
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-notice';
+  const call = (action, x) => fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, action }, x || {})) }).then(r => r.json()).then(j => { if(!j || !j.ok) throw new Error((j && j.error) || 'Not saved'); return j; });
+  const key = b => String(b || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  let BB = (() => { try{ return JSON.parse(localStorage.getItem('coe.bbuy') || 'null'); }catch(e){ return null; } })(), bAt = 0, CUR = null, PICB = null;
+  async function load(force){ if(!force && BB && Date.now() - bAt < 5 * 6e4) return BB; try{ const j = await call('book_buy_list'); BB = j.list || []; bAt = Date.now(); try{ localStorage.setItem('coe.bbuy', JSON.stringify(BB)); }catch(e){} }catch(e){} return BB || []; }
+  const rowOf = code => (BB || []).find(x => x.code === key(code));
+  const mgr = () => typeof D !== 'undefined' && D && D.mgr;
+  const img = u => new Promise(ok => { if(!u) return ok(null); const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = () => ok(null); i.src = u; });
+  function sheet(){ const x = CUR, r = rowOf(x.code) || {}, M = mgr();
+    const cov = (side, lab) => { const u = r[side + '_cover']; return '<div style="flex:1;min-width:0;text-align:center">' + (u ? '<img src="' + esc(u) + '" alt="" style="width:100%;max-height:300px;object-fit:contain;border-radius:8px;box-shadow:0 4px 14px rgba(43,34,83,.15)">' : '<div class="mute small" style="padding:40px 8px;border:1.5px dashed var(--line);border-radius:10px">No cover yet</div>') +
+      '<div class="small" style="margin-top:6px;font-weight:700">' + lab + '</div>' + (u ? '<button class="btn ghost sm" style="margin-top:4px" onclick="bbSaveCover(\'' + side + '\')">Save cover</button>' : '') +
+      (M ? '<label class="btn ghost sm" style="margin-top:4px;cursor:pointer">' + (u ? 'Replace' : 'Add picture') + '<input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="bbPut(\'' + side + '\',this)"></label>' : '') + '</div>'; };
+    openSheet('<h1>Books to buy · 教材购买</h1><div class="mute small">' + esc(x.en || '') + (x.cn ? ' ' + esc(x.cn) : '') + ' · ' + esc(r.title || x.code) + '</div>' +
+      '<div class="row" style="gap:14px;margin-top:14px;align-items:flex-start">' + cov('sb', 'Student Book · 学生用书') + (r.wb_cover || M ? cov('wb', 'Workbook · 练习册') : '') + '</div>' +
+      '<div style="margin-top:14px"><b class="small">Title shown to parents</b>' + (M ? '<input id="bbT" class="in-t" style="width:100%;margin-top:4px" value="' + esc(r.title || '') + '">' : '<div>' + esc(r.title || '') + '</div>') + '</div>' +
+      '<div style="margin-top:10px"><b class="small">Taobao search words · 淘宝搜索</b>' + (M ? '<input id="bbS" class="in-t" style="width:100%;margin-top:4px" value="' + esc(r.search_cn || '') + '">' : '<div>' + esc(r.search_cn || '') + '</div>') + '</div>' +
+      (M ? '<div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost sm" onclick="bbSaveText()">Save title and words</button><button class="btn ghost sm" onclick="bbRetake()">Take covers again from COURSEWARE</button><button class="btn ghost sm" onclick="bbAll()">All books</button></div>' : '') +
+      '<div class="row" style="gap:8px;margin-top:16px"><button class="btn teal grow" onclick="bbPic()"' + (r.sb_cover ? '' : ' disabled') + '>Picture for parents</button><button class="btn ghost grow" onclick="bbCopy()">Copy search words</button></div>' +
+      (r.sb_cover ? '' : '<div class="small mute" style="margin-top:8px">' + (M ? 'No covers for this book yet · tap "Take covers again from COURSEWARE" or add a picture.' : 'Covers are not ready yet.') + '</div>')); }
+  window.bbOpen = async (book, en, cn) => { CUR = { code: key(book), en: en || '', cn: cn || '' }; if(!rowOf(CUR.code)) await load(true); else load(); sheet();
+    if(mgr() && !rowOf(CUR.code)){ toast('Taking the covers from COURSEWARE…'); try{ const r = await api('mgmtBookCovers', TOKEN, [CUR.code]); await load(true); const z = r && r.list && r.list[0]; if(z && (z.msg || z.sbErr)) toast(z.msg || z.sbErr); if(CUR) sheet(); }catch(e){ toast(e.message); } } };
+  window.bbCopy = () => { const r = rowOf(CUR.code) || {}; const t = (r.search_cn || r.title || '').trim(); try{ navigator.clipboard.writeText(t); toast('Copied · ' + t); }catch(e){ toast(t); } };
+  window.bbSaveText = async () => { try{ const j = await call('book_buy_set', { code: CUR.code, f: { title: ($('bbT') || {}).value || '', search_cn: ($('bbS') || {}).value || '' } }); BB = (BB || []).filter(x => x.code !== CUR.code).concat(j.item); toast('Saved ✓'); }catch(e){ toast(e.message); } };
+  window.bbRetake = async () => { toast('Taking the covers again…'); try{ const r = await api('mgmtBookCovers', TOKEN, [CUR.code], true); await load(true); const z = r && r.list && r.list[0]; toast(z && (z.msg || z.sbErr || z.wbErr) || 'Covers updated ✓'); sheet(); }catch(e){ toast(e.message); } };
+  window.bbPut = async (side, inp) => { const f = inp.files && inp.files[0]; if(!f) return; if(f.size > 5e6) return toast('The picture must be under 5 MB');
+    try{ const b64 = await new Promise((ok, no) => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result).split(',')[1]); rd.onerror = no; rd.readAsDataURL(f); });
+      const j = await call('book_cover_put', { code: CUR.code, side, type: f.type || 'image/jpeg', b64 }); BB = (BB || []).filter(x => x.code !== CUR.code).concat(j.item); toast('Cover saved ✓'); sheet(); }catch(e){ toast(e.message); } };
+  async function give(blob, name){ const f = new File([blob], name, { type: blob.type || 'image/png' });
+    if(navigator.canShare && navigator.canShare({ files: [f] })){ try{ await navigator.share({ files: [f] }); return; }catch(x){ if(x && x.name === 'AbortError') return; } }
+    try{ if(window.ClipboardItem && navigator.clipboard && navigator.clipboard.write && blob.type === 'image/png'){ await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Picture copied · paste it in WeChat'); return; } }catch(e){}
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); toast('Saved'); }
+  window.bbSaveCover = async side => { const r = rowOf(CUR.code) || {}, u = r[side + '_cover']; if(!u) return;
+    try{ const b = await fetch(u).then(x => x.blob()); await give(b, (r.title || CUR.code).replace(/[^\w.-]+/g, '-') + (side === 'wb' ? '-Workbook' : '-Student-Book') + (b.type === 'image/png' ? '.png' : '.jpg')); }catch(e){ toast('Could not save the cover'); } };
+  /* the parent picture */
+  window.bbPic = async () => { const r = rowOf(CUR.code) || {}; toast('Making the picture…');
+    try{ await document.fonts.ready; await Promise.all(['400 40px "Fredoka One"', '700 20px Arvo', '400 20px Arvo'].map(f => document.fonts.load(f).catch(() => 0))); }catch(z){}
+    const [logo, tag, sb, wb] = await Promise.all([img((document.querySelector('#login img') || {}).src), img((document.querySelector('#login .tagl img') || {}).src), img(r.sb_cover), img(r.wb_cover)]);
+    if(!sb) return toast('The Student Book cover did not load · try again');
+    const W = 1080, S = 2, B = '"Fredoka One",sans-serif', F = 'Arvo,"PingFang SC","Microsoft YaHei",serif', NAVY = '#2B2253', TEAL = '#0E7C7B', MUTE = '#6B6880';
+    const two = !!wb, CW = two ? 440 : 600, covH = i => Math.round(CW * i.height / i.width), CH = Math.min(two ? Math.max(covH(sb), covH(wb)) : covH(sb), two ? 600 : 800);
+    const H = 360 + CH + 400; const cv = document.createElement('canvas'); cv.width = W * S; cv.height = H * S; const c = cv.getContext('2d'); c.scale(S, S);
+    const rr = (x, y, w, h, q) => { c.beginPath(); c.moveTo(x + q, y); c.arcTo(x + w, y, x + w, y + h, q); c.arcTo(x + w, y + h, x, y + h, q); c.arcTo(x, y + h, x, y, q); c.arcTo(x, y, x + w, y, q); c.closePath(); };
+    c.fillStyle = '#EEF2F6'; c.fillRect(0, 0, W, H); rr(30, 30, W - 60, H - 60, 40); c.fillStyle = '#fff'; c.fill(); c.textAlign = 'center';
+    if(logo){ const lw = 240, lh = lw * logo.height / logo.width; c.drawImage(logo, (W - lw) / 2, 60, lw, lh); }
+    c.fillStyle = NAVY; c.font = '400 52px ' + B; c.fillText('Books to buy · 教材购买', W / 2, 220);
+    c.fillStyle = MUTE; c.font = '400 30px ' + F; const who = (CUR.en ? 'For ' + CUR.en + (CUR.cn ? ' ' + CUR.cn : '') + ' · ' : '') + (r.title || ''); let w2 = who; while(c.measureText(w2).width > W - 140 && w2.length > 10) w2 = w2.slice(0, -2); c.fillText(w2 === who ? who : w2 + '…', W / 2, 272);
+    const top = 310, put = (im, cx, lab) => { const h = Math.min(covH(im), CH), w = Math.round(h * im.width / im.height); c.save(); c.shadowColor = 'rgba(43,34,83,.22)'; c.shadowBlur = 24; c.shadowOffsetY = 8; c.drawImage(im, cx - w / 2, top + (CH - h), w, h); c.restore();
+      c.fillStyle = NAVY; c.font = '700 28px ' + F; c.fillText(lab, cx, top + CH + 46); };
+    if(two){ put(sb, W / 2 - 245, 'Student Book · 学生用书'); put(wb, W / 2 + 245, 'Workbook · 练习册'); } else put(sb, W / 2, 'Student Book · 学生用书');
+    let y = top + CH + 90; rr(80, y, W - 160, 150, 24); c.fillStyle = '#E8F4F3'; c.fill();
+    c.fillStyle = TEAL; c.font = '700 26px ' + F; c.fillText('淘宝搜索 · Search on Taobao', W / 2, y + 44);
+    c.fillStyle = NAVY; c.font = '700 30px ' + F; let s = (r.search_cn || r.title || ''); while(c.measureText(s).width > W - 220 && s.length > 8) s = s.slice(0, -1); c.fillText(s, W / 2, y + 96);
+    c.fillStyle = MUTE; c.font = '400 22px ' + F; c.fillText('也可用「拍立淘」拍封面搜索 · or photo-search the cover', W / 2, y + 132);
+    y += 200; c.fillStyle = '#9A3B22'; c.font = '700 26px ' + F; c.fillText('请认准封面和版本 · Please check the cover and the edition', W / 2, y);
+    c.fillStyle = MUTE; c.font = '400 22px ' + F; c.fillText('From your teachers at CupOfEnglish · 一杯英语全体老师', W / 2, y + 44);
+    if(tag){ const tw = 170, th = tw * tag.height / tag.width; c.drawImage(tag, W / 2 - tw / 2, H - 60 - th - 10, tw, th); }
+    const blob = await new Promise(z => cv.toBlob(z, 'image/png')); if(PICB && PICB.url) URL.revokeObjectURL(PICB.url); PICB = { blob, url: URL.createObjectURL(blob), name: 'CupOfEnglish-books-' + CUR.code + '.png' };
+    openSheet('<h1>Books to buy</h1><div class="mute small">' + esc(r.title || CUR.code) + ' · send it in the class WeChat group</div><img src="' + PICB.url + '" alt="" style="width:100%;border-radius:12px;margin-top:10px">' +
+      '<div class="row" style="gap:8px;margin-top:14px"><button class="btn teal grow" onclick="bbGive()">' + (navigator.share ? 'Share / save' : 'Copy picture') + '</button><button class="btn ghost grow" onclick="bbCopy()">Copy search words</button></div>' +
+      '<div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost grow" onclick="bbSaveCover(\'sb\')">Student Book cover alone</button>' + (two ? '<button class="btn ghost grow" onclick="bbSaveCover(\'wb\')">Workbook cover alone</button>' : '') + '</div>' +
+      '<div class="small mute" style="margin-top:6px">The covers alone are for Taobao photo search (拍立淘).</div><button class="btn ghost block" style="margin-top:10px" onclick="bbOpen(\'' + esc(CUR.code) + '\',\'' + esc(CUR.en) + '\',\'' + esc(CUR.cn) + '\')">Back</button>'); };
+  window.bbGive = () => PICB && give(PICB.blob, PICB.name);
+  /* every book at a glance (management): covers present or missing · take all covers */
+  window.bbAll = async () => { await load(true); const L = (BB || []).slice().sort((a, b) => String(a.title || a.code).localeCompare(String(b.title || b.code), undefined, { numeric: true }));
+    openSheet('<h1>Books to buy · all books</h1><div class="mute small">' + L.length + ' books · ' + L.filter(x => x.sb_cover).length + ' with covers</div><button class="btn teal sm" style="margin:10px 0" onclick="bbTakeAll(this)">Take every cover from COURSEWARE</button>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px">' + L.map(x => '<div style="text-align:center;cursor:pointer" onclick="bbOpen(\'' + esc(x.code) + '\')">' + (x.sb_cover ? '<img src="' + esc(x.sb_cover) + '" alt="" loading="lazy" style="width:100%;height:140px;object-fit:contain">' : '<div class="mute small" style="height:140px;display:grid;place-items:center;border:1.5px dashed var(--line);border-radius:8px">No cover</div>') + '<div class="small ell">' + esc(x.title || x.code) + '</div></div>').join('') + '</div>'); };
+  window.bbTakeAll = async btn => { if(btn){ btn.disabled = true; btn.textContent = 'Taking the covers… (a few minutes)'; } let left = null, n = 0;
+    try{ for(let k = 0; k < 8; k++){ const r = await api('mgmtBookCovers', TOKEN, left || []); const L = (r && r.list) || []; n += L.filter(x => !x.later).length; left = L.filter(x => x.later).map(x => x.code); if(btn) btn.textContent = n + ' books done…'; if(!left.length) break; } }catch(e){ toast(e.message); }
+    toast('Covers taken ✓'); bbAll(); };
+  /* entry points: To do › New book, and the student page (management) */
+  try{ const css = document.createElement('style'); css.textContent = '.tdb .bb656{margin-top:6px}'; document.head.appendChild(css); }catch(e){}
+  const sr0 = window.stuRender; if(sr0) window.stuRender = function(){ const r = sr0.apply(this, arguments);
+    try{ if(mgr() && STU && STU.code && STU.s && STU.s.book && !$('bbBtn')){ const row = document.querySelector('#sheetBody .row.noprint'); const b0 = String(STU.s.book).split(/\s*,\s*/)[0];
+      if(row) row.insertAdjacentHTML('beforeend', '<button class="btn ghost sm" id="bbBtn" onclick="bbOpen(\'' + esc(b0) + '\',\'' + esc(STU.s.name || '') + '\',\'' + esc(STU.s.cn || STU.s.chinese || '') + '\')">Books to buy</button>'); } }catch(e){}
+    return r; };
+  setTimeout(() => { try{ if(mgr()) load(); }catch(e){} }, 3000);
 })();
 </script>
 
