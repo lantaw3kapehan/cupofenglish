@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1074;
+const COE_V = 1075;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -8535,20 +8535,18 @@ cnUse(0);
 }catch(e){ openSheet('<h1>Class notice</h1><div class="empty">Could not load ' + esc(code) + '. Check your internet and try again.</div>'); }
 }
 function cnText(){
-const x = CN, u = +x.units || 0, c = +x.carry || 0, f = +x.free || 0, fm = n => String(Math.round(n * 10) / 10), un = n => fm(n) + (n === 1 ? ' unit' : ' units'), tot = u + c;
-const cdz = d => { const y = new Date(String(d || '') + 'T00:00:00'); return isNaN(y) ? '' : cnDate(d) + ' · ' + y.getFullYear() + '年' + (y.getMonth() + 1) + '月' + y.getDate() + '日'; };
+const x = CN, u = +x.units || 0, c = +x.carry || 0, f = +x.free || 0, fm = n => String(Math.round(n * 10) / 10), tot = u + c, ext = (f > 0 && f < u) || c > 0;
 const sch = String(x.sch || '').trim().replace(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/g, '$1–$2');
-return '📢 CLASS NOTICE 课程通知' + (x.ren ? ' · Renewal 续费' : ' · New 新报名') +
-'\n\n🪪 ' + x.name + (x.cn ? ' (' + x.cn + ')' : '') + ' · ' + x.code +
-'\n\n📘 Course 课程: ' + (String(x.book || '').trim() || 'Courseware') +
-'\n🎫 Package 课程包: ' + (f > 0 && f < u ? fm(u - f) + ' paid 购买 + ' + fm(f) + ' free 赠送 = ' : '') + un(u) +
-(c ? '\n➕ Carried over 上期结转: ' + un(c) : '') +
-'\n✅ Total 共计: ' + un(tot) + ' (50 min each) = ' + fm(tot * 2) + ' classes × 25 min（共 ' + fm(tot * 2) + ' 节）' +
-(x.until ? '\n⏳ Valid until 有效期至: ' + cdz(x.until) : '') +
-'\n\n🗓️ Schedule 上课时间\n' + (sch || 'Teacher …') +
-(x.date ? '\n\n💳 Purchased 购买日期: ' + cdz(x.date) : '') +
-'\n\n🔔 Cancellation 请假须知\n• Please tell us at least 2 hours before class if ' + (x.kid ? 'your child' : 'you') + ' can’t attend.\n• A late cancellation counts as a completed class.\n若无法上课，请至少提前 2 小时告知；临时取消视为已上课。' +
-'\n\n❤️ Thank you for your support! 感谢您的理解与支持！';
+const parts = ['Paid 购买 ' + fm((u - (f > 0 && f < u ? f : 0)) * 2)].concat(f > 0 && f < u ? ['Free 赠送 ' + fm(f * 2)] : []).concat(c > 0 ? ['Carried 结转 ' + fm(c * 2)] : []);
+return '📢 Class Notice 课程通知 · ' + (x.ren ? 'Renewal 续费' : 'New 新报名') +
+'\n\n🪪 ' + x.name + (x.cn ? ' ' + x.cn : '') + ' · ' + x.code +
+(String(x.book || '').trim() ? '\n📘 ' + String(x.book).trim() : '') +
+'\n\n📦 Lessons 课时' + (ext ? '\n' + parts.join(' + ') + '\n= ' : ' ') + fm(tot * 2) + ' classes 节 × 25 min（' + fm(tot) + (tot === 1 ? ' unit' : ' units') + '）' +
+(x.until ? '\n⏳ Valid until 有效期至 ' + x.until : '') +
+'\n\n🗓️ ' + (sch || 'Teacher …') +
+(x.date ? '\n\n💳 Purchased 购买 ' + x.date : '') +
+'\n\n🔔 Please tell us 2 hours before class if ' + (x.kid ? 'your child' : 'you') + ' can’t attend; a late cancellation counts as a class.\n请至少提前 2 小时请假，临时取消视为已上课。' +
+'\n\n❤️ Thank you! 感谢您的支持！';
 }
 function cnPaint(){
 const x = CN, inp = (k, l, t) => `<label>${l}</label><input class="in-t" type="${t || 'text'}" value="${esc(x[k] == null ? '' : x[k])}" oninput="CN['${k}']=this.value;cnPv()">`;
