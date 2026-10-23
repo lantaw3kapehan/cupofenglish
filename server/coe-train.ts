@@ -211,6 +211,17 @@ Deno.serve(async (req: Request) => {
           text: w.fn === "tMsgSend" ? str(A[1], 120) : w.fn === "tMsgAck" ? str(A[2], 40) : "" }; });
       return out({ ok: true, who, day, rows });
     }
+    // 23 Oct · WeChat family groups: a sibling's code → the code the family group is named after (management)
+    if (a === "wx_get" || a === "wx_set") {
+      need(); const { data: d0 } = await db.from("docs").select("data").eq("key", "mgmt:wxgroup").maybeSingle(); const m: any = (d0 && d0.data && typeof d0.data === "object") ? d0.data : {};
+      if (a === "wx_set") {
+        const c = str(b.code, 20).toUpperCase(), to = str(b.to, 20).toUpperCase(); if (!/^ST-\d{4}-\d{3}$/.test(c)) return out({ ok: false, error: "Student code needed" });
+        if (to && (!/^ST-\d{4}-\d{3}$/.test(to) || to === c)) return out({ ok: false, error: "Use the other child's code, e.g. ST-2026-021" });
+        if (to) m[c] = { to, by: me, at: now }; else delete m[c];
+        const { error } = await db.from("docs").upsert({ key: "mgmt:wxgroup", scope: "mgmt", data: m, updated_at: now }); if (error) return out({ ok: false, error: error.message });
+      }
+      return out({ ok: true, map: m });
+    }
     if (a === "upload_url") {
       need(); const p = await part(+b.part_id); if (!p) return out({ ok: false, error: "Not found" }, 404);
       const ext = (str(b.name, 100).match(/\.(mp4|webm|mov|m4v)$/i) || [".mp4"])[0].toLowerCase(), path = p.training_id + "/" + p.id + "-v" + (p.ver + (p.video_path ? 1 : 0)) + "-" + Date.now() + ext;
