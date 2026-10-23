@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1014;
+const COE_V = 1015;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()) window._upd = 1; else location.reload(); } }
@@ -22700,7 +22700,10 @@ go();
       if(P.every(p => partDone(d, x.name, p))) need.push('<div class="trm-it"><span><b>' + e(tName(x.name)) + '</b> · ' + e(t.title) + '<small>Watched the recording · quiz and reflection done</small></span><button class="btn sm teal" onclick="trTick(\'' + e(x.name) + '\',\'' + t.id + '\',\'recording\')">Tick done</button></div>'); }); });
     T.forEach(x => { if(!x.next || x.ix < 0 || !(x.next.need <= 0)) return; const gi = x.ix + 1;
       const miss = M.filter(t => rix(t.gate) === gi && !['done', 'excused'].includes((latestRec(d.records, x.name, t.id) || {}).status)); if(miss.length) need.push('<div class="trm-it"><span><b>' + e(tName(x.name)) + '</b> · enough units for ' + e(x.next.name) + '<small>Missing: ' + miss.map(t => e(t.title)).join(', ') + '</small></span><button class="btn sm ghost" onclick="trSched(0,\'' + miss[0].id + '\',\'' + e(x.name) + '\')">Schedule</button></div>'); });
-    h += '<div class="trm-card"><div class="k ' + (need.length ? 'c' : '') + '">NEEDS YOU' + (need.length ? ' · ' + need.length : '') + '</div>' + (need.join('') || '<div class="small mute" style="padding:8px 0">All clear.</div>') + '</div></div>';
+    h += '<div class="trm-card"><div class="k ' + (need.length ? 'c' : '') + '">NEEDS YOU' + (need.length ? ' · ' + need.length : '') + '</div>' + (need.join('') || '<div class="small mute" style="padding:8px 0">All clear.</div>') + '</div>'
+      + (() => { const ML = partsOf(d, 'model'); return '<div class="trm-card"><div class="k">SELF-STUDY · FREE · EVERY TEACHER SEES IT</div>' + (ML.length ? ML.map(p => { const G = (d.progress || []).filter(g => g.part_id === p.id && g.ver === p.ver), w = G.filter(g => g.pct >= 90).length;
+          return '<div class="trm-it"><span><b>' + e(p.title) + '</b><small>' + (p.video_path ? Math.round(p.dur_sec / 60) + ' min · ' + w + ' watched' + (G.length > w ? ' · ' + (G.length - w) + ' started' : '') : 'No video yet') + '</small></span><button class="btn sm ghost" onclick="trPartEdit(' + p.id + ')">Edit</button></div>'; }).join('') : '<div class="small mute" style="padding:8px 0">No model lessons yet. Add a video of a strong class; teachers watch it in the app (no download) and write what they will try.</div>')
+        + '<button class="btn sm teal" style="margin-top:8px" onclick="trPartEdit(0,\'model\')">+ Add model lesson</button></div>'; })() + '</div>';
     // table (682)
     const short = { way: 'CoE Way', demo: 'Final Demo', track: 'TRACK', ct: 'Critical Thinking', comm: 'Commun&shy;ication', collab: 'Collab&shy;oration', creat: 'Creat&shy;ivity', integ: 'Integ&shy;ration', phon: 'Phono&shy;logy', gram: 'Grammar', prog: 'Progress checks', inq: 'Inquiry', spec: 'Special&shy;ization', facil: 'Facilitate', trial: 'Trial classes', 'cw-phonics': 'Phonics', 'cw-od1': 'OD 1', 'cw-od2': 'OD 2', 'cw-re': 'Reading Explorer' };
     const tab = window._trTab || 'path', U = (d.trainings || []).filter(t => t.kind === 'unlock').sort((a, b) => a.sort - b.sort), C = tab === 'path' ? M : U;
@@ -22708,7 +22711,7 @@ go();
     const grp = []; C.forEach(t => { const g = tab === 'path' ? (t.gate || '') : 'Unlocks'; const l = grp[grp.length - 1]; if(l && l.g === g) l.n++; else grp.push({ g, n: 1 }); });
     const bg = t => tab === 'path' ? (BAND[t.gate] || '#F6F5FA') : '#F6F5FA';
     h += '<div class="trm-tabs"><button class="' + (tab === 'path' ? 'on' : '') + '" onclick="window._trTab=\'path\';paintTrAll()">Path · by rank</button><button class="' + (tab === 'unl' ? 'on' : '') + '" onclick="window._trTab=\'unl\';paintTrAll()">Books &amp; trials</button><span class="grow"></span><span class="trm-lg"><i class="o y">✓</i> done <i class="o s">31</i> booked <i class="o b">!</i> needed now <i class="o n"></i> not yet</span></div>';
-    h += '<div class="trm-tb2"><table><thead><tr class="g"><th class="st"></th>' + grp.map(x => '<th colspan="' + x.n + '" style="background:' + (tab === 'path' ? (BAND[x.g] || '#F6F5FA') : '#F6F5FA') + '">' + (tab === 'path' ? 'To ' + e(x.g) : 'Unlocks') + '</th>').join('') + '</tr>'
+    h += '<div class="trm-tb2"><table><thead><tr class="g"><th class="st"></th>' + grp.map(x => '<th colspan="' + x.n + '" style="background:' + (tab === 'path' ? (BAND[x.g] || '#F6F5FA') : '#F6F5FA') + '">' + (tab === 'path' ? (x.g === 'Newly Hired' ? 'First week' : 'To ' + e(x.g)) : 'Unlocks') + '</th>').join('') + '</tr>'
       + '<tr class="t"><th class="st">Teacher <small>tap a name for the path</small></th>' + C.map(t => '<th style="background:' + bg(t) + '"><button type="button" title="Tick ' + e(t.title) + ' for many teachers" onclick="trCol(\'' + t.id + '\')">' + (short[t.id] || e(t.title)) + '</button></th>').join('') + '</tr></thead><tbody>';
     const byRank = {}; T.forEach(x => { const k = x.ix < 0 ? -1 : x.ix; (byRank[k] = byRank[k] || []).push(x); });
     Object.keys(byRank).map(Number).sort((a, b) => b - a).forEach(k => { const G = byRank[k].sort((a, b) => String(a.name).localeCompare(b.name));
