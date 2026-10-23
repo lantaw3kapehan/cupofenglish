@@ -6158,7 +6158,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1081;
+const COE_V = 1082;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -8902,8 +8902,8 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
 
   // ── the Status box at the top of the student page (management) ──
   function stage(){ if(!STU) return ''; const code = up(STU.code);
-    try{ if(AT && AT.cols && AT.rows){ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const R = AT.rows.filter(x => up(x[C.code]) === code && x[C.enrolled] !== '');
-      if(R.some(x => x[C.active] === true || x[C.active] === 'TRUE')) return 'active'; if(R.length) return 'finished'; return STU.r && STU.r.trial ? 'trial' : 'none'; } }catch(e){}
+    try{ if(AT && AT.cols && AT.rows){ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const R = AT.rows.filter(x => up(x[C.code]) === code && x[C.enrolled] !== ''), A0 = AT.rows.filter(x => up(x[C.code]) === code);
+      if(A0.some(x => x[C.active] === true || x[C.active] === 'TRUE' || x[C.active] === 'true')) return 'active';   /* 750: shared package rows count */ if(R.length) return 'finished'; return STU.r && STU.r.trial ? 'trial' : 'none'; } }catch(e){}
     return STU.s && STU.s.left != null ? 'active' : STU.r && STU.r.trial ? 'trial' : ''; }
   function tKey(){ const t = STU && STU.r && STU.r.trial; return t ? tfuKey(t.date, stName()) : ''; }
   function paintBox(){ const el = $('stuStat'); if(!el || !STU) return; const code = STU.code, st = stage(), key = st === 'trial' ? tKey() : '';
@@ -23365,7 +23365,12 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   function stuNm(code){ code = up(code); try{ const s = (typeof MS !== 'undefined' && MS && (MS.students || MS)) || []; const x = Array.isArray(s) ? s.find(y => up(y.code) === code) : null; if(x) return { name: x.name || code, cn: x.cn || '' }; }catch(e){}
     try{ if(typeof AT !== 'undefined' && AT && AT.cols){ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const r = AT.rows.find(r => up(r[C.code]) === code); if(r) return { name: r[C.name] || code, cn: r[C.cn] || '' }; } }catch(e){}
     try{ if((typeof CN !== "undefined" ? CN : null) && up(CN.code) === code) return { name: CN.name, cn: CN.cn }; }catch(e){} return { name: code, cn: '' }; }
-  function fam(code){ code = up(code); const main = (WXF[code] && WXF[code].to) || code, M = [main].concat(Object.keys(WXF).filter(k => WXF[k] && WXF[k].to === main && k !== main)); return M.length > 1 ? { main, M } : null; }
+  function fam(code){ code = up(code); const main = (WXF[code] && WXF[code].to) || code, M = [main].concat(Object.keys(WXF).filter(k => WXF[k] && WXF[k].to === main && k !== main)); if(M.length > 1) return { main, M };
+    /* 750: no manual link → ACTIVE's "shared" column (the package holder's row names the sibling who shares it) */
+    try{ if(typeof AT !== 'undefined' && AT && AT.cols && AT.cols.indexOf('shared') > -1){ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const S = new Set();
+      AT.rows.forEach(r => { const a = up(r[C.code]), b = up(r[C.shared]); if(!b || a === b || r[C.enrolled] === '') return; if(a === code || b === code){ S.add(a + '>' + b); } });
+      if(S.size){ const [p] = [...S], [hold, sib] = p.split('>'); const L = [hold].concat([...S].map(x => x.split('>')[1]).filter((v, i, a) => a.indexOf(v) === i)); return { main: hold, M: L }; } } }catch(e){}
+    return null; }
   window.wxFam = fam;
   const en = n => String(n || '').replace(/[　-鿿＀-￯].*$/, '').trim() || String(n || '').trim();
   const _g = window.wxGroup; window.wxGroup = (name, code) => { const f = fam(code); if(!f) return _g(name, code); return '一杯英语 ' + f.M.map(c => en(up(c) === up(code) ? name : stuNm(c).name)).join(' & ') + ' (' + f.main + ')'; };
