@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1103;
+const COE_V = 1104;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23767,6 +23767,25 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const _p = window.cnPaint; window.cnPaint = function(){ apply(); const r = _p.apply(this, arguments); try{ hint(); }catch(e){} return r; };
   const _v = window.cnPv; window.cnPv = function(){ try{ apply(); }catch(e){} const r = _v.apply(this, arguments); try{ hint(); }catch(e){} return r; };
   const _u = window.cnUse; if(typeof _u === 'function') window.cnUse = function(){ if(typeof CN === 'object' && CN) CN.untilMan = 0; return _u.apply(this, arguments); };
+})();
+</script>
+<script>
+/* 772 · renewal status updates everywhere at once */
+(function(){
+  if(window.__772 || typeof window.api !== 'function') return; window.__772 = 1;
+  const day = () => new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' });
+  const me = () => (typeof D !== 'undefined' && D && D.me && D.me.name) || 'CupOfEnglish';
+  function set(code, st){ try{ code = String(code || '').toUpperCase(); if(!/^ST-\d{4}-\d{3}$/.test(code) || typeof REN !== 'object' || !REN) return;
+      if(st) REN[code] = st; else delete REN[code];
+      try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){}
+      setTimeout(() => { try{ if(typeof VIEW !== 'undefined' && VIEW === 'mtoday' && typeof renderMToday === 'function') renderMToday(); }catch(e){} try{ if(document.getElementById('wsBody') && typeof wsSheet === 'function') wsSheet(); }catch(e){} }, 50); }catch(e){} }
+  const _api = window.api;
+  window.api = function(fn){ const p = _api.apply(this, arguments), a = [].slice.call(arguments, 1);
+    if(fn === 'mgmtRenewPaid' && a[1] && typeof a[1] === 'object' && !a[1].dry){ const f = a[1];
+      Promise.resolve(p).then(r => { if(r && r.ok === false) return; set(f.code, (r && /^Renewed/.test(r.status || '')) ? r.status : 'Renewed · ' + (+f.pkg || 0) + (+f.free ? '+' + f.free : '') + ' paid · ' + day() + ' · ' + (f.partner || 'CupOfEnglish')); }, () => {}); }
+    else if(fn === 'mgmtRenewal' && typeof a[1] === 'string'){ const code = a[1], st = String(a[2] || ''), note = String(a[3] || '').trim(), until = String(a[4] || '');
+      Promise.resolve(p).then(r => { if(r && r.ok === false) return; set(code, r && typeof r.status === 'string' && r.status ? r.status : st ? st + (st === 'Paused' && until ? ' until ' + until : '') + ' · ' + day() + ' · ' + me() + (note ? ' · ' + note : '') : ''); }, () => {}); }
+    return p; };
 })();
 </script>
 </body>
