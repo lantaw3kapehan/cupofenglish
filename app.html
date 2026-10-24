@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1101;
+const COE_V = 1102;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23402,7 +23402,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const hm = iso => iso ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' }) : '';
   const dayLab = d => new Date(d + 'T12:00:00+08:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Manila' });
   const NAME = { timeIn: 'Time in', classIn: '"I\'m in"', saveNote: 'Class note', markHomework: 'Homework', tMsgSend: 'Message sent', tMsgAck: 'Replied to a notice', tMsgSeen: 'Opened messages', tNoteTag: 'Note tags', tVisitAck: 'Class visit seen',
-    tLeaveRequest: 'Leave request', tFbSubmit: 'Monthly feedback', tPcSubmit: 'Progress check', tPeerSubmit: 'Peer review', tTrialSubmit: 'Trial report', tHwFlag: 'Homework flag', tSetMeet: 'Meeting ID' };
+    tLeaveRequest: 'Leave request', tFbSubmit: 'Monthly feedback', tPcSubmit: 'Progress check', tPeerSubmit: 'Peer review', tTrialSubmit: 'Trial report', tHwFlag: 'Homework flag', tSetMeet: 'Meeting ID', tGoalsSave: 'Learning goals', tPayVerify: 'Pay check', tVidStart: 'Class video · upload started', tVidDone: 'Class video uploaded', tVidExplain: 'Class video · explanation', tRemindLog: 'WeChat reminder sent', tNotMine: '"Not my student" sent', tLeaveReply: 'Leave · answer sent', tLeaveCancel: 'Leave cancelled' };
   const what = r => (NAME[r.fn] || r.fn) + (r.fn === 'classIn' ? ' · ' + (r.student || r.code) + (r.start ? ' ' + hm(r.start) + ' class' : '') : r.fn === 'saveNote' && r.student ? ' · ' + r.student : '') + (r.text ? ' · "' + r.text + '"' : '');
   const res = r => r.status === 'error' ? ['✕ Not saved' + (r.error ? ' · ' + r.error : ''), '#C2483A'] : r.status !== 'done' ? ['… saving', '#9A6A12']
     : r.rst ? ['✓ Saved · ' + r.rst + (r.mins != null && r.mins !== '' ? ' (' + (+r.mins >= 0 ? r.mins + ' min before' : Math.abs(+r.mins) + ' min after start') + ')' : '') + (nt(r) ? ' · ' + nt(r) : ''), /Late/.test(r.rst) ? '#C2483A' : '#1E7A55'] : ['✓ Saved' + (nt(r) ? ' · ' + nt(r) : ''), '#1E7A55'];
@@ -23714,6 +23714,38 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   window.fbSend = function(){ try{ const l = L(); if(l && !FBS._ok769){ let all = true, any = false; FBF.form.grids.forEach((g, gi) => g.rows.forEach((x, ri) => { const a = lm(gi, ri); if(!a) return; any = true; if(FBS.scores[gi][ri] !== a) all = false; }));
         if(any && all){ if(!confirm('Every score is exactly the same as last month.\n\nNothing changed at all for ' + (FBF.student || 'this student') + '?\nOK = send as it is · Cancel = let me check')) return; FBS._ok769 = 1; } } }catch(e){}
     return _send.apply(this, arguments); };
+})();
+</script>
+<script>
+/* 770 · device on every activity */
+(function(){
+  if(window.__770 || typeof fastWrite !== 'function') return; window.__770 = 1;
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-train';
+  const net = () => { const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection; if(!c) return navigator.onLine === false ? 'offline' : '';
+    return [c.type && c.type !== 'unknown' ? (c.type === 'wifi' ? 'Wi-Fi' : c.type === 'cellular' ? 'Mobile data' : c.type === 'ethernet' ? 'LAN cable' : c.type) : '', c.effectiveType ? c.effectiveType.toUpperCase() + ' speed' : ''].filter(Boolean).join(' · '); };
+  const dev = () => { let d = ''; try{ d = typeof deviceInfo === 'function' ? deviceInfo() : ''; }catch(e){} return { device: d, net: net() }; };
+  const post = b => { try{ if(typeof TOKEN === 'undefined' || !TOKEN) return; fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, keepalive: true, body: JSON.stringify(Object.assign({ token: TOKEN, dev: dev() }, b)) }).catch(() => {}); }catch(e){} };
+  /* 1 · database saves: after the save is queued, send the device for that row */
+  const _fw = window.fastWrite;
+  window.fastWrite = async function(fn, args){ const r = await _fw.apply(this, arguments); try{ setTimeout(() => post({ action: 'devlog', fn }), 300); }catch(e){} return r; };
+  /* 2 · saves that go straight to Google */
+  const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round((n || 0) / 1024) + ' KB';
+  const DET = {
+    tVidStart: a => { const f = a[2] || {}; return [f.name, f.size ? kb(f.size) : '', f.dur ? Math.round(f.dur / 60) + ' min video' : ''].filter(Boolean).join(' · '); },
+    tVidDone: () => 'Video uploaded and linked',
+    tVidExplain: a => [a[2], a[3]].filter(Boolean).join(' · '),
+    tRemindLog: a => { const o = a[1] || {}; return [o.student, o.code, o.start ? o.start + ' class' : '', o.stage].filter(Boolean).join(' · '); },
+    tNotMine: a => [a[1], a[2]].filter(Boolean).join(' · '),
+    tLeaveReply: a => String(a[2] || '').slice(0, 120) + (Array.isArray(a[3]) && a[3].length ? ' · ' + a[3].length + ' file(s)' : ''),
+    tLeaveCancel: a => 'Request ' + (a[1] || '')
+  };
+  const act = (fn, args, ok, extra) => { let d = ''; try{ d = DET[fn](args); }catch(e){} post({ action: 'act', fn, ok, detail: [d, extra].filter(Boolean).join(' · ').slice(0, 300) }); };
+  const wrap = name => { const f = window[name]; if(typeof f !== 'function') return;
+    window[name] = function(fn){ const p = f.apply(this, arguments); if(!DET[fn]) return p; const args = [].slice.call(arguments, 1);
+      Promise.resolve(p).then(r => { const ok = !(r && r.ok === false); act(fn, args, ok, ok ? '' : String((r && (r.msg || r.error)) || 'Not saved').slice(0, 120)); },
+        e => { const m = String((e && (e.msg || e.message)) || 'Not saved'); act(fn, args, /saved on this device/i.test(m), m.slice(0, 120)); });
+      return p; }; };
+  wrap('apiNow');   /* api() hands every Google save to apiNow, so one wrapper sees each save once */
 })();
 </script>
 </body>
