@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1115;
+const COE_V = 1116;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -22183,7 +22183,9 @@ go();
         }
       }
       if(!fileId) throw new Error('Google did not confirm the file. Tap Upload video again.');
-      show('<b>Saving…</b><div class="small" style="opacity:.8">' + who + ' · linking it in DAILY</div>', 'wait');
+      s.fid = fileId; s.t = Date.now(); o = get(); o[id] = s; put(o);   /* 784: remembered, so it can be finished later if the app is closed */
+      D.vids = D.vids || {}; if(!(D.vids[id] && D.vids[id].url)){ D.vids[id] = { url: 'https://drive.google.com/file/d/' + fileId + '/view', at: hm() }; try{ if(typeof VIEW !== 'undefined' && VIEW === 'today') renderToday(); }catch(e){} }
+      show('<b>✓ Uploaded · finishing the details…</b><div class="small" style="opacity:.8">' + who + ' · the video is in the school Drive · linking it in DAILY</div>', 'wait');
       let d = null, note = '';
       try{ d = await apiNow('tVidDone', TOKEN, s.key, fileId); }
       catch(e){ if(/saved on this device/i.test(String(e && e.message))) note = 'Uploaded · the link is added when the signal is back'; else throw e; }
@@ -23973,6 +23975,21 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   window.vidHoldMsg = (h, who, pct) => '<b>⏸ Paused · ' + (h.soon ? 'your ' + hm(h.start) + ' class starts soon' : 'your ' + hm(h.start) + ' class is on') + '</b>'
     + '<div class="small" style="opacity:.85;margin-top:4px">' + who + ' · ' + pct + '% sent · continues automatically at ' + hm(h.until) + ' · nothing is lost</div>'
     + '<div class="small" style="opacity:.7;margin-top:2px">So your class gets the full internet · keep the app open</div>';
+})();
+</script>
+<script>
+/* 784 · finish a class video that reached Drive but was not confirmed (app closed while saving) */
+(function(){
+  if(window.__784) return; window.__784 = 1;
+  const LS = 'coe.vup';
+  const run = async () => { if(typeof TOKEN === 'undefined' || !TOKEN || typeof apiNow !== 'function') return setTimeout(run, 5000);
+    let o; try{ o = JSON.parse(localStorage.getItem(LS) || '{}') || {}; }catch(e){ return; }
+    for(const id of Object.keys(o)){ const s = o[id]; if(!s || !s.fid || s.done || !s.key || Date.now() - (s.t || 0) > 5 * 36e5) continue;
+      if(typeof window._vupBusy !== 'undefined' && window._vupBusy) continue;
+      try{ const d = await apiNow('tVidDone', TOKEN, s.key, s.fid); if(d && d.ok !== false){ s.done = d.url || ('https://drive.google.com/file/d/' + s.fid + '/view'); s.t = Date.now();
+          try{ const o2 = JSON.parse(localStorage.getItem(LS) || '{}') || {}; o2[id] = s; localStorage.setItem(LS, JSON.stringify(o2)); }catch(e){}
+          if(typeof toast === 'function') toast('Class video saved · ' + (d.name || s.name || '')); } }catch(e){} } };
+  setTimeout(run, 8000);
 })();
 </script>
 </body>
