@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1114;
+const COE_V = 1115;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -22165,6 +22165,7 @@ go();
           '<div class="small" style="opacity:.7;margin-top:2px">Keep the app open until it finishes · saved to the school Drive, not your storage</div>', 'wait'); };
       prog();
       while(!fileId && off < N){
+        if(window.vidHold){ let h, w = 0; while((h = vidHold(c))){ w = 1; show(vidHoldMsg(h, who, Math.floor(off / N * 100)), 'wait'); await sleep(15000); } if(w){ try{ const q = await ask(); if(q.done){ fileId = q.done; break; } off = q.off; }catch(x){ if(x.exp) throw x; } prog(); } }   /* 783: wait while a class is on */
         const end = Math.min(off + CH, N);
         try{
           t1 = Date.now(); const r = await fetch(s.url, { method: 'PUT', headers: { 'Content-Range': 'bytes ' + off + '-' + (end - 1) + '/' + N }, body: f.slice(off, end) });
@@ -23958,5 +23959,21 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
 })();
 </script>
 <style>.hw .vdh{display:none}</style>
+<script>
+/* 783 · class video upload waits while a class is on */
+(function(){
+  const PRE = 3 * 6e4;
+  const hm = t => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  window.vidHold = function(c){ try{ if(typeof D === 'undefined' || !D || D.mgr) return null;
+      const now = Date.now(), L = (D.schedule || []).filter(x => x && !x.cancelled && x.start && x.end && (!c || x.id !== c.id)).map(x => ({ a: new Date(x.start).getTime(), b: new Date(x.end).getTime(), s: x.start }))
+        .filter(x => !isNaN(x.a) && !isNaN(x.b)).sort((p, q) => p.a - q.a);
+      const cur = L.find(x => now >= x.a - PRE && now < x.b); if(!cur) return null;
+      let until = cur.b; for(const x of L){ if(x.a > cur.a && x.a - PRE <= until && x.b > until) until = x.b; }   /* back-to-back classes */
+      return { start: cur.s, until: until, soon: now < cur.a }; }catch(e){ return null; } };
+  window.vidHoldMsg = (h, who, pct) => '<b>⏸ Paused · ' + (h.soon ? 'your ' + hm(h.start) + ' class starts soon' : 'your ' + hm(h.start) + ' class is on') + '</b>'
+    + '<div class="small" style="opacity:.85;margin-top:4px">' + who + ' · ' + pct + '% sent · continues automatically at ' + hm(h.until) + ' · nothing is lost</div>'
+    + '<div class="small" style="opacity:.7;margin-top:2px">So your class gets the full internet · keep the app open</div>';
+})();
+</script>
 </body>
 </html>
