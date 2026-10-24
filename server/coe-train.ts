@@ -200,16 +200,34 @@ Deno.serve(async (req: Request) => {
     if (a === "activity") {
       const who = mgmt && b.teacher ? str(b.teacher, 60) : me, day = /^\d{4}-\d{2}-\d{2}$/.test(str(b.day, 10)) ? str(b.day, 10) : new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
       const from = new Date(day + "T00:00:00+08:00"), to = new Date(from.getTime() + 864e5);
-      const { data, error } = await db.from("writes").select("id,fn,args,status,error,result,created_at,done_at").ilike("who", who).gte("created_at", from.toISOString()).lt("created_at", to.toISOString()).neq("status", "test").order("id").limit(300);
+      const { data, error } = await db.from("writes").select("id,fn,args,status,error,result,created_at,done_at,dev").ilike("who", who).gte("created_at", from.toISOString()).lt("created_at", to.toISOString()).neq("status", "test").order("id").limit(300);
       if (error) return out({ ok: false, error: error.message });
       const rows = (data || []).map((w: any) => { const A = Array.isArray(w.args) ? w.args : [], o = (x: any) => (x && typeof x === "object" && !Array.isArray(x)) ? x : {};
-        const c = w.fn === "classIn" ? o(A[1]) : w.fn === "saveNote" ? o(A[1]) : {}, dv = w.fn === "classIn" ? o(A[2]) : w.fn === "timeIn" ? o(A[3]) : {}, r = o(w.result);
-        const ci = o(r.classIn || r.timeIn || r.ti);
+        const c = (w.fn === "classIn" || w.fn === "saveNote" || w.fn === "markHomework") ? o(A[1]) : (typeof A[1] === "string" && /^ST-/.test(A[1])) ? { code: A[1] } : {}, dv = w.fn === "classIn" ? o(A[2]) : w.fn === "timeIn" ? o(A[3]) : {}, r = o(w.result);
+        const ci = o(r.classIn || r.timeIn || r.ti), wd = o(w.dev);
         return { id: w.id, fn: w.fn, at: w.created_at, status: w.status, error: w.error || "", note: str(r.note, 160), rec: str(ci.time, 10), mins: ci.mins ?? null, proof: str(ci.proof, 300), rst: str(ci.status, 30), place: str(ci.place, 160), flag: str(ci.flag, 120),
-          student: str(c.student, 60), code: str(c.code, 20), start: str(c.start || c.date, 30), dev: str(dv.device, 120), ip: str(dv.ip, 60), net: str(dv.net, 120), speed: str(dv.speed, 120),
+          student: str(c.student, 60), code: str(c.code, 20), start: str(c.start || c.date, 30), dev: str(dv.device || wd.device, 140), ip: str(dv.ip || wd.ip, 60), net: str(dv.net || wd.net, 120), speed: str(dv.speed, 120), ua: str(wd.ua, 200),
           lat: typeof dv.lat === "number" ? dv.lat : null, lng: typeof dv.lng === "number" ? dv.lng : null, acc: typeof dv.acc === "number" ? dv.acc : null,
           text: w.fn === "tMsgSend" ? str(A[1], 120) : w.fn === "tMsgAck" ? str(A[2], 40) : "" }; });
+      const { data: X } = await db.from("coe_activity").select("id,fn,ok,detail,dev,at").ilike("who", who).gte("at", from.toISOString()).lt("at", to.toISOString()).order("at").limit(300);
+      (X || []).forEach((x: any) => { const d = (x.dev && typeof x.dev === "object") ? x.dev : {};
+        rows.push({ id: "a" + x.id, fn: x.fn, at: x.at, status: x.ok === false ? "error" : "done", error: x.ok === false ? str(x.detail, 160) : "", note: x.ok === false ? "" : str(x.detail, 160), rec: "", mins: null, proof: "", rst: "", place: "", flag: "",
+          student: "", code: "", start: "", dev: str(d.device, 140), ip: str(d.ip, 60), net: str(d.net, 120), speed: "", ua: str(d.ua, 200), lat: null, lng: null, acc: null, text: "" } as any); });
+      rows.sort((p: any, q: any) => String(p.at).localeCompare(String(q.at)));
       return out({ ok: true, who, day, rows });
+    }
+    // 24 Oct · device on every save: the app sends its device after a database save (devlog) and for saves that go
+    // straight to Google, e.g. a class video (act). The network address is taken here, not from the app.
+    if (a === "devlog" || a === "act") {
+      const ip = str(req.headers.get("cf-connecting-ip") || (req.headers.get("x-forwarded-for") || "").split(",")[0], 60), d = b.dev && typeof b.dev === "object" ? b.dev : {};
+      const dev = { device: str(d.device, 140), net: str(d.net, 80), ip, ua: str(req.headers.get("user-agent"), 200) };
+      if (a === "devlog") {
+        const fn = str(b.fn, 40); const { data: w } = await db.from("writes").select("id").eq("fn", fn).ilike("who", me).is("dev", null).gte("created_at", new Date(Date.now() - 3 * 60e3).toISOString()).order("id", { ascending: false }).limit(1);
+        if (w && w[0]) await db.from("writes").update({ dev }).eq("id", w[0].id);
+        return out({ ok: true });
+      }
+      const { error } = await db.from("coe_activity").insert({ who: me, fn: str(b.fn, 40), ok: b.ok !== false, detail: str(b.detail, 300) || null, dev });
+      return out({ ok: !error, error: error && error.message });
     }
     // 24 Oct · a student's / trial's history notes (S-LOG copy) — the same list Google's mgmtStuLog gives, from the database (management)
     if (a === "stulog") {
