@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1096;
+const COE_V = 1097;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -21901,6 +21901,10 @@ go();
 
   function students(){ const ms = (typeof MS !== 'undefined' && MS) ? (Array.isArray(MS) ? MS : (MS.students || MS.rows || null)) : null, L = Array.isArray(ms) && ms.length ? ms : STU_L;
     try{ const O = window._celBk || {}; if(L) Object.keys(O).forEach(c => { if(Date.now() - O[c].t > 30 * 6e4) return; const s = L.find(x => String(x.code || '').toUpperCase() === c); if(s && booksOf(s).indexOf(norm(O[c].b)) < 0) s.book = O[c].multi && s.book ? s.book + ', ' + O[c].b : O[c].b; }); }catch(e){}   /* 655 */
+    try{ const N = (CEL && CEL.next) || {}; if(L) L.forEach(s => { const c = String(s.code || '').toUpperCase(), nb = N[c]; if(!nb) return; const k = norm(String(nb).split(/[,;]/)[0].trim().split(/\s+/)[0]); if(!k || !bookName(k)) return;
+      const have = booksOf(s); if(have.indexOf(k) > -1) return; const ser = n => bookName(n).replace(/\s*\S+$/, ''), sk = ser(k);
+      const parts = String(s.book || '').split(/\s*,\s*/).filter(Boolean), i = parts.findIndex(p => { const pn = norm(p.trim().split(/\s+/)[0]); return bookName(pn) && ser(pn) === sk; });
+      if(i > -1) parts[i] = k; else parts.push(k); s.book = parts.join(', '); }); }catch(e){}   /* 765: the book on the next class */
     return L; }
   function dbx(){ return (typeof DB !== 'undefined' && DB && DB.rows) ? DB : DBX; }
   const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -21937,7 +21941,7 @@ go();
     return out; }
 
   async function load(force){ if(!isMgmt() || busy || (!force && CEL && students() && dbx() && Date.now() - at < 10 * 6e4)) return; busy = 1;
-    try{ const jobs = [call('cel_list').then(j => { CEL = { marks: j.marks || [], books: j.books || {} }; })];
+    try{ const jobs = [call('cel_list').then(j => { CEL = { marks: j.marks || [], books: j.books || {}, next: j.next || {} }; })];
       if(!students()) jobs.push(api('mgmtStudents', TOKEN).then(v => { STU_L = Array.isArray(v) ? v : (v && (v.students || v.rows)) || null; }));
       if(!dbx()) jobs.push(api('mgmtDatabase', TOKEN).then(v => { if(v && v.rows) DBX = v; }));
       await Promise.all(jobs); at = Date.now(); paint(); }
