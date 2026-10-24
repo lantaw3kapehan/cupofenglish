@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1092;
+const COE_V = 1093;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23539,6 +23539,21 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
         .then(x => x.json()).then(r => (r && r.ok) ? r : base.apply(self, [fn].concat(a)), () => base.apply(self, [fn].concat(a))); }
     return base.apply(this, arguments); };
   w.__760 = 1; window.api = w;
+})();
+</script>
+<script>
+/* 761 · background refreshes from the database */
+(function(){
+  const BG = /^(mgmt(Active|Students|Student|StuClasses|Schedule|TeacherWeek|Teacher|AvailAll|Actions|Payroll|Leave|Database)|t(Student|Schedule|HwHist|Goals|Leave)|dbLists|dbRecord)$/;
+  const base = window.api; if(!base || base.__761) return;
+  const w = function(fn){ const args = Array.prototype.slice.call(arguments, 1), self = this, go = () => base.apply(self, [fn].concat(args));
+    try{
+      const ui = Date.now() - (window._ui || 0) < 1500, saved = typeof SB_LASTW !== 'undefined' && Date.now() - SB_LASTW < 120000;
+      if(!ui && !saved && BG.test(fn) && typeof sbOn === 'function' && sbOn() && typeof sbDoc === 'function'){
+        return sbDoc(sbKey(fn, args)).then(d => (d && d.data != null && (d.live || Date.now() - Date.parse(d.at) < 30 * 6e4)) ? d.data : go(), go); }
+    }catch(e){}
+    return go(); };
+  w.__761 = 1; window.api = w;
 })();
 </script>
 </body>
