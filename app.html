@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1108;
+const COE_V = 1109;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23838,6 +23838,30 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
         else if(!asked[code] && !Array.isArray(CLSM[code])){ asked[code] = 1; api('mgmtStuClasses', TOKEN, code).then(x => { if(!Array.isArray(x)) return; CLSM[code] = x;
             if(STU && String(STU.code).toUpperCase() === code && curTeachers(code, all)) window.stuRender(); }).catch(() => {}); } } }catch(e){}
     return _r.apply(this, arguments); };
+})();
+</script>
+<script>
+/* 777 · class notice: each child's own book */
+(function(){
+  if(window.__777 || typeof window.cnOpen !== 'function') return; window.__777 = 1;
+  const up = x => String(x || '').trim().toUpperCase();
+  const bookOf = L => { const now = Date.now() - 3 * 36e5, ok = (Array.isArray(L) ? L : []).filter(c => c && !c.cancelled && !/trial|-TC(\s+X)?\s*$/i.test(String(c.title || '')));
+    const nx = ok.filter(c => new Date(c.start).getTime() >= now).sort((a, b) => new Date(a.start) - new Date(b.start))[0] || ok.sort((a, b) => new Date(b.start) - new Date(a.start))[0];
+    const b = nx ? String(nx.book || (String(nx.title || '').replace(/\s+X$/i, '').split('-')[4] || '')).trim() : ''; return b ? (typeof cnBookPick === 'function' && cnBookPick(b)) || b : ''; };
+  const _o = window.cnOpen;
+  window.cnOpen = async function(code){ const r = await _o.apply(this, arguments);
+    try{ const x = typeof CN !== 'undefined' ? CN : null; if(x && Array.isArray(x.fam) && x.fam.length > 1 && up(x.code) === up(code)){
+        const L = await Promise.all(x.fam.map(m => Array.isArray(CLSM[up(m.code)]) ? CLSM[up(m.code)] : api('mgmtStuClasses', TOKEN, m.code).then(v => { if(Array.isArray(v)) CLSM[up(m.code)] = v; return v; }).catch(() => [])));
+        x.fam.forEach((m, k) => { m.book = bookOf(L[k]) || (up(m.code) === up(x.code) ? x.book : ''); });
+        if(typeof cnPv === 'function') cnPv(); } }catch(e){}
+    return r; };
+  const _t = window.cnText;
+  window.cnText = function(){ let t = _t.apply(this, arguments);
+    try{ const x = typeof CN !== 'undefined' ? CN : null; if(x && Array.isArray(x.fam) && x.fam.length > 1){ const B = x.fam.map(m => String(m.book || '').trim());
+        if(B.some(Boolean) && new Set(B.filter(Boolean)).size > 1){
+          x.fam.forEach(m => { if(!m.book) return; const re = new RegExp('^(👤 .*' + String(m.code).replace(/[-]/g, '\\-') + ')$', 'm'); t = t.replace(re, '$1 · 📘 ' + m.book); });
+          t = t.replace(/^📘 .*\n?/m, ''); } } }catch(e){}
+    return t; };
 })();
 </script>
 </body>
