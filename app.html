@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1085;
+const COE_V = 1086;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -22496,12 +22496,30 @@ go();
     const rf = document.getElementById('rf'); if(!rf) return; let b = document.getElementById('tinNag');
     if(!b){ rf.insertAdjacentHTML('beforebegin', '<button id="tinNag" type="button"></button>'); b = document.getElementById('tinNag'); }
     const DD = typeof D !== 'undefined' ? D : null, S = DD && DD.mgr && DD.shift, ti = DD && DD.timeIn;
+    if(DD && !DD.mgr){ tPaint(b, DD); return; }   /* 754: teachers */
     if(!S || (S.rest && !ti) || (ti && ti.out)){ b.className = ''; return; }
     if(!ti){ b.className = 'go'; b.innerHTML = IC + 'Time in'; b.title = S.flex ? 'Time in when you start' : 'Shift ' + (S.label || '') + ' · on time at or before ' + (S.start || '');
       b.onclick = () => timeInSheet();
       try{ const k = 'tinNag:' + new Date().toISOString().slice(0, 10); if(!sessionStorage.getItem(k)){ sessionStorage.setItem(k, 1); setTimeout(() => { if(!D.timeIn && typeof toast === 'function') toast('You have not timed in yet today · tap Time in at the top'); }, 1500); } }catch(e){}
     } else { b.className = 'on'; b.innerHTML = IC + 'In ' + (ti.time || ''); b.title = 'Timed in · tap to time out'; b.onclick = () => timeOutSheet(); }
   }catch(e){} }
+  /* 754 · teachers: Time in for the first class, then "I'm in" for each class as it opens */
+  function tPaint(b, DD){ const now = Date.now(), hm = d => new Date(d).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const L = (DD.schedule || []).filter(x => x.day === DD.today && !x.cancelled).sort((a, c) => String(a.start).localeCompare(String(c.start)));
+    if(!L.length){ b.className = ''; return; }
+    const first = L[0], t0 = +new Date(first.start), ti = DD.timeIn, nm = c => String(c.student || c.title || '').split(/\s+/)[0];
+    if(!ti){ const late = now > t0, open = now >= t0 - 40 * 6e4;
+      b.className = open ? 'go' : 'on'; if(late) b.style.background = '#B4442F'; else b.style.background = '';
+      b.innerHTML = IC + (late ? 'Time in · late' : open ? 'Time in · ' + hm(first.start) + ' class' : 'Time in opens ' + hm(t0 - 40 * 6e4));
+      b.title = 'First class ' + hm(first.start) + (first.student ? ' · ' + first.student : ''); b.onclick = () => timeInSheet(); return; }
+    b.style.background = '';
+    const CI = DD.classIns || {}, due = L.find(c => { if(c === first || CI[c.id]) return false; const st = +new Date(c.start), en = +new Date(c.end);
+      const cont = L.find(x => x !== c && x.code && x.code === c.code && +new Date(x.end) === st); if(cont) return false;
+      const prev = L.filter(x => x !== c && +new Date(x.end) <= st).sort((p, q) => +new Date(q.end) - +new Date(p.end))[0]; let op = st - 5 * 6e4; if(prev && +new Date(prev.end) > op) op = +new Date(prev.end);
+      return now >= op && now <= en; });
+    if(due){ const late = now > +new Date(due.start); b.className = 'go'; if(late) b.style.background = '#B4442F';
+      b.innerHTML = IC + "I'm in" + (late ? ' · late' : '') + ' · ' + hm(due.start) + (nm(due) ? ' ' + nm(due) : ''); b.title = 'Tap to check in for this class'; b.onclick = () => classIn(due.id); return; }
+    b.className = 'on'; b.innerHTML = IC + 'In ' + (ti.time || ''); b.title = 'Timed in ' + (ti.time || '') + (ti.status ? ' · ' + ti.status : ''); b.onclick = () => { try{ go('today'); }catch(e){} }; }
   window.tinNag = paint; setInterval(paint, 5000); setTimeout(paint, 800);
 })();
 </script>
