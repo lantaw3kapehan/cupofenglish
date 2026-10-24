@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1102;
+const COE_V = 1103;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -8564,7 +8564,7 @@ ${x.pks && x.pks.length > 1 ? `<label>Package <span class="mute small">· ${x.pk
 ${x.tAll && x.tAll.length > 1 ? `<label>Teachers in this notice <span class="mute small">· pre-selected for this package · tap to add or remove</span></label><div class="row" style="gap:6px;flex-wrap:wrap">${x.tAll.map(t => { const on = x.on.indexOf(t[0]) > -1; return `<button class="btn sm ${on ? 'teal' : 'ghost'}" onclick="cnTg('${esc(t[0])}')">${on ? '✓ ' : ''}${esc(t[1])}</button>`; }).join('')}</div>` : ''}
 ${cnBookSel(x, inp)}
 <div class="row" style="gap:8px"><div class="grow">${inp('units', 'Package units (50 min each · paid + free)', 'number')}</div><div class="grow">${inp('free', 'of which free', 'number')}</div><div class="grow">${inp('carry', 'Carried over (units)', 'number')}</div></div>
-<div class="row" style="gap:8px"><div class="grow">${inp('date', 'Purchased online', 'date')}</div><div class="grow">${inp('until', 'Valid until', 'date')}</div></div>
+<div class="row" style="gap:8px"><div class="grow">${inp('date', 'Purchased online', 'date')}</div><div class="grow"><label>Valid until</label><input id="cnUntil" class="in-t" type="date" value="${esc(x.until == null ? '' : x.until)}" oninput="cnManV(this.value)"><div id="cnVa" class="small mute" style="margin-top:4px"></div></div></div>
 <label>Schedule <span class="mute small">· from the calendar · one teacher per block</span></label><textarea class="in-t" rows="5" oninput="CN.sch=this.value;cnPv()">${esc(x.sch)}</textarea>
 <p class="small" id="cnPv" style="white-space:pre-line;margin-top:12px;padding:12px;border-radius:12px;background:#F4FAFA;border:1px solid #DCEFEF">${esc(cnText())}</p>
 <button class="btn teal" style="width:100%" onclick="cnCopy()">Copy notice</button>`);
@@ -23746,6 +23746,27 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
         e => { const m = String((e && (e.msg || e.message)) || 'Not saved'); act(fn, args, /saved on this device/i.test(m), m.slice(0, 120)); });
       return p; }; };
   wrap('apiNow');   /* api() hands every Google save to apiNow, so one wrapper sees each save once */
+})();
+</script>
+<script>
+/* 771 · class notice: validity worked out automatically */
+(function(){
+  if(window.__771 || typeof cnPaint !== 'function') return; window.__771 = 1;
+  const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  function auto(){ const x = CN; if(!x) return null; const t = +x.units || 0, dt = String(x.date || ''); if(!t || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) return null;
+    const t0 = new Date(dt + 'T00:00:00').getTime();
+    const L = (Array.isArray(x.L) ? x.L : []).filter(c => !c.cancelled && new Date(c.start).getTime() >= t0).sort((a, b) => new Date(a.start) - new Date(b.start));
+    const f = L.length ? new Date(L[0].start) : null, d = f ? new Date(f.getFullYear(), f.getMonth(), f.getDate(), 12) : new Date(dt + 'T12:00:00'), m = t < 30 ? 4 : t < 60 ? 8 : 12;
+    d.setMonth(d.getMonth() + m);
+    return { until: ymd(d), why: '⚙︎ Automatic · ' + m + ' months (' + t + ' lessons) from ' + (f ? 'the first class of this package · ' + f.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'the purchase date · no class booked yet') }; }
+  function hint(){ const el = document.getElementById('cnVa'); if(!el) return; const a = auto();
+    el.innerHTML = CN.untilMan ? (a && a.until !== CN.until ? '✎ Your date · the rule gives ' + esc(a.until) + ' · <a class="link" href="#" onclick="cnAutoV();return false">Use the automatic date</a>' : '✎ Your date') : a ? esc(a.why) : 'Fill in the units and the purchase date'; }
+  function apply(){ if(!CN || CN.untilMan) return; const a = auto(); if(!a) return; CN.until = a.until; const f = document.getElementById('cnUntil'); if(f && f.value !== a.until) f.value = a.until; }
+  window.cnAutoV = () => { CN.untilMan = 0; apply(); cnPv(); };
+  window.cnManV = v => { CN.until = v; CN.untilMan = 1; cnPv(); };
+  const _p = window.cnPaint; window.cnPaint = function(){ apply(); const r = _p.apply(this, arguments); try{ hint(); }catch(e){} return r; };
+  const _v = window.cnPv; window.cnPv = function(){ try{ apply(); }catch(e){} const r = _v.apply(this, arguments); try{ hint(); }catch(e){} return r; };
+  const _u = window.cnUse; if(typeof _u === 'function') window.cnUse = function(){ if(typeof CN === 'object' && CN) CN.untilMan = 0; return _u.apply(this, arguments); };
 })();
 </script>
 </body>
