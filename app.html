@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1104;
+const COE_V = 1105;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -6359,10 +6359,10 @@ let RPS = null;
 const RP_PK = [[15, 0], [30, 3], [60, 8]];
 function rpTot(){ return (+RPS.pkg || 0) + (+RPS.free || 0); }
 function rpNc(){ const p = ($('rpD') || {}).value; if(!p) return null; const t0 = new Date(p + 'T00:00:00').getTime(), L = ((RPS && RPS.cls) || []).filter(c => !c.cancelled && !/-TC\s*$/i.test(String(c.title || '').replace(/\s+X$/i, '')) && new Date(c.start).getTime() >= t0).sort((a, b) => new Date(a.start) - new Date(b.start)); return L.length ? new Date(L[0].start) : null; }
-function rpDl(){ const n = rpNc(), d = n ? new Date(n.getFullYear(), n.getMonth(), n.getDate(), 12) : new Date(($('rpD') || {}).value + 'T12:00:00'); if(isNaN(d)) return ''; const t = rpTot(); d.setMonth(d.getMonth() + (t < 30 ? 4 : t < 60 ? 8 : 12)); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+function rpDl(){ const n = rpNc(), d = n ? new Date(n.getFullYear(), n.getMonth(), n.getDate(), 12) : new Date(($('rpD') || {}).value + 'T12:00:00'); if(isNaN(d)) return ''; const t = rpTot() + Math.max(0, +((RPS && RPS.info && RPS.info.left) || 0)); d.setMonth(d.getMonth() + (t < 30 ? 4 : t < 60 ? 8 : 12)); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
 function rpPrev(){ const p = $('rpP'); if(!p || !RPS || !RPS.info) return; const I = RPS.info, t = rpTot(), tot = Math.round((I.left + t) * 10) / 10;
 p.innerHTML = `<div style="font-size:15px"><b>${I.left}</b> left + <b>${t}</b> new = <b style="font-size:20px;color:#00737B">${tot} lessons</b></div>
-<div class="small" style="margin-top:4px">Valid until <b>${rpDl()}</b> · ${t < 30 ? '4' : t < 60 ? '8' : '12'} months from ${(() => { const n = rpNc(); return n ? 'the next class (' + n.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ')' : 'the paid date (no class booked yet)'; })()}</div>
+<div class="small" style="margin-top:4px">Valid until <b>${rpDl()}</b> · ${tot < 30 ? '4' : tot < 60 ? '8' : '12'} months (${tot} lessons incl. carried) from ${(() => { const n = rpNc(); return n ? 'the next class (' + n.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ')' : 'the paid date (no class booked yet)'; })()}</div>
 <div class="small" style="margin-top:4px">${RPS.sched ? '📅 ' + RPS.sched : '<span class="mute">Checking the schedule…</span>'}</div>`; }
 function rpPick(p, f){ RPS.pkg = p; RPS.free = f; document.querySelectorAll('.rpk').forEach(b => b.classList.toggle('on', +b.dataset.p === p && +b.dataset.f === f)); const o = $('rpO'); if(o) o.classList.toggle('hide', RP_PK.some(x => x[0] === p && x[1] === f)); rpPrev(); }
 function rpOther(){ RPS.pkg = ''; RPS.free = 0; document.querySelectorAll('.rpk').forEach(b => b.classList.toggle('on', b.dataset.p === 'o')); $('rpO').classList.remove('hide'); rpPrev(); }
@@ -23753,12 +23753,12 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
 (function(){
   if(window.__771 || typeof cnPaint !== 'function') return; window.__771 = 1;
   const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  function auto(){ const x = CN; if(!x) return null; const t = +x.units || 0, dt = String(x.date || ''); if(!t || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) return null;
+  function auto(){ const x = CN; if(!x) return null; const pk = +x.units || 0, cy = +x.carry || 0, t = Math.round((pk + cy) * 10) / 10, dt = String(x.date || ''); if(!t || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) return null;
     const t0 = new Date(dt + 'T00:00:00').getTime();
     const L = (Array.isArray(x.L) ? x.L : []).filter(c => !c.cancelled && new Date(c.start).getTime() >= t0).sort((a, b) => new Date(a.start) - new Date(b.start));
     const f = L.length ? new Date(L[0].start) : null, d = f ? new Date(f.getFullYear(), f.getMonth(), f.getDate(), 12) : new Date(dt + 'T12:00:00'), m = t < 30 ? 4 : t < 60 ? 8 : 12;
     d.setMonth(d.getMonth() + m);
-    return { until: ymd(d), why: '⚙︎ Automatic · ' + m + ' months (' + t + ' lessons) from ' + (f ? 'the first class of this package · ' + f.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'the purchase date · no class booked yet') }; }
+    return { until: ymd(d), why: '⚙︎ Automatic · ' + m + ' months (' + (cy > 0 ? pk + ' + ' + cy + ' carried = ' : '') + t + ' lessons) from ' + (f ? 'the first class of this package · ' + f.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'the purchase date · no class booked yet') }; }
   function hint(){ const el = document.getElementById('cnVa'); if(!el) return; const a = auto();
     el.innerHTML = CN.untilMan ? (a && a.until !== CN.until ? '✎ Your date · the rule gives ' + esc(a.until) + ' · <a class="link" href="#" onclick="cnAutoV();return false">Use the automatic date</a>' : '✎ Your date') : a ? esc(a.why) : 'Fill in the units and the purchase date'; }
   function apply(){ if(!CN || CN.untilMan) return; const a = auto(); if(!a) return; CN.until = a.until; const f = document.getElementById('cnUntil'); if(f && f.value !== a.until) f.value = a.until; }
