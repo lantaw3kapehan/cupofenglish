@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1107;
+const COE_V = 1108;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23819,6 +23819,25 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
           REN = v; try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){}
           if(before !== v[k] && typeof STU !== 'undefined' && STU && String(STU.code).toUpperCase() === k && typeof stuRender === 'function') stuRender(); }).catch(() => {}); } }catch(e){}
     return r; };
+})();
+</script>
+<script>
+/* 776 · student page: only current teachers */
+(function(){
+  if(window.__776 || typeof window.stuRender !== 'function') return; window.__776 = 1;
+  const tn = x => String(x || '').toLowerCase().replace(/^\s*(teacher|tr\.?)\s+/, '').trim().split(/\s+/)[0];
+  const asked = {};
+  window.curTeachers = function(code, list){ code = String(code || '').toUpperCase(); list = Array.isArray(list) ? list : [];
+    let L = (typeof STU !== 'undefined' && STU && String(STU.code).toUpperCase() === code && Array.isArray(STU.cls)) ? STU.cls : CLSM[code];
+    if(!Array.isArray(L)) return null;
+    const a = Date.now() - 21 * 864e5, b = Date.now() + 42 * 864e5, on = new Set(L.filter(c => c && !c.cancelled && (x => x >= a && x <= b)(new Date(c.start).getTime())).map(c => tn(c.teacher)));
+    if(!on.size) return null; const k = list.filter(t => on.has(tn(t))); return k.length ? k : null; };
+  const _r = window.stuRender;
+  window.stuRender = function(){ try{ if(typeof STU !== 'undefined' && STU && STU.s){ const code = String(STU.code).toUpperCase(), all = STU.s._allT || STU.s.teachers || [];
+        const k = curTeachers(code, all); if(k){ STU.s = Object.assign({}, STU.s, { teachers: k, _allT: all }); }
+        else if(!asked[code] && !Array.isArray(CLSM[code])){ asked[code] = 1; api('mgmtStuClasses', TOKEN, code).then(x => { if(!Array.isArray(x)) return; CLSM[code] = x;
+            if(STU && String(STU.code).toUpperCase() === code && curTeachers(code, all)) window.stuRender(); }).catch(() => {}); } } }catch(e){}
+    return _r.apply(this, arguments); };
 })();
 </script>
 </body>
