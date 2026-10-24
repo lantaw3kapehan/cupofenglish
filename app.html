@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1089;
+const COE_V = 1090;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -8811,6 +8811,20 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
   const agrBit = (o) => { if(!o || !o.active || o.shared) return ''; const a = agr(o.code); if(a === undefined) return ''; const c = esc(o.code);
     return a && a.how !== 'Sent' ? '<span class="chip green" style="font-size:11px">Agreement ✓</span>' : a ? '<span class="chip" style="font-size:11px;cursor:pointer;color:#B7791F" onclick="event.stopPropagation();agrOpen({code:\'' + c + '\'})">Agreement sent ' + esc(typeof tfuDay === 'function' ? tfuDay(a.at) : '') + ' · remind</span>' : '<span class="chip coral" style="font-size:11px;cursor:pointer" onclick="event.stopPropagation();agrOpen({code:\'' + c + '\'})">No agreement · send</span>'; };
   window.stF = function(f){ STF = f; renderAStudents(); };
+  /* 758 · search */
+  const norm = v => String(v == null ? '' : v).toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
+  window.asFind = function(items, q){ const W = norm(q).split(/\s+/).filter(Boolean); if(!W.length) return items;
+    const out = []; items.forEach(it => { const s = it.s || {}, o = it.o || {}, code = norm(s.code), name = norm(s.name);
+      const hay = [code, code.replace(/^st-/, ''), code.replace(/^st-\d{4}-/, ''), name, norm(s.cn), norm((s.teachers || []).join(' ')), norm(s.book), norm(o.shared), norm(o.teacher)].join(' ');
+      if(!W.every(w => hay.indexOf(w) > -1)) return;
+      const w0 = W[0], sc = (name === norm(q) ? 0 : name.indexOf(w0) === 0 ? 1 : code.indexOf(w0) > -1 ? 2 : name.indexOf(w0) > -1 ? 3 : 4) + (it.on ? 0 : 10);
+      out.push([sc, it]); });
+    return out.sort((a, b) => a[0] - b[0] || String(a[1].s.name).localeCompare(String(b[1].s.name))).map(x => x[1]); };
+  let AS_T = 0; window.asQ = () => { clearTimeout(AS_T); AS_T = setTimeout(() => renderAStudents(), 140); };
+  window.asClear = () => { const i = $('aq'); if(i){ i.value = ''; } renderAStudents(); setTimeout(() => { const j = $('aq'); if(j) j.focus(); }, 0); };
+  window.asKey = ev => { if(ev.key === 'Escape'){ ev.preventDefault(); asClear(); return; }
+    if(ev.key === 'Enter'){ ev.preventDefault(); clearTimeout(AS_T); renderAStudents(); const f = document.querySelector('#v-astudents .li'); if(f) f.click(); } };
+  try{ const st = document.createElement('style'); st.textContent = '.as-q{position:relative;margin-top:14px}.as-q .search{width:100%;padding-right:40px}.as-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;border-radius:50%;background:#EEEDF3;color:#5B5675;font-size:18px;line-height:1;cursor:pointer}'; document.head.appendChild(st); }catch(e){}
   window.renderAStudents = function(){ const el = $('v-astudents'); if(!el) return; if(!Array.isArray(MS)){ return; }   /* 527 */
     const P = pk(), now = Date.now(), q = (($('aq') && $('aq').value) || '').toLowerCase();
     if(!P && typeof loadActive === 'function' && !window._stAT && Date.now() - (window._stATt || 0) > 60000){ window._stAT = 1; window._stATt = Date.now(); loadActive(true).then(() => { window._stAT = 0; if(VIEW === 'astudents' && pk()) renderAStudents(); }).catch(() => { window._stAT = 0; }); }   /* 526 */
@@ -8822,10 +8836,10 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     const noAgr = it => { if(!it.on || !it.o || !it.o.active || it.o.shared) return false; const a = agr(it.o.code); return a !== undefined && !(a && a.how !== 'Sent'); };
     const F = { active: items.filter(it => it.on), low: items.filter(low), ren: items.filter(it => it.o && it.o.ren), nw: items.filter(it => it.o && it.o.nw), agr: items.filter(noAgr), stale: items.filter(stale), past: items.filter(it => !it.on) };
     F.ren.sort((a, b) => String(b.o.start).localeCompare(String(a.o.start))); F.nw.sort((a, b) => String(b.o.start).localeCompare(String(a.o.start)));
-    let L = q ? items.filter(it => [it.s.code, it.s.name, it.s.cn, (it.s.teachers || []).join(' '), it.o && it.o.shared].join(' ').toLowerCase().indexOf(q) > -1).sort((a, b) => b.on - a.on) : (F[STF] || F.active);
+    let L = q ? asFind(items, q) : (F[STF] || F.active);
     const tabs = [['active', 'Active'], ['low', '5 or fewer left'], ['ren', 'Renewed · 30 days'], ['nw', 'New · 30 days'], ['agr', 'No agreement'], ['stale', 'No check in 30+ days'], ['past', 'Finished / not active'], ['shared', 'Shared packages']]; { const SA = shAll(); F.shared = SA ? SA.P : []; }   /* 14 Oct */
     let h = '<div class="lead"><h1>Students</h1><div class="mute small">' + F.active.length + ' active · packages live from ACTIVE · tap a name for profile, package, schedule and agreement' + ((!P || !(typeof AGM !== 'undefined' && AGM)) ? ' · <span style="color:#00737B;font-weight:600">loading packages and agreements…</span>' : '') + '</div><div id="dbLk" class="small" style="margin-top:4px"><a class="lk" onclick="go(\'db\')">Database sheet · the raw rows, to check or fix</a> · <a class="lk" onclick="pkgCheck()">Package check · renewals, over, deadlines</a></div></div>' +
-      '<div style="margin-top:14px"><input id="aq" class="search" placeholder="Search student, code or teacher · also finds past students" value="' + esc(q) + '" oninput="renderAStudents()"></div>' +
+      '<div class="as-q"><input id="aq" class="search" placeholder="Search name, 中文, code or number, teacher, book · past students too" value="' + esc(q) + '" oninput="asQ()" onkeydown="asKey(event)" autocomplete="off">' + (q ? '<button type="button" class="as-x" title="Clear" onclick="asClear()">×</button>' : '') + '</div>' + (q ? '<div class="small mute" style="margin:6px 2px 0">' + L.length + ' found' + (L.length ? ' · Enter opens ' + esc((L[0].s || {}).name || '') : '') + '</div>' : '') +
       (q ? '' : '<div class="seg" style="flex-wrap:wrap">' + tabs.map(t => '<button class="' + (STF === t[0] ? 'on' : '') + '" onclick="stF(\'' + t[0] + '\')">' + t[1] + (t[0] === 'agr' && !(typeof AGM !== 'undefined' && AGM) ? '' : ' · ' + F[t[0]].length) + '</button>').join('') + '</div>') + '<div>';
     if(STF === 'shared' && !q){ el.innerHTML = h + shListHtml('') + '</div>'; return; }   /* 14 Oct: one list of all shared packages */
     h += L.slice(0, 250).map(it => { const s = it.s, o = it.o, left = s.left != null ? s.left : o ? o.left : null, dl = it.on && o && o.deadline, late = dl && dl < new Date().toISOString().slice(0, 10);
@@ -22433,11 +22447,19 @@ go();
     try{ for(let k = 0; k < 8; k++){ const r = await api('mgmtBookCovers', TOKEN, left || []); const L = (r && r.list) || []; n += L.filter(x => !x.later).length;
       if(window.bbFillMissing){ const M = L.filter(x => x.sbErr || x.wbErr); if(M.length) await bbFillMissing(M, (c, sd) => { if(btn) btn.textContent = 'Drawing page 1 · ' + c + ' ' + (sd === 'wb' ? 'Workbook' : 'Student Book') + '…'; }); }   /* 657 */ left = L.filter(x => x.later).map(x => x.code); if(btn) btn.textContent = n + ' books done…'; if(!left.length) break; } }catch(e){ toast(e.message); }
     toast('Covers taken ✓'); bbAll(); };
+  /* 758 · the book at the moment you tap: the student's next class (else the latest), else the saved book */
+  window.bbStuOpen = async function(btn){ if(!STU || !STU.code) return; const code = STU.code, s = STU.s || {}; let book = s.book || '';
+    try{ if(btn) btn.disabled = true; const L = await api('mgmtStuClasses', TOKEN, code), now = Date.now() - 3 * 36e5;
+      const ok = (Array.isArray(L) ? L : []).filter(c => c && !c.cancelled && c.book && !/trial/i.test(String(c.title || '')));
+      const nx = ok.filter(c => +new Date(c.start) >= now).sort((a, b) => +new Date(a.start) - +new Date(b.start))[0] || ok.sort((a, b) => +new Date(b.start) - +new Date(a.start))[0];
+      if(nx) book = nx.book; }catch(e){} finally{ if(btn) btn.disabled = false; }
+    if(!book) return toast('No book on this student yet');
+    const b0 = window.bbPick ? bbPick(book) : String(book).split(/\s*,\s*/)[0]; bbOpen(b0, s.name || '', s.cn || s.chinese || ''); };
   /* entry points: To do › New book, and the student page (management) */
   try{ const css = document.createElement('style'); css.textContent = '.tdb .bb656{margin-top:6px}'; document.head.appendChild(css); }catch(e){}
   const sr0 = window.stuRender; if(sr0) window.stuRender = function(){ const r = sr0.apply(this, arguments);
     try{ if(mgr() && STU && STU.code && STU.s && STU.s.book && !$('bbBtn')){ const row = document.querySelector('#sheetBody .stu-bar .grp') || document.querySelector('#sheetBody .row.noprint'); const b0 = window.bbPick ? bbPick(STU.s.book) : String(STU.s.book).split(/\s*,\s*/)[0];
-      if(row) row.insertAdjacentHTML('beforeend', '<button class="btn ghost sm" id="bbBtn" title="Covers and Taobao search words for the parent" onclick="bbOpen(\'' + esc(b0) + '\',\'' + esc(STU.s.name || '') + '\',\'' + esc(STU.s.cn || STU.s.chinese || '') + '\')">Course Books</button>'); } }catch(e){}
+      if(row) row.insertAdjacentHTML('beforeend', '<button class="btn ghost sm" id="bbBtn" title="Covers and Taobao search words for the parent" onclick="bbStuOpen(this)">Course Books</button>'); } }catch(e){}
     /* 666: the action bar may be built after this; move the button into Send to parent once it exists */
     setTimeout(() => { try{ const b = $('bbBtn'), g = document.querySelector('#sheetBody .stu-bar .grp'); if(b && g && b.parentNode !== g){ const pr = [...g.querySelectorAll('.btn')].find(x => /Print/i.test(x.textContent)); g.insertBefore(b, pr || null); } }catch(e){} }, 0);
     return r; };
