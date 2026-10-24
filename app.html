@@ -4842,7 +4842,7 @@ if(b.left !== '' && b.left != null && +b.left < 0) out.push(['', '', ['Package u
 else if(b.left !== '' && b.left != null && +b.left <= 5) out.push(['', '', ['Only ' + n(b.left) + ' lessons left', 'Renew now to keep the same class time'], ['仅剩 ' + n(b.left) + ' 课时 · 现在续费可保留原上课时间']]);
 out.push(['As of', '截至', [dEn(now) + ' · ' + tm(now.toISOString())], [dZh(now) + (b.today ? ' · includes today’s class · 含今日已上课程' : '')]]); return out; })()
 : mv ? (() => { const f = P.from, fs = new Date(f.start); return [['From', '原上课时间', [dEn(fs), tl(f)], [dZh(fs) + ' · ' + dur(f) + '分钟']], ['New time', '新上课时间', [dEn(s), tl(e)], [dZh(s) + ' · ' + dur(e) + '分钟 · Beijing time 北京时间']], ...(P.fwd ? [['From now on', '以后上课时间', ['Every ' + s.toLocaleDateString('en-GB', { weekday: 'long' }) + ' · ' + tm(e.start), (P.fwd.n + 1) + ' classes moved' + (P.fwd.until ? ' · until ' + new Date(P.fwd.until + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '')], ['每周' + '日一二三四五六'[s.getDay()] + ' ' + tm(e.start) + ' · 共' + (P.fwd.n + 1) + '节课已调整' + (P.fwd.until ? ' · 至' + (+P.fwd.until.slice(5, 7)) + '月' + (+P.fwd.until.slice(8, 10)) + '日' : '')]]] : []), ['Teacher', '老师', [tName(e.teacher || '')], [tZh(e.teacher)].concat(f.teacher && e.teacher && f.teacher !== e.teacher ? ['Changed from ' + tName(f.teacher) + ' · 原为' + tZh(f.teacher) + '，已更换老师'] : [])]]; })()
-: [['Date', '日期', [date], [dateZh]], ['Time', '时间', [tl(e)], ['Beijing time · 北京时间 · ' + dur(e) + '分钟']], ['Teacher', '老师', [tName(e.teacher || '')], [tZh(e.teacher)]]];
+: (P.kind === 'cancel' && P.multi && P.multi.length > 1 && window.cxMultiRows) ? cxMultiRows(P) : [['Date', '日期', [date], [dateZh]], ['Time', '时间', [tl(e)], ['Beijing time · 北京时间 · ' + dur(e) + '分钟']], ['Teacher', '老师', [tName(e.teacher || '')], [tZh(e.teacher)]]];
 if(P.week){ const K = P.week, fd = new Date(K.from), tt = [...new Set(K.slots.map(x => x.t))]; rows.length = 0;
 rows.push(['Weekly classes', '每周上课时间', K.slots.map(x => x.en + (K.multi ? ' · ' + tName(x.t) : '')), K.slots.map(x => x.zh + (K.multi ? ' · ' + tZh(x.t) : ''))]);
 if(!K.multi) rows.push(['Teacher', '老师', [tName(tt[0])], [tZh(tt[0])]]);
@@ -4931,7 +4931,7 @@ const e = CXP.e, s = new Date(e.start), why = String(CXP.why || '').trim(), mv =
 const dl = d => d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }) + ' · ' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
 const cl = CXP.kind === 'class', bl = CXP.kind === 'bal', head = `CupOfEnglish · ${bl ? '课时余额 Lesson balance' : cl ? (e.type === 'Trial' ? '试听课通知 Trial class' : '上课通知 Class scheduled') : mv ? (cxTrial(e) ? '试听课调课通知 Trial class rescheduled' : '调课通知 Class rescheduled') : '课程取消确认 Class cancelled'}\nStudent 学生: ${nm}${CXP.cn ? ' ' + CXP.cn : ''}${e.code ? ' (' + e.code + ')' : ''}\n`;
 const B = CXP.bal || {}, body = bl ? `Lessons left 剩余课时: ${B.left === '' ? 'shared package' : B.left}\nUsed 已上: ${B.finished} / ${Math.round(((+B.enrolled || 0) + (+B.carry || 0)) * 10) / 10}${+B.carry ? ' (' + B.enrolled + ' + ' + B.carry + ' carried 结转)' : ''}${B.byTeacher ? '\nBy teacher 各老师: ' + B.byTeacher.map(x => tName(x.teacher) + ' ' + x.finished).join(' · ') : ''}${B.members && B.members.length > 1 ? '\nShared package 共享课时包: ' + B.members.map(x => x.name + (x.cn ? ' ' + x.cn : '') + ' ' + x.finished).join(' · ') : ''}${B.deadline ? '\nValid until 有效期至: ' + B.deadline : ''}\nTeacher 老师: ${tName(e.teacher || '')} · ${tZh(e.teacher)}\nAs of 截至: ${dl(new Date())}` : mv ? `From 原时间: ${dl(new Date(CXP.from.start))} ${tm(CXP.from.start)}–${tm(CXP.from.end)} (${Math.round((new Date(CXP.from.end) - new Date(CXP.from.start)) / 6e4)} min 分钟)\nNew time 新时间: ${dl(s)} ${tm(e.start)}–${tm(e.end)} (${Math.round((new Date(e.end) - new Date(e.start)) / 6e4)} min 分钟 · 北京时间)\nTeacher 老师: ${tName(e.teacher || '')} · ${tZh(e.teacher)}`
-: `Date 日期: ${dl(s)}\nTime 时间: ${tm(e.start)}–${tm(e.end)} (${Math.round((new Date(e.end) - new Date(e.start)) / 6e4)} min 分钟 · 北京时间)\nTeacher 老师: ${tName(e.teacher || '')} · ${tZh(e.teacher)}${CXP.pkg ? '\nSchedule 课程安排: ' + CXP.pkg.en + ' · ' + CXP.pkg.zh : ''}`;
+: (CXP.kind === 'cancel' && CXP.multi && CXP.multi.length > 1 && window.cxMultiText) ? cxMultiText(CXP) : `Date 日期: ${dl(s)}\nTime 时间: ${tm(e.start)}–${tm(e.end)} (${Math.round((new Date(e.end) - new Date(e.start)) / 6e4)} min 分钟 · 北京时间)\nTeacher 老师: ${tName(e.teacher || '')} · ${tZh(e.teacher)}${CXP.pkg ? '\nSchedule 课程安排: ' + CXP.pkg.en + ' · ' + CXP.pkg.zh : ''}`;
 const t = head + body + (why || CXP.zh ? `\nReason 原因: ${[why, CXP.zh].filter(Boolean).join(' · ')}` : '') + (bl ? '' : cl ? (e.meet ? '\nVooV meeting ID 腾讯会议号: ' + e.meet : '') : mv ? '' : '\nStatus 状态: Cancelled · 已取消') + (window.cxPolText ? cxPolText(CXP) : '');
 try{ navigator.clipboard.writeText(t); toast('Text copied'); }catch(x){ openSheet('<h1>Text</h1><p class="small" style="white-space:pre-line">' + esc(t) + '</p>'); }
 }
@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1110;
+const COE_V = 1111;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23877,6 +23877,45 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const _u = window.cnUse;
   window.cnUse = function(){ const r = _u.apply(this, arguments);
     try{ const x = CN; if(x){ x._fe = 0; const t = n1(x.units); if(!(+x.free) && (t === 33 || t === 68)){ x.free = t === 33 ? 3 : 8; if(typeof cnPaint === 'function') cnPaint(); } } }catch(e){}
+    return r; };
+})();
+</script>
+<script>
+/* 779 · several cancelled classes in one picture */
+(function(){
+  if(window.__779 || typeof window.cxProof !== 'function') return; window.__779 = 1;
+  const up = x => String(x || '').trim().toUpperCase();
+  const WD = '日一二三四五六';
+  const hm = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const mins = x => Math.round((new Date(x.end) - new Date(x.start)) / 6e4);
+  const tN = t => String(t || '').split(/\s*[,&/]\s*/).filter(Boolean);
+  window.cxMultiRows = function(P){ const L = P.multi.slice().sort((a, b) => new Date(a.start) - new Date(b.start));
+    const en = L.map(x => { const d = new Date(x.start), e2 = new Date(x.end); return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + hm(d) + '–' + hm(e2) + ' · ' + mins(x) + ' min'; });
+    const zh = L.map(x => { const d = new Date(x.start), e2 = new Date(x.end); return (d.getMonth() + 1) + '月' + d.getDate() + '日 星期' + WD[d.getDay()] + ' · ' + hm(d) + '–' + hm(e2); });
+    const T = [...new Set(L.flatMap(x => tN(x.teacher)).map(t => t.replace(/^teacher\s+/i, '').trim()).filter(Boolean))];
+    return [['Cancelled classes · ' + L.length + ' · Beijing time', '已取消 ' + L.length + ' 节课', en, zh], [T.length > 1 ? 'Teachers' : 'Teacher', '老师', [T.map(t => tName(t)).join(' · ')], [T.map(t => tZh(t)).join(' · ')]]]; };
+  window.cxMultiText = function(P){ const L = P.multi.slice().sort((a, b) => new Date(a.start) - new Date(b.start));
+    const T = [...new Set(L.flatMap(x => tN(x.teacher)).map(t => t.replace(/^teacher\s+/i, '').trim()).filter(Boolean))];
+    return 'Cancelled classes 已取消课程: ' + L.length + '节\n' + L.map(x => { const d = new Date(x.start), e2 = new Date(x.end); return '• ' + d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + (d.getMonth() + 1) + '月' + d.getDate() + '日 星期' + WD[d.getDay()] + ' · ' + hm(d) + '–' + hm(e2) + ' (' + mins(x) + ' min 分钟)'; }).join('\n')
+      + '\nBeijing time 北京时间\nTeacher 老师: ' + T.map(t => tName(t) + ' · ' + tZh(t)).join(' / '); };
+  function bar(){ const P = CXP, img = document.getElementById('cxImg'); if(!P || P.kind !== 'cancel' || !img) return; let b = document.getElementById('cxMulti');
+    const n = (P.allX || []).length; if(n < 2){ if(b) b.remove(); return; }
+    const on = P.multi && P.multi.length > 1;
+    const h = '<div id="cxMulti" style="margin:12px 0 4px;padding:10px 12px;border-radius:12px;background:#FFF4EC;border:1px solid #F3D3BE;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="grow">'
+      + (on ? '📋 <b>' + n + ' cancelled classes in one picture</b> · ' + esc(P.allX.map(x => new Date(x.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })).join(', ')) : 'This student has <b>' + n + ' cancelled classes</b> coming up')
+      + '</span><button type="button" class="btn sm ' + (on ? 'ghost' : 'teal') + '" onclick="cxMultiToggle()">' + (on ? 'Only this class' : 'All ' + n + ' in one picture') + '</button></div>';
+    if(b) b.outerHTML = h; else img.insertAdjacentHTML('beforebegin', h); }
+  window.cxMultiToggle = () => { const P = CXP; if(!P) return; P.multi = P.multi && P.multi.length > 1 ? null : P.allX.slice(); P.url = ''; bar(); cxDraw(); };
+  const _sh = window.cxSheet; window.cxSheet = function(){ const r = _sh.apply(this, arguments); try{ bar(); }catch(e){} return r; };
+  const _p = window.cxProof;
+  window.cxProof = function(i, src){ const r = _p.apply(this, arguments);
+    try{ const P = CXP; if(!P || P.kind !== 'cancel') return r; const e = P.e, code = up(e.code || (String(e.title || '').match(/ST-\d{4}-\d{3}/i) || [''])[0]); if(!code) return r;
+      const go = L => { if(CXP !== P || !Array.isArray(L)) return; const a = Date.now() - 2 * 864e5, b = Date.now() + 21 * 864e5, t0 = new Date(e.start).getTime();
+        const X = L.filter(c => c && c.cancelled && (x => x >= a && x <= b)(new Date(c.start).getTime()) && Math.abs(new Date(c.start).getTime() - t0) > 6e4);
+        if(!X.length) return; P.allX = [Object.assign({}, e)].concat(X.map(c => Object.assign({ teacher: c.teacher || (c.teachers || []).join(', ') }, c))).sort((p, q) => new Date(p.start) - new Date(q.start));
+        P.multi = P.allX.slice(); P.url = ''; bar(); cxDraw(); };
+      if(Array.isArray(CLSM[code])) go(CLSM[code]);
+      api('mgmtStuClasses', TOKEN, code).then(L => { if(Array.isArray(L)){ CLSM[code] = L; if(!(P.allX && P.allX.length > 1)) go(L); } }).catch(() => {}); }catch(e){}
     return r; };
 })();
 </script>
