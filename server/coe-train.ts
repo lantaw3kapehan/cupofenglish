@@ -211,6 +211,15 @@ Deno.serve(async (req: Request) => {
           text: w.fn === "tMsgSend" ? str(A[1], 120) : w.fn === "tMsgAck" ? str(A[2], 40) : "" }; });
       return out({ ok: true, who, day, rows });
     }
+    // 24 Oct · a student's / trial's history notes (S-LOG copy) — the same list Google's mgmtStuLog gives, from the database (management)
+    if (a === "stulog") {
+      need(); const code = str(b.code, 20).toUpperCase(), key = str(b.key, 80).toLowerCase(); if (!code && !key) return out({ ok: true, log: [] });
+      const { data } = await db.from("sheet_rows").select("r,data").eq("tab", "S-LOG").gt("r", 1);
+      const log = (data || []).map((x: any) => x.data || []).filter((d: any[]) => (code && String(d[1] || "").trim().toUpperCase() === code) || (key && String(d[3] || "").trim().toLowerCase() === key))
+        .map((d: any[]) => ({ at: String(d[0] || "").replace("T", " ").slice(0, 16), status: String(d[5] || ""), note: String(d[6] || ""), by: String(d[7] || "") }))
+        .sort((p: any, q: any) => q.at.localeCompare(p.at));
+      return out({ ok: true, log });
+    }
     // 23 Oct · WeChat family groups: a sibling's code → the code the family group is named after (management)
     if (a === "wx_get" || a === "wx_set") {
       need(); const { data: d0 } = await db.from("docs").select("data").eq("key", "mgmt:wxgroup").maybeSingle(); const m: any = (d0 && d0.data && typeof d0.data === "object") ? d0.data : {};
