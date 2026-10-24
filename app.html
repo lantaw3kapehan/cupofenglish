@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1106;
+const COE_V = 1107;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23805,6 +23805,20 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
         const keep = G.members.filter(x => x === o || up(x[C.code]) !== code || (+x[C.finished] || 0) > 0 || (C.today != null && +x[C.today] > 0) || teaching(code, x[C.teacher]));
         if(keep.length && keep.length < G.members.length) G.members = keep; } }catch(e){}
     return G; };
+})();
+</script>
+<script>
+/* 775 · student page: fresh renewal status */
+(function(){
+  if(window.__775 || typeof window.openStudent !== 'function') return; window.__775 = 1;
+  let last = 0;
+  const _o = window.openStudent;
+  window.openStudent = function(code){ const r = _o.apply(this, arguments);
+    try{ if(typeof D !== 'undefined' && D && D.mgr && Date.now() - last > 30e3){ last = Date.now(); const k = String(code || '').toUpperCase();
+        api('mgmtRenewals', TOKEN).then(v => { if(!v || typeof v !== 'object' || Array.isArray(v)) return; const before = (REN || {})[k];
+          REN = v; try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){}
+          if(before !== v[k] && typeof STU !== 'undefined' && STU && String(STU.code).toUpperCase() === k && typeof stuRender === 'function') stuRender(); }).catch(() => {}); } }catch(e){}
+    return r; };
 })();
 </script>
 </body>
