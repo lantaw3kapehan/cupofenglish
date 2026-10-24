@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1105;
+const COE_V = 1106;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23786,6 +23786,25 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     else if(fn === 'mgmtRenewal' && typeof a[1] === 'string'){ const code = a[1], st = String(a[2] || ''), note = String(a[3] || '').trim(), until = String(a[4] || '');
       Promise.resolve(p).then(r => { if(r && r.ok === false) return; set(code, r && typeof r.status === 'string' && r.status ? r.status : st ? st + (st === 'Paused' && until ? ' until ' + until : '') + ' · ' + day() + ' · ' + me() + (note ? ' · ' + note : '') : ''); }, () => {}); }
     return p; };
+})();
+</script>
+<script>
+/* 774 · pictures show only the student's current teachers */
+(function(){
+  if(window.__774 || typeof pkgGroup !== 'function') return; window.__774 = 1;
+  const up = x => String(x || '').trim().toUpperCase(), tn = x => String(x || '').toLowerCase().replace(/^\s*(teacher|tr\.?)\s+/, '').trim().split(/\s+/)[0];
+  const asked = {};
+  function cls(code){ let L = CLSM[code]; if(!Array.isArray(L)){ try{ const v = store('get', 'coe.cls.' + code); L = v ? JSON.parse(v) : null; }catch(e){ L = null; } }
+    if(!Array.isArray(L) && !asked[code]){ asked[code] = 1; try{ api('mgmtStuClasses', TOKEN, code).then(x => { if(Array.isArray(x)){ CLSM[code] = x; try{ store('set', 'coe.cls.' + code, JSON.stringify(x)); }catch(e){} } }).catch(() => {}); }catch(e){} }
+    return Array.isArray(L) ? L : null; }
+  function teaching(code, t){ const L = cls(code); if(!L) return true; const a = Date.now() - 21 * 864e5, b = Date.now() + 42 * 864e5, k = tn(t); if(!k) return true;
+    return L.some(c => c && !c.cancelled && tn(c.teacher) === k && (x => x >= a && x <= b)(new Date(c.start).getTime())); }
+  const _g = window.pkgGroup;
+  window.pkgGroup = function(r, C){ const G = _g.apply(this, arguments);
+    try{ if(G && Array.isArray(G.members) && G.members.length > 1){ const o = G.owner || r, code = up(o[C.code]);
+        const keep = G.members.filter(x => x === o || up(x[C.code]) !== code || (+x[C.finished] || 0) > 0 || (C.today != null && +x[C.today] > 0) || teaching(code, x[C.teacher]));
+        if(keep.length && keep.length < G.members.length) G.members = keep; } }catch(e){}
+    return G; };
 })();
 </script>
 </body>
