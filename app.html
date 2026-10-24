@@ -6160,7 +6160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1094;
+const COE_V = 1095;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -21920,7 +21920,7 @@ go();
       if(!seen){ const sd = bk.concat(lv ? ['CEFR:' + lv] : []); if(sd.length) seed[c] = sd; }
       else if(lv){ const prev = seen.filter(y => /^CEFR:/.test(y)).map(y => y.slice(5));   /* level up: a higher CEFR than any level recorded before */
         if(!prev.length) bset[c] = ['CEFR:' + lv];
-        else if(prev.indexOf(lv) < 0){ const hi = Math.max(...prev.map(y => CEFR.indexOf(y))); if(CEFR.indexOf(lv) > hi){ const k = 'V|' + c + '|' + lv; if(!done[k]) out.push(Object.assign({ kind: 'level', k, from: CEFR[hi], to: lv, book: 'CEFR:' + lv, days: 0 }, base)); } else bset[c] = ['CEFR:' + lv]; } }
+        else if(prev.indexOf(lv) < 0){ const hi = Math.max(...prev.map(y => CEFR.indexOf(y))); if(CEFR.indexOf(lv) > hi){ const nx = CEFR[Math.min(CEFR.indexOf(lv), hi + 1)], k = 'V|' + c + '|' + nx; if(!done[k]) out.push(Object.assign({ kind: 'level', k, from: CEFR[hi], to: nx, checked: lv, book: 'CEFR:' + nx, days: 0 }, base)); }   /* 763: one level at a time */ else bset[c] = ['CEFR:' + lv]; } }
       if(!seen){}
       else bk.forEach(x => { if(seen.indexOf(x) >= 0) return; const k = 'K|' + c + '|' + x; if(!done[k]) out.push(Object.assign({ kind: 'book', k, book: x, bookN: bookName(x), days: 0 }, base)); });
       /* lessons */
@@ -21976,6 +21976,10 @@ go();
   /* the picture: portrait card for WeChat (CupOfEnglish logo, confetti, bilingual title, name, detail, wish, tagline) */
   let PIC = null;
   window.celPic = async function(i){ const x = ITEMS[i]; if(!x) return; toast('Making the picture…');
+    /* 763 · the book of the student's next class (Change book shows at once) */
+    try{ if(x.code && x.kind !== 'bday'){ const L = await api('mgmtStuClasses', TOKEN, x.code), now = Date.now() - 3 * 36e5, ok = (Array.isArray(L) ? L : []).filter(q => q && !q.cancelled && q.book && !/trial/i.test(String(q.title || '')));
+      const nx = ok.filter(q => +new Date(q.start) >= now).sort((a, b) => +new Date(a.start) - +new Date(b.start))[0] || ok.sort((a, b) => +new Date(b.start) - +new Date(a.start))[0];
+      if(nx){ const nm = typeof bookName === 'function' ? bookName(nx.book) : ''; if(nm) x.cur = nm; } } }catch(e){}
     try{ await document.fonts.ready; await Promise.all(['400 40px "Fredoka One"', '700 20px Arvo', '400 20px Arvo'].map(f => document.fonts.load(f).catch(() => 0))); }catch(z){}
     const ld = src => new Promise(r => { if(!src) return r(null); const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = src; });
     const [logo, tag] = await Promise.all([ld((document.querySelector('#login img') || {}).src), ld((document.querySelector('#login .tagl img') || {}).src)]);
