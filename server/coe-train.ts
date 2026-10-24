@@ -220,6 +220,46 @@ Deno.serve(async (req: Request) => {
         .sort((p: any, q: any) => q.at.localeCompare(p.at));
       return out({ ok: true, log });
     }
+    // 24 Oct · the monthly feedback form (Google's tFbForm) from the database: the form layout (the same on every student's form),
+    // this month (sys:fbs), sent / returned (sys:fbs + this app's own sends in writes), last feedback (sys:fb) and class notes (S-NOTES).
+    // Sending stays on Google (it fills the student's own Google Form). { fallback: true } → the app asks Google as before.
+    if (a === "fbform") {
+      const code = str(b.code, 20).toUpperCase(); if (!/^ST-\d{4}-\d{3}$/.test(code)) return out({ ok: false, error: "bad code" }, 400);
+      const lc = me.toLowerCase();
+      const [FS, TP, P, DBR, ACT, CL, NO, WR] = await Promise.all([
+        db.from("docs").select("data,updated_at").eq("key", "sys:fbs").maybeSingle(),
+        db.from("docs").select("data").eq("key", "sys:fbtemplate").maybeSingle(),
+        db.rpc("student_parts", { p_code: code }),
+        db.from("sheet_rows").select("data").eq("tab", "DATABASE").eq("data->>0", code).limit(1),
+        db.from("sheet_rows").select("data").eq("tab", "ACTIVE").eq("data->>0", code),
+        db.from("classes").select("teachers").eq("code", code).gte("starts_at", new Date(Date.now() - 75 * 864e5).toISOString()).lte("starts_at", new Date(Date.now() + 45 * 864e5).toISOString()).limit(200),
+        db.from("sheet_rows").select("data").eq("tab", "S-NOTES").eq("data->>3", code),
+        db.from("writes").select("args,status,created_at").eq("fn", "tFbSubmit").ilike("who", me).neq("status", "error").gte("created_at", new Date(Date.now() - 40 * 864e5).toISOString()).order("created_at", { ascending: false }).limit(50)]);
+      const F = FS.data && FS.data.data, T = TP.data && TP.data.data;
+      if (!F || !F.mo || !T || !Array.isArray(T.grids) || Date.now() - Date.parse(FS.data!.updated_at) > 3 * 3600e3) return out({ ok: false, fallback: true });
+      if (!mgmt) {
+        const mine = (ACT.data || []).some((x: any) => String((x.data || [])[3] || "").toLowerCase().split(/[,/&]/).map((t: string) => t.trim()).includes(lc))
+          || (CL.data || []).some((x: any) => (x.teachers || []).map((t: string) => String(t).toLowerCase()).includes(lc));
+        if (!mine) return out({ ok: false, fallback: true });
+      }
+      if (!(F.ix || []).includes(code)) return out({ ok: false, fallback: true });   // no form yet: Google makes it
+      const mo = F.mo, fix = ((F.fix || {})[lc] || {})[code] || null; let done = ((F.done || {})[lc] || {})[code] || null;
+      const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+      if (mo.opens && today < mo.opens && !fix) return out({ ok: false, msg: "Monthly feedback opens on " + (mo.opensLabel || mo.opens) + "." });
+      if (!done && mo.opens) { const w = (WR.data || []).find((x: any) => String((x.args || [])[1] || "").toUpperCase() === code && new Date(Date.parse(x.created_at) + 8 * 3600e3).toISOString().slice(0, 10) >= mo.opens);
+        if (w) { const sc = ((w.args || [])[2] || {}).scores || []; const tot = sc.reduce((a: number, r: any) => a + (Array.isArray(r) ? r.reduce((p: number, q: any) => p + (+q || 0), 0) : 0), 0);
+          done = { at: new Date(Date.parse(w.created_at) + 8 * 3600e3).toISOString().slice(0, 16).replace("T", " "), total: tot || null, via: "app" }; } }
+      const fbAll = (P.data && P.data.fb && Array.isArray(P.data.fb.data)) ? P.data.fb.data : [];
+      const last = fbAll.slice().sort((p: any, q: any) => String(q.month || "").localeCompare(String(p.month || "")))[0] || null;
+      const drow = ((DBR.data || [])[0] || {}).data || [], name = String(drow[2] || (last && last.student) || code).trim();
+      const course = String((last && last.course) || drow[12] || "").trim();
+      const since = new Date(Date.now() + 8 * 3600e3 - 45 * 864e5).toISOString().slice(0, 10);
+      const obs = (NO.data || []).map((x: any) => x.data || []).map((r: any[]) => ({ date: String(r[1] || "").slice(0, 10), teacher: String(r[2] || ""), ended: String(r[5] || ""), next: String(r[6] || ""), homework: String(r[7] || ""), obs: String(r[9] || ""), skills: String(r[10] || "") }))
+        .filter((n: any) => n.date >= since && (n.obs || n.ended)).sort((p: any, q: any) => q.date.localeCompare(p.date)).slice(0, 30);
+      return out({ ok: true, db: true, code, student: name, formTeacher: "", month: mo.label, monthKey: mo.key, due: mo.dueLabel,
+        form: { grids: T.grids, texts: T.texts, date: T.date || null, header: "", help: "STUDENT: " + name.toUpperCase() + (course ? "\nCOURSEWARE: " + course.toUpperCase() : "") },
+        last, done, fix, obs });
+    }
     // 23 Oct · WeChat family groups: a sibling's code → the code the family group is named after (management)
     if (a === "wx_get" || a === "wx_set") {
       need(); const { data: d0 } = await db.from("docs").select("data").eq("key", "mgmt:wxgroup").maybeSingle(); const m: any = (d0 && d0.data && typeof d0.data === "object") ? d0.data : {};
