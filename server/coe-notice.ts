@@ -101,7 +101,11 @@ Deno.serve(async (req: Request) => {
       const [m, k] = await Promise.all([db.from("coe_celebrate").select("k,kind,code,skipped,at,by").gte("at", since).limit(5000), db.from("coe_cel_books").select("code,books").limit(5000)]);
       if (m.error || k.error) return out({ ok: false, error: (m.error || k.error)!.message });
       const books: Record<string, string[]> = {}; (k.data || []).forEach((r: any) => books[r.code] = r.books || []);
-      return out({ ok: true, marks: m.data || [], books });
+      // 24 Oct · each student's book on their next class (a Change book shows here at once; the student row can lag behind)
+      const { data: C } = await db.from("classes").select("code,starts_at,cancelled,data").gte("starts_at", new Date(Date.now() - 3 * 3600e3).toISOString()).lte("starts_at", new Date(Date.now() + 21 * 864e5).toISOString()).eq("cancelled", false).order("starts_at").limit(5000);
+      const next: Record<string, string> = {}; (C || []).forEach((c: any) => { const code = String(c.code || "").toUpperCase(), bk = String((c.data && c.data.book) || "").trim(), t = String((c.data && c.data.title) || "");
+        if (!/^ST-/.test(code) || !bk || next[code] || /-TC(\s+X)?$|trial|试听/i.test(t)) return; next[code] = bk; });
+      return out({ ok: true, marks: m.data || [], books, next });
     }
     if (a === "cel_mark") {
       const k = str(b.k, 120), kind = str(b.kind, 20); if (!k || !kind) return out({ ok: false, error: "bad request" }, 400);
