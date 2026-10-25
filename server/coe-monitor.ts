@@ -67,7 +67,9 @@ Deno.serve(async (req: Request) => {
       type: /trial|试听|(^|-)\s*TC\s*(\s+X)?\s*$/i.test(title) ? "Trial" : (/\bsub\b|(^|-)\s*SC\s*(\s+X)?\s*$/i.test(title) ? "Sub" : ""),
       ci, vid: vidEv.has(id) || !!vdays[code + "|" + t], hw: hwEv.has(id) || inW(/^(markHomework|saveNote)$/, id), note: noteEv.has(id) || inW(/^saveNote$/, id) }); });
   Object.keys(tin).forEach((t) => { if (!T[t]) T[t] = { name: t.replace(/\b\w/g, (c) => c.toUpperCase()), timeIn: tin[t], classes: [] }; });
-  const teachers = Object.values(T).map((o: any) => { o.classes.sort((a: any, z: any) => s(a.start).localeCompare(s(z.start))); return o; }).sort((a: any, z: any) => a.name.localeCompare(z.name));
+  // the teacher's first class of the day: the time-in is its check-in (as on Schedule) — no separate "I'm in"
+  const teachers = Object.values(T).map((o: any) => { o.classes.sort((a: any, z: any) => s(a.start).localeCompare(s(z.start)));
+    const f = o.classes.find((c: any) => !c.cancelled); if (f && !f.ci && o.timeIn) f.ci = { time: o.timeIn.time, status: o.timeIn.status, mins: o.timeIn.mins, first: 1 }; return o; }).sort((a: any, z: any) => a.name.localeCompare(z.name));
   const mn = (iso: string) => new Date(Date.parse(iso) + 8 * 3600e3).toISOString().slice(11, 16);
   const feed: any[] = [];
   (W.data || []).forEach((w: any) => { if (SKIP.test(w.fn)) return; const A = Array.isArray(w.args) ? w.args : [], o = A[1] && typeof A[1] === "object" ? A[1] : {};
