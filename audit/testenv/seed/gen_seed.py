@@ -172,12 +172,41 @@ def lit(v):
     if isinstance(v, Decimal): return numtxt(v)
     if isinstance(v, (dict, list)): return "$j$" + dump(v) + "$j$::jsonb"
     return "'" + str(v).replace("'", "''") + "'"
+NOTNULL = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'notnull.json')))
+
+# Check constraints on the branch (pg_constraint, 25 Oct). The seed must satisfy them; checked here so a bad row stops the build.
+CHECKS = {
+    "coe_ledger": {"kind": {"expense", "sale"}},
+    "coe_setup_check": {"status": {"Waiting", "Approved", "Fix needed"}},
+    "coe_trainings": {"kind": {"mandatory", "selfstudy", "unlock", "coaching"}},
+    "coe_training_sessions": {"status": {"scheduled", "done", "cancelled"}},
+    "coe_training_records": {"status": {"done", "assigned", "excused", "pending", "completed", "further", "void"},
+                             "via": {"live", "recording", "online", "grandfathered", "manual", "assigned", "recognized"}},
+    "coe_wallet": {"kind": {"check", "remit", "out", "in", "transfer"}, "wallet": {"Alipay", "WeChat", "ChinaBank", "CCB"}},
+}
+# The hand-written teacher fixture uses via 'video', which the database does not allow; the app's own "watched online" path writes 'online'.
+VIA_FIX = {"video": "online"}
+ROWS = {}
+
 def rows_sql(table, cols, rows, conflict="do nothing", casts=None):
     if not rows: return ""
+    for r in rows:
+        for c, ok in CHECKS.get(table, {}).items():
+            v = r.get(c)
+            if v is not None and v not in ok: raise SystemExit("check %s.%s fails for %r" % (table, c, v))
+    ROWS.setdefault(table, []).extend(rows)
     casts = casts or {}
     vals = []
+    nn = NOTNULL.get(table, {})
     for r in rows:
-        vals.append("(" + ",".join(lit(r.get(c)) + (casts.get(c, "") if r.get(c) is not None else "") for c in cols) + ")")
+        cells = []
+        for c in cols:
+            v = r.get(c)
+            if v is None and c in nn:
+                if not nn[c]: raise SystemExit("NOT NULL column %s.%s has no value and no default: %r" % (table, c, {k: r.get(k) for k in cols[:2]}))
+                cells.append("DEFAULT"); continue
+            cells.append(lit(v) + (casts.get(c, "") if v is not None else ""))
+        vals.append("(" + ",".join(cells) + ")")
     return "insert into %s (%s) values\n%s\non conflict %s;\n" % (table, ",".join(cols), ",\n".join(vals), conflict)
 
 small = []
@@ -239,7 +268,7 @@ if tr:
         T += [t for t in ttr["trainings"] if t["id"] not in have]
         P += [p for p in ttr["parts"]]
         S += ttr["sessions"]
-        RR += [dict(r, id=Decimal(900000) + Decimal(r["id"])) for r in ttr["records"]]
+        RR += [dict(r, id=Decimal(900000) + Decimal(r["id"]), via=VIA_FIX.get(r.get("via"), r.get("via"))) for r in ttr["records"]]
         G += ttr["progress"]; Q += ttr["quiz"]
     small.append(rows_sql("coe_trainings", ["id", "title", "kind", "gate", "sort", "descr", "units", "active", "updated_at"], T))
     small.append(rows_sql("coe_training_parts", ["id", "training_id", "sort", "title", "ver", "video_path", "dur_sec", "quiz", "approve", "active", "updated_at"], P))
@@ -268,11 +297,11 @@ if ex:
     S = sorted(ex["sales"], key=lambda r: r["d"])
     def invname(r): return ("PaymentConfirmation%s_%s" % (r["inv"], r["t"].replace(" ", "_"))) if r.get("inv") else r["t"]
     srows = [[r["d"] + "T00:00:00", invname(r), r["pkg"], r["free"], r["src"], r["pay"], r["rmb"], r["a"]] for r in S]
-    big.append(("expenses", "insert into sheet_rows (tab, r, data) select 'EXPENSES', (o + 1)::int, v from jsonb_array_elements($j$" + dump(erows) + "$j$::jsonb) with ordinality as t(v, o) on conflict do nothing;\n"
-                "insert into sheet_tabs (tab, nrows, synced_at) values ('EXPENSES', %d, now()) on conflict (tab) do update set nrows = excluded.nrows, synced_at = excluded.synced_at;\n" % (len(erows) + 1)))
-    big.append(("sales", "insert into sheet_rows (tab, r, data) select 'SALES', (o + 2)::int, v from jsonb_array_elements($j$" + dump(srows) + "$j$::jsonb) with ordinality as t(v, o) on conflict do nothing;\n"
-                "insert into sheet_tabs (tab, nrows, synced_at) values ('SALES', %d, now()) on conflict (tab) do update set nrows = excluded.nrows, synced_at = excluded.synced_at;\n"
-                "insert into coe_ledger (kind, day, k, data, src, status, sheet_r) select 'sale', left(data->>0, 10)::date, coe_ledger_key('sale', data), data, 'test', 'sheet', r from sheet_rows where tab = 'SALES' and data->>0 >= '2026-10-01';\n" % (len(srows) + 2)))
+    big.append(("expenses", "insert into sheet_tabs (tab, nrows, synced_at) values ('EXPENSES', " + str(len(erows) + 1) + ", now()) on conflict (tab) do update set nrows = excluded.nrows, synced_at = excluded.synced_at;\n"
+                "insert into sheet_rows (tab, r, data) select 'EXPENSES', (o + 1)::int, v from jsonb_array_elements($j$" + dump(erows) + "$j$::jsonb) with ordinality as t(v, o) on conflict do nothing;\n"))
+    big.append(("sales", "insert into sheet_tabs (tab, nrows, synced_at) values ('SALES', " + str(len(srows) + 2) + ", now()) on conflict (tab) do update set nrows = excluded.nrows, synced_at = excluded.synced_at;\n"
+                "insert into sheet_rows (tab, r, data) select 'SALES', (o + 2)::int, v from jsonb_array_elements($j$" + dump(srows) + "$j$::jsonb) with ordinality as t(v, o) on conflict do nothing;\n"
+                "insert into coe_ledger (kind, day, k, data, src, status, sheet_r) select 'sale', left(data->>0, 10)::date, coe_ledger_key('sale', data), data, 'test', 'sheet', r from sheet_rows where tab = 'SALES' and data->>0 >= '2026-10-01';\n"))
 
 # ── tables worked out on the branch from the docs just loaded ──────────────────────────────────────────────────────
 derived = r"""
@@ -365,5 +394,25 @@ emit("40-derived.sql", derived)
 man = {"docs": {k: {"scope": v["scope"], "md5": hashlib.md5(dump(v["data"], True).encode()).hexdigest(), "src": v["src"]} for k, v in DOCS.items()},
        "files": [(f, os.path.getsize(os.path.join(OUT, f))) for f in files],
        "scrub": {"ips": len(IPMAP), "drive_links": len(DRMAP), "emails": len(EMMAP), "wechat_ids": len(WXMAP)}}
+# Foreign keys and unique keys on the branch: check them over the rows actually written ("on conflict do nothing" keeps the first row of a key).
+def firsts(t, key):
+    seen = {}
+    for r in ROWS.get(t, []):
+        seen.setdefault(tuple(str(r.get(k)) for k in key), r)
+    return seen
+def ids(t): return {k[0] for k in firsts(t, ["id"])}
+FK = [("coe_training_parts", "training_id", "coe_trainings"), ("coe_training_sessions", "training_id", "coe_trainings"),
+      ("coe_training_records", "training_id", "coe_trainings"), ("coe_training_records", "session_id", "coe_training_sessions"),
+      ("coe_training_progress", "part_id", "coe_training_parts"), ("coe_training_quiz", "part_id", "coe_training_parts"),
+      ("coe_contract_signs", "doc_id", "coe_contract_docs")]
+bad = []
+for t, c, rt in FK:
+    have = ids(rt)
+    for r in ROWS.get(t, []):
+        if r.get(c) is not None and str(r.get(c)) not in have: bad.append("%s.%s=%s not in %s" % (t, c, r.get(c), rt))
+for t, key in (("coe_contract_signs", ["teacher", "doc_id"]), ("coe_contract_docs", ["ref", "version"])):
+    k1 = firsts(t, key); k2 = firsts(t, ["id"])
+    if len(k1) != len(k2): bad.append("%s: %d rows by id but %d by %s (a later row would hit the unique key)" % (t, len(k2), len(k1), key))
+if bad: raise SystemExit("seed fails database keys:\n" + "\n".join(bad[:20]))
 json.dump(man, open(os.path.join(OUT, "manifest.json"), "w"), indent=1, ensure_ascii=False)
 print(json.dumps({"files": man["files"], "docs": len(DOCS), "scrub": man["scrub"]}, indent=0))
