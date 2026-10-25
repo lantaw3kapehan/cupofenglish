@@ -4157,7 +4157,7 @@ if(tm0 || (RP && RP.rows)){ const R = (RP && RP.rows) || [], sent = R.filter(x =
 const pr = typeof PM !== 'undefined' && PM && PM.rows ? [PM.rows.filter(x => x.status !== 'Assigned').length, PM.rows.length] : null, bar = (a, b, c) => `<div class="ov-bar"><i style="width:${b ? Math.round(a / b * 100) : 0}%;background:${c}"></i></div>`;
 bq += `<section class="ov-card"><div class="ov-hd"><h2>Quality</h2><a class="lk" onclick="go('perf')">Performance ›</a></div>
 ${tm0 ? `<div class="ov-row" style="gap:20px">${ring([[+tm0.avg || 0, '#00A3AD']], 5, esc(String(tm0.avg)), 'of 5', 104)}<div class="ov-ks"><b>QA team average</b>${tm1 ? `<em class="${tm0.avg >= tm1.avg ? 'up' : 'dn'}">${tm0.avg >= tm1.avg ? '▲' : '▼'} ${Math.abs(Math.round((tm0.avg - tm1.avg) * 10) / 10)} vs ${esc(tm1.period)}</em>` : ''}<span class="small mute">${esc(tm0.period)} · ${tm0.n} teachers</span></div></div>` : ''}
-${tot ? `<div class="ov-ql"><div class="ov-th"><span>Parent reports sent · ${esc(RP.label || '')}</span><b>${sent} / ${tot}</b></div>${bar(sent, tot, '#00A3AD')}</div>` : ''}
+${tot ? `<div class="ov-ql"><div class="ov-th"><span>Parent reports sent · ${esc(window.fbClsLab && (RP.month || RP.current) ? fbClsLab(RP.month || RP.current) + ' classes' : (RP.label || ''))}</span><b>${sent} / ${tot}</b></div>${bar(sent, tot, '#00A3AD')}</div>` : ''}
 ${pr && pr[1] ? `<div class="ov-ql"><div class="ov-th"><span>Peer reviews done</span><b>${pr[0]} / ${pr[1]}</b></div>${bar(pr[0], pr[1], '#6C5FC7')}</div>` : ''}</section>`; }
 if(bq) h += `<div class="ov-two">${bq}</div>`;
 $('v-home').innerHTML = `<div class="ov">${h}</div>`;
@@ -6034,8 +6034,8 @@ if(!RP || !$('v-reports')) return;
 const R = RP.rows || [], chk = R.filter(x => !/^Sent/.test(x.status) && x.status !== 'Returned'), sent = R.filter(x => /^Sent/.test(x.status)), ret = R.filter(x => x.status === 'Returned');
 const L = RP_F==='check' ? chk : RP_F==='sent' ? sent : RP_F==='ret' ? ret : RP_F==='making' ? (RP.making||[]) : RP_F==='wait' ? (RP.waiting||[]) : R;
 const tot = R.length + (RP.making||[]).length + (RP.waiting||[]).length;
-let h = `<div class="lead"><h1>Parent reports</h1><div class="mute small">${esc(RP.label)} · the monthly feedback as your bilingual PDF · check it, then send it to the parent on WeChat</div></div>${rpKinds()}
-<div class="seg">${(RP.months||[]).map(m => `<button class="${RP.month===m?'on':''}" onclick="rpMonth('${m}')">${esc(new Date(m+'-15').toLocaleDateString('en-GB',{month:'long',year:'numeric'}))}</button>`).join('')}</div>
+let h = `<div class="lead"><h1>Parent reports</h1><div class="mute small">${esc(window.fbClsLab ? fbClsLab(RP.month || RP.current, RP.label) + ' classes' : RP.label)} · the monthly feedback as your bilingual PDF · check it, then send it to the parent on WeChat</div></div>${rpKinds()}
+<div class="seg">${(RP.months||[]).map(m => `<button class="${RP.month===m?'on':''}" onclick="rpMonth('${m}')">${esc(window.fbClsLab ? fbClsLab(m) : new Date(m+'-15').toLocaleDateString('en-GB',{month:'long',year:'numeric'}))}</button>`).join('')}</div>
 <div class="stats" style="margin-top:10px"><div class="stat"><b class="num">${sent.length}</b><span>sent of ${tot}</span></div><div class="stat"><b class="num">${chk.length}</b><span>to check &amp; send</span></div><div class="stat"><b class="num">${RP.waiting==null?'…':RP.waiting.length}</b><span>waiting for the teacher${RP.month===RP.current?' · due '+esc(RP.due):''}</span></div></div>
 ${tot ? `<div class="fbbar" style="max-width:none;height:7px"><i style="width:${Math.round(sent.length/tot*100)}%"></i></div>` : ''}
 <div class="seg">${[['check','To check · '+chk.length],['sent','Sent · '+sent.length],['ret','Returned · '+ret.length],['making','PDF being made · '+(RP.making||[]).length],['wait','No feedback yet · '+(RP.waiting||[]).length],['all','All reports · '+R.length]].map(([k,l]) => `<button class="${RP_F===k?'on':''}" onclick="RP_F='${k}';renderReports()">${l}</button>`).join('')}</div>`;
@@ -6054,7 +6054,7 @@ if(RPD.report.file){ try{ const r = await api('mgmtReportPdf', TOKEN, key); if(r
 RPB = new File([u8], r.name, { type: 'application/pdf' }); const el = $('rpPdf'); if(el) el.innerHTML = `<iframe class="rp-pdf" src="${URL.createObjectURL(RPB)}#view=FitH"></iframe>`; rpBtns(); } }catch(e){ const el = $('rpPdf'); if(el) el.innerHTML = '<div class="empty small">Could not load the PDF. Check your internet and open it again.</div>'; } }
 }
 function rpMsg(){
-const x = RPD.report, mo = Number(String(x.month).slice(5,7)), en = new Date(x.month + '-15').toLocaleDateString('en-GB',{month:'long'});
+const x = RPD.report, mo = window.fbClsKey ? Number(fbClsKey(x.month).slice(5,7)) : Number(String(x.month).slice(5,7)), en = new Date((window.fbClsKey ? fbClsKey(x.month) : x.month) + '-15').toLocaleDateString('en-GB',{month:'long'});
 if(isAdult(x.code)) return `Hello ${x.student}! Here is your ${en} progress report from Teacher ${x.teacher}. Thank you for learning with us! — CupOfEnglish\n${x.student}您好！这是您${mo}月的学习报告（${x.teacher}老师）。感谢您的支持与配合！— CupOfEnglish`;
 return `Dear parent, here is ${x.student}'s ${en} progress report from Teacher ${x.teacher}. Thank you for your support! — CupOfEnglish\n家长您好！这是${x.student}${mo}月的学习报告（${x.teacher}老师）。感谢您的支持与配合！— CupOfEnglish`;
 }
@@ -6062,7 +6062,7 @@ function rpPaint(){
 const x = RPD.report, f = RPD.fb, [c, l] = RP_ST(x.status);
 const sk = f ? [['Listening','听力',f.l],['Speaking','口语',f.s],['Reading','阅读',f.r],['Writing','写作',f.w]] : [];
 const T = (en, zh, a, b) => a ? `<div class="rp-tx"><div class="gr-k">${en} <span class="mute">${zh}</span></div><div class="small">${nl2br(a)}</div>${b?`<div class="small zh">${nl2br(b)}</div>`:''}</div>` : '';
-let h = `<div class="row" style="padding-right:44px"><div class="av">${esc(String(x.student)[0])}</div><div class="grow"><h1>${esc(x.student)}</h1><div class="mute small">${esc(x.code)} · Teacher ${esc(x.teacher)} · ${esc(new Date(x.month+'-15').toLocaleDateString('en-GB',{month:'long',year:'numeric'}))} · feedback ${esc(x.submitted)}</div></div><span class="chip ${c}">${l}</span></div>`;
+let h = `<div class="row" style="padding-right:44px"><div class="av">${esc(String(x.student)[0])}</div><div class="grow"><h1>${esc(x.student)}</h1><div class="mute small">${esc(x.code)} · Teacher ${esc(x.teacher)} · ${esc(window.fbClsLab ? fbClsLab(x.month) + ' classes' : new Date(x.month+'-15').toLocaleDateString('en-GB',{month:'long',year:'numeric'}))} · feedback ${esc(x.submitted)}</div></div><span class="chip ${c}">${l}</span></div>`;
 if(x.note && x.status !== 'Ready') h += `<div class="${x.status==='Returned'?'fbfix':'fbdone'}">${esc(x.note)}${x.by?' · '+esc(x.by):''}${x.at?' · '+esc(x.at):''}</div>`;
 if(f) h += `<div class="rp-sk">${sk.map(([en, zh, v]) => `<div><b class="num">${v===''||v==null?'—':v}</b><span>${en} /25</span></div>`).join('')}<div style="background:var(--tint)"><b class="num">${f.total}</b><span>Total /100</span></div></div>
 ${f.course?`<div class="small mute" style="margin-top:6px">Course: ${esc(f.course)}</div>`:''}
@@ -6186,7 +6186,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1236;
+const COE_V = 1238;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -9653,7 +9653,7 @@ ${pay.length ? `<div class="ov-pay"><div class="ov-th"><b>${esc(MO.payMonth || '
       const pr = typeof PM !== 'undefined' && PM && PM.rows ? [PM.rows.filter(x => x.status !== 'Assigned').length, PM.rows.length] : null, bar = (a, b, c) => `<div class="ov-bar"><i style="width:${b ? Math.round(a / b * 100) : 0}%;background:${c}"></i></div>`;
       bq += `<section class="ov-card"><div class="ov-hd"><h2>Quality</h2><a class="lk" onclick="go('perf')">Performance ›</a></div>
 ${tm0 ? `<div class="ov-row" style="gap:18px">${ring([[+tm0.avg || 0, '#00A3AD']], 5, esc(String(tm0.avg)), 'of 5', 96)}<div class="ov-ks"><b>QA team average</b>${tm1 ? `<em class="${tm0.avg >= tm1.avg ? 'up' : 'dn'}">${tm0.avg >= tm1.avg ? '▲' : '▼'} ${Math.abs(Math.round((tm0.avg - tm1.avg) * 10) / 10)} vs ${esc(tm1.period)}</em>` : ''}<span class="small mute">${esc(tm0.period)} · ${tm0.n} teachers</span></div></div>` : ''}
-${tot ? `<a class="ov-ql" onclick="RP_K='month';go('reports')"><div class="ov-th"><span>Parent reports sent · ${esc(RP.label || '')}</span><b>${sent} / ${tot}</b></div>${bar(sent, tot, '#00A3AD')}</a>` : ''}
+${tot ? `<a class="ov-ql" onclick="RP_K='month';go('reports')"><div class="ov-th"><span>Parent reports sent · ${esc(window.fbClsLab && (RP.month || RP.current) ? fbClsLab(RP.month || RP.current) + ' classes' : (RP.label || ''))}</span><b>${sent} / ${tot}</b></div>${bar(sent, tot, '#00A3AD')}</a>` : ''}
 ${pr && pr[1] ? `<a class="ov-ql" onclick="go('perf')"><div class="ov-th"><span>Peer reviews done</span><b>${pr[0]} / ${pr[1]}</b></div>${bar(pr[0], pr[1], '#6C5FC7')}</a>` : ''}</section>`; }
     if(bq) h += `<div class="ov-two">${bq}</div>`;
     if(app.length) h += `<div class="o2-foot"><span>App check · ${esc(app[0].s || '')}</span><a onclick="${app[0].go}">Open ›</a></div>`;
@@ -27951,5 +27951,56 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
 })();
 </script>
 <style id="d1003">/* 1003 */ #v-home .x-todo{display:flex!important;flex-wrap:wrap!important;align-items:center;column-gap:10px;row-gap:2px}#v-home .x-todo>b{flex:0 1 auto}#v-home .x-todo>span{flex:1 1 280px!important;min-width:0!important}#v-home .x-todo>em{margin-left:auto}</style>
+<script>
+/* 1090 · feedback month = the month of the classes · phone picture of the parent report */
+(function(){
+  if(window.__1090) return; window.__1090 = 1;
+  window.fbClsKey = function(k){ var m = String(k || '').match(/^(\d{4})-(\d{2})/); if(!m) return k; var y = +m[1], mo = +m[2] - 1; if(mo < 1){ mo = 12; y--; } return y + '-' + (mo < 10 ? '0' : '') + mo; };
+  window.fbClsLab = function(k, fb){ var c = fbClsKey(k); if(!/^\d{4}-\d{2}$/.test(String(c))) return fb || k; return new Date(c + '-15T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); };
+  var E = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var NL = function(s){ return E(s).replace(/\n/g, '<br>'); };
+  function page(x, f){
+    var key = fbClsKey(x.month), en = fbClsLab(x.month), zm = Number(String(key).slice(5, 7)), zy = String(key).slice(0, 4);
+    var logo = (document.querySelector('#login img') || document.querySelector('.hd img') || {}).src || '';
+    var sk = [['Listening', '听力', f.l], ['Speaking', '口语', f.s], ['Reading', '阅读', f.r], ['Writing', '写作', f.w]];
+    var tot = +f.total || 0, pct = Math.max(0, Math.min(100, tot));
+    var bar = function(v, max){ var p = Math.max(0, Math.min(100, (+v || 0) / max * 100)); return '<div style="height:16px;border-radius:8px;background:#E3F1F2;overflow:hidden"><div style="height:16px;width:' + p + '%;background:#2E8F96;border-radius:8px"></div></div>'; };
+    var sec = function(en1, zh1, a, b){ if(!a && !b) return ''; return '<div style="margin-top:34px"><div style="font-size:34px;font-weight:700;color:#2B2450">' + en1 + ' <span style="color:#2E8F96">' + zh1 + '</span></div>'
+      + (a ? '<div style="font-size:31px;line-height:1.5;margin-top:12px;color:#2B2450">' + NL(a) + '</div>' : '') + (b ? '<div style="font-size:31px;line-height:1.6;margin-top:12px;color:#3D3760">' + NL(b) + '</div>' : '') + '</div>'; };
+    return '<div style="width:1080px;box-sizing:border-box;padding:56px 60px 60px;background:#fff;color:#2B2450;font-family:Inter,\'Noto Sans SC\',\'PingFang SC\',\'Microsoft YaHei\',system-ui,sans-serif">'
+      + '<div style="display:flex;align-items:center;gap:20px">' + (logo ? '<img src="' + E(logo) + '" style="height:84px">' : '') + '<div style="flex:1"></div><div style="text-align:right;font-size:26px;color:#5E5A76">' + E(en) + '<br>' + zy + '年' + zm + '月</div></div>'
+      + '<div style="margin-top:36px;font-size:30px;font-weight:600;letter-spacing:.06em;color:#2E8F96">MONTHLY PROGRESS REPORT · ' + zm + '月学习报告</div>'
+      + '<div style="margin-top:10px;font-size:64px;font-weight:700;line-height:1.1">' + E(x.student) + '</div>'
+      + '<div style="margin-top:12px;font-size:28px;color:#5E5A76">' + E(x.code) + ' · Teacher ' + E(x.teacher) + ' ' + E(x.teacher) + '老师' + (f.course ? '<br>' + E(f.course) : '') + '</div>'
+      + '<div style="margin-top:36px;background:#EAF7F8;border-radius:28px;padding:34px 36px"><div style="display:flex;align-items:baseline;gap:16px"><div style="font-size:120px;font-weight:700;line-height:1;color:#00707A">' + E(f.total) + '</div><div style="font-size:36px;color:#3D3760">/ 100</div><div style="flex:1"></div><div style="font-size:30px;text-align:right;color:#3D3760">Total score<br>本月总分</div></div>'
+      + '<div style="margin-top:22px;height:22px;border-radius:11px;background:#fff;overflow:hidden"><div style="height:22px;width:' + pct + '%;background:#00A3AD;border-radius:11px"></div></div></div>'
+      + '<div style="margin-top:30px">' + sk.map(function(k){ return '<div style="display:grid;grid-template-columns:300px 1fr 110px;align-items:center;gap:20px;margin-top:20px"><div style="font-size:32px;font-weight:600">' + k[0] + ' <span style="color:#2E8F96;font-weight:500">' + k[1] + '</span></div>' + bar(k[2], 25) + '<div style="font-size:34px;font-weight:700;text-align:right">' + (k[2] === '' || k[2] == null ? '—' : E(k[2])) + '<span style="font-size:24px;color:#5E5A76;font-weight:500">/25</span></div></div>'; }).join('') + '</div>'
+      + sec('Strengths', '优势表现', f.strengths, f.cn && f.cn.strengths) + sec('Areas to improve', '待提升方面', f.areas, f.cn && f.cn.areas) + sec('Next steps', '下一步学习目标', f.next, f.cn && f.cn.next)
+      + '<div style="margin-top:44px;padding-top:24px;border-top:2px solid #E7E5EE;font-size:26px;color:#5E5A76;display:flex;justify-content:space-between"><span>CupOfEnglish 一杯英语</span><span>Thank you for your support! 感谢您的支持！</span></div></div>';
+  }
+  async function make(){ if(typeof RPD === 'undefined' || !RPD || !RPD.fb) throw new Error('This report has no feedback scores yet.');
+    var H = await h2c(); var box = document.createElement('div'); box.style.cssText = 'position:fixed;left:-20000px;top:0;z-index:-1'; box.innerHTML = page(RPD.report, RPD.fb); document.body.appendChild(box);
+    try{ var imgs = box.querySelectorAll('img'); await Promise.all([].map.call(imgs, function(im){ return im.complete ? 0 : new Promise(function(z){ im.onload = im.onerror = z; }); }));
+      var cv = await H(box.firstChild, { scale: 1, backgroundColor: '#ffffff', useCORS: true, logging: false });
+      return await new Promise(function(z){ cv.toBlob(z, 'image/png'); }); } finally { box.remove(); } }
+  var fname = function(){ var x = RPD.report; return 'ProgressReport_' + String(x.student || '').replace(/[^\w-]/g, '') + '_' + fbClsKey(x.month) + '.png'; };
+  window.rpPicCopy = async function(btn){ var t = btn && btn.textContent; try{ if(btn){ btn.disabled = true; btn.textContent = 'Making picture…'; }
+      var b = await make(); if(!window.ClipboardItem || !navigator.clipboard) throw new Error('nocopy'); await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); toast('Picture copied · paste it in the parent’s WeChat chat'); }
+    catch(e){ if(e && e.message === 'nocopy') { toast('Copy is not available here · use Save or Share'); } else toast((e && e.message) || 'Could not make the picture'); }
+    finally{ if(btn){ btn.disabled = false; btn.textContent = t; } } };
+  window.rpPicShare = async function(btn){ var t = btn && btn.textContent; try{ if(btn){ btn.disabled = true; btn.textContent = 'Making picture…'; }
+      var b = await make(), f = new File([b], fname(), { type: 'image/png' });
+      if(navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f] });
+      else { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = fname(); document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 4000); toast('Picture saved'); } }
+    catch(e){ if(!(e && e.name === 'AbortError')) toast((e && e.message) || 'Could not make the picture'); }
+    finally{ if(btn){ btn.disabled = false; btn.textContent = t; } } };
+  window.rpPicHtml = function(){ return typeof RPD !== 'undefined' && RPD && RPD.fb ? page(RPD.report, RPD.fb) : ''; };
+  var _b = window.rpBtns;
+  if(typeof _b === 'function') window.rpBtns = function(){ var r = _b.apply(this, arguments); try{ var el = document.getElementById('rpAct'); if(el && typeof RPD !== 'undefined' && RPD && RPD.fb && !el.querySelector('.pic1090')){
+      var mob = /Android|iPhone|iPad/i.test(navigator.userAgent);
+      el.insertAdjacentHTML('afterbegin', '<div class="pic1090" style="width:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px"><b style="font-size:.875rem">Picture for parent <span class="mute" style="font-weight:400">· phone size, English + 中文</span></b><span style="flex:1"></span>'
+        + '<button class="btn sm teal" onclick="rpPicCopy(this)">Copy picture</button><button class="btn sm ghost" onclick="rpPicShare(this)">' + (mob ? 'Share' : 'Save') + '</button></div>'); } }catch(e){} return r; };
+})();
+</script>
 </body>
 </html>
