@@ -6049,6 +6049,7 @@ async function rpOpen(key){
 RPD = null; RPB = null;
 openSheet(`<h1>Parent report</h1><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>`); $('sheet').classList.add('wide');
 try{ RPD = await api('mgmtReport', TOKEN, key); }catch(e){ $('sheetBody').innerHTML = '<h1>Parent report</h1><div class="empty">Could not open this report.</div>'; return; }
+try{ if(window.fbcnApply) await fbcnApply(RPD); }catch(x){}
 rpPaint();
 if(RPD.report.file){ try{ const r = await api('mgmtReportPdf', TOKEN, key); if(r.ok && RPD && RPD.report.key === key){ const bin = atob(r.b64), u8 = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i] = bin.charCodeAt(i);
 RPB = new File([u8], r.name, { type: 'application/pdf' }); const el = $('rpPdf'); if(el) el.innerHTML = `<iframe class="rp-pdf" src="${URL.createObjectURL(RPB)}#view=FitH"></iframe>`; rpBtns(); } }catch(e){ const el = $('rpPdf'); if(el) el.innerHTML = '<div class="empty small">Could not load the PDF. Check your internet and open it again.</div>'; } }
@@ -6188,7 +6189,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1251;
+const COE_V = 1253;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -14264,7 +14265,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
     if(!f) return null;
     const hist = H.filter(x => x.month <= month && x.total != null).slice(-6); if(!hist.some(x => x.month === month)) hist.push({ month, total: f.total });
     return { code, month, student: (hint && hint.student) || r.stu.en || f.student || code, cn: r.stu.cn || '', teacher: f.teacher || (hint && hint.teacher) || '', course: f.course || '', total: f.total, sk: K.map(k => f[k]),
-      items: f.items || [], strengths: f.strengths || '', areas: f.areas || '', next: f.next || '', zh: Object.assign({}, f.cn || {}), submitted: f.submitted || '', hist: hist.slice(-6) }; }
+      items: f.items || [], strengths: f.strengths || '', areas: f.areas || '', next: f.next || '', zh: Object.assign({}, f.cn || {}, (window.__fbcn || {})[code + '|' + month] || {}), submitted: f.submitted || '', hist: hist.slice(-6) }; }
   function pages(F){
     const LG = (document.querySelector('#login img') || {}).src || '', TG = (document.querySelector('#login .tagl img') || {}).src || '';
     const gen = new Date().toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -14294,7 +14295,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
 .mr-ts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.mr-t{background:#F6F5FA;border-radius:12px;padding:9px 12px}.mr-t span{display:block;font-size:10px;color:#5C5876}.mr-t b{font-size:20px}.mr-t b i{font-size:11px;color:#8A86A0;font-style:normal}
 .mr-ch{padding:6px 4px 0}.mr-d{font-size:10px;color:#7A768F}`;
   function baseCss(){ try{ return window.coeTrialCss ? coeTrialCss() : ''; }catch(x){ return ''; } }
-  async function make(code, month, hint){ const r = await data(code); const F = facts(code, month, r, hint); if(!F) throw new Error('nodata');
+  async function make(code, month, hint){ const r = await data(code); try{ if(window.fbcnLoad) await fbcnLoad(code, month); }catch(x){} const F = facts(code, month, r, hint); if(!F) throw new Error('nodata');
     if((!F.zh.strengths || !F.zh.areas || !F.zh.next) && (F.strengths || F.areas || F.next)){ try{ const z = await api('mgmtZh', TOKEN, [F.strengths, F.areas, F.next], [F.student, F.cn]); if(z && z.ok && z.zh){ F.zh.strengths = F.zh.strengths || z.zh[0] || ''; F.zh.areas = F.zh.areas || z.zh[1] || ''; F.zh.next = F.zh.next || z.zh[2] || ''; } }catch(x){} }
     const [H2C, PDF] = await Promise.all([h2c(), window.coeJsPdf ? coeJsPdf() : Promise.reject(new Error('pdf'))]);
     const host = document.createElement('div'); host.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;z-index:-1';
@@ -28281,6 +28282,27 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
     var card = document.createElement('div'); card.style.cssText = 'background:#fff;border-radius:34px;padding:44px 44px 30px;border:2px solid #E8ECF0';
     card.innerHTML = head + who; while(root.firstChild) card.appendChild(root.firstChild); card.insertAdjacentHTML('beforeend', foot); root.appendChild(card);
     return d.innerHTML; }catch(e){ return h; } };
+})();
+</script>
+<script>
+/* 1099 · reviewed Chinese for parent reports */
+(function(){
+  if(window.__1099) return; window.__1099 = 1;
+  window.__fbcn = window.__fbcn || {};
+  window.fbcnLoad = async function(code, month){
+    var k = code + '|' + month; if(k in __fbcn) return __fbcn[k];
+    var ac = window.AbortController ? new AbortController() : null, t = ac ? setTimeout(function(){ ac.abort(); }, 3000) : 0;
+    try{ var r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: ['fbcn:' + k] }), signal: ac ? ac.signal : undefined }).then(function(y){ return y.json(); });
+      var d = r && r.ok && r.docs && r.docs['fbcn:' + k]; __fbcn[k] = d && d.data ? { strengths: d.data.strengths || '', areas: d.data.areas || '', next: d.data.next || '', _by: d.data.by || '' } : null; }
+    catch(e){ return null; } finally{ clearTimeout(t); }
+    return __fbcn[k]; };
+  window.fbcnApply = async function(R){ if(!R || !R.report || !R.fb) return; var c = await fbcnLoad(R.report.code, R.report.month); if(!c) return;
+    R.fb.cn = Object.assign({}, R.fb.cn || {}); ['strengths', 'areas', 'next'].forEach(function(k){ if(c[k]) R.fb.cn[k] = c[k]; }); R.fb._cnOk = 1; };
+  var _b = window.rpBtns;
+  if(typeof _b === 'function') window.rpBtns = function(){ var r = _b.apply(this, arguments); try{
+    if(typeof RPD === 'undefined' || !RPD || !RPD.fb) return r; var sb = document.getElementById('sheetBody'); if(!sb || sb.querySelector('.cn1099')) return r;
+    var rp = sb.querySelector('.rp-tx'); if(!rp) return r;
+    rp.insertAdjacentHTML('beforebegin', RPD.fb._cnOk ? '<div class="cn1099 small" style="margin-top:10px;color:#1E7A55;font-weight:600">中文 · reviewed for parents</div>' : '<div class="cn1099 small" style="margin-top:10px;color:#9A5B00;font-weight:600">中文 · machine translation, not reviewed yet</div>'); }catch(e){} return r; };
 })();
 </script>
 </body>
