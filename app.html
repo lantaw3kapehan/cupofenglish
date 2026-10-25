@@ -6163,7 +6163,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1132;
+const COE_V = 1133;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -13970,7 +13970,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
     else return null;
     if(pts.length !== 9 || pts.some(x => !(x >= 1 && x <= 4))) return null;
     const total = pts.reduce((a, b) => a + b, 0); if(LV.indexOf(cefr) < 0) cefr = rub(total);
-    group = r.pick || group || t.group || '';
+    group = t._g || r.pick || group || t.group || '';
     if(!group){ try{ const a = window.coeAge && t.code ? coeAge(t.code) : null; if(a && a.age != null) group = a.age <= 10 ? 'Young learner (≤10)' : a.age <= 17 ? 'Teen (11–17)' : 'Adult (18+)'; }catch(x){} }
     return { student: t.student, cn: t.cn || (d && d[34]) || '', code: t.code || (d && d[33]) || c.code || '', date: t.date, time: t.time || hm(d && d[3]) || c.time || '', teacher, pts, total, cefr, comm: String(comm || '').trim(), next: String(next || '').trim(), commZh, nextZh, group, label: d ? d[0] : '' }; }
   const prefix = g => /business/i.test(g) ? 'AdultB|' : /work/i.test(g) ? 'AdultW|' : /adult/i.test(g) ? 'Adult|' : /teen/i.test(g) ? 'Teen|' : '';
@@ -14055,7 +14055,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
   /* Trial sheet: when Google's PDF is not there (or still loading after 6 s), make the report in the app by itself */
   const _tp = window.tlPaint; if(_tp) window.tlPaint = function(){ const r = _tp.apply(this, arguments); try{ const t = TLD; if(!t || !(D && D.mgr)) return r;
       const go = () => { if(TLD !== t || TLB) return; const el = $('tlPdf'); if(el && !el.querySelector('#tlIns')) el.insertAdjacentHTML('afterbegin', '<button class="btn teal sm" id="tlIns" style="margin:10px 0 6px" onclick="tlInstant(this)">Make the report now</button>'); tlInstant($('tlIns')); };
-      if(!t.pdf) setTimeout(go, 50); else setTimeout(go, 6000); }catch(e){} return r; };
+      if(!t.pdf) setTimeout(go, 50); else setTimeout(go, 2000); }catch(e){} return r; };
   window.coeTrialCss = () => CSS; window.coeJsPdf = jspdf;   /* 379: shared with the monthly report */
   window.coeTrialPages = (t, r) => { if(r.cefr) TB.cefr = r.cefr; if(r.path) TB.path = r.path; const F = facts(t, r); return F ? '<style>' + CSS + '</style>' + pages(F).join('') : null; };   /* checks and previews */
 })();
@@ -24199,6 +24199,26 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   ['tlBtns', 'tlPaint', 'tlGrp'].forEach(n => { const f0 = window[n]; if(typeof f0 !== 'function') return;
     window[n] = function(){ const r = f0.apply(this, arguments); setTimeout(fix, 30); setTimeout(fix, 400); Promise.resolve(r).then(() => setTimeout(fix, 30)).catch(() => {}); return r; }; });
   new MutationObserver(() => { if(document.querySelector('#sheetBody .tl4') && !document.querySelector('#sheetBody .tl4 #tlGrp')) fix(); }).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+<script>
+/* 801 · learner type → new report at once */
+(function(){
+  if(window.__801 || typeof window.tlGrp !== 'function' || typeof TL_GRPS === 'undefined') return; window.__801 = 1;
+  const K = l => 'coe.trgrp.' + l;
+  const ov = x => { try{ const o = JSON.parse(localStorage.getItem(K(x.label)) || 'null'); if(!o || Date.now() - o.at > 6 * 3600e3) return null; return o; }catch(e){ return null; } };
+  // Apply a learner type changed on this device until Google's list has caught up.
+  function apply(x){ if(!x || !x.label) return; const o = ov(x); if(!o) return; if(x.group === o.g && x.pdf !== o.old){ try{ localStorage.removeItem(K(x.label)); }catch(e){} return; }
+    x.group = o.g; x._g = o.g; if(x.pdf && x.pdf === o.old){ x.pdf = ''; if(x.status !== 'Sent') x.status = 'Making PDF'; } }
+  const _to = window.tlOpen; if(typeof _to === 'function') window.tlOpen = function(i){ try{ apply(((typeof TRL !== 'undefined' && TRL && TRL.rows) || [])[i]); }catch(e){} return _to.apply(this, arguments); };
+  window.tlGrp = async function(i){ const x = TLD, g = TL_GRPS[i] && TL_GRPS[i][0]; if(!x || !g || x.group === g) return;
+    const old = x.pdf || '', prev = x.group;
+    try{ localStorage.setItem(K(x.label), JSON.stringify({ g, old, at: Date.now() })); }catch(e){}
+    x.group = g; x._g = g; if(old){ x.pdf = ''; if(x.status !== 'Sent') x.status = 'Making PDF'; } TLB = null;
+    try{ tlPaint(); }catch(e){}
+    toast('Learner type · ' + TL_GRPS[i][1] + ' · making the new report…');
+    try{ const r = await api('mgmtTrialGroup', TOKEN, x.date, x.student, g); if(!r || !r.ok) throw r; }
+    catch(e){ toast(((e && e.msg) || 'Google did not save the learner type') + ' · try again'); x.group = prev; x._g = prev || ''; try{ localStorage.removeItem(K(x.label)); }catch(e2){} if(TLD === x){ TLB = null; try{ tlPaint(); }catch(e3){} } } };
 })();
 </script>
 </body>
