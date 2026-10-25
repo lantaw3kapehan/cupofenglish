@@ -216,7 +216,7 @@ s = s.slice(0, i) + String.raw`<script>
     /* ── gov dues ── */
     var G = M ? M.G : [], gCur = G.find(function(g){ return g.m === cur; }), g3 = G.filter(function(g){ return g.m < cur; }).slice(0, 3).map(function(g){ return g.total; }), g6 = G.filter(function(g){ return g.m < cur; }).map(function(g){ return g.total; });
     var govQ = { c: g6.length ? Math.max.apply(null, g6) : null, e: med(g3), o: g3.length ? Math.min.apply(null, g3) : null };
-    miss.push({ k: 'bir', t: 'BIR quarterly / annual dues: the BIR tab has no due dates for the coming months — add them as Manual items (forecast assumes none)' });
+    if(!(A.items || []).some(function(x){ return x && x.kind === 'bir' && N(x.amt) > 0; })) miss.push({ k: 'bir', t: 'BIR quarterly / annual dues: the BIR tab has no due dates for the coming months — add them as Manual items (forecast assumes none)' });
     miss.push({ k: 'govf', t: 'GOV rows already entered for coming months are not loaded by the app — gov dues for coming months are estimated from the last months (' + (govQ.o != null ? P0(govQ.o) + '–' + P0(govQ.c) : '—') + ')', soft: 1 });
 
     /* ── manual items ── */
