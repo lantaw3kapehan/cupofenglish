@@ -6186,7 +6186,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1223;
+const COE_V = 1224;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -27669,6 +27669,32 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
           [].forEach.call(t.rows, function(r){ var k = 0; [].some.call(r.cells, function(c){ if(k === +x && (c.colSpan || 1) === 1){ c.classList.add('n991'); return true; } k += c.colSpan || 1; return k > +x; }); }); }); }); }catch(e){} }
   new MutationObserver(function(){ clearTimeout(tq); tq = setTimeout(scan, 200); }).observe(document.body, { childList: true, subtree: true });
   setTimeout(scan, 1500);
+})();
+</script>
+<script>
+/* 993 · substitute lessons from the database (coe-subs) applied to the package list */
+(function(){
+  if(window.__993) return; window.__993 = 1;
+  var URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-subs', CACHE = null, AT0 = 0, P = null;
+  var n1 = function(x){ return Math.round(x * 10) / 10; };
+  function subs(){ if(CACHE && Date.now() - AT0 < 120000) return Promise.resolve(CACHE); if(P) return P;
+    P = fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN }) }).then(function(x){ return x.json(); })
+      .then(function(r){ P = null; if(r && r.ok && Array.isArray(r.rows)){ CACHE = r; AT0 = Date.now(); return r; } return null; }, function(){ P = null; return null; }); return P; }
+  function apply(A, S){ try{ if(!A || !A.cols || !A.rows || !S) return A; var C = {}; A.cols.forEach(function(c, k){ C[c] = k; }); if(C.row == null || C.sub == null || C.finished == null) return A;
+      var by = {}; S.rows.forEach(function(x){ by[x.r] = x; }); var diffs = [];
+      A.rows.forEach(function(row){ var x = by[+row[C.row]]; if(!x || String(row[C.code] || '').trim().toUpperCase() !== x.code) return;
+        var cur = +row[C.sub] || 0, d = n1(x.sub_db - cur); if(x.sub_db !== x.sub_sheet) diffs.push({ row: x.r, code: x.code, teacher: x.teacher, sheet: x.sub_sheet, db: x.sub_db });
+        if(!d) return; row[C.sub] = x.sub_db;
+        if(row[C.finished] !== '' && row[C.finished] != null) row[C.finished] = n1((+row[C.finished] || 0) + d);
+        if(C.available != null && row[C.available] !== '' && row[C.available] != null) row[C.available] = n1((+row[C.available] || 0) - d); });
+      window.SUB993 = { at: S.at, diffs: diffs }; }catch(e){} return A; }
+  var _api = window.api;
+  if(typeof _api === 'function') window.api = function(fn){ var p = _api.apply(this, arguments);
+    if(fn !== 'mgmtActive' || typeof D === 'undefined' || !D || !D.mgr) return p;
+    var q = Promise.race([subs(), new Promise(function(z){ setTimeout(function(){ z(null); }, 4000); })]);
+    return Promise.all([p, q]).then(function(v){ return apply(v[0], v[1]); }); };
+  /* a package list already on screen (from the saved copy) gets the database numbers too */
+  setTimeout(function w(){ try{ if(typeof D !== 'undefined' && D && D.mgr && typeof AT !== 'undefined' && AT){ subs().then(function(S){ if(S){ apply(AT, S); try{ if(VIEW === 'active') renderActive(); }catch(e){} } }); return; } }catch(e){} setTimeout(w, 3000); }, 4000);
 })();
 </script>
 </body>
