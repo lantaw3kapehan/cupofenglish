@@ -26,12 +26,27 @@ def st(r, role_blocked=None):
     if r.get('hscroll'): return ('fail', 'Fail · page scrolls sideways')
     return ('pass', 'Pass')
 e = html.escape
+C = json.load(open(os.path.join(A, 'conditions.json'))); DEC = json.load(open(os.path.join(A, 'decisions.json')))
+O1 = load('ops-1280')
+CHANGED = {'home','monitor','team','mtoday','schedule','finov','payroll','expenses','money','wallets','perf','train','leave','reports','enquiry','astudents','db','active','teachers','trials','more'}
+cond = ''.join(f'<tr><td>{c["n"]}</td><td>{e(c["c"])}</td><td><span class="pill {"ok" if c["s"].startswith("Done") else "blk" if "needs" in c["s"] else "nt"}">{e(c["s"])}</span></td><td>{e(c["d"])}</td></tr>' for c in C)
+dec = ''.join(f'<li>{e(d)}</li>' for d in DEC)
+tlrows = ''
+try:
+    T = json.load(open(os.path.join(A, 'timeline', 'after-1280.json'))); TB = json.load(open(os.path.join(A, 'timeline', 'before-1280.json')))
+    bx = {r['teacher']: r for r in TB['rows']}
+    tlrows = '<div class="tw" style="margin-top:12px"><table><thead><tr><th>Teacher (made-up)</th><th>Recorded time-in</th><th>Before · error</th><th>After · dot x</th><th>After · expected x</th><th>After · error</th></tr></thead><tbody>' + ''.join(f'<tr><td>{e(r["teacher"])}</td><td>{r["recorded"]}</td><td>{abs(bx.get(r["teacher"],{}).get("error_min",0)):.0f} min off</td><td>{r["dot_x"]} px</td><td>{r["expected_x"]} px</td><td>{abs(r["error_px"]):.0f} px</td></tr>' for r in T['rows']) + '</tbody></table></div>'
+    for src, dst in [('after-1280.png','tl-after.png'),('before-1280.png','tl-before.png'),('leave-after-1280.png','lv-after.png'),('leave-before-1280.png','lv-before.png')]:
+        shutil.copy(os.path.join(A,'timeline',src), os.path.join(S,'img',dst))
+except Exception as ex: print('timeline', ex)
 rows = []
 for v in sorted(set(list(A1.keys()) + list(B1.keys())), key=lambda v: list(NAMES).index(v) if v in NAMES else 99):
     if v not in NAMES: continue
-    c1, c2 = st(A1.get(v)), st(A3.get(v))
-    tch = ('blk', 'Blocked · no teacher sample data') if v not in ('contract', 'books', 'act', 'train') else ('nt', 'Not tested')
-    rows.append(f'<tr><th scope="row">{e(NAMES[v])}</th>' + ''.join(f'<td><span class="pill {k}">{e(t)}</span></td>' for k, t in [c1, c2, ('nt', 'Not tested'), tch]) + '</tr>')
+    c1, c2, c3 = st(A1.get(v)), st(A3.get(v)), st(O1.get(v)) if O1 else ('nt', 'Not tested')
+    tch = ('blk', 'Blocked · teacher sample in progress')
+    dz = ('nt', 'Awaiting your review') if v in CHANGED else ('nt', 'Unchanged · awaiting review')
+    wf = ('nt', 'Not tested · needs test copy')
+    rows.append(f'<tr><th scope="row">{e(NAMES[v])}</th>' + ''.join(f'<td><span class="pill {k}">{e(t)}</span></td>' for k, t in [c1, c2, c3, tch, dz, wf]) + '</tr>')
 cards = []
 for x in reg:
     k = 'ok' if x['status'].startswith('Fixed') else ('info' if x['status'].startswith('Explained') else 'nt')
@@ -50,6 +65,13 @@ for v in ['finov', 'payroll', 'expenses', 'home', 'mtoday', 'team']:
     b, a = cp('before-390', v), cp('after-390', v)
     if a: phone.append(f'<figure class="ph"><figcaption>{e(NAMES.get(v, v))}</figcaption><div class="two">{f"<img loading=lazy src={b} alt=Before>" if b else ""}<img loading="lazy" src="{a}" alt="After"></div></figure>')
 tpl = open(os.path.join(A, 'page-template.html')).read()
-out = tpl.replace('{{ISSUES}}', '\n'.join(cards)).replace('{{ROWS}}', '\n'.join(rows)).replace('{{SHOTS}}', '\n'.join(shots)).replace('{{PHONE}}', '\n'.join(phone))
+out = tpl.replace('{{ISSUES}}', '\n'.join(cards)).replace('{{ROWS}}', '\n'.join(rows)).replace('{{SHOTS}}', '\n'.join(shots)).replace('{{PHONE}}', '\n'.join(phone)).replace('{{CONDITIONS}}', cond).replace('{{DECISIONS}}', dec).replace('{{TLTABLE}}', tlrows)
 open(os.path.join(S, 'index.html'), 'w').write(out)
+try:
+    import markdown
+    md = markdown.markdown(open(os.path.join(A, 'FORECAST-PROPOSAL.md')).read(), extensions=['tables', 'fenced_code'])
+    head = tpl[:tpl.index('<main>')].replace('<title>CupOfEnglish Audit Review</title>', '<title>Finance Forecast Proposal</title>')
+    fx = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' + head + '<style>main.doc{display:block}main.doc table{margin:10px 0 18px;display:block;overflow-x:auto}main.doc h2{margin-top:28px}main.doc h3{margin:20px 0 8px}main.doc pre{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12.5px}main.doc code{font-size:.92em}main.doc li{margin-bottom:4px}</style></head><body><main class="doc"><p><a href="index.html">‹ Back to the audit</a></p>' + md + '</main></body></html>'
+    open(os.path.join(S, 'forecast.html'), 'w').write(fx)
+except Exception as ex: print('forecast', ex)
 print('ok', len(cards), 'issues', len(rows), 'rows', len(shots), 'pairs')

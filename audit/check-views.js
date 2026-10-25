@@ -4,7 +4,7 @@ const { chromium } = require('playwright'); const path = require('path'); const 
   const [,, file, tag, w, h] = process.argv; fs.mkdirSync('audit/out', { recursive: true });
   const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: +w, height: +h } })).newPage();
   let errs = []; p.on('pageerror', e => errs.push(e.message.slice(0, 160)));
-  await p.goto('file://' + path.resolve(file)); await p.waitForTimeout(12000);
+  await p.goto('file://' + path.resolve(file) + (process.argv[6] || '')); await p.waitForTimeout(12000);
   const views = await p.evaluate(() => VIEWS.filter(v => !/^(today|students|pay|growth|qa|tsched|mypay|tinbox)$/.test(v) && document.getElementById('v-' + v)));
   const res = {};
   for(const v of views){ errs = []; await p.evaluate(v => { try{ closeSheet(); }catch(e){} go(v); window.scrollTo(0, 0); }, v); await p.waitForTimeout(2600);
