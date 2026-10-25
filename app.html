@@ -6186,7 +6186,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1228;
+const COE_V = 1229;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -27655,8 +27655,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   var place = function(){ if(document.head.lastElementChild !== st) document.head.appendChild(st); };
   place();
   /* keep this sheet after 880 / 901, which re-append theirs when a screen adds styles */
-  new MutationObserver(function(ms){ for(var k = 0; k < ms.length; k++) for(var j = 0; j < ms[k].addedNodes.length; j++){ var n = ms[k].addedNodes[j]; if(n !== st && (n.nodeName === 'STYLE' || n.nodeName === 'LINK')){ setTimeout(place, 150); return; } } })
-    .observe(document.head, { childList: true });
+  /* 998: no re-adding (it ping-ponged with 880) · the tokens win by specificity */
   addEventListener('load', function(){ setTimeout(place, 400); });
   /* right-align columns of amounts / counts (app tables only, never documents) */
   var NUM = /^[-−+]?\s*(₱|PHP|¥|CNY|RMB|\$)?\s*[-−+]?\d[\d,]*(\.\d+)?\s*(%|₱|¥|元|k|K)?$/;
@@ -27667,7 +27666,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
         body.forEach(function(r){ var x = 0; [].forEach.call(r.cells, function(c){ var span = c.colSpan || 1; if(span === 1 && c.tagName === 'TD'){ var v = (c.textContent || '').replace(/\s+/g, ' ').trim(); if(v && v !== '—' && v !== '-'){ var o = cols[x] || (cols[x] = { n: 0, y: 0 }); o.n++; if(NUM.test(v)) o.y++; } } x += span; }); });
         Object.keys(cols).forEach(function(x){ var o = cols[x]; if(o.n < 2 || o.y / o.n < 0.8 || +x === 0) return;
           [].forEach.call(t.rows, function(r){ var k = 0; [].some.call(r.cells, function(c){ if(k === +x && (c.colSpan || 1) === 1){ c.classList.add('n991'); return true; } k += c.colSpan || 1; return k > +x; }); }); }); }); }catch(e){} }
-  new MutationObserver(function(){ clearTimeout(tq); tq = setTimeout(scan, 200); }).observe(document.body, { childList: true, subtree: true });
+  var later = function(){ clearTimeout(tq); tq = setTimeout(scan, 400); }; var _g = window.go; if(typeof _g === 'function') window.go = function(){ var r = _g.apply(this, arguments); later(); setTimeout(later, 1500); return r; }; var _r = window.render; if(typeof _r === 'function') window.render = function(){ var r = _r.apply(this, arguments); later(); return r; };   /* 998 */
   setTimeout(scan, 1500);
 })();
 </script>
@@ -27692,7 +27691,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   if(typeof _api === 'function') window.api = function(fn){ var p = _api.apply(this, arguments);
     if(fn !== 'mgmtActive' || typeof D === 'undefined' || !D || !D.mgr) return p;
     var q = Promise.race([subs(), new Promise(function(z){ setTimeout(function(){ z(null); }, 4000); })]);
-    return Promise.all([p, q]).then(function(v){ return apply(v[0], v[1]); }); };
+    q.then(function(S){ if(!S) return; p.then(function(A){ apply(A, S); try{ if(typeof AT !== 'undefined' && AT && AT !== A) apply(AT, S); if(VIEW === 'active') renderActive(); }catch(e){} }, function(){}); }); return p; };   /* 998: no wait */
   /* a package list already on screen (from the saved copy) gets the database numbers too */
   setTimeout(function w(){ try{ if(typeof D !== 'undefined' && D && D.mgr && typeof AT !== 'undefined' && AT){ subs().then(function(S){ if(S){ apply(AT, S); try{ if(VIEW === 'active') renderActive(); }catch(e){} } }); return; } }catch(e){} setTimeout(w, 3000); }, 4000);
 })();
