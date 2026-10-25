@@ -328,7 +328,7 @@ Deno.serve(async (req: Request) => {
     // 25 Oct · more saves through the database queue (the same as coe's op "write"); Google replays them within a minute (SB_REPLAY).
     if (a === "write") {
       const fn = str(b.fn, 40), args = b.args;
-      if (!/^(timeOut|tRemindLog|mgmtRemindLog|tVidExplain|tNotMine|tLeaveReply|tLeaveCancel)$/.test(fn) || !Array.isArray(args)) return out({ ok: false, error: "not allowed" }, 400);
+      if (!/^(timeOut|tRemindLog|mgmtRemindLog|tVidExplain|tNotMine|tLeaveReply|tLeaveCancel|mgmtTrialSent|mgmtTrialGroup)$/.test(fn) || !Array.isArray(args)) return out({ ok: false, error: "not allowed" }, 400);
       if (/^(mgmt|timeOut$)/.test(fn) && !mgmt) return out({ ok: false, error: "not allowed" }, 403);
       if (JSON.stringify(args).length > 20000) return out({ ok: false, error: "too big" }, 400);
       const rid = b.rid ? str(b.rid, 80) : null;
