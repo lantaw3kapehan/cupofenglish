@@ -300,6 +300,43 @@ Deno.serve(async (req: Request) => {
       items.sort((p, q) => q.t - p.t);
       return out({ ok: true, now: Date.now(), time: mn(now).slice(11, 16), items: items.slice(0, 25) });
     }
+    // 25 Oct · class videos from the database: Google copies the video checks (vf:*) and which classes have a video (last 8 days) to docs sys:vids
+    // every few minutes; the class list is the calendar copy (classes) and the app's uploads (coe_class_videos). Old copy → { fallback: true }.
+    if (a === "vidlist" || a === "vidflags") {
+      const { data: VD } = await db.from("docs").select("data,updated_at").eq("key", "sys:vids").maybeSingle();
+      if (!VD || !VD.data || Date.now() - Date.parse(VD.updated_at) > 30 * 60e3) return out({ ok: false, fallback: true });
+      const V = VD.data, lc = me.trim().toLowerCase();
+      if (a === "vidflags") {
+        const L = (Array.isArray(V.flags) ? V.flags : []).filter((x: any) => b.all ? mgmt : String(x.teacher || "").toLowerCase() === lc);
+        const list = b.all ? L.filter((x: any) => x.st === "open").concat(L.filter((x: any) => x.st !== "open")) : L;
+        return out({ ok: true, db: true, list });
+      }
+      const FROM = "2026-10-22", days: string[] = [];
+      for (let k = 1; k <= 7; k++) { const ds = new Date(Date.now() + 8 * 3600e3 - k * 864e5).toISOString().slice(0, 10); if (ds >= FROM) days.push(ds); }
+      if (!days.length) return out({ ok: true, db: true, list: [] });
+      const [C, U] = await Promise.all([db.from("classes").select("data,day").in("day", days).limit(2000),
+        db.from("coe_class_videos").select("event_id,day").in("day", days).limit(2000)]);
+      if (C.error) return out({ ok: false, fallback: true });
+      const up = new Set((U.data || []).map((x: any) => String(x.event_id) + "|" + String(x.day))), has = V.days || {};
+      const list = (C.data || []).map((r: any) => ({ e: r.data || {}, ds: String(r.day) })).filter(({ e, ds }: any) => !e.cancelled && e.code && (e.teachers || []).map((t: string) => String(t).toLowerCase()).includes(lc)
+          && !(has[ds] && has[ds][String(e.code).toUpperCase() + "|" + lc]) && !up.has(String(e.id) + "|" + ds))
+        .map(({ e, ds }: any) => ({ id: e.id, start: e.start, end: e.end, code: e.code, student: e.student || "", book: e.book || "", day: ds,
+          type: /trial/i.test(e.title || "") ? "Trial" : /\bsub\b/i.test(e.title || "") ? "Sub" : "" }))
+        .sort((p: any, q: any) => String(q.start).localeCompare(String(p.start)));
+      return out({ ok: true, db: true, list });
+    }
+    // 25 Oct · more saves through the database queue (the same as coe's op "write"); Google replays them within a minute (SB_REPLAY).
+    if (a === "write") {
+      const fn = str(b.fn, 40), args = b.args;
+      if (!/^(timeOut|tRemindLog|mgmtRemindLog|tVidExplain|tNotMine|tLeaveReply|tLeaveCancel)$/.test(fn) || !Array.isArray(args)) return out({ ok: false, error: "not allowed" }, 400);
+      if (/^(mgmt|timeOut$)/.test(fn) && !mgmt) return out({ ok: false, error: "not allowed" }, 403);
+      if (JSON.stringify(args).length > 20000) return out({ ok: false, error: "too big" }, 400);
+      const rid = b.rid ? str(b.rid, 80) : null;
+      if (rid) { const { data: old } = await db.from("writes").select("id").eq("rid", rid).maybeSingle(); if (old) return out({ ok: true, queued: true, id: old.id, dup: true }); }
+      const { data: w, error: we } = await db.from("writes").insert({ rid, fn, args, who: me, mode: s.mode }).select("id").single();
+      if (we) return rid && /duplicate/i.test(we.message) ? out({ ok: true, queued: true, dup: true }) : out({ ok: false, error: "not saved" }, 500);
+      return out({ ok: true, queued: true, id: w.id });
+    }
     // 23 Oct · WeChat family groups: a sibling's code → the code the family group is named after (management)
     if (a === "wx_get" || a === "wx_set") {
       need(); const { data: d0 } = await db.from("docs").select("data").eq("key", "mgmt:wxgroup").maybeSingle(); const m: any = (d0 && d0.data && typeof d0.data === "object") ? d0.data : {};
