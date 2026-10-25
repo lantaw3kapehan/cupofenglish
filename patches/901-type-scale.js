@@ -74,7 +74,7 @@ s = s.slice(0, i) + String.raw`<script>
     /* bigger chart value labels: keep the last month\'s label inside the card */
     '.bz2-c:last-child b{left:auto;right:0;text-align:right}',
     /* 15px table text on a 390px phone: slightly narrower cell padding so Finance tables still fit */
-    '.fx th,.fx td,.ui-t th,.ui-t td{padding-left:6px;padding-right:6px}}'
+    '.fx th,.fx td,.ui-t th,.ui-t td,#v-expenses th,#v-expenses td{padding-left:6px;padding-right:6px}}'
   ].join('\n');
 
   var t = document.createElement('style'); t.id = 'ui901t'; t.textContent = T;
