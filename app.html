@@ -4123,7 +4123,7 @@ ${E ? `<a class="ov-cap ghost" onclick="go('schedule')"><span class="ov-live ${o
 h += `<section class="ov-pulse">
 <a class="ov-t ov-row" onclick="go('schedule')">${E ? ring([[done.length, '#00A3AD'], [on.length, '#00D2B4']], live.length, live.length, 'classes', 92) : '<div class="sk" style="width:92px;height:92px;border-radius:50%"></div>'}
 <div class="ov-ks"><b>Classes today</b>${key('#00A3AD', done.length + ' done')}${key('#00D2B4', on.length + ' live now')}${key('#E7F3F4', next.length + ' to go' + (E && E.length - live.length ? ' · ' + (E.length - live.length) + ' cancelled' : ''), 1)}</div></a>
-<a class="ov-t" onclick="go('team')"><div class="ov-th"><b>Teachers on time</b><span class="num">${due ? ontime + '<small>/' + due + '</small>' : '—'}</span></div>
+<a class="ov-t" onclick="go('monitor')"><div class="ov-th"><b>Teachers on time</b><span class="num">${due ? ontime + '<small>/' + due + '</small>' : '—'}</span></div>
 <div class="ov-dots">${team.length ? team.map(x => { const s = x.status, nm = tName(x.name || x.teacher || ''), ini = String(x.name || x.teacher || '?').replace(/^teacher\s+/i, '').slice(0, 2).toUpperCase();
 return `<span class="ov-dot ${s === 'On time' ? 'ok' : s === 'Late' ? 'late' : s === 'Missing' ? 'miss' : 'wait'}" title="${esc(nm + ' · ' + s)}">${esc(ini)}</span>`; }).join('') : '<span class="small mute">No classes today</span>'}</div>
 <div class="ov-kr">${key('#00A3AD', 'On time')}${lateN ? key('#D9962B', lateN + ' late') : ''}${missN ? key('#D4705A', missN + ' no time-in') : ''}${team.length - due ? key('#fff', (team.length - due) + ' later', 1) : ''}</div></a>
@@ -6005,7 +6005,7 @@ try{ const r = await api('mgmtTrialSent', TOKEN, x.label, how || ''); if(!r.ok) 
 catch(e){ x.status = ps; x.sent = prev; keep('trl', TRL); renderReports(); toast((e && e.msg) || 'Not saved. Check your internet and try again.'); }
 }
 function rpMonth(m){ RP_M = m; RP = null; store('del','coe.m.rep'); loadReports(); }
-const rpKinds = () => `<div class="seg" style="margin-top:12px"><button class="${RP_K==='month'?'on':''}" onclick="RP_K='month';renderReports()">Monthly feedback</button><button class="${RP_K==='trial'?'on':''}" onclick="RP_K='trial';renderReports()">Trial classes${TRL?' · '+(TRL.rows||[]).filter(x=>x.status==='Ready').length+' to send':''}</button></div>`;
+const rpKinds = () => `<div class="seg" style="margin-top:12px"><button class="${RP_K==='month'?'on':''}" onclick="RP_K='month';renderReports()">Monthly feedback</button><button class="${RP_K==='trial'?'on':''}" onclick="go('trials')">Trial classes ›${TRL?' · '+(TRL.rows||[]).filter(x=>x.status==='Ready').length+' to send':''}</button></div>`;
 function renderReports(){
 if(!RP || !$('v-reports')) return;
 const R = RP.rows || [], chk = R.filter(x => !/^Sent/.test(x.status) && x.status !== 'Returned'), sent = R.filter(x => /^Sent/.test(x.status)), ret = R.filter(x => x.status === 'Returned');
@@ -6163,7 +6163,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1142;
+const COE_V = 1143;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24472,6 +24472,37 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const _rt = window.renderTeam; if(typeof _rt === 'function') window.renderTeam = function(){ const r = _rt.apply(this, arguments); try{ if(VIEW === 'team') strip(); }catch(e){} return r; };
   setInterval(() => { try{ if(VIEW === 'monitor' && !document.hidden) load(true); }catch(e){} }, 60000);
   const w0 = () => { if(typeof D !== 'undefined' && D && D.mgr){ try{ buildNav(); }catch(e){} if(VIEW === 'team') strip(); hl(VIEW); load(false); } else setTimeout(w0, 1500); }; setTimeout(w0, 1200);
+})();
+</script>
+<script>
+/* 811 · Overview: one small Monitor card instead of the repeated timeline */
+(function(){
+  if(window.__811) return; window.__811 = 1;
+  document.head.insertAdjacentHTML('beforeend', '<style>.ov-mon .ov-mb{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}.ov-mon .ov-mb button{border:0;border-radius:12px;padding:10px 14px;font:inherit;font-size:14px;font-weight:700;cursor:pointer;background:#FDECEA;color:#B4442F}.ov-mon .ov-mb button.ok{background:#E8F6EE;color:#1C7A55}</style>');
+  const ATT = [['late', 'Late time-in'], ['ci', 'No “I’m in”'], ['vid', 'No video'], ['hw', 'No homework'], ['note', 'No class note']];
+  function counts(){ let d = null; try{ d = JSON.parse(localStorage.getItem('coe.mon') || 'null'); d = d && d.data; }catch(e){} if(!d || d.day !== d.today) return null;
+    const now = Date.now(), a = { late: 0, ci: 0, vid: 0, hw: 0, note: 0, teachers: (d.teachers || []).length, at: d.now };
+    (d.teachers || []).forEach(t => { if(t.timeIn && /late/i.test(t.timeIn.status || '')) a.late++;
+      t.classes.forEach(c => { if(c.cancelled) return; const st = Date.parse(c.start) <= now, en = Date.parse(c.end) <= now, nd = c.code && c.type !== 'Trial';
+        if(st && !c.ci) a.ci++; if(en){ if(c.code && !c.vid && now - Date.parse(c.end) > 15 * 6e4) a.vid++; if(nd && !c.hw) a.hw++; if(nd && !c.note) a.note++; } }); });
+    return a; }
+  window.ovMon = k => { go('monitor'); setTimeout(() => { try{ if(k && window.moAtt) moAtt(k); }catch(e){} }, 60); };
+  function card(){ const a = counts(), bad = a ? ATT.filter(([k]) => a[k]) : [];
+    return '<section class="ov-sec ov-card ov-mon" id="ovMon"><div class="ov-hd"><h2>Teachers today</h2><a class="lk" onclick="ovMon(\'\')">Monitor ›</a></div>' +
+      (!a ? '<div class="small mute">Open Monitor to see every teacher’s classes, videos, homework and notes.</div>' :
+        '<div class="ov-mb">' + (bad.length ? bad.map(([k, l]) => '<button onclick="ovMon(\'' + k + '\')">' + l + ' · ' + a[k] + '</button>').join('') : '<button class="ok" onclick="ovMon(\'\')">✓ Nothing missing so far · ' + a.teachers + ' teachers</button>') + '</div>' +
+        '<div class="small mute" style="margin-top:8px">Classes ended so far · updated ' + esc(a.at || '') + '</div>') + '</section>'; }
+  function fix(){ const v = $('v-home'); if(!v) return;
+    const h2 = [...v.querySelectorAll('h2')].find(x => /^Today, teacher by teacher/.test(x.textContent.trim())), sec = h2 && h2.closest('section');
+    const old = $('ovMon'), html = card();
+    if(sec){ sec.insertAdjacentHTML('beforebegin', html); sec.remove(); if(old) old.remove(); return; }
+    if(old){ if(old.outerHTML !== html) old.outerHTML = html; return; }
+    const dec = $('ovDecide'); if(dec) dec.insertAdjacentHTML('afterend', html); }
+  const _rh = window.renderHome; if(typeof _rh === 'function') window.renderHome = function(){ const r = _rh.apply(this, arguments); try{ fix(); }catch(e){} return r; };
+  new MutationObserver(() => { try{ const v = $('v-home'); if(v && !v.classList.contains('hide') && [...v.querySelectorAll('h2')].some(x => /^Today, teacher by teacher/.test(x.textContent.trim()))) fix(); }catch(e){} }).observe(document.body, { childList: true, subtree: true });
+  // keep the card fresh: Monitor's data is loaded in the background on Overview too
+  setInterval(() => { try{ if(typeof VIEW !== 'undefined' && VIEW === 'home' && !document.hidden && window.moLoad){ moLoad(); setTimeout(fix, 2500); } }catch(e){} }, 120000);
+  setTimeout(() => { try{ if(window.moLoad && typeof D !== 'undefined' && D && D.mgr){ moLoad(); setTimeout(fix, 3000); } }catch(e){} }, 4000);
 })();
 </script>
 </body>
