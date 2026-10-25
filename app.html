@@ -1154,7 +1154,7 @@ function bg(f){ const u = window._ui; window._ui = 0; try{ return f(); } finally
 const API_BG = /^(mgmtAvailAll|mgmtPayChecks|mgmtVisitCoverage|mgmtMonDay|mgmtReportsWait|mgmtAgreeMap|mgmtEnqList|mgmtMsgs|mgmtHours|mgmtWeekSum|mgmtRemindLog|mgmtReminders|mgmtTeacherVisits|mgmtPeerMonth|mgmtPayReady|tFbStatus)$/;
 function apiPump(){ while(API_N < 3 && API_Q.length){ API_N++; API_Q.shift()().finally(() => { API_N--; apiPump(); }); } }
 const FAST_URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe', FAST_USERS = ['misty', 'julia'], FAST_W = { saveNote: 1, markHomework: 1, tNoteTag: 1, tGoalsSave: 1, timeIn: 1, classIn: 1, tFbSubmit: 1, tPcSubmit: 1, tTrialSubmit: 1, tPeerSubmit: 1, tSetMeet: 1, tMsgAck: 1, tVisitAck: 1, tMsgSeen: 1, tHwFlag: 1, tMsgSend: 1, tLeaveRequest: 1, tPayVerify: 1 };
-const FAST_M = { mgmtRenewal: 1, mgmtRenewPaid: 1, mgmtEnrolPaid: 1, mgmtReportSent: 1, mgmtTrialFu: 1, setCaseDone: 1, mgmtMsgSeen: 1, mgmtMsgSend: 1, mgmtMsgReply: 1 };   /* 14 Oct night: management saves */
+const FAST_M = { timeOut: 1, mgmtRenewal: 1, mgmtRenewPaid: 1, mgmtEnrolPaid: 1, mgmtReportSent: 1, mgmtTrialFu: 1, setCaseDone: 1, mgmtMsgSeen: 1, mgmtMsgSend: 1, mgmtMsgReply: 1 };   /* 14 Oct night: management saves */
 function fastOnM(fn, args){ try{ if(localStorage.getItem('coe.fast') === '0') return false; }catch(e){} return !!(D && D.mgr && TOKEN && FAST_M[fn] && !(fn === 'mgmtTrialFu' && args[2] === 'Enrolling') && !(fn === 'mgmtMsgSend' && args[4]) && !(fn === 'saveStudent' && (!args[1] || args[1].linkTrial || (!Number(args[2]) && !/^ST-\d{4}-\d{3}$/.test(String(args[1].code || '').trim())))) && !(fn === 'addSale' && args[1] && args[1].file) && !(/^mgmt(Renew|Enrol)Paid$/.test(fn) && (!args[1] || args[1].dry || (args[1].file && !(args[1].file.b64 && args[1].file.b64.length <= 3.4e6)) || args[1].transfer))); }   /* memos, new students and a sale with an invoice file: Google */
 FAST_M.saveStudent = 1;
 FAST_M.addExpense = 1; FAST_M.addSale = 1;   /* 16 Oct: money entries through the database (a sale with an invoice file: Google) */   /* 15 Oct night: edits of a student record */
@@ -1163,6 +1163,7 @@ function fastAns(fn, args){ if(/Msg/.test(fn)) try{ Object.keys(SB_FRESH).forEac
   const t = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }), a = args[1] || {};
   if(fn === 'saveNote') return { ok: true, queued: true, note: {}, hw: a.homework ? { time: t, text: String(a.homework) } : null };
   if(fn === 'markHomework') return { ok: true, queued: true, hw: { time: t, text: String(a.text || '') } };
+  if(fn === 'timeOut'){ let hrs = ''; try{ const ti = (D && D.timeIn) || {}, m = String(ti.time || '').match(/(\d{1,2}):(\d{2})/); if(m){ const n = new Date(), a0 = new Date(); a0.setHours(+m[1], +m[2], 0, 0); const h = (n - a0) / 36e5; if(h > 0 && h < 24) hrs = Math.round(h * 10) / 10; } }catch(e){} return { ok: true, queued: true, out: { time: t, hours: hrs } }; }   /* 790 */
   if(fn === 'timeIn'){ const fl = (D.schedule || []).filter(x => x.day === D.today && !x.cancelled).sort((p, q) => String(p.start).localeCompare(String(q.start)))[0], mins = fl ? Math.round((new Date(fl.start).getTime() - Date.now()) / 60000) : '';
     return { ok: true, queued: true, timeIn: { time: t, status: fl ? (mins >= 30 ? 'On time' : 'Late') : 'No class today', mins, place: '', proof: '', flag: '' } }; }
   if(fn === 'classIn'){ const c = args[1] || {}, x = (D.classIns || {})[c.id] || { time: t, status: 'On time', mins: '' }; return { ok: true, queued: true, classIn: Object.assign({}, x, { pending: false, proof: '', flag: '', speed: '' }) }; }
@@ -6162,7 +6163,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1125;
+const COE_V = 1127;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24066,6 +24067,35 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       if(user && ST.length){ sheetBack(); return; }
       if(!user) ST.length = 0; }catch(e){}
     ST.length = 0; return c0.apply(this, arguments); };
+})();
+</script>
+<script>
+/* 795 · more saves and the video lists through the database */
+(function(){
+  if(window.__795 || typeof window.api !== 'function') return; window.__795 = 1;
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-train';
+  const post = b => fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, b)) }).then(x => x.json());
+  const dev = () => { let d = ''; try{ d = deviceInfo(); }catch(e){} return { device: d, net: '' }; };
+  const ANS = {
+    tRemindLog: () => ({ ok: true, queued: true, rem: (typeof REM !== 'undefined' && REM.map) || {} }),
+    mgmtRemindLog: () => ({ ok: true, queued: true, rem: (typeof REM !== 'undefined' && REM.map) || {} }),
+    tVidExplain: () => ({ ok: true, queued: true }),
+    tNotMine: a => ({ ok: true, queued: true, student: String(a[1] || ''), note: 'Sent to Ops' })
+  };
+  const base = window.api, bn0 = window.apiNow;
+  const w = function(fn){ const args = [].slice.call(arguments, 1), self = this, all = arguments;
+    if(ANS[fn]){
+      const rid = 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      return post({ action: 'write', fn, args, rid }).then(r => { if(!r || !r.ok || !r.queued) throw new Error('db');
+          try{ post({ action: 'devlog', fn, dev: dev() }).catch(() => {}); }catch(e){} return ANS[fn](args); })
+        .catch(() => fn === 'tVidExplain' && typeof bn0 === 'function' ? bn0.apply(self, all) : base.apply(self, all));   /* database not answering: Google as before */ }
+    if(fn === 'tVidList' || fn === 'tVidFlags' || fn === 'mgmtVidFlags'){
+      return post({ action: fn === 'tVidList' ? 'vidlist' : 'vidflags', all: fn === 'mgmtVidFlags' }).then(r => { if(!r || !r.ok) throw new Error('fallback'); return { ok: true, list: r.list || [] }; })
+        .catch(() => base.apply(self, all)); }
+    return base.apply(this, arguments); };
+  for(const k in base) try{ w[k] = base[k]; }catch(e){}
+  window.api = w;
+  const bn = window.apiNow; if(typeof bn === 'function') window.apiNow = function(fn){ if(fn === 'tVidExplain') return w.apply(this, arguments); return bn.apply(this, arguments); };
 })();
 </script>
 </body>
