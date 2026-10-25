@@ -79,7 +79,7 @@ function collect(v, path, key){
 }
 parsed.forEach(p => p.t && collect(p.t, EP(p.r.url) + ':' + OPN(p.b), ''));
 // tables with header rows: names in DATABASE (cols B, C, trial teacher), PAYROLL (teacher), ACTIVE (name, cn, teacher), TODAY/PAY sheets (STUDENT / TEACHER columns)
-const DOCS = {}; parsed.forEach(p => { if(p.t && p.t.docs) Object.assign(DOCS, p.t.docs); });
+const DOCS = {}; parsed.forEach(p => { if(p.t && p.t.docs && EP(p.r.url) === 'coe') Object.assign(DOCS, p.t.docs); });
 const PAYTAB = (parsed.find(p => EP(p.r.url) === 'exec' && OPN(p.b) === 'mgmtTab') || {}).t;
 function sheetNameCols(rows){ let cols = null; (rows || []).forEach(r => { if(!Array.isArray(r)) return; const up = r.map(c => String(c).trim().toUpperCase());
   const ix = up.map((c, i) => /^(STUDENT|TEACHER)$/.test(c) ? i : -1).filter(i => i > -1); if(ix.length){ cols = ix; return; } if(!r.some(c => c !== '' && c != null)){ cols = null; return; }
@@ -157,11 +157,16 @@ const expMap = {}; parsed.filter(p => EP(p.r.url) === 'coe-expenses').forEach(p 
 
 /* ---------- money ---------- */
 // families: pay (salaries, rates, payroll sheets), fin (sales, expenses, wallets, MONEY sheet), act (penalties / incentives), misc
+const AMT = new Set(); (RAW.replace(/\\u20b1/g, '₱').match(/[₱¥]\s?-?\d[\d,]*(?:\.\d+)?|\d{1,3}(?:,\d{3})+(?:\.\d+)?/g) || []).forEach(m => AMT.add(+m.replace(/[^\d.]/g, '')));
+(function grab(v, k){ if(Array.isArray(v)) return v.forEach(x => grab(x, k)); if(v && typeof v === 'object') return Object.keys(v).forEach(kk => grab(v[kk], kk)); if(typeof v === 'number' && /^(base|bonus|deduct|gov|lessonPay|net|rate|pay|a|rmb|cny|fee|php|balance|fees|in|out|sales|tfee|tin|tout|penalty|incentive)$/.test(k)) AMT.add(Math.abs(v)); })(parsed.map(p => p.t), '');
+AMT.delete(0);
 const FACT = {}; const factor = fam => FACT[fam] || (FACT[fam] = 0.6 + 0.8 * U('fam|' + fam));
 function money(v, fam, step){ if(!v) return v; const neg = v < 0, a = Math.abs(v); const noise = 1 + (U('nz|' + fam + '|' + a) - 0.5) * 0.06; let x = a * factor(fam) * noise;
   const dec = Math.round(a * 100) % 100 !== 0;
-  if(step) x = Math.max(step, Math.round(x / step) * step);
-  else if(dec) x = Math.round(x * 100) / 100; else if(a >= 1000 && a % 50 === 0) x = Math.round(x / 50) * 50; else if(a % 10 === 0) x = Math.max(10, Math.round(x / 10) * 10); else if(a % 5 === 0) x = Math.max(5, Math.round(x / 5) * 5); else x = Math.max(1, Math.round(x));
+  const q = step || (dec ? 0.01 : a >= 1000 && a % 50 === 0 ? 50 : a % 10 === 0 ? 10 : a % 5 === 0 ? 5 : 1);
+  x = dec && !step ? Math.round(x * 100) / 100 : Math.max(q, Math.round(x / q) * q);
+  // never land on an amount that exists in the real data (nudge by one rounding step at a time)
+  for(let k = 1; k < 40 && AMT.has(x); k++){ const y = Math.round((x + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * q) * 100) / 100; if(y > 0 && !AMT.has(y)){ x = y; break; } }
   return neg ? -x : x; }
 const fmtMoney = (x, decs) => x.toLocaleString('en-US', { minimumFractionDigits: decs, maximumFractionDigits: decs });
 function moneyStr(s, fam, plainToo){
@@ -201,16 +206,19 @@ function S(str, fam, opts){
   s = s.replace(/\bAUTO-([A-Z]+)-([A-Z]+)-(\d{2})(\d{2})(\d{2})(\d{4})\b/g, (m, a, who, y, mo, d, t) => { const [Y, M, D] = sh(2000 + +y, +mo, +d); return put('AUTO-' + a + '-' + (NMu[who] || who) + '-' + pad(Y % 100, 2) + pad(M, 2) + pad(D, 2) + t); });
   // a June label the earlier anonymiser had turned into a name
   s = s.replace(/(\d{1,2})-Hanadi-(\d{4})/g, '$1-Jun-$2').replace(/\bHanadi (\d{4})\b/g, 'Jun $1').replace(/\bHanadi (\d{1,2})(?![\d:])/g, 'Jun $1');
-  // dates
+  // JavaScript Date.toString() text, e.g. "Tue May 05 2026 00:00:00 GMT+0800 (…"
+  s = s.replace(new RegExp('\\b(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat) ' + MRX + ' (\\d{2}) (\\d{4})(?= \\d\\d:\\d\\d)', 'g'), (m, mw, d, y) => { const [Y, M, D] = sh(+y, mIdx(mw) + 1, +d); const wd = new Date(Date.UTC(Y, M - 1, D)).toUTCString().slice(0, 3); return put(wd + ' ' + MON[M - 1] + ' ' + pad(D, 2) + ' ' + Y); });
+  // dates (typo dates with a 5+ digit year are blanked)
+  s = s.replace(/(?<!\d)\d{5,}-\d{2}-\d{2}(?!\d)/g, () => put('—'));
   s = s.replace(/(?<!\d)(20\d{2})(\d{2})(\d{2})(T?)(\d{6})(?!\d)/g, (m, y, mo, d, T, t) => { if(!okYMD(+y, +mo, +d)) return m; const [Y, M, D] = sh(+y, +mo, +d); return put(Y + pad(M, 2) + pad(D, 2) + T + t); });
-  s = s.replace(/(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)/g, (m, y, mo, d) => { if(!okYMD(+y, +mo, +d)) return m; const [Y, M, D] = sh(+y, +mo, +d); return put(Y + '-' + pad(M, 2) + '-' + pad(D, 2)); });
+  s = s.replace(/(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)/g, (m, y, mo, d) => { if(+y < 1990 && +mo >= 1 && +mo <= 12) return put('—'); if(!okYMD(+y, +mo, +d)) return m; const [Y, M, D] = sh(+y, +mo, +d); return put(Y + '-' + pad(M, 2) + '-' + pad(D, 2)); });
   s = s.replace(/(?<![\d-])(20\d{2})-(0[1-9]|1[0-2])(?!-?\d)/g, (m, y, mo) => put((+y + YEARS) + '-' + mo));
   s = s.replace(/(?<!\d)(\d{4})\.(\d{2})\.(\d{2})(?!\d)/g, (m, y, mo, d) => { if(!okYMD(+y, +mo, +d)) return m; const [Y, M, D] = sh(+y, +mo, +d); return put(Y + '.' + pad(M, 2) + '.' + pad(D, 2)); });
   s = s.replace(new RegExp('(?<!\\d)(\\d{1,2})-' + MRX + '-(\\d{4})', 'g'), (m, d, mw, y) => { const [Y, M, D] = sh(+y, mIdx(mw) + 1, +d); return put((d.length === 2 ? pad(D, 2) : D) + '-' + mName(M - 1, mw) + '-' + Y); });
   s = s.replace(new RegExp(MRX + '-(\\d{1,2})-(\\d{4})', 'g'), (m, mw, d, y) => { const [Y, M, D] = sh(+y, mIdx(mw) + 1, +d); return put(mName(M - 1, mw) + '-' + (d.length === 2 ? pad(D, 2) : D) + '-' + Y); });
   s = s.replace(new RegExp('\\b' + MRX + ' (\\d{1,2}), (\\d{4})', 'g'), (m, mw, d, y) => { const [Y, M, D] = sh(+y, mIdx(mw) + 1, +d); return put(mName(M - 1, mw) + ' ' + D + ', ' + Y); });
   s = s.replace(new RegExp('\\b' + MRX + '(\\s+|//)(20\\d{2})\\b', 'g'), (m, mw, sp, y) => put(mw + sp + (+y + YEARS)));
-  s = s.replace(new RegExp('\\b' + MRX + ' (\\d{1,2})(?![\\d,:.])', 'g'), (m, mw, d) => { if(opts.monthLabels) return m; const mo = mIdx(mw) + 1; if(+d > 31) return m; const [, M, D] = sh(guessYear(mo, +d), mo, +d); return put(mName(M - 1, mw) + ' ' + D); });
+  s = s.replace(new RegExp('\\b' + MRX + ' (\\d{1,2})(?![\\d,:]|\\.\\d)', 'g'), (m, mw, d) => { if(opts.monthLabels) return m; const mo = mIdx(mw) + 1; if(+d > 31) return m; const [, M, D] = sh(guessYear(mo, +d), mo, +d); return put(mName(M - 1, mw) + ' ' + D); });
   s = s.replace(new RegExp('(?<![\\d-])(\\d{1,2}) ' + MRX + '\\b(?![-\\d])', 'g'), (m, d, mw) => { const mo = mIdx(mw) + 1; if(+d > 31 || +d < 1) return m; const [, M, D] = sh(guessYear(mo, +d), mo, +d); return put(D + ' ' + mName(M - 1, mw)); });
   s = s.replace(/(?<![\d-])(\d{2})-(\d{2}) (\d{2}:\d{2})/g, (m, mo, d, t) => { if(!okYMD(2026, +mo, +d)) return m; const [, M, D] = sh(guessYear(+mo, +d), +mo, +d); return put(pad(M, 2) + '-' + pad(D, 2) + ' ' + t); });
   s = s.replace(/^(20\d{2})( \(to date\))?$/, (m, y, t) => put((+y + YEARS) + (t || ''))).replace(/\bBefore (20\d{2})\b/, (m, y) => put('Before ' + (+y + YEARS))).replace(/\|(20\d{2})$/, (m, y) => put('|' + (+y + YEARS)));
@@ -279,9 +287,10 @@ function W(v, path, key, ctx){
   if(key === 'filled_hash') { const R = rng('hash|' + v); let s = ''; for(let i = 0; i < 64; i++) s += '0123456789abcdef'[Math.floor(R() * 16)]; return s; }
   if(key === 'scan_name') return v ? 'signed-contract-scan.pdf' : v;
   if(key === 'typed_name' || key === 'pres_name' || key === 'wit_name'){ const first = v.split(/\s+/)[0]; const f = mapExactName(first[0] + first.slice(1).toLowerCase()) || fakeName('full|' + v); return f + ' Q. Sample'; }
-  if(/proof\[\]$/.test(path) && key === 'id') return 'sample-file-' + (h32(v) % 9000 + 1000);
-  if(/proof\[\]$/.test(path) && key === 'name') return 'proof-' + (h32(v) % 90 + 10) + '.' + ((v.match(/\.(\w+)$/) || [, 'jpg'])[1]).toLowerCase();
+  if(/proof\[\]\.id$/.test(path)) return 'sample-file-' + (h32(v) % 9000 + 1000);
+  if(/proof\[\]\.name$/.test(path)) return 'proof-' + (h32(v) % 90 + 10) + '.' + ((v.match(/\.(\w+)$/) || [, 'jpg'])[1]).toLowerCase();
   if(key === 'name' && /coe-wallet/.test(ctx)) return S(v, 'fin');
+  if(key === 'inv' && /^\d+$/.test(v)) return invMap(v);
   if(key === 'meet') return v.replace(/\d/g, (d, i) => String(Math.floor(U('meet|' + v + '|' + i) * 10)));
   if(key === 'city') return cityOf(v);
   if(key === 'details') { const nm = fakeName('enq|' + v); const R = rng('det|' + v); return 'English Name 英文名：\n' + nm + '\nChinese Name 中文名：\n学生' + (100 + Math.floor(R() * 900)) +
@@ -302,9 +311,11 @@ function W(v, path, key, ctx){
 }
 // birthdates: not shifted but replaced by a random date (minors) — keeps the format
 function randBirth(v){ if(!v) return v; let y, mo, d; let m, iso;
-  if((m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/))){ y = +m[1]; iso = v; } else if((m = v.match(/^(\d{1,2})-(\w{3})-(\d{4})$/))){ y = +m[3]; iso = y + '-' + pad(mIdx(m[2]) + 1, 2) + '-' + pad(+m[1], 2); } else return v;
+  if((m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/))){ y = +m[1]; iso = v; } else if((m = v.match(/^(\d{1,2})-(\w{3})-(\d{4})$/))){ y = +m[3]; iso = y + '-' + pad(mIdx(m[2]) + 1, 2) + '-' + pad(+m[1], 2); }
+  else { const yy = v.match(/(19|20)\d{2}/); if(!yy) return ''; const R = rng('bd|' + v); const ny = +yy[0] + YEARS + Math.floor(R() * 3) - 1; return (1 + Math.floor(R() * 28)) + '-' + MON[Math.floor(R() * 12)] + '-' + ny; }
   const R = rng('bd|' + iso);
   y = y + YEARS + Math.floor(R() * 3) - 1; mo = 1 + Math.floor(R() * 12); d = 1 + Math.floor(R() * 28);
+  if(y + '-' + pad(mo, 2) + '-' + pad(d, 2) === iso) d = d % 28 + 1;   // never keep the real birthdate
   return /^\d{4}-/.test(v) ? y + '-' + pad(mo, 2) + '-' + pad(d, 2) : d + '-' + MON[mo - 1] + '-' + y; }
 
 /* ---------- sheet-like tables (rows of cells) ---------- */
@@ -316,7 +327,8 @@ function sheetRows(rows, fam, ctx, colRules){ return rows.map(r => Array.isArray
 function docData(key, d){
   const ctx = 'docs:' + key;
   if(key === 'pres:mgmtDatabase|[]' || /mgmtStudent\|/.test(key)){
-    const rules = { 5: randBirth, 9: cityOf, 22: v => S(v, null) };
+    // col 23 sometimes holds a parent's WeChat id instead of a number
+    const rules = { 5: randBirth, 9: cityOf, 22: v => S(v, null), 23: v => /^\s*(\d*|N\/A|NA|-)\s*$/i.test(String(v)) ? v : 'wx_sample' + (h32(String(v)) % 900 + 100) };
     const fix = row => { const b = row[5]; const m = String(b).match(/^(\d{1,2})-(\w{3})-(\d{4})$/); if(!m) return row; const T = new Date(T0_NEW);
       const by = +m[3], bm = mIdx(m[2]), bd = +m[1]; let age = T.getUTCFullYear() - by; if(T.getUTCMonth() < bm || (T.getUTCMonth() === bm && T.getUTCDate() < bd)) age--;
       if(row[6] !== '') row[6] = String(age); let nb = Date.UTC(T.getUTCFullYear(), bm, bd); if(nb < Date.UTC(T.getUTCFullYear(), T.getUTCMonth(), T.getUTCDate())) nb = Date.UTC(T.getUTCFullYear() + 1, bm, bd);
@@ -340,7 +352,7 @@ const out = parsed.map(({ r, t, b }) => {
   let tt = r.t;
   if(t && typeof t === 'object'){
     let o;
-    if(t.docs){ o = Object.assign({}, t, { docs: {} }); for(const k in t.docs){ const nk = S(k, null, { lower: true, upper: true }); const v = t.docs[k];
+    if(e === 'coe' && op === 'docs' && t.docs){ o = Object.assign({}, t, { docs: {} }); for(const k in t.docs){ const nk = S(k, null, { lower: true, upper: true }); const v = t.docs[k];
         o.docs[nk] = v && typeof v === 'object' ? Object.assign(W(Object.assign({}, v, { data: null }), '', '', 'docs:' + k), { data: v.data == null ? v.data : docData(k, v.data) }) : v; } }
     else if(e === 'exec' && op === 'mgmtTab') o = Object.assign(W(Object.assign({}, t, { data: Object.assign({}, t.data, { rows: [] }) }), '', '', ctx), {}), o.data.rows = sheetRows(t.data.rows, 'pay', ctx);
     else o = W(t, '', '', ctx);

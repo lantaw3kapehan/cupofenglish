@@ -5,8 +5,10 @@
 //   invoice / wallet windows) use the system sans stack for navigation, buttons, forms, tables, descriptions and statuses. Fredoka One stays
 //   for h1 (main page titles and the "Good morning" greetings) and the header name. Figures use tabular numerals.
 //   Every stack ends with Chinese fallbacks ("PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif).
+// · Contrast (25 Oct TYPO addition): --mute #76738A and Finance --fm #7C7893 are 4.4 / 4.1:1 on the page background
+//   #FAFAFC, so on the app screens both become #6B6782 (documents keep #76738A).
 // · Contrast: light grey text colours (2.5–4.4:1 on white, e.g. #8A86A0, #A3A0B5, #9A96AE, literal #9E9E9E) become
-//   #6B6782 / #6E6A85 (5.4:1 / 5.2:1) on the app screens. (--mute is already #76738A, 4.6:1, and is left alone.)
+//   #6B6782 / #6E6A85 (5.4:1 / 5.2:1) on the app screens; also the sidebar group headings #B3B0C2 (2.1:1). (see above for --mute.)
 // · How: nothing in the existing CSS is edited. The script reads the existing rules once (and again when a screen adds
 //   a stylesheet) and writes one end-of-head sheet (#a880o) with the same selectors, scoped to the app screens with
 //   :where(), so specificity is unchanged and later/more specific rules (e.g. white text on a selected chip) still win.
@@ -34,7 +36,7 @@ s = s.slice(0, i) + String.raw`<script>
   var SKIP_SEL = /printArea|docprint|\.paper|\.memo|memo-|\.sd\b|\.ivp|\.ivq|tr-|rfNote|\.ph\b|\.mr-|@page|data-doc/;
   var KEEP_BRAND = /(^|[\s>+~,(])h1\b|\.hd \.who|\.brand|logo|\.tagl/;
   var MID = ['8a86a0','8a87a0','8f8ca3','8a879c','7a768f','7c7990','7c7893','8a8798','7a7690','8c89a3','8a8a9c','8a88a0','8a8799','7a7790'];
-  var LIGHT = ['a3a0b5','9a97ae','9a96ae','a9a6b8','a9a6ba','9a9aae','9c98b0','a5a1b8','a3a1b0','9e9e9e','9a8f94'];
+  var LIGHT = ['a3a0b5','9a97ae','9a96ae','a9a6b8','a9a6ba','9a9aae','9c98b0','a5a1b8','a3a1b0','9e9e9e','9a8f94','b3b0c2'];
   var rgb = function(h){ return 'rgb(' + parseInt(h.slice(0,2),16) + ', ' + parseInt(h.slice(2,4),16) + ', ' + parseInt(h.slice(4,6),16) + ')'; };
   var CMAP = {}; MID.forEach(function(h){ CMAP[rgb(h)] = '#6B6782'; CMAP['#' + h] = '#6B6782'; }); LIGHT.forEach(function(h){ CMAP[rgb(h)] = '#6E6A85'; CMAP['#' + h] = '#6E6A85'; });
 
@@ -43,6 +45,10 @@ s = s.slice(0, i) + String.raw`<script>
   base.textContent = [
     ':root{--ui:' + UI + '}',
     ':is(' + ROOTS + '){--f:var(--ui);--brand:"Fredoka One","Fredoka",var(--ui);font-family:var(--ui)}',
+    /* 25 Oct (TYPO): the muted text colours are 4.1–4.4:1 on the page background #FAFAFC (--mute #76738A, Finance --fm #7C7893);
+       on the app screens both become #6B6782 (5.2:1 there, 5.4:1 on white). Documents keep theirs. */
+    ':is(' + ROOTS + '),.fx{--mute:#6B6782;--fm:#6B6782}',
+    ':where(' + ROOTS + ') :where(' + DOCS + '){--mute:#76738A}',
     ':where(' + ROOTS + ') :where(' + DOCS + '):where(:not(:where(' + DOCS + ') *)){--f:Rockwell,"Rockwell Nova",Arvo,Georgia,serif;--brand:"Fredoka One","Fredoka",Rockwell,"Rockwell Nova",Arvo,Georgia,serif;font-family:var(--f)}',
     ':where(' + ROOTS + ') :where(td,th,.num,.peso,.amt,.n,.big,.big-num,b,strong):where(:not(:where(' + DOCS + ') *)){font-variant-numeric:tabular-nums}'
   ].join('\n');
