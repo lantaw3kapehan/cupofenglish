@@ -278,6 +278,28 @@ Deno.serve(async (req: Request) => {
         form: { grids: T.grids, texts: T.texts, date: T.date || null, header: "", help: "STUDENT: " + name.toUpperCase() + (course ? "\nCOURSEWARE: " + course.toUpperCase() : "") },
         last, done, fix, obs });
     }
+    // 25 Oct · management "anything changed?" (Google's mgmtPulse) from the database: app saves (writes queue) + Google-direct saves (coe_activity).
+    // Newest first, t = ms. The app still asks Google every few minutes for changes made in the sheets / calendar directly.
+    if (a === "pulse") {
+      need(); const since = Math.max(Number(b.since) || 0, Date.now() - 6 * 3600e3), from = new Date(since + 1).toISOString();
+      const KIND: Record<string, string> = { timeIn: "Time-in", timeOut: "Time-out", classIn: "Class check-in", decideLate: "Late review", saveNote: "Class note", markHomework: "Homework",
+        tFbSubmit: "Monthly feedback", tPcSubmit: "Progress check", tTrialSubmit: "Trial report", tPeerSubmit: "Peer review", tLeaveRequest: "Leave", tLeaveCancel: "Leave", tLeaveReply: "Leave", mgmtLeaveSave: "Leave",
+        mgmtRenewPaid: "Active", mgmtEnrolPaid: "Active", mgmtRenewal: "Renewal", addSale: "Sale", addExpense: "Expense", addCase: "Case", setCaseDone: "Case", saveStudent: "Student",
+        editClass: "Schedule", addClass: "Schedule", tMsgSend: "Message", mgmtMsgSend: "Message", mgmtMsgReply: "Message", tVidDone: "Class video", tRemindLog: "Reminder", mgmtRemindLog: "Reminder", tSetMeet: "Meeting ID", tPayVerify: "Payroll" };
+      const SKIP = /^(tMsgSeen|mgmtMsgSeen|tNoteTag|tVisitAck|tMsgAck|tGoalsSave|tVidStart)$/;
+      const [W, X] = await Promise.all([
+        db.from("writes").select("id,fn,who,args,status,created_at").gt("created_at", from).neq("status", "test").neq("status", "error").order("created_at", { ascending: false }).limit(60),
+        db.from("coe_activity").select("id,fn,who,ok,detail,at").gt("at", from).eq("ok", true).order("at", { ascending: false }).limit(40)]);
+      const mn = (iso: string) => new Date(Date.parse(iso) + 8 * 3600e3).toISOString();
+      const items: any[] = [];
+      (W.data || []).forEach((w: any) => { if (SKIP.test(w.fn)) return; const A = Array.isArray(w.args) ? w.args : [], o = A[1] && typeof A[1] === "object" ? A[1] : {};
+        const stu = str(o.student || o.name || o.code || (typeof A[1] === "string" ? A[1] : ""), 40), k = KIND[w.fn] || w.fn;
+        items.push({ t: Date.parse(w.created_at), time: mn(w.created_at).slice(11, 16), day: mn(w.created_at).slice(0, 10), who: w.who, kind: k, fn: w.fn, detail: w.who + " · " + k + (stu ? " · " + stu : ""), db: 1 }); });
+      (X.data || []).forEach((x: any) => { if (SKIP.test(x.fn)) return; const k = KIND[x.fn] || x.fn;
+        items.push({ t: Date.parse(x.at), time: mn(x.at).slice(11, 16), day: mn(x.at).slice(0, 10), who: x.who, kind: k, fn: x.fn, detail: x.who + " · " + k + (x.detail ? " · " + str(x.detail, 60) : ""), db: 1 }); });
+      items.sort((p, q) => q.t - p.t);
+      return out({ ok: true, now: Date.now(), time: mn(now).slice(11, 16), items: items.slice(0, 25) });
+    }
     // 23 Oct · WeChat family groups: a sibling's code → the code the family group is named after (management)
     if (a === "wx_get" || a === "wx_set") {
       need(); const { data: d0 } = await db.from("docs").select("data").eq("key", "mgmt:wxgroup").maybeSingle(); const m: any = (d0 && d0.data && typeof d0.data === "object") ? d0.data : {};
