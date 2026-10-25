@@ -6163,7 +6163,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1137;
+const COE_V = 1138;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24176,7 +24176,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       finally{ delete FLY[lab]; } })(); }
   window.api = function(fn, tok, lab){ if(fn === 'mgmtTrialPdf' && typeof lab === 'string') return fetchPdf(lab); return _api.apply(this, arguments); };
   let RUN = 0;
-  async function ahead(){ if(RUN || typeof D === 'undefined' || !D || !D.mgr || !TOKEN) return; RUN = 1;
+  async function ahead(){ return; if(RUN || typeof D === 'undefined' || !D || !D.mgr || !TOKEN) return; RUN = 1;
     try{ const L = ((typeof TRL !== 'undefined' && TRL && TRL.rows) || []).filter(x => x && x.pdf && x.label && !/^Sent/i.test(String(x.status || ''))).slice(0, 10);
       for(const x of L){ const c = await get(x.label); if(c && c.url === x.pdf) continue; try{ await fetchPdf(x.label); }catch(e){} await new Promise(z => setTimeout(z, 800)); } }
     finally{ RUN = 0; } }
@@ -24286,6 +24286,57 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       const hit = ((r && r.list) || []).find(x => x.d === t.date && Array.isArray(x.n) && (x.s === sl || (c && x.c === c)));
       if(hit){ t._notes = hit.n; try{ const z = await api('mgmtZh', TOKEN, hit.n, [t.student, t.cn || '']); if(z && z.ok && Array.isArray(z.zh)) t._notesZh = z.zh; }catch(e){} } }catch(e){} }
     return _ti.apply(self, a); };
+})();
+</script>
+<script>
+/* 806 · trial reports made once, kept, and made ahead */
+(function(){
+  if(window.__806 || typeof window.tlInstant !== 'function' || typeof window.coeTrialPages !== 'function') return; window.__806 = 1;
+  let DBP = null;
+  const idb = () => DBP || (DBP = new Promise((ok, no) => { try{ const q = indexedDB.open('coe-pdf', 1); q.onupgradeneeded = () => q.result.createObjectStore('p'); q.onsuccess = () => ok(q.result); q.onerror = () => no(q.error); }catch(e){ no(e); } }));
+  const get = k => idb().then(d => new Promise(ok => { try{ const q = d.transaction('p').objectStore('p').get(k); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); }catch(e){ ok(null); } })).catch(() => null);
+  const put = (k, v) => idb().then(d => new Promise(ok => { try{ const t = d.transaction('p', 'readwrite'); t.objectStore('p').put(v, k); t.oncomplete = () => ok(1); t.onerror = () => ok(0); }catch(e){ ok(0); } })).catch(() => 0);
+  const grp = t => { try{ const o = JSON.parse(localStorage.getItem('coe.trgrp.' + t.label) || 'null'); if(o && Date.now() - o.at < 6 * 3600e3) return o.g; }catch(e){} return t._g || t.group || ''; };
+  const sig = (t, extra) => 'app:' + (t.label || t.date + '|' + t.student) + '|' + grp(t) + '|' + (t.cefr || '') + '|' + (t.commZh ? 1 : 0) + '|' + (extra || '') + '|v3';
+  const show = (t, f) => { if(TLD !== t) return; TLB = f; TLB._app = 1; const el = $('tlPdf'); if(el) el.innerHTML = '<iframe class="rp-pdf" src="' + URL.createObjectURL(TLB) + '#view=FitH"></iframe><div class="small mute" style="margin-top:4px">Made in the app · the same report the sheet makes</div>'; try{ tlBtns(); }catch(e){} };
+  const N = {};   /* teacher → their sent reports with lines per skill */
+  async function notesOf(t){ const tk = String(t.teacher || '').toLowerCase(); if(!N[tk] || Date.now() - N[tk].at > 5 * 6e4){
+      try{ const r = await fetch(FAST_URL + '-trials', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, as: t.teacher || '' }) }).then(x => x.json()); N[tk] = { at: Date.now(), list: (r && r.list) || [] }; }catch(e){ N[tk] = { at: Date.now(), list: [] }; } }
+    const sl = String(t.student || '').trim().toLowerCase(), c = String(t.code || '').trim().toUpperCase();
+    const hit = N[tk].list.find(x => x.d === t.date && Array.isArray(x.n) && (x.s === sl || (c && x.c === c))); return hit ? hit.n : null; }
+  // Opening a trial: a report already made for exactly this content shows at once.
+  const _ti = window.tlInstant;
+  window.tlInstant = async function(btn){ const t = (typeof TLD !== 'undefined') ? TLD : null; if(!t) return _ti.apply(this, arguments);
+    const n = await notesOf(t); const k = sig(t, n ? n.join('').length : ''); const c = await get(k);
+    if(c && c.blob && TLD === t){ show(t, new File([c.blob], c.name || 'report.pdf', { type: 'application/pdf' })); return; }
+    const r = await _ti.apply(this, arguments);
+    try{ if(TLD === t && TLB && TLB._app) put(k, { blob: TLB, name: TLB.name, at: Date.now() }); }catch(e){}
+    return r; };
+  // Ahead: the reports still to send, made quietly one at a time.
+  let RUN = 0;
+  async function make(t){ const n = await notesOf(t); const k = sig(t, n ? n.join('').length : ''); if(await get(k)) return;
+    const r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'trialData', token: TOKEN, date: t.date, student: t.student, tables: true }) }).then(x => x.json());
+    if(!r || !r.ok) return; const d = r.tr && r.tr.data;
+    if(d && d[25] && !d[27]){ try{ const z = await api('mgmtZh', TOKEN, [d[25], d[26] || ''], [t.student, t.cn || '']); if(z && z.ok && z.zh){ d[27] = z.zh[0] || ''; d[28] = z.zh[1] || ''; } }catch(e){} }
+    const tt = Object.assign({}, t, { group: grp(t), _g: grp(t) });
+    if(n){ tt._notes = n; try{ const z = await api('mgmtZh', TOKEN, n, [t.student, t.cn || '']); if(z && z.ok && Array.isArray(z.zh)) tt._notesZh = z.zh; }catch(e){} }
+    const html = coeTrialPages(tt, r); if(!html) return;
+    const [H2, PDF] = await Promise.all([h2c(), coeJsPdf()]);
+    const host = document.createElement('div'); host.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;z-index:-1'; host.innerHTML = html; document.body.appendChild(host);
+    try{ if(document.fonts && document.fonts.ready) await document.fonts.ready;
+      const doc = new PDF({ unit: 'pt', format: 'a4' }), W = doc.internal.pageSize.getWidth(), Hh = doc.internal.pageSize.getHeight(), P = [...host.querySelectorAll('.tr-page')];
+      for(let j = 0; j < P.length; j++){ const cv = await H2(P[j], { scale: 3, backgroundColor: '#ffffff', useCORS: true, logging: false }); if(j) doc.addPage(); const h = W * cv.height / cv.width, kk = h > Hh ? Hh / h : 1; doc.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', (W - W * kk) / 2, 0, W * kk, h * kk);
+        await new Promise(z => setTimeout(z, 60)); }
+      const name = 'COE_TCR_' + String(t.student).replace(/[\\\/:*?"<>|]/g, '') + '_' + (t.teacher || '') + '_' + t.date + '.pdf';
+      await put(k, { blob: doc.output('blob'), name, at: Date.now() }); }
+    finally{ host.remove(); } }
+  async function ahead(){ if(RUN || typeof D === 'undefined' || !D || !D.mgr || !TOKEN || document.hidden) return; RUN = 1;
+    try{ const L = ((typeof TRL !== 'undefined' && TRL && TRL.rows) || []).filter(x => x && x.label && x.status !== 'Sent' && x.total !== '' && x.total != null).slice(0, 6);
+      for(const t of L){ if(document.hidden) break; if(typeof TLD !== 'undefined' && TLD === t) continue; try{ await make(t); }catch(e){} await new Promise(z => setTimeout(z, 1500)); } }
+    finally{ RUN = 0; } }
+  window.trAhead = ahead;
+  const _lt = window.loadTrials; if(typeof _lt === 'function') window.loadTrials = async function(){ const r = await _lt.apply(this, arguments); setTimeout(ahead, 2500); return r; };
+  setTimeout(ahead, 8000); setInterval(ahead, 4 * 6e4);
 })();
 </script>
 </body>
