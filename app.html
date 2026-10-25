@@ -6163,7 +6163,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1130;
+const COE_V = 1131;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24156,6 +24156,34 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const hook = n => { const f0 = window[n]; if(typeof f0 !== 'function') return; window[n] = function(){ const r = f0.apply(this, arguments); setTimeout(paint, 0); try{ if(D && (D.schedule || []).some(c => c.type === 'Trial')) load(); }catch(e){} return r; }; };
   hook('render'); hook('renderToday');
   setTimeout(() => { paint(); load(); }, 1500);
+})();
+</script>
+<script>
+/* 799 · trial PDFs ready before you open them */
+(function(){
+  if(window.__799) return; window.__799 = 1;
+  let DBP = null;
+  const idb = () => DBP || (DBP = new Promise((ok, no) => { try{ const q = indexedDB.open('coe-pdf', 1); q.onupgradeneeded = () => q.result.createObjectStore('p'); q.onsuccess = () => ok(q.result); q.onerror = () => no(q.error); }catch(e){ no(e); } }));
+  const get = k => idb().then(d => new Promise(ok => { try{ const q = d.transaction('p').objectStore('p').get(k); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); }catch(e){ ok(null); } })).catch(() => null);
+  const put = (k, v) => idb().then(d => new Promise(ok => { try{ const t = d.transaction('p', 'readwrite'); t.objectStore('p').put(v, k); t.oncomplete = () => ok(1); t.onerror = () => ok(0); }catch(e){ ok(0); } })).catch(() => 0);
+  const tidy = () => idb().then(d => { try{ const st = d.transaction('p', 'readwrite').objectStore('p'), q = st.openCursor(); q.onsuccess = () => { const c = q.result; if(!c) return; if(!c.value || Date.now() - (c.value.at || 0) > 21 * 864e5) c.delete(); c.continue(); }; }catch(e){} }).catch(() => {});
+  const rowOf = lab => ((typeof TRL !== 'undefined' && TRL && TRL.rows) || []).find(x => x.label === lab) || null;
+  const FLY = {};
+  const _api = window.api;
+  function fetchPdf(lab){ const row = rowOf(lab), url = row && row.pdf || ''; if(FLY[lab]) return FLY[lab];
+    return FLY[lab] = (async () => { try{ const c = await get(lab); if(c && c.b64 && (!url || c.url === url)) return { ok: true, name: c.name, b64: c.b64, cached: 1 };
+      const r = await _api('mgmtTrialPdf', TOKEN, lab); if(r && r.ok && r.b64) put(lab, { url, name: r.name, b64: r.b64, at: Date.now() }); return r; }
+      finally{ delete FLY[lab]; } })(); }
+  window.api = function(fn, tok, lab){ if(fn === 'mgmtTrialPdf' && typeof lab === 'string') return fetchPdf(lab); return _api.apply(this, arguments); };
+  let RUN = 0;
+  async function ahead(){ if(RUN || typeof D === 'undefined' || !D || !D.mgr || !TOKEN) return; RUN = 1;
+    try{ const L = ((typeof TRL !== 'undefined' && TRL && TRL.rows) || []).filter(x => x && x.pdf && x.label && !/^Sent/i.test(String(x.status || ''))).slice(0, 10);
+      for(const x of L){ const c = await get(x.label); if(c && c.url === x.pdf) continue; try{ await fetchPdf(x.label); }catch(e){} await new Promise(z => setTimeout(z, 800)); } }
+    finally{ RUN = 0; } }
+  window.trPdfAhead = ahead;
+  const _lt = window.loadTrials; if(typeof _lt === 'function') window.loadTrials = async function(){ const r = await _lt.apply(this, arguments); setTimeout(ahead, 1500); return r; };
+  setTimeout(() => { tidy(); ahead(); }, 6000);
+  setInterval(() => { try{ if(!document.hidden) ahead(); }catch(e){} }, 3 * 6e4);
 })();
 </script>
 </body>
