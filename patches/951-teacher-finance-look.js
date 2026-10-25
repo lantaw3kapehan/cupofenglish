@@ -12,6 +12,7 @@
 //      · Typography update (15:05): sizes use the central --fs-* tokens (px fallbacks); nothing under 12px; teacher screens on phones
 //        use the 16px body size (small text 14px) and every button / filter / list row is at least 44px tall. Any visible text
 //        under 12px in a teacher view is raised to 12px after each paint (icon glyphs and timeline block names excepted).
+//        Small pills that are tappable (Book, Write feedback, links) keep their look but get an invisible 44px-tall tap area.
 //      Nothing in the markup, data, calculations or actions changes.
 const fs = require('fs'), file = process.argv[2];
 let s = fs.readFileSync(file, 'utf8'); const i = s.lastIndexOf('</body>');
@@ -50,6 +51,8 @@ s = s.slice(0, i) + String.raw`<script>
       + at('.small,.mute.small,.sub') + '{font-size:var(--fs-small,14px)}'
       + at('.btn,.btn.sm,.seg button,.ui-seg button,.li,button.ck,button.sv,.tx-all,.jp510 > a,summary,.sec button[data-k],.vm-c') + '{min-height:44px!important;box-sizing:border-box}'
       + at('.jp510 > a,.vm-c,.sec button[data-k],.tx-all') + '{display:inline-flex!important;align-items:center}'
+      + at('.bkchip,.fp,.ftW,.ti-q,.why,.chip[onclick],a.link,summary.small') + '{position:relative}'
+      + at('.bkchip::after,.fp::after,.ftW::after,.ti-q::after,.why::after,.chip[onclick]::after,a.link::after') + '{content:"";position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}'
       + at('.btn.sm') + '{font-size:var(--fs-small,14px)}'
       + at('.lead h1') + '{font-size:var(--fs-h1-phone,24px)}}',
     '@media(max-width:899px){body.role-t nav button{min-height:44px}}'

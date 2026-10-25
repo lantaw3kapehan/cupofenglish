@@ -1,0 +1,51 @@
+--- a/server/coe.ts	2026-10-25 15:14:41.983405266 +0800
++++ b/server/coe.ts	2026-10-25 15:14:42.151108878 +0800
+@@ -724,6 +724,32 @@
+ 
+ // ── 15 Oct night · the DATABASE tab (student records) from the copy: the list as the sheet shows it (mgmtDatabase_),
+ //    one record for the edit form (dbRecord) and the form's lists with the next free code (dbLists).
++// 25 Oct · R1 · BIRTHDATE on "Edit student" (saveStudent into an existing row, args = [token, f, row]):
++//   f.birthClear (1/true) → the birthdate is removed: birth "" + birthClear 1, nothing else can clear it.
++//   otherwise an empty / missing birth, or f.birthKeep → "keep what is stored": birthKeep 1, and an empty birth is
++//   filled with the stored cell from the DATABASE copy when the copy's row has the same code (Google then writes the
++//   same date back, and with SERVER-BIRTHDATE pasted it leaves the cell alone). A new full date is passed on as it is.
++//   New rows (row 0) are not touched.
++const stuBirthOn = (x: unknown) => x === true || x === 1 || x === "1" || x === "true";
++function stuBirthNeedsStored(args: any) {
++  if (!Array.isArray(args) || !args[1] || typeof args[1] !== "object" || !(Number(args[2]) > 0)) return false;
++  const f = args[1]; return !stuBirthOn(f.birthClear) && String(f.birth ?? "").trim() === "";
++}
++function stuBirthCell(x: unknown): string | null {
++  if (x === null || x === undefined) return null; const t = String(x).trim(); if (!t) return null;
++  return /^\d{4}-\d{2}-\d{2}T00:00:00/.test(t) ? t.slice(0, 10) : t;
++}
++function stuBirthGuard(args: any, stored: string | null) {
++  if (!Array.isArray(args) || !args[1] || typeof args[1] !== "object" || Array.isArray(args[1]) || !(Number(args[2]) > 0)) return args;
++  const f: any = Object.assign({}, args[1]);
++  if (stuBirthOn(f.birthClear)) { f.birth = ""; f.birthClear = 1; delete f.birthKeep; }
++  else {
++    delete f.birthClear; const b0 = String(f.birth ?? "").trim();
++    if (!b0 || stuBirthOn(f.birthKeep)) { f.birthKeep = 1; f.birth = b0 || stored || ""; }
++    else delete f.birthKeep;
++  }
++  return [args[0], f, ...args.slice(2)];
++}
+ const DB_COLS: Record<string, number> = { cn: 2, en: 3, birth: 6, gender: 8, grade: 9, city: 10, trialDate: 11, trialTime: 12, trialBook: 13, trialCefr: 14,
+   trialTeacher: 15, firstClass: 17, lessons: 18, cefrBooks: 20, ended: 21, recommended: 22, source: 23, free: 24 };
+ async function databaseLive(db: any, base: any) {
+@@ -943,7 +969,14 @@
+       const { data: old } = await db.from("writes").select("id,status").eq("rid", rid).maybeSingle();
+       if (old) return out({ ok: true, queued: true, id: old.id, dup: true });
+     }
+-    const { data: w, error: we } = await db.from("writes").insert({ rid, fn, args: b.args, who: s.name, mode: s.mode }).select("id").single();
++    let args = b.args;
++    if (fn === "saveStudent") {   // 25 Oct · R1: an Edit student save never blanks BIRTHDATE by accident
++      let stored: string | null = null;
++      if (stuBirthNeedsStored(args)) { try { const { data: sr } = await db.from("sheet_rows").select("data").eq("tab", "DATABASE").eq("r", Number(args[2])).maybeSingle();
++        const d = sr && Array.isArray(sr.data) ? sr.data : null; if (d && String(d[0] ?? "").trim() === String(args[1].code ?? "").trim()) stored = stuBirthCell(d[5]); } catch (_e) { /* no copy: Google keeps the cell (birthKeep) */ } }
++      args = stuBirthGuard(args, stored);
++    }
++    const { data: w, error: we } = await db.from("writes").insert({ rid, fn, args, who: s.name, mode: s.mode }).select("id").single();
+     if (we) {
+       if (rid && /duplicate/i.test(we.message)) return out({ ok: true, queued: true, dup: true });
+       return out({ ok: false, error: "not saved" }, 500);

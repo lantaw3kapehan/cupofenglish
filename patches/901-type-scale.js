@@ -60,11 +60,19 @@ s = s.slice(0, i) + String.raw`<script>
     '.fx .btn.sm,.fx-seg,.fx-bar select,.fx-bar input,.fx-m,.fx-pill{height:auto;min-height:var(--ui-ctl)}',
     '.fx-seg,.ui-seg{height:auto;min-height:var(--ui-ctl);align-items:stretch}.fx-seg button,.ui-seg button{min-height:calc(var(--ui-ctl) - 4px)}',
     '.fx-m button{min-width:32px;min-height:calc(var(--ui-ctl) - 6px)}',
-    /* laptop: small buttons at least 36px */
-    ':where(' + ROOTS + ') .btn.sm' + NOT + '{min-height:var(--ui-ctl)}',
-    /* phones: primary buttons, tabs and the bottom navigation ≥ 44px (not buttons inside table rows) */
-    '@media(max-width:640px){:where(' + ROOTS + ') :is(.btn,.tabs button,[role=tab],.chip,.pill-btn)' + NOT + ':not(td *):not(th *){min-height:var(--tap)}',
-    'nav button{min-height:52px}:where(' + ROOTS + ') :is(input:not([type=checkbox]):not([type=radio]),select)' + NOT + '{min-height:var(--tap);font-size:max(var(--fs-text),1rem)}}'
+    /* touch targets: --tap = 36px laptop / 44px phone. Real height for buttons, tabs and segments ... */
+    ':where(' + ROOTS + ') :is(.btn.sm,.seg button,.mo-tabs button,.tabs button,[role=tab])' + NOT + ':not(td *):not(th *){min-height:var(--tap)}',
+    '.seg{height:auto}.seg button{height:auto}nav button{min-height:var(--tap)}',
+    '#sheet .x{width:var(--tap);height:var(--tap)}:where(' + ROOTS + ') .iconbtn{min-width:var(--tap);min-height:var(--tap)}',
+    /* ... and, for small chips inside a line (header status, filter chips, "Show"), a bigger invisible hit area so the look and
+       line height stay the same */
+    ':where(' + ROOTS + ') :is(.hd button,.sk2 button,.mo-who button,.g891-t,.cxbtn,.s2-ar,.fx-m button)' + NOT + '{position:relative}',
+    ':where(' + ROOTS + ') :is(.hd button,.sk2 button,.mo-who button,.g891-t,.cxbtn,.s2-ar,.fx-m button)' + NOT + '::after{content:"";position:absolute;left:0;right:0;top:50%;height:max(100%,var(--tap));transform:translateY(-50%)}',
+    /* phones: every primary button ≥ 44px; form fields 16px (also stops iPhone zooming into a field) */
+    '@media(max-width:640px){:where(' + ROOTS + ') .btn' + NOT + ':not(td *):not(th *){min-height:var(--tap)}',
+    'nav button{min-height:52px}:where(' + ROOTS + ') :is(input:not([type=checkbox]):not([type=radio]),select)' + NOT + '{min-height:var(--tap);font-size:max(var(--fs-text),1rem)}',
+    /* bigger chart value labels: keep the last month\'s label inside the card */
+    '.bz2-c:last-child b{left:auto;right:0;text-align:right}}'
   ].join('\n');
 
   var t = document.createElement('style'); t.id = 'ui901t'; t.textContent = T;
@@ -86,7 +94,10 @@ s = s.slice(0, i) + String.raw`<script>
     var f = st.getPropertyValue('font-size').trim(); if(!f) return;
     var m = /^(\d*\.?\d+)px$/.exec(f), pr = st.getPropertyPriority('font-size');
     splitSel(sel).forEach(function(q){ if(hasPseudoEl(q) || SKIP_SEL.test(q)) return;
-      var key = cond + '|' + q; if(m){ var px = +m[1]; MAP.delete(key); if(px >= 7) MAP.set(key, { q: q, cond: cond, v: tok(px), pr: pr }); } else MAP.delete(key); }); };
+      var key = cond + '|' + q; if(m){ var px = +m[1], v = tok(px); MAP.delete(key);
+        /* table cells use the table step (15px) rather than running text (16px on phones) */
+        if(v === 'var(--fs-text)' && /(^|[\s>+~(])(table|td|th|tr|tbody)\b/.test(q)) v = 'var(--fs-table)';
+        if(px >= 7) MAP.set(key, { q: q, cond: cond, v: v, pr: pr }); } else MAP.delete(key); }); };
   var walk = function(rules, cond){
     for(var k = 0; k < rules.length; k++){ var r = rules[k]; if(seen){ if(seen.has(r)) continue; seen.add(r); } nRules++;
       if(r.type === 1) fix(r, cond);
