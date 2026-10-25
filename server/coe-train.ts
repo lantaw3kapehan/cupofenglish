@@ -254,7 +254,7 @@ Deno.serve(async (req: Request) => {
         db.from("sheet_rows").select("data").eq("tab", "S-NOTES").eq("data->>3", code),
         db.from("writes").select("args,status,created_at").eq("fn", "tFbSubmit").ilike("who", me).neq("status", "error").gte("created_at", new Date(Date.now() - 40 * 864e5).toISOString()).order("created_at", { ascending: false }).limit(50)]);
       const F = FS.data && FS.data.data, T = TP.data && TP.data.data;
-      if (!F || !F.mo || !T || !Array.isArray(T.grids) || Date.now() - Date.parse(FS.data!.updated_at) > 3 * 3600e3) return out({ ok: false, fallback: true });
+      if (!F || !F.mo || !T || !Array.isArray(T.grids) || Date.now() - Date.parse(FS.data!.updated_at) > 14 * 3600e3) return out({ ok: false, fallback: true });   // 25 Oct: Google does not send it 23:00–06:00, so up to 14 h is fine (sends are counted from the writes)
       if (!mgmt) {
         const mine = (ACT.data || []).some((x: any) => String((x.data || [])[3] || "").toLowerCase().split(/[,/&]/).map((t: string) => t.trim()).includes(lc))
           || (CL.data || []).some((x: any) => (x.teachers || []).map((t: string) => String(t).toLowerCase()).includes(lc));
