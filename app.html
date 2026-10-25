@@ -6163,7 +6163,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1133;
+const COE_V = 1134;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24219,6 +24219,27 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     toast('Learner type · ' + TL_GRPS[i][1] + ' · making the new report…');
     try{ const r = await api('mgmtTrialGroup', TOKEN, x.date, x.student, g); if(!r || !r.ok) throw r; }
     catch(e){ toast(((e && e.msg) || 'Google did not save the learner type') + ' · try again'); x.group = prev; x._g = prev || ''; try{ localStorage.removeItem(K(x.label)); }catch(e2){} if(TLD === x){ TLB = null; try{ tlPaint(); }catch(e3){} } } };
+})();
+</script>
+<script>
+/* 802 · trial saves through the database */
+(function(){
+  if(window.__802 || typeof window.api !== 'function') return; window.__802 = 1;
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-train';
+  const post = b => fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, b)) }).then(x => x.json());
+  const nowS = () => { const d = new Date(Date.now() + 8 * 3600e3).toISOString(); return d.slice(0, 10) + ' ' + d.slice(11, 16); };
+  const ANS = {
+    mgmtTrialSent: () => ({ ok: true, queued: true, at: nowS(), by: (D && D.me && D.me.name) || '' }),
+    mgmtTrialGroup: () => ({ ok: true, queued: true, remade: true })
+  };
+  const base = window.api;
+  const w = function(fn){ const args = [].slice.call(arguments, 1), self = this, all = arguments;
+    if(ANS[fn] && D && D.mgr){ const rid = 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      return post({ action: 'write', fn, args, rid }).then(r => { if(!r || !r.ok || !r.queued) throw new Error('db'); try{ post({ action: 'devlog', fn, dev: { device: (typeof deviceInfo === 'function' ? deviceInfo() : ''), net: '' } }).catch(() => {}); }catch(e){} return ANS[fn](args); })
+        .catch(() => base.apply(self, all)); }
+    return base.apply(this, arguments); };
+  for(const k in base) try{ w[k] = base[k]; }catch(e){}
+  window.api = w;
 })();
 </script>
 </body>
