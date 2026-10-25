@@ -1683,7 +1683,7 @@ function classRow(c, stuBy, now){
 const s = stuBy[c.code] || {}, st = new Date(c.start), en = new Date(c.end);
 const isNow = now && !c.cancelled && now>=st && now<=en;
 const typ = c.cancelled?'<span class="chip">Cancelled</span>':c.type==='Trial'?'<span class="chip coral">Trial</span>':c.type==='Sub'?'<span class="chip">Sub</span>':'';
-const n = s.note, ci = (D.classIns||{})[c.id];
+const n = (s.notesEv && s.notesEv[c.id]) || s.note, ci = (D.classIns||{})[c.id];
 const isToday = c.day === D.today;
 const firstLive = isToday && (D.schedule||[]).filter(x=>x.day===D.today && !x.cancelled).sort((a,b)=>a.start.localeCompare(b.start))[0];
 const isFirst = firstLive && firstLive.id === c.id;
@@ -2077,7 +2077,7 @@ closeSheet(); toast('Feedback sent · ' + r.total + '/100 · ' + (r.student || F
 
 async function classBrief(id){
 const c = (D.schedule||[]).find(x => x.id === id); if(!c) return;
-const s = (D.students||[]).find(x => x.code === c.code) || {}, n = s.note, hw = (D.hw||{})[c.id], fb = FB && (FB.students||[]).find(x => x.code === c.code);
+const s = (D.students||[]).find(x => x.code === c.code) || {}, n = (s.notesEv && s.notesEv[c.id]) || s.note, hw = (D.hw||{})[c.id], fb = FB && (FB.students||[]).find(x => x.code === c.code);
 const head = `<div class="row"><div class="av">${esc((c.student||'?')[0])}</div><div class="grow"><h1>${esc(c.student || c.title)}</h1><div class="mute small">${tm(c.start)}–${tm(c.end)} · ${esc([c.code, c.book || s.book].filter(Boolean).join(' · '))}</div></div></div>
 <div class="stats" style="margin-top:12px"><div class="stat"><b class="num" style="font-size:15px">${D.mgr ? (s.left==null?'—':s.left) : s.left!=null&&s.left<=3 ? 'Ending soon' : 'Active'}</b><span>${D.mgr ? 'lessons left' : 'package'}</span></div><div class="stat"><b class="num" id="cbLv">—</b><span>level</span></div>
 <div class="stat"><b class="num" style="font-size:15px">${fb ? (fb.done ? '✓ sent' : 'to do') : '—'}</b><span>${esc(FB ? String(FB.label).split(' ')[0] : 'monthly')} feedback</span></div></div>
@@ -2144,7 +2144,7 @@ const n = { code, student: s.name||'', eventId, date: day || D.today, ended, obs
 const b = $('nGo'); if(b){ b.disabled = true; b.textContent = 'Saving…'; } NSAVING = Date.now();
 noteDraft(code, n.date, n);
 const prevNote = s.note, now = new Date(), upd = NUPD;
-s.note = { by: (D.me||{}).name, date: n.date, ended: n.ended, obs: n.obs, skills: n.skills.join(', '), next: n.next, homework: n.homework, eventId: eventId || '', at: now.toTimeString().slice(0,5), pending: true };
+s.note = { by: (D.me||{}).name, date: n.date, ended: n.ended, obs: n.obs, skills: n.skills.join(', '), next: n.next, homework: n.homework, eventId: eventId || '', at: now.toTimeString().slice(0,5), pending: true }; try{ if(eventId) (s.notesEv = s.notesEv || {})[eventId] = s.note; }catch(e){}
 NKEEP = null; closeSheet(); render(); toast((upd ? 'Updating ' : 'Saving ') + (s.name || code) + "'s class note…");
 try{ let r; try{ r = await api('saveNote', TOKEN, n); if(!r || !r.ok) throw r; }
 catch(e1){ await new Promise(z => setTimeout(z, 2500)); r = await api('saveNote', TOKEN, n); }   // one quiet retry (busy server / weak signal) · the server updates the same row, never a duplicate
@@ -6163,7 +6163,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1140;
+const COE_V = 1141;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -9079,7 +9079,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
   const fmt = d => { const x = new Date(String(d).slice(0, 10) + 'T12:00:00'); return isNaN(x) ? String(d || '') : x.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
   async function history(code){ let n = null; try{ const k = JSON.parse(store('get', 'coe.stu.' + code) || 'null'); if(k && k.notes && k.notes.length) n = k.notes; }catch(e){}
     if(!n){ try{ const x = await api('tStudent', TOKEN, code); if(x && x.notes) n = x.notes; }catch(e){} } return n || []; }
-  function paintHw(code, notes){ const box = $('hwPrev'); if(!box) return; const today = D.today;
+  function paintHw(code, notes){ const box = $('hwPrev'); if(!box) return; const today = D.today; try{ const me0 = String((D.me || {}).name || '').trim().toLowerCase(), mine = (notes || []).filter(x => String(x.teacher || x.by || '').trim().toLowerCase() === me0); if(mine.length) notes = mine; }catch(e){}
     const L = notes.filter(n => n.homework && String(n.date).slice(0, 10) !== today && !/^no homework/i.test(n.homework)).slice(0, 3);
     let wb = null; for(const n of notes){ if(String(n.date).slice(0, 10) === today) continue; const w = wbOf(n.homework); if(w != null){ wb = w; break; } }
     const st = (D.students || []).find(x => x.code === code) || {}, bk = String(st.book || '').split(/\s*,\s*/).filter(p => p && !/^(pre[-\s]?)?[abc][12]\+?$/i.test(p))[0] || '';
@@ -24349,6 +24349,27 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       if(t && file && typeof TLB !== 'undefined' && file === TLB && t.status !== 'Sent' && !t.sent && typeof D !== 'undefined' && D && D.mgr && $('tlAct')){
         const a0 = after; after = function(){ try{ if(a0) a0.apply(this, arguments); }catch(e){} try{ if(TLD === t && t.status !== 'Sent') tlMark('picture'); }catch(e){} }; } }catch(e){}
     return _pp.call(this, file, save, btn, after); };
+})();
+</script>
+<script>
+/* 809 · shared students: own notes per teacher, one note per class */
+(function(){
+  if(window.__809) return; window.__809 = 1;
+  let AT = 0, BUSY = 0;
+  async function load(force){ if(typeof D === 'undefined' || !D || D.mgr || !TOKEN || BUSY) return; if(!force && Date.now() - AT < 3 * 6e4) return;
+    const L = (D.students || []).map(x => x.code).filter(Boolean); if(!L.length) return; BUSY = 1; AT = Date.now();
+    try{ const r = await fetch(FAST_URL + '-notes', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, codes: L }) }).then(x => x.json());
+      if(r && r.ok && r.notes){ let ch = 0; const me0 = String((D.me || {}).name || '').trim().toLowerCase();
+        (D.students || []).forEach(st => { const n = r.notes[st.code]; if(!n) return;
+          const ev = Object.assign({}, n.ev || {}, Object.fromEntries(Object.entries(st.notesEv || {}).filter(([k, v]) => v && v.pending)));
+          if(JSON.stringify(ev) !== JSON.stringify(st.notesEv || {})){ st.notesEv = ev; ch = 1; }
+          const cur = st.note || null, curMine = cur && String(cur.by || '').trim().toLowerCase() === me0;
+          if(n.mine && !(cur && cur.pending) && (!curMine || (n.mine.date + n.mine.at) > ((cur.date || '') + (cur.at || '')))){ if(JSON.stringify(n.mine) !== JSON.stringify(cur)){ st.note = n.mine; ch = 1; } } });
+        if(ch){ try{ store('set', KEY_D, JSON.stringify(D)); }catch(e){} try{ if(typeof VIEW !== 'undefined' && VIEW === 'today') renderToday(); }catch(e){} } } }catch(e){}
+    BUSY = 0; }
+  window.notesShared = load;
+  const _r = window.render; if(typeof _r === 'function') window.render = function(){ const x = _r.apply(this, arguments); setTimeout(() => load(false), 300); return x; };
+  setTimeout(() => load(true), 3000);
 })();
 </script>
 </body>
