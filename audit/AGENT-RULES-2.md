@@ -41,6 +41,11 @@
 1. Patch files in your number range only.
 2. `audit/checklist/<group>.json`: an array of rows
    `{ "screen": "Students", "tab": "Parent reports › To check", "kind": "page|tab|detail|dialog|form", "role": "President|Operations|Teacher",
-      "design": "Pass|Fail|Blocked|Not tested|Improved", "qa": "Pass|Fail|Blocked|Not tested", "findings": "…", "evidence": "shot path / test name", "patch": "9xx" }`
+      "opens": "Pass|Fail|Blocked|Not tested",            // screen/tab/dialog opens with sample data, no script error, no sideways scroll at 1280/768/390
+      "design": "Redesigned · awaiting Misty|Unchanged · awaiting Misty|Fail|Blocked|Not tested",   // NEVER "approved" — only Misty approves design
+      "workflow": "Mock-tested|Not tested|Blocked|Fail|n/a",  // Mock-tested = the action flow ran end-to-end in the preview with ?writes=fake and the
+                                                              // request payload was checked; this does NOT verify the server. Real workflow tests need the writable test environment (not built yet).
+      "findings": "…", "evidence": "shot path / test name", "patch": "9xx" }`
+   (25 Oct 14:40 · Misty: keep "screen opens", "design approved" and "workflow tested" separate.)
    One row per screen × tab × role (dialogs/forms included). Be honest: Pass only with evidence.
 3. Final report: what you changed per screen, what you deliberately left, bugs found (fixed / not fixed), untested items and why.
