@@ -6163,7 +6163,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1145;
+const COE_V = 1146;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24419,17 +24419,17 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   // per class: what is missing (only once the class has ended; video and notes are due by 23:59)
   const need = c => !c.cancelled && c.code && c.type !== 'Trial';
   function miss(c){ const o = {}; if(c.cancelled) return o; if(started(c) && !c.ci) o.ci = 1;
-    if(ended(c)){ if(c.code && !c.vid && now() - Date.parse(c.end) > 15 * 6e4) o.vid = 1; if(need(c) && !c.hw) o.hw = 1; if(need(c) && !c.note) o.note = 1; } return o; }
+    if(ended(c)){ if(c.code && !c.vid && now() - Date.parse(c.end) > 15 * 6e4) o.vid = 1; if(!isToday()){ if(need(c) && !c.hw) o.hw = 1; if(need(c) && !c.note) o.note = 1; } } return o; }
   const lateT = t => t.timeIn && /late/i.test(t.timeIn.status || '');
   function counts(T){ const a = { late: 0, ci: 0, vid: 0, hw: 0, note: 0 }; T.forEach(t => { if(lateT(t)) a.late++; t.classes.forEach(c => { const m = miss(c); ['ci', 'vid', 'hw', 'note'].forEach(k => { if(m[k]) a[k]++; }); }); }); return a; }
   const ATT = [['late', 'Late time-in'], ['ci', 'No “I’m in”'], ['vid', 'No video'], ['hw', 'No homework'], ['note', 'No class note']];
-  function cell(n, d, cls){ return d ? '<span class="' + (n < d ? 'bad' : 'ok') + ' ' + (cls || '') + '">' + n + ' / ' + d + '</span>' : '<span class="mu ' + (cls || '') + '">—</span>'; }
+  function cell(n, d, cls, soft){ return d ? '<span class="' + (n < d ? (soft ? 'mu' : 'bad') : 'ok') + ' ' + (cls || '') + '"' + (soft && n < d ? ' title="due by 23:59"' : '') + '>' + n + ' / ' + d + '</span>' : '<span class="mu ' + (cls || '') + '">—</span>'; }
   function board(T){
     const rows = T.map((t, ti) => { const L = t.classes.filter(c => !c.cancelled), E2 = L.filter(ended), S2 = L.filter(started);
       const vidN = E2.filter(c => c.code), hwN = E2.filter(need), ti0 = t.timeIn;
       const tin = ti0 ? '<span class="' + (lateT(t) ? 'bad' : 'ok') + '">' + E(ti0.time || '✓') + (lateT(t) ? ' · late' : '') + (ti0.out ? ' → ' + E(ti0.out) : '') + '</span>' : (L.length && S2.length ? '<span class="bad">none</span>' : '<span class="mu">—</span>');
       let h = '<div class="mo-r" onclick="moOpen(' + ti + ')"><b>' + E(t.name) + '</b>' + tin + '<span>' + E2.length + ' / ' + L.length + '</span>' +
-        cell(S2.filter(c => c.ci).length, S2.length) + cell(vidN.filter(c => c.vid).length, vidN.length) + cell(hwN.filter(c => c.hw).length, hwN.length, 'm-hw') + cell(hwN.filter(c => c.note).length, hwN.length, 'm-nt') + '</div>';
+        cell(S2.filter(c => c.ci).length, S2.length) + cell(vidN.filter(c => c.vid).length, vidN.length) + cell(hwN.filter(c => c.hw).length, hwN.length, 'm-hw', isToday()) + cell(hwN.filter(c => c.note).length, hwN.length, 'm-nt', isToday()) + '</div>';
       if(M.open[t.name]) h += '<div class="mo-cl">' + (t.classes.map((c, ci) => { const m = miss(c), tag = (ok, k, l) => '<span class="mo-k ' + (ok ? '' : (k ? 'no' : 'wait')) + '">' + l + '</span>';
           const st = c.cancelled ? '<span class="mo-k wait">cancelled</span>' : [started(c) ? tag(!!c.ci, m.ci, c.ci ? 'In ' + (c.ci.time || '✓') + (/late/i.test(c.ci.status || '') ? ' late' : '') : 'No I’m in') : '',
             c.code ? tag(c.vid, m.vid, c.vid ? 'Video ✓' : 'Video') : '', need(c) ? tag(c.hw, m.hw, c.hw ? 'HW ✓' : 'HW') : '', need(c) ? tag(c.note, m.note, c.note ? 'Note ✓' : 'Note') : ''].join('');
@@ -24484,7 +24484,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     const now = Date.now(), a = { late: 0, ci: 0, vid: 0, hw: 0, note: 0, teachers: (d.teachers || []).length, at: d.now };
     (d.teachers || []).forEach(t => { if(t.timeIn && /late/i.test(t.timeIn.status || '')) a.late++;
       t.classes.forEach(c => { if(c.cancelled) return; const st = Date.parse(c.start) <= now, en = Date.parse(c.end) <= now, nd = c.code && c.type !== 'Trial';
-        if(st && !c.ci) a.ci++; if(en){ if(c.code && !c.vid && now - Date.parse(c.end) > 15 * 6e4) a.vid++; if(nd && !c.hw) a.hw++; if(nd && !c.note) a.note++; } }); });
+        if(st && !c.ci) a.ci++; if(en){ if(c.code && !c.vid && now - Date.parse(c.end) > 15 * 6e4) a.vid++;  } }); });
     return a; }
   window.ovMon = k => { go('monitor'); setTimeout(() => { try{ if(k && window.moAtt) moAtt(k); }catch(e){} }, 60); };
   function card(){ const a = counts(), bad = a ? ATT.filter(([k]) => a[k]) : [];
