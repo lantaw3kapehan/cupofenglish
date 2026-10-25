@@ -12,6 +12,7 @@
 //   at 1280 and 390 px); status pills 11px; history month titles in the sans; the per-teacher colour strip is calmer.
 // · Wallets: tiles white with the wallet's colour kept on the dot and label; balances in the sans with tabular numerals.
 // · Wallets tab: the card's own "Wallets 钱包" heading is hidden there (the page title says it); its total line stays.
+// · Transactions (phone only): cell padding 6px so the table fits 390px (with the larger type it ran 9px past the screen).
 // · Phone (≤640px): Payroll history month rows wrap (amounts were cut off and overlapped the change %), the per-teacher colour strip is
 //   hidden there (opening the month still lists every teacher); the 12-month bar labels (which overlapped) hide, month and change % stay;
 //   tiles one per row; ≤900px two per row.
@@ -84,6 +85,7 @@ s = s.slice(0, i) + String.raw`<script>
     /* responsive */
     '@media(max-width:900px){#v-money .x73 .kp{grid-template-columns:1fr 1fr!important}#v-money .x73 .kp>div:nth-child(odd){border-left:0!important}#v-money .x73 .kp>div:nth-child(n+3){border-top:1px solid ' + LN + '!important}}',
     '@media(max-width:640px){#v-money .mx-act .btn,' + all('.wl-act .btn') + ',#v-payroll .py-act .btn{height:44px!important;min-height:44px!important}#v-money .x73 .tabs button,#v-payroll .py-chips button{height:44px}#v-payroll .py-find .search{height:44px}#v-payroll .mo63{min-height:44px}#v-money details.f877>summary,' + all('.wl870>summary') + '{min-height:44px;align-items:center}}',
+    '@media(max-width:640px){#v-expenses .fx td,#v-expenses .fx th{padding-left:6px;padding-right:6px}#v-expenses .fx td.n{overflow-wrap:anywhere}}',
     '@media(max-width:640px){#v-payroll details.py-h>summary{display:flex!important;flex-wrap:wrap;align-items:center;gap:2px 10px}#v-payroll details.py-h>summary>div{flex:1 1 60%;min-width:0}#v-payroll #plList details.py-h>summary>div small{display:block!important;margin-left:0!important;white-space:normal}#v-payroll details.py-h>summary .hb62{display:none!important}#v-payroll details.py-h>summary .t{margin-left:auto;white-space:nowrap}#v-payroll details.py-h>summary small.s{display:none}#v-payroll .pm60 .cs b{display:none}}',
     '@media(max-width:640px){#v-money .mx-top h1,#v-wallets .lead h1,#v-payroll .py-top h1{font-size:var(--fs-h1,22px)!important}#v-money .x73 .kp{grid-template-columns:1fr!important}#v-money .x73 .kp>div{border-left:0!important}#v-money .x73 .kp>div+div{border-top:1px solid ' + LN + '!important}',
     '#v-money .x73 .kp b,#v-money .x73 .t3 b{font-size:var(--fs-kpi,20px)!important}#v-money .x73 .todo{grid-template-columns:1fr}#v-money .mx-act .btn{flex:1}' + all('.wl-act') + '{margin-left:0;width:100%}' + all('.wl-act .btn') + '{flex:1 1 auto}}'

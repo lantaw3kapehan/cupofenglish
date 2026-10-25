@@ -145,7 +145,7 @@ s = s.slice(0, i) + String.raw`<script>
     '#sheet.d1s #sheetBody .mon,#sheet.d1s #sheetBody .mon-g>div,#sheet.d1s #sheetBody .card{border-radius:12px!important;box-shadow:none!important}',
     '#sheet.d1s #sheetBody label,#sheet.d1s #sheetBody .lbl{font-size:var(--fs-small,14px)}',
     /* nothing under 12px (Misty 15:05): small chart / strip labels raised to the label size */
-    '#v-home .bz2-c>b,#v-home .bz2-c>span,#v-home .ov-ring span,#v-home .x-mini em,#v-home .x-col b,#v-home .x-col span,#v-team .cols b.ln span,#v-team .p .ax span,#v-team .p .lg span,#v-team details>summary,#v-schedule .s2-d span,#v-schedule .s2-d em,#v-schedule .dg16 .c b,#v-schedule .dg16 .ax span,#v-schedule .vn-row,#v-schedule .cxby{font-size:var(--fs-label,12px)!important}',
+    '#v-home .bz2-c>b,#v-home .bz2-c>span,#v-home .ov-ring span,#v-home .x-mini em,#v-home .x-col b,#v-home .x-col span,#v-team .cols b.ln span,#v-team .p .ax span,#v-team .p .lg span,#v-team details>summary,#v-schedule .s2-d span,#v-schedule .s2-d em,#v-schedule .dg16 .c b,#v-schedule .dg16 .ax span,#v-schedule .vn-row,#v-schedule .cxby,#v-team .tl11 .ax i,#v-team .tl11 .r>em,#v-team .tl11 .lg span,#v-team .tl11 .hd span,#v-team .lb19,#v-team .tgrp-h,#v-team .ti-q{font-size:var(--fs-label,12px)!important}',
     '#v-home .bz2-c>b{letter-spacing:-.02em;white-space:nowrap}#v-home .x-dn svg text{font-size:var(--fs-label,12px)}',
     /* ---------- phones ---------- */
     '@media(max-width:900px){#v-home .bz2-k{grid-template-columns:1fr 1fr!important}#v-home .bz2-k>div:nth-child(odd){border-left:0!important}#v-home .bz2-k>div:nth-child(n+3){border-top:1px solid var(--ui-line)!important}',
@@ -156,7 +156,7 @@ s = s.slice(0, i) + String.raw`<script>
     '#v-mtoday .sec,#v-home .ovc section.ov-card,#v-home .ovc .x-c,#v-home .ovc .x-top,#v-monitor .mo-f{padding:12px!important}',
     '#v-home .ovc .x-st a,#v-home .ov-mon .ov-mb button,#v-home .ov-hd .lk,' + all('.btn.sm') + ',#v-monitor .mo-tabs button,#v-team .mo-tabs button,#v-monitor .mo-who button,#v-monitor .mo-att button,#v-monitor .mo-h .seg,#v-schedule .sctb .seg,#v-schedule .scsel,#v-schedule .s2-ar,#v-msgs .tb22 button,#v-mtoday .g891-t{min-height:44px!important}',
     '#v-monitor .mo-h .seg,#v-schedule .sctb .seg{padding:0!important;height:44px!important}#v-monitor .mo-h .seg button,#v-schedule .sctb .seg button{height:44px!important}#v-monitor .mo-r:not(.hd){min-height:44px}',
-    '#v-home a.ov-ql,#v-home .c-foot a,#v-team button,#v-team details>summary,#v-team a.ti-loc,#v-team a.ti-pf,#v-schedule #scQ,#v-schedule .cxbtn,#v-schedule a.link,#v-schedule .s2-sum~div a{min-height:44px!important;box-sizing:border-box}',
+    '#v-home a.ov-ql,#v-home .c-foot a,#v-team button,#v-team details>summary,#v-team a.ti-loc,#v-team a.ti-pf,#v-team .ti-q[onclick],#v-team .ti-q[role=button],#v-schedule #scQ,#v-schedule .cxbtn,#v-schedule a.link,#v-schedule .s2-sum~div a{min-height:44px!important;box-sizing:border-box}',
     '#v-home .c-foot a,#v-team a.ti-loc,#v-team a.ti-pf,#v-schedule .cxbtn{display:inline-flex!important;align-items:center}#v-team details>summary{display:flex;align-items:center}#v-home .ov-hd .lk{display:inline-flex;align-items:center}',
     '#v-monitor .mo-r{padding:9px 10px!important}#sheet.d1s #sheetBody>h1:first-child,#sheet.d1s #sheetBody>h2:first-child{font-size:calc(var(--fs-h1,26px) * .8)!important}}'
   ].join('\n');

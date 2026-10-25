@@ -66,13 +66,15 @@ s = s.slice(0, i) + String.raw`<script>
     '#sheet .x{width:var(--tap);height:var(--tap)}:where(' + ROOTS + ') .iconbtn{min-width:var(--tap);min-height:var(--tap)}',
     /* ... and, for small chips inside a line (header status, filter chips, "Show"), a bigger invisible hit area so the look and
        line height stay the same */
-    ':where(' + ROOTS + ') :is(.hd button,.sk2 button,.mo-who button,.g891-t,.cxbtn,.s2-ar,.fx-m button)' + NOT + '{position:relative}',
-    ':where(' + ROOTS + ') :is(.hd button,.sk2 button,.mo-who button,.g891-t,.cxbtn,.s2-ar,.fx-m button)' + NOT + '::after{content:"";position:absolute;left:0;right:0;top:50%;height:max(100%,var(--tap));transform:translateY(-50%)}',
+    ':where(' + ROOTS + ') :is(.hd button,.sk2 button,.mo-who button,.mo-att button,.g891-t,.cxbtn,.s2-ar,.fx-m button,.fx-seg button,.ui-seg button,th button,.py-act .btn)' + NOT + '{position:relative}',
+    ':where(' + ROOTS + ') :is(.hd button,.sk2 button,.mo-who button,.mo-att button,.g891-t,.cxbtn,.s2-ar,.fx-m button,.fx-seg button,.ui-seg button,th button,.py-act .btn)' + NOT + '::after{content:"";position:absolute;left:0;right:0;top:50%;height:max(100%,var(--tap));transform:translateY(-50%)}',
     /* phones: every primary button ≥ 44px; form fields 16px (also stops iPhone zooming into a field) */
     '@media(max-width:640px){:where(' + ROOTS + ') .btn' + NOT + ':not(td *):not(th *){min-height:var(--tap)}',
     'nav button{min-height:52px}:where(' + ROOTS + ') :is(input:not([type=checkbox]):not([type=radio]),select)' + NOT + '{min-height:var(--tap);font-size:max(var(--fs-text),1rem)}',
     /* bigger chart value labels: keep the last month\'s label inside the card */
-    '.bz2-c:last-child b{left:auto;right:0;text-align:right}}'
+    '.bz2-c:last-child b{left:auto;right:0;text-align:right}',
+    /* 15px table text on a 390px phone: slightly narrower cell padding so Finance tables still fit */
+    '.fx th,.fx td,.ui-t th,.ui-t td{padding-left:6px;padding-right:6px}}'
   ].join('\n');
 
   var t = document.createElement('style'); t.id = 'ui901t'; t.textContent = T;

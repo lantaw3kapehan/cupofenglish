@@ -24,7 +24,7 @@ const shim = `<script type="application/json" id="fxdata">${data}</script>
   R.forEach(function(r){ var e = ep(r.url); IX[e + '|' + nb(r.body)] = r.t; var k = e + '|' + op(r.body); if(!BY[k]) BY[k] = r.t; });
   var DOCS = {}; R.forEach(function(r){ if(ep(r.url) === 'coe' && op(r.body) === 'docs'){ try{ var d = JSON.parse(r.t).docs || {}; for(var k in d) if(d[k]){ if(d[k].at) d[k].at = new RD(T0 - 60000).toISOString(); DOCS[k] = d[k]; } }catch(e){} } });
   var MISS = window.__PREVIEW_MISS = [];
-  var WRITE = /^(add|save|set|mark|send|del|remove|upload|update|claim|tag|decide|request|approve|reject|pay|transfer|remit|refund|sign|ack|seen|record|create|edit|post|reply|submit|mgmt(Save|Set|Tag|Mark|Send|Renew|Enrol|Trial(Sent|Group|Fu)|Report(Sent)|Leave|Msg|Task|Pkg|Agree|Profile|Avail|Vid|Pay|Wallet|Remit|Transfer))/i;
+  var WRITE = /^(rec_add|new|undo|fee|issue|add|save|set|mark|send|del|remove|upload|update|claim|tag|decide|request|approve|reject|pay|transfer|remit|refund|sign|ack|seen|record|create|edit|post|reply|submit|mgmt(Save|Set|Tag|Mark|Send|Renew|Enrol|Trial(Sent|Group|Fu)|Report(Sent)|Leave|Msg|Task|Pkg|Agree|Profile|Avail|Vid|Pay|Wallet|Remit|Transfer))/i;
   var _f = window.fetch;
   window.fetch = function(u, o){ var url = String(u && u.url || u), body = o && typeof o.body === 'string' ? o.body : '';
     if(/fonts\\.(googleapis|gstatic)\\.com|cdnjs|jsdelivr|unpkg/.test(url)) return _f.apply(this, arguments);
