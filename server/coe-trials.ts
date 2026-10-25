@@ -1,6 +1,6 @@
 // CupOfEnglish · 20 Oct 2026 · a teacher's trial reports already made (TR-DATA copy + reports sent in the app), last 60 days.
 // The app uses it to clear "Write report" for a trial that was moved to another day (the old rule matched only the same date + name).
-// 25 Oct v9 · each report also carries its progress for the teacher's "Report sent" card: at (sent), t (total /36), cefr, pdf, sent (sent to the parent line),
+// 25 Oct v10 · n = the teacher's note per skill. v9 · each report also carries its progress for the teacher's "Report sent" card: at (sent), t (total /36), cefr, pdf, sent (sent to the parent line),
 //   enr (Enrolled? auto), fc (first class), fu (follow-up), q: 1 = sent in the app, Google has not copied it into TR-DATA yet.
 // POST { token, tall: true } → v8: every trial in DATABASE { m: yyyy-MM, e: enrolled 1/0, t: trial teacher, c: trial CEFR, s: source }.
 // POST { token, ops: true } → v7: student flow per month (trials, converted, new, renewals, stopped) with the students in each (L).
@@ -95,8 +95,12 @@ Deno.serve(async (req: Request) => {
   (T || []).forEach((x: any) => { const r = x.data || [], d = ymd(r[2]); if (!d || d < since || str(r[4]).toLowerCase() !== who) return;
     const sent = (str(r[44]).match(/Report sent to parent[^\n]*/i) || [""])[0], pdf = /^https:\/\//.test(str(r[30])) ? str(r[30]) : "";
     list.push({ d, s: str(r[5]).toLowerCase(), c: str(r[33]).toUpperCase(), at: str(r[1]).replace("T", " ").slice(0, 16), t: str(r[18]), cefr: str(r[23]), pdf, sent, enr: str(r[38]), fc: ymd(r[39]), fu: str(r[43]) }); });
-  (W || []).forEach((w: any) => { const c = (w.args || [])[1] || {}; const d = ymd(c.date); if (!d) return; const sl = String(c.student || "").trim().toLowerCase(), cc = String(c.code || "").trim().toUpperCase();
-    if (list.some((x) => !x.q && x.d === d && (x.s === sl || (cc && x.c === cc)))) return;
-    list.push({ d, s: sl, c: cc, q: 1, at: new Date(Date.parse(w.created_at) + 8 * 3600e3).toISOString().replace("T", " ").slice(0, 16) }); });
+  // 25 Oct v10 · the teacher's own note per skill (n: 9 short lines, sent with the report in the app) for the report's skill breakdown
+  (W || []).slice().sort((p: any, q: any) => String(p.created_at).localeCompare(String(q.created_at))).forEach((w: any) => { const c = (w.args || [])[1] || {}, f = (w.args || [])[2] || {}; const d = ymd(c.date); if (!d) return; const sl = String(c.student || "").trim().toLowerCase(), cc = String(c.code || "").trim().toUpperCase();
+    const n = Array.isArray(f.notes) && f.notes.some((x: any) => String(x || "").trim()) ? f.notes.slice(0, 9).map((x: any) => String(x || "").trim().slice(0, 300)) : null;
+    const hit = list.filter((x) => x.d === d && (x.s === sl || (cc && x.c === cc)));
+    if (hit.length) { if (n) hit.forEach((x) => { x.n = n; }); if (hit.some((x) => !x.q)) return; }
+    if (hit.length) return;
+    list.push({ d, s: sl, c: cc, q: 1, n: n || undefined, at: new Date(Date.parse(w.created_at) + 8 * 3600e3).toISOString().replace("T", " ").slice(0, 16) }); });
   return out({ ok: true, list, form: (b as any)._form || null });
 });
