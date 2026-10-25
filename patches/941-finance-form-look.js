@@ -18,9 +18,12 @@
 // HOW IT IS ADDED HERE: the Finance openers (saleSheet, expSheet, payRow, payslip, payslipNow, togglePaid, rfOpen, tabSheet('PAY'))
 //   are wrapped; while one of them is opening, every openSheet() it makes keeps `ui-form` on #sheet; any other openSheet() and
 //   closeSheet() remove it. The wallet modal (#wlM .wl-m) and the payment-confirmation form column (#ivM .iv-f) get it when they appear.
+// WALLET ACTIVITY: long references (e.g. PaymentConfirmation1749_…) wrap, so the amount and Undo columns stay on screen on a phone
+//   (at 390px they were pushed out of the dialog).
 // INLINE ERRORS: + Sale / + Expense still check exactly what sendMoney() checks (expense: description, category, amount; sale:
 //   invoice/student or PDF, partner); when a check fails the missing fields are marked aria-invalid and a line under the button says
 //   what is missing (the toast still shows). Typing in a marked field clears its mark.
+// Type sizes: central tokens (--fs-*) with px fallbacks (inputs 16px so phones do not zoom), nothing under 12px; phone controls ≥44px.
 const fs = require('fs'), file = process.argv[2];
 let s = fs.readFileSync(file, 'utf8'); const i = s.lastIndexOf('</body>');
 s = s.slice(0, i) + String.raw`<script>
@@ -29,24 +32,27 @@ s = s.slice(0, i) + String.raw`<script>
   var F = 'var(--ui-font,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif)', INK = 'var(--ui-ink,#2f2752)', MU = 'var(--ui-mute,#6B6782)', LN = 'var(--ui-line,#E9E7F0)';
   var X = ':not(.paper *):not(.pg *)';   /* never inside a document */
   var css = [
-    '.ui-form h1' + X + ',.ui-form .wl-mh h3{font-family:var(--ui-brand,"Fredoka One",sans-serif);font-weight:400;font-size:22px;color:' + INK + ';margin:0 44px 4px 0;line-height:1.25}',
-    '.ui-form .wl-mh h3{font-size:19px;margin:0}',
-    '.ui-form label' + X + '{display:block;font:700 12.5px/1.35 ' + F + ';letter-spacing:0;color:#4A4566;margin:12px 0 5px}',
-    '.ui-form label.drop' + X + ',.ui-form label:has(> input[type=checkbox])' + X + '{font-weight:400;font-size:13px}',
-    '.ui-form .in-t' + X + ',.ui-form input' + X + ':not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),.ui-form select' + X + '{height:38px;min-height:0;box-sizing:border-box;border:1px solid ' + LN + ';border-radius:10px;padding-top:0;padding-bottom:0;font:13.5px ' + F + ';font-variant-numeric:tabular-nums;color:' + INK + ';background-color:#fff;box-shadow:none}',
-    '.ui-form textarea' + X + '{min-height:76px;height:auto;padding:8px 12px;border:1px solid ' + LN + ';border-radius:10px;font:13.5px/1.45 ' + F + ';box-shadow:none}',
+    '.ui-form h1' + X + ',.ui-form .wl-mh h3{font-family:var(--ui-brand,"Fredoka One",sans-serif);font-weight:400;font-size:var(--fs-h1,22px);color:' + INK + ';margin:0 44px 4px 0;line-height:1.25}',
+    '.ui-form .wl-mh h3{font-size:var(--fs-h2,19px);margin:0}',
+    '.ui-form label' + X + '{display:block;font:700 var(--fs-small,13px)/1.35 ' + F + ';letter-spacing:0;color:#4A4566;margin:12px 0 5px}',
+    '.ui-form label.drop' + X + ',.ui-form label:has(> input[type=checkbox])' + X + '{font-weight:400;font-size:var(--fs-small,13px)}',
+    '.ui-form .in-t' + X + ',.ui-form input' + X + ':not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),.ui-form select' + X + '{height:38px;min-height:0;box-sizing:border-box;border:1px solid ' + LN + ';border-radius:10px;padding-top:0;padding-bottom:0;font:var(--fs-body,16px) ' + F + ';font-variant-numeric:tabular-nums;color:' + INK + ';background-color:#fff;box-shadow:none}',
+    '.ui-form textarea' + X + '{min-height:76px;height:auto;padding:8px 12px;border:1px solid ' + LN + ';border-radius:10px;font:var(--fs-body,16px)/1.45 ' + F + ';box-shadow:none}',
     '.ui-form .in-t' + X + ':focus,.ui-form input' + X + ':focus,.ui-form select' + X + ':focus,.ui-form textarea' + X + ':focus{border-color:var(--ui-teal,#01b0bf);box-shadow:0 0 0 3px rgba(1,176,191,.18);outline:none}',
     '.ui-form [aria-invalid=true]' + X + '{border-color:var(--ui-out,#B5533C)!important;box-shadow:0 0 0 3px rgba(181,83,60,.12)!important}',
-    '.ui-form .ui-hint{font:12px/1.45 ' + F + ';color:' + MU + ';margin-top:4px}',
-    '.ui-form .ui-err{font:600 12.5px/1.45 ' + F + ';color:var(--ui-out,#B5533C);margin-top:8px}',
-    '.ui-form .btn' + X + '{min-height:40px;border-radius:10px;font:700 14px ' + F + ';box-shadow:none}',
-    '.ui-form .btn.sm' + X + '{min-height:34px;font-size:13px}',
+    '.ui-form .ui-hint{font:var(--fs-small,13px)/1.45 ' + F + ';color:' + MU + ';margin-top:4px}',
+    '.ui-form .ui-err{font:600 var(--fs-small,13px)/1.45 ' + F + ';color:var(--ui-out,#B5533C);margin-top:8px}',
+    '.ui-form .btn' + X + '{min-height:40px;border-radius:10px;font:700 var(--fs-body,15px) ' + F + ';box-shadow:none}',
+    '.ui-form .btn.sm' + X + '{min-height:34px;font-size:var(--fs-small,13px)}',
     '.ui-form .btn' + X + ':not(.ghost):not(.lite):not(.x):not(:disabled){background:var(--ui-teal-d,#00808B)!important;border-color:var(--ui-teal-d,#00808B)!important;color:#fff!important;box-shadow:none!important}',
     '.ui-form .btn.ghost' + X + '{background:#fff!important;border:1px solid ' + LN + '!important;color:' + INK + '!important;box-shadow:none!important}',
     '.ui-form .btn' + X + ':focus-visible{outline:2px solid var(--ui-teal,#01b0bf);outline-offset:2px}',
-    '.ui-form > #sheetBody > .mute.small,.ui-form > #sheetBody > div.mute,.ui-form .sub' + X + '{font-family:' + F + ';font-size:13px;color:' + MU + '}',
-    '.ui-form table' + X + '{font-family:' + F + ';font-size:13.5px;font-variant-numeric:tabular-nums}.ui-form table' + X + ' td{border-bottom:1px solid #F3F2F7}',
-    '#wlM .wl-m.ui-form{border-radius:var(--ui-r,14px)}.ui-form .wl-ch button{height:34px;padding:0 12px;border:1px solid ' + LN + ';border-radius:10px;font:700 13px ' + F + '}',
+    '.ui-form > #sheetBody > .mute.small,.ui-form > #sheetBody > div.mute,.ui-form .sub' + X + '{font-family:' + F + ';font-size:var(--fs-small,13px);color:' + MU + '}',
+    '.ui-form table' + X + '{font-family:' + F + ';font-size:var(--fs-table,15px);font-variant-numeric:tabular-nums}.ui-form table' + X + ' td{border-bottom:1px solid #F3F2F7}',
+    '#wlM .wl-m.ui-form{border-radius:var(--ui-r,14px)}.ui-form .wl-ch button{height:34px;padding:0 12px;border:1px solid ' + LN + ';border-radius:10px;font:700 var(--fs-small,13px) ' + F + '}',
+    '@media(max-width:640px){.ui-form .in-t' + X + ',.ui-form input' + X + ':not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),.ui-form select' + X + ',.ui-form .btn' + X + ',.ui-form .btn.sm' + X + ',.ui-form .wl-ch button{min-height:44px;height:44px}#sheet.ui-form>.x,.ui-form .wl-mh .x{min-width:44px;min-height:44px}}',
+    '.ui-form .wl-l td{overflow-wrap:anywhere}@media(max-width:640px){.ui-form .wl-l td:first-child{white-space:normal}}',
+    '.ui-form .drop .ic{font-size:var(--fs-label,12px)}',
     '.ui-form .wl-af{font-family:' + F + ';font-variant-numeric:tabular-nums}'
   ].join('\n');
   var st = document.createElement('style'); st.id = 'ui941'; st.textContent = css; document.head.appendChild(st);

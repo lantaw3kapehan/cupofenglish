@@ -20,7 +20,7 @@ s = s.slice(0, i) + String.raw`<script>
     const back = PREV && PREV.month && PREV.month !== want ? '<button type="button" class="btn ghost sm" onclick="rp921Back()">Back to ' + esc(ml(PREV.month)) + '</button>' : '';
     const box = document.createElement('div'); box.id = 'rp921';
     box.innerHTML = '<div class="lead"><h1>Parent reports</h1><div class="mute small">' + esc(want ? ml(want) : 'Monthly feedback') + '</div></div>' +
-      '<div class="ui-card" role="alert" style="margin-top:12px"><b style="font-size:15px">Could not load the parent reports' + (want ? ' for ' + esc(ml(want)) : '') + '.</b>' +
+      '<div class="ui-card" role="alert" style="margin-top:12px"><b style="font-size:var(--fs-h2,15px)">Could not load the parent reports' + (want ? ' for ' + esc(ml(want)) : '') + '.</b>' +
       '<div class="ui-sub" style="margin:4px 0 12px">Check the internet connection and try again. Nothing was changed.</div>' +
       '<div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn teal sm" onclick="rp921Retry()">Try again</button>' + back + '</div></div>';
     e.replaceWith(box); }

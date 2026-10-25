@@ -49,3 +49,8 @@
    (25 Oct 14:40 · Misty: keep "screen opens", "design approved" and "workflow tested" separate.)
    One row per screen × tab × role (dialogs/forms included). Be honest: Pass only with evidence.
 3. Final report: what you changed per screen, what you deliberately left, bugs found (fixed / not fixed), untested items and why.
+
+## Typography update (Misty, 25 Oct 15:05) — applies to every group
+- Keep Finance Overview's character, but usability targets now: body text ≈16px (phone) / 15–16px (laptop), no tiny labels (nothing under 12px; uppercase labels ≥12px used sparingly), tables ≈15px, support browser text zoom (rem units) and Chinese, contrast ≥4.5:1, touch targets ≥44px on phones.
+- A separate TYPO task is defining central type tokens (`--fs-body`, `--fs-small`, `--fs-label`, `--fs-table`, `--fs-h1`, `--fs-h2`, `--fs-kpi`) in patch 900/901. Do NOT hard-code new px font sizes in your patches: use those variables (with a px fallback, e.g. `font-size:var(--fs-table,15px)`), and never go below 12px.
+- Broad font changes will NOT go to production until Misty approves the typography screenshots.

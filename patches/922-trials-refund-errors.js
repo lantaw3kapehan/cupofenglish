@@ -20,7 +20,7 @@ s = s.slice(0, i) + String.raw`<script>
   const r0 = window.renderTP;
   if(typeof r0 === 'function') window.renderTP = function(){ const r = r0.apply(this, arguments);
     try{ if(hasTrl()) return r; const L = document.getElementById('tpList'); if(!L) return r;
-      if(FAIL){ L.innerHTML = '<div role="alert" style="padding:14px 4px"><b style="font-size:15px">Could not load the trial reports.</b><div class="ui-sub" style="margin:4px 0 12px">Check the internet connection and try again. Booked trial classes above come from Schedule and are still shown.</div><button type="button" class="btn teal sm" onclick="trl922Retry()">Try again</button></div>'; }
+      if(FAIL){ L.innerHTML = '<div role="alert" style="padding:14px 4px"><b style="font-size:var(--fs-h2,15px)">Could not load the trial reports.</b><div class="ui-sub" style="margin:4px 0 12px">Check the internet connection and try again. Booked trial classes above come from Schedule and are still shown.</div><button type="button" class="btn teal sm" onclick="trl922Retry()">Try again</button></div>'; }
       const T = document.getElementById('tpTabs'); if(T) T.querySelectorAll('button').forEach(b => { b.textContent = b.textContent.replace(/ · 0$/, ' · …'); b.title = FAIL ? 'Not loaded' : 'Loading'; }); }catch(e){}
     return r; };
   window.trl922Retry = function(){ FAIL = 0; try{ const L = document.getElementById('tpList'); if(L) L.innerHTML = '<div class="sk"></div><div class="sk"></div>'; }catch(e){} return window.loadTrials(); };

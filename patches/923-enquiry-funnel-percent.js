@@ -14,5 +14,5 @@ require('../tools/lib.js')(file, [
   ["pc(no) + '% · now'", "pc(no) + '% of logged · status now'"],
   ["<div class=\"lead\"><h1>New enquiry</h1>", "<div class=\"lead\"><h1>Enquiries</h1>"],
   ["#v-enquiry .fn31 .st small{font-size:12px;color:#8A86A0;margin-left:4px}",
-   "#v-enquiry .fn31 .st small{display:block;font-size:12px;line-height:1.35;color:#6B6782;margin:2px 0 0}"]
+   "#v-enquiry .fn31 .st small{display:block;font-size:var(--fs-small,12px);line-height:1.35;color:#6B6782;margin:2px 0 0}"]
 ]);

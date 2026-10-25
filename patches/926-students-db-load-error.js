@@ -9,7 +9,7 @@ let s = fs.readFileSync(file, 'utf8'); const i = s.lastIndexOf('</body>');
 s = s.slice(0, i) + String.raw`<script>
 /* 926 · Students / Database: clear error state on a failed load */
 (function(){ if(window.__926) return; window.__926 = 1;
-  const card = (title, what, fn) => '<div class="lead"><h1>' + title + '</h1></div><div class="ui-card" role="alert" style="margin-top:12px"><b style="font-size:15px">Could not load ' + what + '.</b>' +
+  const card = (title, what, fn) => '<div class="lead"><h1>' + title + '</h1></div><div class="ui-card" role="alert" style="margin-top:12px"><b style="font-size:var(--fs-h2,15px)">Could not load ' + what + '.</b>' +
     '<div class="ui-sub" style="margin:4px 0 12px">Check the internet connection and try again. Nothing was changed.</div><button type="button" class="btn teal sm" onclick="' + fn + '">Try again</button></div>';
   function fix(id, re, title, what, fn){ const el = document.getElementById(id); if(!el) return; const e = [...el.querySelectorAll('.empty')].find(x => re.test(x.textContent)); if(!e) return;
     const box = document.createElement('div'); box.id = id + '926'; box.innerHTML = card(title, what, fn); e.replaceWith(box); }

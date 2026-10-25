@@ -7,6 +7,7 @@
 // · Negative pesos written with a hyphen ("-₱3,540", from the shared peso() helper, e.g. Payroll history "November 2026 · only
 //   deductions") show with the minus sign used everywhere else ("−₱3,540"), inside the Finance views and Finance dialogs only.
 //   The value, its sign and every stored figure are unchanged (patch 832 already did this for "+−₱" / "₱-" forms).
+// · Payroll › teacher row (payRow): a zero bonus / deduction / gov line showed "+₱0" / "−₱0"; it now shows "₱0" (no sign on zero).
 const fs = require('fs'), file = process.argv[2];
 let s = fs.readFileSync(file, 'utf8'); const i = s.lastIndexOf('</body>');
 s = s.slice(0, i) + String.raw`<script>
@@ -32,4 +33,8 @@ s = s.slice(0, i) + String.raw`<script>
 </script>
 ` + s.slice(i);
 fs.writeFileSync(file, s);
-require('../tools/lib.js')(file, []);
+require('../tools/lib.js')(file, [
+  ['<tr><td>Bonus</td><td class="num plus">+${peso(x.bonus)}</td></tr>', '<tr><td>Bonus</td><td class="num${+x.bonus ? \' plus\' : \'\'}">${+x.bonus ? \'+\' : \'\'}${peso(x.bonus)}</td></tr>'],
+  ['<tr><td>Deductions</td><td class="num minus">−${peso(x.deduct)}</td></tr><tr><td>Gov</td><td class="num minus">−${peso(x.gov)}</td></tr>',
+   '<tr><td>Deductions</td><td class="num${+x.deduct ? \' minus\' : \'\'}">${+x.deduct ? \'−\' : \'\'}${peso(x.deduct)}</td></tr><tr><td>Gov</td><td class="num${+x.gov ? \' minus\' : \'\'}">${+x.gov ? \'−\' : \'\'}${peso(x.gov)}</td></tr>']
+]);

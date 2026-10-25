@@ -6,8 +6,8 @@
 // Fix (display only): inside Schedule class rows these notes and chips may wrap and never exceed the row width; long teacher /
 // student lines keep their ellipsis. Wording and data unchanged.
 require('../tools/lib.js')(process.argv[2], [
-  ["#v-team .tl11 .tr{max-width:none;margin:0;width:auto;justify-self:stretch}   /* 911: undo the Trainings .tr rule */",
-   "#v-team .tl11 .tr{max-width:none;margin:0;width:auto;justify-self:stretch}   /* 911: undo the Trainings .tr rule */\n" +
+  ["#v-team .tl11 .sx>div{min-width:var(--mw,0)}",
+   "#v-team .tl11 .sx>div{min-width:var(--mw,0)}\n" +
    "#v-schedule .cls .grow{min-width:0}\n" +
    "#v-schedule .cls .grow .vn-row,#v-schedule .cls .grow .chip,#v-schedule .cls .grow .cxbtn{white-space:normal;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}   /* 913: no sideways scroll on phones */\n" +
    "#v-schedule .cls .grow .chip{border-radius:10px}"],
