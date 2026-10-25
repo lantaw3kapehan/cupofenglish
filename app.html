@@ -6163,7 +6163,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1146;
+const COE_V = 1147;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24421,7 +24421,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   function miss(c){ const o = {}; if(c.cancelled) return o; if(started(c) && !c.ci) o.ci = 1;
     if(ended(c)){ if(c.code && !c.vid && now() - Date.parse(c.end) > 15 * 6e4) o.vid = 1; if(!isToday()){ if(need(c) && !c.hw) o.hw = 1; if(need(c) && !c.note) o.note = 1; } } return o; }
   const lateT = t => t.timeIn && /late/i.test(t.timeIn.status || '');
-  function counts(T){ const a = { late: 0, ci: 0, vid: 0, hw: 0, note: 0 }; T.forEach(t => { if(lateT(t)) a.late++; t.classes.forEach(c => { const m = miss(c); ['ci', 'vid', 'hw', 'note'].forEach(k => { if(m[k]) a[k]++; }); }); }); return a; }
+  function counts(T){ const a = { late: 0, ci: 0, vid: 0, hw: 0, note: 0 }; T.forEach(t => { if(lateT(t)) a.late++; t.classes.forEach(c => { const m = miss(c); ['ci', 'vid', 'hw', 'note'].forEach(k => { if(m[k] && !((window.moTagged ? moTagged() : {})[c.id + '|' + (k === 'vid' ? 'video' : k === 'ci' ? 'late' : k)])) a[k]++; }); }); }); return a; }
   const ATT = [['late', 'Late time-in'], ['ci', 'No “I’m in”'], ['vid', 'No video'], ['hw', 'No homework'], ['note', 'No class note']];
   function cell(n, d, cls, soft){ return d ? '<span class="' + (n < d ? (soft ? 'mu' : 'bad') : 'ok') + ' ' + (cls || '') + '"' + (soft && n < d ? ' title="due by 23:59"' : '') + '>' + n + ' / ' + d + '</span>' : '<span class="mu ' + (cls || '') + '">—</span>'; }
   function board(T){
@@ -24456,7 +24456,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       '<div class="mo-who"><button class="' + (M.who ? '' : 'on') + '" onclick="moWho(\'\')">All teachers</button>' + (d.teachers || []).map(t => '<button class="' + (M.who === t.name ? 'on' : '') + '" onclick="moWho(\'' + E(t.name) + '\')">' + E(t.name) + '</button>').join('') + '</div>' +
       (showBoard ? '<div class="mo-att">' + (ATT.some(([k]) => A[k]) ? ATT.filter(([k]) => A[k]).map(([k, l]) => '<button class="' + (M.att === k ? 'on' : '') + '" onclick="moAtt(\'' + k + '\')">' + l + ' · ' + A[k] + '</button>').join('') : '<button class="ok">✓ Nothing missing so far</button>') + (M.att ? '<button class="ok" style="cursor:pointer" onclick="moAtt(\'\')">Show all</button>' : '') + '</div>' + board(T) : '') +
       '<div class="mo-f"><h2>' + (M.tab === 'All' ? 'Everything done in the app' : E(M.tab)) + (M.who ? ' · ' + E(M.who) : '') + '</h2>' + feed() + '</div>'; }
-  window.moLoad = () => load(true);
+  window.moLoad = () => load(true); window.__monData = () => M.data;
   window.moTab = t => { if(t === 'Time-ins'){ M.tab = 'Time-ins'; keepUi(); go('team'); return; } M.tab = t; keepUi(); if(VIEW !== 'monitor') go('monitor'); else paint(); };
   window.moWho = w => { M.who = w; keepUi(); paint(); };
   window.moAtt = k => { M.att = M.att === k ? '' : k; if(M.att){ (M.data.teachers || []).forEach(t => M.open[t.name] = 1); } paint(); };
@@ -24538,6 +24538,46 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const start = () => { if(!isM()){ setTimeout(start, 1500); return; } try{ shape(); _bn(); }catch(e){} Object.keys(GOF).forEach(v => { const el = $('v-' + v); if(el) mo.observe(el, { childList: true }); });
     if(GOF[VIEW]){ strip(VIEW); hl(VIEW); } setTimeout(() => { Object.keys(GOF).forEach(v => { const el = $('v-' + v); if(el && !el._g812){ el._g812 = 1; mo.observe(el, { childList: true }); } }); }, 8000); };
   setTimeout(start, 1500);
+})();
+</script>
+<script>
+/* 815 · Monitor: next-day review and penalties */
+(function(){
+  if(window.__815 || !window.moLoad) return; window.__815 = 1;
+  document.head.insertAdjacentHTML('beforeend', '<style>.mo-dec{border:0;border-radius:999px;padding:4px 10px;margin-left:6px;font:inherit;font-size:12px;font-weight:700;background:#2B2253;color:#fff;cursor:pointer}.mo-done{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;color:#55526E;background:#F1F0F6;border-radius:999px;padding:3px 9px}.mo-yd{border:0;border-radius:12px;padding:9px 14px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;background:#FFF4E5;color:#9A5B10}</style>');
+  const K = 'coe.motag', get = () => { try{ return JSON.parse(localStorage.getItem(K) || '{}') || {}; }catch(e){ return {}; } };
+  const put = (k, v) => { try{ const o = get(); o[k] = v; Object.keys(o).forEach(x => { if(Date.now() - (o[x].at || 0) > 10 * 864e5) delete o[x]; }); localStorage.setItem(K, JSON.stringify(o)); }catch(e){} };
+  window.moTagged = get;
+  function find(id){ const d = window.__monData && window.__monData(); if(!d) return null;
+    for(const t of d.teachers || []) for(const c of t.classes || []) if(c.id === id) return { t, c, d }; return null; }
+  window.moDecide = function(id, kind){ const x = find(id); if(!x) return; const { t, c } = x, k = id + '|' + kind;
+    const lbl = kind === 'video' ? 'Late class video' : 'Late to class (no “I’m in”)', amt = kind === 'video' ? 'Excused ₱100 · Unexcused ₱200' : 'amount by rank (POLICY)';
+    openSheet('<h1>' + esc(lbl) + '</h1><div class="mute small">' + esc(t.name) + ' · ' + esc(c.student || c.code) + ' · ' + esc(c.book || '') + ' · ' + esc(new Date(c.start).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + '</div>' +
+      '<div class="small" style="margin:12px 0 6px">' + amt + ' · saved as a case · ' + esc(t.name) + ' sees it on Today and Pay</div>' +
+      '<label class="small mute">Note for the teacher (optional)</label><input id="moDN" class="in-t" placeholder="e.g. no video by 23:59; uploaded next morning">' +
+      '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">' + ['Unexcused', 'Excused', 'Waive'].map(cd => '<button class="btn ' + (cd === 'Unexcused' ? 'teal' : 'ghost') + '" onclick="moDecideGo(\'' + esc(id) + '\',\'' + kind + '\',\'' + cd + '\',this)">' + cd + '</button>').join('') + '</div>'); };
+  window.moDecideGo = async function(id, kind, cond, b){ const x = find(id); if(!x) return; const { t, c } = x; b.disabled = true; b.textContent = 'Saving…';
+    try{ const r = await api('mgmtTagClass', TOKEN, { id: c.id, start: c.start, end: c.end, teacher: t.name, code: c.code, student: c.student }, kind, cond, ($('moDN') || {}).value || '');
+      if(!r || !r.ok) throw r; put(id + '|' + kind, { cond, note: r.note || '', at: Date.now() }); closeSheet(); toast('✓ ' + (r.note || cond) + (r.caseId ? ' · ' + r.caseId : '')); dec(); }
+    catch(e){ b.disabled = false; b.textContent = cond; toast((e && e.msg) || 'Not saved · try again'); } };
+  window.moRemind = function(name){ try{ go('msgs'); setTimeout(() => toast('Write to ' + name + ' about yesterday’s homework / class notes'), 400); }catch(e){} };
+  // add the buttons to the class rows of a past day
+  function dec(){ const v = $('v-monitor'); if(!v || !window.__monData) return; const d = window.__monData(); if(!d || d.day === d.today) return yd(v, d); const T = get();
+    v.querySelectorAll('.mo-c').forEach(row => { if(row.dataset.d815) return; row.dataset.d815 = '1'; const id = ((row.getAttribute('onclick') || '').match(/moClass\('([^']+)'\)/) || [])[1]; if(!id) return; const x = find(id); if(!x) return;
+      const no = [...row.querySelectorAll('.mo-k.no')].map(k => k.textContent.trim()), add = [];
+      if(no.some(l => /^Video/.test(l))) add.push(T[id + '|video'] ? '<span class="mo-done">Video · ' + esc(T[id + '|video'].cond) + '</span>' : '<button class="mo-dec" onclick="event.stopPropagation();moDecide(\'' + esc(id) + '\',\'video\')">Decide video</button>');
+      if(no.some(l => /I’m in/.test(l))) add.push(T[id + '|late'] ? '<span class="mo-done">Late · ' + esc(T[id + '|late'].cond) + '</span>' : '<button class="mo-dec" onclick="event.stopPropagation();moDecide(\'' + esc(id) + '\',\'late\')">Decide late</button>');
+      if(no.some(l => /^(HW|Note)/.test(l))) add.push('<button class="mo-dec" style="background:#fff;color:#2B2253;border:1px solid #E3E1EC" onclick="event.stopPropagation();moRemind(\'' + esc(x.t.name) + '\')">Remind</button>');
+      if(add.length) row.insertAdjacentHTML('beforeend', add.join('')); }); }
+  // today, before noon: yesterday's open items in one tap
+  let YD = null, YDAT = 0;
+  async function ydLoad(){ if(Date.now() - YDAT < 10 * 6e4) return; YDAT = Date.now(); try{ const day = new Date(Date.now() + 8 * 3600e3 - 864e5).toISOString().slice(0, 10);
+      const r = await fetch(FAST_URL + '-monitor', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, day }) }).then(x => x.json()); if(r && r.ok) YD = r; }catch(e){} }
+  function ydCount(r){ const T = get(); let n = 0; (r.teachers || []).forEach(t => t.classes.forEach(c => { if(c.cancelled) return; const nd = c.code && c.type !== 'Trial';
+      if(!c.ci && !T[c.id + '|late']) n++; if(c.code && !c.vid && !T[c.id + '|video']) n++; if(nd && !c.hw) n++; if(nd && !c.note) n++; })); return n; }
+  function yd(v, d){ if(!d || d.day !== d.today || new Date().getHours() >= 12) return; ydLoad().then(() => { if(!YD) return; const n = ydCount(YD), att = v.querySelector('.mo-att'); if(!att || !n || v.querySelector('.mo-yd')) return;
+      att.insertAdjacentHTML('afterbegin', '<button class="mo-yd" onclick="moDay(\'' + YD.day + '\')">Yesterday · ' + n + ' to review ›</button>'); }); }
+  new MutationObserver(() => { try{ dec(); }catch(e){} }).observe($('v-monitor') || document.body, { childList: true, subtree: true });
 })();
 </script>
 </body>
