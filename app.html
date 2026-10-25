@@ -1252,7 +1252,7 @@ async function sbRead(fn, args, real, ui){
   if(!ui){ const d = await sbDoc(key); if(d && (age(d) < mx || (d.live && age(d) < 90 * 6e4))) return d.data; return real(); }
   if(fn === 'getBootstrap' && ui && typeof D !== 'undefined' && D && D.me && !D.mgr && SB_LASTW && Date.now() - SB_LASTW < 120000){   /* 787: just saved → keep the screen, check behind */
     const rp = real(); rp.then(x => { if(x && x.me && JSON.stringify(x) !== JSON.stringify(D)){ SB_FRESH[key] = { data: x, t: Date.now() }; sbRedraw(fn, args, x); } }).catch(() => {}); return D; }
-  if(SB_LIVE.test(fn)){ const d = await sbDoc(key); if(d && ((d.live && age(d) < 90 * 6e4) || age(d) < 180000)) return d.data;   /* 14 Oct night: worked out by the database itself */
+  if(SB_LIVE.test(fn)){ const d = await sbDoc(key); if(d && ((d.live && age(d) < 90 * 6e4) || age(d) < Math.max(180000, SB_OKAGE[fn] || 0))) return d.data;   /* 792 */   /* 14 Oct night: worked out by the database itself */
     const rp = real(); if(!d || age0(d) > (SB_UIAGE[fn] || 3 * 864e5)) return rp;
     rp.then(x => { if(JSON.stringify(x) !== JSON.stringify(d.data)){ SB_FRESH[key] = { data: x, t: Date.now() }; sbRedraw(fn, args, x); } }).catch(() => {}); return d.data; }
   let d0; if(!(fn in SB_BGAGE) || SB_BGAGE[fn] > 0){ d0 = await sbDoc(key); if(d0 && age(d0) < Math.max(180000, SB_OKAGE[fn] || 0)) return d0.data; }   /* 14 Oct night: a copy under 3 min is fresh enough */
@@ -6162,7 +6162,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1122;
+const COE_V = 1123;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24016,6 +24016,15 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   };
   for(const k in base) try{ w[k] = base[k]; }catch(e){}
   window.api = w;
+})();
+</script>
+<script>
+/* 792 · fewer Google re-checks of database screens */
+(function(){ const M = 6e4;
+  try{ Object.assign(SB_BGAGE, { mgmtSchedule: 10 * M, mgmtTeacher: 15 * M, tStudent: 60 * M, mgmtStudent: 60 * M, tMyVisits: 30 * M, tMyComments: 30 * M, mgmtLeave: 15 * M, tLeave: 15 * M,
+      mgmtMonDay: 15 * M, mgmtAvailAll: 30 * M, tReminders: 10 * M, tFbStatus: 15 * M, mgmtActions: 15 * M, mgmtTeacherWeek: 15 * M, tSchedule: 15 * M, tGoals: 30 * M, tHwHist: 30 * M });
+    Object.assign(SB_OKAGE, { mgmtSchedule: 5 * M, mgmtTeacher: 10 * M, tStudent: 20 * M, mgmtStudent: 20 * M, mgmtLeave: 10 * M, tLeave: 10 * M, mgmtMonDay: 10 * M, tReminders: 5 * M, mgmtActions: 10 * M,
+      mgmtTeacherWeek: 10 * M, tSchedule: 10 * M, tMyVisits: 15 * M, tGoals: 15 * M, tHwHist: 15 * M }); }catch(e){}
 })();
 </script>
 </body>
