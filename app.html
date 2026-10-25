@@ -1655,10 +1655,10 @@ if(TLV && TLV.rows) TLV.rows.filter(r => r.status === 'Pending' && r.ask).forEac
 { const st = pckState(PCK); if(PCK && PCK.me && !PCK.me.paid && st !== 'Verified'){ const tx = st === 'Answered' ? 'Management answered your pay question · check again' : st === 'Disputed' ? 'Your pay question is with management' : st === 'Changed' ? 'Your ' + PCK.month + ' pay changed · check it again' : 'Check your ' + PCK.month + ' pay · ' + peso(PCK.me.net);
 todo.unshift(`<div class="li" onclick="go('pay')"><span class="chip ${PCK.nudge || st === 'Answered' ? 'red' : 'amber'}">Pay</span><div class="grow ell"><b>${esc(tx)}</b></div><span class="mute">›</span></div>`);
 const key = 'pv:' + PCK.month + ':' + (st === 'Answered' ? 'a' + PCK.check.replyAt : PCK.nudge ? 'n' + PCK.nudge.at : ''); if((st === 'Answered' || PCK.nudge) && !remTold(key)) notify('CupOfEnglish · pay', tx, 'coe-pv'); } }
-const fxLate = i => /^Late|late|after 23|after/i.test(String(i)), fxKey = x => [x.d, x.at, x.code || x.student].join('|');
+const fxLate = i => /^Late|late|after 23|after/i.test(String(i)), fxKey = x => [x.d, x.at, x.code || x.student].join('|') + '|' + (x.items || []).slice().sort().join(',');
 let fxSeen = {}; try{ fxSeen = JSON.parse(store('get', 'coe.fixSeen') || '{}') || {}; }catch(e){}
-window.fxSeenAll = () => { try{ const S = {}; Object.keys(fxSeen).forEach(k => { if(Date.now() - fxSeen[k] < 10 * 864e5) S[k] = fxSeen[k]; }); (D.fix || []).forEach(x => { if((x.items || []).every(fxLate)) S[fxKey(x)] = Date.now(); }); store('set', 'coe.fixSeen', JSON.stringify(S)); }catch(e){} };
-const fx = (D.fix || []).filter(x => !((x.items || []).length && (x.items || []).every(fxLate) && fxSeen[fxKey(x)]));
+window.fxSeenAll = () => { try{ const S = {}; Object.keys(fxSeen).forEach(k => { if(Date.now() - fxSeen[k] < 10 * 864e5) S[k] = fxSeen[k]; }); (D.fix || []).forEach(x => { S[fxKey(x)] = Date.now(); }); fxSeen = S; store('set', 'coe.fixSeen', JSON.stringify(S)); }catch(e){} };
+const fx = (D.fix || []).filter(x => !fxSeen[fxKey(x)]);
 if(fx.length) todo.push(`<div class="li" onclick="fxSeenAll();go('growth')"><span class="chip coral">To fix</span><div class="grow ell">${fx.length} class${fx.length>1?'es':''} this week · ${esc([...new Set(fx.flatMap(x=>x.items))].slice(0,3).join(' · '))}</div><span class="mute">›</span></div>`);
 if(todo.length) h += `<h2>To do <span class="c">${todo.length}</span></h2><div class="card" style="padding:2px 14px">${todo.join('')}</div>`;
 else h += `<h2>To do</h2><div class="card allok"><span class="okdot">✓</span><div class="grow"><b>All caught up</b><div class="small mute">Nothing waiting for you. New tasks show here.</div></div></div>`;
@@ -6163,7 +6163,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1127;
+const COE_V = 1128;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
