@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-monitor (25 Oct 2026) · management "Monitor": every teacher's day on one screen, from the database.
+// CupOfEnglish · coe-monitor (25 Oct 2026, v3: the money tab is called "Finance") · management "Monitor": every teacher's day on one screen, from the database.
 // POST { token, day?: "yyyy-MM-dd" (Manila, default today) } → {
 //   ok, day, now,
 //   teachers: [{ name, timeIn: { time, status, mins, out, hours } | null,
@@ -23,7 +23,7 @@ const TAB: Record<string, [string, string]> = {
   tRemindLog: ["Classes", "Reminder"], mgmtRemindLog: ["Classes", "Reminder"],
   tLeaveRequest: ["Leave & cases", "Leave"], tLeaveCancel: ["Leave & cases", "Leave"], tLeaveReply: ["Leave & cases", "Leave"], mgmtLeaveSave: ["Leave & cases", "Leave"], setCaseDone: ["Leave & cases", "Case"],
   mgmtRenewal: ["Students", "Renewal"], mgmtRenewPaid: ["Students", "Renewed · paid"], mgmtEnrolPaid: ["Students", "Enrolled · paid"], saveStudent: ["Students", "Student record"], mgmtPkgFix: ["Students", "Package fix"],
-  addSale: ["Money", "Sale"], addExpense: ["Money", "Expense"], tPayVerify: ["Money", "Pay check"],
+  addSale: ["Finance", "Sale"], addExpense: ["Finance", "Expense"], tPayVerify: ["Finance", "Pay check"],
   tMsgSend: ["Messages", "Message"], mgmtMsgSend: ["Messages", "Message"], mgmtMsgReply: ["Messages", "Message"] };
 const SKIP = /^(tMsgSeen|mgmtMsgSeen|tVisitAck|tMsgAck)$/;
 Deno.serve(async (req: Request) => {
