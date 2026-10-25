@@ -6188,7 +6188,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1243;
+const COE_V = 1244;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -28148,6 +28148,38 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
     toast('Returned to Teacher ' + x.teacher + ' · it shows on their Today');
     watch(r.queued, x, prev);
   };
+})();
+</script>
+<style id="d1094">#rpAct .pic1090{display:none!important}</style>
+<script>
+/* 1094 · parent report "Copy picture" = the phone picture */
+(function(){
+  if(window.__1094) return; window.__1094 = 1;
+  var ok = function(){ return typeof RPD !== 'undefined' && RPD && RPD.fb && typeof window.rpPicHtml === 'function'; };
+  async function png(){ var H = await h2c(); try{ await document.fonts.ready; }catch(e){}
+    var box = document.createElement('div'); box.style.cssText = 'position:fixed;left:-20000px;top:0;z-index:-1'; box.innerHTML = rpPicHtml(); document.body.appendChild(box);
+    try{ var im = box.querySelectorAll('img'); await Promise.all([].map.call(im, function(x){ return x.complete ? 0 : new Promise(function(z){ x.onload = x.onerror = z; }); }));
+      var cv = await H(box.firstChild, { scale: 1, backgroundColor: '#ffffff', useCORS: true, logging: false });
+      return await new Promise(function(z){ cv.toBlob(z, 'image/png'); }); } finally{ box.remove(); } }
+  var nm = function(){ var x = RPD.report; return 'CupOfEnglish-' + String(x.student || 'report').replace(/[^\w一-鿿-]+/g, '') + '-' + (window.fbClsKey ? fbClsKey(x.month) : x.month) + '.png'; };
+  window.rpPic94 = async function(save, btn){
+    if(!ok()) return;
+    var b = btn, t = b && b.textContent; if(b){ b.disabled = true; b.textContent = 'Making picture…'; }
+    try{
+      if(!save && window.ClipboardItem && navigator.clipboard){ try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': png() })]); toast('Picture copied · paste it in the parent’s WeChat chat'); return; }catch(x){} }
+      var blob = await png(), f = new File([blob], nm(), { type: 'image/png' });
+      if(navigator.canShare && navigator.canShare({ files: [f] })){ try{ await navigator.share({ files: [f] }); return; }catch(x){ if(x && x.name === 'AbortError') return; } }
+      var u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); }, 4000); toast('Picture saved');
+    }catch(e){ toast('Could not make the picture. Use the PDF instead.'); }
+    finally{ if(b){ b.disabled = false; b.textContent = t; } } };
+  function swap(){ try{ var el = document.getElementById('rpAct'); if(!el || !ok()) return;
+    el.querySelectorAll('button').forEach(function(x){ var o = x.getAttribute('onclick') || '';
+      if(/^pdfPic\(RPB,0/.test(o)){ x.setAttribute('onclick', 'rpPic94(0,this)'); x.textContent = 'Copy picture'; }
+      else if(/^pdfPic\(RPB,1/.test(o)){ x.setAttribute('onclick', 'rpPic94(1,this)'); } });
+    if(!el.querySelector('[onclick^="rpPic94"]') && !el.querySelector('#rpNote')) el.insertAdjacentHTML('afterbegin', '<div class="row" style="gap:8px;width:100%"><button class="btn teal grow" onclick="rpPic94(0,this)">Copy picture</button><button class="btn ghost grow" onclick="rpPic94(1,this)">' + (navigator.share ? 'Share / save picture' : 'Save picture') + '</button></div>');
+  }catch(e){} }
+  var _b = window.rpBtns;
+  if(typeof _b === 'function') window.rpBtns = function(){ var r = _b.apply(this, arguments); swap(); return r; };
 })();
 </script>
 </body>
