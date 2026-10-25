@@ -61,6 +61,7 @@ s = s.slice(0, i) + String.raw`<script>
     '#sheetBody .stu-tabs button.on{background:var(--ui-ink);border-color:var(--ui-ink);color:#fff}',
     '#sheet:has(.shero) #sheetBody section.sec{border-radius:var(--ui-r)!important;border-color:var(--ui-line)!important;box-shadow:none!important}',
     '#sheet:has(.shero) #sheetBody section.sec h2{font-family:var(--ui-font);font-size:var(--fs-h2,15px);font-weight:700;color:var(--ui-ink)}',
+    '#sheet:has(.shero) #sheetBody section.sec h2,' + P + ' section.sec > .row{flex-wrap:wrap;row-gap:8px}',
     '#sheet:has(.shero) #sheetBody .fb.card{border-radius:var(--ui-r);box-shadow:none;border:1px solid var(--ui-line)}',
     '#sheet:has(.shero) #sheetBody .btn{box-shadow:none}',
     /* dialogs opened from these screens */

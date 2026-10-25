@@ -75,6 +75,8 @@ s = s.slice(0, i) + String.raw`<script>
     'nav button{min-height:52px;font-size:min(var(--fs-label),14px)}:where(' + ROOTS + ') :is(input:not([type=checkbox]):not([type=radio]),select)' + NOT + '{min-height:var(--tap);font-size:max(var(--fs-text),1rem)}',
     /* bigger chart value labels: keep the last month\'s label inside the card */
     '.bz2-c:last-child b{left:auto;right:0;text-align:right}',
+    /* To do action buttons may wrap under each other at large text sizes instead of running off the screen */
+    '.td2-a{flex-wrap:wrap}',
     /* the phone header is tight: its status chips stay at the small step so the name still shows */
     ':where(' + ROOTS + ') .hd button:not(.iconbtn)' + NOT + '{font-size:min(var(--fs-small),15px)}',
     /* 15px table text on a 390px phone: slightly narrower cell padding so Finance tables still fit */
