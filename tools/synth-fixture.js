@@ -59,7 +59,9 @@ const invMap = n => String(+n + INV_OFF);
 const STOP = new Set(('CupOfEnglish Cupofenglish COE Operations Operation Management Manager President Teacher Teachers Admin App Health health Unmatched Trial ' +
   'Mom Dad Mother Father Ms Mr Mrs Dr Tr Sir Student Students Parent Partner Sample City Province Office System Auto Via Waived None Other Others NA ' +
   'Newly Hired Starting Qualified Junior Senior Master Coordinator Sun Mon Tue Wed Thu Fri Sat Jan Feb Mar Apr Jun Jul Aug Sep Sept Oct Nov Dec ' +
-  'January February March June July August September October November December Total Still Paid Checks Regular New Long Term TRUE FALSE Pending').split(/\s+/));
+  'January February March June July August September October November December Total Still Paid Checks Regular New Long Term TRUE FALSE Pending ' +
+  'Ab Air Aix All At Bfsu Brother Sister Class Cousin Daughter Son Daily Drive Early Jinan Linked LongVowels ShortVowels Mb Kb Od Quant Remote Screenshot Uploaded Video Web Website Wonders ' +
+  'You He She Well Book Books Online Offline Group Family Phone Laptop Desktop Windows Mac Android Chrome Edge Safari Unknown Yes No Not').split(/\s+/));
 const NAMEKEYS = new Set(['student', 'teacher', 'name', 'who', 'by', 'from', 'to', 'employee', 'sharedName', 'sent_by', 'decidedBy', 'by_name', 'by_who', 'me', 'en', 'cn', 'trialTeacher', 'reply_by']);
 const NOTNAME_PATH = /ranks\[\]\.name|next\.name|sales\[\]\.name|vidflags.*list\[\]\.name|books\.list|parts\[\]|trainings\[\]|contract:list\.docs|proof\[\]\.name|wallets?\[\]|lists\.(subject|type|tier|source|status|condition)|setupUrl/;
 const NAMELISTKEYS = new Set(['teachers', 'mgmtAll', 'office', 'employee', 'teacher']);
@@ -67,7 +69,9 @@ const nameVals = new Set(), cjkVals = new Set();
 function addName(v){ v = String(v || '').trim(); if(!v || /^ST-|^COE-|@|^https?:/.test(v) || v.length > 60) return;
   for(const piece of v.split(/[\s·,()\/+&]+/)){ const w = piece.replace(/['’]s$/, '');
     if(/^[一-鿿]+\d*$/.test(w)) { cjkVals.add(w); continue; }
-    if(/^[A-Za-z][A-Za-z'’-]*$/.test(w) && !STOP.has(w) && !/^(the|and|of|app|via|tr|to|for)$/i.test(w) && w.length >= 2 && !/-/.test(w)) nameVals.add(w[0].toUpperCase() + w.slice(1).toLowerCase() === w || w === w.toUpperCase() || w === w.toLowerCase() ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w); } }
+    if(!/^[A-Za-z][A-Za-z'’]*$/.test(w) || w.length < 2) continue;
+    const n = w === w.toUpperCase() || w === w.toLowerCase() ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w;
+    if(!STOP.has(n) && !STOP.has(w)) nameVals.add(n); } }
 function collect(v, path, key){
   if(Array.isArray(v)){ if(NAMELISTKEYS.has(key) && !NOTNAME_PATH.test(path)) v.forEach(x => typeof x === 'string' && addName(x)); v.forEach(x => collect(x, path + '[]', key)); return; }
   if(v && typeof v === 'object'){ for(const k in v) collect(v[k], path + '.' + k, k); return; }
@@ -108,7 +112,7 @@ const CJM = {}; { const usedN = new Set(); [...cjkVals].sort().forEach(c => { le
 const nameList = Object.keys(NM).sort((a, b) => b.length - a.length);
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const titleRe = new RegExp('(?<![A-Za-z\\u00C0-\\u024F])(' + nameList.filter(n => !MONTHLIKE.has(n)).map(esc).join('|') + ')(?![A-Za-z\\u00C0-\\u024F])', 'g');
-const monthNameRe = new RegExp('(?<![A-Za-z\\d][ -]?)(' + nameList.filter(n => MONTHLIKE.has(n)).map(esc).join('|') + ')(?![A-Za-z])(?!\\s*(\\d|//))', 'g');
+const monthNameRe = new RegExp('(?<![A-Za-z\\d][ -]?)(' + nameList.filter(n => MONTHLIKE.has(n)).map(esc).join('|') + ')(?![A-Za-z])(?!\\s*(\\d|//))(?!\\s+[a-z])', 'g');
 const lowerRe = new RegExp('(?<![A-Za-z])(' + nameList.filter(n => n.length >= 4 && !MONTHLIKE.has(n)).map(n => esc(n.toLowerCase())).join('|') + ')(?![A-Za-z])', 'g');
 const upperRe = new RegExp('(?<![A-Za-z])(' + nameList.filter(n => n.length >= 3).map(n => esc(n.toUpperCase())).join('|') + ')(?![A-Za-z])', 'g');
 const cjkRe = new RegExp(Object.keys(CJM).sort((a, b) => b.length - a.length).map(esc).join('|'), 'g');
@@ -134,11 +138,11 @@ const personOf = s => { const m = s.match(/(?:Dr|Ms|Mr|Mrs)\.\s*([A-Za-z]+)/); i
 const pCount = {}; [...partnerLabels].forEach(l => { const p = personOf(l); pCount[p] = (pCount[p] || 0) + 1; });
 const pLetter = {}; Object.keys(pCount).sort((a, b) => pCount[b] - pCount[a] || (a < b ? -1 : 1)).forEach((p, i) => { pLetter[p] = 'Partner ' + String.fromCharCode(65 + i); });
 const PARTNER = {}; [...partnerLabels].forEach(l => { const P = pLetter[personOf(l)]; const pre = (l.match(/^(IELTS|Adults?|Adult English)\s*[-–]\s*/) || [])[1]; const post = /\bAdult$/.test(l) && !pre ? ' Adult' : '';
-  PARTNER[l] = (pre ? pre + ' - ' : '') + P + post; });
+  PARTNER[l] = (/^Partner · /.test(l) ? 'Partner · ' : '') + (pre ? pre + ' - ' : '') + P + post; });
 // bare "Dr. Spring" / "Ms. Spring" mentions
 const bareTitles = {}; Object.keys(pLetter).forEach(p => { if(/^[A-Za-z]+$/.test(p)) bareTitles[p] = pLetter[p]; });
 const partnerRe = new RegExp(Object.keys(PARTNER).sort((a, b) => b.length - a.length).map(esc).join('|') || '(?!)', 'g');
-const bareRe = new RegExp('(?:Partner · )?(?:Dr|Ms|Mr|Mrs)\\.\\s*(' + (Object.keys(bareTitles).map(esc).join('|') || '(?!)') + ')\\b', 'g');
+const bareRe = new RegExp('(?:Dr|Ms|Mr|Mrs)\\.\\s*(' + (Object.keys(bareTitles).map(esc).join('|') || '(?!)') + ')\\b', 'g');
 
 /* ---------- cities / expense descriptions ---------- */
 const CITIES = ['Harbor City', 'Riverside', 'Lakeview', 'Hillcrest', 'Northgate', 'Eastport', 'Westfield', 'Sunvale', 'Greenhaven', 'Stonebridge', 'Maplewood', 'Fairview'];
@@ -150,20 +154,21 @@ const EXP = { 'Rent': ['Office rent', 'Monthly rent'], 'Utilities': ['Electricit
   'Bootcamp': ['Workshop materials'], 'Payroll & Professional Fees': ['Professional fee'], 'Mandatory Benefit': ['Benefit contribution'], 'Marketing & Branding': ['Social media ads', 'Printed flyers'],
   'Government Contributions': ['Government contribution'] };
 const expMap = {}; parsed.filter(p => EP(p.r.url) === 'coe-expenses').forEach(p => (p.t.rows || []).forEach(x => { if(x.t && !expMap[x.t]) expMap[x.t] = pick(EXP[x.c] || ['General expense'], 'exp|' + x.t); }));
-const expRe = new RegExp(Object.keys(expMap).filter(k => k.length >= 4).sort((a, b) => b.length - a.length).map(esc).join('|') || '(?!)', 'g');
 
 /* ---------- money ---------- */
 // families: pay (salaries, rates, payroll sheets), fin (sales, expenses, wallets, MONEY sheet), act (penalties / incentives), misc
 const FACT = {}; const factor = fam => FACT[fam] || (FACT[fam] = 0.6 + 0.8 * U('fam|' + fam));
-function money(v, fam){ if(!v) return v; const neg = v < 0, a = Math.abs(v); const noise = 1 + (U('nz|' + fam + '|' + a) - 0.5) * 0.06; let x = a * factor(fam) * noise;
+function money(v, fam, step){ if(!v) return v; const neg = v < 0, a = Math.abs(v); const noise = 1 + (U('nz|' + fam + '|' + a) - 0.5) * 0.06; let x = a * factor(fam) * noise;
   const dec = Math.round(a * 100) % 100 !== 0;
-  if(dec) x = Math.round(x * 100) / 100; else if(a % 50 === 0) x = Math.max(50, Math.round(x / 50) * 50); else if(a % 5 === 0) x = Math.max(5, Math.round(x / 5) * 5); else x = Math.max(1, Math.round(x));
+  if(step) x = Math.max(step, Math.round(x / step) * step);
+  else if(dec) x = Math.round(x * 100) / 100; else if(a >= 1000 && a % 50 === 0) x = Math.round(x / 50) * 50; else if(a % 10 === 0) x = Math.max(10, Math.round(x / 10) * 10); else if(a % 5 === 0) x = Math.max(5, Math.round(x / 5) * 5); else x = Math.max(1, Math.round(x));
   return neg ? -x : x; }
 const fmtMoney = (x, decs) => x.toLocaleString('en-US', { minimumFractionDigits: decs, maximumFractionDigits: decs });
 function moneyStr(s, fam, plainToo){
   s = s.replace(/([-−]?)([₱¥])(\s?)([-−]?)(\d{1,3}(?:,\d{3})+|\d+)(\.\d{1,2})?/g, (m, n1, sym, sp, n2, int, dec) => {
-    const v = +(int.replace(/,/g, '') + (dec || '')); const x = money(v, fam); const d = dec ? dec.length - 1 : 0; const str = int.includes(',') || x >= 1000 && int.includes(',') ? fmtMoney(x, d) : (d ? x.toFixed(d) : String(x));
-    return n1 + sym + sp + n2 + (int.includes(',') || (x >= 1000 && /,/.test(s)) ? fmtMoney(x, d) : str); });
+    const v = +(int.replace(/,/g, '') + (dec || '')); const x = money(v, fam); const d = dec ? dec.length - 1 : 0;
+    const comma = int.includes(',') || (v < 1000 && x >= 1000);
+    return n1 + sym + sp + n2 + (comma ? fmtMoney(x, d) : (d ? x.toFixed(d) : String(x))); });
   if(plainToo) s = s.replace(/(?<![\d.,:₱¥\/-])(-?)(\d{1,3}(?:,\d{3})+)(\.\d{2})?(?![\d,])/g, (m, n, int, dec) => { const v = +(int.replace(/,/g, '') + (dec || '')); return n + fmtMoney(money(v, fam), dec ? 2 : 0); });
   return s; }
 
@@ -182,7 +187,8 @@ function S(str, fam, opts){
   s = s.replace(/(\+63|\+86)[\s-]?\d[\d\s-]{7,}\d|(?<!\d)09\d{2}[\s-]?\d{3}[\s-]?\d{4}(?!\d)/g, () => put('+00 000 000 0000'));
   s = s.replace(/Misty T\. Dagyapen/g, () => put('The Management Team'));
   s = s.replace(partnerRe, m => put(PARTNER[m])).replace(bareRe, (m, p) => put(bareTitles[p]));
-  s = s.replace(expRe, m => put(expMap[m]));
+  if(opts.exp && expMap[s] && !EXP[s]) return expMap[s];
+  if(opts.exp){ const m = s.match(/^(.+) · ([A-Z][A-Za-z &\/]+)$/); if(m && expMap[m[1]] && EXP[m[2]]) return expMap[m[1]] + ' · ' + m[2]; }
   // codes and ids
   s = s.replace(/ST-\d{4}-\d{3}/g, c => put(STM[c] || c)).replace(/COE-\d{4}-\d{2}/g, c => put(COEM[c] || c)).replace(/OAR-\d{4}-\d{3}/g, c => put(OARM[c] || c));
   s = s.replace(/(?<![a-z0-9])[a-v0-9]{26}(?![a-z0-9])/g, id => put(EVM[id] || id));
@@ -257,8 +263,9 @@ const DEVICES = ['Laptop/Desktop · Windows · Chrome · 1366×768', 'Laptop/Des
 function W(v, path, key, ctx){
   if(Array.isArray(v)) return v.map((x, i) => W(x, path + '[]', key, ctx));
   if(v && typeof v === 'object'){ const o = {}; for(const k in v) o[S(k, null, { lower: true, upper: true })] = W(v[k], path + '.' + k, k, ctx); return o; }
-  if(typeof v === 'number'){ if(v >= 1.6e12 && v < 2.0e12) return v + SHIFT_MS; if(MONEYKEYS[key] && !/wallets?\[\]\.(sales_n)|parts|progress|records|trainings|ranks\[\]\.units|teachers\[\]\.(units|lifetime)/.test(path) && !/mgmtHealth/.test(ctx) && !(key === 'a' && !/coe-expenses/.test(ctx))) return money(v, famOf(ctx, key)); return v; }
+  if(typeof v === 'number'){ if(v >= 1.6e12 && v < 2.0e12) return v + SHIFT_MS; if(MONEYKEYS[key] && !/wallets?\[\]\.(sales_n)|parts|progress|records|trainings|ranks\[\]\.units|teachers\[\]\.(units|lifetime)/.test(path) && !/mgmtHealth/.test(ctx) && !(key === 'a' && !/coe-expenses/.test(ctx))) return money(v, famOf(ctx, key), key === 'rate' ? 5 : 0); return v; }
   if(typeof v !== 'string') return v;
+  if(/^BODY:/.test(ctx)) return S(v, null, { lower: true, upper: true });
   // field rules
   if(key === 'map') return v ? 'https://example.invalid/map' : v;
   if(key === 'proof' && /^https?:/.test(v)) return 'https://example.invalid/file';
@@ -287,15 +294,16 @@ function W(v, path, key, ctx){
   if(/notes\[\]\.next$/.test(path)) return sample(v, 'en');
   if(/cn\.\w+$/.test(path)) return sample(v, 'cn');
   if(/thread\[\]$/.test(path)) { const m = v.match(/^(.*?: )(.*)$/s); return m ? S(m[1], null) + sample(m[2], 'msg') : sample(v, 'msg'); }
-  if(key === 'note' && /records\[\]$|vidflags|wallet/.test(path) && /Starting balance/.test(v)) return S(v, 'fin');
+  if(key === 'note' && /coe-wallet/.test(ctx) && /^Starting balance/.test(v)) return S(v, 'fin');
   if(FREE[key] && !(key === 'dev' && !/latest|prev/.test(path)) && !(key === 'level' && !/mgmtEnqList/.test(ctx)) && !(key === 'reply' && v == null)) return freeText(v, FREE[key], famOf(ctx, key));
   if(key === 'name' && /mgmtEnqList/.test(ctx) && /['’]s (Mom|Dad)/.test(v)) return S(v, null);
   if((key === 'src' || key === 's' || key === 'source' || key === 'partner') && v) return S(v, null);
   return S(v, famOf(ctx, key), { lower: true, upper: true });
 }
 // birthdates: not shifted but replaced by a random date (minors) — keeps the format
-function randBirth(v){ if(!v) return v; const R = rng('bd|' + v); let y, mo, d; let m;
-  if((m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/))){ y = +m[1]; } else if((m = v.match(/^(\d{1,2})-(\w{3})-(\d{4})$/))){ y = +m[3]; } else return v;
+function randBirth(v){ if(!v) return v; let y, mo, d; let m, iso;
+  if((m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/))){ y = +m[1]; iso = v; } else if((m = v.match(/^(\d{1,2})-(\w{3})-(\d{4})$/))){ y = +m[3]; iso = y + '-' + pad(mIdx(m[2]) + 1, 2) + '-' + pad(+m[1], 2); } else return v;
+  const R = rng('bd|' + iso);
   y = y + YEARS + Math.floor(R() * 3) - 1; mo = 1 + Math.floor(R() * 12); d = 1 + Math.floor(R() * 28);
   return /^\d{4}-/.test(v) ? y + '-' + pad(mo, 2) + '-' + pad(d, 2) : d + '-' + MON[mo - 1] + '-' + y; }
 
@@ -304,18 +312,22 @@ function sheetRows(rows, fam, ctx, colRules){ return rows.map(r => Array.isArray
   if(colRules && colRules[i]) return colRules[i](c);
   if(typeof c === 'number') return c >= 1.6e12 && c < 2e12 ? c + SHIFT_MS : c;
   if(Array.isArray(c)) return c;
-  return S(c, fam, { plainMoney: fam === 'pay' || fam === 'fin', lower: false, upper: false }); }) : W(r, '', '', ctx)); }
+  return S(c, fam, { plainMoney: fam === 'pay' || fam === 'fin', lower: false, upper: false, exp: /MONEY/.test(ctx) }); }) : W(r, '', '', ctx)); }
 function docData(key, d){
   const ctx = 'docs:' + key;
   if(key === 'pres:mgmtDatabase|[]' || /mgmtStudent\|/.test(key)){
-    const rules = { 5: randBirth, 6: () => '', 4: () => '', 9: cityOf, 22: v => S(v, null) };
-    if(key === 'pres:mgmtDatabase|[]') return Object.assign({}, d, { head: d.head, rows: d.rows.map(r => sheetRows([r], 'misc', ctx, rules)[0]) });
-    const o = W(d, '', '', ctx); if(d.profile && d.profile.row) o.profile.row = sheetRows([d.profile.row], 'misc', ctx, rules)[0]; return o; }
+    const rules = { 5: randBirth, 9: cityOf, 22: v => S(v, null) };
+    const fix = row => { const b = row[5]; const m = String(b).match(/^(\d{1,2})-(\w{3})-(\d{4})$/); if(!m) return row; const T = new Date(T0_NEW);
+      const by = +m[3], bm = mIdx(m[2]), bd = +m[1]; let age = T.getUTCFullYear() - by; if(T.getUTCMonth() < bm || (T.getUTCMonth() === bm && T.getUTCDate() < bd)) age--;
+      if(row[6] !== '') row[6] = String(age); let nb = Date.UTC(T.getUTCFullYear(), bm, bd); if(nb < Date.UTC(T.getUTCFullYear(), T.getUTCMonth(), T.getUTCDate())) nb = Date.UTC(T.getUTCFullYear() + 1, bm, bd);
+      const dd = Math.round((nb - Date.UTC(T.getUTCFullYear(), T.getUTCMonth(), T.getUTCDate())) / DAY); row[4] = dd <= 6 ? '🎉 This Week' : dd <= 30 ? '🎈 Coming Soon' : ''; return row; };
+    if(key === 'pres:mgmtDatabase|[]') return Object.assign({}, d, { head: d.head, rows: d.rows.map(r => fix(sheetRows([r], 'misc', ctx, rules)[0])) });
+    const o = W(d, '', '', ctx); if(d.profile && d.profile.row) o.profile.row = fix(sheetRows([d.profile.row], 'misc', ctx, rules)[0]); return o; }
   if(key === 'pres:mgmtPayroll|[]') return Object.assign({}, d, { rows: sheetRows(d.rows, 'pay', ctx) });
   if(key === 'pres:mgmtTab|["MONEY"]') return Object.assign({}, W(d, '', '', ctx), { rows: sheetRows(d.rows, 'fin', ctx) });
   if(key === 'sys:todaydb') return Object.assign({}, W(d, '', '', ctx), { rows: d.rows.map(r => r.map((c, i) => typeof c === 'string' && /^Hello! Hope all is well/.test(c) ? S(c, null) : S(c, 'misc', { lower: false }))) });
   if(key === 'mgmt:mgmtActive|[]'){ const C = d.cols, si = C.indexOf('source'), ii = C.indexOf('incentive'); const o = W(Object.assign({}, d, { rows: [] }), '', '', ctx);
-    o.rows = d.rows.map(r => r.map((c, i) => i === si ? S(c, null) : i === ii && typeof c === 'number' ? money(c, 'pay') : Array.isArray(c) ? c : typeof c === 'string' ? S(c, 'misc') : c)); return o; }
+    o.rows = d.rows.map(r => r.map((c, i) => i === si ? S(c, null) : i === ii && typeof c === 'number' ? money(c, 'act') : Array.isArray(c) ? c : typeof c === 'string' ? S(c, 'misc') : c)); return o; }
   return W(d, '', '', ctx);
 }
 
@@ -324,7 +336,7 @@ const out = parsed.map(({ r, t, b }) => {
   const e = EP(r.url), op = OPN(b), ctx = e + ':' + op;
   const url = /\/exec$/.test(r.url.split('?')[0]) ? 'https://preview.invalid/exec' : /functions\/v1\//.test(r.url) ? 'https://preview.invalid/functions/v1/' + e : r.url.replace(/^https?:\/\/[^/]+/, 'https://preview.invalid');
   // request body: same string transform as responses (keys must line up with what the app asks for on the shifted clock)
-  let body = r.body; if(typeof body === 'string' && body) { try{ body = JSON.stringify(W(JSON.parse(body), 'BODY', '', 'BODY:' + ctx)); if(/": /.test(r.body)) body = JSON.stringify(JSON.parse(body), null, 0).replace(/":/g, '": ').replace(/,"/g, ', "'); }catch(x){ body = S(body, null); } }
+  let body = r.body; if(typeof body === 'string' && body) { if(/": /.test(body)) body = S(body, null, { lower: true, upper: true }); else try{ body = JSON.stringify(W(JSON.parse(body), 'BODY', '', 'BODY:' + ctx)); }catch(x){ body = S(body, null, { lower: true, upper: true }); } }
   let tt = r.t;
   if(t && typeof t === 'object'){
     let o;

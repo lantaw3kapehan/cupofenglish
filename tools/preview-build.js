@@ -1,18 +1,21 @@
 // Builds a self-contained PREVIEW of the app that runs on recorded, anonymised sample data (audit/fx/recs.json).
 // usage: node tools/preview-build.js <app.html> <recs.json> <out.html> [label]
 // · Every request is answered from the samples; nothing reaches Google or the database. Saves are refused ("saving is off").
-// · The clock is fixed at 25 Oct 2026 13:50 (Manila) so dates in the samples line up.
+// · The clock is fixed at 25 Oct 2026 13:50 (Manila) so dates in the samples line up. Another moment: env PREVIEW_T0=<ISO>, or a fixture
+//   record { url: 'preview://clock', t: '<ISO>' } (written by tools/synth-fixture.js, whose dates are shifted). Env wins.
 const fs = require('fs');
 const [,, inp, fx, out, label] = process.argv;
 let s = fs.readFileSync(inp, 'utf8');
 const recs = JSON.parse(fs.readFileSync(fx, 'utf8'));
+const CLK = recs.find(r => r && r.url === 'preview://clock'), T0S = process.env.PREVIEW_T0 || (CLK && CLK.t) || '2026-10-25T05:50:00Z';
+if(!/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(T0S) || isNaN(Date.parse(T0S))) throw new Error('PREVIEW_T0 must be an ISO time in UTC, e.g. 2026-10-25T05:50:00Z');
 const data = JSON.stringify(recs).replace(/<\/(script)/gi, '<\\/$1');
 const shim = `<script type="application/json" id="fxdata">${data}</script>
 <script>
 /* PREVIEW SHIM — sample data only, saving switched off */
 (function(){
   window.COE_API = 'https://preview.invalid/exec'; window.__PREVIEW = 1;
-  var T0 = Date.parse('2026-10-25T05:50:00Z'), P0 = performance.now(), RD = Date;
+  var T0 = Date.parse('${T0S}'), P0 = performance.now(), RD = Date;
   function FD(){ var a = Array.prototype.slice.call(arguments); if(!(this instanceof FD)) return new RD(T0 + performance.now() - P0).toString();
     return a.length ? new (Function.prototype.bind.apply(RD, [null].concat(a)))() : new RD(T0 + performance.now() - P0); }
   FD.prototype = RD.prototype; FD.now = function(){ return T0 + performance.now() - P0; }; FD.parse = RD.parse; FD.UTC = RD.UTC; window.Date = FD;
@@ -24,7 +27,7 @@ const shim = `<script type="application/json" id="fxdata">${data}</script>
   R.forEach(function(r){ var e = ep(r.url); IX[e + '|' + nb(r.body)] = r.t; var k = e + '|' + op(r.body); if(!BY[k]) BY[k] = r.t; });
   var DOCS = {}; R.forEach(function(r){ if(ep(r.url) === 'coe' && op(r.body) === 'docs'){ try{ var d = JSON.parse(r.t).docs || {}; for(var k in d) if(d[k]){ if(d[k].at) d[k].at = new RD(T0 - 60000).toISOString(); DOCS[k] = d[k]; } }catch(e){} } });
   var MISS = window.__PREVIEW_MISS = [];
-  var WRITE = /^(rec_add|new|undo|fee|issue|add|save|set|mark|send|del|remove|upload|update|claim|tag|decide|request|approve|reject|pay|transfer|remit|refund|sign|ack|seen|record|create|edit|post|reply|submit|mgmt(Save|Set|Tag|Mark|Send|Renew|Enrol|Trial(Sent|Group|Fu)|Report(Sent)|Leave|Msg|Task|Pkg|Agree|Profile|Avail|Vid|Pay|Wallet|Remit|Transfer))/i;
+  var WRITE = /^(classIn|timeIn|timeOut|saveNote|markHomework|t(FbSubmit|PcSubmit|TrialSubmit|PeerSubmit|MsgSend|MsgSeen|MsgAck|VisitAck|PayVerify|HwFlag|NoteTag|GoalsSave|SetMeet|NotMine|LeaveRequest|LeaveCancel|LeaveReply|VidStart|VidDone|VidExplain|RemindLog)|rec_add|new|undo|fee|issue|add|save|set|mark|send|del|remove|upload|update|claim|tag|decide|request|approve|reject|pay|transfer|remit|refund|sign|ack|seen|record|create|edit|post|reply|submit|mgmt(Save|Set|Tag|Mark|Send|Renew|Enrol|Trial(Sent|Group|Fu)|Report(Sent)|Leave|Msg|Task|Pkg|Agree|Profile|Avail|Vid|Pay|Wallet|Remit|Transfer))/i;
   var _f = window.fetch;
   window.fetch = function(u, o){ var url = String(u && u.url || u), body = o && typeof o.body === 'string' ? o.body : '';
     if(/fonts\\.(googleapis|gstatic)\\.com|cdnjs|jsdelivr|unpkg/.test(url)) return _f.apply(this, arguments);
@@ -46,4 +49,4 @@ const shim = `<script type="application/json" id="fxdata">${data}</script>
 const i = s.indexOf('</script>', s.indexOf('window.COE_API')) + 9;
 s = s.slice(0, i) + '\n' + shim + s.slice(i);
 fs.writeFileSync(out, s);
-console.log('preview written', out, Math.round(s.length / 1024) + ' KB');
+console.log('preview written', out, 'clock ' + T0S, Math.round(s.length / 1024) + ' KB');

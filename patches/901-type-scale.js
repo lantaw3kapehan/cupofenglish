@@ -41,10 +41,10 @@ s = s.slice(0, i) + String.raw`<script>
 
   var T = [
     /* phone first (≤640px), then laptop / tablet */
-    ':root{--fs-label:.75rem;--fs-small:.8125rem;--fs-meta:.875rem;--fs-table:.9375rem;--fs-text:1rem;--fs-body:1rem;--fs-lead:1.03125rem;',
+    ':root{--fs-label:.75rem;--fs-small:.8125rem;--fs-meta:.875rem;--fs-table:.9375rem;--fs-text:1rem;--fs-body:1rem;--fs-lead:1rem;',
     '--fs-h3:1.0625rem;--fs-h2:1.125rem;--fs-kpi:1.375rem;--fs-h1:1.5rem;--lh-body:1.5;--lh-tight:1.3;--lh-head:1.2;',
     '--fw-text:400;--fw-strong:600;--fw-bold:700;--ls-label:.04em;--ui-ctl:44px;--tap:44px}',
-    '@media(min-width:641px){:root{--fs-text:.9375rem;--fs-lead:1rem;--fs-h2:1.1875rem;--fs-kpi:1.5rem;--fs-h1:1.75rem;--ui-ctl:36px;--tap:36px}}',
+    '@media(min-width:641px){:root{--fs-text:.9375rem;--fs-h2:1.1875rem;--fs-kpi:1.5rem;--fs-h1:1.75rem;--ui-ctl:36px;--tap:36px}}',
     /* text zoom: html back to 100% so rem follows the phone / browser text size */
     'html{font-size:100%}body{font-size:var(--fs-body);line-height:var(--lh-body)}',
     /* documents keep exactly the base size they inherited before (zero specificity: their own rules still win) */
@@ -56,23 +56,27 @@ s = s.slice(0, i) + String.raw`<script>
     ':is(#app main h1,.fx-h h1,.ui-h h1)' + NOT + '{font-size:var(--fs-h1);line-height:var(--lh-head)}',
     ':is(.fx-k b,.ui-k b)' + NOT + '{font-size:var(--fs-kpi)}',
     ':is(.fx-k span,.ui-k span,.fx-pr span,.fx th,.ui-t th)' + NOT + '{letter-spacing:var(--ls-label)}',
+    /* large text zoom: figures wrap instead of being cut off; bottom-navigation labels and header chips stop growing at 14–15px */
+    ':is(.fx-k b,.ui-k b,.fx-pr b)' + NOT + '{white-space:normal;overflow-wrap:anywhere}',
     /* Finance Overview controls: same look, a little taller */
     '.fx .btn.sm,.fx-seg,.fx-bar select,.fx-bar input,.fx-m,.fx-pill{height:auto;min-height:var(--ui-ctl)}',
     '.fx-seg,.ui-seg{height:auto;min-height:var(--ui-ctl);align-items:stretch}.fx-seg button,.ui-seg button{min-height:calc(var(--ui-ctl) - 4px)}',
     '.fx-m button{min-width:32px;min-height:calc(var(--ui-ctl) - 6px)}',
     /* touch targets: --tap = 36px laptop / 44px phone. Real height for buttons, tabs and segments ... */
-    ':where(' + ROOTS + ') :is(.btn.sm,.seg button,.mo-tabs button,.tabs button,[role=tab])' + NOT + ':not(td *):not(th *){min-height:var(--tap)}',
-    '.seg{height:auto}.seg button{height:auto}nav button{min-height:var(--tap)}',
-    '#sheet .x{width:var(--tap);height:var(--tap)}:where(' + ROOTS + ') .iconbtn{min-width:var(--tap);min-height:var(--tap)}',
-    /* ... and, for small chips inside a line (header status, filter chips, "Show"), a bigger invisible hit area so the look and
+    ':where(' + ROOTS + ') :is(.btn.sm,.mo-tabs button,.tabs button,[role=tab])' + NOT + ':not(td *):not(th *){min-height:var(--tap)}',
+    'nav button{min-height:var(--tap)}',
+    '#sheet .x{width:var(--tap);height:var(--tap)}:where(' + ROOTS + ') .iconbtn:not(.hd *){min-width:var(--tap);min-height:var(--tap)}',
+    /* ... and, for small chips inside a line (header status and buttons, filter chips and segments, "Show"), a bigger invisible hit area so the look and
        line height stay the same */
-    ':where(' + ROOTS + ') :is(.hd button,.sk2 button,.mo-who button,.mo-att button,.g891-t,.cxbtn,.s2-ar,.fx-m button,.fx-seg button,.ui-seg button,th button,.sa-h button,.py-act .btn)' + NOT + '{position:relative}',
-    ':where(' + ROOTS + ') :is(.hd button,.sk2 button,.mo-who button,.mo-att button,.g891-t,.cxbtn,.s2-ar,.fx-m button,.fx-seg button,.ui-seg button,th button,.sa-h button,.py-act .btn)' + NOT + '::after{content:"";position:absolute;left:0;right:0;top:50%;height:max(100%,var(--tap));transform:translateY(-50%)}',
+    ':where(' + ROOTS + ') :is(.hd button,.seg button,.sk2 button,.mo-who button,.mo-att button,.g891-t,.cxbtn,.s2-ar,.fx-m button,.fx-seg button,.ui-seg button,th button,.sa-h button,.py-act .btn)' + NOT + '{position:relative}',
+    ':where(' + ROOTS + ') :is(.hd button,.seg button,.sk2 button,.mo-who button,.mo-att button,.g891-t,.cxbtn,.s2-ar,.fx-m button,.fx-seg button,.ui-seg button,th button,.sa-h button,.py-act .btn)' + NOT + '::after{content:"";position:absolute;left:0;right:0;top:50%;height:max(100%,var(--tap));transform:translateY(-50%)}',
     /* phones: every primary button ≥ 44px; form fields 16px (also stops iPhone zooming into a field) */
     '@media(max-width:640px){:where(' + ROOTS + ') .btn' + NOT + ':not(td *):not(th *){min-height:var(--tap)}',
-    'nav button{min-height:52px}:where(' + ROOTS + ') :is(input:not([type=checkbox]):not([type=radio]),select)' + NOT + '{min-height:var(--tap);font-size:max(var(--fs-text),1rem)}',
+    'nav button{min-height:52px;font-size:min(var(--fs-label),14px)}:where(' + ROOTS + ') :is(input:not([type=checkbox]):not([type=radio]),select)' + NOT + '{min-height:var(--tap);font-size:max(var(--fs-text),1rem)}',
     /* bigger chart value labels: keep the last month\'s label inside the card */
     '.bz2-c:last-child b{left:auto;right:0;text-align:right}',
+    /* the phone header is tight: its status chips stay at the small step so the name still shows */
+    ':where(' + ROOTS + ') .hd button:not(.iconbtn)' + NOT + '{font-size:min(var(--fs-small),15px)}',
     /* 15px table text on a 390px phone: slightly narrower cell padding so Finance tables still fit */
     '.fx th,.fx td,.ui-t th,.ui-t td,#v-expenses th,#v-expenses td{padding-left:6px;padding-right:6px}}'
   ].join('\n');

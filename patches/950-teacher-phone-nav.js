@@ -6,8 +6,9 @@
 //      screen (Books, Activity log, Growth, QA feedback, Trainings, My Contract, and any entry added later), each with one line
 //      on what it is. A red dot on a hidden entry (e.g. a contract to sign) also shows on "More".
 //      Laptop menu (≥ 900 px) is unchanged: every entry, in the same groups. No screen, permission or data is changed.
-//      Phone header: the teacher's name was hidden and the rank line squeezed to ~30 px ("Senior Teach… ₱180/l"); on phones the
-//      name is shown (one line, ellipsis) and the rank line is dropped (rank and rate stay on Pay, Growth and Trainings).
+//      Phone header (≤ 520 px): the name was already hidden there (896) and the rank line was squeezed to ~30 px beside the time-in
+//      button ("Senior Teach… ₱180/l"). For teachers the cut-off line is dropped on phones, so the time-in button and ↻ have room;
+//      the name is in the Today greeting, and rank and rate stay on Pay, Growth and Trainings. Laptop header unchanged.
 const fs = require('fs'), file = process.argv[2];
 let s = fs.readFileSync(file, 'utf8'); const i = s.lastIndexOf('</body>');
 s = s.slice(0, i) + String.raw`<script>
@@ -21,7 +22,7 @@ s = s.slice(0, i) + String.raw`<script>
   var css = '@media(max-width:899px){body.role-t nav button.t950s{display:none!important}body.role-t nav button.mor{display:flex}}'
     + '@media(min-width:900px){body.role-t nav button.mor{display:none!important}}'
     + 'body:not(.role-t) nav button.t950m{display:none!important}'
-    + '@media(max-width:520px){body.role-t .hd .who #hName{display:block!important;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}body.role-t .hd .who #hRank{display:none!important}}'
+    + '@media(max-width:520px){body.role-t .hd .who{display:none!important}}'
     + '#v-more .t950 .li{cursor:pointer}#v-more .t950 .li:focus-visible{outline:2px solid #00808B;outline-offset:2px}';
   var st = document.createElement('style'); st.id = 's950'; st.textContent = css; document.head.appendChild(st);
   function mark(){ try{ document.body.classList.toggle('role-t', isT()); if(!isT()) return; var n = document.getElementById('navIn'); if(!n) return;

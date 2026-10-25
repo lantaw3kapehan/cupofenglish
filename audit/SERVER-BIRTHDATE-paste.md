@@ -1,6 +1,6 @@
 # Server paste · 25 Oct · "Edit student" never blanks a birthdate by accident (R1)
 
-**Not deployed. For Misty's approval first.**
+**Approved by Misty 25 Oct 15:34.** Already live: the database rule (step 2, applied 15:4x) and the app (step 4, Release B, COE_V 1181). Step 3 (edge function `coe`) was skipped on purpose: with step 2 and the app fix it adds nothing, and redeploying the 94 KB function by hand carries more risk than benefit. **Only step 1 (this Apps Script paste) is left — for Misty.**
 
 **What it does**
 When someone saves *Edit student* and leaves the birthdate alone, the app now sends the stored birthdate again plus a
