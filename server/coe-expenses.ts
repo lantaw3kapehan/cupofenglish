@@ -1,5 +1,6 @@
 // CupOfEnglish · coe-expenses (25 Oct 2026) · Money › Expenses: every expense line of COE DATABASE › EXPENSES (DATE · DESCRIPTION ·
 // CATEGORY · TOTAL PRICE), newest first, plus the ones just added in the app that Google has not copied yet (writes · addExpense).
+// v2: also sales: [{ d, t: student, inv, pkg, free, src, pay, rmb, a: PHP }]
 // POST { token } → { ok, at, rows: [{ d: "yyyy-MM-dd", t: description, c: category, a: amount, q?: 1 }] } · management only.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -29,6 +30,17 @@ Deno.serve(async (req: Request) => {
   (W || []).forEach((w: any) => { const f = (w.args || [])[1] || {}, d = s(f.date || f.d).slice(0, 10) || new Date(Date.parse(w.created_at) + 8 * 3600e3).toISOString().slice(0, 10);
     const a = Number(f.amount ?? f.total ?? f.price); rows.push({ d, t: s(f.description || f.desc || f.item).trim(), c: s(f.category || f.cat).trim() || "Other", a: isFinite(a) ? a : 0, q: 1 }); });
   rows.sort((p, q) => q.d.localeCompare(p.d));
+  // 25 Oct v2 · sales too (COE DATABASE › SALES: DATE · INVOICE AND STUDENT · LESSON PACKAGE · FREE LESSON · PARTNERSHIP · PAYMENT METHOD · RMB · PHP)
+  const sales: any[] = [];
+  for (let from = 0; from < 20000; from += 1000) {
+    const { data, error } = await db.from("sheet_rows").select("r,data").eq("tab", "SALES").gt("r", 2).order("r").range(from, from + 999);
+    if (error) break;
+    (data || []).forEach((x: any) => { const r = x.data || [], d = s(r[0]).slice(0, 10), php = Number(r[7]); if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !php) return;
+      const inv = s(r[1]).trim(), m = inv.replace(/\.pdf$/i, "").match(/^(?:PaymentConfirmation|Invoice)?\s*#?(\d+)?[_\s-]*(.*)$/i);
+      sales.push({ d, t: (m && m[2] ? m[2] : inv).replace(/_/g, " ").trim(), inv: m && m[1] ? m[1] : "", pkg: s(r[2]), free: s(r[3]), src: s(r[4]).trim(), pay: s(r[5]).trim(), rmb: Number(r[6]) || 0, a: Math.round(php * 100) / 100 }); });
+    if (!data || data.length < 1000) break;
+  }
+  sales.sort((p, q) => q.d.localeCompare(p.d));
   const { data: st } = await db.from("sheet_tabs").select("synced_at").eq("tab", "EXPENSES").maybeSingle();
-  return out({ ok: true, at: st ? st.synced_at : null, rows });
+  return out({ ok: true, at: st ? st.synced_at : null, rows, sales });
 });
