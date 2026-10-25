@@ -67,7 +67,7 @@ const NOTNAME_PATH = /ranks\[\]\.name|next\.name|sales\[\]\.name|vidflags.*list\
 const NAMELISTKEYS = new Set(['teachers', 'mgmtAll', 'office', 'employee', 'teacher']);
 const nameVals = new Set(), cjkVals = new Set();
 function addName(v){ v = String(v || '').trim(); if(!v || /^ST-|^COE-|@|^https?:/.test(v) || v.length > 60) return;
-  for(const piece of v.split(/[\s·,()\/+&]+/)){ const w = piece.replace(/['’]s$/, '');
+  for(const piece of v.split(/[\s·,()\/+&.]+/)){ const w = piece.replace(/['’]s$/, '');
     if(/^[一-鿿]+\d*$/.test(w)) { cjkVals.add(w); continue; }
     if(!/^[A-Za-z][A-Za-z'’]*$/.test(w) || w.length < 2) continue;
     const n = w === w.toUpperCase() || w === w.toLowerCase() ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w;
@@ -75,7 +75,7 @@ function addName(v){ v = String(v || '').trim(); if(!v || /^ST-|^COE-|@|^https?:
 function collect(v, path, key){
   if(Array.isArray(v)){ if(NAMELISTKEYS.has(key) && !NOTNAME_PATH.test(path)) v.forEach(x => typeof x === 'string' && addName(x)); v.forEach(x => collect(x, path + '[]', key)); return; }
   if(v && typeof v === 'object'){ for(const k in v) collect(v[k], path + '.' + k, k); return; }
-  if(typeof v === 'string' && NAMEKEYS.has(key) && !NOTNAME_PATH.test(path)) addName(v);
+  if(typeof v === 'string' && (NAMEKEYS.has(key) || (key === 't' && /sales\[\]|nextBooks|stuDaily|coe-trials/.test(path))) && !NOTNAME_PATH.test(path)) addName(v);
 }
 parsed.forEach(p => p.t && collect(p.t, EP(p.r.url) + ':' + OPN(p.b), ''));
 // tables with header rows: names in DATABASE (cols B, C, trial teacher), PAYROLL (teacher), ACTIVE (name, cn, teacher), TODAY/PAY sheets (STUDENT / TEACHER columns)
@@ -97,36 +97,11 @@ function sheetNameCols(rows){ let cols = null; (rows || []).forEach(r => { if(!A
   ['Misty', 'Dagyapen', 'Pescador', 'Alysia', 'Maglaya', 'Pascual', 'Chloe', 'Xyrene'].forEach(addName);
   parsed.forEach(p => { if(!p.t) return; (p.t.rows || []).forEach(x => { if(x && typeof x === 'object' && 'typed_name' in x) ['typed_name', 'pres_name', 'wit_name'].forEach(k => addName(x[k])); }); });
 })();
-// tokens that are also ordinary words / months: only replaced where safe (see nameRe)
-const MONTHLIKE = new Set(['April', 'May', 'June', 'July', 'August']);
-// fresh made-up names, never equal to an original token
-const ON = ['B','D','F','G','H','J','K','L','M','N','P','R','S','T','V','Z','Br','Tr','Kl','Th','Ch'], VO = ['a','e','i','o','u','ia','eo','ai'], CO = ['n','r','l','s','m','th','v','k','d'];
-const used = new Set([...nameVals].map(x => x.toLowerCase()));
-function fakeName(key){ const R = rng('nm|' + key); for(let tries = 0; tries < 50; tries++){ const syl = 2 + (R() < 0.35 ? 1 : 0); let s = '';
-    for(let i = 0; i < syl; i++) s += (i ? CO[Math.floor(R() * CO.length)] : ON[Math.floor(R() * ON.length)]) + VO[Math.floor(R() * VO.length)];
-    if(R() < 0.3) s += CO[Math.floor(R() * CO.length)]; s = s[0].toUpperCase() + s.slice(1);
-    if(s.length >= 4 && !used.has(s.toLowerCase())){ used.add(s.toLowerCase()); return s; } } return 'Nameless' + (h32(key) % 1000); }
-const NM = {}; [...nameVals].sort().forEach(n => { NM[n] = fakeName(n); });
-// Chinese names (and the old "学生NNN" placeholders) → fresh "学生NNN"
-const CJM = {}; { const usedN = new Set(); [...cjkVals].sort().forEach(c => { let n; let i = 0; do { n = 100 + Math.floor(U('cj|' + c + '|' + i++) * 900); } while(usedN.has(n)); usedN.add(n); CJM[c] = '学生' + n; }); }
-const nameList = Object.keys(NM).sort((a, b) => b.length - a.length);
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const titleRe = new RegExp('(?<![A-Za-z\\u00C0-\\u024F])(' + nameList.filter(n => !MONTHLIKE.has(n)).map(esc).join('|') + ')(?![A-Za-z\\u00C0-\\u024F])', 'g');
-const monthNameRe = new RegExp('(?<![A-Za-z\\d][ -]?)(' + nameList.filter(n => MONTHLIKE.has(n)).map(esc).join('|') + ')(?![A-Za-z])(?!\\s*(\\d|//))(?!\\s+[a-z])', 'g');
-const lowerRe = new RegExp('(?<![A-Za-z])(' + nameList.filter(n => n.length >= 4 && !MONTHLIKE.has(n)).map(n => esc(n.toLowerCase())).join('|') + ')(?![A-Za-z])', 'g');
-const upperRe = new RegExp('(?<![A-Za-z])(' + nameList.filter(n => n.length >= 3).map(n => esc(n.toUpperCase())).join('|') + ')(?![A-Za-z])', 'g');
-const cjkRe = new RegExp(Object.keys(CJM).sort((a, b) => b.length - a.length).map(esc).join('|'), 'g');
-const NMl = {}, NMu = {}; for(const k in NM){ NMl[k.toLowerCase()] = NM[k].toLowerCase(); NMu[k.toUpperCase()] = NM[k].toUpperCase(); }
-function renameAll(s, opts){ s = s.replace(titleRe, m => NM[m] || m).replace(monthNameRe, m => NM[m] || m);
-  if(opts && opts.lower) s = s.replace(lowerRe, m => NMl[m] || m);
-  if(opts && opts.upper) s = s.replace(upperRe, m => NMu[m] || m);
-  return s.replace(cjkRe, m => CJM[m] || m); }
-const mapExactName = v => { const t = String(v); if(NM[t]) return NM[t]; const tl = t.toLowerCase(); for(const k in NM) if(k.toLowerCase() === tl) return t === tl ? NM[k].toLowerCase() : t === t.toUpperCase() ? NM[k].toUpperCase() : NM[k]; return null; };
-
 /* ---------- partners ---------- */
 const KEEP_SRC = /^(CupOfEnglish|COE|N\/A|Referral|IELTS|TOEFL|Adult English|Adult English - Ph|Reading Program|Adults|WeChat|Facebook|Walk-in|Others?|)$/i;
 const partnerLabels = new Set();
-function addSrc(s){ s = String(s || '').trim(); if(!s || /^ST-\d/.test(s) || KEEP_SRC.test(s)) return; if(/[-–]\s*(Dr|Ms|Mr|Mrs)\.|^(Partner · )?(Dr|Ms|Mr|Mrs)\. |University|College|Academy|Institute|School/.test(s)) partnerLabels.add(s); }
+function addSrc(s){ s = String(s || '').trim(); { const m = s.match(/[–-]\s*(?:(?:Dr|Ms|Mr|Mrs)\.\s*)?([A-Z][a-z]+)(?:['’]s\b.*)?$/); if(m && !/^ST-\d/.test(s)) addName(m[1]); } if(!s || /^ST-\d/.test(s) || KEEP_SRC.test(s)) return; if(/[-–]\s*(Dr|Ms|Mr|Mrs)\.|^(Partner · )?(Dr|Ms|Mr|Mrs)\. |University|College|Academy|Institute|School/.test(s)) partnerLabels.add(s); }
 parsed.forEach(p => { if(!p.t) return; const e = EP(p.r.url);
   if(e === 'coe-expenses') (p.t.sales || []).forEach(x => addSrc(x.src)); if(e === 'coe-trials') (p.t.list || []).forEach(x => addSrc(x.s));
   if(e === 'coe-wallet') (p.t.sales || []).forEach(x => addSrc(x.partner)); if(OPN(p.b) === 'mgmtEnqList') (p.t.data.rows || []).forEach(x => addSrc(x.src)); });
@@ -141,8 +116,43 @@ const PARTNER = {}; [...partnerLabels].forEach(l => { const P = pLetter[personOf
   PARTNER[l] = (/^Partner · /.test(l) ? 'Partner · ' : '') + (pre ? pre + ' - ' : '') + P + post; });
 // bare "Dr. Spring" / "Ms. Spring" mentions
 const bareTitles = {}; Object.keys(pLetter).forEach(p => { if(/^[A-Za-z]+$/.test(p)) bareTitles[p] = pLetter[p]; });
-const partnerRe = new RegExp(Object.keys(PARTNER).sort((a, b) => b.length - a.length).map(esc).join('|') || '(?!)', 'g');
+const pKey = l => l.replace(/\s+/g, '').replace(/–/g, '-'); const PARTNER2 = {}; Object.keys(PARTNER).forEach(l => { PARTNER2[pKey(l)] = PARTNER[l]; });
+const partnerRe = new RegExp(Object.keys(PARTNER).sort((a, b) => b.length - a.length).map(l => esc(l).replace(/ /g, '\\s?').replace(/[–-]/g, '[–-]')).join('|') || '(?!)', 'g');
+// cities (DATABASE "living city", and the city part of "City – Name" sources)
+const CITYSET = new Set(); (DOCS['pres:mgmtDatabase|[]'] ? DOCS['pres:mgmtDatabase|[]'].data.rows : []).forEach(r => { const c = String(r[9] || '').trim(); if(/^[A-Z][a-z]+( [A-Z][a-z]+)?$/.test(c)) CITYSET.add(c); });
+(RAW.match(/[A-Z][a-z]+(?: [A-Z][a-z]+)? [–-] (?=(?:Dr|Ms|Mr|Mrs)\.)/g) || []).forEach(m => CITYSET.add(m.replace(/ [–-] $/, '')));
+['Jinan', 'Inner Mongolia', 'Chengdu', 'Shenzhen', 'Zhanjiang', 'Hefei', 'Manila', 'Urdaneta', 'Dagupan', 'Pangasinan'].forEach(c => CITYSET.add(c));
+['IELTS', 'Adult', 'Adults', 'Adult English', 'Partner', 'Reading', 'COE'].forEach(c => CITYSET.delete(c));
+const cityRe = new RegExp('\\b(' + [...CITYSET].sort((a, b) => b.length - a.length).map(esc).join('|') + ')\\b', 'g');
+const ORGS = [[/Panpacific\s?University/g, 'Partner Institute'], [/\bPU Bootcamp\b/g, 'Bootcamp'], [/\(Standard na Oras[^)"]*\)?/g, '(local time)']];
 const bareRe = new RegExp('(?:Dr|Ms|Mr|Mrs)\\.\\s*(' + (Object.keys(bareTitles).map(esc).join('|') || '(?!)') + ')\\b', 'g');
+
+// drop "names" that are really course / label words (seen in sales rows typed as e.g. "Phonics Bootcamp")
+const DROPPED = ['The', 'In', 'Refund', 'Phonics', 'Bootcamp', 'Program', 'Course', 'Package', 'Group', 'Internship'].filter(n => nameVals.delete(n));
+// tokens that are also ordinary words / months: only replaced where safe (see nameRe)
+const MONTHLIKE = new Set(['April', 'May', 'June', 'July', 'August']);
+// fresh made-up names, never equal to an original token
+const ON = ['B','D','F','G','H','J','K','L','M','N','P','R','S','T','V','Z','Br','Tr','Kl','Th','Ch'], VO = ['a','e','i','o','u','ia','eo','ai'], CO = ['n','r','l','s','m','th','v','k','d'];
+const used = new Set([...nameVals].map(x => x.toLowerCase()));
+function fakeName(key){ const R = rng('nm|' + key); for(let tries = 0; tries < 50; tries++){ const syl = 2 + (R() < 0.35 ? 1 : 0); let s = '';
+    for(let i = 0; i < syl; i++) s += (i ? CO[Math.floor(R() * CO.length)] : ON[Math.floor(R() * ON.length)]) + VO[Math.floor(R() * VO.length)];
+    if(R() < 0.3) s += CO[Math.floor(R() * CO.length)]; s = s[0].toUpperCase() + s.slice(1);
+    if(s.length >= 4 && !used.has(s.toLowerCase())){ used.add(s.toLowerCase()); return s; } } return 'Nameless' + (h32(key) % 1000); }
+const NM = {}; [...nameVals].sort().forEach(n => { NM[n] = fakeName(n); });
+// Chinese names (and the old "学生NNN" placeholders) → fresh "学生NNN"
+const CJM = {}; { const usedN = new Set(); [...cjkVals].sort().forEach(c => { let n; let i = 0; do { n = 100 + Math.floor(U('cj|' + c + '|' + i++) * 900); } while(usedN.has(n)); usedN.add(n); CJM[c] = '学生' + n; }); }
+const nameList = Object.keys(NM).sort((a, b) => b.length - a.length);
+const titleRe = new RegExp('(?<![A-Za-z\\u00C0-\\u024F])(' + nameList.filter(n => !MONTHLIKE.has(n)).map(esc).join('|') + ')(?![A-Za-z\\u00C0-\\u024F])', 'g');
+const monthNameRe = new RegExp('(?<![A-Za-z])(' + nameList.filter(n => MONTHLIKE.has(n)).map(esc).join('|') + ')(?![A-Za-z])(?!\\s*(\\d|//))(?!-\\d)(?!\\s+[a-z])(?!,? \\d{4})', 'g');
+const lowerRe = new RegExp('(?<![A-Za-z])(' + nameList.filter(n => n.length >= 4 && !MONTHLIKE.has(n)).map(n => esc(n.toLowerCase())).join('|') + ')(?![A-Za-z])', 'g');
+const upperRe = new RegExp('(?<![A-Za-z])(' + nameList.filter(n => n.length >= 3).map(n => esc(n.toUpperCase())).join('|') + ')(?![A-Za-z])', 'g');
+const cjkRe = new RegExp(Object.keys(CJM).sort((a, b) => b.length - a.length).map(esc).join('|'), 'g');
+const NMl = {}, NMu = {}; for(const k in NM){ NMl[k.toLowerCase()] = NM[k].toLowerCase(); NMu[k.toUpperCase()] = NM[k].toUpperCase(); }
+function renameAll(s, opts){ s = s.replace(titleRe, m => NM[m] || m).replace(monthNameRe, m => NM[m] || m);
+  if(opts && opts.lower) s = s.replace(lowerRe, m => NMl[m] || m);
+  if(opts && opts.upper) s = s.replace(upperRe, m => NMu[m] || m);
+  return s.replace(cjkRe, m => CJM[m] || m); }
+const mapExactName = v => { const t = String(v); if(NM[t]) return NM[t]; const tl = t.toLowerCase(); for(const k in NM) if(k.toLowerCase() === tl) return t === tl ? NM[k].toLowerCase() : t === t.toUpperCase() ? NM[k].toUpperCase() : NM[k]; return null; };
 
 /* ---------- cities / expense descriptions ---------- */
 const CITIES = ['Harbor City', 'Riverside', 'Lakeview', 'Hillcrest', 'Northgate', 'Eastport', 'Westfield', 'Sunvale', 'Greenhaven', 'Stonebridge', 'Maplewood', 'Fairview'];
@@ -191,7 +201,9 @@ function S(str, fam, opts){
   s = s.replace(/wxid_[A-Za-z0-9_-]+/g, w => put('wxid_sample' + (h32(w) % 900 + 100)));
   s = s.replace(/(\+63|\+86)[\s-]?\d[\d\s-]{7,}\d|(?<!\d)09\d{2}[\s-]?\d{3}[\s-]?\d{4}(?!\d)/g, () => put('+00 000 000 0000'));
   s = s.replace(/Misty T\. Dagyapen/g, () => put('The Management Team'));
-  s = s.replace(partnerRe, m => put(PARTNER[m])).replace(bareRe, (m, p) => put(bareTitles[p]));
+  s = s.replace(partnerRe, m => put(PARTNER2[pKey(m)] || 'Partner')).replace(bareRe, (m, p) => put(bareTitles[p]));
+  ORGS.forEach(([re, to]) => { s = s.replace(re, () => put(to)); });
+  s = s.replace(cityRe, c => put(cityOf(c)));
   if(opts.exp && expMap[s] && !EXP[s]) return expMap[s];
   if(opts.exp){ const m = s.match(/^(.+) · ([A-Z][A-Za-z &\/]+)$/); if(m && expMap[m[1]] && EXP[m[2]]) return expMap[m[1]] + ' · ' + m[2]; }
   // codes and ids
@@ -296,7 +308,7 @@ function W(v, path, key, ctx){
   if(key === 'details') { const nm = fakeName('enq|' + v); const R = rng('det|' + v); return 'English Name 英文名：\n' + nm + '\nChinese Name 中文名：\n学生' + (100 + Math.floor(R() * 900)) +
       '\nBirthdate (Month-Day-Year)\n出生日期（月-日-年）：\n' + (2008 + Math.floor(R() * 12)) + '.' + pad(1 + Math.floor(R() * 12), 2) + '.' + pad(1 + Math.floor(R() * 28), 2) + '\nSchool Grade 年级：\n' + (1 + Math.floor(R() * 12)) + '\nEnglish Learning Experience\n英语学习经历：' + (1 + Math.floor(R() * 6)) + ' years'; }
   if(key === 'birth') return randBirth(v);
-  if(key === 't' && /coe-expenses/.test(ctx) && /rows\[\]$/.test(path)) return expMap[v] || 'General expense';
+  if(key === 't' && /coe-expenses/.test(ctx) && /rows\[\]\.t$/.test(path)) return expMap[v] || 'General expense';
   if(key === 'student' && /coe-monitor/.test(ctx) && /\.(mp4|mov|png|jpe?g)/i.test(v)) return 'class-video.mp4' + ((v.match(/ · [\d.]+.*$/) || [''])[0]);
   if(key === 'months' && /mgmtActive/.test(ctx)) return v.replace(/^([A-Z][a-z]{2}) (\d{2})$/, (m, mo, yy) => mo + ' ' + pad((+yy + YEARS) % 100, 2));
   if(/(\.|^)(next|strengths|areas)$/.test(path) && /feedback|trial/.test(path)) return sample(v, 'en');
@@ -363,6 +375,6 @@ const out = parsed.map(({ r, t, b }) => {
 out.push({ url: 'preview://clock', body: '', t: T0_NEW });
 fs.writeFileSync(OUT, JSON.stringify(out));
 const info = { seed: SEED, shiftDays: SHIFT_DAYS, clock: T0_NEW, names: Object.keys(NM).length, cjk: Object.keys(CJM).length, students: Object.keys(STM).length, teacherCodes: Object.keys(COEM).length,
-  cases: Object.keys(OARM).length, events: Object.keys(EVM).length, partners: PARTNER, records: out.length };
-if(process.env.SYNTH_DEBUG) info.nameMap = NM;
+  cases: Object.keys(OARM).length, events: Object.keys(EVM).length, partners: Object.keys(PARTNER).length, records: out.length };
+if(process.env.SYNTH_DEBUG){ info.nameMap = NM; info.partnerMap = PARTNER; info.dropped = DROPPED; }   // debug output shows real values — keep it local
 console.log(JSON.stringify(info, null, 1));

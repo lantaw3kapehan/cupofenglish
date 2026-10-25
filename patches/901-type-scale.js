@@ -4,7 +4,7 @@
 //      targets, not rigid sizes for every element. Do not globally switch to Inter."
 // One central type scale for the APP SCREENS (documents untouched). FOR APPROVAL — screenshots in audit/typo/index.html.
 // · Tokens (one place, :root of #ui901t): --fs-label 12 · --fs-small 13 · --fs-meta 14 · --fs-table 15 · --fs-text 15 laptop /
-//   16 phone · --fs-body 16 · --fs-lead 16 / 16.5 · --fs-h3 17 · --fs-h2 19 / 18 · --fs-kpi 24 / 22 · --fs-h1 28 / 24, all in rem;
+//   16 phone · --fs-body 16 · --fs-lead 16 · --fs-h3 17 · --fs-h2 19 · --fs-kpi 24 / 22 · --fs-h1 28 / 24, all in rem;
 //   line-heights --lh-body 1.5, --lh-tight 1.3, --lh-head 1.2; weights --fw-text 400, --fw-strong 600, --fw-bold 700;
 //   control height --ui-ctl 36px laptop / 44px phone (900 reads it). Phone = up to 640px wide.
 // · Text zoom: html goes back to 100% (the app had html{font-size:16px/16.5px}, which blocks the phone's text-size setting);
@@ -13,12 +13,20 @@
 //   adds a stylesheet); every rule that sets a px font-size is re-emitted with the SAME selector (same specificity, same media
 //   condition, last one wins) and the size moved onto the nearest step of the scale: ≤11.5px → label 12 · 12 → small 13 ·
 //   12.5–13 → meta 14 · 13.5 → table 15 · 14–14.5 → text 15/16 · 15–15.5 → lead · 16–17.5 → h3 17 · 18–19.5 → h2 ·
-//   20px and up keep their size (in rem). Inline style="font-size:Npx" written by the renderers gets the same mapping
-//   through attribute selectors (CSS only). So hierarchy is kept (bigger stays bigger) and nothing is below 12px.
+//   20px and up keep their size (in rem). A size never goes below what it was: max(step, old size). Table cells use the
+//   table step. Inline style="font-size:Npx" written by the renderers gets the same mapping through attribute selectors
+//   (CSS only). So hierarchy is kept (bigger stays bigger) and nothing is below 12px.
 // · Fixed roles: page titles (#app main h1, .fx-h h1, .ui-h h1) → --fs-h1 in Fredoka One (unchanged font); KPI figures
 //   (.fx-k b, .ui-k b) → --fs-kpi; Finance Overview controls (.fx .btn.sm / .fx-seg / .fx-bar inputs / .fx-m / .fx-pill) →
-//   --ui-ctl high. Phones: primary buttons, tab/segment buttons and the bottom navigation are at least 44px high
-//   (buttons inside table rows are left as they are so lists do not double in height).
+//   --ui-ctl high.
+// · Touch targets (--tap 36px laptop / 44px phone): small buttons, view tabs, the navigation and the sheet close button get
+//   that real height; every .btn on phones (not inside table rows, so lists do not double in height). Compact chips that
+//   sit inside a line (header status chips, filter chips and segments, "Show", sort headers, month arrows) get an invisible
+//   hit area of that height instead, so their look and the line height stay the same. Phone form fields are 16px+.
+// · Small per-screen consequences handled here: last bar label of the Overview business chart stays inside the card;
+//   Finance tables use 6px side padding on phones; phone header chips stay at --fs-small (max 15px) and the bottom-nav labels
+//   at --fs-label (max 14px) so they do not crowd out at large text zoom; To do action rows may wrap; KPI figures wrap
+//   instead of being cut off at large text zoom.
 // · Fonts are not changed here (880 keeps the Finance Overview system sans + Chinese fallbacks; Fredoka One for titles).
 // · Never touched: documents and their previews (#printArea, .docprint, .paper, .memo, .sd, .ivp, .ivq, .tr-page, #rfNote,
 //   [data-doc]) — they get back exactly the base size they inherited before (16px, 16.5px from 900px wide); SVG chart text;
@@ -37,14 +45,16 @@ s = s.slice(0, i) + String.raw`<script>
   var SKIP_SEL = /printArea|docprint|\.paper|\.memo|memo-|\.sd\b|\.ivp|\.ivq|tr-page|rfNote|@page|data-doc|(^|[\s>+~,(])(svg|text|tspan)\b|^(html|body|:root)$/;
   /* the scale: [token, upper bound of declared px] — px at or above 20 keep their size (as rem) */
   var STEPS = [['label', 11.75], ['small', 12.25], ['meta', 13.25], ['table', 13.75], ['text', 14.75], ['lead', 15.75], ['h3', 17.75], ['h2', 19.75]];
-  var tok = function(px){ for(var k = 0; k < STEPS.length; k++) if(px < STEPS[k][1]) return 'var(--fs-' + STEPS[k][0] + ')'; return (Math.round(px / 16 * 10000) / 10000) + 'rem'; };
+  /* never smaller than before: max(step, the old size in rem) */
+  var tok = function(px){ var r = (Math.round(px / 16 * 10000) / 10000) + 'rem';
+    for(var k = 0; k < STEPS.length; k++) if(px < STEPS[k][1]) return 'max(var(--fs-' + STEPS[k][0] + '),' + r + ')'; return r; };
 
   var T = [
     /* phone first (≤640px), then laptop / tablet */
     ':root{--fs-label:.75rem;--fs-small:.8125rem;--fs-meta:.875rem;--fs-table:.9375rem;--fs-text:1rem;--fs-body:1rem;--fs-lead:1rem;',
-    '--fs-h3:1.0625rem;--fs-h2:1.125rem;--fs-kpi:1.375rem;--fs-h1:1.5rem;--lh-body:1.5;--lh-tight:1.3;--lh-head:1.2;',
+    '--fs-h3:1.0625rem;--fs-h2:1.1875rem;--fs-kpi:1.375rem;--fs-h1:1.5rem;--lh-body:1.5;--lh-tight:1.3;--lh-head:1.2;',
     '--fw-text:400;--fw-strong:600;--fw-bold:700;--ls-label:.04em;--ui-ctl:44px;--tap:44px}',
-    '@media(min-width:641px){:root{--fs-text:.9375rem;--fs-h2:1.1875rem;--fs-kpi:1.5rem;--fs-h1:1.75rem;--ui-ctl:36px;--tap:36px}}',
+    '@media(min-width:641px){:root{--fs-text:.9375rem;--fs-kpi:1.5rem;--fs-h1:1.75rem;--ui-ctl:36px;--tap:36px}}',
     /* text zoom: html back to 100% so rem follows the phone / browser text size */
     'html{font-size:100%}body{font-size:var(--fs-body);line-height:var(--lh-body)}',
     /* documents keep exactly the base size they inherited before (zero specificity: their own rules still win) */
@@ -104,7 +114,7 @@ s = s.slice(0, i) + String.raw`<script>
     splitSel(sel).forEach(function(q){ if(hasPseudoEl(q) || SKIP_SEL.test(q)) return;
       var key = cond + '|' + q; if(m){ var px = +m[1], v = tok(px); MAP.delete(key);
         /* table cells use the table step (15px) rather than running text (16px on phones) */
-        if(v === 'var(--fs-text)' && /(^|[\s>+~(])(table|td|th|tr|tbody)\b/.test(q)) v = 'var(--fs-table)';
+        if(v.indexOf('var(--fs-text)') >= 0 && /(^|[\s>+~(])(table|td|th|tr|tbody)\b/.test(q)) v = v.replace('--fs-text', '--fs-table');
         if(px >= 7) MAP.set(key, { q: q, cond: cond, v: v, pr: pr }); } else MAP.delete(key); }); };
   var walk = function(rules, cond){
     for(var k = 0; k < rules.length; k++){ var r = rules[k]; if(seen){ if(seen.has(r)) continue; seen.add(r); } nRules++;

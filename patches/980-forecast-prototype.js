@@ -51,7 +51,7 @@ s = s.slice(0, i) + String.raw`<script>
     '.fc-t th{font-size:var(--fs-label,12px);font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ui-mute,#6B6782);text-align:right;padding:8px 8px;border-bottom:1px solid var(--ui-line,#E9E7F0);white-space:nowrap;vertical-align:bottom}',
     '.fc-t th:first-child,.fc-t td:first-child{text-align:left}',
     '.fc-t td{padding:7px 8px;border-bottom:1px solid #F3F2F7;text-align:right;white-space:nowrap;color:#2A2540;vertical-align:top}',
-    '.fc-t td:first-child{white-space:normal;min-width:110px}','.fc-t tr.wk td:first-child{white-space:nowrap}',
+    '.fc-t td:first-child{white-space:normal;min-width:110px}','.fc-t.mo th[scope=row]{width:180px;white-space:normal}','.fc-t tr.wk td:first-child{white-space:nowrap}',
     '.fc-t td small{display:block;font-size:var(--fs-label,12px);color:var(--ui-mute,#6B6782);font-weight:400;line-height:1.35}',
     '.fc-t tr.sub td:first-child{padding-left:20px;color:#4F4A68}.fc-t tr.tot td{font-weight:700;border-top:1px solid var(--ui-line,#E9E7F0)}',
     '.fc-t tr.net td{font-weight:700;background:#FAFAFD}.fc-t .past{color:#7C7893;background:#FCFCFE}.fc-t th.past{background:#FCFCFE}.fc-t .cur{background:#F7FBFC}',
@@ -420,8 +420,8 @@ s = s.slice(0, i) + String.raw`<script>
       ['Net', 'net', 'net', ''],
       ['Net without one-offs', 'netR', 'net', '']];
     var pastVal = function(x, k){ return { sales: x.sales.A, salesA: x.sales.A - x.one, one: x.one, exp: x.exp, expA: x.exp, sal: x.sal, salA: x.sal, gov: x.gov, cost: x.cost, net: x.net, netR: x.net - x.one }[k]; };
-    var all = ms; ms = ms.filter(function(x, j){ return x.kind !== 'past' || j === all.findIndex(function(y){ return y.kind === 'cur'; }) - 1; });
-    var t = '<div class="fx-card fc-wide"><div class="fx-ch"><h2>Month by month</h2><span class="fx-sub">MONEY tab definitions · last full month for comparison · ' + SCL[sc].toLowerCase() + ' figure, range underneath</span></div><div class="fc-sc"><table class="fc-t"><thead><tr><th scope="col">PHP</th>' +
+    var all = ms; ms = ms.filter(function(x){ return x.kind !== 'past'; });   /* table: this month + 5 ahead (the chart above shows the 3 past months) */
+    var t = '<div class="fx-card fc-wide"><div class="fx-ch"><h2>Month by month</h2><span class="fx-sub">MONEY tab definitions · past months in the chart above · ' + SCL[sc].toLowerCase() + ' figure, range underneath</span></div><div class="fc-sc"><table class="fc-t mo"><thead><tr><th scope="col">PHP</th>' +
       ms.map(function(x){ return '<th scope="col" class="' + (x.kind === 'past' ? 'past' : x.kind === 'cur' ? 'cur' : '') + '">' + mL(x.m) + '<br><span style="font-weight:400;text-transform:none;letter-spacing:0">' + (x.kind === 'past' ? 'actual' : x.kind === 'cur' ? 'to date + rest' : 'forecast') + '</span></th>'; }).join('') + '</tr></thead><tbody>';
     L.forEach(function(row){ var any = ms.some(function(x){ if(x.kind === 'past') return pastVal(x, row[1]) != null; var l = x.lines[row[1]]; return l && (l.t !== '' || row[2] !== 'sub'); }); if(!any) return;
       t += '<tr class="' + row[2] + '"><th scope="row" style="vertical-align:top;text-align:left;font-size:inherit;text-transform:none;letter-spacing:0;color:inherit;font-weight:' + (row[2] === 'sub' ? 400 : 700) + ';border-bottom:1px solid #F3F2F7;padding:7px 8px' + (row[2] === 'sub' ? ';padding-left:20px' : '') + '">' + row[0] + '</th>' + ms.map(function(x){
