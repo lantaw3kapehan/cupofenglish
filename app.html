@@ -6188,7 +6188,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1241;
+const COE_V = 1242;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -28109,6 +28109,44 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
   var lastDeep = 0, deepT = 0, app = document.getElementById('app'); if(app) new MutationObserver(function(){ if(deepT) return; deepT = setTimeout(function(){ deepT = 0; if(Date.now() - lastDeep < 1500) return; lastDeep = Date.now(); all(); }, 900); }).observe(app, { childList: true, subtree: true });
   addEventListener('resize', function(){ clearTimeout(q); q = setTimeout(strips, 200); });
   setTimeout(all, 1800); setTimeout(all, 5000);
+})();
+</script>
+<script>
+/* 1092 · Return to teacher saved at once (coe-rq) */
+(function(){
+  if(window.__1092) return; window.__1092 = 1;
+  var LK = 'coe.rq1092';
+  var getP = function(){ try{ var o = JSON.parse(localStorage.getItem(LK) || '{}'), n = Date.now(), k; for(k in o) if(n - o[k].t > 600000) delete o[k]; return o; }catch(e){ return {}; } };
+  var setP = function(o){ try{ localStorage.setItem(LK, JSON.stringify(o)); }catch(e){} };
+  function overlay(){ try{ if(typeof RP === 'undefined' || !RP || !RP.rows) return; var p = getP(); RP.rows.forEach(function(r){ var x = p[r.key]; if(x && !/^Sent/.test(r.status) && r.status !== 'Returned'){ r.status = 'Returned'; r.note = x.note; r.by = x.by || r.by; } }); }catch(e){} }
+  var _rr = window.renderReports; if(typeof _rr === 'function') window.renderReports = function(){ overlay(); return _rr.apply(this, arguments); };
+  async function watch(id, x, prev){
+    for(var i = 0; i < 40; i++){
+      await new Promise(function(z){ setTimeout(z, i < 6 ? 4000 : 8000); });
+      var r = null; try{ r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'writeStatus', id: id, token: TOKEN }) }).then(function(y){ return y.json(); }); }catch(e){}
+      if(!r || !r.ok) continue;
+      if(r.status === 'done') return;
+      if(r.status === 'error'){ var p = getP(); delete p[x.key]; setP(p);
+        try{ var row = (RP && RP.rows || []).find(function(y){ return y.key === x.key; }); if(row) Object.assign(row, prev); keep('rep', RP); renderReports(); }catch(e){}
+        var msg = String(r.error || (r.result && r.result.msg) || 'Google did not accept it');
+        try{ openSheet('<h1>Not returned</h1><div class="fbfix" style="margin-top:10px;border-left:4px solid #C0392B"><b style="color:#B23A22">' + esc(x.student) + '’s report is back in To check</b><div class="small">' + esc(msg) + '</div></div><button class="btn ghost block" style="margin-top:12px" onclick="closeSheet()">OK</button>'); }catch(e){ toast('Not returned · ' + msg); }
+        return; } } }
+  var _go = window.rpReturnGo;
+  window.rpReturnGo = async function(){
+    if(typeof RPD === 'undefined' || !RPD || !TOKEN || typeof FAST_URL === 'undefined') return _go.apply(this, arguments);
+    var x = RPD.report, ta = document.getElementById('rpNote'), note = ta ? ta.value.trim() : ''; if(note.length < 5) return toast('Write what to fix');
+    var b = document.getElementById('rpRetB'), bx = document.getElementById('rpRetX'); if(b && b.disabled) return;
+    if(b){ b.disabled = true; b.textContent = 'Returning…'; } if(bx) bx.disabled = true;
+    if(ta && !ta.dataset.rid) ta.dataset.rid = 'rq' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    var ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(function(){ ac.abort(); }, 9000) : 0, r = null;
+    try{ r = await fetch(FAST_URL + '-rq', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, key: x.key, note: note, rid: ta ? ta.dataset.rid : '' }), signal: ac ? ac.signal : undefined }).then(function(y){ return y.json(); }); }catch(e){ r = null; } finally{ clearTimeout(tid); }
+    if(!(r && r.ok && r.queued)){ if(b){ b.disabled = false; b.textContent = 'Return to teacher'; } if(bx) bx.disabled = false; return _go.apply(this, arguments); }
+    var prev = { status: x.status, note: x.note, by: x.by, at: x.at };
+    var p = getP(); p[x.key] = { t: Date.now(), note: note, by: (D && D.name) || '' }; setP(p);
+    x.status = 'Returned'; x.note = note; rpLocal(x); closeSheet();
+    toast('Returned to Teacher ' + x.teacher + ' · it shows on their Today');
+    watch(r.queued, x, prev);
+  };
 })();
 </script>
 </body>
