@@ -6188,7 +6188,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1246;
+const COE_V = 1248;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -28197,7 +28197,9 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
     if(!r || !r.ok) return; var it = null;
     var h = (r.hist || []).find(function(y){ return y.month === x.month && y.items && y.items.length; }); if(h) it = h.items;
     if(!it){ var sb = (r.sub || []).find(function(y){ return y.scores && (!y.month || y.month === x.month); }); if(sb) it = sb.scores; }
-    if(it) C[k] = it.map(function(a){ return (a || []).map(Number); }); };
+    if(it) C[k] = it.map(function(a){ return (a || []).map(Number); });
+    try{ var hs = (r.hist || []).filter(function(y){ return y.month <= x.month && y.total != null && y.total !== ''; }).sort(function(a, b){ return String(a.month).localeCompare(String(b.month)); }).map(function(y){ return { m: y.month, t: +y.total }; });
+      if(!hs.some(function(y){ return y.m === x.month; }) && RPD.fb && RPD.fb.total != null) hs.push({ m: x.month, t: +RPD.fb.total }); window.__h1096 = window.__h1096 || {}; __h1096[k] = hs.slice(-6); }catch(e){} };
   function part(it){
     var dots = function(v){ var n = Math.max(0, Math.min(5, Math.round(+v || 0))), o = ''; for(var j = 0; j < 5; j++) o += '<span style="color:' + (j < n ? '#2E8F96' : '#D5E9EB') + '">●</span>'; return o; };
     return '<div style="margin-top:40px"><div style="font-size:34px;font-weight:700;color:#2B2450">Skill breakdown <span style="color:#2E8F96">分项能力评估</span></div><div style="font-size:24px;color:#5E5A76;margin-top:6px">Each skill rated 1–5 · 每项1–5分</div>'
@@ -28207,6 +28209,21 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
   var _h = window.rpPicHtml;
   if(typeof _h === 'function') window.rpPicHtml = function(){ var h = _h.apply(this, arguments); try{ var x = RPD.report, it = C[x.code + '|' + x.month]; if(!it || !h) return h;
       var mk = '<div style="margin-top:44px;padding-top:24px;border-top:2px solid #E7E5EE', j = h.lastIndexOf(mk); if(j < 0) return h; return h.slice(0, j) + part(it) + h.slice(j); }catch(e){ return h; } };
+})();
+</script>
+<script>
+/* 1096 · progress over the months on the parent picture */
+(function(){
+  if(window.__1096) return; window.__1096 = 1;
+  var _h = window.rpPicHtml; if(typeof _h !== 'function') return;
+  window.rpPicHtml = function(){ var h = _h.apply(this, arguments); try{
+    var x = RPD.report, hs = (window.__h1096 || {})[x.code + '|' + x.month]; if(!h || !hs || hs.length < 2) return h;
+    var lab = function(m){ var c = window.fbClsKey ? fbClsKey(m) : m; return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][(+String(c).slice(5, 7)) - 1] || c; };
+    var zh = function(m){ var c = String(window.fbClsKey ? fbClsKey(m) : m); return (+c.slice(5, 7)) + '月'; };
+    var bars = hs.map(function(y){ var cur = y.m === x.month, hh = Math.max(12, Math.round(Math.max(0, Math.min(100, y.t)) / 100 * 170));
+      return '<div style="flex:1;max-width:130px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end"><div style="font-size:30px;font-weight:700;color:#2B2450;margin-bottom:8px">' + y.t + '</div><div style="width:100%;height:' + hh + 'px;border-radius:16px;background:' + (cur ? '#2E8F96' : '#CDEBE8') + '"></div><div style="font-size:26px;color:' + (cur ? '#2B2450' : '#5E5A76') + ';font-weight:' + (cur ? 700 : 500) + ';margin-top:10px">' + lab(y.m) + '</div><div style="font-size:22px;color:#5E5A76">' + zh(y.m) + '</div></div>'; }).join('');
+    var part = '<div style="margin-top:36px"><div style="font-size:34px;font-weight:700;color:#2B2450">Progress over the months <span style="color:#2E8F96">历月总分</span></div><div style="display:flex;gap:28px;align-items:flex-end;margin-top:22px;height:290px">' + bars + '</div></div>';
+    var mk = '<div style="margin-top:30px">', j = h.indexOf(mk); if(j < 0) return h; return h.slice(0, j) + part + h.slice(j); }catch(e){ return h; } };
 })();
 </script>
 </body>
