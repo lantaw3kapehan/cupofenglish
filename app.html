@@ -6070,8 +6070,8 @@ ${T('Strengths','优势表现',f.strengths,f.cn&&f.cn.strengths)}${T('Areas for 
 h += `<div id="rpPdf">${x.file ? '<div class="sk" style="height:180px;margin-top:12px"></div>' : '<div class="small mute" style="margin-top:12px">No PDF in the app for this one (sent before the app).</div>'}</div><div class="rp-act" id="rpAct"></div>`;
 $('sheetBody').innerHTML = h; rpBtns();
 }
-function rpBtns(){
-const el = $('rpAct'); if(!el || !RPD) return; const x = RPD.report, sent = /^Sent/.test(x.status);
+function rpBtns(force){
+const el = $('rpAct'); if(!el || !RPD) return; if(!force && el.querySelector('#rpNote')) return; const x = RPD.report, sent = /^Sent/.test(x.status);
 const canShare = RPB && navigator.canShare && navigator.canShare({ files: [RPB] });
 el.innerHTML = (RPB ? `<div class="row" style="gap:8px;width:100%"><button class="btn teal grow" id="rpPicB" onclick="pdfPic(RPB,0,'rpPicB')">Copy picture</button><button class="btn ghost grow" onclick="pdfPic(RPB,1)">${navigator.share ? 'Share / save picture' : 'Save picture'}</button></div>` : '') + (RPB ? (canShare ? `<button class="btn ghost grow" onclick="rpShare()">${sent?'Send again on WeChat':'Send on WeChat'}</button>` : `<button class="btn ghost grow" onclick="rpSave()">Save PDF + copy message</button>`) : x.file ? `<button class="btn teal grow" disabled>Loading PDF…</button>` : '')
 + (!sent ? `<button class="btn ghost" onclick="rpMark()">Mark as sent</button>` : '') + `<button class="btn ghost" onclick="rpCopy()">Copy message</button>` + (!sent ? `<button class="btn ghost" onclick="rpReturn()">Return to teacher</button>` : '');
@@ -6095,14 +6095,16 @@ function rpLocal(x){ if(!RP) return; const r = (RP.rows||[]).find(y => y.key ===
 function rpReturn(){
 const x = RPD.report;
 $('rpAct').innerHTML = `<div class="grow"><label>What should Teacher ${esc(x.teacher)} fix?</label><textarea id="rpNote" class="in-t" rows="3" placeholder="e.g. Please add one example of what ${esc(x.student)} said in class, and check the writing score."></textarea>
-<div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost" onclick="rpBtns()">Cancel</button><button class="btn teal grow" onclick="rpReturnGo()">Return to teacher</button></div></div>`;
+<div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost" id="rpRetX" onclick="rpBtns(1)">Cancel</button><button class="btn teal grow" id="rpRetB" onclick="rpReturnGo()">Return to teacher</button></div></div>`;
 $('rpNote').focus();
 }
 async function rpReturnGo(){
 const x = RPD.report, note = $('rpNote').value.trim(); if(note.length < 5) return toast('Write what to fix');
-try{ const r = await api('mgmtReportReturn', TOKEN, x.key, note); if(!r.ok) return toast(r.msg || 'Not saved');
+const b = $('rpRetB'), bx = $('rpRetX'); if(b && b.disabled) return; const busy = on => { if(b){ b.disabled = on; b.textContent = on ? 'Returning… (Google takes up to 30 s)' : 'Return to teacher'; } if(bx) bx.disabled = on; };
+busy(true);
+try{ const r = await api('mgmtReportReturn', TOKEN, x.key, note); if(!r.ok){ busy(false); return toast(r.msg || 'Not saved'); }
 x.status = 'Returned'; x.note = note; rpLocal(x); closeSheet(); toast('Returned to Teacher ' + x.teacher + ' · it shows on their Today'); }
-catch(e){ toast('Not saved. Check your internet and try again.'); }
+catch(e){ busy(false); toast('Not saved. Check your internet and try again.'); }
 }
 
 let AT = null, AT_F = 'active';
@@ -6186,7 +6188,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1240;
+const COE_V = 1241;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
