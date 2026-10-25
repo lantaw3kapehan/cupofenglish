@@ -66,8 +66,8 @@ s = s.slice(0, i) + String.raw`<script>
     '#sheet .x{width:var(--tap);height:var(--tap)}:where(' + ROOTS + ') .iconbtn{min-width:var(--tap);min-height:var(--tap)}',
     /* ... and, for small chips inside a line (header status, filter chips, "Show"), a bigger invisible hit area so the look and
        line height stay the same */
-    ':where(' + ROOTS + ') :is(.hd button,.sk2 button,.mo-who button,.mo-att button,.g891-t,.cxbtn,.s2-ar,.fx-m button,.fx-seg button,.ui-seg button,th button,.py-act .btn)' + NOT + '{position:relative}',
-    ':where(' + ROOTS + ') :is(.hd button,.sk2 button,.mo-who button,.mo-att button,.g891-t,.cxbtn,.s2-ar,.fx-m button,.fx-seg button,.ui-seg button,th button,.py-act .btn)' + NOT + '::after{content:"";position:absolute;left:0;right:0;top:50%;height:max(100%,var(--tap));transform:translateY(-50%)}',
+    ':where(' + ROOTS + ') :is(.hd button,.sk2 button,.mo-who button,.mo-att button,.g891-t,.cxbtn,.s2-ar,.fx-m button,.fx-seg button,.ui-seg button,th button,.sa-h button,.py-act .btn)' + NOT + '{position:relative}',
+    ':where(' + ROOTS + ') :is(.hd button,.sk2 button,.mo-who button,.mo-att button,.g891-t,.cxbtn,.s2-ar,.fx-m button,.fx-seg button,.ui-seg button,th button,.sa-h button,.py-act .btn)' + NOT + '::after{content:"";position:absolute;left:0;right:0;top:50%;height:max(100%,var(--tap));transform:translateY(-50%)}',
     /* phones: every primary button ≥ 44px; form fields 16px (also stops iPhone zooming into a field) */
     '@media(max-width:640px){:where(' + ROOTS + ') .btn' + NOT + ':not(td *):not(th *){min-height:var(--tap)}',
     'nav button{min-height:52px}:where(' + ROOTS + ') :is(input:not([type=checkbox]):not([type=radio]),select)' + NOT + '{min-height:var(--tap);font-size:max(var(--fs-text),1rem)}',

@@ -1,8 +1,8 @@
 // 880: (Misty brief · Typography + #18 contrast) · REVISED 25 Oct 14:26: Misty prefers the Finance Overview fonts → the
 //      UI font is the same system sans stack as Finance Overview (patch 823), not Inter; Inter is no longer loaded.
 // one global, additive layer for the app screens only.
-// · Fonts: Inter is added to the existing Google Fonts link. The app screens (#app, #login, the card #sheet, toast and the
-//   invoice / wallet windows) use Inter for navigation, buttons, forms, tables, descriptions and statuses. Fredoka One stays
+// · Fonts (no extra font is loaded): the app screens (#app, #login, the card #sheet, toast and the
+//   invoice / wallet windows) use the system sans stack for navigation, buttons, forms, tables, descriptions and statuses. Fredoka One stays
 //   for h1 (main page titles and the "Good morning" greetings) and the header name. Figures use tabular numerals.
 //   Every stack ends with Chinese fallbacks ("PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif).
 // · Contrast: light grey text colours (2.5–4.4:1 on white, e.g. #8A86A0, #A3A0B5, #9A96AE, literal #9E9E9E) become
@@ -17,11 +17,12 @@
 //   outside the app screens, so they keep Rockwell/Fredoka and their original colours. Rules naming a document and
 //   @media print rules are skipped. Canvas-drawn parent pictures set their own fonts and are unaffected.
 // · Off switch for comparison: localStorage coeTypo = '0' (reload).
+// · Font SIZES are not set here: the central responsive type scale is patch 901 (tokens --fs-*).
 const lib = require('../tools/lib.js'), fs = require('fs'), file = process.argv[2];
 let s = fs.readFileSync(file, 'utf8');
 const i = s.lastIndexOf('</body>');
 s = s.slice(0, i) + String.raw`<script>
-/* 880 · Typography (Inter for the app, Fredoka One for titles) and text contrast · app screens only, documents untouched */
+/* 880 · Typography (system sans for the app, Fredoka One for titles) and text contrast · app screens only, documents untouched */
 (function(){
   if(window.__880) return; window.__880 = 1;
   try{ if(localStorage.getItem('coeTypo') === '0') return; }catch(e){}
@@ -37,7 +38,7 @@ s = s.slice(0, i) + String.raw`<script>
   var rgb = function(h){ return 'rgb(' + parseInt(h.slice(0,2),16) + ', ' + parseInt(h.slice(2,4),16) + ', ' + parseInt(h.slice(4,6),16) + ')'; };
   var CMAP = {}; MID.forEach(function(h){ CMAP[rgb(h)] = '#6B6782'; CMAP['#' + h] = '#6B6782'; }); LIGHT.forEach(function(h){ CMAP[rgb(h)] = '#6E6A85'; CMAP['#' + h] = '#6E6A85'; });
 
-  /* 1 · base layer: Inter on the app screens (h1 keeps Fredoka One via --brand), originals inside document previews */
+  /* 1 · base layer: system sans on the app screens (h1 keeps Fredoka One via --brand), originals inside document previews */
   var base = document.createElement('style'); base.id = 'a880b';
   base.textContent = [
     ':root{--ui:' + UI + '}',

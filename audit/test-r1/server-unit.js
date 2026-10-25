@@ -1,0 +1,23 @@
+// Unit test of the edge-function birthdate guard, extracted from the patched coe.ts. usage: node server-unit.js <patched coe.ts>
+const ts = require('typescript'), fs = require('fs'), assert = require('assert');
+const src = fs.readFileSync(process.argv[2], 'utf8');
+const syn = ts.transpileModule(src, { reportDiagnostics: true, compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } });
+console.log('transpile diagnostics (whole file):', (syn.diagnostics || []).length);
+const a = src.indexOf('const stuBirthOn'), b = src.indexOf('const DB_COLS');
+const js = ts.transpileModule(src.slice(a, b), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+const M = new Function(js + '; return { stuBirthOn, stuBirthNeedsStored, stuBirthCell, stuBirthGuard };')();
+let n = 0; const t = (name, f) => { f(); n++; console.log('  PASS ' + name); };
+const F = o => Object.assign({ rid: 'x', code: 'ST-2026-105', en: 'Piari', city: 'Ningbo' }, o);
+t('blank birth on an edit → filled from the copy + birthKeep', () => { const r = M.stuBirthGuard(['T', F({ birth: '' }), 27], '2018-04-01'); assert.strictEqual(r[1].birth, '2018-04-01'); assert.strictEqual(r[1].birthKeep, 1); assert.strictEqual(r[2], 27); });
+t('missing birth key → filled + birthKeep', () => { const f = F({}); delete f.birth; const r = M.stuBirthGuard(['T', f, 27], '2018-04-01'); assert.strictEqual(r[1].birth, '2018-04-01'); assert.strictEqual(r[1].birthKeep, 1); });
+t('blank birth, no copy → "" + birthKeep (Google keeps the cell)', () => { const r = M.stuBirthGuard(['T', F({ birth: ' ' }), 27], null); assert.strictEqual(r[1].birth, ''); assert.strictEqual(r[1].birthKeep, 1); });
+t('birthKeep with the original value → value kept as sent', () => { const r = M.stuBirthGuard(['T', F({ birth: 'March//2018', birthKeep: 1 }), 47], '2018-03-01'); assert.strictEqual(r[1].birth, 'March//2018'); assert.strictEqual(r[1].birthKeep, 1); });
+t('new full date → passed on, no flags', () => { const r = M.stuBirthGuard(['T', F({ birth: '2021-07-11', birthKeep: 0 }), 94], '2021-07-10'); assert.strictEqual(r[1].birth, '2021-07-11'); assert.ok(!('birthKeep' in r[1]) && !('birthClear' in r[1])); });
+t('explicit clear → "" + birthClear, birthKeep dropped', () => { for(const c of [1, true, '1', 'true']){ const r = M.stuBirthGuard(['T', F({ birth: '2018-04-01', birthClear: c, birthKeep: 1 }), 27], '2018-04-01'); assert.strictEqual(r[1].birth, ''); assert.strictEqual(r[1].birthClear, 1); assert.ok(!('birthKeep' in r[1])); } });
+t('birthClear false-ish values do not clear', () => { for(const c of [0, false, '', '0', null]){ const r = M.stuBirthGuard(['T', F({ birth: '', birthClear: c }), 27], '2018-04-01'); assert.strictEqual(r[1].birth, '2018-04-01'); assert.ok(!('birthClear' in r[1])); } });
+t('new row (row 0) untouched', () => { const a0 = ['T', F({ birth: '' }), 0]; assert.strictEqual(M.stuBirthGuard(a0, '2018-04-01'), a0); });
+t('bad shapes untouched', () => { for(const a0 of [null, 'x', ['T'], ['T', 'f', 3], ['T', [1], 3]]) assert.strictEqual(M.stuBirthGuard(a0, 'x'), a0); });
+t('input object not mutated; other fields + extra args kept', () => { const f = F({ birth: '' }); const r = M.stuBirthGuard(['T', f, 27, 'extra'], '2018-04-01'); assert.strictEqual(f.birth, ''); assert.ok(!('birthKeep' in f)); assert.strictEqual(r[3], 'extra'); assert.strictEqual(r[1].city, 'Ningbo'); assert.strictEqual(r[0], 'T'); });
+t('needsStored only for a blank, not-cleared edit', () => { assert.ok(M.stuBirthNeedsStored(['T', F({ birth: '' }), 27])); assert.ok(!M.stuBirthNeedsStored(['T', F({ birth: '2020-01-01' }), 27])); assert.ok(!M.stuBirthNeedsStored(['T', F({ birth: '', birthClear: 1 }), 27])); assert.ok(!M.stuBirthNeedsStored(['T', F({ birth: '' }), 0])); });
+t('copy cell → value: ISO datetime → date, text/number as is, blank → null', () => { assert.strictEqual(M.stuBirthCell('2018-04-01T00:00:00'), '2018-04-01'); assert.strictEqual(M.stuBirthCell('April//2018'), 'April//2018'); assert.strictEqual(M.stuBirthCell(43191), '43191'); assert.strictEqual(M.stuBirthCell(''), null); assert.strictEqual(M.stuBirthCell(null), null); });
+console.log('RESULT ' + n + ' passed');

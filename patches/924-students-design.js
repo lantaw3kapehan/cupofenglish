@@ -47,7 +47,7 @@ s = s.slice(0, i) + String.raw`<script>
     '#v-reports > .fbbar{height:6px!important;border-radius:3px!important;background:var(--ui-tint)!important;margin-bottom:10px}',
     '#v-reports .rp-row{font-size:var(--fs-table,15px)}',
     /* student page */
-    '#sheetBody .shero{border-radius:var(--ui-r)!important;border-color:var(--ui-line)!important;box-shadow:none!important}',
+    '#sheet #sheetBody .shero{border-radius:var(--ui-r)!important;border-color:var(--ui-line)!important;box-shadow:none!important}',
     '#sheetBody .shero .kpis{border:1px solid var(--ui-line);border-radius:12px;background:var(--ui-soft)}',
     '#sheetBody .shero .kpis b{font-family:var(--ui-font);font-weight:700;font-variant-numeric:tabular-nums}',
     '#sheetBody .stu-bar{border-radius:var(--ui-r)!important;border-color:var(--ui-line)!important;box-shadow:none!important}',

@@ -11,6 +11,7 @@
 // · Buttons inside these screens: 34px, 13px/700. Status chips: 11px/700 pills.
 // · Typography (Misty 15:05 update): every size uses the central --fs-* tokens with px fallbacks (body/table 15px, small 13–14px,
 //   labels and pills 12px, card titles 16px, KPI 22px, page title 26px); nothing under 12px; on phones every control here is ≥44px tall.
+//   On phones the Overview profit chart scrolls sideways inside its card (12 months × 46 px) so the 12px month labels never overlap.
 // · Dialogs opened while one of these screens is showing get class "d1s" on #sheet: title 22px brand, sub text 13px, buttons
 //   38px/13.5px, inner boxes 12px radius without shadow. Removed again when the sheet closes or another screen opens it.
 const fs = require('fs'), file = process.argv[2];
@@ -149,8 +150,9 @@ s = s.slice(0, i) + String.raw`<script>
     '#v-home .bz2-c>b{letter-spacing:-.02em;white-space:nowrap}#v-home .x-dn svg text{font-size:var(--fs-label,12px)}',
     /* ---------- phones ---------- */
     '@media(max-width:900px){#v-home .bz2-k{grid-template-columns:1fr 1fr!important}#v-home .bz2-k>div:nth-child(odd){border-left:0!important}#v-home .bz2-k>div:nth-child(n+3){border-top:1px solid var(--ui-line)!important}',
-    '#v-mtoday .tdsum{grid-template-columns:1fr 1fr!important}#v-mtoday .tdsum a:nth-child(odd){border-left:0!important}#v-mtoday .tdsum a:nth-child(n+3){border-top:1px solid var(--ui-line)!important}}',
-    '@media(max-width:640px){#v-monitor .mo-h h1,#v-team>.mo-h h1,#v-mtoday .lead h1,#v-schedule .lead h1,#v-msgs .lead h1,#v-home .ovc .x-top h1{font-size:calc(var(--fs-h1,26px) * .85)!important}',
+    '#v-mtoday .tdsum{display:grid!important;width:100%;box-sizing:border-box;grid-template-columns:1fr 1fr!important}#v-mtoday .tdsum a:nth-child(odd){border-left:0!important}#v-mtoday .tdsum a:nth-child(n+3){border-top:1px solid var(--ui-line)!important}}',
+    '@media(max-width:640px){#v-home .bz2-ch{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding-right:8px}#v-home .bz2-ch>.bz2-c{min-width:46px;flex:none}',
+    '#v-home .bz2-ch>.bz2-c.cur{min-width:64px}#v-monitor .mo-h h1,#v-team>.mo-h h1,#v-mtoday .lead h1,#v-schedule .lead h1,#v-msgs .lead h1,#v-home .ovc .x-top h1{font-size:calc(var(--fs-h1,26px) * .85)!important}',
     '#v-home .ovc .x-st{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))}#v-home .ovc .x-st a{min-width:0!important;padding:8px 10px!important}',
     '#v-home .ovc .x-st b,#v-home .bz2-k b,#v-mtoday .tdsum a b,#v-schedule .s2-sum b{font-size:calc(var(--fs-kpi,22px) * .82)!important}',
     '#v-mtoday .sec,#v-home .ovc section.ov-card,#v-home .ovc .x-c,#v-home .ovc .x-top,#v-monitor .mo-f{padding:12px!important}',

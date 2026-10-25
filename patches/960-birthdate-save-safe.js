@@ -13,7 +13,7 @@
 //   the form has been filled from it. If it cannot be loaded the button says so and tapping it loads it again.
 // · The form keeps the stored value (hidden #sBirthO, exactly as the record gave it). Untouched birthdate → the save
 //   sends that stored value again plus birthKeep: 1 (the server keeps what is in the cell — see
-//   audit/SERVER-BIRTHDATE-paste.md and audit/server-birthdate.diff). An edited full date is sent as the new value.
+//   audit/SERVER-BIRTHDATE-paste.md, audit/server-birthdate.sql (trigger writes_stuedit) and audit/server-birthdate.diff (coe)). An edited full date is sent as the new value.
 // · A birthdate the date box cannot show truthfully (shown by the sheet as month + year or year only, or stored as text
 //   or a number) is shown read-only: "April 2018 (month and year only)", with "Change birthdate" (a real date box,
 //   empty — no day or month is made up) and "Remove birthdate".

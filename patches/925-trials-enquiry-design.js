@@ -4,7 +4,9 @@
 //   3px teal top stripe (stage is already shown by the numbered 1·2·3 headings) and get the 1px line border;
 //   the Kids/Adults form cards keep their coloured badge and left colour edge; no hover shadow.
 // · Trials: status tabs sit in the same pill style; the 45-day summary strip uses system-font figures; booked-trial
-//   date blocks use the 10px radius. No text, counts or handlers change.
+//   date blocks use the 10px radius.
+// · Phone: the funnel sits above the month chart and its four tiles go 2 × 2 (they were four 40px-wide columns
+//   squeezed beside the chart because patch 897's 520px rule split the outer box). No text, counts or handlers change.
 const fs = require('fs'), file = process.argv[2];
 let s = fs.readFileSync(file, 'utf8'); const i = s.lastIndexOf('</body>');
 s = s.slice(0, i) + String.raw`<script>
@@ -23,7 +25,10 @@ s = s.slice(0, i) + String.raw`<script>
     '#v-trials .tp2 b{font-family:var(--ui-font);font-size:var(--fs-kpi,20px);font-weight:700;font-variant-numeric:tabular-nums}',
     '#v-trials #tpTabs .seg{background:none;border:0;box-shadow:none;padding:0;border-radius:0}',
     '#v-trials .tpb-d{border-radius:10px}',
-    '#v-trials #tpAt{font-size:var(--fs-small,12px);color:var(--ui-mute)}'
+    '#v-trials #tpAt{font-size:var(--fs-small,12px);color:var(--ui-mute)}',
+    /* phone: funnel above the month chart, tiles 2 × 2 (897's 520px rule split the outer box instead of the tiles) */
+    '@media(max-width:860px){#v-enquiry .fn31.fn31{grid-template-columns:minmax(0,1fr)!important}}',
+    '@media(max-width:520px){#v-enquiry .fn31 .fl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}#v-enquiry .fn31 .fl > .st:nth-child(3){border-left:0}#v-enquiry .fn31 .fl > .st:nth-child(n+3){border-top:1px solid var(--ui-line)}#v-enquiry .fn31 .st.ar:nth-child(2):after{display:none}}'
   ].join('\n');
   var st = document.createElement('style'); st.id = 'ui925'; st.textContent = css; document.head.appendChild(st);
 })();
