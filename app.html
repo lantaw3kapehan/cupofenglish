@@ -6226,7 +6226,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1306;
+const COE_V = 1307;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -29953,6 +29953,45 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   var _rt = window.renderToday; if(typeof _rt === 'function') window.renderToday = function(){ var r = _rt.apply(this, arguments); arrange(); return r; };
   var v = document.getElementById('v-today'); if(v) new MutationObserver(function(){ arrange(); }).observe(v, { childList: true });
   setInterval(function(){ if(typeof VIEW !== 'undefined' && VIEW === 'today' && !document.hidden) arrange(); }, 60000);   /* a class that just ended moves down */
+})();
+</script>
+<script>
+/* 1240 · Service agreement + class check-in details from the database */
+(function(){
+  if(window.__1240 || typeof window.api !== 'function') return; window.__1240 = 1;
+  /* teacher's observation visits: like Growth (1230), a stored copy up to 14 days old opens at once and is refreshed behind (13 waits of ~7 s in 2 days) */
+  try{ if(typeof SB_UIAGE !== 'undefined' && !SB_UIAGE.tMyVisits) SB_UIAGE.tMyVisits = 14 * 864e5; }catch(e){}
+  const API0 = window.api;
+  const strip = r => { const o = Object.assign({}, r); delete o.ms; delete o.db; delete o.now; return o; };
+  async function dbAsk(body){ try{ const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 4000) : 0;
+      const r = await fetch(FAST_URL + '-db', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, body)), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid));
+      return r && r.ok ? r : null; }catch(e){ return null; } }
+  const google = (fn, args) => (typeof apiNow === 'function' ? apiNow(fn, ...args) : API0(fn, ...args));
+  /* the class sheet: repaint with Google's extra details (video found in Drive, the student's folder) only when they differ */
+  function ciLater(ev, dbr, g){ g.then(x => { try{
+      if(!x || !x.ok || typeof CE === 'undefined' || !CE || !CE.e || CE.e.id !== ev.id || !$('ceMon')) return;
+      if(JSON.stringify([x.ci || null, x.day || null, x.vid || null]) === JSON.stringify([dbr.ci || null, dbr.day || null, dbr.vid || null])) return;
+      if((typeof TG !== 'undefined' && TG && TG.cond) || ($('tgN') && $('tgN').value)) return;   /* she is tagging: leave the sheet alone */
+      const e = CE.e; if(x.ci) e.ci = x.ci; if(x.vid) e.vid = x.vid; $('ceMon').innerHTML = monHtml(e, x); TG = { kind: 'late', cond: '' };
+    }catch(err){} }).catch(() => {}); }
+  /* the agreement sheet: the same tidy-up agrOpen does with Google's answer, only when it differs */
+  function agLater(q, dbr, g){ g.then(r => { try{
+      if(!r || !r.ok || typeof AGS === 'undefined' || !AGS || AGS.code !== String(q.code || '').toUpperCase() || (AGS.key || '') !== (q.key || '')) return;
+      if(JSON.stringify([r.name, r.cn, r.pkg, r.city || '', r.list || []]) === JSON.stringify([dbr.name, dbr.cn, dbr.pkg, dbr.city || '', dbr.list || []])) return;
+      const nat = /philippin|manila|cebu|davao|pangasinan|urdaneta|\bPH\b/i.test(r.city || '') ? 'Philippines 菲律宾' : 'China 中国', ch = (r.name && r.name !== AGS.name) || (r.cn && r.cn !== AGS.cn) || (r.pkg && r.pkg !== AGS.pkg) || nat !== AGS.nat;
+      Object.assign(AGS, { name: r.name || AGS.name, cn: r.cn || AGS.cn, pkg: r.pkg || AGS.pkg, list: r.list || AGS.list, city: r.city || '', nat });
+      if($('sheet').classList.contains('on') && $('agImg')){ const nv = $('agN') ? $('agN').value : '', how = AGS.how; if(ch){ AGPIC = null; } agrPaint(); if($('agN')) $('agN').value = nv; if(how) AGS.how = how; if(ch) agrPic(); }
+    }catch(err){} }).catch(() => {}); }
+  window.api = function(fn, ...args){
+    try{
+      if(typeof LIVE !== 'undefined' && LIVE && typeof D !== 'undefined' && D && D.mgr && TOKEN){
+        if(fn === 'mgmtClassInfo' && args[1] && args[1].id && args[1].start && args[1].teacher){ const ev = args[1];
+          return dbAsk({ op: 'classinfo', ev: ev }).then(r => { if(!r) return API0(fn, ...args); const g = google(fn, args); ciLater(ev, r, g); const o = strip(r); return o; }); }
+        if(fn === 'mgmtAgree' && args[1] && (args[1].code || args[1].key)){ const q = args[1];
+          return dbAsk({ op: 'agree', code: q.code || '', key: q.key || '', name: q.name || '' }).then(r => { if(!r) return API0(fn, ...args); const g = google(fn, args); agLater(q, r, g); return strip(r); }); }
+      }
+    }catch(e){}
+    return API0(fn, ...args); };
 })();
 </script>
 </body>
