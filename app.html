@@ -6233,7 +6233,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1309;
+const COE_V = 1310;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -30000,6 +30000,34 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
       }
     }catch(e){}
     return API0(fn, ...args); };
+})();
+</script>
+<script>
+/* 1250 · feedback helper (tFbPlus) from the database */
+(function(){
+  if(window.__1250 || typeof window.api !== 'function') return; window.__1250 = 1;
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-fbp', TR = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-train';
+  const base = window.api, BAD = {};
+  const canon = r => { try{ const o = r || {}; return JSON.stringify({ monthKey: o.monthKey, mine: o.mine || [], tags: o.tags || [], review: o.review || [], plan: o.plan || [] }); }catch(e){ return ''; } };
+  function check(code, dbr, self, args){ try{
+      const k = 'coe.fbpchk.' + code + '.' + new Date().toISOString().slice(0, 10); if(localStorage.getItem(k)) return; localStorage.setItem(k, '1');
+      setTimeout(() => { Promise.resolve(base.apply(self, args)).then(g => { if(!g || !g.ok) return;
+          if(canon(g) === canon(dbr)) return;
+          BAD[code] = 1; try{ store('set', 'coe.fbx.d.' + code, JSON.stringify(g)); }catch(e){}
+          const diff = ['monthKey', 'mine', 'tags', 'review', 'plan'].filter(f => JSON.stringify(g[f] || null) !== JSON.stringify(dbr[f] || null)).join(',');
+          fetch(TR, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'act', fn: 'tFbPlusCheck', ok: false, detail: code + ' differs: ' + diff }) }).catch(() => {});
+        }).catch(() => {}); }, 4000);
+    }catch(e){} }
+  const w = function(fn){ if(fn !== 'tFbPlus') return base.apply(this, arguments);
+    const self = this, args = arguments, code = String(args[2] || '').trim().toUpperCase();
+    if(BAD[code] || typeof TOKEN === 'undefined' || !TOKEN) return base.apply(self, args);
+    const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 4000) : 0;
+    return fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, code }), signal: ac ? ac.signal : undefined })
+      .then(x => x.json()).finally(() => clearTimeout(tid))
+      .then(r => { if(!r || !r.ok || !r.db) throw new Error('fallback'); check(code, r, self, args); return r; })
+      .catch(() => base.apply(self, args));   /* database not answering: Google as before */ };
+  for(const k in base) try{ w[k] = base[k]; }catch(e){}
+  window.api = w;
 })();
 </script>
 </body>
