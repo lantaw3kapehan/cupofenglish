@@ -2260,7 +2260,8 @@ TRC = TRQS[i]; if(!TRC) return;
 openSheet(`<h1>Trial report</h1><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>`); $('sheet').classList.add('wide');
 const ck376 = 'coe.doc.trf.' + TRC.date + '|' + String(TRC.student||'').toLowerCase(), Q376 = TRC; let c376 = null; try{ c376 = JSON.parse(store('get', ck376) || 'null'); }catch(e){}
 if(!(c376 && c376.ok)){ try{ const t = JSON.parse(store('get', 'coe.trf.tpl') || 'null'); if(t && t.ok && t.form) c376 = Object.assign({}, t, { done: null, family: null, _tpl: 1 }); }catch(e){} }
-const g376 = api('tTrialForm', TOKEN, TRC).then(r => { if(r && r.ok){ r._at = Date.now(); try{ store('set', ck376, JSON.stringify(r)); store('set', 'coe.trf.tpl', JSON.stringify({ ok: true, form: r.form, levels: r.levels || null })); }catch(e){} } return r; });
+let db1251 = null; try{ db1251 = await trDb1251(TRC); if(db1251) c376 = db1251; }catch(e){}
+const g376 = (!db1251 || trChk1251(ck376) ? api('tTrialForm', TOKEN, TRC) : Promise.resolve(null)).then(r => { try{ if(db1251 && r && r.ok) trCmp1251(db1251, r, TRC); }catch(e){} if(r && r.ok){ r._at = Date.now(); try{ store('set', ck376, JSON.stringify(r)); store('set', 'coe.trf.tpl', JSON.stringify({ ok: true, form: r.form, levels: r.levels || null })); }catch(e){} } return r; });
 if(!(c376 && c376.ok)){ try{ const d = await fetch(FAST_URL + '-trials', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, as: (D.me && D.me.name) || '', form: true }) }).then(x => x.json());
   if(d && d.ok && d.form && d.form.form){ c376 = Object.assign({}, d.form, { _tpl: 1 }); const lo = new Date(Date.parse(TRC.date + 'T00:00:00Z') - 3 * 864e5).toISOString().slice(0, 10), s0 = String(TRC.student || '').trim().toLowerCase(), k0 = String(TRC.code || '').trim().toUpperCase();
     const hit = (d.list || []).find(x => x.d >= lo && ((k0 && x.c === k0) || x.s === s0)); if(hit) c376.done = { at: hit.d }; try{ store('set', 'coe.trf.tpl', JSON.stringify({ ok: true, form: d.form.form, levels: d.form.levels || null })); }catch(e){} } }catch(e){} }
@@ -2272,6 +2273,13 @@ TRS = d && d.picks && d.picks.length === TRF.form.rate.length ? d : { picks: TRF
 trPaint();
 }
 const trKey = () => 'coe.trd.' + TRC.date + '|' + String(TRC.student||'').toLowerCase();
+/* 1251 · trial form from the database (coe-trf); null → the old way */
+async function trDb1251(c){ if(typeof FAST_URL === 'undefined' || !TOKEN || (D && D.mgr)) return null; const ac = new AbortController(), t = setTimeout(() => ac.abort(), 2500);
+  try{ const r = await fetch(FAST_URL + '-trf', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, c: { date: c.date, student: c.student, code: c.code || '' } }), signal: ac.signal }).then(x => x.json());
+    return r && r.ok && r.form && Array.isArray(r.form.rate) ? Object.assign({}, r, { _db: 1 }) : null; }catch(e){ return null; } finally{ clearTimeout(t); } }
+function trChk1251(k){ const d = new Date().toISOString().slice(0, 10), kk = 'coe.trfchk.' + k; try{ if(localStorage.getItem(kk) === d) return false; localStorage.setItem(kk, d); }catch(e){} return true; }
+function trCmp1251(a, g, c){ const pick = x => JSON.stringify([x.done || null, x.family || null, (x.form && x.form.rate || []).map(q => [q.id, q.title, q.choices]), (x.form && x.form.text || []).map(q => q.id)]);
+  if(pick(a) === pick(g)) return; try{ fetch(FAST_URL + '-trf', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, diff: { c: c, db: { done: a.done || null, family: a.family || null }, google: { done: g.done || null, family: g.family || null }, form: pick(Object.assign({}, a, { done: 0, family: 0 })) !== pick(Object.assign({}, g, { done: 0, family: 0 })) } }) }).catch(() => {}); }catch(e){} }
 function trSave(){ try{ store('set', trKey(), JSON.stringify(TRS)); }catch(e){} }
 function trTot(){ const F = TRF.form.rate, p = F.map((r,i) => TRS.picks[i] > -1 ? trPts(r.choices[TRS.picks[i]]) : 0), sum = (a,b) => p.slice(a,b).reduce((x,y)=>x+y,0);
 return { s: sum(0,5), l: sum(5,7), r: sum(7,9), t: sum(0,9), all: TRS.picks.every(x => x > -1) }; }
@@ -6233,7 +6241,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1310;
+const COE_V = 1311;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
