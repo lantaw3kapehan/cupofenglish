@@ -10,6 +10,35 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="CupOfEnglish">
+<style id="d1111">/* 1111 · no colour/size animations while a screen is being finished (they made buttons fade between styles) */ html.n1111 #app *,html.n1111 #sheet *{transition:none!important} /* career ladder: current rank on a darker teal from the start (white text AA) instead of a tint added later */ html body .py-wrap .py-t.cur.cur{background:var(--rt,#00666D)!important}</style><script>/* 1111 · finish screens before they are painted (no flicker) */
+(function(){
+  if(window.__1111) return; window.__1111 = 1;
+  var NMO = window.MutationObserver, nST = window.setTimeout.bind(window), nCT = window.clearTimeout.bind(window);
+  if(!NMO || typeof queueMicrotask !== 'function') return;
+  var PASS = /^(all|paint|scan|bars|tag|run|mark|arrange|tidy|polish|fold|deco|decorate|lab|label|apply|fix|dec|add|strip|cut|home|chart|strips|place|later|build|hydrate|queue|refresh|addBtns|essentials|inject|ngBars|sheet|pass|go2)$|\b(all|paint|scan|bars|tag|run|mark|arrange|tidy|polish|fold|deco|decorate|apply|fix|ngBars)\(\)/, taskMs = 0, PER = new Map(), DEPTH = 0, Q = new Map(), sched = false, rounds = 0, reset = 0, spent = 0, spentAt = 0, offUntil = 0, MAX = 800, stats = { fast: 0, slow: 0, rounds: 0, capped: {} };
+  function now(){ return (window.performance && performance.now) ? performance.now() : Date.now(); }
+  function flush(){ sched = false; if(!Q.size) return;
+    if(++rounds > 40 || taskMs > 150){ stats.slow += Q.size; Q.forEach(function(f, id){ var nm = f.n || '?'; stats.capped[nm] = (stats.capped[nm] || 0) + 1; }); Q.clear(); return; }                     /* leave the rest to their own timers */
+    quiet(); var items = []; Q.forEach(function(f, id){ var c = (PER.get(f.key) || 0) + 1; if(c > 3) return; PER.set(f.key, c); items.push([id, f]); }); items.forEach(function(e){ Q.delete(e[0]); }); stats.slow += Q.size; Q.clear(); var t0 = now();   /* a pass that keeps re-triggering itself waits for its own timer */
+    DEPTH++; try{ items.forEach(function(e){ nCT(e[0]); stats.fast++; try{ e[1](); }catch(x){ setTimeout(function(){ throw x; }, 0); } }); } finally{ DEPTH--; }
+    var dt = now() - t0, n = now(); taskMs += dt; if(n - spentAt > 1000){ spentAt = n; spent = 0; } spent += dt; if(spent > 400){ offUntil = n + 2000; }
+    stats.rounds = Math.max(stats.rounds, rounds); }
+  var qt = 0; function quiet(){ var d = document.documentElement; if(!d.classList.contains('n1111')) d.classList.add('n1111'); if(qt) nCT(qt); qt = nST(function(){ qt = 0; d.classList.remove('n1111'); }, 350); }
+  function plan(){ if(!sched){ sched = true; queueMicrotask(flush); } if(!reset){ reset = nST(function(){ reset = 0; rounds = 0; taskMs = 0; PER = new Map(); }, 0); } }
+  window.setTimeout = function(fn, ms){
+    var a = Array.prototype.slice.call(arguments, 2), d = +ms || 0;
+    var key = typeof fn === 'function' ? (fn.name ? fn : String(fn)) : null;
+    if(DEPTH > 0 && key && d <= MAX && (PER.get(key) || 0) < 3 && PASS.test(fn.name ? fn.name : String(fn).slice(0, 160)) && now() > offUntil && rounds <= 40 && taskMs <= 150){
+      var id = nST(function(){ if(Q.has(id)){ Q.delete(id); } fn.apply(window, a); }, d);
+      var run = function(){ fn.apply(window, a); }; run.n = (fn.name || String(fn).slice(0, 60)); run.key = key; Q.set(id, run); plan(); return id; }
+    return nST.apply(window, arguments); };
+  window.clearTimeout = function(id){ Q.delete(id); return nCT(id); };
+  function MO(cb){ var w = function(recs, obs){ DEPTH++; try{ return cb.call(this, recs, obs); } finally{ DEPTH--; } }; return Reflect.construct(NMO, [w], new.target || MO); }
+  MO.prototype = NMO.prototype; Object.setPrototypeOf(MO, NMO);
+  try{ window.MutationObserver = MO; }catch(e){}
+  window.__flicker1111 = function(){ return stats; };
+})();
+</script>
 <script>window.COE_API = "https://script.google.com/a/cupofenglishatph.com/macros/s/AKfycbyqAYrjEQ3CdeTzogP8mZ8tMRx59nV0vMvOHtoQ0wudTBNNXV7YeE_mJPYcqIRhmRbu/exec";</script>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&amp;family=Fredoka&#43;One&amp;family=Inter:wght@400;500;600&amp;family=Noto&#43;Sans&#43;SC:wght@400;500;600&amp;display=swap" rel="stylesheet">
@@ -6189,7 +6218,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1273;
+const COE_V = 1274;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -27671,7 +27700,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
         body.forEach(function(r){ var x = 0; [].forEach.call(r.cells, function(c){ var span = c.colSpan || 1; if(span === 1 && c.tagName === 'TD'){ var v = (c.textContent || '').replace(/\s+/g, ' ').trim(); if(v && v !== '—' && v !== '-'){ var o = cols[x] || (cols[x] = { n: 0, y: 0 }); o.n++; if(NUM.test(v)) o.y++; } } x += span; }); });
         Object.keys(cols).forEach(function(x){ var o = cols[x]; if(o.n < 2 || o.y / o.n < 0.8 || +x === 0) return;
           [].forEach.call(t.rows, function(r){ var k = 0; [].some.call(r.cells, function(c){ if(k === +x && (c.colSpan || 1) === 1){ c.classList.add('n991'); return true; } k += c.colSpan || 1; return k > +x; }); }); }); }); }catch(e){} }
-  var later = function(){ clearTimeout(tq); tq = setTimeout(scan, 400); }; var _g = window.go; if(typeof _g === 'function') window.go = function(){ var r = _g.apply(this, arguments); later(); setTimeout(later, 1500); return r; }; var _r = window.render; if(typeof _r === 'function') window.render = function(){ var r = _r.apply(this, arguments); later(); return r; };   /* 998 */
+  var later = function(){ clearTimeout(tq); tq = setTimeout(scan, 400); }; var _g = window.go; if(typeof _g === 'function') window.go = function(){ var r = _g.apply(this, arguments); later(); setTimeout(later, 1500); return r; }; var _r = window.render; if(typeof _r === 'function') window.render = function(){ var r = _r.apply(this, arguments); later(); return r; };   /* 998 */ try{ var mo1111 = new MutationObserver(later); document.querySelectorAll('[id^="v-"]').forEach(function(v){ mo1111.observe(v, { childList: true, subtree: true }); }); var sb1111 = document.getElementById('sheetBody'); if(sb1111) mo1111.observe(sb1111, { childList: true, subtree: true }); }catch(e){}   /* 1111 */
   setTimeout(scan, 1500);
 })();
 </script>
@@ -27905,7 +27934,7 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
     var sm = document.createElement('summary'); d.appendChild(sm);
     parent.insertBefore(d, h); sm.appendChild(h); [ch, y, df].forEach(function(x){ if(x) d.appendChild(x); }); }
   function all(){ try{ stuBar(); }catch(e){} try{ stuList(); }catch(e){} try{ home(); }catch(e){} }
-  var q = 0, later = function(){ clearTimeout(q); q = setTimeout(all, 60); };
+  var q = 0, later = function(){ clearTimeout(q); q = setTimeout(all, 60); }; window.__l1000 = later;
   ['render', 'renderStudents', 'go', 'openSheet', 'renderMHome', 'stuRender'].forEach(function(n){ var f = window[n]; if(typeof f !== 'function') return; window[n] = function(){ var r = f.apply(this, arguments); later(); setTimeout(later, 600); return r; }; });
   var sb = document.getElementById('sheetBody'); if(sb) new MutationObserver(later).observe(sb, { childList: true });
   ['v-astudents', 'v-home'].forEach(function(id){ var el = document.getElementById(id); if(el) new MutationObserver(later).observe(el, { childList: true }); });
@@ -27949,7 +27978,7 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
       c.setAttribute('tabindex', '0'); c.setAttribute('role', 'img'); c.setAttribute('aria-label', lab); c.title = lab;
       var show = function(){ try{ toast(lab); }catch(e){} };
       c.addEventListener('click', show); c.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); show(); } }); }); }
-  var q = 0, later = function(){ clearTimeout(q); q = setTimeout(bars, 80); };
+  var q = 0, later = function(){ clearTimeout(q); q = setTimeout(bars, 80); }; window.__l1002 = later;
   ['render', 'go'].forEach(function(n){ var f = window[n]; if(typeof f !== 'function') return; window[n] = function(){ var r = f.apply(this, arguments); later(); setTimeout(later, 800); return r; }; });
   var h = document.getElementById('v-home'); if(h) new MutationObserver(later).observe(h, { childList: true });
   setTimeout(bars, 2000);
@@ -28072,8 +28101,8 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
       e.style.setProperty(svg ? 'fill' : 'color', nc, 'important'); if(e.dataset) e.dataset.c1007 = '1'; } }
   /* ── 3 · finance chart ── */
   var peso = function(v){ var a = Math.abs(v); return (v < 0 ? '−' : '') + '₱' + (a >= 1e6 ? (Math.round(a / 1e5) / 10) + 'M' : a >= 1e3 ? Math.round(a / 1e3) + 'k' : Math.round(a)); };
-  function chart(){ var card = document.querySelector('.fx-tr'); if(!card) return; var svg = card.querySelector(':scope > svg'); if(!svg || svg.dataset.c1007) return;
-    var G = [].slice.call(svg.querySelectorAll('g[role=button]')); if(G.length < 2) return; svg.dataset.c1007 = '1';
+  function chart(){ [].forEach.call(document.querySelectorAll('.fx-tr'), function(c){ try{ chart1(c); }catch(e){} }); } window.__c1007 = chart; function chart1(card){ if(!card) return; var svg = card.querySelector(':scope > svg'); if(!svg || svg.dataset.ch1007) return;
+    var G = [].slice.call(svg.querySelectorAll('g[role=button],g[onclick]')); if(G.length < 2) return; svg.dataset.ch1007 = '1';
     var pts = []; G.forEach(function(g){ var t = (g.querySelector('title') || {}).textContent || '', m = t.match(/sales ₱([\d,]+)/), c = g.querySelectorAll('circle')[0]; if(m && c) pts.push([+m[1].replace(/,/g, ''), +c.getAttribute('cy')]);
       g.setAttribute('aria-label', t); });
     var wrap = document.createElement('div'); wrap.className = 'c1007'; svg.parentNode.insertBefore(wrap, svg); wrap.appendChild(svg);
@@ -28102,12 +28131,12 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
     var box = h.parentNode; box.insertBefore(d, h); }
   function all(){ try{ chart(); }catch(e){ console.warn('1007 chart', e); } try{ strips(); }catch(e){} try{ key(); }catch(e){} try{ contrast(document.getElementById('v-' + (typeof VIEW !== 'undefined' ? VIEW : '')) || null); contrast(document.querySelector('#app header, #app .hd')); contrast(document.getElementById('navIn')); if(document.querySelector('#sheet.on')) contrast(document.getElementById('sheet')); }catch(e){ console.warn('1007 contrast', e); } }
   window.d1007 = all;
-  var q = 0, later = function(){ clearTimeout(q); q = setTimeout(all, 250); };
+  var q = 0, later = function(){ clearTimeout(q); q = setTimeout(all, 250); }; window.__l1007 = later;
   ['render', 'go', 'openSheet', 'renderAStudents', 'renderStudents', 'renderPayroll', 'renderToday'].forEach(function(n){ var f = window[n]; if(typeof f !== 'function') return; window[n] = function(){ var r = f.apply(this, arguments); later(); setTimeout(later, 1200); return r; }; });
   var sb = document.getElementById('sheetBody'); if(sb) new MutationObserver(later).observe(sb, { childList: true });
   /* screens that fill in after their data arrives: watch each screen's own box (direct children only — cheap) */
   var mo = new MutationObserver(later); document.querySelectorAll('[id^="v-"]').forEach(function(v){ mo.observe(v, { childList: true }); });
-  setInterval(function(){ if(document.querySelector('.fx-tr > svg:not([data-c1007])')) later(); }, 2000);
+  setInterval(function(){ if(document.querySelector('.fx-tr > svg:not([data-ch1007])')) later(); }, 2000);
   /* content that fills in later inside a screen (lists, charts): one more pass, at most every 1.5 s */
   var lastDeep = 0, deepT = 0, app = document.getElementById('app'); if(app) new MutationObserver(function(){ if(deepT) return; deepT = setTimeout(function(){ deepT = 0; if(Date.now() - lastDeep < 1500) return; lastDeep = Date.now(); all(); }, 900); }).observe(app, { childList: true, subtree: true });
   addEventListener('resize', function(){ clearTimeout(q); q = setTimeout(strips, 200); });
@@ -28495,7 +28524,7 @@ nav button.on:not(#z1101):not(#y1101){color:#00575F!important;font-weight:700!im
     if(mv.length < 2) return; var d = document.createElement('details'); d.className = 'm1000'; d.innerHTML = '<summary class="btn ghost">More actions</summary><div class="m1000-p"></div>'; var pn = d.lastChild;
     mv.forEach(function(b){ if(b.classList.contains('x1101-dz') || /return to teacher/i.test(lab(b))){ var sep = document.createElement('div'); sep.className = 'x1101-dzsep'; pn.appendChild(sep); } pn.appendChild(b); });
     el.appendChild(d); }
-  var q = 0, later = function(){ clearTimeout(q); q = setTimeout(all, 120); };
+  var q = 0, later = function(){ clearTimeout(q); q = setTimeout(all, 120); }; window.__l1102 = later;
   ['render', 'go', 'openSheet', 'rpBtns', 'renderReports', 'renderAStudents', 'renderStudents', 'renderPayroll', 'renderToday'].forEach(function(n){ var f = window[n]; if(typeof f !== 'function') return; window[n] = function(){ var r = f.apply(this, arguments); later(); return r; }; });
   var sb = document.getElementById('sheetBody'); if(sb) new MutationObserver(later).observe(sb, { childList: true });
   var mo = new MutationObserver(later); document.querySelectorAll('[id^="v-"]').forEach(function(v){ mo.observe(v, { childList: true }); });
@@ -29199,5 +29228,14 @@ i.dl.up{color:#24683F!important}
 </style>
 <script>/* 1122 · Teachers: "All teachers · open times" is a view, not the main action (outline); the details pane keeps its Save */
 (function(){ var _r = window.renderTeachers; if(typeof _r !== "function") return; window.renderTeachers = function(){ var r = _r.apply(this, arguments); try{ var b = document.getElementById("avaBtn"); if(b) b.classList.add("x1101-sec"); }catch(e){} return r; }; try{ var b = document.getElementById("avaBtn"); if(b) b.classList.add("x1101-sec"); }catch(e){} })();</script>
+<script>/* 1111 · a redraw inside a screen (new rows, a refreshed chart) also finishes before paint */
+(function(){ if(window.__1111b) return; window.__1111b = 1;
+  function big(rs){ for(var k = 0; k < rs.length; k++){ var r = rs[k]; if(r.type === 'childList' && (r.removedNodes.length > 3 || r.addedNodes.length > 3)) return true;
+      for(var j = 0; j < r.addedNodes.length; j++){ var n = r.addedNodes[j]; if(n.nodeType === 1 && n.firstElementChild) return true; } } return false; }
+  var L = ['__l1000', '__l1007', '__l1102', '__l1002'];
+  var mo = new MutationObserver(function(rs){ if(!big(rs)) return; try{ if(window.__c1007 && document.querySelector('.fx-tr > svg:not([data-ch1007])')) window.__c1007(); }catch(e){} L.forEach(function(k){ try{ if(typeof window[k] === 'function') window[k](); }catch(e){} }); });
+  ['app', 'sheetBody'].forEach(function(id){ var el = document.getElementById(id); if(el) mo.observe(el, { childList: true, subtree: true }); });
+})();
+</script>
 </body>
 </html>
