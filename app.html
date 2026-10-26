@@ -6241,7 +6241,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1311;
+const COE_V = 1312;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -30034,6 +30034,66 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
       .then(x => x.json()).finally(() => clearTimeout(tid))
       .then(r => { if(!r || !r.ok || !r.db) throw new Error('fallback'); check(code, r, self, args); return r; })
       .catch(() => base.apply(self, args));   /* database not answering: Google as before */ };
+  for(const k in base) try{ w[k] = base[k]; }catch(e){}
+  window.api = w;
+})();
+</script>
+<script>
+/* 1260 · instant saves through the database (coe-wq) */
+(function(){
+  if(window.__1260 || typeof window.api !== 'function') return; window.__1260 = 1;
+  const FNS = { mgmtAgreeSave: 1, mgmtLeaveInformed: 1, tLeaveInformed: 1, mgmtTagClass: 1, decideLate: 1 };
+  const LBL = { mgmtAgreeSave: 'Service agreement', 'mgmtAgreeSave:file': 'Service agreement (signed copy)', mgmtLeaveInformed: 'Leave · informed', tLeaveInformed: 'Leave · informed', mgmtTagClass: 'Class tag', decideLate: 'Late time-in decision' };
+  try{ if(typeof FF_L === 'object' && FF_L) Object.keys(LBL).forEach(k => { if(!FF_L[k]) FF_L[k] = LBL[k]; }); }catch(e){}
+  const me = () => (typeof D !== 'undefined' && D && D.me && D.me.name) || '';
+  const p2 = n => ('0' + n).slice(-2);
+  const nowAt = () => { const d = new Date(Date.now() + 8 * 3600e3); return d.toISOString().slice(0, 10) + ' ' + p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes()); };   // Manila, as S-AGREE
+  /* agreements saved here but not yet in Google's copy: shown at once (kept 3 h on this device) */
+  const AGP_K = 'coe.agp';
+  const agp = () => { try{ const o = JSON.parse(localStorage.getItem(AGP_K) || '[]'); return o.filter(x => Date.now() - x.t < 3 * 36e5); }catch(e){ return []; } };
+  const agpSet = L => { try{ localStorage.setItem(AGP_K, JSON.stringify(L.slice(-30))); }catch(e){} };
+  const same = (r, code, key, name) => { const c = String(code || '').toUpperCase(); return (c && String(r.code || '').toUpperCase() === c) || (key && r.key === key) || (name && String(r.name || '').trim().toLowerCase() === String(name).trim().toLowerCase()); };
+  const newer = (a, b) => !b || String(a.at || '') > String(b.at || '');
+  const _of = window.agrOf;
+  if(typeof _of === 'function') window.agrOf = function(code, key, name){ const r = _of.apply(this, arguments);
+    try{ const p = agp().filter(x => same(x.rec, code, key, name)).map(x => x.rec).sort((a, b) => String(b.at).localeCompare(String(a.at)))[0];
+      if(p && newer(p, r)) return p; }catch(e){} return r; };
+  function ans(fn, a){ const f = a[1] || {};
+    if(fn === 'mgmtAgreeSave'){ const rec = { at: nowAt(), by: me(), how: String(f.how || ''), key: String(f.key || ''), code: String(f.code || ''), file: '', name: String(f.name || ''), note: '', pending: 1 };
+      const L = agp().filter(x => x.rid !== f.rid); L.push({ t: Date.now(), rid: f.rid || '', rec }); agpSet(L); return { ok: true, queued: true, rec }; }
+    if(fn === 'mgmtTagClass' || fn === 'decideLate'){ const cond = String((fn === 'decideLate' ? a[2] : a[3]) || ''); return { ok: true, queued: true, note: cond, caseId: '' }; }
+    return { ok: true, queued: true }; }
+  /* Google's answer: case numbers, the agreement's file link; a refusal → the failed-saves notice */
+  function watch(id, fn, a){ let n = 0; const W = [12e3, 20e3, 30e3, 60e3, 120e3, 240e3];
+    const tick = async () => { let r = null;
+      try{ r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'writeStatus', token: TOKEN, id }) }).then(x => x.json()); }catch(e){}
+      if(r && r.ok && r.status === 'done'){ const g = r.result || {};
+        if((fn === 'decideLate' || fn === 'mgmtTagClass') && g.caseId) try{ toast((g.note || 'Saved') + ' · ' + g.caseId); }catch(e){}
+        if(fn === 'mgmtAgreeSave'){ try{ const f = a[1] || {}; agpSet(agp().map(x => x.rid === f.rid && g.rec ? Object.assign(x, { rec: Object.assign({}, g.rec, { at: String(g.rec.at || x.rec.at).replace('T', ' ').slice(0, 16) }) }) : x));
+          if(typeof AGS !== 'undefined' && AGS && AGS.list && AGS.list[0] && AGS.list[0].pending && g.rec) Object.assign(AGS.list[0], g.rec, { pending: 0 }); }catch(e){} }
+        return; }
+      if(r && r.ok && r.status === 'error'){ if(fn === 'mgmtAgreeSave'){ const f = a[1] || {}; agpSet(agp().filter(x => x.rid !== f.rid)); }
+        try{ if(fn === 'mgmtLeaveInformed' && typeof loadLeave === 'function') loadLeave(true); }catch(e){}
+        try{ if(typeof fastFails === 'function') fastFails(); else toast('Not saved · ' + (LBL[fn] || fn) + ' · ' + (r.error || 'refused') + ' · please do it again'); }catch(e){}
+        return; }
+      if(n < W.length) setTimeout(tick, W[n++]); };
+    setTimeout(tick, W[n++]); }
+  const base = window.api;
+  const w = function(fn){ const all = arguments, self = this, a = [].slice.call(arguments, 1);
+    if(fn === 'mgmtAgree') return Promise.resolve(base.apply(this, all)).then(r => { try{ const q = a[1] || {}, P = agp().filter(x => same(x.rec, q.code, q.key, q.name)).map(x => x.rec);
+        if(r && r.ok && P.length){ const L = Array.isArray(r.list) ? r.list : []; const add = P.filter(p => !L.some(x => x.how === p.how && String(x.at || '') >= String(p.at || ''))); if(add.length) r.list = add.concat(L).sort((x, y) => String(y.at || '').localeCompare(String(x.at || ''))); } }catch(e){} return r; });
+    let on = !!FNS[fn]; try{ if(localStorage.getItem('coe.fast') === '0') on = false; }catch(e){}
+    if(!on || typeof TOKEN === 'undefined' || !TOKEN || typeof D === 'undefined' || !D || (fn !== 'tLeaveInformed' && !D.mgr) || a[0] !== TOKEN) return base.apply(this, all);
+    const f = a[1] && typeof a[1] === 'object' ? a[1] : null;
+    if(fn === 'mgmtAgreeSave' && f && f.file && String(f.file.b64 || '').length > 12e6) return base.apply(this, all);
+    const rid = (f && f.rid ? 'w-' + f.rid : 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+    const send = () => { const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), f && f.file ? 30000 : 8000) : 0;
+      return fetch(FAST_URL + '-wq', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, fn, args: a, rid }), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid)); };
+    return send().catch(() => new Promise(z => setTimeout(z, 800)).then(send))   /* the same rid twice = one save */
+      .then(r => { if(!r || !r.ok || !r.queued) throw new Error('db');
+        if(r.id && !r.dup) watch(r.id, fn, a); else if(r.id) watch(r.id, fn, a);
+        return ans(fn, a); })
+      .catch(() => base.apply(self, all));   /* the database did not take it: Google, exactly as before */ };
   for(const k in base) try{ w[k] = base[k]; }catch(e){}
   window.api = w;
 })();
