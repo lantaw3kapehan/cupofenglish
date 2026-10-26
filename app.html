@@ -6218,7 +6218,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1275;
+const COE_V = 1277;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -9185,9 +9185,9 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     const popH = () => '<h1 id="mustPop">Before you start</h1><p class="small mute" style="margin:8px 0 6px">Management is waiting for ' + (n === 1 ? 'this' : 'these ' + n + ' things') + '. It only takes a minute.</p>' + L.map((x, i) => row(x, i, true)).join('') +
         '<div style="margin-top:14px;text-align:center"><a class="link small" onclick="mustLater(window._mustSig)">Remind me in 2 hours</a></div>';
     if($('mustPop') && $('sheet').classList.contains('on')){ POPPED = sig; $('sheetBody').innerHTML = popH(); return; }
-    if(POPPED === sig || snoozed(sig) || inClass() || VIEW !== 'today' || $('sheet').classList.contains('on') || (window._mustAt && Date.now() - window._mustAt < 10 * 6e4)) return;
-    clearTimeout(window._mustT); window._mustT = setTimeout(() => { if(POPPED === sig || $('sheet').classList.contains('on') || VIEW !== 'today') return; POPPED = sig;
-      window._mustAt = Date.now(); openSheet(popH()); }, 2500);
+    if(POPPED === sig || snoozed(sig) || inClass() || VIEW !== 'today' || $('sheet').classList.contains('on') || (window._mustAt && Date.now() - window._mustAt < 10 * 6e4) || (window.mustGate1180 && !mustGate1180(L))) return;
+    clearTimeout(window._mustT); window._mustT = setTimeout(() => { if(POPPED === sig || window._mustSig !== sig || $('sheet').classList.contains('on') || VIEW !== 'today' || inClass() || (window.mustGate1180 && !mustGate1180(window._MUST || L))) return; POPPED = sig;
+      window._mustAt = Date.now(); if(window.mustShown1180) mustShown1180(window._MUST || L); openSheet(popH()); }, 6000);
     // A phone / laptop notification for each new item (once).
     try{ L.forEach(x => { if(!remTold('must:' + x.key)) notify('CupOfEnglish · to do', x.label + ' · ' + x.title, 'coe-must'); }); }catch(e){}
   }
@@ -29292,6 +29292,53 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   function hook(){ var n = document.getElementById('navIn'), t = document.getElementById('v-today'); if(n && !n.__o1112){ n.__o1112 = 1; mo.observe(n, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['title', 'style'] }); }
     if(t && !t.__o1112){ t.__o1112 = 1; mo.observe(t, { childList: true, subtree: true }); } nav(); cards(); }
   hook(); var tries = 0, iv = setInterval(function(){ hook(); if(++tries > 30) clearInterval(iv); }, 1000);
+})();
+</script>
+<script>
+/* 1180 · finished to-dos leave Today · "Before you start" only for something new */
+(function(){
+  if(window.__1180) return; window.__1180 = 1;
+  var LS = function(k, v){ try{ if(v === undefined) return JSON.parse(localStorage.getItem(k) || 'null'); localStorage.setItem(k, JSON.stringify(v)); }catch(e){ return null; } };
+  var me = function(){ try{ return String((D && D.me && D.me.name) || '').trim().toLowerCase(); }catch(e){ return ''; } };
+  var DK = function(){ return 'coe.done1180.' + me(); };
+  var DONE = null, BUSY = 0;
+  function cur(){ if(!DONE || DONE._u !== me()){ DONE = LS(DK()) || null; if(DONE) DONE._u = me(); } return DONE; }
+  var day = function(x){ var m = String(x || '').match(/(\d{4}-\d{2}-\d{2})/); return m ? m[1] : ''; };
+  var add = function(d, k){ return new Date(Date.parse(d + 'T00:00:00Z') + k * 864e5).toISOString().slice(0, 10); };
+  function apply(){
+    var X = cur(); if(!X || typeof D === 'undefined' || !D || D.mgr) return;
+    try{ (D.special || []).forEach(function(x){ if(!x || !x.reportMissing || !x.date) return; var lo = add(x.date, -14), hi = add(x.date, 30), c = String(x.code || '').trim().toUpperCase(), s = String(x.student || '').trim().toLowerCase();
+      if((X.trial || []).some(function(r){ return r.d >= lo && r.d <= hi && ((c && r.c === c) || (s && r.s === s)); })) x.reportMissing = false; }); }catch(e){}
+    try{ if(typeof TMSG !== 'undefined' && TMSG && TMSG.threads && (X.ack || []).length){ var A = {}; X.ack.forEach(function(id){ A[id] = 1; });
+      TMSG.threads.forEach(function(t){ var r = t && t.root; if(r && r.id && A[r.id] && !r.ack){ r.ack = 'done'; if(!r.seen) r.seen = 'done'; } }); } }catch(e){}
+    try{ if((X.visit || []).length){ var v = {}; try{ v = JSON.parse(store('get', 'coe.vack') || '{}') || {}; }catch(e){} var ch = 0; X.visit.forEach(function(id){ if(!v[id]){ v[id] = 1; ch = 1; } }); if(ch) store('set', 'coe.vack', JSON.stringify(v)); } }catch(e){}
+    try{ if((X.peer || []).length && Array.isArray(D.peer)){ var P = {}; X.peer.forEach(function(id){ P[id] = 1; }); D.peer = D.peer.filter(function(x){ return !(x && P[x.id]); }); } }catch(e){}
+  }
+  window.done1180 = function(){ return cur(); };
+  async function load(force){
+    if(BUSY || typeof D === 'undefined' || !D || D.mgr || !TOKEN || typeof FAST_URL === 'undefined') return; var X = cur(); if(!force && X && Date.now() - (X.at || 0) < 2 * 6e4) return; BUSY = 1;
+    try{ var r = await fetch(FAST_URL + '-done', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN }) }).then(function(y){ return y.json(); });
+      if(r && r.ok){ var was = JSON.stringify(X ? { a: X.ack, v: X.visit, t: X.trial, p: X.peer } : null); r.at = Date.now(); r._u = me(); DONE = r; LS(DK(), r);
+        if(was !== JSON.stringify({ a: r.ack, v: r.visit, t: r.trial, p: r.peer }) && typeof VIEW !== 'undefined' && VIEW === 'today' && typeof renderToday === 'function'){ try{ window.renderToday(); }catch(e){} } } }
+    catch(e){} finally{ BUSY = 0; } }
+  // the pop-up rule
+  var SK = function(){ return 'coe.mustShown1180.' + me(); };
+  function shown(){ var o = LS(SK()) || {}, cut = Date.now() - 14 * 864e5, k; for(k in o) if(o[k] < cut) delete o[k]; return o; }
+  function nearClass(){ try{ var now = Date.now(); return (D.schedule || []).some(function(c){ if(!c || c.cancelled || c.day !== D.today) return false; var a = Date.parse(c.start), b = Date.parse(c.end); return (a - now <= 10 * 6e4 && b > now); }); }catch(e){ return false; } }
+  window.mustGate1180 = function(L){ try{ if(!L || !L.length) return false; var o = shown(); if(!L.some(function(x){ return !o[x.key]; })) return false;
+      var last = LS('coe.mustLast1180.' + me()) || 0; if(Date.now() - last < 4 * 3600e3) return false; if(nearClass()) return false; return true; }catch(e){ return false; } };
+  window.mustShown1180 = function(L){ try{ var o = shown(), t = Date.now(); (L || []).forEach(function(x){ o[x.key] = t; }); LS(SK(), o); LS('coe.mustLast1180.' + me(), t); }catch(e){} };
+  // apply before Today is drawn (same task — no extra flicker), refresh from the database in the background
+  var _rt = window.renderToday; if(typeof _rt === 'function') window.renderToday = function(){ try{ apply(); }catch(e){} var r = _rt.apply(this, arguments); setTimeout(function(){ load(false); }, 0); return r; };
+  var _r = window.render; if(typeof _r === 'function') window.render = function(){ try{ apply(); }catch(e){} return _r.apply(this, arguments); };
+  // a save made on this device counts at once
+  var _a = window.api; if(typeof _a === 'function') window.api = function(fn){ var p = _a.apply(this, arguments);
+    try{ if(/^(tMsgAck|tVisitAck|tTrialSubmit|tPeerSubmit)$/.test(fn) && p && p.then){ var args = [].slice.call(arguments, 1); p.then(function(res){ if(!(res && res.ok)) return; var X = cur() || { ack: [], visit: [], trial: [], pc: [], peer: [], at: 0 }; X._u = me();
+        if(fn === 'tMsgAck') X.ack = (X.ack || []).concat([String(args[1])]); else if(fn === 'tVisitAck') X.visit = (X.visit || []).concat([String(args[1])]); else if(fn === 'tPeerSubmit') X.peer = (X.peer || []).concat([String(args[1])]);
+        else if(fn === 'tTrialSubmit' && args[1]) X.trial = (X.trial || []).concat([{ d: day(args[1].date), s: String(args[1].student || '').trim().toLowerCase(), c: String(args[1].code || '').trim().toUpperCase() }]);
+        DONE = X; LS(DK(), X); }).catch(function(){}); } }catch(e){} return p; };
+  setTimeout(function(){ load(true); }, 1500);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) load(false); });
 })();
 </script>
 </body>
