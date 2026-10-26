@@ -1263,7 +1263,7 @@ async function fastWrite(fn, args){ const rid = 'f' + Date.now().toString(36) + 
   return apiNow(fn, ...args); }   /* not ready, not signed in there yet, or no answer → the normal save, exactly as today */
 const SB_R = /^(mgmt(Overview|Students|Student|Schedule|Teacher|Actions|Active|Renewals|Trials|TrialFus|Reports|ReportsWait|Performance|TeacherCard|PayChecks|PayReady|AvailAll|Health|Night|Msgs|Tab|Database|Payroll|Leave|Peer|Hours|StuClasses|Urls|EnqList|MonDay|VisitCoverage|AgreeMap|Growth)|schedLists|moneyLists|dbLists|dbRecord|mgmt(Agree|Avail|ClassInfo|FixIgnored|LeaveClasses|MemoInfo|PeerClasses|PlanFlags|Profiles|QaForm|QaLast|Reminders|Report|ShiftTasks|SlipPeople|TrialSearch|WeekSum|TeacherWeek|TeacherVisits)|t(Student|StuClasses|FbStatus|Growth|Schedule|PayCheck|PayReady|Msgs|Leave|LeaveClasses|MyVisits|MyComments|HwHist|Goals|NoteComments|Reminders|FbForm|PcForm|TrialForm|PeerForm))$/;   /* 14 Oct pm: + teachers' screens, − pulse */
 const SB_SH = /^mgmt(Health|Night|PayReady|AvailAll|Performance|TeacherCard|Peer|Hours|Trials|Reports|PayChecks|Active|Renewals|Overview|Schedule|Teacher|Student|StuClasses)$/;
-const SB_UIAGE = { getBootstrap: 1, mgmtStudent: 7 * 864e5, tStudent: 7 * 864e5, mgmtStuClasses: 864e5, tStuClasses: 864e5 };   /* the same for all management (server SHARED_TTL) */
+const SB_UIAGE = { getBootstrap: 1, mgmtStudent: 7 * 864e5, tStudent: 7 * 864e5, mgmtStuClasses: 864e5, tStuClasses: 864e5, tGrowth: 14 * 864e5 };   /* 1230: Growth opens from a copy up to 14 days old, Google refreshes it behind */   /* the same for all management (server SHARED_TTL) */
 const SB_BGAGE = { tGrowth: 30 * 6e4, tPayCheck: 10 * 6e4, tPayReady: 10 * 6e4, tNoteComments: 10 * 6e4, mgmtTeacherVisits: 30 * 6e4, mgmtWeekSum: 60 * 6e4, mgmtPeer: 30 * 6e4, mgmtHours: 15 * 6e4, mgmtPerformance: 30 * 6e4, mgmtNight: 60 * 6e4, mgmtReports: 10 * 6e4, mgmtReportsWait: 10 * 6e4, mgmtTrials: 10 * 6e4, mgmtTab: 10 * 6e4, mgmtStudent: 20 * 6e4, mgmtStuClasses: 20 * 6e4, mgmtMsgs: 0, mgmtPulse: 0, mgmtHealth: 10 * 6e4, tStudent: 20 * 6e4, tStuClasses: 20 * 6e4, tMsgs: 0 };
 const SB_OKAGE = { tGrowth: 30 * 6e4, tPayCheck: 10 * 6e4, tPayReady: 10 * 6e4, tNoteComments: 10 * 6e4, tMyComments: 10 * 6e4, tFbForm: 15 * 6e4, tPcForm: 15 * 6e4, tTrialForm: 15 * 6e4, tPeerForm: 15 * 6e4, tStuClasses: 10 * 6e4, mgmtTeacherVisits: 30 * 6e4, mgmtWeekSum: 60 * 6e4, mgmtPeer: 30 * 6e4, mgmtHours: 15 * 6e4, mgmtReports: 10 * 6e4, mgmtTrials: 10 * 6e4, mgmtTab: 10 * 6e4, mgmtDatabase: 10 * 6e4, mgmtMyPay: 30 * 6e4, mgmtUrls: 60 * 6e4, mgmtHealth: 10 * 6e4, mgmtNight: 60 * 6e4, mgmtAvailAll: 15 * 6e4, mgmtPerformance: 30 * 6e4, mgmtTeacherCard: 30 * 6e4, mgmtRenewals: 10 * 6e4, mgmtReportsWait: 10 * 6e4, tGrowth: 30 * 6e4, mgmtGrowth: 30 * 6e4 };   /* 15 Oct: slow Google-only screens */
 const SB_LIVE = /^(mgmt(Active|Students|Student|StuClasses|Schedule|TeacherWeek|Teacher|AvailAll|MonDay|Actions|Payroll|Leave|Msgs|Database)|t(Student|Schedule|FbStatus|HwHist|Reminders|Goals|Leave|MyVisits|Msgs|NoteComments|MyComments)|getBootstrap|dbRecord|dbLists)$/;   /* 14 Oct night: the database works these out itself */
@@ -6226,7 +6226,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1305;
+const COE_V = 1306;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7985,6 +7985,15 @@ let P = null;
 const secOf = i => i < 5 ? 'Speaking 口语' : i < 7 ? 'Listening 听力' : 'Reading 阅读';
 const rub = t => t <= 10 ? 'Pre-A1' : t <= 15 ? 'A1' : t <= 20 ? 'A2' : t <= 25 ? 'B1' : t <= 30 ? 'B2' : t <= 35 ? 'C1' : 'C2';
 const PCF = {};
+/* 1230: progress-check form from the database (coe-pcf) */
+const fresh1230 = {};
+function pcSig1230(r){ try{ const d = r.done || null, t = r.trial || null; return JSON.stringify([d && [d.label, d.total, d.cefr], t && [t.label, t.total, t.r], (r.notes || []).map(n => [n.date, n.obs, n.kind]), (r.fb || []).map(f => [f.month, f.teacher, f.total]), r.ended || '', (r.rate || []).length]); }catch(e){ return String(Math.random()); } }
+async function pcDb1230(code){ if(typeof FAST_URL === 'undefined' || !TOKEN) return null; const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 5000) : 0;
+  try{ const r = await fetch(FAST_URL + '-pcf', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, code: code }), signal: ac ? ac.signal : undefined }).then(x => x.json());
+    if(!r || !r.ok || !Array.isArray(r.rate) || !r.rate.length) return null;
+    const st = ((typeof D !== 'undefined' && D && D.students) || []).find(x => x.code === code) || null;
+    r.student = st ? { code: code, name: st.name || code, cn: st.cn || '', done: st.done, book: st.book || '' } : { code: code, name: code, cn: '', book: '' };
+    try{ store('set', 'coe.pcrate', JSON.stringify(r.rate)); }catch(e){} return r; }catch(e){ return null; } finally{ clearTimeout(tid); } }
 window.pcPrefetch = function(code){ if(!code || PCF[code] || (window.PCDONE && PCDONE[code])) return; PCF[code] = api('tPcForm', TOKEN, code).then(r => { if(r && r.ok) try{ store('set', 'coe.pcf.' + code, JSON.stringify(r)); store('set', 'coe.pcrate', JSON.stringify(r.rate)); }catch(e){} return r; }).catch(() => { delete PCF[code]; return null; }); };
 window.pcForm = async function(code){
 window._pcWhy = '';
@@ -7995,7 +8004,13 @@ openSheet('<h1>Progress check</h1>' + (r ? '' : '<div class="small mute">Opening
 let d = null; try{ d = JSON.parse(store('get', 'coe.pcd.' + code) || 'null'); }catch(e){}
 const mk = rr => ({ code, r: rr, picks: (P && P.code === code && P.picks) || (d && d.picks) || Array(9).fill(0), book: (P && P.code === code && P.book) || (d && d.book) || rr.ended || '', prog: (P && P.code === code && P.prog) || (d && d.prog) || '', next: (P && P.code === code && P.next) || (d && d.next) || '' });
 P = null; if(r && r.ok){ P = mk(r); pcPaint(); }
-let fresh = null; try{ fresh = await (PCF[code] || api('tPcForm', TOKEN, code)); }catch(e){} delete PCF[code];
+const gq1230 = PCF[code] || api('tPcForm', TOKEN, code); delete PCF[code]; let db1230 = null;   /* 1230: the database answer first, Google's at the same time */
+try{ db1230 = await pcDb1230(code); }catch(e){}
+if(db1230 && $('sheet') && $('sheet').classList.contains('on') && !(fresh1230[code] && fresh1230[code] > Date.now() - 1000)){ const shown = P && P.code === code && P.r;
+  if(!shown || shown.provisional || pcSig1230(shown) !== pcSig1230(db1230)){ const sc = $('sheet').scrollTop, fid = document.activeElement && document.activeElement.id, cur = fid && $(fid) && $(fid).selectionStart;
+    if(P && P.code === code) pcSave(); P = mk(db1230); pcPaint(); try{ $('sheet').scrollTop = sc; if(fid && $(fid)){ $(fid).focus(); if(cur != null && $(fid).setSelectionRange) $(fid).setSelectionRange(cur, cur); } }catch(e){} } }
+let fresh = null; try{ fresh = await gq1230; }catch(e){}
+if(fresh && fresh.ok && db1230 && P && P.code === code && pcSig1230(fresh) === pcSig1230(P.r)){ try{ store('set', 'coe.pcf.' + code, JSON.stringify(fresh)); store('set', 'coe.pcrate', JSON.stringify(fresh.rate)); }catch(e){} return; }   /* same as shown: keep the page still */
 if(fresh && fresh.ok){ try{ store('set', 'coe.pcf.' + code, JSON.stringify(fresh)); store('set', 'coe.pcrate', JSON.stringify(fresh.rate)); }catch(e){}
 if(!$('sheet') || !$('sheet').classList.contains('on')) return;
 const sc = $('sheet').scrollTop, fid = document.activeElement && document.activeElement.id, cur = fid && $(fid) && $(fid).selectionStart;
