@@ -2071,13 +2071,13 @@ fbPaint();
 function fbTotals(){ const sub = FBS.scores.map(r => r.reduce((a,b)=>a+(b||0),0)); return { sub, total: sub.reduce((a,b)=>a+b,0), filled: FBS.scores.every(r => r.every(x => x>0)) }; }
 function fbPaint(){
 const F = FBF.form, L = FBF.last, T = fbTotals();
-let h = `<div class="row"><div class="grow"><h1>Monthly feedback</h1><div class="mute small">${esc(FBF.student || FBF.code)} · ${esc(FBF.code)} · ${esc(FBF.month)} · due ${esc(FBF.due)}</div>
+let h = `<div class="row"><div class="grow"><h1>Monthly feedback</h1><div class="mute small">${esc(FBF.student || FBF.code)} · ${esc(FBF.code)} · ${esc(fbFL(FBF))} · due ${esc(FBF.due)}</div>
 ${F.help ? `<div class="small mute">${esc(String(F.help).replace(/\n+/g,' · '))}</div>` : ''}</div></div>`;
 const O = FBF.obs || [];
 h += O.length ? `<details class="obs" open><summary>Class notes · last 45 days · ${O.length}</summary>${O.map(o => `<div class="o"><b>${esc(o.date)}</b>${o.teacher && o.teacher !== (D.me||{}).name ? ' · '+esc(tName(o.teacher)) : ''}${o.skills?' · <span class="mute">'+esc(o.skills)+'</span>':''}${o.obs?'<div>'+esc(o.obs)+'</div>':''}${o.ended?'<div class="small mute">Ended: '+esc(o.ended)+'</div>':''}</div>`).join('')}</details>`
 : `<div class="obs small mute">No class notes in the last 45 days. From now on, add a class note after each class — they show here when you write feedback.</div>`;
 if(FBF.fix) h += `<div class="fbfix"><b>Please update this feedback</b><div>${nl2br(FBF.fix.note)}</div><div class="small">${esc(FBF.fix.by)} · ${esc(FBF.fix.at)}</div></div>`;
-else if(FBF.done) h += `<div class="fbdone">Already sent for ${esc(FBF.month)}${FBF.done.total?' · '+FBF.done.total+'/100':''}${FBF.done.at?' · '+esc(FBF.done.at):''}. Sending again adds a second response.</div>`;
+else if(FBF.done) h += `<div class="fbdone">Already sent for ${esc(fbFL(FBF))}${FBF.done.total?' · '+FBF.done.total+'/100':''}${FBF.done.at?' · '+esc(FBF.done.at):''}. Sending again adds a second response.</div>`;
 h += `<div class="small mute" style="margin-top:8px">Rate each line 1–5 (1 needs a lot of support · 3 developing · 5 excellent). Write in English — the Chinese version is added to the report as usual.</div>`;
 F.grids.forEach((g, gi) => { const [en, cn, key] = FB_SKILL(g.title), last = L && key ? L[key] : null;
 h += `<section class="sec fbsk"><div class="row"><h2 class="grow">${esc(en)} <span class="c">${esc(cn)}</span></h2><b class="num fbsub" id="fbs${gi}">${T.sub[gi]} / ${g.rows.length*5}</b></div>${last?`<div class="small mute">Last month ${last} / 25</div>`:''}` +
@@ -2116,7 +2116,7 @@ const c = (D.schedule||[]).find(x => x.id === id); if(!c) return;
 const s = (D.students||[]).find(x => x.code === c.code) || {}, n = (window.noteFor ? noteFor(s, c) : ((s.notesEv && s.notesEv[c.id]) || s.note)), hw = (D.hw||{})[c.id], fb = FB && (FB.students||[]).find(x => x.code === c.code);
 const head = `<div class="row"><div class="av">${esc((c.student||'?')[0])}</div><div class="grow"><h1>${esc(c.student || c.title)}</h1><div class="mute small">${tm(c.start)}–${tm(c.end)} · ${esc([c.code, c.book || s.book].filter(Boolean).join(' · '))}</div></div></div>
 <div class="stats" style="margin-top:12px"><div class="stat"><b class="num" style="font-size:15px">${D.mgr ? (s.left==null?'—':s.left) : s.left!=null&&s.left<=3 ? 'Ending soon' : 'Active'}</b><span>${D.mgr ? 'lessons left' : 'package'}</span></div><div class="stat"><b class="num" id="cbLv">—</b><span>level</span></div>
-<div class="stat"><b class="num" style="font-size:15px">${fb ? (fb.done ? '✓ sent' : 'to do') : '—'}</b><span>${esc(FB ? String(FB.label).split(' ')[0] : 'monthly')} feedback</span></div></div>
+<div class="stat"><b class="num" style="font-size:15px">${fb ? (fb.done ? '✓ sent' : 'to do') : '—'}</b><span>${esc(FB ? String(fbLbl() || FB.label).split(' ')[0] : 'monthly')} feedback</span></div></div>
 <h2>Last class</h2>${n ? `<div class="note"><b>Ended: ${esc(n.ended)}</b>${n.obs?'<br>Noticed: '+esc(n.obs):''}${n.next?'<br>Plan: '+esc(n.next):''}${n.homework?'<br>Homework given: '+esc(n.homework):''}<br><span class="mute small">${esc(tName(n.by||''))} · ${esc(n.date||'')}</span></div>` : '<div class="mute small">No class notes yet.</div>'}
 <div id="cbFocus"><h2>Learning focus</h2><div class="sk"></div></div>
 <div class="row" style="margin-top:16px;gap:8px;flex-wrap:wrap"><button class="btn ghost grow" onclick="noteSheet('${esc(c.code)}','${esc(c.id)}','${c.day}')">Class note</button>
@@ -2128,7 +2128,7 @@ let r = STU_CACHE[c.code]; if(!r){ try{ r = JSON.parse(store('get','coe.stu.' + 
 const f = (r.feedback||[])[0], ck = (r.checks||[])[0], el = $('cbFocus'); if(!el) return;
 const lv = (ck && ck.cefr) || ''; if($('cbLv')) $('cbLv').textContent = lv || '—';
 const sk = f ? [['Listening', f.l], ['Speaking', f.s], ['Reading', f.r], ['Writing', f.w]].filter(x => x[1]) : [], lo = sk.length ? Math.min(...sk.map(x => x[1])) : 0;
-el.innerHTML = `<h2>Learning focus ${f ? `<span class="c">from ${esc(f.month)} feedback · ${f.total}/100${f.teacher ? ' · by ' + esc(tName(f.teacher)) : ''}</span>` : ''}</h2>` + (f ? `
+el.innerHTML = `<h2>Learning focus ${f ? `<span class="c">from ${esc(monthName(f.month))} feedback · ${f.total}/100${f.teacher ? ' · by ' + esc(tName(f.teacher)) : ''}</span>` : ''}</h2>` + (f ? `
 <div class="cbsk">${sk.map(([k,v]) => `<div class="${v===lo?'lo':''}"><b class="num">${v}</b><span>${k}</span></div>`).join('')}</div>
 ${f.areas ? `<div class="gr-k">Work on</div><div class="gr-text small">${nl2br(f.areas)}</div>` : ''}${f.next ? `<div class="gr-k">Plan from last feedback</div><div class="gr-text small">${nl2br(f.next)}</div>` : ''}`
 : ck ? `<div class="gr-text small">${esc(ck.next || ck.progress || '')}</div>` : '<div class="mute small">No monthly feedback yet — your first one will show here.</div>');
@@ -3008,11 +3008,12 @@ el.innerHTML = h + '</div>'; if(f){ const i=$('aq'); i.focus(); i.setSelectionRa
 }
 let FBL = 'en', STU = null; const CLSM = {};
 const fbMd = t => esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
-const monthName = m => { const k = String(m||'').match(/^(\d{4})-(\d{2})/); return k ? new Date(+k[1], +k[2]-1, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}) : String(m||''); };
+const monthName = m => { const k = String((window.fbClsKey ? fbClsKey(m) : m)||'').match(/^(\d{4})-(\d{2})/);   /* 1220: feedback key → month of the classes */ return k ? new Date(+k[1], +k[2]-1, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}) : String(m||''); };
 
 
 function fbCan(code){ const x = (FB && FB.students || []).find(y => y.code === code); if(x && (x.fix || (x.early && !x.done))) return true; if(!x || x.done) return false; return fbOpen(); }
 function fbOpen(){ if(!FB || !FB.due || !D) return false; if(FB.open != null) return !!FB.open; const left = Math.round((new Date(FB.due + 'T12:00:00') - new Date(D.today + 'T12:00:00')) / 864e5); return left <= 17; }
+function fbFL(F){ try{ const k = F && (F.monthKey || F.month); if(window.fbClsLab && /^\d{4}-\d{2}/.test(String(k || ''))) return fbClsLab(k) + ' classes'; }catch(e){} return (F && F.month) || ''; }   /* 1220 */
 function fbLbl(){ if(!FB || !FB.due) return (FB && FB.label) || ''; const d = new Date(FB.due + 'T12:00:00'); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toLocaleDateString('en-US', { month: 'long' }) + ' classes'; }
 function fbCard(f, open){
 const sk = [['Listening',f.l],['Speaking',f.s],['Reading',f.r],['Writing',f.w]];
@@ -3052,7 +3053,7 @@ const first = cjDay(col(/FIRST CLASS/i)), tr = r.trial && cjLv(r.trial.cefr) >= 
 if(tr) T.push({ d: cjDay(tr.date), i: cjLv(tr.cefr), en: 'Trial class assessment', zh: '试听评估' });
 if(chain.length) T.push({ d: first || (tr && cjDay(tr.date)) || '', i: chain[0], en: 'Started with us', zh: '入学起点', start: 1, bk: dbTr >= 0 && chain[0] === dbTr ? String(col(/TRIAL CLASS\s*·\s*BOOK/i) || '').trim() : (chain.length === 1 ? curBk : '') });
 chain.slice(1).forEach((i, k, a) => T.push({ d: '', i, en: 'Levelled up', zh: '升级', bk: k === a.length - 1 ? curBk : '' }));
-(r.checks || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(c => { const i = cjLv(c.cefr); if(i >= 0) T.push({ d: cjDay(c.date), i, en: 'Progress check', zh: '阶段测评' }); });
+(r.checks || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(c => { const i = cjLv(c.cefr); if(i >= 0) T.push({ d: cjDay(c.date), i, en: c.tr ? 'Assessment' : 'Progress check', zh: '阶段测评' }); });
 if(!T.length) return '';
 const MO = (r.monthly || []).filter(x => x && x.m).filter((x, i, A) => !/unmatched/i.test(String(x.t || '')) || !A.some(y => y.m === x.m && !/unmatched/i.test(String(y.t || '')))), U = x => Number(x.u) || Number(x.n) || 0, rd = v => Math.round(v * 10) / 10, tot0 = rd(MO.reduce((a, x) => a + U(x), 0)), tot = (S && S.s && S.s.shared) ? tot0 : (() => { const bought = Number(String(col(/ENROLLMENT\s*·\s*TOTAL/i) || '').replace(/[^\d.]/g, '')) || 0, left = S && S.s && S.s.left != null && S.s.left !== '' ? Number(S.s.left) : NaN; return bought && !isNaN(left) ? Math.max(tot0, rd(bought - left)) : tot0; })();   /* 14 Oct: bought − left */   /* 14 Oct: DATABASE total when higher */
 { const fm = {}; MO.forEach(x => { const c = String(x.c || '').trim().split(/\s+/)[0].toUpperCase(); if(c && (!fm[c] || x.m < fm[c])) fm[c] = x.m; });
@@ -3173,7 +3174,7 @@ const nm = (s.name && String(s.name).trim().toUpperCase() !== String(code).toUpp
 let h = `<div class="shero"><div class="av big">${esc((nm||'?')[0])}</div><div class="grow">
 <h1>${esc(nm)} <span class="cn">${esc(s.cn)}</span></h1>
 <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><span class="chip">${esc(code)}</span>${(s.teachers||[]).map(t=>`<span class="chip teal">${esc(tName(t))}</span>`).join('')}${s.book?`<span class="chip">${esc(s.book)}</span>`:''}${s.shared?`<span class="chip coral">Shared package · ${esc(s.sharedName||s.sharedWith)}</span>`:''}</div></div>
-<div class="kpis"><div><b>${s.left==null?'—':esc(s.left)}</b><span>${s.shared?'left · shared':'lessons left'}</span></div><div><b>${esc(s.cefr||(C[0]&&C[0].cefr)||(String(s.book||'').match(/\b(Pre-A1|A1|A2|B1|B2|C1|C2)\b\+?/i)||[])[0]||'—')}</b><span>CEFR</span></div><div><b>${f0?f0.total:'—'}</b><span>latest /100</span></div></div></div>
+<div class="kpis"><div><b>${s.left==null?'—':esc(s.left)}</b><span>${s.shared?'left · shared':'lessons left'}</span></div><div><b>${esc((window.cjNowLv ? cjNowLv(STU) : '')||s.cefr||(C[0]&&C[0].cefr)||(String(s.book||'').match(/\b(Pre-A1|A1|A2|B1|B2|C1|C2)\b\+?/i)||[])[0]||'—')}</b><span>CEFR</span></div><div><b>${f0?f0.total:'—'}</b><span>latest /100</span></div></div></div>
 <div class="row noprint" style="gap:8px;margin-top:14px;flex-wrap:wrap">
 ${!D.mgr && code ? `<button class="btn sm" onclick="noteSheet('${esc(code)}','','')">Class note</button>${fbCan(code) ? `<button class="btn sm teal" onclick="fbSheet('${esc(code)}')">Write monthly feedback</button>` : ''}` : ''}
 ${D.mgr ? `<button class="btn sm teal" onclick="printProfile()">Print / Save PDF</button>` : ''}
@@ -3187,7 +3188,7 @@ h += `<section class="sec">${dbProfile(P)}</section>`;
 h += `<section class="sec"><h2>Teacher feedback <span class="c">${F.length} month${F.length===1?'':'s'}</span>${F.length?`<span class="seg noprint" style="margin:0 0 0 auto"><button class="${FBL==='en'?'on':''}" onclick="FBL='en';stuRender()">English</button><button class="${FBL==='cn'?'on':''}" onclick="FBL='cn';stuRender()">中文</button></span>`:''}</h2>`;
 if(F.length){
 if(F.length > 1){ const L = F.slice(0,12).reverse();
-h += `<div class="trend">${L.map(f => `<div title="${esc(monthName(f.month))}: ${f.total}/100"><b class="num">${f.total}</b><i style="height:${Math.round(Math.max(4,f.total)*0.62)}px"></i><span>${esc(String(f.month).slice(5,7))}</span></div>`).join('')}</div>`; }
+h += `<div class="trend">${L.map(f => `<div title="${esc(monthName(f.month))}: ${f.total}/100"><b class="num">${f.total}</b><i style="height:${Math.round(Math.max(4,f.total)*0.62)}px"></i><span>${esc(String(window.fbClsKey ? fbClsKey(f.month) : f.month).slice(5,7))}</span></div>`).join('')}</div>`; }
 h += fbCard(F[0], true);
 if(F.length > 1) h += F.slice(1).map(f => `<details class="fbold"><summary>${fbCard(f, false)}</summary>${fbText(f)}</details>`).join('');
 } else h += '<div class="mute small">No monthly feedback yet in FEEDBACK DATA.</div>';
@@ -4120,7 +4121,7 @@ if(T){ add(Q, T.renNow.length, { tone:'hot', t:'Renewals to act on now', s: T.re
 add(Q, T.fol.length, { tone:'', t:'Trials not followed up', s:'Parents waiting to hear about enrolment', go:"go('mtoday');setTimeout(()=>tdJump('follow'),80)", okLabel:'Trial follow-ups' });
 add(Q, T.rep.length, { tone:'', t:'Trial reports to send', s:'Parent PDF not sent yet', go:"RP_K='trial';go('reports')", okLabel:'Trial reports' }); }
 if(RP && RP.rows){ const chk = RP.rows.filter(x => !/^Sent/.test(x.status) && x.status !== 'Returned');
-add(Q, chk.length, { tone: '', t:'Parent reports to check & send', s: RP.label + ' feedback PDFs ready', go:"RP_K='month';RP_F='check';go('reports')", okLabel:'Parent reports' }); }
+add(Q, chk.length, { tone: '', t:'Parent reports to check & send', s: (window.fbClsLab && (RP.month || RP.current) ? fbClsLab(RP.month || RP.current) + ' classes' : RP.label) + ' · feedback PDFs ready', go:"RP_K='month';RP_F='check';go('reports')", okLabel:'Parent reports' }); }
 const pay = (MO && MO.payroll) || [], unpaid = pay.filter(p => !p.paid);
 if(pay.length && isPres()) add(Q, unpaid.length, { tone: new Date().getDate() >= 10 ? 'hot' : '', t:'Teachers to pay', s: (MO.payMonth ? MO.payMonth + ' pay · ' : '') + hmPeso(unpaid.reduce((a, p) => a + (p.net || 0), 0)) + ' still to send' + (RDY ? ' · ' + unpaid.filter(p => rdyN(p.name) === 0).length + ' ready to release' : ''), go:"go('payroll')", okLabel:'Payroll' });
 if(AC && AC.rows){ const o = AC.rows.filter(x => !x.done); add(Q, o.length, { tone:'', t:'Open cases', s: o.slice(0,3).map(x => x.subject).filter(Boolean).join(' · '), go:"AC_F='open';go('actions')", okLabel:'Cases' }); }
@@ -6225,7 +6226,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1299;
+const COE_V = 1303;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7442,7 +7443,7 @@ const _fs = window.fbSheet;
 if(_fs) window.fbSheet = function(code){
 try{ if(FB && FB.open === false){ const x = (FB.students||[]).find(y => y.code === code); if(!(x && (x.fix || x.early)) && !(window.pcEarly && pcEarly(code))){
 const nm = ((D.students||[]).find(s => s.code === code) || {}).name || code;
-openSheet('<h1>Monthly feedback</h1><div class="mute small">' + esc(nm) + ' · ' + esc(FB.label || '') + '</div><div class="fbfix" style="margin-top:12px"><b>Feedback opens on ' + esc(FB.opensLabel || 'the 25th') + '</b>So your feedback covers the whole month of classes. Until then, keep adding a class note after each class: they appear here, sorted into wins and work-ons, when you write it. Due ' + esc(FB.dueLabel || '') + '.</div>');
+openSheet('<h1>Monthly feedback</h1><div class="mute small">' + esc(nm) + ' · ' + esc(fbLbl() || FB.label || '') + '</div><div class="fbfix" style="margin-top:12px"><b>Feedback opens on ' + esc(FB.opensLabel || 'the 25th') + '</b>So your feedback covers the whole month of classes. Until then, keep adding a class note after each class: they appear here, sorted into wins and work-ons, when you write it. Due ' + esc(FB.dueLabel || '') + '.</div>');
 return; } } }catch(e){}
 return _fs(code);
 };
@@ -7564,7 +7565,7 @@ const _fp = window.fbPaint;
 window.fbPaint = function(){
 _fp();
 try{ if(!FBF || !FBF.done || FBF.fix) return; const go = $('fbGo'); if(!go) return;
-const box = document.querySelector('#sheetBody .fbdone'); if(box) box.innerHTML = '<b>Already sent for ' + esc(FBF.month) + '</b>' + (FBF.done.total ? ' · ' + FBF.done.total + '/100' : '') + (FBF.done.at ? ' · ' + esc(FBF.done.at) : '') + '<div class="small">View only. To change it, ask Ops to return it to you, then it opens here again.</div>';
+const box = document.querySelector('#sheetBody .fbdone'); if(box) box.innerHTML = '<b>Already sent for ' + esc(fbFL(FBF)) + '</b>' + (FBF.done.total ? ' · ' + FBF.done.total + '/100' : '') + (FBF.done.at ? ' · ' + esc(FBF.done.at) : '') + '<div class="small">View only. To change it, ask Ops to return it to you, then it opens here again.</div>';
 go.outerHTML = '<span class="chip green" style="padding:10px 16px">✓ Sent · view only</span>';
 document.querySelectorAll('#sheetBody .fbpick button, #sheetBody textarea.fbtx, #gxPlan button, #gxPlan input, #gxRev button').forEach(x => { x.disabled = true; });
 ['gxPlan','gxRev'].forEach(id => { const e = $(id); if(e) e.style.opacity = '.6'; });
@@ -8082,7 +8083,7 @@ let h = '<details open class="card" style="margin-top:12px"><summary style="curs
 if(N.length) h += '<div class="pc-sec" style="margin-top:10px">Class notes</div>' + N.map((n, i) => { const win = /Win/.test(n.kind), wk = /Work on/.test(n.kind);
 return '<div style="border-top:1px solid #EEF2F3;padding:7px 0"><div class="small"><b>' + esc(n.date) + '</b> · ' + esc(tName(n.teacher)) + (win ? ' <span class="chip green">✓ Win</span>' : '') + (wk ? ' <span class="chip coral">↗ Work on</span>' : '') + (n.ended ? ' <span class="mute">· ' + esc(n.ended) + '</span>' : '') + '</div>' +
 (n.obs ? '<div class="small" style="margin-top:2px">' + esc(n.obs) + '</div><div class="small" style="margin-top:2px"><a class="link" onclick="pcUse(\'pcP\',' + i + ')">+ progress</a> · <a class="link" onclick="pcUse(\'pcN\',' + i + ')">+ next focus</a></div>' : '') + '</div>'; }).join('');
-if(F.length) h += '<div class="pc-sec" style="margin-top:10px">Monthly feedback</div>' + F.map(f => '<div style="border-top:1px solid #EEF2F3;padding:7px 0" class="small"><b>' + esc(f.month) + '</b> · ' + esc(tName(f.teacher)) + (f.total ? ' · ' + esc(f.total) : '') +
+if(F.length) h += '<div class="pc-sec" style="margin-top:10px">Monthly feedback</div>' + F.map(f => '<div style="border-top:1px solid #EEF2F3;padding:7px 0" class="small"><b>' + esc(monthName(f.month)) + '</b> · ' + esc(tName(f.teacher)) + (f.total ? ' · ' + esc(f.total) : '') +
 (f.strengths ? '<div style="margin-top:3px"><b style="color:#1E7A55">Strengths:</b> ' + esc(f.strengths) + '</div>' : '') + (f.areas ? '<div><b style="color:#B5592C">To improve:</b> ' + esc(f.areas) + '</div>' : '') + (f.next ? '<div><b>Next steps:</b> ' + esc(f.next) + '</div>' : '') + '</div>').join('');
 return h + '<div class="small mute" style="margin-top:8px">Use them as evidence, then write it simply for the parent in your own words.</div></details>';
 };
@@ -9208,7 +9209,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
   const LV = ['Pre-A1', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
   const rubric = t => t <= 10 ? 'Pre-A1' : t <= 15 ? 'A1' : t <= 20 ? 'A2' : t <= 25 ? 'B1' : t <= 30 ? 'B2' : t <= 35 ? 'C1' : 'C2';
   const fd = d => { const x = new Date(String(d).slice(0, 10) + 'T12:00:00'); return isNaN(x) ? String(d || '') : x.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
-  const monName = m => { const x = new Date(String(m).slice(0, 7) + '-01T12:00:00'); return isNaN(x) ? String(m || '') : x.toLocaleDateString('en-GB', { month: 'long' }); };
+  const monName = m => { const x = new Date(String(window.fbClsKey ? fbClsKey(m) : m).slice(0, 7) + '-01T12:00:00');   /* 1220 */ return isNaN(x) ? String(m || '') : x.toLocaleDateString('en-GB', { month: 'long' }); };
   const picks = () => [...Array(9)].map((_, i) => { const b = document.querySelector('#pci' + i + ' .pc-o button.on b'); return b ? +b.textContent : 0; });
   const sum = (R, a, b) => R.slice(a, b).reduce((x, y) => x + y, 0);
   let CODE = '', BASE = null;
@@ -9433,7 +9434,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     ['Reads single words', 'Gets the gist with help', 'Understands level texts alone', 'Understands above-level texts'],
     ['Cannot answer text questions', 'Answers with help', 'Answers most questions alone', 'Answers with reasons and detail']];
   const SEC = i => i < 5 ? ['s', 'speaking'] : i < 7 ? ['l', 'listening'] : ['r', 'reading'];
-  const mon = m => { const x = new Date(String(m).slice(0, 7) + '-01T12:00:00'); return isNaN(x) ? String(m || '') : x.toLocaleDateString('en-GB', { month: 'long' }); };
+  const mon = m => { const x = new Date(String(window.fbClsKey ? fbClsKey(m) : m).slice(0, 7) + '-01T12:00:00');   /* 1220 */ return isNaN(x) ? String(m || '') : x.toLocaleDateString('en-GB', { month: 'long' }); };
   let CODE = '';
   function base(){ let s = null; try{ s = JSON.parse(store('get', 'coe.stu.' + CODE) || 'null'); }catch(e){} if(!s) return {};
     const today = D.today || '', chk = (s.checks || []).filter(c => c && c.date && c.date < today).sort((a, b) => b.date.localeCompare(a.date))[0] || null;
@@ -19306,14 +19307,14 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
       const st = new Date(c.start), en = new Date(c.end), started = now >= st, ended = now > en;
       const ci = (D.classIns || {})[c.id], isFirst = first && first.id === c.id, inDone = !!(ci && ci.time) || (isFirst && D.timeIn);
       const contPrev = L.find(x => x.id !== c.id && x.code === c.code && +new Date(x.end) === +st);
-      const inSt = inDone || contPrev ? 'd' : now >= new Date(+st - 5 * 6e4) ? 'n' : 'l';
+      const inSt = inDone || contPrev ? 'd' : now >= new Date(+st - (isFirst ? 40 : 5) * 6e4) ? 'n' : 'l', tiOp = tm(new Date(+st - 40 * 6e4).toISOString());   /* 1222: the first class's time-in opens 40 min before */
       const hw = (D.hw || {})[c.id], hwSt = hw ? 'd' : started ? 'n' : 'l';
       const s = ((D.students || []).find(x => x.code === c.code) || {}), n = (window.noteFor ? noteFor(s, c) : s.note), noteOk = n && n.date === c.day && (n.obs || n.ended) && (!n.eventId || n.eventId === c.id);
       const noteSt = noteOk ? 'd' : ended ? 'n' : 'l';
       const vd = (D.vids || {})[c.id], vSt = vd && vd.url ? 'd' : ended ? 'n' : 'l';
       const cd = esc(c.code), ci2 = esc(c.id), dy = esc(c.day);
       const html = '<div class="cs93">' +
-        pill(inSt, 'In', isFirst ? 'timeInSheet()' : D.timeIn ? "classIn('" + ci2 + "')" : 'timeInSheet()', inSt === 'd' ? (contPrev ? 'Same class as before · no I’m in needed' : 'In') : inSt === 'n' ? 'Tap to time in' : 'Opens 5 minutes before class') +
+        pill(inSt, inSt === 'l' && isFirst ? 'Time in from ' + tiOp : isFirst && inSt === 'n' ? 'Time in' : 'In', isFirst ? 'timeInSheet()' : D.timeIn ? "classIn('" + ci2 + "')" : 'timeInSheet()', inSt === 'd' ? (contPrev ? 'Same class as before · no I’m in needed' : 'In') : inSt === 'n' ? (isFirst || !D.timeIn ? 'Tap to time in' : 'Tap “I’m in”') : isFirst ? 'Time in opens ' + tiOp + ' · 30–40 minutes before your first class' : 'I’m in opens 5 minutes before class, or right after your previous class') +
         pill(hwSt, 'Homework', "hwSheet('" + ci2 + "')", hwSt === 'd' ? 'Homework given' + (hw && hw.time ? ' · ' + hw.time : '') : hwSt === 'n' ? 'Mark the homework' : 'After the class starts') +
         pill(noteSt, 'Note', "noteSheet('" + cd + "','" + ci2 + "','" + dy + "')", noteSt === 'd' ? 'Class note saved' : noteSt === 'n' ? 'Add today’s class note' : 'After the class') +
         pill(vSt, 'Video', "(function(e){var r=e&&e.closest('.cls');var h=r&&[...r.querySelectorAll('.hw')].find(function(x){return /video/i.test(x.textContent)});if(h)h.scrollIntoView({behavior:'smooth',block:'center'})})(this)", vSt === 'd' ? 'Video uploaded' : vSt === 'n' ? 'Upload the class video' : 'After the class') +
@@ -19404,7 +19405,7 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
   document.head.appendChild(css);
   function tidy(){ const v = document.getElementById('v-today'); if(!v || !D || D.mgr) return;
     v.querySelectorAll('.cls').forEach(card => { const chip = [...card.querySelectorAll('.cact .chip')].find(c => /^I'm in · opens (\d{1,2}:\d{2})/.test(c.textContent.trim()));
-      const pin = card.querySelector('.cs93 span:first-child'); if(chip && pin && pin.classList.contains('l')){ const t = chip.textContent.match(/(\d{1,2}:\d{2})/)[1]; if(!/·/.test(pin.textContent)) pin.lastChild.textContent = 'In · ' + t; pin.title = 'I’m in opens at ' + t; chip.remove(); }
+      const pin = card.querySelector('.cs93 span:first-child'); if(chip && pin && pin.classList.contains('l')){ const t = chip.textContent.match(/(\d{1,2}:\d{2})/)[1]; if(!/·|from/.test(pin.textContent)) pin.lastChild.textContent = 'I’m in from ' + t; pin.title = 'I’m in opens at ' + t + ' · not checked in yet';   /* 1222 */ chip.remove(); }
       const pills = card.querySelectorAll('.cs93 span'); if(pills.length && [...pills].every(p => p.classList.contains('d'))) card.classList.add('fin96'); });
     const ps = v.querySelector('.ps92'), mh = [...v.querySelectorAll('h2')].find(h => /^Messages/.test(h.textContent.trim()));
     if(ps && mh && !ps.dataset.m96){ let t = mh.nextElementSibling; if(t){ ps.dataset.m96 = 1; t.after(ps); } }
@@ -29770,6 +29771,54 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     openSheet(h); };
   var st = document.createElement('style'); st.textContent = '.nd-b{border:1px solid var(--line,#e6e3ef);border-radius:12px;padding:12px;margin-top:12px}.nd-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}.nd-g>div{background:var(--soft,#f6f5fa);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}.nd-g span{font-size:12px;color:var(--mute,#6b6880)}.nd-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}.nd-h b{margin-right:auto}.nd-v{font-style:normal}.nd-g small{font-size:11px;color:var(--mute,#6b6880)}@media(min-width:900px){.nd-g{grid-template-columns:repeat(4,minmax(0,1fr))}}';
   document.head.appendChild(st);
+})();
+</script>
+<script>
+/* 1221 · one CEFR level everywhere (student box = CEFR journey = Students list) · data: coe-cj (read-only) */
+(function(){
+  if(window.__1221) return; window.__1221 = 1;
+  var CJX = window.CJX = {}, LV = { at: 0, busy: 0, lv: null };
+  var add7 = function(d){ var t = Date.parse(d + 'T12:00:00'); return isNaN(t) ? '' : new Date(t + 7 * 864e5).toISOString().slice(0, 10); };
+  function prep(S){ try{
+    var r = S && S.r; if(!r) return S; var P = r.profile, X = CJX[S.code] || {}, cj = (P && P.cj) || X.cj || null, T = Array.isArray(r.trials) ? r.trials : Array.isArray(X.trials) ? X.trials : null;
+    if(!cj && !T) return S;
+    var row = P && Array.isArray(P.row) ? P.row.slice() : null;
+    var ix = function(re){ return P && Array.isArray(P.head) ? P.head.findIndex(function(h){ return re.test(String(h || '')); }) : -1; };
+    if(cj && row){ var put = function(re, v){ var j = ix(re); if(j > -1 && v != null && v !== '') row[j] = v; };
+      put(/FIRST CLASS/i, cj.first); put(/TRIAL CLASS\s*·\s*DATE/i, cj.td); put(/TRIAL CLASS\s*·\s*BOOK/i, cj.tb); put(/TRIAL CLASS\s*·\s*CEFR/i, cj.tc);
+      var jc = ix(/CEFR\s*&\s*BOOKS/i); if(jc > -1) row[jc] = cj.cb || ''; }
+    var get = function(re){ var j = ix(re); return j > -1 && row ? row[j] : ''; };
+    var T0 = (T || []).filter(function(t){ return t && t.date; }).map(function(t){ return t.date; }).sort();
+    var st = cjDay(get(/FIRST CLASS/i)) || cjDay(get(/TRIAL CLASS\s*·\s*DATE/i)) || T0[0] || '', lim = st ? add7(st) : '';
+    var ch = String(get(/CEFR\s*&\s*BOOKS/i) || '').split(/→|->/).map(cjLv).filter(function(i){ return i >= 0; }), base = ch.length ? ch[ch.length - 1] : cjLv(get(/TRIAL CLASS\s*·\s*CEFR/i));
+    var isLater = function(t){ return t && t.date && lim && t.date > lim; };
+    var later = (T || []).filter(function(t){ return isLater(t) && cjLv(t.cefr) >= 0 && cjLv(t.cefr) >= base; });   /* another teacher's placement never lowers the level */
+    var early = (T || []).filter(function(t){ return !isLater(t); });
+    var r2 = Object.assign({}, r); if(row) r2.profile = Object.assign({}, P, { row: row });
+    if(later.length) r2.checks = (r.checks || []).concat(later.map(function(t){ return { date: t.date, cefr: t.cefr, teacher: t.teacher, total: t.total, tr: 1 }; }));
+    if(r.trial && isLater(r.trial)){ var e0 = early[early.length - 1]; r2.trial = e0 ? Object.assign({}, r.trial, e0) : null; }   /* the start step keeps the first trial */
+    return Object.assign({}, S, { r: r2 });
+  }catch(e){ return S; } }
+  var _cj = window.cjHtml;
+  if(typeof _cj === 'function') window.cjHtml = function(S){ return _cj.call(this, prep(S)); };
+  window.cjNowLv = function(S){ try{ window._CJ = null; cjHtml(S); var c = window._CJ; return c && c.now != null && c.now >= 0 ? CJ_L[c.now] : ''; }catch(e){ return ''; } };
+  function paintStu(code){ try{ if(typeof STU === 'undefined' || !STU || STU.code !== code) return; var el = document.querySelector('#sheetBody section.cj');
+      var n = cjHtml(STU), lv = cjNowLv(STU); if(el && n && el.outerHTML !== n){ var y = ($('sheet') || {}).scrollTop; el.outerHTML = n; try{ $('sheet').scrollTop = y; }catch(e){} }
+      var k = [...document.querySelectorAll('#sheetBody .kpis > div')].find(function(d){ return /CEFR/.test((d.querySelector('span') || {}).textContent || ''); }); if(k && lv){ var b = k.querySelector('b'); if(b && b.textContent !== lv) b.textContent = lv; } }catch(e){} }
+  async function one(code){ var X = CJX[code]; if(!code || (X && (X.busy || Date.now() - X.at < 3e5)) || typeof TOKEN === 'undefined' || !TOKEN) return; CJX[code] = Object.assign({}, X || {}, { busy: 1, at: X ? X.at : 0 });
+    try{ var r = await fetch(FAST_URL + '-cj', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'one', code: code }) }).then(function(y){ return y.json(); });
+      if(r && r.ok){ var was = JSON.stringify([X && X.cj, X && X.trials]); CJX[code] = { at: Date.now(), cj: r.cj || null, trials: r.trials || [] }; if(was !== JSON.stringify([r.cj || null, r.trials || []])) paintStu(code); } else CJX[code] = Object.assign({}, X || {}, { busy: 0 }); }
+    catch(e){ CJX[code] = Object.assign({}, X || {}, { busy: 0 }); } }
+  var _sr = window.stuRender;
+  if(typeof _sr === 'function') window.stuRender = function(){ var r = _sr.apply(this, arguments); try{ if(typeof STU !== 'undefined' && STU && STU.code) one(STU.code); }catch(e){} return r; };
+  /* Students list (management): the same level */
+  function applyLv(){ try{ if(!LV.lv || typeof MS === 'undefined' || !Array.isArray(MS)) return 0; var n = 0; MS.forEach(function(x){ var v = x && LV.lv[x.code]; if(v && x.cefr !== v){ x.cefr = v; n++; } }); return n; }catch(e){ return 0; } }
+  async function list(){ if(LV.busy || Date.now() - LV.at < 6e5 || typeof TOKEN === 'undefined' || !TOKEN || typeof D === 'undefined' || !D || !D.mgr) return; LV.busy = 1;
+    try{ var r = await fetch(FAST_URL + '-cj', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'list' }) }).then(function(y){ return y.json(); });
+      if(r && r.ok && r.lv){ LV.lv = r.lv; LV.at = Date.now(); if(applyLv() && typeof VIEW !== 'undefined' && VIEW === 'astudents') renderAStudents(); } }catch(e){} finally{ LV.busy = 0; } }
+  var _ra = window.renderAStudents;
+  if(typeof _ra === 'function') window.renderAStudents = function(){ applyLv(); var r = _ra.apply(this, arguments); setTimeout(list, 0); return r; };
+  try{ if(typeof STU !== 'undefined' && STU && document.querySelector('#sheetBody section.cj')) one(STU.code); }catch(e){}
 })();
 </script>
 </body>
