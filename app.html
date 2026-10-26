@@ -6189,7 +6189,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1270;
+const COE_V = 1272;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -22242,7 +22242,7 @@ go();
           prog();
         }catch(e){
           if(e.exp) throw e;
-          CH = Math.max(CH0, CH / 2); if(++fails > 10) throw new Error('The internet keeps dropping. Tap Upload video again with the same file · it continues where it stopped.');
+          CH = Math.max(CH0, CH / 2); if(navigator.onLine === false){ show('<b>No internet · the upload waits</b><div class="small" style="opacity:.8">' + who + ' · ' + Math.floor(off / N * 100) + '% sent · continues when the signal is back · nothing is lost</div>', 'wait'); await new Promise(z => { const h = () => { removeEventListener('online', h); z(); }; addEventListener('online', h); setTimeout(h, 60000); }); } if(!(window.vidBusy && vidBusy(c)) && navigator.onLine !== false && ++fails > 25) throw new Error('The internet keeps dropping. Tap Upload video again with the same file · it continues where it stopped.');
           show('<b>Connection dropped · trying again…</b><div class="small" style="opacity:.8">' + who + ' · ' + Math.floor(off / N * 100) + '% sent · nothing is lost</div>', 'wait');
           await sleep(Math.min(30000, 2000 * fails));
           try{ const q = await ask(); if(q.done) fileId = q.done; else off = q.off; }catch(x){ if(x.exp) throw x; }
@@ -22255,6 +22255,7 @@ go();
       let d = null, note = '';
       try{ d = await apiNow('tVidDone', TOKEN, s.key, fileId); }
       catch(e){ if(/saved on this device/i.test(String(e && e.message))) note = 'Uploaded · the link is added when the signal is back'; else throw e; }
+      if(d && !d.ok && fileId && /too old|again/i.test(String(d.msg || ''))){ s.pend = 1; s.dn = 0; s.t = Date.now(); o = get(); o[id] = s; put(o); note = 'In the school Drive · the record is finished by itself when you open the app again'; d = null; }
       if(d && !d.ok) throw new Error(d.msg || 'The video uploaded but was not linked. Tell Ops.');
       const url = (d && d.url) || ('https://drive.google.com/file/d/' + fileId + '/view'), at = hm();
       s.done = url; s.at = at; s.t = Date.now(); o = get(); o[id] = s; put(o);
@@ -23814,7 +23815,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round((n || 0) / 1024) + ' KB';
   const DET = {
     tVidStart: a => { const f = a[2] || {}; return [window.actStu ? actStu(a[1]) : '', f.name, f.size ? kb(f.size) : '', f.dur ? Math.round(f.dur / 60) + ' min video' : ''].filter(Boolean).join(' · '); },
-    tVidDone: a => [window.actStu ? actStu({ key: a[1] }) : '', 'Video uploaded and linked'].filter(Boolean).join(' · '),
+    tVidDone: a => [window.actStu ? actStu({ key: a[1] }) : '', 'Video upload · last step'].filter(Boolean).join(' · '),
     tVidExplain: a => [window.actStu ? actStu({ id: a[1] }) : '', a[2], a[3]].filter(Boolean).join(' · '),
     tRemindLog: a => { const o = a[1] || {}; return [o.student, o.code, o.start ? o.start + ' class' : '', o.stage].filter(Boolean).join(' · '); },
     tNotMine: a => [a[1], a[2]].filter(Boolean).join(' · '),
@@ -24008,9 +24009,9 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const st = document.createElement('style'); st.textContent = '.hw.vdrop{outline:3px dashed #00A3AD;outline-offset:2px;background:#E8F7F7!important}.hw .vdh{font-size:12px;color:#00737B;font-weight:700;margin-left:6px}';
   document.head.appendChild(st);
   const hasFiles = e => e.dataTransfer && [...(e.dataTransfer.types || [])].indexOf('Files') > -1;
-  const zoneOf = el => { const z = el && el.closest && el.closest('.hw'); if(!z) return null; const b = z.querySelector('button[onclick*="vidUp("]'); if(!b) return null; const m = b.getAttribute('onclick').match(/vidUp\('([^']+)'/); return m ? { z, id: m[1] } : null; };
+  const zoneOf = el => { let z = el && el.closest && el.closest('.hw'); if(!z){ const cc = el && el.closest && el.closest('.cls'); if(cc && cc.querySelector('.hw button[onclick*="vidUp("]')) z = cc; } if(!z) return null; const b = z.querySelector('button[onclick*="vidUp("]'); if(!b) return null; const m = b.getAttribute('onclick').match(/vidUp\('([^']+)'/); return m ? { z, id: m[1] } : null; };
   let on = null; const clear = () => { if(on){ on.classList.remove('vdrop'); on = null; } };
-  document.addEventListener('dragover', e => { if(!hasFiles(e)) return; e.preventDefault(); const k = zoneOf(e.target); if(k){ e.dataTransfer.dropEffect = 'copy'; if(on !== k.z){ clear(); on = k.z; on.classList.add('vdrop'); } } else { e.dataTransfer.dropEffect = 'none'; clear(); } });
+  document.addEventListener('dragover', e => { if(!hasFiles(e)) return; e.preventDefault(); const k = zoneOf(e.target); if(k){ e.dataTransfer.dropEffect = 'copy'; if(on !== k.z){ clear(); on = k.z; on.classList.add('vdrop'); try{ const c = ((typeof D !== 'undefined' && D && D.schedule) || []).find(x => x.id === k.id); on.setAttribute('data-vdl', 'Drop to upload the video for ' + (c ? (c.student || c.title || 'this class') + ' · ' + new Date(c.start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' }) : 'this class')); }catch(x){} } } else { e.dataTransfer.dropEffect = 'none'; clear(); } });
   document.addEventListener('dragleave', e => { if(on && !on.contains(e.relatedTarget)) clear(); });
   document.addEventListener('drop', e => { if(!hasFiles(e)) return; e.preventDefault(); const k = zoneOf(e.target); clear();
     if(!k) return toast('Drop the video on the class’s “Upload the class video” box');
@@ -24062,7 +24063,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const LS = 'coe.vup';
   const run = async () => { if(typeof TOKEN === 'undefined' || !TOKEN || typeof apiNow !== 'function') return setTimeout(run, 5000);
     let o; try{ o = JSON.parse(localStorage.getItem(LS) || '{}') || {}; }catch(e){ return; }
-    for(const id of Object.keys(o)){ const s = o[id]; if(!s || !s.fid || s.done || !s.key || Date.now() - (s.t || 0) > 5 * 36e5) continue;
+    for(const id of Object.keys(o)){ const s = o[id]; if(!s || !s.fid || s.done || !s.key || Date.now() - (s.t || 0) > (s.pend ? 48 : 5) * 36e5) continue; if((s.dn || 0) >= 8 || Date.now() - (s.dt || 0) < 10 * 6e4) continue; s.dn = (s.dn || 0) + 1; s.dt = Date.now(); try{ const o1 = JSON.parse(localStorage.getItem(LS) || '{}') || {}; if(o1[id]){ o1[id].dn = s.dn; o1[id].dt = s.dt; localStorage.setItem(LS, JSON.stringify(o1)); } }catch(e){}
       if(typeof window._vupBusy !== 'undefined' && window._vupBusy) continue;
       try{ const d = await apiNow('tVidDone', TOKEN, s.key, s.fid); if(d && d.ok !== false){ s.done = d.url || ('https://drive.google.com/file/d/' + s.fid + '/view'); s.t = Date.now();
           try{ const o2 = JSON.parse(localStorage.getItem(LS) || '{}') || {}; o2[id] = s; localStorage.setItem(LS, JSON.stringify(o2)); }catch(e){}
@@ -29153,6 +29154,41 @@ function g1109F(mgr, k, p, pm){ var pc = (k.feedback || 0) + ' progress check' +
   /* Leave: one decision per tap — a second tap on the same Approve / Decline while the first is being saved is ignored */
   var _lv = window.lvDecide; if(typeof _lv === 'function'){ var IF = {}; window.lvDecide = function(id, st){ var k = id + '|' + st; if(IF[k]) return; IF[k] = 1; var r; try{ r = _lv.apply(this, arguments); }catch(e){ delete IF[k]; throw e; } Promise.resolve(r).finally(function(){ setTimeout(function(){ delete IF[k]; }, 800); }); return r; }; }
   try{ if(typeof VIEW !== 'undefined'){ if(VIEW === 'actions') renderActions(); if(VIEW === 'teachers') teachers(); if(VIEW === 'leave') leave(); } }catch(e){}
+})();
+</script>
+<style id="d1150">.cls.vdrop{outline:3px dashed #00707A!important;outline-offset:3px;background:#EAF7F8!important}.vdrop{position:relative}.vdrop::after{content:attr(data-vdl);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#00707A;color:#fff;padding:9px 16px;border-radius:999px;font-weight:700;font-size:14px;pointer-events:none;z-index:6;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.18)}</style>
+<script>
+/* 1150 · video queue, future-class guard, double-click guard */
+(function(){
+  if(window.__1150) return; window.__1150 = 1;
+  var Q = [], tm = function(c){ try{ return new Date(c.start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' }); }catch(e){ return ''; } };
+  var cls = function(id){ return ((typeof D !== 'undefined' && D && D.schedule) || []).find(function(x){ return x.id === id; }) || (window.VL_LIST || []).find(function(x){ return x.id === id; }); };
+  var V0 = window.vidUp;
+  if(typeof V0 === 'function'){
+    var enq = function(id, f){ var c = cls(id) || {}; if(Q.some(function(q){ return q.id === id; })) return toast('This class is already waiting in the upload queue');
+      var q = { id: id, f: f, pid: null }; q.pid = svPill(null, '<b>Waiting · ' + esc(c.student || c.title || 'class') + ' ' + esc(tm(c)) + '</b><div class="small" style="opacity:.8">' + esc(f.name) + ' · starts by itself after the video that is uploading now</div>', 'wait'); Q.push(q);
+      toast('Queued · it uploads right after the current video'); };
+    window.vidUp = function(id){
+      var c = cls(id), mgr = typeof D !== 'undefined' && D && D.mgr;
+      if(c && !mgr && new Date(c.start).getTime() - Date.now() > 15 * 6e4){ window.__vidDrop = null; return toast('This class has not started yet · upload its video after the class'); }
+      if(window._vupBusy && !((D.vids || {})[id] && D.vids[id].url)){
+        var dp = window.__vidDrop; window.__vidDrop = null;
+        if(dp && dp.id === id && Date.now() - dp.t < 3 * 6e4) return enq(id, dp.f);
+        var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'video/*,image/*,.mp4,.mov,.m4v,.mkv,.webm,.jpg,.jpeg,.png,.heic'; inp.style.display = 'none'; document.body.appendChild(inp);
+        inp.onchange = function(){ var f = inp.files && inp.files[0]; inp.remove(); if(f) enq(id, f); }; inp.click(); return;
+      }
+      return V0.apply(this, arguments);
+    };
+    setInterval(function(){ if(window._vupBusy || !Q.length) return; var q = Q.shift(); try{ var el = q.pid && document.getElementById(q.pid); if(el) el.remove(); }catch(e){} window.__vidDrop = { f: q.f, id: q.id, t: Date.now() }; try{ V0(q.id); }catch(e){} }, 2500);
+    window.addEventListener('beforeunload', function(e){ if(Q.length){ e.preventDefault(); e.returnValue = ''; return ''; } });
+  }
+  /* double click: the same save twice within 3 s is sent once */
+  var W = /^(saveNote|markHomework|tNoteTag|tHwFlag|tMsgAck|tMsgSeen|tVisitAck|tSetMeet|tGoalsSave|classIn|timeIn|timeOut|tPayVerify|tLeaveRequest|tMsgSend|tFbSubmit|tPcSubmit|tTrialSubmit|tPeerSubmit)$/, R = {};
+  var A0 = api;
+  api = function(fn){ if(!W.test(fn)) return A0.apply(this, arguments);
+    var k = ''; try{ k = fn + '|' + JSON.stringify([].slice.call(arguments, 2)); }catch(e){ return A0.apply(this, arguments); }
+    var r = R[k]; if(r && Date.now() - r.t < 3000) return r.p;
+    var p = A0.apply(this, arguments); R[k] = { p: p, t: Date.now() }; setTimeout(function(){ if(R[k] && R[k].p === p) delete R[k]; }, 3500); return p; };
 })();
 </script>
 </body>
