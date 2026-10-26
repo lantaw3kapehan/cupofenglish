@@ -6224,7 +6224,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1285;
+const COE_V = 1286;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -29384,5 +29384,15 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
 })();
 </script>
 <style id="d1170">/* 1170 · no sideways shift when a long screen opens */ html{scrollbar-gutter:stable}</style>
+<script>/* 1171 · new versions are applied in the background or at the next screen change, never on top of the open screen */
+(function(){ if(window.__1171) return; window.__1171 = 1;
+  function ready(){ try{ return (typeof newerSaved === 'function' && newerSaved()) || !!window._updNet; }catch(e){ return false; } }
+  function calm(){ try{ return !(typeof busy === 'function' && busy()) && !(typeof updQuiet === 'function' && updQuiet()); }catch(e){ return false; } }
+  var since = 0;
+  window.applyUpdate = applyUpdate = function(){ if(!ready()) return; if(!since) since = Date.now(); if(document.hidden && calm()) location.reload(); };
+  document.addEventListener('visibilitychange', function(){ if(document.hidden && since && ready() && calm()) location.reload(); });
+  var g = window.go; if(typeof g === 'function') window.go = function(v){ try{ if(since && Date.now() - since > 30 * 6e4 && v && typeof VIEW !== 'undefined' && v !== VIEW && ready() && calm()){ try{ location.hash = (window.coeH ? coeH(v) : '#' + v); }catch(e){} location.reload(); return; } }catch(e){} return g.apply(this, arguments); };
+})();
+</script>
 </body>
 </html>
