@@ -1053,6 +1053,13 @@ body #v-teachers .tc2-u{grid-column:5;grid-row:1;text-align:right}
 body #v-teachers .tc2-u b{font-size:24px}
 }
 </style>
+<style id="st1146">
+:where(main.wrap>[id^="v-"]:not(.hide)){display:flow-root}
+header .hd #tinNag{box-sizing:border-box;max-height:40px}
+@media(max-width:560px){body.is-mgr header .hd{min-height:calc(40px + 8px + 31px)}
+ body.is-mgr header .hd .sp{min-height:0}
+ body.is-mgr header .hd::after{content:"";order:6;flex:0 0 0;height:31px}}
+</style>
 </head>
 <body>
 
@@ -6226,7 +6233,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1307;
+const COE_V = 1308;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -11453,11 +11460,11 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
   #tpBk .tpb-d b{display:block;font-family:var(--brand);font-size:20px;line-height:1.1}#tpBk .tpb-d span{font-size:11px;font-weight:700;text-transform:uppercase}
   #tpBk .tpb.past .tpb-d{background:#FFF4E5;color:#9A5B12}
   </style>`);
-  let TPA = null, TPA_AT = 0, busy = false;
+  let TPA = (function(){ try{ const j = JSON.parse(localStorage.getItem('coe.tpa') || 'null'); return Array.isArray(j) ? j : null; }catch(e){ return null; } })(), TPA_AT = 0, busy = false;
   const up = s => String(s || '').trim().toUpperCase();
   function load(){ if(busy || (TPA && Date.now() - TPA_AT < 2 * 6e4) || !TOKEN || !(D && D.mgr)) return; busy = true;
     fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'trialsAhead', token: TOKEN }) }).then(x => x.json())
-      .then(r => { if(r && r.ok){ TPA = r.rows || []; TPA_AT = Date.now(); if(VIEW === 'trials') renderTP(); } }).catch(() => {}).finally(() => { busy = false; }); }
+      .then(r => { if(r && r.ok){ TPA = r.rows || []; TPA_AT = Date.now(); try{ localStorage.setItem('coe.tpa', JSON.stringify(TPA)); }catch(e){} if(VIEW === 'trials') renderTP(); } }).catch(() => {}).finally(() => { busy = false; }); }
   function hasReport(x){ const R = (typeof TRL !== 'undefined' && TRL && TRL.rows) || [], c = up(x.code), d0 = ymdLocal(new Date(new Date(x.moved || x.start).getTime() - 3 * 864e5)), f = typeof tfuFirst === 'function' ? tfuFirst(x.student) : String(x.student || '').toLowerCase();
     return R.some(r => String(r.date || '') >= d0 && ((/^ST-/.test(c) && up(r.code) === c) || (typeof tfuFirst === 'function' && tfuFirst(r.student) === f))); }
   function html(){ if(!TPA) return ''; const q = String((typeof TPQ !== 'undefined' && TPQ) || '').trim().toLowerCase(), now = Date.now();
