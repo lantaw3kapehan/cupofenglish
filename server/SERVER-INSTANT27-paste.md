@@ -1,6 +1,6 @@
 # Paste · 27 Oct · instant saves: Google also replays them from the database queue
 
-**What's new (already live in the app, version 1310):** the service agreement, the leave "informed" tick, a class tag and a late
+**What's new (already live in the app, version 1312):** the service agreement, the leave "informed" tick, a class tag and a late
 time-in decision are saved in the database at once, and the app shows them as saved straight away. The database calls Google's
 own save in the background with the same sign-in, so normally nothing else is needed.
 
