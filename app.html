@@ -5669,8 +5669,8 @@ const E = G.evals || [], e = E[i] || null, pe = E[i+1] || null, k = G.kpi || {},
 const pc = (a, b) => b ? Math.round(a / b * 100) + '%' : '—', rate = (a, b) => b ? a / b * 100 : null;
 const dOn = rate(k.onTime, k.timeIns) != null && rate(p.onTime, p.timeIns) != null ? rate(k.onTime, k.timeIns) - rate(p.onTime, p.timeIns) : null;
 const kpis = [[pc(k.onTime, k.timeIns), 'on-time time-ins', k.timeIns ? k.onTime + ' of ' + k.timeIns : 'none yet this month', delta(dOn, pm, ' pts')],
-[k.units != null ? k.units : '—', 'classes this month', k.rank ? esc(k.rank) : '', ''],
-[k.feedback || 0, 'monthly feedback written', pm + ' total: ' + (p.feedback||0), ''],
+(typeof g1109U === 'function' ? g1109U(mgr, k) : [k.units != null ? k.units : '—', 'units this month', k.rank ? esc(k.rank) : '', '']),
+(typeof g1109F === 'function' ? g1109F(mgr, k, p, pm) : [k.feedback || 0, 'progress checks this month', pm + ': ' + (p.feedback||0), '']),
 [k.homework || 0, 'homework given', (k.classIns ? pc(k.classOnTime, k.classIns) + ' on time to class · ' : '') + pm + ': ' + (p.homework||0), '']];
 let h = mgr ? `<div class="row"><h1 class="grow">${esc(nm)}</h1></div><div class="mute small">${part==='qa'?'QA feedback · monthly teaching evaluation':'Growth · career path, timeline, KPIs and recognition'}</div>`
 : part === 'qa' ? `<div class="lead"><h1>QA feedback</h1><div class="mute small">Your monthly teaching evaluation from management</div></div>`
@@ -5830,9 +5830,9 @@ h += `<div class="seg"><button class="${PF_F==='all'?'on':''}" onclick="pfSet('a
 <button class="${PF_F==='none'?'on':''}" onclick="pfSet('none')">Not evaluated · ${T.filter(t=>!t.latest).length}</button>
 <button class="${PF_F==='comply'?'on':''}" onclick="pfSet('comply')">Not complying · ${T.filter(nonc).length}</button></div>
 <div class="small mute" style="margin-top:8px">Domains: I Instructional effectiveness · II Communication · III Learner engagement · IV Adaptability · V Professional practice · ▲▼ vs previous evaluation</div>`;
-h += `<div class="pf-head"><span>Teacher</span><span>QA score</span><span class="pf-doms">${['I','II','III','IV','V'].map((r,i) => `<i title="${esc((PF.domains||[])[i]||'')}">${r}</i>`).join('')}</span><span>On-time</span><span>Feedback</span><span>Homework</span></div>`;
+h += `<div class="pf-head"><span>Teacher</span><span>QA score</span><span class="pf-doms">${['I','II','III','IV','V'].map((r,i) => `<i title="${esc((PF.domains||[])[i]||'')}">${r}</i>`).join('')}</span><span>On-time</span><span title="Progress checks written this month">Progress checks</span><span>Homework</span></div>`;
 h += L.map(t => { const e = t.latest, p = t.prev; return `<div class="pf-row" onclick="growthSheet('${esc(t.name)}')">
-<div class="pf-name"><div class="av">${esc(t.name[0])}</div><div><b>${esc(tName(t.name))}</b><div class="small mute">${esc([t.rank, t.units!=null ? t.units+' classes this month' : ''].filter(Boolean).join(' · '))}</div>
+<div class="pf-name"><div class="av">${esc(t.name[0])}</div><div><b>${esc(tName(t.name))}</b><div class="small mute">${esc([t.rank, t.units!=null ? t.units+' units this month' : ''].filter(Boolean).join(' · '))}</div>
 ${t.rec && t.rec.classes ? `<div class="small" style="margin-top:2px"><span class="chip ${recScore(t.rec)>=95?'green':recScore(t.rec)>=85?'teal':'coral'}">Compliance ${recScore(t.rec)}% · ${t.rec.classes} class${t.rec.classes === 1 ? '' : 'es'}</span> <span class="mute">On time ${recPc(t.rec.onTime,t.rec.classes)}% · Video ${recPc(t.rec.vidOn,t.rec.vidNeed)??'—'}% · HW ${recPc(t.rec.hwSoon+t.rec.hwDay,t.rec.hwNeed)??'—'}% · Notes ${recPc(t.rec.notes,t.rec.noteNeed)??'—'}%${t.rec.tags?' · '+t.rec.tags+' late tag'+(t.rec.tags>1?'s':''):''}</span></div>` : ''}
 ${t.next ? `<div class="pf-rk"><i style="width:${t.next.pct}%"></i></div><div class="small mute">${Number(t.next.need).toLocaleString()} units to ${esc(t.next.name)}</div>` : R.length && t.rankIx === R.length - 1 ? '<div class="small mute">Top rank</div>' : ''}</div></div>
 <div class="pf-qa">${e ? `<b class="num">${e.avg.toFixed(1)}</b> <span class="chip ${e.pct>=80?'green':e.pct>=70?'teal':'coral'}">${esc(e.decision)}</span><div>${p ? delta(e.avg - p.avg, String(p.period).split(' ')[0], '', 1) : '<i class="dl eq">First evaluation</i>'}</div><div class="small mute">last evaluated · ${esc(e.period)}</div>` : '<span class="mute small">Not evaluated yet</span>'}</div>
@@ -6189,7 +6189,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1263;
+const COE_V = 1264;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -28788,6 +28788,20 @@ nav button.on:not(#z1101):not(#y1101){color:#00575F!important;font-weight:700!im
   }catch(e){} }
   setInterval(flush, 20000);
 })();
+</script>
+<script>
+/* 1109 · Growth tiles: same units as Pay, monthly feedback from the same list as Students, progress checks named */
+function g1109U(mgr, k){ var n = function(v){ return Math.round((+v || 0) * 10) / 10; };
+  try{ var me = !mgr && typeof D !== 'undefined' && D && D.me; if(me && (me.nowReg != null || me.nowTrial != null || me.nowSub != null)){
+    var t = n((me.nowReg || 0) + (me.nowTrial || 0) + (me.nowSub || 0));
+    return [t, 'lesson units this month', 'Regular ' + n(me.nowReg) + ' · Trial ' + n(me.nowTrial) + ' · Sub ' + n(me.nowSub) + ' · same as Pay', '']; } }catch(e){}
+  return [k.units != null ? k.units : '—', 'lesson units this month', (k.rank ? esc(k.rank) + ' · ' : '') + 'Regular + Trial + Sub', '']; }
+function g1109F(mgr, k, p, pm){ var pc = (k.feedback || 0) + ' progress check' + ((k.feedback || 0) === 1 ? '' : 's') + ' this month';
+  try{ if(!mgr && typeof FB !== 'undefined' && FB && FB.students && FB.students.length){
+    var L = FB.students, done = L.filter(function(x){ return x.done; }).length, lbl = (typeof fbLbl === 'function' ? fbLbl() : FB.label || '').split(' ')[0];
+    var open = typeof fbOpen === 'function' ? fbOpen() : true;
+    return [done + ' of ' + L.length, 'monthly feedback written', esc(lbl) + ' classes · ' + (open ? (FB.dueLabel ? 'due ' + esc(FB.dueLabel) : 'open') : 'opens ' + esc(FB.opensLabel || '')) + ' · ' + pc, '']; } }catch(e){}
+  return [k.feedback || 0, 'progress checks this month', pm + ': ' + (p.feedback || 0), '']; }
 </script>
 </body>
 </html>
