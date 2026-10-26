@@ -36,7 +36,7 @@ const OBS = `window.__cls = 0; window.__sh = []; try{ new PerformanceObserver(l 
         } catch (e) { r.err = String(e.message).slice(0, 120); }
         await ctx.close(); return r;
       };
-      for (let i = 0; i < S.views.length; i += 4) (await Promise.all(S.views.slice(i, i + 4).map(run))).forEach(r => out.push(r));
+      const K = +(process.env.CONC || 1); for (let i = 0; i < S.views.length; i += K) (await Promise.all(S.views.slice(i, i + K).map(run))).forEach(r => out.push(r));
     }
   }
   await b.close();

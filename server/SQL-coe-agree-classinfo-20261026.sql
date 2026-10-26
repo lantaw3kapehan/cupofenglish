@@ -1,0 +1,4 @@
+-- 26 Oct 2026 · applied as migrations coe_agree_20261026, coe_agree_trim_20261026, coe_class_info_20261026, coe_class_info_decision_20261026
+-- Read-only SQL functions used by edge function coe-db (management only). Rollback:
+--   drop function public.coe_agree(text, text, text); drop function public.coe_class_info(jsonb); drop function public.coe_ti_rec(jsonb);
+-- (the app falls back to Google by itself when coe-db does not answer)
