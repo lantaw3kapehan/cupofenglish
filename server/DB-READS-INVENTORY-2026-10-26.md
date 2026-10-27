@@ -1,12 +1,10 @@
-# What the app still reads from Google · inventory 26 Oct 2026 (night)
+# What the app still reads from Google · inventory 26 Oct 2026 (night), updated 27 Oct (wave 2 + background lookups)
 
 Misty, 22:27: "Ensure that those remnants we didn't migrate to Supabase Database, they should all be there. And all should be reading straight from Supabase Database."
 
 Source: the app's own timing log (`coe_speed`, last 48 h). **Waits** is how many times someone was actually waiting on the screen (a tap less than 1.5 s before). **Median** is how long they waited. Timings of about 0.5–0.9 s mean the answer already comes from the database.
 
 ## 1. Already read straight from the database
-
-These screens open from the database, which works the answer out itself from the copies of the sheets. The median wait is 0.4–0.9 s.
 
 | Screens | Waits (48 h) | Median |
 |---|---|---|
@@ -16,43 +14,43 @@ These screens open from the database, which works the answer out itself from the
 | Lesson counts and history, ACTIVE monthly lines | — | database (26 Oct) |
 | Progress-check form (`coe-pcf`), Growth (stored copy) | 10 · 191 | 0.5–0.6 s |
 | Trials, reports waiting, To do, enquiries, money lists, the DATABASE screen | — | 0.4–1.2 s |
-| **New tonight:** Service agreement sheet (`mgmtAgree`) | 49 | **13.0 s → under 1 s** |
-| **New tonight:** Class sheet check-in details (`mgmtClassInfo`) | 77 (+3 errors at 13.5 s) | **4.2 s → under 1 s** |
+| Monthly feedback form (`tFbForm` → coe-train `fbform`, since 24 Oct) | — | database |
+| Video checks and missing videos (`mgmtVidFlags`, `tVidFlags`, `tVidList` → coe-train, from `sys:vids`, which Google refreshes every ~5 min and within a minute of any review) | — | database since 25 Oct (the Google timings in the first inventory were from before that) |
+| "Anything changed?" (`mgmtPulse` → coe-train `pulse`, since 25 Oct) | background | database; Google is still asked every 5 min only for changes typed straight into the sheets |
+| Service agreement sheet (`mgmtAgree`, 26 Oct) | 49 | 13.0 s → under 1 s |
+| Class sheet check-in details (`mgmtClassInfo`, 26 Oct) | 77 | 4.2 s → under 1 s |
+| **New 27 Oct:** monthly-feedback helper (`tFbPlus` → `coe-fbp`) | 35 | **6.1 s → ~0.2–0.5 s** |
+| **New 27 Oct:** trial report form (`tTrialForm` → `coe-trf`, after the TRIALPROPS27 paste) | 5 | 8.2 s → ~0.6 s |
 
 Google still runs behind most of these screens to double-check them, but nobody waits for it.
 
-## 2. Still answered only by Google, and someone waits
+## 2. Still answered by Google
 
-| What | Screen | Waits (48 h) | Median | Why it is still on Google / what is needed |
-|---|---|---|---|---|
-| `tFbPlus` | Monthly feedback helper (tags, last month's plan, my plans) | 35 | 6.1 s | Can be built from S-NOTE-TAGS, S-GOALS and the FEEDBACK DATA copy, but not verified tonight. **Next.** |
-| `tMyVisits` (when the copy is old) | Teacher's observation visits | 13 | 6.8 s | The database version exists, but Google still answers when the copy is older than allowed. Can be lengthened, as was done for Growth. |
-| `tTrialForm`, `tFbForm`, `tPeerForm` (first open of a student) | Trial / monthly feedback / peer review forms | 5 · 7 · 12 | 8.2 · 5.3 · 0.7 s | Usually fetched ahead in the background. A database version of tFbForm needs the Google Form's question list (it rarely changes); progress checks were done the same way. |
-| `mgmtTrialPdf`, `mgmtReportPdf`, `mgmtPcPdf`, `mgmtRoadmap`, `mgmtLeaveProof` | PDF and picture files | 12 · 14 · 1 · 6 | 3.5–7.9 s | **Stays on Google by design:** these are files in Google Drive, not data. |
-| `mgmtVidFlags`, `tVidList`, `tVidFlags` | Video checks / missing videos | 11 · 1 · 1 | 3.2 s (mostly in the background) | Needs a Google paste first: management's review decisions live in Google's Script Properties (`vf:*`), not in a sheet. |
-| `mgmtPulse` | "Anything changed?" check every 30 s (management) | 15 (546 in the background) | 3.0 s | Reads Google's APP LOG live. The database copy of APP LOG is about 1.5 h behind, so it can't be swapped without a faster copy. |
-| `classCheck` | Clash check when moving or adding a class | 34 | 0.4 s | Already fast. |
-| `refresh` (↻ button) | Full re-check from Google | 38 | 26 s, but in the background | Management and teachers already see the database copy first. Google's full re-check runs behind. |
-| `mgmtSlipPeople`, `mgmtMonDay`, `mgmtTeacherCard`, `mgmtPayroll`, `mgmtActions`, `tReminders` | Pay slips, monitor day, teacher card… | 3–20 each | 1.2–7.3 s (first open, old copy) | Database copies exist. These waits happen only when the stored copy is too old. |
+| What | Waits (48 h) | Median | Why it stays on Google |
+|---|---|---|---|
+| `tPeerForm` (first open) | 12 | 0.7 s | Already fast (stored copy). |
+| `mgmtTrialPdf`, `mgmtReportPdf`, `mgmtPcPdf`, `mgmtRoadmap`, `mgmtLeaveProof`, `mgmtBookCovers` | 1–14 each | 3.5–7.9 s | Files in Google Drive, not data — stay on Google by design. |
+| `refresh` (↻) | 38 | background | Full re-check; the database copy is shown first. |
+| `mgmtSlipPeople`, `mgmtMonDay`, `mgmtTeacherCard`, `mgmtPayroll`, `mgmtActions`, `tReminders`, `tMyVisits` | 3–20 each | only when the stored copy is too old | Database copies exist; Google answers only when the copy is old. |
 
-## 3. Saves still sent straight to Google (out of scope tonight: writes stay as they are)
+## 3. Saves
 
-| What | Waits (48 h) | Median |
-|---|---|---|
-| `mgmtAgreeSave` (agreement on file) | 44 | 9.0 s |
-| `mgmtEnrolPaid` / `mgmtRenewPaid` (payments, with the Drive receipt) | 23 · 2 | 13–23 s |
-| `mgmtRemindLog` / `tRemindLog` (reminder sent) | 21 · 6 | 8–9 s |
-| `mgmtLeaveInformed`, `mgmtReportReturn`*, `mgmtTagClass`, `decideLate` | 10 · 4 · 1 · 1 | 8–21 s |
+Instant through the database since 27 Oct (coe-wq, release 1260 + INSTANT27 paste): service agreement, leave informed, class tag, late decision; reminder logs and the Enrolled/Renewed · paid save itself were already queued. Still direct: transfers and invoice files over ~2.5 MB; the package check before Enrolled/Renewed · paid (12–17 s) is being reviewed separately.
 
-\* `mgmtReportReturn` already shows "Returned" at once through `coe-rq`.
+## 4. Google data the app needs that is not copied into the database
 
-These could go through the database queue as tapping "I'm in" does. That needs one line per save in Google's queue list, as with SB_REPLAY.
+- `trp:` / `trredo:` (trial report sent / redo): **copied since 27 Oct** (`sys:trstate`, TRIALPROPS27 paste).
+- **COURSEWARE** (book covers) and **Google Drive** files (videos found in Drive, PDFs, signed copies): files, they stay in Drive.
+- `vf:*` video checks: **already copied** to the database (`sys:vids`, since 25 Oct).
 
-## 4. Google sheet tabs the app needs that are not copied into the database
+## 5. Background lookups (27 Oct, release 1300, COE_V 1317)
 
-All tabs the app's database code reads are copied, including ACTIVE, DATABASE, S-MONTHLY, T-TIMEIN, TR-DATA, PR-DATA, S-NOTES, S-AGREE, PAYROLL and the DAILY tabs. The data that is **not** copied:
+Google calls nobody waits for, but which keep Google busy (48 h, before 1300): mgmtNight 482 · mgmtHealth 408 · mgmtTrialFus 386 · mgmtMyPay 385 · mgmtFixIgnored 370 · mgmtUrls 359 · schedLists 356 · mgmtPayChecks 326 · mgmtPayReady 264 · tGrowth 355 · tPayCheck 265 · tPayReady 257 (4–15 s each).
 
-- **COURSEWARE** (book covers): only read when management picks a book cover (`mgmtBookCovers`). It is a set of files, not needed in the database.
-- **Google Script Properties `vf:*`** (video review decisions): needed to move the video checks.
-- **Google Drive** (videos found in a student's folder, folder links, PDFs, signed copies): files that stay in Drive. The app keeps the links.
-- **APP LOG** is copied, but only every ~1.5 h. A faster copy is needed before the "anything changed?" check can move.
+Release 1300: an unchanged Google answer now counts as a fresh copy on the device (Google only rewrites its copy when the answer changes); reads no longer count as saves; slower background spacing for slow, rarely-changing lookups; the My pay preload reuses the device's last answer (< 30 min). Preview: Google calls per management reload 8 → 0. Details: CHANGES-2026-10-27-background-reads.md.
+
+Still always Google by design: the 5-min sheet-edit check in `mgmtPulse`, `getBootstrap` at app start, `tMsgs` double-check.
+
+## How the feedback helper (`coe-fbp`) was checked
+
+It is a line-by-line copy of Google's own code (`tFbPlus`, `gtTags_`, `gtGoalsAll_`, `gtActive_`, `gtMine_`, `fbMonth_`), reading the database copies of S-NOTE-TAGS and S-GOALS plus tags / goal plans saved in the app that Google hasn't copied yet. The app asks Google quietly once per student per day and compares: any difference is written to the activity log as **tFbPlusCheck**, and from then on that student uses Google's answer. Nothing on screen moves either way.
