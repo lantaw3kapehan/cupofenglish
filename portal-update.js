@@ -31,12 +31,24 @@
       .catch(function () {}).then(function () { checking = false; });
   }
   function data(force) { if (typeof O.refresh !== 'function' || busy() || document.hidden) return; if (!force && Date.now() - lastData < (O.dataEvery || O.every) - 5e3) return; lastData = Date.now(); try { O.refresh(); } catch (e) {} }
-  function tick() { if (document.hidden) return; if (Date.now() - last >= O.every - 5e3) check(); data(false); }
+  /* presence (27 Oct): while a signed-in page is on screen, say "I'm here" about once a minute so management can see who opened the portal.
+     Sends only: the session token (to know who), device family, current tab, page version. No IP or location is stored. */
+  var lastPing = 0, PING = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-portal-ping';
+  function devName() { var u = navigator.userAgent || '', ipad = /iPad/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1);
+    var t = ipad || /Tablet/.test(u) ? 'tablet' : /Mobi|iPhone|Android/.test(u) ? 'phone' : 'laptop';
+    var os = /iPhone|iPad|iPod/.test(u) || ipad ? 'iOS' : /Android/.test(u) ? 'Android' : /Mac/.test(u) ? 'Mac' : /Windows/.test(u) ? 'Windows' : /Linux|CrOS/.test(u) ? 'Linux' : '';
+    var br = /MicroMessenger/.test(u) ? 'WeChat' : /Edg\//.test(u) ? 'Edge' : /Firefox|FxiOS/.test(u) ? 'Firefox' : /Chrome|CriOS/.test(u) ? 'Chrome' : /Safari/.test(u) ? 'Safari' : '';
+    return [t, os, br].filter(Boolean).join('·'); }
+  function ping(force) { var P = O.presence; if (!P || document.hidden) return; if (!force && Date.now() - lastPing < 55e3) return;
+    var tok = ''; try { tok = P.token() || ''; } catch (e) {} if (!tok) return; lastPing = Date.now();
+    var view = ''; try { view = String(P.view ? P.view() || '' : ''); } catch (e) {}
+    try { fetch(PING, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: tok, kind: P.kind, dev: devName(), view: view, v: CUR }), keepalive: true }).catch(function () {}); } catch (e) {} }
+  function tick() { if (document.hidden) return; if (Date.now() - last >= O.every - 5e3) check(); data(false); ping(false); }
   window.PortalUpdate = {
-    init: function (opts) { for (var k in opts) O[k] = opts[k]; CUR = meta(); check(); setInterval(tick, 30e3);
-      document.addEventListener('visibilitychange', function () { if (!document.hidden) { check(); data(true); } });
-      window.addEventListener('pageshow', function (e) { if (e.persisted) { check(); data(true); } });
+    init: function (opts) { for (var k in opts) O[k] = opts[k]; CUR = meta(); check(); setInterval(tick, 30e3); setTimeout(function () { ping(true); }, 1500);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) { check(); data(true); ping(false); } });
+      window.addEventListener('pageshow', function (e) { if (e.persisted) { check(); data(true); ping(true); } });
       window.addEventListener('focus', function () { if (Date.now() - last > 60e3) check(); }); },
-    check: check, version: function () { return CUR; }
+    check: check, version: function () { return CUR; }, ping: function () { ping(true); }
   };
 })();
