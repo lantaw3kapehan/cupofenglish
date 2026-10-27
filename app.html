@@ -2143,7 +2143,9 @@ openSheet(head);
 try{
 let r = STU_CACHE[c.code]; if(!r){ try{ r = JSON.parse(store('get','coe.stu.' + c.code)||'null'); }catch(x){} } if(!r) r = await stuPre(c.code); STU_CACHE[c.code] = r;
 const f = (r.feedback||[])[0], ck = (r.checks||[])[0], el = $('cbFocus'); if(!el) return;
-const lv = (ck && ck.cefr) || ''; if($('cbLv')) $('cbLv').textContent = lv || '—';
+const lvOne = () => { try{ return (window.cjNowLv && cjNowLv({ code: c.code, r: r, s: s })) || ''; }catch(e){ return ''; } };   /* 1330 */
+const lv = lvOne() || (ck && ck.cefr) || (r.trial && r.trial.cefr) || ''; if($('cbLv')) $('cbLv').textContent = lv || 'Not assessed yet';
+try{ if(window.CJX && !CJX[c.code] && typeof FAST_URL !== 'undefined' && TOKEN) fetch(FAST_URL + '-cj', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'one', code: c.code }) }).then(y => y.json()).then(x => { if(x && x.ok){ CJX[c.code] = { at: Date.now(), cj: x.cj || null, trials: x.trials || [] }; const v2 = lvOne(); if(v2 && $('cbLv') && $('cbLv').textContent !== v2) $('cbLv').textContent = v2; } }).catch(() => {}); }catch(e){}
 const sk = f ? [['Listening', f.l], ['Speaking', f.s], ['Reading', f.r], ['Writing', f.w]].filter(x => x[1]) : [], lo = sk.length ? Math.min(...sk.map(x => x[1])) : 0;
 el.innerHTML = `<h2>Learning focus ${f ? `<span class="c">from ${esc(monthName(f.month))} feedback · ${f.total}/100${f.teacher ? ' · by ' + esc(tName(f.teacher)) : ''}</span>` : ''}</h2>` + (f ? `
 <div class="cbsk">${sk.map(([k,v]) => `<div class="${v===lo?'lo':''}"><b class="num">${v}</b><span>${k}</span></div>`).join('')}</div>
@@ -6252,7 +6254,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1317;
+const COE_V = 1318;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -16854,15 +16856,15 @@ details.lv28>summary{font-size:12.5px;color:#2F6F77;font-weight:700;cursor:point
     sec.dataset.c30 = C.length; }
   function glance(body){ const r = STU.r || {}, F = r.feedback || [], C = r.checks || [], N = r.notes || [];
     const f0 = F[0], f1 = F[1], df = f0 && f1 ? f0.total - f1.total : null;
-    const L = ['Pre-A1','A1','A2','B1','B2','C1','C2'], lvNow = (C[0] && C[0].cefr) || (STU.s && /pre-?a1|[abc][12]/i.test(STU.s.book || '') ? (String(STU.s.book).match(/pre-?a1|[abc][12]\+?/i) || [''])[0] : '') || (r.trial && r.trial.cefr) || '';
+    const L = ['Pre-A1','A1','A2','B1','B2','C1','C2'], lvNow = (function(){ try{ return (window.cjNowLv && cjNowLv(STU)) || ''; }catch(e){ return ''; } })() || (C[0] && C[0].cefr) || (STU.s && /pre-?a1|[abc][12]/i.test(STU.s.book || '') ? (String(STU.s.book).match(/pre-?a1|[abc][12]\+?/i) || [''])[0] : '') || (r.trial && r.trial.cefr) || '';
     const bi = L.findIndex(x => x.toLowerCase() === String(lvNow).replace(/\+$/, '').toLowerCase()), nxt = bi >= 0 && bi < L.length - 1 ? L[bi + 1] : '';
     let spark = ''; if(F.length > 1){ const S = F.slice(0, 8).reverse(), W = 120, H = 24, lo = Math.min(...S.map(f => f.total)), hi = Math.max(...S.map(f => f.total)), sp = Math.max(1, hi - lo);
       spark = '<svg class="sp" width="' + W + '" height="' + H + '"><polyline fill="none" stroke="#00A3AD" stroke-width="2" points="' + S.map((f, i) => (4 + i * (W - 8) / (S.length - 1)) + ',' + (H - 4 - (f.total - lo) / sp * (H - 8))).join(' ') + '"/></svg>'; }
     const ym = ymd(new Date()), nm = N.filter(n => String(n.date || '').slice(0, 7) === ym).length;
     const c0 = C[0];
     return '<section class="sec noprint" id="pg30" data-stab="pr"><h2>At a glance</h2><div class="pg30">' +
-      '<div><em>Monthly score</em>' + (f0 ? '<b class="v">' + f0.total + '</b><small>/100 · ' + esc(nmo(f0.month)) + '</small> ' + (df != null ? '<span class="' + (df >= 0 ? 'up' : 'dn') + '">' + (df >= 0 ? '▲ ' : '▼ ') + Math.abs(df) + '</span>' : '') + spark : '<small>No monthly feedback yet</small>') + '</div>' +
-      '<div><em>Level</em><div class="lv">' + (lvNow ? '<span>' + esc(lvNow) + '</span>' : '<small>—</small>') + (nxt ? '<small>→</small><span class="n">' + nxt + '</span>' : '') + '</div><small class="sp">' + (nxt ? 'working towards ' + nxt : '') + '</small></div>' +
+      '<div><em>Monthly score</em>' + (f0 ? '<b class="v">' + f0.total + '</b><small>/100 · ' + esc(window.fbClsLab && /^\d{4}-\d{2}/.test(String(f0.month || '')) ? fbClsLab(f0.month) + ' classes' : nmo(f0.month)) + '</small> ' + (df != null ? '<span class="' + (df >= 0 ? 'up' : 'dn') + '">' + (df >= 0 ? '▲ ' : '▼ ') + Math.abs(df) + '</span>' : '') + spark : '<small>No monthly feedback yet</small>') + '</div>' +
+      '<div><em>Level</em><div class="lv">' + (lvNow ? '<span>' + esc(lvNow) + '</span>' : '<small>—</small>') + (lvNow ? '<small>now</small>' : '') + (nxt ? '<small>→ goal</small><span class="n">' + nxt + '</span>' : '') + '</div><small class="sp">' + (nxt ? 'working towards ' + nxt : '') + '</small></div>' +
       '<div><em>Progress check</em>' + (c0 ? '<b class="v" style="font-size:18px">' + esc(nd(c0.date)) + '</b><small class="sp">Speaking ' + esc(c0.speaking) + '/20 · Listening ' + esc(c0.listening) + '/8 · Reading ' + esc(c0.reading) + '/8</small>' : '<small>None yet · ask the teacher</small>') + '</div>' +
       '<div><em>Class notes</em><b class="v">' + nm + '</b><small> this month</small><small class="sp">' + (N[0] ? 'last ' + esc(nd(N[0].date)) : 'none yet') + '</small></div></div></section>'; }
   function paint(){ const body = $('sheetBody'); if(!body || typeof STU === 'undefined' || !STU || !STU.r || !body.querySelector('.shero')) return;
@@ -28686,7 +28688,7 @@ nav button.on:not(#z1101):not(#y1101){color:#00575F!important;font-weight:700!im
         var nm = function(c){ var e = c.querySelector('.nm'); return e ? e.textContent.replace('›', '').trim() : ''; };
         nn.innerHTML = '<div class="nn-h"><h2>' + (cur ? 'Now &amp; next' : 'Next class') + '</h2><span class="small">' + (cur && nxt ? 'then ' + esc(nm(nxt) || 'the next class') + ' at ' + two(Math.floor(tOf(nxt) / 60)) + ':' + two(tOf(nxt) % 60) : cur ? 'your last class today' : '') + '</span></div><div class="nn-g"></div>';
         var g = nn.querySelector('.nn-g');
-        [cur, nxt].forEach(function(c){ if(!c) return; var w = document.createElement('div'); w.className = 'nn-i'; var t = tOf(c), L = lenOf(c), lab;
+        [cur, cur ? null : nxt].forEach(function(c){ if(!c) return; var w = document.createElement('div'); w.className = 'nn-i'; var t = tOf(c), L = lenOf(c), lab;
           if(c === cur){ var end = t + L; lab = '<span class="nn-t"><i></i>Now · ends ' + two(Math.floor(end / 60) % 24) + ':' + two(end % 60) + '</span>'; }
           else { var dm = t - n; lab = '<span class="nn-t nx"><i></i>Next · ' + two(Math.floor(t / 60)) + ':' + two(t % 60) + (dm > 0 ? ' · in ' + span(dm) : '') + '</span>'; }
           w.innerHTML = lab; w.appendChild(c); g.appendChild(w); });
