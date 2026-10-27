@@ -6290,7 +6290,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1328;
+const COE_V = 1329;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -30219,11 +30219,11 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
       var srt = pings.slice().sort(function(a, b){ return a - b; }), lat = srt[Math.floor(srt.length / 2)], jit = 0; for(var j = 1; j < pings.length; j++) jit += Math.abs(pings[j] - pings[j - 1]); jit /= (pings.length - 1);
       var dl = [], ul = [];
       var down = async function(bytes, n, cap){ for(var k = 0; k < n; k++){ if(used() > cap) return false; var t1 = performance.now(), u1 = CFS + '/__down?bytes=' + bytes + '&r=' + Math.random().toString(36).slice(2), ab = await (await go(u1, 8000)).arrayBuffer(), e1 = rt(u1), dt = (e1 && e1.responseEnd > e1.requestStart ? e1.responseEnd - e1.requestStart : performance.now() - t1) / 1000; if(dt > 0.01 && ab.byteLength) dl.push(ab.byteLength * 8 / dt / 1e6); if(dt > 2.5) return false; } return true; };
-      var up = async function(bytes, n, cap){ var body = new Uint8Array(bytes); for(var k = 0; k < n; k++){ if(used() > cap) return false; var t1 = performance.now(), u2 = CFS + '/__up?r=' + Math.random().toString(36).slice(2); await (await go(u2, 8000, { method: 'POST', body: body, headers: { 'Content-Type': 'text/plain' } })).text(); var e2 = rt(u2), dt = (e2 && e2.responseStart > e2.startTime ? e2.responseStart - e2.startTime : performance.now() - t1) / 1000; if(dt > 0.01) ul.push(bytes * 8 / dt / 1e6); if(dt > 2.5) return false; } return true; };
+      var up = async function(bytes, n, cap){ var body = new Uint8Array(bytes); for(var k = 0; k < n; k++){ if(used() > cap) return false; var t1 = performance.now(), u2 = CFS + '/__up?r=' + Math.random().toString(36).slice(2); try{ await (await go(u2, 8000, { method: 'POST', body: body, mode: 'no-cors' })).text(); }catch(eu){ if(eu && eu.name === 'AbortError') return false; continue; } var e2 = rt(u2), dt = (e2 && e2.responseStart > e2.startTime ? e2.responseStart - e2.startTime : performance.now() - t1) / 1000; if(dt > 0.01) ul.push(bytes * 8 / dt / 1e6); if(dt > 2.5) return false; } return true; };
       if(await down(1e5, 8, 7000) && await down(1e6, 6, 8500)){ if(dl.length && p90(dl) > 20) await down(1e7, 2, 9500); }
-      if(await up(1e5, 6, 11500)) await up(1e6, 4, 13000);
+      var ub = used(); if(await up(1e5, 6, ub + 2500)) await up(1e6, 4, ub + 4500);   /* 1272: upload has its own time (it was skipped when the download rounds used up the budget) */
       if(!dl.length) throw 0;
-      out.speed = '↓ ' + p90(dl).toFixed(1) + ' Mbps · ↑ ' + (ul.length ? p90(ul).toFixed(1) : '0.0') + ' Mbps · ' + Math.round(lat) + ' ms · jitter ' + jit.toFixed(1) + ' ms';
+      out.speed = '↓ ' + p90(dl).toFixed(1) + ' Mbps · ' + (ul.length && p90(ul) > 0.05 ? '↑ ' + p90(ul).toFixed(1) + ' Mbps · ' : '') + Math.round(lat) + ' ms · jitter ' + jit.toFixed(1) + ' ms';
     }catch(e){ if(cn.downlink) out.speed = '~' + cn.downlink + ' Mbps (browser estimate)'; }
     try{ if(out.speed) localStorage.setItem('coe.netLast', JSON.stringify({ s: out.speed, at: Date.now(), kind: 'timein' })); }catch(e){}
     return out; }
@@ -30250,7 +30250,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     L.push(st ? { ok: !late, t: late ? 'Late' + (Math.abs(+x.mins || 0) ? ' ' + Math.abs(+x.mins) + ' min' : '') : st === 'On time' ? 'On time' : st } : { ok: null, t: 'On time · being checked' });
     var lap = /^Laptop/.test(x.device || ''); L.push({ ok: lap, t: lap ? 'Class laptop' : (String(x.device || 'Unknown device').split(' · ')[0]) + ' · not the class laptop' });
     var k = String(x.net || ''); L.push(/LAN cable/.test(k) ? { ok: true, t: 'LAN cable' } : /Wi-Fi|Mobile data/.test(k) ? { ok: false, t: (k.match(/Wi-Fi|Mobile data/) || ['Wi-Fi'])[0] + ' · not LAN' } : { ok: null, t: 'LAN cable · see the picture' });
-    L.push(x.shot ? { ok: true, t: 'Screen proof · VooV + date/time' } : { ok: false, t: 'No screen proof' });
+    L.push(x.shot ? { ok: null, t: 'Screen proof · check VooV + date/time' } : { ok: false, t: 'No screen proof' });
     var q = window.netQ ? window.netQ(x.speed) : { lvl: '', label: '' };
     L.push(x.measuring ? { ok: null, t: 'Internet · measuring…' } : !q.lvl ? { ok: null, t: 'Internet · not measured' } : { ok: q.lvl === 'good' ? true : q.lvl === 'ok' ? 'warn' : false, t: q.label });
     L.push(x.lat != null || x.place ? { ok: true, t: 'Location shared' } : { ok: false, t: 'Location · ' + (x.locErr || 'not shared') });
@@ -30260,7 +30260,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     var logo = (document.querySelector('#login img') || {}).src || '';
     var C = checks(x), ic = function(o){ return o === true ? ['✓', '#1F7A55', '#E7F5EE'] : o === null ? ['…', '#4C4868', '#EEF0F4'] : o === 'warn' ? ['!', '#8A5300', '#FFF0D2'] : ['⚠', '#B42318', '#FDECEA']; };
     var rows = C.map(function(c){ var k = ic(c.ok); return '<div style="display:flex;align-items:center;gap:14px;background:' + k[2] + ';border-radius:14px;padding:0 16px;height:58px"><span style="width:40px;height:40px;border-radius:50%;background:' + k[1] + ';color:#fff;display:flex;align-items:center;justify-content:center;font:700 24px ' + F + ';flex:none">' + k[0] + '</span><span style="font:600 29px ' + F + ';color:' + k[1] + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(c.t) + '</span></div>'; }).join('');
-    var dn = num(x.speed, /↓\s*([\d.]+)/) || num(x.speed, /~\s*([\d.]+)/), up = num(x.speed, /↑\s*([\d.]+)/), ms = num(x.speed, /([\d.]+)\s*ms\s*·\s*jitter/) || num(x.speed, /·\s*([\d.]+)\s*ms\s*$/), jt = num(x.speed, /jitter\s*([\d.]+)/);
+    var dn = num(x.speed, /↓\s*([\d.]+)/) || num(x.speed, /~\s*([\d.]+)/), up = (+num(x.speed, /↑\s*([\d.]+)/) > 0.05 ? num(x.speed, /↑\s*([\d.]+)/) : ''), ms = num(x.speed, /([\d.]+)\s*ms\s*·\s*jitter/) || num(x.speed, /·\s*([\d.]+)\s*ms\s*$/), jt = num(x.speed, /jitter\s*([\d.]+)/);
     var q = window.netQ ? window.netQ(x.speed) : { label: '' };
     var tile = function(l, v, u){ return '<div style="background:#F6F7FA;border-radius:14px;padding:12px 18px;height:96px;box-sizing:border-box"><div style="font:500 22px ' + F + ';color:#5E5A76">' + l + '</div><div style="font:700 38px ' + F + ';color:#2B2450;margin-top:2px;white-space:nowrap">' + (v ? E(v) + ' <span style="font:500 22px ' + F + ';color:#5E5A76">' + u + '</span>' : '<span style="font:500 24px ' + F + ';color:#8C88A3">' + (x.measuring ? 'measuring…' : 'not measured') + '</span>') + '</div></div>'; };
     var dt = new Date(String(x.day) + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -30672,6 +30672,41 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
       if(pa) pa.insertAdjacentHTML('afterend', h); else ld.insertAdjacentHTML('beforeend', h); }catch(x){} }
   var r0 = window.renderAStudents; if(typeof r0 === 'function') window.renderAStudents = function(){ var r = r0.apply(this, arguments); btn(); return r; };
   btn();
+})();
+</script>
+<style id="st1272">
+#cap1272{position:fixed;inset:0;z-index:2147483646;background:#F3F6F7;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
+#cap1272 .c{background:#fff;border:2px solid #E8ECF0;border-radius:28px;padding:36px 40px;max-width:560px;width:100%;text-align:center;font-family:Inter,system-ui,sans-serif;color:#2B2450}
+#cap1272 img{height:56px;width:auto;display:block;margin:0 auto 18px}
+#cap1272 h2{font:400 30px 'Fredoka One',Inter,sans-serif;margin:0;color:#2B2253;border:0;padding:0}
+#cap1272 h2:before,#cap1272 h2:after{content:none!important;display:none!important}
+#cap1272 p{margin:12px 0 0;font-size:18px;line-height:1.5;color:#4C4868}
+#cap1272 .n{font:400 64px 'Fredoka One',Inter,sans-serif;color:#00707A;margin-top:14px;min-height:72px}
+body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
+</style>
+<script>
+/* 1272 · the screen picture never shows the app (pay rate, student phone numbers): a neutral cover while it is taken,
+   and a 3-second countdown to bring VooV to the front */
+(function(){
+  if(window.__1272) return; window.__1272 = 1;
+  var CAP = 0, logo = function(){ return (document.querySelector('#login img') || {}).src || ''; };
+  function show(h, p, n){ var o = document.getElementById('cap1272'); if(!o){ o = document.createElement('div'); o.id = 'cap1272'; o.setAttribute('role', 'status'); o.setAttribute('aria-live', 'polite'); document.body.appendChild(o); }
+    document.body.classList.add('cap1272'); var L = logo();
+    o.innerHTML = '<div class="c">' + (L ? '<img alt="CupOfEnglish" src="' + L + '">' : '') + '<h2>' + h + '</h2>' + (p ? '<p>' + p + '</p>' : '') + '<div class="n">' + (n == null ? '' : n) + '</div></div>'; }
+  function hide(){ var o = document.getElementById('cap1272'); if(o) o.remove(); document.body.classList.remove('cap1272'); }
+  var md = navigator.mediaDevices, _gdm = md && md.getDisplayMedia ? md.getDisplayMedia.bind(md) : null;
+  if(_gdm) try{ md.getDisplayMedia = async function(){ var st = await _gdm.apply(null, arguments);
+      if(CAP){ try{ var tr = st.getVideoTracks()[0], surf = (tr && tr.getSettings && tr.getSettings().displaySurface) || '';
+          if(!surf || surf === 'monitor') for(var n = 3; n > 0; n--){ show('Taking your screen picture…', 'Bring your <b>VooV class</b> window to the front now.<br>The picture shows VooV, your clock and the LAN icon.', n); await new Promise(function(z){ setTimeout(z, 1000); }); }
+          show('Taking your screen picture…', '', ''); }catch(e){} }
+      return st; }; }catch(e){}
+  var _g = window.grabScreen;
+  if(typeof _g === 'function') window.grabScreen = async function(){ CAP = 1; show('Taking your screen picture…', 'Choose <b>Entire screen</b>, then Share.', '');
+    try{ return await _g.apply(this, arguments); } finally{ CAP = 0; hide(); } };
+  /* an older saved result "↑ 0.0 Mbps" was an upload test that did not run: show it as not measured */
+  var clean = function(s){ return String(s == null ? '' : s).replace(/↑\s*0(?:\.0+)?\s*Mbps\s*·\s*/g, ''); };
+  var _nb = window.netBadge; if(typeof _nb === 'function') window.netBadge = function(s, ctx){ return _nb.call(this, clean(s), ctx); };
+  var _nq = window.netQ; if(typeof _nq === 'function') window.netQ = function(s){ return _nq.call(this, clean(s)); };
 })();
 </script>
 </body>
