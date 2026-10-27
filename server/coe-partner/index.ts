@@ -119,30 +119,43 @@ function ageAt(r: any[], date: string): number | null { const b = ymd(c(r, 5)); 
   const n = Number(c(r, 6)); return n > 0 && n < 100 ? n : null; }
 function whoOf(inv: string): string[] { const t = String(inv || "").replace(/\.(pdf|png|jpe?g)$/i, "").replace(/^.*_/, "").replace(/^(students?)\s+/i, "").replace(/[.\s]+$/, "").trim();
   return t ? t.split(/\s*[&,+、和]\s*/).map((x) => x.trim()).filter(Boolean) : []; }
+// program from the SALES PARTNERSHIP label: Adult / IELTS / TOEFL / PET / KET / Reading Program; a plain partner label = young learners
+const progOf = (L: string) => /adult/.test(L) ? "adult" : /ielts/.test(L) ? "ielts" : /toefl/.test(L) ? "toefl" : /\bpet\b/.test(L) ? "pet" : /\bket\b/.test(L) ? "ket" : /reading/.test(L) ? "reading" : "yl";
 const cap = (x: string) => x.replace(/\b[a-z]/g, (m) => m.toUpperCase());
 async function payFor(acc: any, PS: Record<string, { code: string; name: string; cn: string }>, withWhy = false) {
   const labels = new Set(((acc.sales_labels || []) as string[]).map(lbl).filter(Boolean));
-  const [{ data: RT }, DB] = await Promise.all([db.from("partner_rates").select("source,learner,lessons,amount,valid_from").in("source", (acc.sources || []).length ? acc.sources : ["-"]), rows("DATABASE")]);
+  const [{ data: RT }, DB, { data: DC }] = await Promise.all([db.from("partner_rates").select("source,program,learner,lessons,amount,valid_from,confirmed").in("source", (acc.sources || []).length ? acc.sources : ["-"]), rows("DATABASE"),
+    db.from("partner_discounts").select("source,per_lesson,valid_from").in("source", (acc.sources || []).length ? acc.sources : ["-"])]);
+  // Misty 15:28 · partner earnings per PAID lesson (free / bonus lessons earn nothing); the latest valid_from on or before the sale date
+  const disc = (date: string) => { const L = (DC || []).filter((x: any) => !x.valid_from || !date || x.valid_from <= date).sort((a: any, b: any) => String(b.valid_from || "").localeCompare(String(a.valid_from || ""))); return L.length ? Number(L[0].per_lesson) : null; };
   const age: Record<string, any[]> = {}; DB.forEach((r: any[]) => { const k = norm(c(r, 0)).toUpperCase(); if (PS[k]) age[k] = r; });
-  const rate = (learner: string, lessons: number, date: string) => { const L = (RT || []).filter((x: any) => x.learner === learner && +x.lessons === lessons && (!x.valid_from || !date || x.valid_from <= date))
-      .sort((a: any, b: any) => String(b.valid_from || "").localeCompare(String(a.valid_from || ""))); return L.length ? Number(L[0].amount) : null; };
-  const byName: Record<string, string[]> = {}; Object.values(PS).forEach((p) => { const k = p.name.toLowerCase(); if (k) (byName[k] = byName[k] || []).push(p.code); });
-  const out: any[] = [], unclear: any[] = []; let src = "SALES";
+  // Misty 15:30 · rates per program × package size; only CONFIRMED rates are used (derived ones wait for Misty → "—")
+  const rateRow = (program: string, lessons: number, date: string, conf: boolean) => (RT || []).filter((x: any) => (x.program || (x.learner === "adult" ? "adult" : "yl")) === program && +x.lessons === lessons && (!conf || x.confirmed !== false) && (!x.valid_from || !date || x.valid_from <= date))
+      .sort((a: any, b: any) => (+(b.confirmed !== false) - +(a.confirmed !== false)) || String(b.valid_from || "").localeCompare(String(a.valid_from || "")))[0];
+  const rate = (program: string, lessons: number, date: string) => { const x = rateRow(program, lessons, date, true); return x ? Number(x.amount) : null; };
+  // names on invoices: English name, or the pinyin / Chinese name, spaces ignored ("GaoSongbo" = "Gao Songbo"; "Irene.pdf" = "Irene")
+  const nk = (x: string) => String(x || "").toLowerCase().replace(/\.(pdf|png|jpe?g)$/g, "").replace(/[\s.]+/g, "");
+  const byName: Record<string, string[]> = {}; Object.values(PS).forEach((p) => { [p.name, p.cn].map(nk).filter(Boolean).forEach((k) => { const L = byName[k] = byName[k] || []; if (!L.includes(p.code)) L.push(p.code); }); });
+  const out: any[] = [], unclear: any[] = [], dropped: any[] = []; let src = "SALES";
   if (labels.size) {
     const [SA, { data: LK }] = await Promise.all([pages(() => db.from("sheet_rows").select("r,data").eq("tab", "SALES").gte("r", 3).order("r")), db.from("docs").select("data").eq("key", "sys:pkglink").maybeSingle()]);
     const link: Record<number, string> = {}; (((LK as any)?.data?.act) || []).forEach((a: any) => { if (+a.link > 0 && PS[norm(a.c).toUpperCase()]) link[+a.link] = norm(a.c).toUpperCase(); });
     const one = async (x: any) => { const r = x.data || [], L = lbl(c(r, 4)), date = ymd(c(r, 0)); if (!labels.has(L) || !date) return;
       const pkg = Number(c(r, 2)) || 0, free = Number(c(r, 3)) || 0; if (!pkg && !free) return;
-      const names = whoOf(String(c(r, 1))).map((n) => { const cs = byName[n.toLowerCase()] || []; return { name: cap(n), code: cs.length === 1 ? cs[0] : "" }; });
+      const names = whoOf(String(c(r, 1))).map((n) => { const cs = byName[nk(n)] || []; return { name: cap(n.replace(/\.(pdf|png|jpe?g)$/i, "")), code: cs.length === 1 ? cs[0] : "" }; });
       if (link[x.r]) { const lc = link[x.r], i = names.findIndex((n) => n.name.toLowerCase() === PS[lc].name.toLowerCase()); if (i >= 0) names[i].code = lc; else if (names.length <= 1) names.splice(0, 1, { name: PS[lc].name, code: lc }); }
-      let learner = /adult/.test(L) ? "adult" : /ielts|toefl|\bpet\b|\bket\b/.test(L) ? "exam" : "young";
+      // Misty 15:35 · a SALES label alone never qualifies: the row must name at least one of this partner's own students
+      // (same membership as the student list: DATABASE + ACTIVE agree, plus Always include, minus Always exclude)
+      if (!names.some((n) => n.code || (byName[nk(n.name)] || []).length > 0)) { if (withWhy) dropped.push({ date, invoice: String(c(r, 1)), lessons: pkg, label: norm(c(r, 4)), sheetRow: x.r }); return; }
+      let program = progOf(L), learner = program === "adult" ? "adult" : program === "yl" ? "young" : program;
       const ages = names.filter((n) => n.code && age[n.code]).map((n) => ageAt(age[n.code], date)).filter((a) => a != null) as number[];
-      if (learner === "young" && ages.some((a) => a >= 18)) learner = "unclear";
-      if (learner === "adult" && ages.length && ages.every((a) => a < 18)) learner = "unclear";
-      const amount = learner === "adult" || learner === "young" ? (pkg ? rate(learner, pkg, date) : 0) : null;
-      const mineName = (n: any) => n.code || (byName[n.name.toLowerCase()] || []).length > 0;   // only names of this partner's own students
-      const row: any = { date, names: names.map((n) => mineName(n) ? { name: n.code ? PS[n.code].name : n.name, cn: n.code ? PS[n.code].cn : "", code: n.code } : { name: "", cn: "", code: "", hidden: true }), lessons: pkg, free, learner, amount,
-        why: amount != null ? "" : learner === "exam" ? "exam" : learner === "unclear" ? "unclear" : "norate" };
+      if (program === "yl" && ages.some((a) => a >= 18)) { program = "unclear"; learner = "unclear"; }
+      if (program === "adult" && ages.length && ages.every((a) => a < 18)) { program = "unclear"; learner = "unclear"; }
+      const amount = program !== "unclear" && program !== "other" ? (pkg ? rate(program, pkg, date) : 0) : null;
+      const mineName = (n: any) => n.code || (byName[nk(n.name)] || []).length > 0;   // only names of this partner's own students
+      const row: any = { date, names: names.map((n) => mineName(n) ? { name: n.code ? PS[n.code].name : n.name, cn: n.code ? PS[n.code].cn : "", code: n.code } : { name: "", cn: "", code: "", hidden: true }), lessons: pkg, free, learner, program, amount,
+        why: amount != null ? "" : program === "unclear" ? "unclear" : program === "other" ? "program" : "norate" };
+      if (withWhy) { const d = pkg ? rateRow(program, pkg, date, false) : null; row.derived = d && d.confirmed === false ? Number(d.amount) : null; row.rmb = c(r, 6) === "" ? null : Number(c(r, 6)); row.label = norm(c(r, 4)); }
       row.ref = "SALES:" + (await sha([0, 1, 2, 3, 4].map((j) => r[j] == null ? "" : typeof r[j] === "object" ? JSON.stringify(r[j]) : String(r[j])).join("|"))).slice(0, 32); row.sheetRow = x.r;
       out.push(row); if (withWhy && learner === "unclear") unclear.push({ ...row, label: norm(c(r, 4)), ages, sheetRow: x.r }); }
     for (const x of SA) await one(x);
@@ -150,11 +163,13 @@ async function payFor(acc: any, PS: Record<string, { code: string; name: string;
     src = "ACTIVE"; const codes = Object.keys(PS);
     const P = codes.length ? await pages(() => db.from("coe_packages").select("code,buy,enrolled").in("code", codes).is("removed_at", null).not("enrolled", "is", null).order("buy")) : [];
     P.forEach((p: any) => { const code = norm(p.code).toUpperCase(), date = p.buy || "", e = Number(p.enrolled) || 0; if (!date || !e) return; const [pkg, free] = PKG[e] || [e, 0];
-      const a = age[code] ? ageAt(age[code], date) : null, learner = a == null ? "unclear" : a >= 18 ? "adult" : "young", amount = learner === "unclear" ? null : rate(learner, pkg, date);
-      const row: any = { date, names: [{ name: PS[code].name, cn: PS[code].cn, code }], lessons: pkg, free, learner, amount, why: amount != null ? "" : learner === "unclear" ? "unclear" : "norate" };
+      const a = age[code] ? ageAt(age[code], date) : null, learner = a == null ? "unclear" : a >= 18 ? "adult" : "young", program = learner === "adult" ? "adult" : learner === "young" ? "yl" : "unclear", amount = program === "unclear" ? null : rate(program, pkg, date);
+      const row: any = { date, names: [{ name: PS[code].name, cn: PS[code].cn, code }], lessons: pkg, free, learner, program, amount, why: amount != null ? "" : learner === "unclear" ? "unclear" : "norate" };
       row.ref = "PKG:" + code + "|" + date + "|" + e; out.push(row); if (withWhy && learner === "unclear") unclear.push({ ...row, ages: [] }); });
   }
   out.sort((a, b) => b.date.localeCompare(a.date));
+  // remitted = partner price (amount); earnings = discount × paid lessons; student price = remitted + earnings. Unknown → null ("—"), never guessed.
+  out.forEach((r) => { const d = r.amount != null ? disc(r.date) : null; r.earn = r.amount != null && d != null ? Math.round(d * (r.lessons || 0) * 100) / 100 : null; r.student = r.earn != null ? r.amount + r.earn : null; });
   // Misty 14:55 · paid status (partner_payments, per partner source). No record: "topay" when the login tracks payments, else null ("—").
   const { data: PP } = await db.from("partner_payments").select("partner,ref,status,marked_by,marked_at,note").in("partner", (acc.sources || []).length ? acc.sources : ["-"]);
   const st: Record<string, any> = {}; (PP || []).forEach((x: any) => { if (!st[x.ref] || x.marked_at > st[x.ref].marked_at) st[x.ref] = x; });
@@ -163,8 +178,10 @@ async function payFor(acc: any, PS: Record<string, { code: string; name: string;
   out.forEach((r) => { const m = r.date.slice(0, 7), o = months[m] = months[m] || { m, total: 0, n: 0, none: 0 }; o.n++; if (r.amount == null) o.none++; else o.total += r.amount; });
   const M = Object.values(months).sort((a, b) => b.m.localeCompare(a.m));
   const sum = (s: string) => out.filter((r) => r.status === s && r.amount != null).reduce((a, r) => a + r.amount, 0), cnt = (s: string) => out.filter((r) => r.status === s).length;
-  M.forEach((m: any) => { const R = out.filter((r) => r.date.slice(0, 7) === m.m); m.paid = R.filter((r) => r.status === "paid" && r.amount != null).reduce((a, r) => a + r.amount, 0); m.topay = R.filter((r) => r.status === "topay" && r.amount != null).reduce((a, r) => a + r.amount, 0); m.topayN = R.filter((r) => r.status === "topay").length; });
-  return { src, rows: out, months: M, total: M.reduce((a, x) => a + x.total, 0), none: M.reduce((a, x) => a + x.none, 0), count: out.length, unclear,
+  M.forEach((m: any) => { const R = out.filter((r) => r.date.slice(0, 7) === m.m); m.earn = R.reduce((a, r) => a + (r.earn || 0), 0); m.student = R.reduce((a, r) => a + (r.student || 0), 0); m.paid = R.filter((r) => r.status === "paid" && r.amount != null).reduce((a, r) => a + r.amount, 0); m.topay = R.filter((r) => r.status === "topay" && r.amount != null).reduce((a, r) => a + r.amount, 0); m.topayN = R.filter((r) => r.status === "topay").length; });
+  return { src, rows: out, months: M, total: M.reduce((a, x) => a + x.total, 0), none: M.reduce((a, x) => a + x.none, 0), count: out.length, unclear, dropped, mismatch: withWhy ? out.filter((r) => r.rmb != null && r.amount != null && Math.abs(r.rmb - r.amount) > 0.5).map((r) => ({ date: r.date, sheetRow: r.sheetRow, lessons: r.lessons, program: r.program, rate: r.amount, rmb: r.rmb, names: r.names.filter((n: any) => !n.hidden).map((n: any) => n.name) })) : [],
+    programs: Object.values(out.reduce((o: any, r) => { const k = r.program || "yl", x = o[k] = o[k] || { program: k, n: 0, priced: 0, remitted: 0, earn: 0, student: 0, none: 0 }; x.n++; if (r.amount == null) x.none++; else { x.priced++; x.remitted += r.amount; x.earn += r.earn || 0; x.student += r.student || 0; } return o; }, {})),
+    earn: out.reduce((a, r) => a + (r.earn || 0), 0), student: out.reduce((a, r) => a + (r.student || 0), 0), earnN: out.filter((r) => r.earn != null).length, discount: disc(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)),
     tracking: !!acc.pay_tracking, paid: sum("paid"), topay: sum("topay"), paidN: cnt("paid"), topayN: cnt("topay"), unmarkedN: out.filter((r) => !r.status).length };
 }
 Deno.serve(async (req: Request) => {
@@ -177,7 +194,7 @@ Deno.serve(async (req: Request) => {
   const ip = String(req.headers.get("x-forwarded-for") || "").split(",")[0].trim().slice(0, 60);
 
   // ───────── management: create / reset / deactivate partner logins ─────────
-  if (/^p(List|Save|Active|Rates|RateSet|Labels|Pay|Conflicts|PaySet|PayAll|PayTrack|Over|OverSet)$/.test(op)) {
+  if (/^p(List|Save|Active|Rates|RateSet|Labels|Pay|Conflicts|PaySet|PayAll|PayTrack|Over|OverSet|DiscSet)$/.test(op)) {
     const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
     const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
     if (!s || new Date(s.exp).getTime() < Date.now() || s.mode !== "mgmt") return out({ ok: false, error: "AUTH" }, 401);
@@ -213,18 +230,28 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true });
     }
     if (op === "pRates") {   // 1343 · partner prices + SALES labels
-      const [{ data: R }, SA, { data: A }] = await Promise.all([db.from("partner_rates").select("id,source,learner,lessons,amount,valid_from,updated_at,updated_by").order("source").order("learner").order("lessons"),
+      const [{ data: R }, SA, { data: A }] = await Promise.all([db.from("partner_rates").select("id,source,program,learner,lessons,amount,valid_from,confirmed,note,updated_at,updated_by").order("source").order("program").order("lessons"),
         pages(() => db.from("sheet_rows").select("data").eq("tab", "SALES").gte("r", 3).order("r")), db.from("partner_accounts").select("id,username,display_name,sources,sales_labels").order("created_at")]);
       const L: Record<string, { label: string; n: number; last: string }> = {}; SA.forEach((x: any) => { const r = x.data || [], k = norm(c(r, 4)); if (!k || !ymd(c(r, 0))) return; const o = L[k] = L[k] || { label: k, n: 0, last: "" }; o.n++; const d = ymd(c(r, 0)); if (d > o.last) o.last = d; });
-      return out({ ok: true, rates: R || [], labels: Object.values(L).sort((a, b) => b.n - a.n), accounts: A || [] });
+      const [{ data: DS }, { data: NP }] = await Promise.all([db.from("partner_discounts").select("id,source,per_lesson,valid_from,updated_at,updated_by").order("source"), db.from("program_prices").select("program,lessons,price,valid_from,source_note").order("program").order("lessons")]);
+      return out({ ok: true, rates: R || [], discounts: DS || [], normal: NP || [], labels: Object.values(L).sort((a, b) => b.n - a.n), accounts: A || [] });
     }
     if (op === "pRateSet") {
-      const source = norm(b.source), learner = String(b.learner || ""), lessons = Math.round(Number(b.lessons) || 0), vf = ymd(b.valid_from) || null;
-      if (!source || !/^(adult|young)$/.test(learner) || lessons <= 0 || lessons > 500) return out({ ok: false, msg: "Choose a source, learner type and lesson count" });
-      let q = db.from("partner_rates").delete().eq("source", source).eq("learner", learner).eq("lessons", lessons); q = vf ? q.eq("valid_from", vf) : q.is("valid_from", null); await q;
+      const source = norm(b.source), program = String(b.program || (b.learner === "adult" ? "adult" : b.learner === "young" ? "yl" : "")), lessons = Math.round(Number(b.lessons) || 0), vf = ymd(b.valid_from) || null;
+      if (!source || !/^(yl|adult|ielts|toefl|pet|ket|reading)$/.test(program) || lessons <= 0 || lessons > 500) return out({ ok: false, msg: "Choose a source, program and lesson count" });
+      const learner = program === "adult" ? "adult" : program === "yl" ? "young" : null;
+      if (b.confirm) { let q = db.from("partner_rates").update({ confirmed: true, note: "confirmed by " + s.name, updated_by: s.name, updated_at: new Date().toISOString() }).eq("source", source).eq("program", program).eq("lessons", lessons); q = vf ? q.eq("valid_from", vf) : q.is("valid_from", null); const { error } = await q; return out({ ok: !error }); }
+      let q = db.from("partner_rates").delete().eq("source", source).eq("program", program).eq("lessons", lessons); q = vf ? q.eq("valid_from", vf) : q.is("valid_from", null); await q;
       if (b.amount === null || b.amount === "" || b.amount === undefined) return out({ ok: true });
       const amount = Number(b.amount); if (!(amount >= 0) || amount > 100000) return out({ ok: false, msg: "Amount: a number of yuan" });
-      const { error } = await db.from("partner_rates").insert({ source, learner, lessons, amount, valid_from: vf, updated_by: s.name }); return out({ ok: !error, msg: error ? "Not saved" : "" });
+      const { error } = await db.from("partner_rates").insert({ source, program, learner, lessons, amount, valid_from: vf, confirmed: true, note: "set by " + s.name, updated_by: s.name }); return out({ ok: !error, msg: error ? "Not saved" : "" });
+    }
+    if (op === "pDiscSet") {   // Misty 15:28 · partner earnings per paid lesson (¥), optional valid-from; empty amount removes it
+      const source = norm(b.source), vf = ymd(b.valid_from) || null; if (!source) return out({ ok: false, msg: "Choose a source" });
+      let q = db.from("partner_discounts").delete().eq("source", source); q = vf ? q.eq("valid_from", vf) : q.is("valid_from", null); await q;
+      if (b.per_lesson === null || b.per_lesson === "" || b.per_lesson === undefined) return out({ ok: true });
+      const v = Number(b.per_lesson); if (!(v >= 0) || v > 1000) return out({ ok: false, msg: "Yuan per paid lesson" });
+      const { error } = await db.from("partner_discounts").insert({ source, per_lesson: v, valid_from: vf, updated_by: s.name }); return out({ ok: !error, msg: error ? "Not saved" : "" });
     }
     if (op === "pLabels") {
       const labels = (Array.isArray(b.labels) ? b.labels : []).map(norm).filter(Boolean).slice(0, 20);
@@ -384,7 +411,7 @@ Deno.serve(async (req: Request) => {
   if (op === "payments") {   // 1343
     const { data: A } = await db.from("partner_accounts").select("sources,sales_labels,pay_tracking").eq("id", acc.id).maybeSingle();
     const r = await payFor({ ...acc, ...(A || {}) }, PS, false); delete (r as any).unclear;
-    r.rows.forEach((x: any) => { x.names.forEach((n: any) => delete n.code); delete x.ref; delete x.sheetRow; });   // codes are not needed on the page
+    r.rows.forEach((x: any) => { x.names.forEach((n: any) => delete n.code); delete x.ref; delete x.sheetRow; delete x.rmb; delete x.derived; delete x.label; });   delete (r as any).dropped; delete (r as any).mismatch;   // codes are not needed on the page
     return out({ ok: true, ...r });
   }
   // 27 Oct (1341) · weekly schedule: Mon–Sun this week + next 2 weeks, Beijing time, 25-min slots every 30 min.
