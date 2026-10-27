@@ -39,3 +39,18 @@ Database doc `sys:chat`: `{"enabled": true, "pilot": ["Pam", "Kat", "April"], "m
 
 ## Later
 Response-time metrics in Performance · Substitute "I'll take it" button · Export a group's history · teacher picture/voice notes.
+
+## 1401 · 27 Oct 19:40 · every teacher + WeChat-group basics
+- **Everyone:** `sys:chat.pilot = "*"` = every active teacher (signed in or taught in the last 30 days), minus `exclude`
+  (Virgo, Daniela, Marife, Lovely — Misty 19:31). Excluded teachers get no menu item, are not members, can't be tagged, and their
+  time-in does not post. Members now: Misty, Celine + April, Ara, Christian, Cy, Dezza, Julia, Kat, Mayi, Pam, Resa, Rose.
+- Misty's management account (CupOfEnglish, works@) shows as **Misty** (`alias`). Celine has her own account.
+- **Alerts for every group message** (All Teachers / Time-in / Substitutes): sent ~45 s later and merged per person
+  ("Team Chat · N new messages"). **Mute** per group (bell, in the group header); tags, @All, Needs reply, Confirm, Announcements and
+  direct messages always come through. Quiet during class as before.
+- **Unread count** on the Team Chat menu item and on each group; opening a group jumps to "New messages".
+- **Quote-reply:** Reply button, long-press (phone) or right-click (laptop); the quote shows the original even from another day.
+- **Your message shows at once** while it sends; reading older messages is no longer pushed down when new ones arrive.
+- **Voice messages:** hold the microphone (up to 60 s), stored in the chat bucket.
+- Teachers' Team Chat sits second in their menu (after Today).
+- Next: teacher-to-teacher private chats (not now — All Teachers is the shared space), response times in Performance, substitute claim, export.
