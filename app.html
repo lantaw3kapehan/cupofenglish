@@ -6337,7 +6337,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1336;
+const COE_V = 1337;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -30861,6 +30861,8 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
 .ch-ac{position:absolute;bottom:100%;left:12px;width:260px;background:#fff;border:1px solid #DCE1E6;border-radius:12px;box-shadow:0 10px 28px rgba(20,40,40,.14);padding:6px;z-index:5}
 .ch-ac button{display:flex;gap:8px;align-items:center;width:100%;min-height:40px;border:0;background:none;border-radius:8px;font:inherit;text-align:left;padding:0 10px;cursor:pointer}
 .ch-ac button.on,.ch-ac button:hover{background:#E6F3F2}
+.chN:not(.hide){position:static!important;min-width:18px;height:18px;width:auto!important;border-radius:9px!important;background:#C2410C!important;color:#fff;font:700 11px Inter,system-ui,sans-serif;display:inline-flex!important;align-items:center;justify-content:center;padding:0 5px;margin-left:auto;box-sizing:border-box}
+#chMic.rec{background:#C2410C;color:#fff}
 .ch-dot{width:8px;height:8px;border-radius:50%;background:#C4CCCC;flex:none}.ch-dot.on{background:#2FB36B}.ch-dot.cl{background:#E0A100}
 .ch-mem{border-left:1px solid #EEF0F3;padding:14px;overflow:auto;font-size:13.5px}
 .ch-mem h2{font-size:17px;margin-bottom:8px}.ch-mi{display:flex;align-items:center;gap:8px;padding:6px 0}.ch-mi small{margin-left:auto;color:#5E6272;font-size:12px}
@@ -30905,7 +30907,8 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
   var hasD = function(){ return typeof D !== 'undefined' && !!D && typeof TOKEN !== 'undefined' && !!TOKEN; };
   var isMgr = function(){ return hasD() && !!D.mgr; };
   var post = function(action, o){ return fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, action: action }, o || {})) }).then(function(r){ return r.json(); }); };
-  var disp = function(n){ var m = S.init && (S.init.members || []).find(function(x){ return x.name === n; }); return m && !m.mgmt ? 'Teacher ' + n : n; };
+  var AL = function(){ return (S.init && S.init.alias) || {}; };
+  var disp = function(n){ if(AL()[n]) return AL()[n]; var m = S.init && (S.init.members || []).find(function(x){ return x.name === n; }); return m && !m.mgmt ? 'Teacher ' + n : n; };
   var meLc = function(){ return String(S.init && S.init.me || '').toLowerCase(); };
   var toast2 = function(t){ try{ if(typeof toast === 'function') toast(t); }catch(e){} };
   var root = function(){ return document.getElementById('v-chat'); };
@@ -30913,10 +30916,10 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
   function setOn(on){ var was = S.on; S.on = !!on; try{ localStorage.setItem(LS, on ? '1' : '0'); }catch(e){}
     if(was !== S.on){ try{ if(typeof buildNav === 'function'){ buildNav(); document.querySelectorAll('nav button').forEach(function(b){ b.classList.toggle('on', b.dataset.v === VIEW); }); } }catch(e){} }
     paintHdr(); }
-  window.chatOn1400 = function(){ return !!S.on; };
+  window.chatOn1400 = function(){ return !!S.on; }; try{ if(typeof NAV_T !== 'undefined'){ var ci = NAV_T.findIndex(function(x){ return x[0] === 'chat'; }); if(ci > 1){ var cx = NAV_T.splice(ci, 1)[0]; NAV_T.splice(1, 0, cx); } } }catch(e){}
   function unreadAll(){ return ((S.init && S.init.groups) || []).reduce(function(a, g){ return a + (g.unread || 0); }, 0); }
   function paintHdr(){ if(!hasD()) return; var dn = document.querySelector('nav button[data-v="chat"]'); if(!dn) return; var i = dn.querySelector('.dot');
-    if(!i){ dn.insertAdjacentHTML('beforeend', '<i class="dot hide" id="dChat"></i>'); i = dn.querySelector('.dot'); } i.classList.toggle('hide', !unreadAll()); }
+    if(!i){ dn.insertAdjacentHTML('beforeend', '<i class="dot hide" id="dChat"></i>'); i = dn.querySelector('.dot'); } var un = unreadAll(); i.textContent = un > 99 ? '99+' : un ? String(un) : ''; i.classList.toggle('hide', !un); i.classList.add('chN'); }
   async function boot(){ if(!hasD()){ setTimeout(boot, 2000); return; }
     try{ var r = await post('init'); if(!r || !r.ok || r.off){ setOn(false); return; } S.init = r; setOn(true);
       if(!S.gid) S.gid = (r.groups[0] || {}).id || 'all'; if(VIEW === 'chat') load(); paintHdr(); }catch(e){} }
@@ -30931,7 +30934,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
   /* ---------- data ---------- */
   async function load(quiet){ if(!S.on) return; if(!S.init){ await boot(); if(!S.init) return; }
     var day = S.day || S.init.today, gid = S.gid; S.busy = 1;
-    try{ var r = await post('list', { gid: gid, day: day }); if(r && r.ok && gid === S.gid){ S.data = r; S.last = Math.max(S.last, (r.msgs.slice(-1)[0] || {}).id || 0); render(quiet); markSeen(); } else if(r && r.off){ setOn(false); } }
+    try{ var r = await post('list', { gid: gid, day: day }); if(r && r.ok && gid === S.gid){ if(!quiet){ var fu = r.msgs.find(function(m){ return m.mine && !m.mine.seen; }); S.fu = fu && fu !== r.msgs[0] ? fu.id : (fu ? fu.id : 0); } S.data = r; S.last = Math.max(S.last, (r.msgs.slice(-1)[0] || {}).id || 0); render(quiet); markSeen(); } else if(r && r.off){ setOn(false); } }
     catch(e){} finally{ S.busy = 0; } }
   function markSeen(){ if(!S.data || document.visibilityState !== 'visible' || VIEW !== 'chat') return; var ids = S.data.msgs.filter(function(m){ return m.mine && !m.mine.seen; }).map(function(m){ m.mine.seen = new Date().toISOString(); return m.id; });
     if(ids.length) post('seen', { ids: ids }).then(function(){ var g = (S.init.groups || []).find(function(x){ return x.id === S.gid; }); if(g){ g.unread = 0; g.tagged = 0; } paintSide(); paintHdr(); }).catch(function(){}); }
@@ -30943,22 +30946,23 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
       return '<button type="button" class="ch-g' + (g.id === S.gid ? ' on' : '') + '" onclick="chat1400.open(\'' + esc(g.id) + '\')">' + ic + '<span class="nm">' + esc(g.name) + '</span>' + n + '</button>'; };
     return '<h2>Team Chat</h2><div class="ch-sec">GROUPS</div>' + g1.map(it).join('') + '<div class="ch-sec">DIRECT</div>' + g2.map(it).join(''); }
   function paintSide(){ var s = document.querySelector('#v-chat .ch-side'); if(s) s.innerHTML = sideHtml(); }
-  function body(m){ var t = esc(m.body); var mem = (S.init.members || []).map(function(x){ return x.name; }).concat(['All']);
+  function body(m){ var t = esc(m.body); var mem = (S.init.members || []).map(function(x){ return AL()[x.name] || x.name; }).concat(['All']);
     mem.sort(function(a, b){ return b.length - a.length; }).forEach(function(n){ var re = new RegExp('@' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
-      t = t.replace(re, function(x){ var me = n.toLowerCase() === meLc() || n === 'All'; return '<span class="ch-at' + (me ? ' me' : '') + '">' + x + '</span>'; }); });
+      t = t.replace(re, function(x){ var me = n.toLowerCase() === meLc() || n === 'All' || n === AL()[S.init.me]; return '<span class="ch-at' + (me ? ' me' : '') + '">' + x + '</span>'; }); });
     return t; }
   function msgHtml(m, byId){ var me = String(m.author).toLowerCase() === meLc(), M = isMgr(), ro = S.day && S.day !== S.init.today;
     var who = '<div class="ch-who"><b>' + esc(disp(m.author)) + '</b>' + (m.mgmt ? '<span class="ch-tag">Management</span>' : '') + ' <span>' + tm(m.at) + (m.edited ? ' · edited' : '') + '</span>' + (m.pinned ? ' <span class="ch-tag" style="background:#FBF6E8;color:#5A4A14">Pinned</span>' : '') + '</div>';
-    var par = m.parent_id && byId[m.parent_id] ? '<div class="ch-q">Reply to ' + esc(disp(byId[m.parent_id].author)) + ': ' + esc(String(byId[m.parent_id].body || 'picture').slice(0, 90)) + '</div>' : '';
+    var q0 = m.quote || (m.parent_id && byId[m.parent_id]); if(q0 && !m.quote) q0 = { author: q0.author, body: q0.body }; var par = q0 ? '<div class="ch-q">' + esc(disp(q0.author)) + ': ' + esc(String(q0.body || 'Picture').slice(0, 90)) + '</div>' : ''; var par0 = m.parent_id && byId[m.parent_id] ? '<div class="ch-q">Reply to ' + esc(disp(byId[m.parent_id].author)) + ': ' + esc(String(byId[m.parent_id].body || 'picture').slice(0, 90)) + '</div>' : '';
     var inner = m.hidden ? (M ? '<span>Hidden · still kept in the history</span><br>' + esc(m.body) : 'Hidden by management') : body(m);
     if(m.kind === 'timein'){ var x = m.meta || {}; inner = '<div class="ch-ti">' + I.clock.replace('<svg', '<svg width="16" height="16"') + 'Time-in ' + esc(x.time || '') + (x.status ? ' · ' + esc(x.status) : '') + (x.redo ? ' · <span class="ch-chip pur">Redo</span>' : '') + '</div>' + (x.speed ? '<div style="font-size:12.5px;color:#5E6272">' + esc(x.speed) + '</div>' : ''); }
-    if(m.img && !m.hidden) inner += '<img src="' + esc(m.img) + '" alt="' + (m.kind === 'timein' ? 'Time-in picture' : 'Picture') + '" loading="lazy" onclick="chat1400.zoom(this.src)">';
+    if(m.kind === 'voice' && m.img && !m.hidden) inner = '<audio controls preload="none" src="' + esc(m.img) + '" style="max-width:100%">Voice message</audio>'; else if(m.img && !m.hidden) inner += '<img src="' + esc(m.img) + '" alt="' + (m.kind === 'timein' ? 'Time-in picture' : 'Picture') + '" loading="lazy" onclick="chat1400.zoom(this.src)">';
     var ft = '';
     if(m.needs_reply) ft += '<span class="ch-chip ' + (m.replied >= m.n && m.n ? 'ok' : 'red') + '">Needs reply' + (m.reply_by ? ' by ' + tm(m.reply_by) : '') + ' · ' + m.replied + ' of ' + m.n + ' replied</span>';
     if(m.confirm) ft += '<span class="ch-chip ' + (m.confirmed >= m.n && m.n ? 'ok' : 'pur') + '">' + m.confirmed + ' of ' + m.n + ' confirmed</span>';
     if(m.n) ft += '<button type="button" class="ch-chip" onclick="chat1400.readers(' + m.id + ')">' + I.eye.replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' Seen by ' + m.seen + ' of ' + m.n + '</button>';
     var act = '';
-    if(!ro && !m.hidden){
+    if(m.pending) ft += '<span>Sending…</span>';
+    if(!ro && !m.hidden && !m.pending){
       if(m.mine && m.needs_reply && !m.mine.replied) act += (S.init.quick || []).map(function(q){ return '<button type="button" class="ch-b sm' + (q === 'Noted' ? ' pri' : '') + '" onclick="chat1400.quick(' + m.id + ',\'' + q + '\')">' + q + '</button>'; }).join('');
       if(m.mine && m.confirm && !m.mine.confirmed) act += '<button type="button" class="ch-b sm pri" onclick="chat1400.confirm(' + m.id + ')">' + I.ok + ' Confirm</button>';
       if(m.mine && (m.mentions || []).some(function(n){ return n.toLowerCase() === meLc(); }) && !m.needs_reply && !m.mine.replied) act += (S.init.quick || []).map(function(q){ return '<button type="button" class="ch-b sm" onclick="chat1400.quick(' + m.id + ',\'' + q + '\')">' + q + '</button>'; }).join('');
@@ -30966,7 +30970,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
       if(me && m.kind === 'text') act += '<button type="button" class="ch-b sm" onclick="chat1400.edit(' + m.id + ')">Edit</button>';
       if(M) act += '<button type="button" class="ch-b sm" onclick="chat1400.pin(' + m.id + ',' + (m.pinned ? 0 : 1) + ')">' + (m.pinned ? 'Unpin' : 'Pin') + '</button><button type="button" class="ch-b sm" onclick="chat1400.hide(' + m.id + ',1)">Hide</button>';
     } else if(M && m.hidden) act = '<button type="button" class="ch-b sm" onclick="chat1400.hide(' + m.id + ',0)">Show again</button>';
-    return '<div class="ch-m" id="chm' + m.id + '"><span class="ch-av' + (m.mgmt ? ' mg' : '') + '">' + esc(String(m.author).charAt(0)) + '</span><div style="min-width:0;flex:1">' + who + par
+    return '<div class="ch-m" id="chm' + m.id + '"' + (m.id > 0 && !ro ? ' ontouchstart="chat1400.lp(event,' + m.id + ')" ontouchend="chat1400.lpx()" ontouchmove="chat1400.lpx()" oncontextmenu="chat1400.reply(' + m.id + ');return false"' : '') + '><span class="ch-av' + (m.mgmt ? ' mg' : '') + '">' + esc(String(disp(m.author)).replace('Teacher ', '').charAt(0)) + '</span><div style="min-width:0;flex:1">' + who + par
       + '<div class="ch-bub' + (me ? ' me' : '') + (m.hidden ? ' hid' : '') + '">' + inner + '</div>' + (ft ? '<div class="ch-ft">' + ft + '</div>' : '') + (act ? '<div class="ch-act">' + act + '</div>' : '') + '</div></div>'; }
   function cmpHtml(){ var M = isMgr(), ro = S.day && S.day !== S.init.today;
     if(ro) return '<div class="ch-cmp"><div class="ch-note">History is read-only · <button type="button" class="ch-b sm" onclick="chat1400.today()">Back to Today</button></div></div>';
@@ -30980,16 +30984,16 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     var im = S.img ? '<div class="ch-q" style="margin-bottom:6px">Picture ready (' + Math.round(S.img.length * 0.75 / 1024) + ' KB) · <button type="button" class="ch-chip" onclick="chat1400.noimg()">Remove</button></div>' : '';
     return '<div class="ch-cmp">' + opts + rp + im + '<div id="chAc"></div><div class="ch-row"><label for="chTx" style="position:absolute;left:-9999px">Message</label><textarea id="chTx" rows="1" placeholder="Message · type @ to tag" oninput="chat1400.typing(this)" onkeydown="chat1400.key(event)"></textarea>'
       + '<input type="file" id="chFile" accept="image/*" hidden onchange="chat1400.file(this)"><button type="button" class="ch-ib" aria-label="Add picture" onclick="document.getElementById(\'chFile\').click()">' + I.pic + '</button>'
-      + '<button type="button" class="ch-ib pri" aria-label="Send" onclick="chat1400.send()">' + I.send + '</button></div></div>'; }
+      + '<button type="button" class="ch-ib" id="chMic" aria-label="Hold to record a voice message" title="Hold to record" onpointerdown="chat1400.rec(event,1)" onpointerup="chat1400.rec(event,0)" onpointerleave="chat1400.rec(event,0)" oncontextmenu="return false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/></svg></button>' + '<button type="button" class="ch-ib pri" aria-label="Send" onclick="chat1400.send()">' + I.send + '</button></div></div>'; }
   function memHtml(){ var L = S.mem || (S.init.members || []).map(function(m){ return { name: m.name, mgmt: m.mgmt }; });
     var on = L.filter(function(m){ return m.online; }), off = L.filter(function(m){ return !m.online; });
     var it = function(m){ return '<div class="ch-mi"><span class="ch-dot' + (m.inClass ? ' cl' : m.online ? ' on' : '') + '"></span>' + esc(disp(m.name)) + '<small>' + (m.inClass ? 'In class' : m.online ? 'Online' : m.last ? tm(m.last) : '') + '</small></div>'; };
     return '<h2>Members</h2><div class="ch-sec" style="padding-left:0">ONLINE · ' + on.length + '</div>' + on.map(it).join('') + '<div class="ch-sec" style="padding-left:0">AWAY · ' + off.length + '</div>' + off.map(it).join(''); }
   function render(quiet){ var R = root(); if(!R || !S.init) return; var d = S.data, g = (S.init.groups || []).find(function(x){ return x.id === S.gid; }) || { name: 'Team Chat' };
-    var L = R.querySelector('.ch-list'), keep = L && quiet ? L.scrollHeight - L.scrollTop - L.clientHeight : 0, tx = document.getElementById('chTx'), draft = tx ? tx.value : '';
+    var L = R.querySelector('.ch-list'), keep = L && quiet ? L.scrollHeight - L.scrollTop - L.clientHeight : 0, top0 = L ? L.scrollTop : 0, tx = document.getElementById('chTx'), draft = tx ? tx.value : '';
     var head = '<div class="ch-hd"><button type="button" class="ch-ib ch-back" aria-label="Back to chats" onclick="chat1400.list()">' + I.back + '</button><div style="flex:1;min-width:0"><div class="chT">' + esc(g.name) + '</div><small>'
       + (S.view === 'hist' ? 'History' : S.view === 'search' ? 'Search' : (S.day && S.day !== S.init.today ? dayName(S.day) + ' · read-only' : 'Today')) + ' · ' + ((d && d.members) || []).length + ' members</small></div>'
-      + '<button type="button" class="ch-b' + (S.view === 'hist' ? ' on' : '') + '" onclick="chat1400.hist()">' + I.hist + '<span>History</span></button><button type="button" class="ch-b' + (S.view === 'search' ? ' on' : '') + '" aria-label="Search" onclick="chat1400.search()">' + I.search + '</button></div>';
+      + (S.gid !== 'ann' && S.view === 'chat' ? '<button type="button" class="ch-b' + ((S.init.muted || []).indexOf(S.gid) > -1 ? ' on' : '') + '" aria-pressed="' + ((S.init.muted || []).indexOf(S.gid) > -1) + '" title="Mute alerts for this group (tags still come through)" onclick="chat1400.mute()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span>' + ((S.init.muted || []).indexOf(S.gid) > -1 ? 'Muted' : 'Mute') + '</span></button>' : '') + '<button type="button" class="ch-b' + (S.view === 'hist' ? ' on' : '') + '" onclick="chat1400.hist()">' + I.hist + '<span>History</span></button><button type="button" class="ch-b' + (S.view === 'search' ? ' on' : '') + '" aria-label="Search" onclick="chat1400.search()">' + I.search + '</button></div>';
     var mid = '';
     if(S.view === 'hist'){ mid = '<div class="ch-list">' + (S.days ? (S.days.length ? S.days.map(function(x){ return '<button type="button" class="ch-g" onclick="chat1400.day(\'' + x.day + '\')">' + I.hist + '<span class="nm">' + esc(dayName(x.day)) + '</span><small style="color:#5E6272">' + x.n + ' message' + (x.n === 1 ? '' : 's') + '</small></button>'; }).join('') : '<div class="ch-empty">No earlier days yet. Everything posted stays here for good.</div>') : '<div class="ch-empty">Loading…</div>') + '</div>'; }
     else if(S.view === 'search'){ var Q = S.q || {}; mid = '<div class="ch-srch"><input id="chQ" placeholder="Word" value="' + esc(Q.q || '') + '" style="flex:1 1 160px" aria-label="Search word"><select id="chQw" aria-label="Person"><option value="">Anyone</option>' + (S.init.members || []).map(function(m){ return '<option' + (Q.who === m.name ? ' selected' : '') + ' value="' + esc(m.name) + '">' + esc(disp(m.name)) + '</option>'; }).join('') + '</select><input type="date" id="chQf" aria-label="From" value="' + esc(Q.from || '') + '"><input type="date" id="chQt" aria-label="To" value="' + esc(Q.to || '') + '"><button type="button" class="ch-b pri" onclick="chat1400.find()">Search</button></div>'
@@ -30997,11 +31001,11 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     else { var byId = {}; ((d && d.msgs) || []).forEach(function(m){ byId[m.id] = m; });
       var pin = d && d.pinned && d.pinned[0] ? '<div class="ch-pin">' + I.pin + '<div><b>Pinned</b> · ' + esc(String(d.pinned[0].body).slice(0, 220)) + '<br><span style="font-size:12px">Seen by ' + d.pinned[0].seen + ' of ' + d.pinned[0].n + '</span></div></div>' : '';
       var op = d && d.open && d.open.length ? '<div class="ch-open"><b>Still open from earlier (' + d.open.length + ')</b>' + d.open.map(function(m){ return '<div><button type="button" onclick="chat1400.jump(\'' + esc(m.gid) + '\',\'' + m.day + '\',' + m.id + ')">' + esc(dayName(m.day)) + ' · ' + esc(disp(m.author)) + ': ' + esc(String(m.body).slice(0, 80)) + '</button> · ' + (m.needs_reply ? m.replied + ' of ' + m.n + ' replied' : m.confirmed + ' of ' + m.n + ' confirmed') + '</div>'; }).join('') + '</div>' : '';
-      var ms = d ? (d.msgs.length ? '<div class="ch-day">' + esc(dayName(d.day)) + '</div>' + d.msgs.map(function(m){ return msgHtml(m, byId); }).join('') : '<div class="ch-empty">' + (d.day === S.init.today ? 'No messages today yet.' : 'Nothing was posted that day.') + '</div>') : '<div class="ch-empty">Loading…</div>';
+      var ms = d ? (d.msgs.length ? '<div class="ch-day">' + esc(dayName(d.day)) + '</div>' + d.msgs.map(function(m){ return (S.fu && m.id === S.fu ? '<div class="ch-day" style="background:#FDECEA;color:#9B2C1F">New messages</div>' : '') + msgHtml(m, byId); }).join('') : '<div class="ch-empty">' + (d.day === S.init.today ? 'No messages today yet.' : 'Nothing was posted that day.') + '</div>') : '<div class="ch-empty">Loading…</div>';
       mid = pin + op + '<div class="ch-list" id="chList">' + ms + '</div>' + cmpHtml(); }
     var cls = 'ch' + (S.ph === 'conv' ? ' conv' : '') + (S.memOpen ? ' mem' : '');
     R.innerHTML = '<div class="' + cls + '"><div class="ch-side">' + sideHtml() + '</div><div class="ch-main">' + head + mid + '</div><div class="ch-mem">' + memHtml() + '</div></div>';
-    var L2 = R.querySelector('#chList'); if(L2){ L2.scrollTop = quiet ? L2.scrollHeight - L2.clientHeight - keep : L2.scrollHeight; }
+    var L2 = R.querySelector('#chList'); if(L2){ L2.scrollTop = quiet ? (keep < 60 ? L2.scrollHeight : top0) : L2.scrollHeight; if(S.fu && !quiet){ var fe = document.getElementById('chm' + S.fu); if(fe) L2.scrollTop = Math.max(0, fe.offsetTop - L2.offsetTop - 40); } }
     var t2 = document.getElementById('chTx'); if(t2 && draft){ t2.value = draft; }
     if(S.focus){ var el = document.getElementById('chm' + S.focus); if(el){ el.scrollIntoView({ block: 'center' }); el.querySelector('.ch-bub').style.outline = '2px solid #5B4B9A'; } S.focus = 0; } }
   function shell(){ var R = root(); if(!R) return; if(!R.querySelector('.ch')) R.innerHTML = '<div class="ch"><div class="ch-side"></div><div class="ch-main"><div class="ch-empty">Loading Team Chat…</div></div><div class="ch-mem"></div></div>'; }
@@ -31030,22 +31034,39 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     opt: function(k){ S.opt[k] = !S.opt[k]; render(true); },
     by: function(v){ S.opt.by = v; },
     ready: function(i){ var t = document.getElementById('chTx'); if(t){ t.value = (S.init.ready || [])[i] || ''; t.focus(); } },
-    reply: function(id){ S.replyTo = id ? ((S.data && S.data.msgs) || []).find(function(m){ return m.id === id; }) : null; render(true); var t = document.getElementById('chTx'); if(t && S.replyTo){ if(!S.replyTo.mgmt || isMgr()) t.value = '@' + S.replyTo.author + ' '; t.focus(); } },
+    reply: function(id){ S.replyTo = id ? ((S.data && S.data.msgs) || []).find(function(m){ return m.id === id; }) : null; render(true); var t = document.getElementById('chTx'); if(t && S.replyTo){ if(!S.replyTo.mgmt || isMgr()) t.value = '@' + (AL()[S.replyTo.author] || S.replyTo.author) + ' '; t.focus(); } },
     noimg: function(){ S.img = null; render(true); },
     file: async function(inp){ var f = inp.files && inp.files[0]; if(!f) return; try{ S.img = await shrink(f, 300000); render(true); }catch(e){ toast2('That picture could not be read'); } },
     zoom: function(src){ if(typeof openSheet === 'function') openSheet('<img src="' + esc(src) + '" alt="Picture" style="width:100%;border-radius:12px">'); },
     typing: function(t){ t.style.height = 'auto'; t.style.height = Math.min(140, t.scrollHeight) + 'px'; var v = t.value.slice(0, t.selectionStart), m = /@([A-Za-z]*)$/.exec(v), box = document.getElementById('chAc'); if(!box) return;
-      if(!m){ box.innerHTML = ''; S.ac = null; return; } var q = m[1].toLowerCase(), L = (S.data && S.data.members || []).filter(function(n){ return n.toLowerCase() !== meLc() && n.toLowerCase().indexOf(q) === 0; }).slice(0, 6);
+      if(!m){ box.innerHTML = ''; S.ac = null; return; } var q = m[1].toLowerCase(), L = (S.data && S.data.members || []).filter(function(n){ return n.toLowerCase() !== meLc() && (AL()[n] || n).toLowerCase().indexOf(q) === 0; }).slice(0, 6);
       if('all'.indexOf(q) === 0 && (S.gid !== 'timein')) L.push('All'); S.ac = { list: L, i: 0, at: v.length - m[0].length };
       box.innerHTML = L.length ? '<div class="ch-ac" role="listbox">' + L.map(function(n, i){ return '<button type="button" role="option" class="' + (i === 0 ? 'on' : '') + '" onmousedown="event.preventDefault();chat1400.pick(' + i + ')">' + (n === 'All' ? 'Everyone (@All)' : esc(disp(n))) + '</button>'; }).join('') + '</div>' : ''; },
-    pick: function(i){ var t = document.getElementById('chTx'), a = S.ac; if(!t || !a) return; var n = a.list[i]; t.value = t.value.slice(0, a.at) + '@' + n + ' ' + t.value.slice(t.selectionStart); S.ac = null; document.getElementById('chAc').innerHTML = ''; t.focus(); },
+    pick: function(i){ var t = document.getElementById('chTx'), a = S.ac; if(!t || !a) return; var n = a.list[i]; t.value = t.value.slice(0, a.at) + '@' + (AL()[n] || n) + ' ' + t.value.slice(t.selectionStart); S.ac = null; document.getElementById('chAc').innerHTML = ''; t.focus(); },
     key: function(e){ if(S.ac && S.ac.list.length && (e.key === 'Enter' || e.key === 'Tab')){ e.preventDefault(); A.pick(S.ac.i); return; } if(e.key === 'Enter' && !e.shiftKey && !/Mobi|Android|iPhone/i.test(navigator.userAgent)){ e.preventDefault(); A.send(); } },
-    send: async function(){ var t = document.getElementById('chTx'); if(!t || S.sending) return; var v = t.value.trim(); if(!v && !S.img) return;
-      var mem = (S.data && S.data.members) || [], men = []; (v.match(/@[A-Za-z]+/g) || []).forEach(function(x){ var n = x.slice(1); if(n.toLowerCase() === 'all') men.push('all'); else { var f = mem.find(function(m){ return m.toLowerCase() === n.toLowerCase(); }); if(f) men.push(f); } });
+    send: async function(voice){ var t = document.getElementById('chTx'); if(!t || S.sending) return; var v = voice ? '' : t.value.trim(); if(!v && !S.img && !voice) return;
+      var mem = (S.data && S.data.members) || [], men = []; (v.match(/@[A-Za-z]+/g) || []).forEach(function(x){ var n = x.slice(1); if(n.toLowerCase() === 'all') men.push('all'); else { var f = mem.find(function(m){ return m.toLowerCase() === n.toLowerCase() || String(AL()[m] || '').toLowerCase() === n.toLowerCase(); }); if(f) men.push(f); } });
       var by = null; if(S.opt.nr && S.opt.by){ var p = S.opt.by.split(':'); by = new Date(S.init.today + 'T' + ('0' + p[0]).slice(-2) + ':' + p[1] + ':00+08:00').toISOString(); }
-      S.sending = 1; try{ var r = await post('send', { gid: S.gid, body: v, mentions: men, needs_reply: !!S.opt.nr, reply_by: by, confirm: !!S.opt.cf, pin: !!S.opt.pin, img: S.img, parent_id: S.replyTo ? S.replyTo.id : null });
-        if(r && r.ok){ t.value = ''; S.img = null; S.replyTo = null; S.opt = {}; if(S.data){ S.data.msgs.push(r.msg); S.last = Math.max(S.last, r.msg.id); } render(); load(true); } else toast2((r && r.error) || 'Not sent · check the internet and try again'); }
-      catch(e){ toast2('Not sent · check the internet and try again'); } finally{ S.sending = 0; } },
+      var img = voice ? null : S.img, rt = S.replyTo, op = S.opt;
+      var tmp = { id: -Date.now(), gid: S.gid, author: S.init.me, mgmt: isMgr(), kind: voice ? 'voice' : img ? 'image' : 'text', body: v, img: voice || img, at: new Date().toISOString(), n: 0, seen: 0, replied: 0, confirmed: 0, mentions: men, quote: rt ? { author: rt.author, body: rt.body } : null, pending: 1 };
+      if(S.data && (!S.day || S.day === S.init.today)) S.data.msgs.push(tmp); if(!voice){ t.value = ''; S.img = null; } S.replyTo = null; S.opt = {}; render();
+      S.sending = 1; try{ var r = await post('send', { gid: S.gid, body: v, mentions: men, needs_reply: !!op.nr, reply_by: by, confirm: !!op.cf, pin: !!op.pin, img: img, voice: voice || null, parent_id: rt ? rt.id : null });
+        if(r && r.ok){ if(S.data){ var ix = S.data.msgs.indexOf(tmp); if(ix > -1) S.data.msgs[ix] = r.msg; S.last = Math.max(S.last, r.msg.id); } render(true); load(true); }
+        else { if(S.data){ var k = S.data.msgs.indexOf(tmp); if(k > -1) S.data.msgs.splice(k, 1); } render(true); var t3 = document.getElementById('chTx'); if(t3 && v) t3.value = v; toast2((r && r.error) || 'Not sent · check the internet and try again'); } }
+      catch(e){ if(S.data){ var k2 = S.data.msgs.indexOf(tmp); if(k2 > -1) S.data.msgs.splice(k2, 1); } render(true); var t4 = document.getElementById('chTx'); if(t4 && v) t4.value = v; toast2('Not sent · check the internet and try again'); } finally{ S.sending = 0; } },
+    mute: async function(){ var M = S.init.muted || (S.init.muted = []), on = M.indexOf(S.gid) < 0; await post('mute', { gid: S.gid, on: on }); if(on) M.push(S.gid); else M.splice(M.indexOf(S.gid), 1); toast2(on ? 'Muted · you still get alerts when you are tagged' : 'Alerts on for this group'); render(true); },
+    lp: function(e, id){ clearTimeout(S.lpT); S.lpT = setTimeout(function(){ A.reply(id); }, 550); },
+    lpx: function(){ clearTimeout(S.lpT); },
+    rec: async function(e, on){ if(e && e.preventDefault) e.preventDefault(); var b = document.getElementById('chMic');
+      if(on){ if(S.recr) return; if(!window.MediaRecorder || !navigator.mediaDevices){ toast2('Voice messages are not supported in this browser'); return; }
+        try{ var st = await navigator.mediaDevices.getUserMedia({ audio: true }); var ty = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg'].find(function(x){ return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(x); }) || '';
+          var R = new MediaRecorder(st, ty ? { mimeType: ty, audioBitsPerSecond: 32000 } : undefined), ch = [], t0 = Date.now(); S.recr = R;
+          R.ondataavailable = function(x){ if(x.data && x.data.size) ch.push(x.data); };
+          R.onstop = function(){ st.getTracks().forEach(function(x){ x.stop(); }); S.recr = null; if(b) b.classList.remove('rec'); var tx = document.getElementById('chTx'); if(tx) tx.placeholder = 'Message · type @ to tag';
+            if(Date.now() - t0 < 800 || !ch.length){ toast2('Hold the microphone to record'); return; } var bl = new Blob(ch, { type: (ch[0].type || ty || 'audio/webm').split(';')[0] }), fr = new FileReader(); fr.onload = function(){ A.send(String(fr.result)); }; fr.readAsDataURL(bl); };
+          R.start(); if(b) b.classList.add('rec'); var tx2 = document.getElementById('chTx'); if(tx2) tx2.placeholder = 'Recording… release to send (up to 60 s)'; S.recT = setTimeout(function(){ if(S.recr) S.recr.stop(); }, 60000); }
+        catch(err){ toast2('Microphone not allowed'); } }
+      else if(S.recr){ clearTimeout(S.recT); S.recr.stop(); } },
     quick: async function(id, q){ var r = await post('quick', { id: id, text: q }); if(r && r.ok) load(true); else toast2((r && r.error) || 'Not sent'); },
     confirm: async function(id){ var r = await post('confirm', { id: id }); if(r && r.ok){ toast2('Confirmed'); load(true); } },
     pin: async function(id, on){ await post('pin', { id: id, on: !!on }); load(true); },
