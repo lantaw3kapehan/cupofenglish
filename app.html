@@ -6348,7 +6348,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1349;
+const COE_V = 1350;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31138,8 +31138,16 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
       S.imgs = (R.imgs && R.imgs.length ? R.imgs : (R.img ? [R.img] : [])).slice(); S.img = S.imgs[0] || null; if(t) t.value = m.body || ''; render(true); var t2 = document.getElementById('chTx'); if(t2) t2.value = m.body || ''; A.send();
       if(keep && keep !== (m.body || '')){ var t4 = document.getElementById('chTx'); if(t4 && !t4.value) t4.value = keep; } },
     roster: async function(){ var r = await post('roster'); if(!r || !r.ok || typeof openSheet !== 'function'){ toast2((r && r.error) || 'Could not load the team'); return; } var ins = r.teachers.filter(function(t){ return t.in; }), outs = r.teachers.filter(function(t){ return !t.in; });
-      var row = function(t){ return '<div class="ch-rd"><span>Teacher ' + esc(t.name) + '</span><button type="button" class="ch-b sm' + (t.in ? '' : ' pri') + '" onclick="chat1400.memberSet(\'' + esc(t.name) + '\',' + (t.in ? 0 : 1) + ')">' + (t.in ? 'Remove' : 'Add') + '</button></div>'; };
-      openSheet('<h2 style="font-family:\'Fredoka One\',sans-serif;font-weight:400;margin:0 0 4px">Team Chat members</h2><div style="color:#5E6272;font-size:13px;margin-bottom:10px">Adding or removing applies to every group and to the teacher\'s chat with management. Past messages stay in the history.</div><div class="ch-sec" style="padding-left:0">IN TEAM CHAT · ' + ins.length + '</div>' + ins.map(row).join('') + '<div class="ch-sec" style="padding-left:0;margin-top:10px">NOT IN TEAM CHAT · ' + outs.length + '</div>' + (outs.map(row).join('') || '<div class="ch-note">Everyone is in.</div>')); },
+      /* 1413: per group (e.g. Time-in only) next to the all-groups Add / Remove; the server checks every action */
+      var GL = r.groups || [], row = function(t){ var gs = t.groups || GL.map(function(g){ return g.id; });
+        return '<div class="ch-rd ch-rd2"><span class="nm">Teacher ' + esc(t.name) + '</span>' + (t.in && GL.length ? '<span class="ch-gsw" role="group" aria-label="Groups for Teacher ' + esc(t.name) + '">' + GL.map(function(g){ var on = gs.indexOf(g.id) > -1;
+          return '<button type="button" class="ch-gt' + (on ? ' on' : '') + '" aria-pressed="' + on + '" title="' + (on ? 'In ' : 'Not in ') + esc(g.name) + ' · tap to ' + (on ? 'remove' : 'add') + '" onclick="chat1400.groupSet(\'' + esc(t.name) + '\',\'' + esc(g.id) + '\',' + (on ? 0 : 1) + ',this)">' + (on ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : '') + esc(g.name) + '</button>'; }).join('') + '</span>' : '')
+          + '<button type="button" class="ch-b sm' + (t.in ? '' : ' pri') + '" onclick="chat1400.memberSet(\'' + esc(t.name) + '\',' + (t.in ? 0 : 1) + ')">' + (t.in ? 'Remove from all' : 'Add') + '</button></div>'; };
+      openSheet('<h2 style="font-family:\'Fredoka One\',sans-serif;font-weight:400;margin:0 0 4px">Team Chat members</h2><div style="color:#5E6272;font-size:13px;margin-bottom:10px">Tap a group to add or remove a teacher there only (for example Time-in only). Remove from all takes them out of every group and their chat with management. Past messages stay in the history.</div><div class="ch-sec" style="padding-left:0">IN TEAM CHAT · ' + ins.length + '</div>' + ins.map(row).join('') + '<div class="ch-sec" style="padding-left:0;margin-top:10px">NOT IN TEAM CHAT · ' + outs.length + '</div>' + (outs.map(row).join('') || '<div class="ch-note">Everyone is in.</div>')); },
+    groupSet: async function(n, gid, on, el){ if(el){ el.disabled = true; el.classList.toggle('on', !!on); el.setAttribute('aria-pressed', String(!!on)); }
+      var r = await post('member', { name: n, gid: gid, on: !!on }).catch(function(){ return null; });
+      if(!r || !r.ok){ toast2((r && r.error) || 'Not saved · check the internet and try again'); A.roster(); return; }
+      var g = (r.groups || []).find(function(x){ return x.id === gid; }) || { name: gid }; toast2((on ? 'Added Teacher ' + n + ' to ' : 'Removed Teacher ' + n + ' from ') + g.name); A.roster(); load(true); },
     memberSet: async function(n, on){ var r = await post('member', { name: n, on: !!on }); if(!r || !r.ok){ toast2((r && r.error) || 'Not saved'); return; } toast2((on ? 'Added ' : 'Removed ') + 'Teacher ' + n); var i0 = await post('init'); if(i0 && i0.ok && !i0.off){ S.init = i0; } S.mem = null; A.members(); A.roster(); load(true); },
     noimg: function(i){ S.imgs = S.imgs || []; if(i == null) S.imgs = []; else S.imgs.splice(i, 1); S.img = S.imgs[0] || null; render(true); syncSend(); },
     file: async function(inp){ await A.addImgs([].slice.call(inp.files || [])); inp.value = ''; },
@@ -31403,5 +31411,15 @@ nav button[data-v="chat"] .dot.at.chN:not(.hide){background:#5B4B9A!important}
   (function hook(){ var ok = 0; ['v-msgs', 'v-tinbox', 'sheet'].forEach(function(id){ var el = document.getElementById(id); if(el && !el.__1411){ el.__1411 = 1; mo.observe(el, { childList: true, subtree: true, characterData: true }); } if(el) ok++; }); pass(); if(ok < 3 && (hook.n = (hook.n || 0) + 1) < 60) setTimeout(hook, 1500); })();
 })();
 </script>
+<style id="css1413">
+/* 1413 · Manage members: per-group toggles */
+.ch-rd2{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0}
+.ch-rd2 .nm{flex:1 1 140px;min-width:120px;font-weight:600}
+.ch-gsw{display:flex;gap:6px;flex-wrap:wrap}
+.ch-gt{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 10px;border:1px solid #DCE1E6;border-radius:999px;background:#fff;color:#5E6272;font:600 12.5px Inter,system-ui,sans-serif;cursor:pointer}
+.ch-gt.on{background:#E6F3F2;border-color:#9FCFCB;color:#0B5F63}
+.ch-gt:disabled{opacity:.6;cursor:progress}
+.ch-gt:focus-visible{outline:2px solid #0B5F63;outline-offset:2px}
+</style>
 </body>
 </html>
