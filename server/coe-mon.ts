@@ -17,8 +17,10 @@ Deno.serve(async (req: Request) => {
   const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
   const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
   if (!s || new Date(s.exp).getTime() < Date.now() || s.mode !== "mgmt") return out({ ok: false, error: "AUTH" }, 401);
-  const { data, error } = await db.rpc("coe_pkg_mon_rows");
-  if (error) return out({ ok: false, error: "db" }, 500);
+  // 27 Oct (v2): page through the rows — one call returns at most 1000 (the API limit) and there are 2,100+; before this, packages
+  // past the first 1000 rows fell back to the sheet's month numbers in the Lesson summary history
+  const data: any[] = [];
+  for (let f = 0; f < 50000; f += 1000) { const { data: d, error } = await db.rpc("coe_pkg_mon_rows").order("code").order("teacher").order("sheet_r").order("buy").order("m").range(f, f + 999); if (error) return out({ ok: false, error: "db" }, 500); data.push(...(d || [])); if (!d || d.length < 1000) break; }
   const rows = (data || []).map((x: any) => [x.sheet_r ?? null, x.code, x.teacher, x.m, Math.round(Number(x.v) * 10) / 10]);
   return out({ ok: true, at: Date.now(), rows });
 });

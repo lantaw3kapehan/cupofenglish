@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-student (27 Oct 2026; v2 1352: inclusive Student portal, adult flag) · student / parent access (mostly mainland China, phones, WeChat browser). Never calls Google.
+// CupOfEnglish · coe-student (27 Oct 2026; v2 1352: inclusive Student portal, adult flag; v3 1353: lessons = management's Lesson summary incl. shared packages, history, payments) · student / parent access (mostly mainland China, phones, WeChat browser). Never calls Google.
 // Sign-in (Misty's rule): username = the student's ST code, password = the student's English name (case-insensitive, trimmed; any
 // DATABASE row's English name or the ACTIVE package name for that code). If the parent set their own password, only that works.
 // Protections: 5 wrong tries per code → 15 min lock; 30 wrong tries per connection per hour; sessions 30 days; sign-ins logged;
@@ -6,10 +6,14 @@
 //   home (next class, lessons left, valid-until, renewal reminder), schedule (upcoming / past with status), homework & class notes
 //   (the parent-facing lesson-summary fields: where the class ended, homework, observation, next plan), homework "done" ticks,
 //   progress (CEFR journey — same rule as coe-cj, monthly reports SENT to parents, attendance).
-// Never: prices, payments, phone/WeChat/addresses, teacher internal info, other students, class videos (Google Drive).
+// v3: lessons (management's Lesson summary), history since joining, payments (issued Payment Confirmations; SALES amounts for direct students only —
+// partner-referred students never see an amount or a partner name). Never: phone/WeChat/addresses, teacher internal info, other students (a sibling
+// on a shared package: first name + code only), class videos (Google Drive).
 // Management (app_sessions mode mgmt): op sList / sActive / sClearPw.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
+import { activeRows, lessonsOf, historyOf, paymentsOf, partnerish } from "./pkg.ts";
+import { buildSandbox, mgmtApp, mgmtData, mgmtSummary } from "./mgmt.ts";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const ORIGINS = ["https://app.cupofenglishatph.com"];
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
@@ -80,6 +84,75 @@ const cls = (BT: Record<string, string>, x: any) => { const t = String((x.data &
   return { day: a.day, time: a.time, mins: Math.round((Date.parse(x.ends_at || x.data?.end || x.starts_at) - Date.parse(x.starts_at)) / 6e4) || 25,
     teacher: cap(String((x.teachers || [])[0] || "")), book: bookOf(BT, (x.data && x.data.book) || ""), kind: isTrial(t) ? "trial" : isSub(t) ? "sub" : "class" }; };
 
+// ── Lesson summary by management's own code (mgmt.ts), with a second independent calculation (pkg.ts) as a guard ──
+const ENV: Record<string, any> = {}; let DATA: { at: number; p: Promise<any> } | null = null; const APPLIED = new WeakMap<any, Promise<any>>();
+async function mgmtEnv() { const a = await mgmtApp(); if (!ENV[a.hash]) ENV[a.hash] = buildSandbox(a.src); return { env: ENV[a.hash], hash: a.hash }; }
+function mgmtDataCached() { if (!DATA || Date.now() - DATA.at > 60e3) { const p = mgmtData(db); DATA = { at: Date.now(), p }; p.catch(() => { DATA = null; }); } return DATA!.p; }
+// patch 1196 applied once per data copy (management applies it to its ACTIVE rows the same way)
+function appliedAT(env: any, d: any) { let p = APPLIED.get(d); if (!p) { const at = JSON.parse(JSON.stringify(d.AT)); p = env.run1196(d.mon, at).then(() => at); APPLIED.set(d, p!); } return p!; }
+const r1 = (x: any) => Math.round((Number(x) || 0) * 10) / 10;
+const firstName = (s: unknown) => String(s ?? "").trim().split(/\s+/)[0] || "";
+// the numbers management's Lesson summary shows, in the portal's shape; checks decide whether they can be shown (else 核对中)
+async function lessonsFor(code: string, L2: any, opts: { pkgcheck?: any; pend?: Set<string>; au?: Record<number, any> } = {}) {
+  let m: any = null, why: string[] = [];
+  try { const [{ env }, d] = await Promise.all([mgmtEnv(), mgmtDataCached()]); m = await mgmtSummary(env, await appliedAT(env, d), d.mon, code, true); }
+  catch (e) { why.push("management summary unavailable: " + String((e as any)?.message || e).slice(0, 80)); }
+  if (!m) return { ok: false, none: why.length === 0, why };
+  const c = m.c, shared = m.shared;
+  const out: any = shared
+    ? { shared: true, total: r1(c.tot), used: r1(c.done), left: r1(c.left), over: 0, enrolled: r1(c.enrolled), carry: r1(c.carry), transfer: r1(c.trf), free: r1(c.inc), pct: c.pct, teachers: c.T,
+        start: c.start, valid: c.deadline, course: c.course, owner: c.owner,
+        kids: c.kids.map((k: any) => ({ code: k.code, name: firstName(k.name), used: r1(k.finished), me: k.code === code })),
+        months: c.hist.map((h: any) => ({ m: h.ym, v: r1(h.v.reduce((a: number, x: number) => a + (+x || 0), 0)), mine: r1(h.v[c.kids.findIndex((k: any) => k.code === code)] || 0) })) }
+    : { shared: false, total: r1(c.total), used: r1(c.done), left: r1(c.left), over: r1(c.over), enrolled: r1(c.enrolled), carry: r1(c.carry), free: r1(c.inc), pct: c.pct, teachers: c.T,
+        start: c.start, valid: c.deadline, course: c.course, owner: c.owner, sub: r1(c.sub), months: c.hist.map((h: any) => ({ m: h.ym, v: r1(h.v) })) };
+  // guard 1 · a second, independent calculation (pkg.ts on the sheet copy of ACTIVE) must agree
+  const cu = L2 && L2.cur;
+  if (!cu) why.push("second calculation missing");
+  else { const a = shared ? [out.used, out.left, out.total] : [out.used, out.over ? -out.over : out.left, out.total], b = [cu.used, cu.over ? -cu.over : cu.left, cu.total];
+    if (a.some((x, i) => Math.abs(x - b[i]) > 0.05)) why.push("second calculation differs: " + JSON.stringify({ mgmt: a, check: b })); }
+  // guard 2 · a package record waiting for calibration / a sheet difference on these packages
+  const codes: string[] = shared ? out.kids.map((k: any) => k.code) : [code];
+  if (opts.pend && codes.some((k) => opts.pend!.has(k))) why.push("package waiting for calibration (pend)");
+  const W = (opts.pkgcheck && Array.isArray(opts.pkgcheck.wrong)) ? opts.pkgcheck.wrong.filter((w: any) => codes.includes(String(w.code))) : [];
+  if (W.length) { const f = W.reduce((a: number, w: any) => a + (Number(w.fin) || 0), 0), sf = W.reduce((a: number, w: any) => a + (Number(w.s_fin) || 0), 0);
+    const av = W.reduce((a: number, w: any) => a + (Number(w.avail) || 0), 0), sav = W.reduce((a: number, w: any) => a + (Number(w.s_avail) || 0), 0);
+    if (Math.abs(f - sf) > 0.05 || Math.abs(av - sav) > 0.05) why.push("database and sheet totals differ (sys:pkgcheck)"); }
+  // guard 3 · Google's sheet (sys:pkglink, copied every 2 min) shows the same lessons left on the package row
+  if (opts.au) { try { const d = await mgmtDataCached(), C: Record<string, number> = {}; (d.AT.cols as string[]).forEach((x, i) => C[x] = i);
+    const own = (d.AT.rows as any[]).find((r) => String(r[C.code]).toUpperCase() === out.owner && r[C.enrolled] !== "" && r[C.start] === out.start);
+    const g = own ? opts.au[own[C.row]] : undefined;
+    if (own && g !== undefined && g !== "" && own[C.available] !== "" && Math.abs(Number(g) - Number(own[C.available])) > 0.05) why.push("Google sheet shows " + g + " left, database " + own[C.available]); } catch (_) { why.push("sheet check unavailable"); } }
+  // the picture: management's own HTML; a sibling's Chinese name is left out (first name + code only)
+  let html = m.html as string; if (shared) c.kids.forEach((k: any) => { if (k.code !== code && k.cn) html = html.split(k.cn).join(""); });
+  return { ok: why.length === 0, why, n: out, html };
+}
+// sign-off for every active student: management's numbers vs the independent calculation vs Google's sheet (sys:pkglink AU)
+async function checkAll() {
+  const t0 = Date.now(); const [{ env, hash }, d, R, { data: PC }, { data: PL }, { data: PE }] = await Promise.all([mgmtEnv(), mgmtData(db), activeRows(db),
+    db.from("docs").select("data").eq("key", "sys:pkgcheck").maybeSingle(), db.from("docs").select("act:data->act,at:data->at").eq("key", "sys:pkglink").maybeSingle(),
+    db.from("coe_packages").select("code").not("pend", "is", null).is("removed_at", null)]);
+  DATA = { at: Date.now(), p: Promise.resolve(d) };
+  const pend = new Set<string>(((PE as any[]) || []).map((x: any) => String(x.code).toUpperCase()));
+  const cols: string[] = d.AT.cols, C: Record<string, number> = {}; cols.forEach((c, i) => C[c] = i);
+  const codes = [...new Set((d.AT.rows as any[]).filter((r) => r[C.active]).map((r) => String(r[C.code]).toUpperCase()))].sort();
+  const au: Record<number, any> = {}; (((PL as any) && (PL as any).act) || []).forEach((a: any) => { au[+a.r] = a.au; });
+  const bad: any[] = [], sheet: any[] = []; let ok = 0, checking = 0;
+  for (const code of codes) {
+    let L2: any = null; try { L2 = await lessonsOf(db, code, R); } catch (_) { /* counted below */ }
+    const x = await lessonsFor(code, L2, { pkgcheck: PC && (PC as any).data, pend, au });
+    if (!x.n) { if (!x.none) bad.push({ code, why: x.why }); continue; }
+    if (x.ok) ok++; else { checking++; bad.push({ code, shows: "核对中", why: x.why, mgmt: { used: x.n.used, left: x.n.left, total: x.n.total, valid: x.n.valid } }); }
+    const ownerRow = (d.AT.rows as any[]).find((r) => String(r[C.code]).toUpperCase() === x.n.owner && r[C.enrolled] !== "" && r[C.start] === x.n.start);
+    const g = ownerRow ? au[ownerRow[C.row]] : undefined;
+    if (ownerRow && g !== undefined && g !== "" && Math.abs(Number(g) - Number(ownerRow[C.available])) > 0.05) sheet.push({ code, owner: x.n.owner, db: ownerRow[C.available], sheet: g });
+  }
+  const { data: M1 } = await db.rpc("coe_pkg_mon_rows");   // what one unpaged call returns (management's coe-mon makes one call)
+  const res = { at: new Date().toISOString(), app: hash, monRows: d.mon.length, monRowsOneCall: (M1 || []).length, students: codes.length, shown: ok, checking, mismatches: bad, sheetDiff: sheet, pkglinkAt: (PL as any)?.at || null, ms: Date.now() - t0 };
+  await db.from("docs").upsert({ key: "sys:portalcheck", scope: "mgmt", data: res, updated_at: res.at }, { onConflict: "key" });
+  return res;
+}
+
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: h });
@@ -117,6 +190,13 @@ Deno.serve(async (req: Request) => {
     const { error } = await db.from("student_access").upsert({ code, pw_hash: null, pw_salt: null, pw_iter: null, pw_set_at: null, updated_at: new Date().toISOString(), updated_by: s.name }, { onConflict: "code" });
     await db.from("student_sessions").delete().eq("code", code);
     return out({ ok: !error });
+  }
+
+  if (op === "check") {   // daily reconciliation (pg_cron) → docs sys:portalcheck; the reply carries counts only
+    const { data: last } = await db.from("docs").select("updated_at").eq("key", "sys:portalcheck").maybeSingle();
+    if (last && Date.now() - Date.parse(last.updated_at) < 120e3) return out({ ok: true, skipped: "ran in the last 2 minutes" });
+    try { const r = await checkAll(); return out({ ok: true, students: r.students, shown: r.shown, checking: r.checking, mismatches: r.mismatches.length, sheetDiff: r.sheetDiff.length, ms: r.ms }); }
+    catch (e) { return out({ ok: false, error: String((e as any)?.message || e).slice(0, 120) }, 500); }
   }
 
   // ───────── sign-in: ST code + English name (or own password) ─────────
@@ -170,15 +250,16 @@ Deno.serve(async (req: Request) => {
     const { error } = await db.from("student_hw_done").delete().eq("code", code).eq("day", day).eq("event_id", ev); return out({ ok: !error });
   }
 
-  if (op === "all") {   // one call for the whole page (fewer round trips from China)
+  if (op === "all" || op === "notes") {   // one call for the whole page (fewer round trips from China)
     const since = new Date(Date.now() - 120 * 864e5).toISOString(), to = new Date(Date.now() + 28 * 864e5).toISOString(), since60 = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10);
-    const [N, PK, { data: UP }, { data: PAST }, TRr, PRr, NO, HW, { data: WN }, { data: DONE }, { data: RL }, { data: FB }, BT, { data: SA }] = await Promise.all([
-      namesOf(code), packagesOf(code),
+    const [N, L, { data: SRC }, { data: UP }, { data: PAST }, TRr, PRr, NO, HW, { data: WN }, { data: DONE }, { data: RL }, { data: FB }, BT, { data: SA }] = await Promise.all([
+      namesOf(code), activeRows(db).then((R) => lessonsOf(db, code, R)).catch((e) => { console.error("lessons", e); return null; }),
+      db.from("coe_packages").select("source,pend,shared").eq("code", code).limit(50),
       db.from("classes").select("starts_at,ends_at,teachers,data").eq("code", code).gte("starts_at", nowIso).lte("starts_at", to).eq("cancelled", false).not("id", "like", "pend-%").order("starts_at").limit(60),
       db.from("classes").select("starts_at,ends_at,teachers,cancelled,data").eq("code", code).lt("starts_at", nowIso).gte("starts_at", since).not("id", "like", "pend-%").order("starts_at", { ascending: false }).limit(80),
       rowsBy("TR-DATA", 33, code), rowsBy("PR-DATA", 4, code), rowsBy("S-NOTES", 3, code), rowsBy("S-HOMEWORK", 3, code),
       db.from("writes").select("fn,args,status,created_at").in("fn", ["saveNote", "markHomework"]).neq("status", "error").neq("status", "test").gte("created_at", new Date(Date.now() - 14 * 864e5).toISOString()).filter("args->1->>code", "eq", code).order("id").limit(200),
-      db.from("student_hw_done").select("day,event_id,done_at").eq("code", code).gte("day", since60).limit(500),
+      db.from("student_hw_done").select("day,event_id,done_at").eq("code", code).limit(3000),
       db.from("docs").select("key,data").like("key", "mgmt:mgmtReports|%").limit(40),
       db.from("docs").select("v:data->" + code).eq("key", "sys:fb").maybeSingle(),
       bookTitles(),
@@ -188,7 +269,7 @@ Deno.serve(async (req: Request) => {
     // homework & class notes: sheet copies + saves not copied yet (newest wins), last 60 days
     const notes: Record<string, any> = {};
     const key = (d: string, ev: string) => d + "|" + ev;
-    const put = (d: string, ev: string, o: any) => { if (!d || d < since60) return; const k = key(d, ev || ""); notes[k] = Object.assign(notes[k] || { day: d, event: ev || "" }, Object.fromEntries(Object.entries(o).filter(([, v]) => v != null && String(v).trim() !== ""))); };
+    const put = (d: string, ev: string, o: any) => { if (!d) return; const k = key(d, ev || ""); notes[k] = Object.assign(notes[k] || { day: d, event: ev || "" }, Object.fromEntries(Object.entries(o).filter(([, v]) => v != null && String(v).trim() !== ""))); };
     NO.forEach((r: any[]) => put(ymd(c(r, 1)), String(c(r, 8)), { teacher: cap(String(c(r, 2))), ended: norm(c(r, 5)), next: String(c(r, 6) || "").trim(), homework: String(c(r, 7) || "").trim(), obs: String(c(r, 9) || "").trim() }));
     HW.forEach((r: any[]) => put(ymd(c(r, 1)), String(c(r, 6)), { teacher: cap(String(c(r, 2))), homework: String(c(r, 5) || "").trim() }));
     ((WN as any[]) || []).forEach((w: any) => { const a = (w.args || [])[1] || {}; if (codeOf(a.code) !== code) return;
@@ -197,10 +278,17 @@ Deno.serve(async (req: Request) => {
     const dn: Record<string, string> = {}; ((DONE as any[]) || []).forEach((x: any) => { dn[key(String(x.day), x.event_id)] = x.done_at; });
     const tByDay: Record<string, string> = {}; past.forEach((p) => { if (!tByDay[p.day]) tByDay[p.day] = p.teacher; });
     const hw = Object.values(notes).filter((n: any) => n.homework || n.obs || n.next).map((n: any) => ({ day: n.day, event: n.event, teacher: n.teacher || tByDay[n.day] || "", ended: n.ended || "", homework: n.homework || "", obs: n.obs || "", next: n.next || "", done: dn[key(n.day, n.event)] || null }))
-      .sort((a: any, b: any) => b.day.localeCompare(a.day)).slice(0, 40);
+      .sort((a: any, b: any) => b.day.localeCompare(a.day));
+    // the management Notes tab's cards: this month's notes and homework, the last page reached, pages over time (by book)
+    const ym0 = nowIso.slice(0, 7), pg = (t: string) => { const m = String(t || "").match(/^\s*([^·]+?)\s*·.*?\bSB\s*p\.?\s*(\d+)/i); return m ? { book: m[1].trim(), p: +m[2] } : null; };
+    const pages = hw.slice().reverse().map((n: any) => { const q = pg(n.ended); return q ? { d: n.day, book: q.book, p: q.p } : null; }).filter(Boolean) as any[];
+    const lastP = pages[pages.length - 1] || null;
+    const notesKpi = { month: hw.filter((n: any) => n.day.slice(0, 7) === ym0).length, hwMonth: hw.filter((n: any) => n.day.slice(0, 7) === ym0 && n.homework).length,
+      last: lastP, pages: lastP ? pages.filter((x) => x.book === lastP.book).slice(-20) : [], total: hw.length };
+    if (op === "notes") { const from = Math.max(0, Number(b.from) || 0); return out({ ok: true, hw: hw.slice(from, from + 30), hwTotal: hw.length }); }
     // progress
     const T = TRr.map(trOf), P = PRr.map(prOf), m = N.rows.length ? merge(N.rows) : null;
-    const journey = m ? { start: { date: m.first || m.td, level: CJ_L[lv(m.tc)] || "", book: bookOf(BT, m.tb) }, path: m.cb.split(/→|->/).map((x) => x.trim()).filter(Boolean), now: nowOf(N.rows, T, P),
+    const journey = m ? { start: { date: m.first || m.td, level: CJ_L[lv(m.tc)] || "", book: bookOf(BT, m.tb) }, path: m.cb.split(/→|->/).map((x) => x.trim()).filter(Boolean), now: nowOf(N.rows, T, P), trial: m.td ? { date: ymd(m.td), level: CJ_L[lv(m.tc)] || "" } : null, first: m.first,
       checks: P.filter((p) => p.date && lv(p.cefr) >= 0).map((p) => ({ date: p.date, level: CJ_L[lv(p.cefr)] })).sort((a, b) => a.date.localeCompare(b.date)) } : null;
     const sent: Record<string, any> = {};
     (RL || []).forEach((d: any) => ((d.data && d.data.rows) || []).forEach((r: any) => { if (codeOf(r.code) === code && /^sent/i.test(String(r.status || ""))) sent[String(r.teacher).toLowerCase() + "|" + r.month] = r; }));
@@ -211,10 +299,21 @@ Deno.serve(async (req: Request) => {
       return { month: mo, classMonth: prevMonth(mo), teacher: String(e.teacher || sent[k].teacher || ""), total: Number(e.total) || 0, l: e.l, r: e.r, s: e.s, w: e.w, course: bookOf(BT, e.course || ""),
         cn: { strengths: cn.strengths || "", areas: cn.areas || "", next: cn.next || "" }, en: { strengths: e.strengths || "", areas: e.areas || "", next: e.next || "" } }; })
       .filter(Boolean).sort((a: any, b: any) => b.month.localeCompare(a.month));
-    const pk = PK, left = pk.reduce((a: number, p: any) => a + p.left, 0), total = pk.reduce((a: number, p: any) => a + p.total, 0), used = pk.reduce((a: number, p: any) => a + p.used, 0);
-    const valid = pk.map((p: any) => p.valid).filter(Boolean).sort().pop() || "";
+    // lessons: exactly management's Lesson summary (shared packages: the owner's package, lessons left for the whole family)
+    const today0 = nowIso.slice(0, 10), [{ data: PC }, { data: PLK }] = await Promise.all([db.from("docs").select("data").eq("key", "sys:pkgcheck").maybeSingle(), db.from("docs").select("act:data->act").eq("key", "sys:pkglink").maybeSingle()]);
+    const au: Record<number, any> = {}; (((PLK as any) && (PLK as any).act) || []).forEach((a: any) => { au[+a.r] = a.au; });
+    const pendC = new Set<string>(((SRC as any[]) || []).filter((x: any) => x.pend != null).map(() => code));
+    const LS = await lessonsFor(code, L, { pkgcheck: PC && (PC as any).data, pend: pendC, au });
+    const n = LS.n;   // management's Lesson summary numbers; not shown (核对中) unless every check passes
+    const pkg = n && !LS.ok ? { checking: true } : n ? { checking: false, total: n.total, used: n.used, left: n.left, over: n.over, valid: n.valid, start: n.start, shared: n.shared, kids: n.kids || [], teachers: n.teachers,
+      expired: !!(n.valid && n.valid < today0 && n.left > 0),
+      renew: LS.ok && n.left <= 4 && !(n.left <= 0 && up.length > 0) } : null;   // never a renewal nudge from a zero while classes are booked
+    if (!LS.ok && n) console.warn("checking", code, JSON.stringify(LS.why));
+    const partnerStudent = ((SRC as any[]) || []).some((x: any) => partnerish(x.source)) || N.rows.some((r: any[]) => partnerish(c(r, 22)));
+    const [H, PAY] = await Promise.all([historyOf(db, code, N.rows).catch(() => null), paymentsOf(db, code, L, partnerStudent, N.name, N.cn).catch((e) => { console.error("pay", e); return null; })]);
+    const lessons = n ? { ok: LS.ok, cur: LS.ok ? n : null, html: LS.ok ? LS.html : "", packages: LS.ok && L ? L.packages.map((p: any) => { const { row, ...rest } = p; return rest; }) : [] } : null;
     return out({ ok: true, student: { code, name: N.name, cn: N.cn, adult: !!N.adult }, own: !!(SA && (SA as any).pw_set_at),
-      pkg: pk.length ? { total, used, left, valid, renew: left <= 4 } : null, upcoming: up, past, hw, journey, reports, at: nowIso, tz: "Asia/Shanghai (UTC+8)" });
+      pkg, lessons, history: H, pay: PAY, upcoming: up, past, hw: hw.slice(0, 20), hwTotal: hw.length, notesKpi, journey, reports, at: nowIso, tz: "Asia/Shanghai (UTC+8)" });
   }
   return out({ ok: false, error: "unknown op" }, 400);
 });
