@@ -65,3 +65,11 @@ select cron.schedule('coe-chat-out', '* * * * *', 'select public.coe_chat_out()'
 
 -- ROLLBACK (pilot off without removing anything): update docs set data = jsonb_set(data, '{enabled}', 'false') where key = 'sys:chat';
 -- full removal (only if Misty asks): select cron.unschedule('coe-chat-out'); drop function public.coe_chat_out(); drop table chat_outbox, chat_reads, chat_messages, chat_groups;
+
+-- 1401 (27 Oct 19:40): per-person group mute, voice in the chat bucket, alerts merged per person (applied as migration chat_wechat_basics_1401)
+create table if not exists public.chat_mutes (name text not null, gid text not null, created_at timestamptz not null default now(), primary key (name, gid));
+alter table public.chat_mutes enable row level security;
+grant select, insert, update, delete on public.chat_mutes to service_role;
+update storage.buckets set file_size_limit = 1300000, allowed_mime_types = array['image/jpeg','image/png','image/webp','audio/webm','audio/ogg','audio/mp4','audio/aac','audio/mpeg'] where id = 'chat';
+-- coe_chat_out(): the final insert now groups due rows per person ("Team Chat · N new messages"); see migration chat_wechat_basics_1401.
+-- sys:chat now: {"enabled": true, "pilot": "*", "exclude": ["Virgo","Daniela","Marife","Lovely"], "mgmt": ["CupOfEnglish","Celine"], "alias": {"CupOfEnglish": "Misty"}}
