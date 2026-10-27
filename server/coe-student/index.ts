@@ -13,7 +13,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { activeRows, lessonsOf, historyOf, paymentsOf, partnerish } from "./pkg.ts";
-import { buildSandbox, buildJourney, mgmtApp, mgmtData, mgmtSummary } from "./mgmt.ts";
+import { buildSandbox, buildJourney, buildPicture, mgmtApp, mgmtData, mgmtSummary } from "./mgmt.ts";
+import { parseHTML } from "npm:linkedom@0.18.5";
+const PIC: Record<string, any> = {};
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const ORIGINS = ["https://app.cupofenglishatph.com"];
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
@@ -296,6 +298,20 @@ Deno.serve(async (req: Request) => {
     const { error } = await db.from("student_hw_done").delete().eq("code", code).eq("day", day).eq("event_id", ev); return out({ ok: !error });
   }
 
+  if (op === "fbpic") {   // 1355b · the monthly report picture, made by management's own picture code (same as the one sent to parents)
+    const mo = String(b.month || ""), tc = String(b.teacher || "").trim().toLowerCase(); if (!/^\d{4}-\d{2}$/.test(mo) || !tc) return out({ ok: false }, 400);
+    const [{ data: FB }, { data: RL }, { data: CN }, N] = await Promise.all([db.from("docs").select("v:data->" + code).eq("key", "sys:fb").maybeSingle(),
+      db.from("docs").select("key,data").like("key", "mgmt:mgmtReports|%").limit(40), db.from("docs").select("data").eq("key", "fbcn:" + code + "|" + mo).maybeSingle(), namesOf(code)]);
+    let held = false; (RL || []).forEach((d: any) => ((d.data && d.data.rows) || []).forEach((r: any) => { if (codeOf(r.code) === code && r.month === mo && String(r.teacher).toLowerCase() === tc && !/^(sent|ready)/i.test(String(r.status || ""))) held = true; }));
+    const fbs: any[] = Array.isArray(FB && (FB as any).v) ? (FB as any).v : [], e = fbs.filter((f) => f && f.month === mo && String(f.teacher || "").toLowerCase() === tc).pop();
+    if (!e || held) return out({ ok: false, msg: "no report" });
+    const c0 = (CN && (CN as any).data) || {}, fb = { ...e, cn: Object.assign({}, e.cn || {}, ...["strengths", "areas", "next"].filter((k) => c0[k]).map((k) => ({ [k]: c0[k] }))) };
+    const hist = fbs.filter((f) => f && String(f.teacher || "").toLowerCase() === tc).map((f) => ({ month: f.month, total: f.total, l: f.l, s: f.s, r: f.r, w: f.w, items: f.items }));
+    try { const a = await mgmtApp(); if (!PIC[a.hash]) PIC[a.hash] = buildPicture(a.src, parseHTML);
+      const html = await PIC[a.hash]({ code, month: mo, student: e.student || N.name, teacher: e.teacher }, fb, hist); return out({ ok: !!html, html }); }
+    catch (x) { console.error("fbpic", x); return out({ ok: false }); }
+  }
+
   if (op === "all" || op === "notes") {   // one call for the whole page (fewer round trips from China)
     const since = new Date(Date.now() - 120 * 864e5).toISOString(), to = new Date(Date.now() + 28 * 864e5).toISOString(), since60 = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10);
     const [N, L, { data: SRC }, { data: UP }, { data: PAST }, TRr, PRr, NO, HW, { data: WN }, { data: DONE }, { data: RL }, { data: FB }, BT, { data: SA }] = await Promise.all([
@@ -347,11 +363,11 @@ Deno.serve(async (req: Request) => {
     const track: Record<string, string> = {};
     (RL || []).forEach((d: any) => ((d.data && d.data.rows) || []).forEach((r: any) => { if (codeOf(r.code) === code) track[String(r.teacher).toLowerCase() + "|" + r.month] = String(r.status || ""); }));
     const fbs: any[] = Array.isArray(FB && (FB as any).v) ? (FB as any).v : [], byK: Record<string, any> = {}, cnOver: Record<string, any> = {};
-    fbs.forEach((f: any) => { if (!f || !/^\d{4}-\d{2}$/.test(String(f.month || ""))) return; const k = String(f.teacher || "").toLowerCase() + "|" + f.month; if (track[k] !== undefined && !/^sent/i.test(track[k])) return; byK[k] = f; });
+    fbs.forEach((f: any) => { if (!f || !/^\d{4}-\d{2}$/.test(String(f.month || ""))) return; const k = String(f.teacher || "").toLowerCase() + "|" + f.month; if (track[k] !== undefined && !/^(sent|ready)/i.test(track[k])) return; byK[k] = f; });
     const keys = Object.keys(byK);
     if (keys.length) { const { data: CN } = await db.from("docs").select("key,data").in("key", [...new Set(keys.map((k) => "fbcn:" + code + "|" + k.split("|")[1]))]); (CN || []).forEach((x: any) => { cnOver[x.key.split("|")[1]] = x.data; }); }
     const reports = keys.map((k) => { const mo = k.split("|")[1], e = byK[k], cn = Object.assign({}, e.cn || {}, cnOver[mo] || {});
-      return { month: mo, classMonth: prevMonth(mo), teacher: cap(String(e.teacher || "")), total: Number(e.total) || 0, l: e.l, r: e.r, s: e.s, w: e.w, course: bookOf(BT, e.course || ""),
+      return { month: mo, classMonth: prevMonth(mo), teacher: cap(String(e.teacher || "")), total: Number(e.total) || 0, l: e.l, r: e.r, s: e.s, w: e.w, course: bookOf(BT, e.course || ""), items: Array.isArray(e.items) ? e.items : null,
         cn: { strengths: cn.strengths || "", areas: cn.areas || "", next: cn.next || "" }, en: { strengths: e.strengths || "", areas: e.areas || "", next: e.next || "" } }; })
       .sort((a: any, b: any) => b.month.localeCompare(a.month) || a.teacher.localeCompare(b.teacher));
     // lessons: exactly management's Lesson summary (shared packages: the owner's package, lessons left for the whole family)

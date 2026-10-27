@@ -108,3 +108,21 @@ export function buildJourney(app: string) {
     "  steps: J.T.map(x => ({ d: x.d || '', lv: CJ_L[x.i] || '', en: x.en, zh: x.zh, bk: x.bk || '', u: x.u == null ? null : x.u, start: !!x.start, dd: !!x.dd, chk: !!x.chk, after: x.after || '' })) } : null; } };"].join("\n");
   return new Function("W", code)({});
 }
+
+// ── 1355b · the monthly report picture parents receive, by management's own code (patches 1090, 1095–1098 on rpPicHtml) ──
+// run with a small DOM (linkedom); rpPicPrep's request for the sub-skill history is answered with the same teacher's reports
+export function buildPicture(app: string, parseHTML: any) {
+  const blk = (mark: string) => { const k = app.indexOf(mark); if (k < 0) throw new Error("missing " + mark); const f = app.indexOf("(function(){", k), b = app.indexOf("{", f); return app.slice(f, skipBlock(app, b)) + ")();"; };
+  const code = ["/* 1090 · feedback month", "/* 1095 · the 20 skills", "/* 1096 · progress over the months", "/* 1097 · compared with last month", "/* 1098 · parent picture in the CupOfEnglish picture frame"].map(blk).join("\n");
+  const logo = (app.match(/<section id="login"[\s\S]{0,600}?<img src="([^"]+)"/) || [])[1] || "";
+  const tag = (app.match(/class="tagl"[^>]*>\s*<img src="([^"]+)"/) || [])[1] || "";
+  const fn = new Function("W", "with (W) {\n" + code + "\n}");
+  return async (report: any, fb: any, hist: any[]) => {
+    const { document } = parseHTML('<html><body><section id="login"><img src="' + logo + '"><div class="tagl"><img src="' + tag + '"></div></section></body></html>');
+    const W: any = { document, RPD: { report, fb }, FAST_URL: "x", TOKEN: "x", toast: () => {}, navigator: {}, setTimeout, clearTimeout, console,
+      fetch: () => Promise.resolve({ json: () => Promise.resolve({ ok: true, hist, sub: [] }) }) };
+    W.window = W; fn(W);
+    if (typeof W.rpPicPrep === "function") await W.rpPicPrep();
+    return typeof W.rpPicHtml === "function" ? String(W.rpPicHtml() || "") : "";
+  };
+}
