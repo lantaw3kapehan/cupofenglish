@@ -6348,7 +6348,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1348;
+const COE_V = 1349;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31020,7 +31020,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     if(m.confirm) ft += '<span class="ch-chip ' + (m.confirmed >= m.n && m.n ? 'ok' : 'pur') + '">' + (m.n ? m.confirmed + ' of ' + m.n + ' confirmed' : (m.mine && m.mine.confirmed ? 'You confirmed' : 'Please confirm')) + '</span>';
     if(m.n) ft += isMgr() ? '<button type="button" class="ch-chip seen" onclick="chat1400.readers(' + m.id + ')">' + I.eye.replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' Seen by ' + m.seen + ' of ' + m.n + '</button>' : '<span class="ch-chip seen">' + I.eye.replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' Seen by ' + m.seen + '</span>';
     var act = '', tl = '';
-    if(m.pending) ft += '<span>Sending…</span>'; if(m.failed) ft += '<span style="color:#9B2C1F;font-weight:600">Not sent</span>' + (m.kind === 'text' ? '<button type="button" class="ch-chip" onclick="chat1400.retry(' + m.id + ')">Retry</button>' : '');
+    if(m.pending) ft += '<span>Sending…</span>'; if(m.failed) ft += '<span style="color:#9B2C1F;font-weight:600">Not sent</span>' + ('<button type="button" class="ch-chip" onclick="chat1400.retry(' + m.id + ')">Retry</button>');
     if(!ro && !m.hidden && !m.pending){
       if(m.mine && m.needs_reply && !m.mine.replied) act += (S.init.quick || []).map(function(q){ return '<button type="button" class="ch-b sm' + (q === 'Noted' ? ' pri' : '') + '" onclick="chat1400.quick(' + m.id + ',\'' + q + '\')">' + q + '</button>'; }).join('');
       if(m.mine && m.confirm && !m.mine.confirmed) act += '<button type="button" class="ch-b sm pri" onclick="chat1400.confirm(' + m.id + ')">' + I.ok + ' Confirm</button>';
@@ -31129,7 +31129,14 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     toBottom: function(){ var L = document.getElementById('chList'); if(L) L.scrollTop = L.scrollHeight; S.newBelow = false; var nb = document.getElementById('chNewB'); if(nb) nb.remove(); },
     sendVoice: function(){ var v = S.voice; S.voice = null; A.send(v); },
     noVoice: function(){ S.voice = null; render(true); },
-    retry: function(id){ var m = S.data && S.data.msgs.find(function(x){ return x.id === id; }); if(!m) return; S.data.msgs.splice(S.data.msgs.indexOf(m), 1); var t = document.getElementById('chTx'); if(t){ t.value = m.body; } S.cid = m.cid; render(true); A.send(); },
+    retry: function(id){ var m = S.data && S.data.msgs.find(function(x){ return x.id === id; }); if(!m) return;
+      /* 1412: pictures and voice messages retry too: the same pictures / recording, reply and options go again with the same client id,
+         so the server never posts it twice (if the first try did reach it, the retry just returns that message). */
+      var R = m.rs || {}, t = document.getElementById('chTx'), keep = t ? t.value : ''; S.data.msgs.splice(S.data.msgs.indexOf(m), 1);
+      S.cid = m.cid; S.replyTo = R.rt || null; S.opt = R.op || {};
+      if(R.voice){ render(true); A.send(R.voice); var t3 = document.getElementById('chTx'); if(t3 && keep) t3.value = keep; return; }
+      S.imgs = (R.imgs && R.imgs.length ? R.imgs : (R.img ? [R.img] : [])).slice(); S.img = S.imgs[0] || null; if(t) t.value = m.body || ''; render(true); var t2 = document.getElementById('chTx'); if(t2) t2.value = m.body || ''; A.send();
+      if(keep && keep !== (m.body || '')){ var t4 = document.getElementById('chTx'); if(t4 && !t4.value) t4.value = keep; } },
     roster: async function(){ var r = await post('roster'); if(!r || !r.ok || typeof openSheet !== 'function'){ toast2((r && r.error) || 'Could not load the team'); return; } var ins = r.teachers.filter(function(t){ return t.in; }), outs = r.teachers.filter(function(t){ return !t.in; });
       var row = function(t){ return '<div class="ch-rd"><span>Teacher ' + esc(t.name) + '</span><button type="button" class="ch-b sm' + (t.in ? '' : ' pri') + '" onclick="chat1400.memberSet(\'' + esc(t.name) + '\',' + (t.in ? 0 : 1) + ')">' + (t.in ? 'Remove' : 'Add') + '</button></div>'; };
       openSheet('<h2 style="font-family:\'Fredoka One\',sans-serif;font-weight:400;margin:0 0 4px">Team Chat members</h2><div style="color:#5E6272;font-size:13px;margin-bottom:10px">Adding or removing applies to every group and to the teacher\'s chat with management. Past messages stay in the history.</div><div class="ch-sec" style="padding-left:0">IN TEAM CHAT · ' + ins.length + '</div>' + ins.map(row).join('') + '<div class="ch-sec" style="padding-left:0;margin-top:10px">NOT IN TEAM CHAT · ' + outs.length + '</div>' + (outs.map(row).join('') || '<div class="ch-note">Everyone is in.</div>')); },
@@ -31152,7 +31159,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
       var mem = (S.data && S.data.members) || [], men = []; (v.match(/@[A-Za-z]+/g) || []).forEach(function(x){ var n = x.slice(1); if(n.toLowerCase() === 'all') men.push('all'); else { var f = mem.find(function(m){ return m.toLowerCase() === n.toLowerCase() || String(AL()[m] || '').toLowerCase() === n.toLowerCase(); }); if(f) men.push(f); } });
       var by = null; if(S.opt.nr && S.opt.by){ var p = S.opt.by.split(':'); by = new Date(S.init.today + 'T' + ('0' + p[0]).slice(-2) + ':' + p[1] + ':00+08:00').toISOString(); }
       var img = voice ? null : S.img, imgs = voice ? [] : (S.imgs || []).slice(), rt = S.replyTo, op = S.opt;
-      var cid = S.cid || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)); S.cid = null; var tmp = { cid: cid, id: -Date.now(), gid: S.gid, author: S.init.me, mgmt: isMgr(), kind: voice ? 'voice' : img ? 'image' : 'text', body: v, img: voice || img, imgs: imgs.length > 1 ? imgs : null, at: new Date().toISOString(), n: 0, seen: 0, replied: 0, confirmed: 0, mentions: men, quote: rt ? { author: rt.author, body: rt.body } : null, pending: 1 };
+      var cid = S.cid || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)); S.cid = null; var tmp = { cid: cid, id: -Date.now(), gid: S.gid, author: S.init.me, mgmt: isMgr(), kind: voice ? 'voice' : img ? 'image' : 'text', body: v, img: voice || img, imgs: imgs.length > 1 ? imgs : null, at: new Date().toISOString(), n: 0, seen: 0, replied: 0, confirmed: 0, mentions: men, quote: rt ? { author: rt.author, body: rt.body } : null, pending: 1, rs: { img: img, imgs: imgs, voice: voice || null, rt: rt, op: op } };
       if(S.data && (!S.day || S.day === S.init.today)) S.data.msgs.push(tmp); if(!voice){ t.value = ''; S.img = null; S.imgs = []; } S.replyTo = null; S.opt = {}; render();
       S.sending = 1; try{ var r = await post('send', { gid: S.gid, body: v, mentions: men, needs_reply: !!op.nr, reply_by: by, confirm: !!op.cf, pin: !!op.pin, img: imgs.length > 1 ? null : img, imgs: imgs.length > 1 ? imgs : null, voice: voice || null, parent_id: rt ? rt.id : null, cid: cid });
         if(r && r.ok){ if(S.data){ var ix = S.data.msgs.indexOf(tmp); if(ix > -1) S.data.msgs[ix] = r.msg; S.last = Math.max(S.last, r.msg.id); } render(true); load(true); }
