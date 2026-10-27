@@ -111,3 +111,21 @@ Rollback: `rollback-pre-1353`; server: redeploy coe-student v2 (1352) if needed.
   student's page give the full text: 【一杯英语 · 学员专区】, parent (“{name}家长您好”) or adult (“{name}您好…您的课表”) by learner type,
   链接/账号/密码 (or “密码：您设置的密码（如忘记请联系我们重置）”), iPhone and Android home-screen steps, 收藏/浮窗 tip, one English line.
 Rollback: `rollback-pre-1354`.
+
+## Patch 1355 · CEFR journey: Book up only from the regular course (27 Oct, COE_V 1330, main 9780b1c)
+- **Why Shirui ST-2022-044 showed "2026年9月 教材升级 WondersG1":** her regular Mayi classes from Apr to 11 Oct 2026 were titled
+  "…-Shirui-WondersG1-Mayi" in the calendar (from 18 Oct they say OD2). DATABASE says "A1, OD2" and coe_stu_daily records OD2 for those
+  months, but cjHtml's calendar step took the first class of any book in the 45-day window (20 Sep, WondersG1) as a Book up.
+- **New rule (cjHtml, shared by the management card and the portal):** calendar Book up only for the student's CURRENT book (the latest
+  regular class taught, else the next booked) that has ≥ 3 regular classes with one teacher; trial / substitute (TC, SC, SUB, 代课) and
+  cancelled classes never count. Monthly records: a book needs ≥ 1.5 lessons taught to become a step. DATABASE book changes unchanged.
+- **Shirui now:** 2026年3月 续费 · 2025年9月 升级 A1 OD2 44.5 · 2022年8月 入学 TheAlphabet 230.5 · 2022年7月 试听 — Now A1, 共 275 (portal live check).
+- **All active students (201, 0 errors, coe-student op cjdiff → docs sys:cjdiff):** 19 changed, all removals of a wrong Book up step:
+  Daisy 2021-002 (C1 "B2"), Apple 2022-029 (OD2), Shirui 2022-044 (WondersG1), Nini 2023-065 ("A1"), Annie 2023-086 (ShortVowels),
+  Gaby 2023-087 (OD2), Penny 2024-003 (OD2), Candy 2024-034 (OD2), Jared 2024-108 (OD2, 0 lessons), Bill 2024-167 (OD1),
+  Cherry 2025-043 (LongVowels), Oscar 2025-063 (OD2, 1 lesson → merged into OD1 8.5), Dario 2025-065 (TheAlphabet), Lewis 2025-067 (WondersGK),
+  Jennie 2026-025 (ODF1), Mandy 2026-048 (DKEnglish), Gary 2026-086 ("A2"), Harry 2026-104 ("A1"), Ella 2026-108 (OD2, 0 lessons).
+  Gaby, Penny, Candy and Apple had a few weeks of OD2-titled classes in Sept and are on REF again (DATABASE REF). Now level and totals unchanged for all.
+- **Data for Ops (not code):** Shirui's ACTIVE package course chip says OD1 (Lesson summary header) and her September monthly report course
+  says WONDERS 1; both should be OD2.
+Rollback: `rollback-pre-1355`.
