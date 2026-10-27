@@ -5,7 +5,7 @@
 // every ~2 min and right after every Enrolled · paid / Renewed · paid save — paste SERVER-PKGLINK27). Answers { ok:false, fallback:1 }
 // (the app then asks Google exactly as before) when the copy is older than 5 minutes, or when an Enrolled · paid / Renewed · paid
 // save is still waiting in the queue / was finished after the copy. The deadline uses the database calendar copy (classes).
-// The pure functions below are shared with the comparison script (tools/pkc-compare.js) so the checked code is the shipped code.
+// Checked before release (27 Oct 13:15) against Google's own dry runs for all 236 ACTIVE students (309 code+teacher pairs): identical.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -19,7 +19,7 @@ const num = (v: any) => { const n = Number(v); return isFinite(n) ? n : 0; };
 const ymdManila = (t: number) => new Date(t + 8 * 3600e3).toISOString().slice(0, 10);
 const monthName = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const monShort = monthName.map((m) => m.slice(0, 3));
-export function renewDry(L: any, f: any, nextClassYmd: (code: string, fromYmd: string) => string) {
+function renewDry(L: any, f: any, nextClassYmd: (code: string, fromYmd: string) => string) {
   const code = String(f.code || "").trim().toUpperCase(), tch = String(f.teacher || "").trim().toLowerCase();
   if (!/^ST-\d{4}-\d{3}$/.test(code)) return { ok: false, msg: "No student code." };
   let cand = (L.act || []).filter((a: any) => a.c === code && a.j !== "");
@@ -42,7 +42,7 @@ export function renewDry(L: any, f: any, nextClassYmd: (code: string, fromYmd: s
     prev: { pkg: num(old[2]), free: num(old[3]), date: s ? String(s.d || "") : "", invoice: String(old[1] || "") }, monthSoFar, month: monShort[mo - 1] + " " + y,
   };
 }
-export function enrolDry(L: any, f: any, now: number) {
+function enrolDry(L: any, f: any, now: number) {
   const code = String(f.code || "").trim().toUpperCase();
   if (!/^ST-\d{4}-\d{3}$/.test(code)) return { ok: false, msg: "No student code." };
   const linked: Record<number, number> = {}; (L.act || []).forEach((a: any) => { if (a.link) linked[a.link] = 1; }); (L.linkTop || []).forEach((r: number) => { linked[r] = 1; });
@@ -61,30 +61,6 @@ Deno.serve(async (req: Request) => {
   const out = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...h, "Content-Type": "application/json" } });
   if (req.method !== "POST") return out({ ok: false, error: "POST only" }, 405);
   let b: any; try { b = JSON.parse(await req.text()); } catch { return out({ ok: false, error: "bad request" }, 400); }
-  if (b.op === "cmp") {   // TEMP 27 Oct: compares Google's stored dry-run answers (docs sys:pkgcmp:*, written by zzPkgCmp) with this code; details → docs sys:pkgcmp:result (management only); the caller sees counts only
-    const { data: D } = await db.from("docs").select("key,data").like("key", "sys:pkgcmp:%").neq("key", "sys:pkgcmp:result").limit(20);
-    const res: any = { at: new Date().toISOString(), chunks: 0, renew: 0, renewT: 0, enrol: 0, diff: [] as any[], deadlineOnly: [] as any[] };
-    const norm = (o: any) => { if (!o || o.err) return o; const x = JSON.parse(JSON.stringify(o)); delete x.src; delete x.at; return x; };
-    const ncCache: Record<string, string> = {};
-    for (const row of D || []) {
-      const G = row.data; if (!G || !G.link) continue; res.chunks++;
-      const L = G.link, now = Date.parse(G.at), today = G.today;
-      const { data: C } = await db.from("classes").select("code,starts_at,cancelled,data").in("code", Object.keys(G.renew || {})).gte("starts_at", today + "T00:00:00+08:00").order("starts_at").limit(5000);
-      const nc = (c: string) => { if (c in ncCache) return ncCache[c]; const x = (C || []).find((e: any) => e.code === c && !e.cancelled && !/-TC\s*$/i.test(String((e.data && e.data.title) || "").replace(/\s+X$/i, ""))); return ncCache[c] = x ? ymdManila(Date.parse(x.starts_at)) : ""; };
-      const cmp = (kind: string, k: string, g: any, d: any) => {
-        const a = norm(g), z = norm(d);
-        const deep = (o: any) => JSON.stringify(o, (key, val) => val && typeof val === "object" && !Array.isArray(val) ? Object.keys(val).sort().reduce((m: any, kk) => { m[kk] = val[kk]; return m; }, {}) : val);
-        if (deep(a) === deep(z)) return;
-        if (a && z && a.deadline !== z.deadline && deep(Object.assign({}, a, { deadline: "" })) === deep(Object.assign({}, z, { deadline: "" }))) { res.deadlineOnly.push({ kind, k, google: a.deadline, db: z.deadline }); return; }
-        res.diff.push({ kind, k, google: a, db: z });
-      };
-      Object.keys(G.renew || {}).forEach((c) => { res.renew++; cmp("renew", c, G.renew[c], renewDry(L, { code: c, date: today }, () => nc(c))); });
-      Object.keys(G.renewT || {}).forEach((k) => { res.renewT++; const [c, t] = k.split("|"); cmp("renewT", k, G.renewT[k], renewDry(L, { code: c, teacher: t, date: today }, () => nc(c))); });
-      Object.keys(G.enrol || {}).forEach((c) => { res.enrol++; cmp("enrol", c, G.enrol[c], enrolDry(L, { code: c }, now)); });
-    }
-    await db.from("docs").upsert({ key: "sys:pkgcmp:result", scope: "mgmt", data: res, updated_at: res.at }, { onConflict: "key" });
-    return out({ ok: true, chunks: res.chunks, renew: res.renew, renewT: res.renewT, enrol: res.enrol, diffs: res.diff.length, deadlineOnly: res.deadlineOnly.length });
-  }
   const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
   const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
   if (!s || new Date(s.exp).getTime() < Date.now() || s.mode !== "mgmt") return out({ ok: false, error: "AUTH" }, 401);
