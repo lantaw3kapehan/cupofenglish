@@ -6334,7 +6334,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1333;
+const COE_V = 1334;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -6955,7 +6955,7 @@ try{ window.OFFICE_N = {}; JSON.parse(localStorage.getItem('coe.office') || '[]'
 
 const tiNet = x => netBadge(x.speed, { at: x.timeIn || x.time || '', date: x.date || '', kind: x.type === 'Class' ? 'class' : 'timein', who: x.name || x.teacher || '' }), tiNetOld = x => { const s = String(x.speed || ''), dn = parseFloat((s.match(/↓\s*([\d.]+)/) || [])[1]), ms = parseFloat((s.match(/([\d.]+)\s*ms(?!\s*·?\s*jitter)/) || [])[1]), jt = parseFloat((s.match(/jitter\s*([\d.]+)/) || [])[1]);
 if(isNaN(dn) && isNaN(ms)) return '';
-const weak = dn < 10 || ms > 200 || jt > 30, ok = !weak && (dn < 25 || ms > 100 || jt > 15);
+const weak = dn < 10 || ms > 200 || jt > 100, ok = !weak && (dn < 25 || ms > 100 || jt > 30);
 return `<span class="ti-q ${weak ? 'weak' : ok ? 'ok' : 'good'}" title="${esc(s)}">${weak ? 'Weak internet' : ok ? 'Internet OK' : 'Good internet'}${isNaN(dn) ? '' : ' · ' + Math.round(dn) + ' Mbps'}</span>`; };
 const tiTown = x => { let p = String(x.place || ''); if(!p) return ''; const acc = +((p.match(/±\s*(\d+)/) || [])[1] || 0);
 p = p.replace(/\s*\(±[^)]*\)\s*$/, '').replace(/^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}\s*,?\s*/i, '').replace(/,\s*Philippines$/i, '').replace(/\b\d{4}\s+/g, '');
@@ -7014,10 +7014,10 @@ return L.slice(0, 15).map(x => `<div class="it ${PULSE.fresh[x.t] ? 'new' : ''}"
 
 function netQ(s){ s = String(s || ''); const dn = parseFloat((s.match(/↓\s*([\d.]+)/) || s.match(/~\s*([\d.]+)/) || [])[1]), ms = parseFloat((s.match(/([\d.]+)\s*ms\s*·\s*jitter/) || [])[1]), jt = parseFloat((s.match(/jitter\s*([\d.]+)/) || [])[1]);
 if(isNaN(dn) && isNaN(ms)) return { lvl: '', label: '' };
-const weak = dn < 10 || ms > 200 || jt > 30, ok = !weak && (dn < 25 || ms > 100 || jt > 15), lvl = weak ? 'weak' : ok ? 'ok' : 'good';
+const weak = dn < 10 || ms > 200 || jt > 100, ok = !weak && (dn < 25 || ms > 100 || jt > 30), lvl = weak ? 'weak' : ok ? 'ok' : 'good';
 return { lvl, label: (weak ? 'Weak internet' : ok ? 'Internet OK' : 'Good internet') + (isNaN(dn) ? '' : ' · ' + Math.round(dn) + ' Mbps'), s }; }
 function netBadge(s){ const q = netQ(s); if(!q.lvl) return '';
-const why = 'Measured on this device: ' + q.s + ' · Good = 25+ Mbps, ping under 100 ms, steady (jitter under 15 ms) · Weak = under 10 Mbps, ping over 200 ms or jitter over 30 ms';
+const why = 'Measured on this device: ' + q.s + ' · Good = 25+ Mbps, ping under 100 ms, steady (jitter under 30 ms) · Weak = under 10 Mbps, ping over 200 ms or jitter over 100 ms';
 return `<span class="ti-q ${q.lvl}" title="${esc(why)}" style="cursor:pointer" onclick="event.stopPropagation();toast(this.title)">${esc(q.label)}</span>`; }
 
 function fixScore(i){ const x = TDX[i]; if(!x) return; const iss = String(x.issue || ''), t = tName(String(x.t || '').replace(/^teacher\s+/i, ''));
@@ -29855,11 +29855,11 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   var num = function(re, s){ var m = s.match(re); return m ? parseFloat(m[1]) : NaN; };
   function parse(s){ s = String(s || ''); var est = /browser estimate|^~/.test(s.trim());
     return { s: s, est: est, dn: num(/↓\s*([\d.]+)/, s), up: num(/↑\s*([\d.]+)/, s), ms: num(/([\d.]+)\s*ms(?:\s*·\s*jitter|\s*$|\s*·)/, s.replace(/jitter\s*[\d.]+\s*ms/, '')), jt: num(/jitter\s*([\d.]+)/, s), dnE: est ? num(/~\s*([\d.]+)/, s) : NaN }; }
-  /* thresholds exactly as before (netQ): red = dn < 10 || ms > 200 || jt > 30 · amber = dn < 25 || ms > 100 || jt > 15 */
+  /* thresholds (netQ): red = dn < 10 || ms > 200 || jt > 100 · amber = dn < 25 || ms > 100 || jt > 30 · 1273: jitter was 30 / 15 */
   function issues(p){ var dn = isNaN(p.dn) ? p.dnE : p.dn, L = [], r = Math.round, e = p.est ? ' (browser estimate)' : '';
     if(!isNaN(dn) && dn < 25) L.push({ red: dn < 10, w: (dn < 10 ? 10 : 25) / Math.max(dn, .1), t: (dn < 10 ? 'Slow download · ' : 'Download under 25 Mbps · ') + (dn < 10 ? dn.toFixed(1) : r(dn)) + ' Mbps' + e });
     if(!isNaN(p.ms) && p.ms > 100) L.push({ red: p.ms > 200, w: p.ms / (p.ms > 200 ? 200 : 100), t: (p.ms > 200 ? 'High latency · ' : 'Slow response · ping ') + r(p.ms) + ' ms' });
-    if(!isNaN(p.jt) && p.jt > 15) L.push({ red: p.jt > 30, w: p.jt / (p.jt > 30 ? 30 : 15), t: (p.jt > 30 ? 'Unstable connection · high jitter ' : 'Slightly unstable · jitter ') + r(p.jt) + ' ms' });
+    if(!isNaN(p.jt) && p.jt > 30) L.push({ red: p.jt > 100, w: p.jt / (p.jt > 100 ? 100 : 30), t: (p.jt > 100 ? 'Unstable connection · high jitter ' : 'Slightly unstable · jitter ') + r(p.jt) + ' ms' });
     L.sort(function(a, b){ return (b.red - a.red) || (b.w - a.w); }); return L; }
   window.netQ = function(s){ var p = parse(s), dn = isNaN(p.dn) ? p.dnE : p.dn; if(isNaN(dn) && isNaN(p.ms)) return { lvl: '', label: '' };
     var L = issues(p), lvl = L.length ? (L[0].red ? 'weak' : 'ok') : 'good';
@@ -29880,7 +29880,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
       '<div><span>Download</span>' + f(dn, 'Mbps' + (p.est ? ' (estimate)' : ''), 1) + '<small>good 25+ · weak under 10</small></div>' +
       '<div><span>Upload</span>' + f(p.up, 'Mbps', 1) + '<small>information only</small></div>' +
       '<div><span>Latency (ping)</span>' + f(p.ms, 'ms', 0) + '<small>good under 100 · weak over 200</small></div>' +
-      '<div><span>Jitter (steadiness)</span>' + f(p.jt, 'ms', 1) + '<small>good under 15 · weak over 30</small></div></div>'; }
+      '<div><span>Jitter (steadiness)</span>' + f(p.jt, 'ms', 1) + '<small>good under 30 · weak over 100</small></div></div>'; }
   function block(title, when, s){ var q = netQ(s), p = parse(s);
     return '<div class="nd-b"><div class="nd-h"><b>' + title + '</b>' + (q.lvl ? '<span class="ti-q ' + q.lvl + '">' + esc(q.label) + '</span>' : '') + '</div>' +
       '<div class="mute small">' + esc(when) + '</div>' + rows(p) +
@@ -30228,7 +30228,10 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
 (function(){
   if(window.__1270) return; window.__1270 = 1;
   var E = function(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
-  var F = "Inter,'PingFang SC','Microsoft YaHei',system-ui,-apple-system,'Segoe UI',Arial,sans-serif", B = "'Fredoka One',Inter,'PingFang SC','Microsoft YaHei',sans-serif";
+  var F = "'COE Card Inter',Inter,'PingFang SC','Microsoft YaHei',system-ui,-apple-system,'Segoe UI',Arial,sans-serif", B = "'COE Card Fredoka','Fredoka One','COE Card Inter',Inter,'PingFang SC','Microsoft YaHei',sans-serif";
+  var FONTS = null;   /* 1273: the card's own fonts, served with the app, loaded before every picture (same look on every computer) */
+  function cardFonts(){ if(FONTS) return FONTS; FONTS = (async function(){ var L = [['COE Card Fredoka', 'fonts/card-fredoka-one.woff2', '400'], ['COE Card Inter', 'fonts/card-inter-var.woff2', '100 900']].map(function(a){ var f = new FontFace(a[0], 'url(' + a[1] + ') format("woff2")', { weight: a[2], display: 'block' }); document.fonts.add(f); return f.load(); });
+    await Promise.race([Promise.all(L), new Promise(function(z){ setTimeout(z, 6000); })]); })().catch(function(){ FONTS = null; }); return FONTS; }
   var LS = 'coe.wc1270', SEEN = 'coe.wc1270n', SH = { b64: null, at: 0 }, POSTED = {}, PIC = null, OV = {}, OVAT = 0, OVDAY = '', OVSIG = '';
   var hmM = function(ms){ return new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' }); };
   function rd(){ try{ return JSON.parse(localStorage.getItem(LS) || '{}') || {}; }catch(e){ return {}; } }
@@ -30271,7 +30274,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     }catch(e){ if(cn.downlink) out.speed = '~' + cn.downlink + ' Mbps (browser estimate)'; }
     try{ if(out.speed) localStorage.setItem('coe.netLast', JSON.stringify({ s: out.speed, at: Date.now(), kind: 'timein' })); }catch(e){}
     return out; }
-  if(typeof _nc === 'function') window.netCheck = function(f){ if(f === true){ window.__netPart1270 = null; NETF = null; var p = full(); p.then(function(r){ try{ netDone(r); }catch(e){} }); return p; } return _nc.apply(this, arguments); };
+  if(typeof _nc === 'function') window.netCheck = function(f){ if(f === true){ window.__netPart1270 = null; NETF = null; window.__netRun1273 = 1; var p = full(); p.then(function(r){ window.__netRun1273 = 0; try{ netDone(r); }catch(e){} }, function(){ window.__netRun1273 = 0; try{ netDone({}); }catch(e){} }); return p; } return _nc.apply(this, arguments); };
   /* the full result after the time-in was already saved: kept with the time-in in the database, shown everywhere as the time-in's internet */
   function netDone(r){ NETF = r || {}; if(typeof D === 'undefined' || !D || D.mgr || D.shift || REDO_RUN) return;
     setTimeout(function(){ try{ var ti = D.timeIn; if(!ti || !ti.time || ti.pending || ti.day1270 !== today() || !r || !/Mbps/.test(r.speed || '')) return;
@@ -30293,17 +30296,23 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     var L = [], st = String(x.status || ''), late = /late/i.test(st);
     L.push(st ? { ok: !late, t: late ? 'Late' + (Math.abs(+x.mins || 0) ? ' ' + Math.abs(+x.mins) + ' min' : '') : st === 'On time' ? 'On time' : st } : { ok: null, t: 'On time · being checked' });
     var lap = /^Laptop/.test(x.device || ''); L.push({ ok: lap, t: lap ? 'Class laptop' : (String(x.device || 'Unknown device').split(' · ')[0]) + ' · not the class laptop' });
-    var k = String(x.net || ''); L.push(/LAN cable/.test(k) ? { ok: true, t: 'LAN cable' } : /Wi-Fi|Mobile data/.test(k) ? { ok: false, t: (k.match(/Wi-Fi|Mobile data/) || ['Wi-Fi'])[0] + ' · not LAN' } : { ok: null, t: 'LAN cable · see the picture' });
-    L.push(x.shot ? { ok: null, t: 'Screen proof · check VooV + date/time' } : { ok: false, t: 'No screen proof' });
+    var k = String(x.net || ''); L.push(/LAN cable/.test(k) ? { ok: true, t: 'LAN cable' } : /Wi-Fi|Mobile data/.test(k) ? { ok: false, t: (k.match(/Wi-Fi|Mobile data/) || ['Wi-Fi'])[0] + ' · not LAN' } : { ok: 'look', t: 'LAN cable · check in picture' });
+    L.push(x.shot ? { ok: 'look', t: 'Screen proof · check VooV + date/time' } : { ok: false, t: 'No screen proof' });
     var q = window.netQ ? window.netQ(x.speed) : { lvl: '', label: '' };
-    L.push(x.measuring ? { ok: null, t: 'Internet · measuring…' } : !q.lvl ? { ok: null, t: 'Internet · not measured' } : { ok: q.lvl === 'good' ? true : q.lvl === 'ok' ? 'warn' : false, t: q.label });
+    L.push(x.measuring ? { ok: null, t: 'Internet · measuring…' } : !q.lvl ? { ok: null, t: 'Internet · not measured' } : { ok: q.lvl === 'good' ? true : q.lvl === 'ok' ? 'warn' : false, t: q.lvl === 'good' ? 'Good internet' : String((q.issues && q.issues[0] && q.issues[0].t) || q.label).replace('Unstable connection · high jitter', 'Unstable · jitter') });
     L.push(x.lat != null || x.place ? { ok: true, t: 'Location shared' } : { ok: false, t: 'Location · ' + (x.locErr || 'not shared') });
     return L; }
   function num(s, re){ var m = String(s || '').match(re); return m ? m[1] : ''; }
   function card(x){
     var logo = (document.querySelector('#login img') || {}).src || '';
-    var C = checks(x), ic = function(o){ return o === true ? ['✓', '#1F7A55', '#E7F5EE'] : o === null ? ['…', '#4C4868', '#EEF0F4'] : o === 'warn' ? ['!', '#8A5300', '#FFF0D2'] : ['⚠', '#B42318', '#FDECEA']; };
-    var rows = C.map(function(c){ var k = ic(c.ok); return '<div style="display:flex;align-items:center;gap:14px;background:' + k[2] + ';border-radius:14px;padding:0 16px;height:58px"><span style="width:40px;height:40px;border-radius:50%;background:' + k[1] + ';color:#fff;display:flex;align-items:center;justify-content:center;font:700 24px ' + F + ';flex:none">' + k[0] + '</span><span style="font:600 29px ' + F + ';color:' + k[1] + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(c.t) + '</span></div>'; }).join('');
+    var C = checks(x), SV = function(c, p){ return '<svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="' + c + '" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>'; };
+    var ICO = { ok: function(c){ return SV(c, '<circle cx="20" cy="20" r="17"/><path d="M12.5 20.5l5 5 10-11"/>'); }, look: function(c){ return SV(c, '<path d="M3 20s6.5-11 17-11 17 11 17 11-6.5 11-17 11S3 20 3 20z"/><circle cx="20" cy="20" r="5"/>'); },
+      wait: function(c){ return SV(c, '<circle cx="20" cy="20" r="17"/><path d="M20 11v9l6 4"/>'); }, warn: function(c){ return SV(c, '<circle cx="20" cy="20" r="17"/><path d="M20 11v11"/><path d="M20 28.5v.5"/>'); }, bad: function(c){ return SV(c, '<path d="M20 4L37 34H3z"/><path d="M20 15v9"/><path d="M20 29.5v.5"/>'); } };
+    var ic = function(o){ return o === true ? ['ok', '#1F7A55', '#E7F5EE', ''] : o === 'look' ? ['look', '#00616A', '#FFFFFF', 'border:2px solid #CFE3E6;'] : o === null ? ['wait', '#4C4868', '#EEF0F4', ''] : o === 'warn' ? ['warn', '#8A5300', '#FFF0D2', ''] : ['bad', '#B42318', '#FDECEA', '']; };
+    var rows = C.map(function(c){ var k = ic(c.ok); return '<div style="display:flex;align-items:center;gap:14px;background:' + k[2] + ';' + k[3] + 'box-sizing:border-box;border-radius:14px;padding:0 16px;height:58px;min-width:0;overflow:hidden"><span style="width:40px;height:40px;flex:none;display:block">' + ICO[k[0]](k[1]) + '</span><span style="flex:1;min-width:0;font:600 28px ' + F + ';color:' + k[1] + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(c.t) + '</span></div>'; }).join('');
+    var good = !x.measuring && C.every(function(c){ return c.ok === true || c.ok === 'look'; }), bad = C.some(function(c){ return c.ok === false; });
+    var pill = x.measuring ? '' : good ? '<span style="display:inline-flex;align-items:center;gap:12px;background:#1F9D6B;color:#fff;border-radius:999px;padding:0 28px 0 18px;height:62px;font:700 32px ' + F + ';white-space:nowrap"><span style="width:40px;height:40px;display:block">' + ICO.ok('#FFFFFF') + '</span>All good · Ready to teach</span>'
+      : '<span style="display:inline-flex;align-items:center;gap:12px;background:' + (bad ? '#FDECEA' : '#FFF0D2') + ';color:' + (bad ? '#B42318' : '#8A5300') + ';border:2px solid ' + (bad ? '#F4B8B0' : '#F0C36D') + ';border-radius:999px;padding:0 26px 0 16px;height:62px;box-sizing:border-box;font:700 30px ' + F + ';white-space:nowrap"><span style="width:40px;height:40px;display:block">' + (bad ? ICO.bad('#B42318') : ICO.warn('#8A5300')) + '</span>' + (bad ? 'Needs a look' : 'Please check below') + '</span>';
     var dn = num(x.speed, /↓\s*([\d.]+)/) || num(x.speed, /~\s*([\d.]+)/), up = (+num(x.speed, /↑\s*([\d.]+)/) > 0.05 ? num(x.speed, /↑\s*([\d.]+)/) : ''), ms = num(x.speed, /([\d.]+)\s*ms\s*·\s*jitter/) || num(x.speed, /·\s*([\d.]+)\s*ms\s*$/), jt = num(x.speed, /jitter\s*([\d.]+)/);
     var q = window.netQ ? window.netQ(x.speed) : { label: '' };
     var tile = function(l, v, u){ return '<div style="background:#F6F7FA;border-radius:14px;padding:12px 18px;height:96px;box-sizing:border-box"><div style="font:500 22px ' + F + ';color:#5E5A76">' + l + '</div><div style="font:700 38px ' + F + ';color:#2B2450;margin-top:2px;white-space:nowrap">' + (v ? E(v) + ' <span style="font:500 22px ' + F + ';color:#5E5A76">' + u + '</span>' : '<span style="font:500 24px ' + F + ';color:#8C88A3">' + (x.measuring ? 'measuring…' : 'not measured') + '</span>') + '</div></div>'; };
@@ -30314,11 +30323,11 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     var shot = x.shot ? '<img src="data:image/jpeg;base64,' + x.shot + '" style="display:block;width:100%;height:100%;object-fit:contain;background:#1E1F24">' : '<div style="height:100%;display:flex;align-items:center;justify-content:center;font:600 28px ' + F + ';color:#B42318;background:#FDECEA">No screen proof</div>';
     return '<div style="width:1600px;box-sizing:border-box;padding:26px;background:#F3F6F7;color:#2B2450;font-family:' + F + '"><div style="background:#fff;border-radius:28px;padding:26px 32px 12px;border:2px solid #E8ECF0">'
       + (x.redo ? '<div style="background:#FFF0D2;border:2px solid #F0C36D;border-radius:16px;padding:12px 20px;margin-bottom:18px;font:700 30px ' + F + ';color:#7A4A00;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">REDO · Internet re-checked ' + E(x.redo.time) + ' · asked by management: ' + E(x.redo.reason || '') + '</div>' : '')
-      + '<div style="display:flex;align-items:center;gap:20px;height:64px">' + (logo ? '<img src="' + E(logo) + '" style="height:60px;width:auto;display:block">' : '<b style="font:400 40px ' + B + ';color:#2B2253">CupOfEnglish</b>') + '<span style="flex:1"></span>'
+      + '<div style="display:flex;align-items:center;gap:20px;height:64px">' + (logo ? '<img src="' + E(logo) + '" style="height:60px;width:auto;display:block">' : '<b style="font:400 40px ' + B + ';color:#2B2253">CupOfEnglish</b>') + '<span style="flex:1;display:flex;justify-content:center;min-width:0">' + pill + '</span>'
       + '<span style="background:#E3F4F5;color:#00575F;font:700 28px ' + F + ';border-radius:30px;padding:10px 24px;white-space:nowrap">Time-in · ' + E(dt) + '</span></div>'
       + '<div style="height:2px;background:#EEF0F4;margin:16px 0 18px"></div>'
-      + '<div style="display:grid;grid-template-columns:640px 1fr;gap:28px;align-items:start">'
-      + '<div><div style="font:400 58px ' + B + ';color:#2B2253;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(/^teacher\b/i.test(String(x.name || '')) ? x.name : 'Teacher ' + x.name) + '</div>'
+      + '<div style="display:grid;grid-template-columns:minmax(0,640px) minmax(0,1fr);gap:28px;align-items:start">'
+      + '<div style="min-width:0;overflow:hidden"><div style="font:400 58px ' + B + ';color:#2B2253;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(/^teacher\b/i.test(String(x.name || '')) ? x.name : 'Teacher ' + x.name) + '</div>'
       + '<div style="display:flex;align-items:center;gap:16px;margin-top:10px"><span style="font:500 28px ' + F + ';color:#5E5A76">Timed in</span><span style="font:400 54px ' + B + ';color:#00707A;line-height:1">' + E(x.time) + '</span>'
       + '<span style="background:' + sc[1] + ';color:' + sc[0] + ';font:700 32px ' + F + ';border-radius:999px;padding:6px 20px;white-space:nowrap">' + E(x.status ? (late ? 'Late' + (Math.abs(+x.mins || 0) ? ' ' + Math.abs(+x.mins) + ' min' : '') : x.status) : 'being checked') + '</span></div>'
       + '<div style="font:500 26px ' + F + ';color:#4C4868;margin-top:8px;height:34px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (x.first ? 'First class ' + E(x.first) : '') + '</div>'
@@ -30332,7 +30341,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   async function data(shot, redo){
     var ti = (D && D.timeIn) || {}, n = (redo && redo.n) || NETF || window.__netPart1270 || {}, l = (redo && redo.l) || LOCV || await race(typeof LOC !== 'undefined' ? LOC : null, 1500, {});
     var fl = (D.schedule || []).filter(function(x){ return x.day === D.today && !x.cancelled; }).sort(function(a, c){ return String(a.start).localeCompare(String(c.start)); })[0];
-    var sp = redo ? (n.speed || '') : (ti.speed || (NETF && NETF.speed) || ''), measuring = !redo && !sp && !NETF;
+    var sp = redo ? (n.speed || '') : (ti.speed || (NETF && NETF.speed) || ''), measuring = !redo && !sp && !NETF && !!window.__netRun1273;
     var place = redo ? '' : (ti.place || ''), b64 = shot || (!redo && SH.b64 && Date.now() - SH.at < 3 * 36e5 ? SH.b64 : null);
     return { name: me(), day: D.today || today(), time: ti.time || '', status: String(ti.status || ''), mins: ti.mins,
       first: fl ? (typeof tm === 'function' ? tm(fl.start) : String(fl.start).slice(11, 16)) + (fl.student ? ' · ' + fl.student : '') : '',
@@ -30345,7 +30354,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   async function picture(x){
     var box = document.createElement('div'); box.style.cssText = 'position:fixed;left:-12000px;top:0;z-index:-1'; box.innerHTML = card(x); document.body.appendChild(box);
     try{ var imgs = [].slice.call(box.querySelectorAll('img')); await Promise.all(imgs.map(function(i){ return i.complete ? 0 : new Promise(function(z){ i.onload = i.onerror = z; }); }));
-      try{ await Promise.all([document.fonts.load('400 58px "Fredoka One"'), document.fonts.load('600 29px Inter'), document.fonts.load('700 38px Inter'), document.fonts.load('500 22px Inter')]); await document.fonts.ready; }catch(e){}
+      try{ await cardFonts(); await Promise.all([document.fonts.load('400 58px "COE Card Fredoka"'), document.fonts.load('600 28px "COE Card Inter"'), document.fonts.load('700 38px "COE Card Inter"'), document.fonts.load('500 22px "COE Card Inter"')]); await document.fonts.ready; await new Promise(function(z){ requestAnimationFrame(function(){ requestAnimationFrame(z); }); }); }catch(e){}
       var el = box.firstElementChild, ft = el.querySelector('.wc-foot'), fr = ft.getBoundingClientRect(), er = el.getBoundingClientRect();
       var H = await h2c(), cv = await H(el, { scale: 1, backgroundColor: '#F3F6F7', useCORS: true, logging: false }), sc = cv.width / er.width;
       var tag = await tagImg(); if(tag){ var th = Math.round(38 * cv.width / 1600), tw = Math.round(th * tag.width / tag.height), g = cv.getContext('2d'), fy = (fr.top - er.top) * sc, fh = fr.height * sc;   /* the Lesson summary tagline artwork, small (38 px tall on the 1600 px card), centred */
@@ -30361,18 +30370,19 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   async function render(){ if(!STEP) return; var st = STEP; if(PINGP) await race(PINGP, 5000, 0); var x = await data(st.shot, st.redo), pv = document.getElementById('wcPrev'); if(!pv) return;
     try{ var P = await picture(x); if(STEP !== st) return; PIC = P; pv = document.getElementById('wcPrev'); if(!pv) return; var u = URL.createObjectURL(P.blob), im = new Image(); im.alt = 'Time-in picture for the WeChat corner'; im.src = u; try{ await im.decode(); }catch(e){}
       pv.style.aspectRatio = P.w + ' / ' + P.h; pv.innerHTML = ''; pv.appendChild(im);
-      ['wcCopy', 'wcSave'].forEach(function(id){ var b = document.getElementById(id); if(b) b.disabled = false; });
-      var nm = document.getElementById('wcNet'); if(nm) nm.textContent = x.measuring ? 'Internet check still running · the picture fills in by itself in a few seconds' : '';
+      ['wcCopy', 'wcSave'].forEach(function(id){ var b = document.getElementById(id); if(b) b.disabled = !!x.measuring; });
+      var nm = document.getElementById('wcNet'); if(nm) nm.textContent = x.measuring ? 'Checking internet… a few seconds · Copy picture turns on when it is done' : '';
+      if(x.measuring && !st.to){ st.to = setTimeout(function(){ if(STEP === st && st.measuring && !NETF){ window.__netRun1273 = 0; NETF = { speed: '', timeout: 1 }; render(); } }, Math.max(500, 25000 - (Date.now() - (st.at || Date.now())))); }
       st.measuring = x.measuring; }
     catch(e){ pv.innerHTML = '<div class="wc-wait">The picture could not be made here · take a screenshot of your time-in instead</div>'; } }
-  function refreshStep(){ if(STEP && STEP.measuring && document.getElementById('wcPrev')) render(); }
+  function refreshStep(){ if(STEP && !STEP.redo && document.getElementById('wcPrev')) render(); }
   window.wcStep1270 = function(shot, redo){
     if(typeof D === 'undefined' || !D || D.mgr || D.shift || !D.timeIn) return;
     try{ var n = +localStorage.getItem(SEEN) || 0; localStorage.setItem(SEEN, String(n + 1)); }catch(e){}
-    var ti = D.timeIn; STEP = { shot: shot || null, redo: redo || null }; PIC = null;
+    var ti = D.timeIn; STEP = { shot: shot || null, redo: redo || null, at: Date.now() }; PIC = null;
     var p = redo ? (redo.posted ? { time: redo.posted } : null) : posted();
     openSheet('<div class="wc70"><h1>' + (redo ? 'Internet re-checked · ' + E(redo.time) : 'Time-in saved · ' + E(ti.time || '')) + '</h1><div class="wc-ok">' + (redo ? 'Your time-in stays ' + E(ti.time || '') + ' · ' + E(ti.status || '') : E(ti.status || 'Saved') + (ti.flag ? ' · ' + E(ti.flag) : '')) + '</div>' + stepsHtml(!!redo)
-      + '<div class="wc-prev" id="wcPrev"><div class="wc-wait">Making the picture…</div></div><div class="wc-net" id="wcNet" aria-live="polite"></div>'
+      + '<div class="wc-prev" id="wcPrev"><div class="wc-wait">Making the picture…</div></div><div class="wc-net" id="wcNet" aria-live="polite">' + (!redo && !ti.speed && window.__netRun1273 ? 'Checking internet… a few seconds · Copy picture turns on when it is done' : '') + '</div>'
       + '<div class="wc-btns"><button class="btn teal" id="wcCopy" onclick="wcCopy1270()" disabled>Copy picture</button><button class="btn ghost" id="wcSave" onclick="wcSave1270()" disabled>Save picture</button></div>'
       + '<div class="wc-copied" id="wcMsg" aria-live="polite"></div>' + tickHtml(p) + '</div>');
     render(); };
@@ -30756,8 +30766,10 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
   var md = navigator.mediaDevices, _gdm = md && md.getDisplayMedia ? md.getDisplayMedia.bind(md) : null;
   if(_gdm) try{ md.getDisplayMedia = async function(){ var st = await _gdm.apply(null, arguments);
       if(CAP){ try{ var tr = st.getVideoTracks()[0], surf = (tr && tr.getSettings && tr.getSettings().displaySurface) || '';
-          if(!surf || surf === 'monitor') for(var n = 3; n > 0; n--){ show('Taking your screen picture…', 'Bring your <b>VooV class</b> window to the front now.<br>The picture shows VooV, your clock and the LAN icon.', n); await new Promise(function(z){ setTimeout(z, 1000); }); }
-          show('Taking your screen picture…', '', ''); }catch(e){} }
+          if(!surf || surf === 'monitor'){ var t0 = Date.now(), away = function(){ return document.visibilityState === 'hidden' || !document.hasFocus(); };   /* 1273: wait until VooV is in front (the app window loses focus), up to 6 s */
+            while(Date.now() - t0 < 6000 && !away()){ show('Click your VooV class window now', 'The picture is taken when <b>VooV</b> is in front.<br>It shows VooV, your clock and the LAN icon.', Math.ceil((6000 - (Date.now() - t0)) / 1000)); await new Promise(function(z){ setTimeout(z, 200); }); }
+            if(away()) await new Promise(function(z){ setTimeout(z, 450); }); }
+          var ob = document.getElementById('cap1272'); if(ob) ob.innerHTML = '';   /* blank cover while the picture is taken: no text in the proof */ }catch(e){} }
       return st; }; }catch(e){}
   var _g = window.grabScreen;
   if(typeof _g === 'function') window.grabScreen = async function(){ CAP = 1; show('Taking your screen picture…', 'Choose <b>Entire screen</b>, then Share.', '');
