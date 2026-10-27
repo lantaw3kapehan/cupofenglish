@@ -1308,9 +1308,10 @@ async function fastWrite(fn, args){ const rid = 'f' + Date.now().toString(36) + 
 const SB_R = /^(mgmt(Overview|Students|Student|Schedule|Teacher|Actions|Active|Renewals|Trials|TrialFus|Reports|ReportsWait|Performance|TeacherCard|PayChecks|PayReady|AvailAll|Health|Night|Msgs|Tab|Database|Payroll|Leave|Peer|Hours|StuClasses|Urls|EnqList|MonDay|VisitCoverage|AgreeMap|Growth)|schedLists|moneyLists|dbLists|dbRecord|mgmt(Agree|Avail|ClassInfo|FixIgnored|LeaveClasses|MemoInfo|PeerClasses|PlanFlags|Profiles|QaForm|QaLast|Reminders|Report|ShiftTasks|SlipPeople|TrialSearch|WeekSum|TeacherWeek|TeacherVisits)|t(Student|StuClasses|FbStatus|Growth|Schedule|PayCheck|PayReady|Msgs|Leave|LeaveClasses|MyVisits|MyComments|HwHist|Goals|NoteComments|Reminders|FbForm|PcForm|TrialForm|PeerForm))$/;   /* 14 Oct pm: + teachers' screens, − pulse */
 const SB_SH = /^mgmt(Health|Night|PayReady|AvailAll|Performance|TeacherCard|Peer|Hours|Trials|Reports|PayChecks|Active|Renewals|Overview|Schedule|Teacher|Student|StuClasses)$/;
 const SB_UIAGE = { getBootstrap: 1, mgmtStudent: 7 * 864e5, tStudent: 7 * 864e5, mgmtStuClasses: 864e5, tStuClasses: 864e5, tGrowth: 14 * 864e5 };   /* 1230: Growth opens from a copy up to 14 days old, Google refreshes it behind */   /* the same for all management (server SHARED_TTL) */
-const SB_BGAGE = { tGrowth: 30 * 6e4, tPayCheck: 10 * 6e4, tPayReady: 10 * 6e4, tNoteComments: 10 * 6e4, mgmtTeacherVisits: 30 * 6e4, mgmtWeekSum: 60 * 6e4, mgmtPeer: 30 * 6e4, mgmtHours: 15 * 6e4, mgmtPerformance: 30 * 6e4, mgmtNight: 60 * 6e4, mgmtReports: 10 * 6e4, mgmtReportsWait: 10 * 6e4, mgmtTrials: 10 * 6e4, mgmtTab: 10 * 6e4, mgmtStudent: 20 * 6e4, mgmtStuClasses: 20 * 6e4, mgmtMsgs: 0, mgmtPulse: 0, mgmtHealth: 10 * 6e4, tStudent: 20 * 6e4, tStuClasses: 20 * 6e4, tMsgs: 0, schedLists: 15 * 6e4, mgmtMyPay: 30 * 6e4, mgmtPayChecks: 10 * 6e4, mgmtPayReady: 10 * 6e4, mgmtTrialFus: 10 * 6e4, mgmtUrls: 60 * 6e4, mgmtFixIgnored: 15 * 6e4 };   /* 1300 */
+const SB_BGAGE = { tGrowth: 180 * 6e4, tPayCheck: 10 * 6e4, tPayReady: 10 * 6e4, tNoteComments: 10 * 6e4, mgmtTeacherVisits: 30 * 6e4, mgmtWeekSum: 60 * 6e4, mgmtPeer: 30 * 6e4, mgmtHours: 15 * 6e4, mgmtPerformance: 30 * 6e4, mgmtNight: 180 * 6e4, mgmtReports: 10 * 6e4, mgmtReportsWait: 10 * 6e4, mgmtTrials: 10 * 6e4, mgmtTab: 10 * 6e4, mgmtStudent: 20 * 6e4, mgmtStuClasses: 20 * 6e4, mgmtMsgs: 0, mgmtPulse: 0, mgmtHealth: 10 * 6e4, tStudent: 20 * 6e4, tStuClasses: 20 * 6e4, tMsgs: 0, schedLists: 15 * 6e4, mgmtMyPay: 30 * 6e4, mgmtPayChecks: 10 * 6e4, mgmtPayReady: 10 * 6e4, mgmtTrialFus: 10 * 6e4, mgmtUrls: 60 * 6e4, mgmtFixIgnored: 15 * 6e4 };   /* 1300 */
 const SB_OKAGE = { tGrowth: 30 * 6e4, tPayCheck: 10 * 6e4, tPayReady: 10 * 6e4, tNoteComments: 10 * 6e4, tMyComments: 10 * 6e4, tFbForm: 15 * 6e4, tPcForm: 15 * 6e4, tTrialForm: 15 * 6e4, tPeerForm: 15 * 6e4, tStuClasses: 10 * 6e4, mgmtTeacherVisits: 30 * 6e4, mgmtWeekSum: 60 * 6e4, mgmtPeer: 30 * 6e4, mgmtHours: 15 * 6e4, mgmtReports: 10 * 6e4, mgmtTrials: 10 * 6e4, mgmtTab: 10 * 6e4, mgmtDatabase: 10 * 6e4, mgmtMyPay: 30 * 6e4, mgmtUrls: 60 * 6e4, mgmtHealth: 10 * 6e4, mgmtNight: 60 * 6e4, mgmtAvailAll: 15 * 6e4, mgmtPerformance: 30 * 6e4, mgmtTeacherCard: 30 * 6e4, mgmtRenewals: 10 * 6e4, mgmtReportsWait: 10 * 6e4, tGrowth: 30 * 6e4, mgmtGrowth: 30 * 6e4 };   /* 15 Oct: slow Google-only screens */
 const SB_LIVE = /^(mgmt(Active|Students|Student|StuClasses|Schedule|TeacherWeek|Teacher|AvailAll|MonDay|Actions|Payroll|Leave|Msgs|Database)|t(Student|Schedule|FbStatus|HwHist|Reminders|Goals|Leave|MyVisits|Msgs|NoteComments|MyComments)|getBootstrap|dbRecord|dbLists)$/;   /* 14 Oct night: the database works these out itself */
+function sbLiveMax(fn){ return /^(mgmtStudent|tStudent|mgmtStudents|mgmtStuClasses|tStuClasses|mgmtActive)$/.test(fn) ? 6 * 3600e3 : 90 * 6e4; }   /* 1360 */
 let SB_LASTW = 0; const SB_FRESH = {}, SB_WANT = {}; let SB_T = 0;
 function sbOn(){ try{ if(localStorage.getItem('coe.fastr') === '0') return false; }catch(e){} return !!(D && TOKEN && (D.mgr || (D.me && D.me.name))); }
 function sbKey(fn, args){ return (/^t[A-Z]|^getBootstrap$/.test(fn) ? String((D.me || {}).name || '').trim().toLowerCase() : SB_SH.test(fn) || !D.pres ? 'mgmt' : 'pres') + ':' + fn + '|' + JSON.stringify(args.slice(1)); }
@@ -1340,10 +1341,10 @@ async function sbRead(fn, args, real, ui){
   const sbDoc = k => sbDocV(k, fn); { const r0 = real; real = () => { const p = r0(); Promise.resolve(p).then(x => sbvMark(key, fn, x), () => {}); return p; }; }   /* 1300 */
   const age0 = d => d ? Date.now() - Date.parse(d.at) : Infinity, mx = fn in SB_BGAGE ? SB_BGAGE[fn] : 300000;
   const age = d => d && SB_LASTW && Date.now() - SB_LASTW < 120000 && Date.parse(d.at) < SB_LASTW ? Infinity / 2 : age0(d);   /* a copy made before your last save counts as old (shown, then refreshed) */
-  if(!ui){ const d = await sbDoc(key); if(d && (age(d) < mx || (d.live && age(d) < 90 * 6e4))) return d.data; return real(); }
+  if(!ui){ const d = await sbDoc(key); if(d && (age(d) < mx || (d.live && age(d) < sbLiveMax(fn)))) return d.data; return real(); }
   if(fn === 'getBootstrap' && ui && typeof D !== 'undefined' && D && D.me && !D.mgr && SB_LASTW && Date.now() - SB_LASTW < 120000){   /* 787: just saved → keep the screen, check behind */
     const rp = real(); rp.then(x => { if(x && x.me && JSON.stringify(x) !== JSON.stringify(D)){ SB_FRESH[key] = { data: x, t: Date.now() }; sbRedraw(fn, args, x); } }).catch(() => {}); return D; }
-  if(SB_LIVE.test(fn)){ const d = await sbDoc(key); if(d && ((d.live && age(d) < 90 * 6e4) || age(d) < Math.max(180000, SB_OKAGE[fn] || 0))) return d.data;   /* 792 */   /* 14 Oct night: worked out by the database itself */
+  if(SB_LIVE.test(fn)){ const d = await sbDoc(key); if(d && ((d.live && age(d) < sbLiveMax(fn)) || age(d) < Math.max(180000, SB_OKAGE[fn] || 0))) return d.data;   /* 792 */   /* 14 Oct night: worked out by the database itself */
     const rp = real(); if(!d || age0(d) > (SB_UIAGE[fn] || 3 * 864e5)) return rp;
     rp.then(x => { if(JSON.stringify(x) !== JSON.stringify(d.data)){ SB_FRESH[key] = { data: x, t: Date.now() }; sbRedraw(fn, args, x); } }).catch(() => {}); return d.data; }
   let d0; if(!(fn in SB_BGAGE) || SB_BGAGE[fn] > 0){ d0 = await sbDoc(key); if(d0 && age(d0) < Math.max(180000, SB_OKAGE[fn] || 0)) return d0.data; }   /* 14 Oct night: a copy under 3 min is fresh enough */
@@ -6346,7 +6347,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1342;
+const COE_V = 1343;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23856,10 +23857,10 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
 <script>
 /* 762 · calmer background refreshes of Google-only reports */
 (function(){
-  const M = 6e4, GAP = { mgmtUrls: 360 * M, mgmtHealth: 15 * M, mgmtNight: 60 * M, mgmtPeer: 30 * M, mgmtReports: 15 * M, mgmtReportsWait: 15 * M, mgmtTrials: 15 * M, mgmtTrialFus: 15 * M,
+  const M = 6e4, GAP = { mgmtUrls: 360 * M, mgmtHealth: 15 * M, mgmtNight: 180 * M, mgmtPeer: 30 * M, mgmtReports: 15 * M, mgmtReportsWait: 15 * M, mgmtTrials: 15 * M, mgmtTrialFus: 15 * M,
     mgmtPayChecks: 15 * M, mgmtPayReady: 15 * M, mgmtMyPay: 30 * M, mgmtTab: 15 * M, mgmtPerformance: 30 * M, mgmtTeacherCard: 30 * M, mgmtHours: 30 * M, mgmtWeekSum: 60 * M, mgmtFixIgnored: 30 * M,
     schedLists: 15 * M, mgmtVidFlags: 10 * M, mgmtRenewals: 15 * M, mgmtGrowth: 30 * M, mgmtTeacherVisits: 30 * M,
-    tPayCheck: 20 * M, tPayReady: 20 * M, tGrowth: 30 * M, tVidList: 20 * M, tVidFlags: 20 * M, tFbStatus: 15 * M };
+    tPayCheck: 20 * M, tPayReady: 20 * M, tGrowth: 180 * M, tVidList: 20 * M, tVidFlags: 20 * M, tFbStatus: 15 * M };
   const C = {}; let FORCE = 0;
   const base = window.api; if(!base || base.__762) return;
   const w = function(fn){ const args = Array.prototype.slice.call(arguments, 1), self = this;
