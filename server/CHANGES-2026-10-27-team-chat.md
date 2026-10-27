@@ -102,3 +102,34 @@ Response-time metrics in Performance · Substitute "I'll take it" button · Expo
   signed for 1 hour like single pictures. Retry de-duplication (cid) unchanged.
 - Laptop header: when the side panel narrows the chat, the header buttons show icons only (names kept for screen readers) so the title
   "All Teachers · Today · N members" stays on one line (it wrapped into a narrow column in 1404).
+
+## 1406 · 27 Oct 21:30 · layout, speed, teacher view, Notices & requests (Misty 21:05 / 21:07 / 21:08 / 21:13)
+Layout (21:05 screenshots)
+- Header: title and "Today · N members · N online" each on one line (ellipsis, never wrapping); Mute / History / Search / Members / Sound are
+  icon buttons with tooltips and screen-reader names (labels only on screens ≥ 1600 px when they fit).
+- "N online" now counts only the people of the open chat (a 3-person direct chat no longer said "9 online").
+- Channel description: 2 lines, tap (or Enter) to read all.
+- Box: placeholder "Message…"; small hint under it "Enter to send · Shift+Enter new line · @ to tag" (phones: "Type @ to tag someone").
+- Management: ready-made messages moved into a "Templates" menu next to Needs reply / Confirm / Pin (nothing cut off).
+- Checked at 1280 and 1440 px and at 110 % zoom (≈1164 / 1309 px), and on a 390 px phone.
+Speed (21:07)
+- The chat page is patched in place (only what changed) instead of rebuilt on every refresh: a poll that brings nothing new changes nothing
+  (page changes in 9 s of polling 1834 → about 100), pictures are not reloaded, and a click can no longer land on a button that was being replaced.
+- Switching chats shows the last copy at once and refreshes in the background; History opens at once (last copy or a loading skeleton);
+  Search shows a skeleton while it runs.
+- Pin, Hide, Mute, quick replies (Noted / On it / Done) and Confirm show their result at once; if the server refuses, the change is undone
+  with a message. Signed picture links are reused for 45 minutes (no re-download every refresh).
+- Server coe-chat v9/v10: settings (10 s), active-teacher list (5 min) and group list (60 s) cached per server instance; poll's three look-ups
+  and list's three look-ups run side by side; direct-chat rows are only written at sign-in, not on every poll.
+Teacher view (21:08)
+- No right-hand panel for teachers; the conversation uses the full width. The Members icon opens a small list of names (closes with Escape or
+  a click elsewhere). Management keeps its panel (collapsible).
+Notices & requests (21:13)
+- "Messages" is now "Notices & requests" (management and teacher menus, phone menu, screen titles). Same screen, data, Got it and alerts;
+  old links (#messages, #inbox) still open it. Explainer: "Formal notices and requests. Tap Got it so management knows you've read it."
+  The new-notice form is titled "New notice".
+- Team Chat: Announcements left the channel list. Nothing deleted: earlier announcements stay in the database and in Search (opening one
+  shows the read-only list); their open Confirm / Needs reply items appear in All Teachers' "Still open" strip until done (server v10).
+- Team Chat description: "… For formal notices, leave or pay use Notices & requests."
+- Management: "Send as formal notice" in the composer opens the Notices & requests form with the typed text (the teacher is preselected in
+  a direct chat). It does not post in Team Chat.

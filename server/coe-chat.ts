@@ -1,7 +1,7 @@
-// CupOfEnglish · coe-chat (27 Oct 2026 · 1400–1404): Team Chat — groups + direct chats, @mentions, seen/replied receipts,
-// needs-reply, confirm, pinned, pictures, voice, time-in auto-post, search, Today/History, alerts for every group message (merged, mutable),
-// management roster (add / remove a teacher), retry-safe sending (cid).
-// Kept in CupOfEnglish's database: nothing is deleted by the app (teachers can edit, shown "edited"; management can hide, the row stays).
+// CupOfEnglish · coe-chat (27 Oct 2026 · 1400–1406): Team Chat — groups + direct chats, @mentions, seen/replied receipts,
+// needs-reply, confirm, pinned, pictures (up to 5 per message), voice, time-in auto-post, search, Today/History, alerts for every group message
+// (merged, mutable), management roster (add / remove a teacher), retry-safe sending (cid). Teachers never receive other people's presence or
+// per-person receipts. Kept in CupOfEnglish's database: nothing is deleted by the app (teachers can edit, shown "edited"; management can hide).
 // Phone alerts: chat_outbox → coe_push_queue (coe_chat_out, every minute, held while the teacher has a class running, merged per person).
 // Flag: docs sys:chat { enabled, pilot:[teacher names] | "*", exclude?:[names], mgmt?:[names], alias?:{account:name} }.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -14,6 +14,21 @@ const str = (x: unknown, n = 2000) => String(x == null ? "" : x).trim().slice(0,
 const lc = (s: string) => String(s || "").trim().toLowerCase();
 const mnl = (t = Date.now()) => new Date(t + 8 * 3600e3).toISOString().slice(0, 10);
 const QUICK = ["Noted", "On it", "Done"];
+// 1406 speed: the settings doc (10 s) and the active-teacher list (5 min; built from 30 days of sign-ins and classes) are cached per
+// server instance instead of being rebuilt on every 4-second poll. Adding / removing a teacher clears both at once.
+let CFG: { at: number; data: any } | null = null;
+let ROS: { at: number; nm: Record<string, string> } | null = null;
+let GRP: { at: number; rows: any[] } | null = null;
+async function activeTeachers(): Promise<Record<string, string>> {
+  if (ROS && Date.now() - ROS.at < 300e3) return { ...ROS.nm };
+  const since = new Date(Date.now() - 30 * 864e5).toISOString();
+  const [{ data: TS }, { data: TC }] = await Promise.all([
+    db.from("app_sessions").select("name").eq("mode", "teacher").gt("exp", since),
+    db.from("classes").select("teachers").gte("day", since.slice(0, 10)).eq("cancelled", false).limit(20000)]);
+  const nm: Record<string, string> = {}; (TS || []).forEach((x: any) => { nm[lc(x.name)] = String(x.name); });
+  (TC || []).forEach((c: any) => (c.teachers || []).forEach((t: string) => { const k = lc(t); if (k && !nm[k]) nm[k] = k.charAt(0).toUpperCase() + k.slice(1); }));
+  ROS = { at: Date.now(), nm }; return { ...nm };
+}
 
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
@@ -26,8 +41,8 @@ Deno.serve(async (req: Request) => {
   if (!s || new Date(s.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
   const mgmt = s.mode === "mgmt", me = String(s.name || ""), a = String(b.action || ""), now = new Date().toISOString(), today = mnl();
   try {
-    const { data: cd } = await db.from("docs").select("data").eq("key", "sys:chat").maybeSingle();
-    const cfg: any = (cd && cd.data) || {};
+    if (!CFG || Date.now() - CFG.at > 10e3) { const { data: cd } = await db.from("docs").select("data").eq("key", "sys:chat").maybeSingle(); CFG = { at: Date.now(), data: (cd && cd.data) || {} }; }
+    const cfg: any = JSON.parse(JSON.stringify(CFG.data));
     const alias: Record<string, string> = cfg.alias && typeof cfg.alias === "object" ? cfg.alias : {};
     const dn = (n: string) => alias[n] || n;
     const ALL = cfg.pilot === "*" || (Array.isArray(cfg.pilot) && cfg.pilot.includes("*"));
@@ -39,11 +54,7 @@ Deno.serve(async (req: Request) => {
     if (!mg.length) { const { data: M } = await db.from("app_sessions").select("name").eq("mode", "mgmt").gt("exp", new Date(Date.now() - 30 * 864e5).toISOString()); mg = [...new Set((M || []).map((x: any) => String(x.name)))]; }
     if (mgmt && !mg.some((x) => lc(x) === lc(me))) mg.push(me);
     if (ALL) {   // every active teacher: signed in during the last 30 days or taught a class in the last 30 days
-      const since = new Date(Date.now() - 30 * 864e5).toISOString();
-      const { data: TS } = await db.from("app_sessions").select("name").eq("mode", "teacher").gt("exp", since);
-      const { data: TC } = await db.from("classes").select("teachers").gte("day", since.slice(0, 10)).eq("cancelled", false).limit(20000);
-      const nm: Record<string, string> = {}; (TS || []).forEach((x: any) => { nm[lc(x.name)] = String(x.name); });
-      (TC || []).forEach((c: any) => (c.teachers || []).forEach((t: string) => { const k = lc(t); if (k && !nm[k]) nm[k] = k.charAt(0).toUpperCase() + k.slice(1); }));
+      const nm = await activeTeachers();
       const skip = new Set([...mg.map(lc), ...Object.values(alias).map(lc), ...(Array.isArray(cfg.exclude) ? cfg.exclude.map((x: unknown) => lc(String(x))) : [])]);
       pilot = Object.keys(nm).filter((k) => !skip.has(k) && !/^zz/.test(k) && !/test/.test(k)).map((k) => nm[k]).sort();
       if (!mgmt && !pilot.some((p) => lc(p) === lc(me))) pilot.push(me);
@@ -73,15 +84,16 @@ Deno.serve(async (req: Request) => {
           day: r.day, at: r.created_at, n: L.length, seen: L.filter((x: any) => x.seen_at).length, replied: L.filter((x: any) => x.replied_at).length, confirmed: L.filter((x: any) => x.confirmed_at).length,
           mine: mine ? { seen: mine.seen_at, replied: mine.replied_at, confirmed: mine.confirmed_at } : null, ...(mgmt || lc(r.author) === lc(me) ? {} : { replied: 0, confirmed: 0 }) }; }));
     }
-    async function groups() {
-      const { data: G } = await db.from("chat_groups").select("id,name,kind,sort").order("sort");
-      const L = (G || []).filter((g: any) => g.kind === "group");
+    async function groups(up = false) {
+      const [G, { data: U }] = await Promise.all([
+        GRP && Date.now() - GRP.at < 60e3 ? Promise.resolve(GRP.rows) : db.from("chat_groups").select("id,name,kind,sort").eq("kind", "group").order("sort").then((r: any) => { GRP = { at: Date.now(), rows: r.data || [] }; return GRP.rows; }),
+        db.from("chat_reads").select("mid,chat_messages!inner(gid,mentions,needs_reply,hidden)").eq("name", me).is("seen_at", null).eq("chat_messages.hidden", false).limit(1000)]);
+      const L = (G || []).filter((g: any) => g.kind === "group").map((g: any) => ({ ...g }));
       if (mgmt) pilot.forEach((p) => L.push({ id: "dm:" + lc(p), name: "Teacher " + p, kind: "direct", sort: 100 }));
       else L.push({ id: "dm:" + lc(me), name: "Management", kind: "direct", sort: 100 });
       const ids = L.map((g: any) => g.id);
-      await db.from("chat_groups").upsert(L.filter((g: any) => g.kind === "direct").map((g: any) => ({ id: g.id, name: g.name, kind: "direct", sort: 100 })), { onConflict: "id", ignoreDuplicates: true });
-      const { data: U } = await db.from("chat_reads").select("mid,chat_messages!inner(gid,mentions,needs_reply,hidden)").eq("name", me).is("seen_at", null).in("chat_messages.gid", ids).eq("chat_messages.hidden", false).limit(1000);
-      const un: any = {}, at: any = {}; (U || []).forEach((x: any) => { const m = x.chat_messages, g = m.gid; un[g] = (un[g] || 0) + 1; if ((m.mentions || []).some((n: string) => lc(n) === lc(me) || n === "all") || m.needs_reply) at[g] = (at[g] || 0) + 1; });
+      if (up) await db.from("chat_groups").upsert(L.filter((g: any) => g.kind === "direct").map((g: any) => ({ id: g.id, name: g.name, kind: "direct", sort: 100 })), { onConflict: "id", ignoreDuplicates: true });
+      const un: any = {}, at: any = {}; (U || []).forEach((x: any) => { const m = x.chat_messages, g = m.gid; if (!ids.includes(g)) return; un[g] = (un[g] || 0) + 1; if ((m.mentions || []).some((n: string) => lc(n) === lc(me) || n === "all") || m.needs_reply) at[g] = (at[g] || 0) + 1; });
       return L.map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, unread: un[g.id] || 0, tagged: at[g.id] || 0 }));
     }
     async function push(to: string[], title: string, body: string, tag: string, soft = false) {
@@ -113,7 +125,7 @@ Deno.serve(async (req: Request) => {
 
     if (a === "init") {
       const { data: MU } = await db.from("chat_mutes").select("gid").eq("name", me);
-      return out({ ok: true, me, mgmt, today, alias, muted: (MU || []).map((x: any) => x.gid), members: everyone.map((n) => ({ name: n, mgmt: isMg(n) })), groups: await groups(),
+      return out({ ok: true, me, mgmt, today, alias, muted: (MU || []).map((x: any) => x.gid), members: everyone.map((n) => ({ name: n, mgmt: isMg(n) })), groups: await groups(true),
         quick: QUICK, ready: mgmt ? ["Please redo your time-in check now (tap Redo now on Today).", "You're late for your class. Please join now and reply here.", "Substitute needed at [time] for [student]. Who can take it?"] : [] });
     }
     if (a === "roster" || a === "member") {   // management: who is in Team Chat (applies to every group and direct chat)
@@ -124,17 +136,13 @@ Deno.serve(async (req: Request) => {
         const next = b.on ? ex.filter((x) => lc(x) !== lc(who)) : (has ? ex : [...ex, who]);
         if (b.on ? has : !has) {   // a real change: save it, log it in All Teachers (kept in the database), stop alerts already waiting
           const { data: cur } = await db.from("docs").select("data").eq("key", "sys:chat").maybeSingle();
-          await db.from("docs").update({ data: { ...((cur && cur.data) || cfg), exclude: next }, updated_at: now }).eq("key", "sys:chat");
+          await db.from("docs").update({ data: { ...((cur && cur.data) || cfg), exclude: next }, updated_at: now }).eq("key", "sys:chat"); CFG = null; ROS = null;
           await db.from("chat_messages").insert({ gid: /^zz/i.test(who) ? "zztest" : "all", author: me, author_mgmt: true, kind: "system", body: dn(me) + (b.on ? " added Teacher " : " removed Teacher ") + who, mentions: [] });
           if (!b.on) await db.from("chat_outbox").update({ queued_at: now }).is("queued_at", null).ilike("to_name", who);
         }
         cfg.exclude = next;
       }
-      const since = new Date(Date.now() - 30 * 864e5).toISOString();
-      const { data: TS } = await db.from("app_sessions").select("name").eq("mode", "teacher").gt("exp", since);
-      const { data: TC } = await db.from("classes").select("teachers").gte("day", since.slice(0, 10)).eq("cancelled", false).limit(20000);
-      const nm: Record<string, string> = {}; (TS || []).forEach((x: any) => { nm[lc(x.name)] = String(x.name); });
-      (TC || []).forEach((c: any) => (c.teachers || []).forEach((t: string) => { const k = lc(t); if (k && !nm[k]) nm[k] = k.charAt(0).toUpperCase() + k.slice(1); }));
+      const nm = await activeTeachers();
       (Array.isArray(cfg.exclude) ? cfg.exclude : []).forEach((x: string) => { if (!nm[lc(x)]) nm[lc(x)] = String(x); });
       const exs = new Set((Array.isArray(cfg.exclude) ? cfg.exclude : []).map((x: string) => lc(x)));
       const list = Object.keys(nm).filter((k) => !mg.some((x) => lc(x) === k) && !/^zz/.test(k) && !/test/.test(k)).sort().map((k) => ({ name: nm[k], in: !exs.has(k) }));
@@ -146,23 +154,22 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true });
     }
     if (a === "poll") {
-      const { data: L } = await db.from("chat_messages").select("id").order("id", { ascending: false }).limit(1);
-      let inClass = false;
-      if (!mgmt) { const { data: C } = await db.from("classes").select("id").eq("day", today).lte("starts_at", now).gt("ends_at", now).eq("cancelled", false).contains("teachers", [lc(me)]).limit(1); inClass = !!(C && C.length); }
-      return out({ ok: true, last: L && L[0] ? L[0].id : 0, groups: await groups(), today, inClass });
+      const [{ data: L }, C, gr] = await Promise.all([   // 1406: the three look-ups run side by side
+        db.from("chat_messages").select("id").order("id", { ascending: false }).limit(1),
+        mgmt ? Promise.resolve(null) : db.from("classes").select("id").eq("day", today).lte("starts_at", now).gt("ends_at", now).eq("cancelled", false).contains("teachers", [lc(me)]).limit(1).then((r: any) => r.data),
+        groups()]);
+      return out({ ok: true, last: L && L[0] ? L[0].id : 0, groups: gr, today, inClass: !!(C && C.length) });
     }
     if (a === "list") {
       const gid = str(b.gid, 60); if (!canSee(gid)) throw new Error("Not found"); const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? String(b.day) : today;
       let q = db.from("chat_messages").select("*").eq("gid", gid).eq("day", day).order("id").limit(500); if (!mgmt) q = q.eq("hidden", false);
-      const { data: M } = await q;
-      const { data: P } = await db.from("chat_messages").select("*").eq("gid", gid).eq("pinned", true).eq("hidden", false).order("id", { ascending: false }).limit(5);
-      let open: any[] = [];
-      if (day === today) {
-        const { data: O } = await db.from("chat_messages").select("*").eq("gid", gid).lt("day", today).eq("hidden", false).or("needs_reply.eq.true,confirm.eq.true").gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString()).order("id", { ascending: false }).limit(40);
-        const D = await decorate(O || []);
-        open = D.filter((m: any) => mgmt ? (m.needs_reply ? m.replied < m.n : m.confirmed < m.n) : (m.mine && (m.needs_reply ? !m.mine.replied : !m.mine.confirmed))).slice(0, 10);
-      }
-      return out({ ok: true, gid, day, today, msgs: await decorate(M || []), pinned: await decorate(P || []), open, members: members(gid) });
+      const [{ data: M }, { data: P }, O] = await Promise.all([q,   // 1406: the three look-ups (and their receipts) run side by side
+        db.from("chat_messages").select("*").eq("gid", gid).eq("pinned", true).eq("hidden", false).order("id", { ascending: false }).limit(5),
+        day === today ? db.from("chat_messages").select("*").in("gid", gid === "all" ? ["all", "ann"] : [gid]).lte("day", today).eq("hidden", false).or("needs_reply.eq.true,confirm.eq.true").gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString()).order("id", { ascending: false }).limit(40).then((r: any) => r.data || []) : Promise.resolve([])]);
+      const [DM, DP, DO] = await Promise.all([decorate(M || []), decorate(P || []), decorate(O || [])]);
+      // 1406: Announcements left the channel list (Misty 21:13); their open Confirm / Needs reply items show in All Teachers until done
+      const open = DO.filter((m: any) => m.gid !== gid || m.day < today).filter((m: any) => mgmt ? (m.needs_reply ? m.replied < m.n : m.confirmed < m.n) : (m.mine && (m.needs_reply ? !m.mine.replied : !m.mine.confirmed))).slice(0, 10);
+      return out({ ok: true, gid, day, today, msgs: DM, pinned: DP, open, members: members(gid) });
     }
     if (a === "days") {
       const gid = str(b.gid, 60); if (!canSee(gid)) throw new Error("Not found");
