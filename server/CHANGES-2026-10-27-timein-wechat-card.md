@@ -12,8 +12,9 @@ picture with everything management checks, and management can ask a teacher to r
 3. The picture (landscape 1600 × ~1060, readable as a ~500 px WeChat thumbnail): logo + date, teacher name, "Timed in 09:12" +
    On time / Late, first class; **What management checks** — On time · Class laptop · LAN cable (✓ / ⚠ Wi-Fi · "see the picture"
    when the browser does not say) · Screen proof · Internet (the same label as the app's internet warnings) · Location; the screen
-   proof picture; Download / Upload / Latency / Jitter; network · IP · location · device; the Lesson-summary "Learn with the best"
-   footer (drawn the same way, 21 % of the width).
+   proof picture; Download / Upload / Latency / Jitter; provider + city and device; the "Learn with the best" tagline small
+   (38 px) at the bottom. **Privacy:** the card (posted in the teachers' group) never shows the IP address, street/barangay or
+   coordinates — only "Location shared" and the provider's city. Management still sees the exact location, map link and IP in the app.
 4. Copy picture → clipboard (fallback: the picture is saved as a file). Until "Posted in WeChat" is ticked, "Post your time-in
    picture in the WeChat corner" stays in **Needs your action** that day.
 
@@ -24,7 +25,7 @@ picture with everything management checks, and management can ask a teacher to r
 - The time-in **does not wait** for it: it is saved with the provider/IP already known, the card shows "measuring…" and fills in
   by itself (same size, no jump), and the result is saved in the database (`coe_wechat_posts.speed`) and shown everywhere as the
   time-in's internet. Measured in the preview: tap → "Time-in saved" 1.9 s / 4.4 s (screen share 0.6 s / 3 s) vs 2.3 s / 4.3 s
-  before.
+  before (within noise).
 
 ## Ask to redo the check (management)
 - Time-in rows (Monitor › Time-ins) and the internet details panel: **Ask to redo check** → reasons (Internet too weak · Screen
@@ -35,7 +36,7 @@ picture with everything management checks, and management can ask a teacher to r
 - **The time-in time and On time / Late never change.** The redo's internet result replaces the time-in's internet (rows,
   chips, weak-internet flags); the details panel keeps "First check 09:12 · … · replaced by the redo 10:24". The redo's screen
   picture and location are extra proof (private storage bucket `timein-redo`, opened by management through a 1-hour link).
-- Status chips: amber "Redo asked · reason" → teal "Redone · 10:24"; "WeChat ✓ 09:14" / "WeChat not posted".
+- Status chips (only the current state): amber "Redo asked · reason" → teal "Redone · 10:24 · reason"; "WeChat ✓ 09:14" / "WeChat not posted".
 
 ## Server
 - Tables `coe_wechat_posts`, `coe_timein_redo` (service role only, RLS on), bucket `timein-redo` (private). Migrations
