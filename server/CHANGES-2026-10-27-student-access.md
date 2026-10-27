@@ -30,3 +30,15 @@ password, **Copy WeChat message** (Chinese + English, with the link, the ST code
 
 **Not done / untested:** real access from mainland China and inside WeChat's browser; teachers do not yet see the parents' "homework
 done" ticks in the app (stored only); management panel tested with mock data only.
+
+## 1352 · Student portal 学员专区 — inclusive for adult students (COE_V 1326, commit c0ff26e)
+
+- Renamed everywhere: **家长专区 Parent portal → 学员专区 · Student portal** (page title, header, sign-in); management button
+  **Student access 学员专区**. Neutral wording: 查看课表、作业… / 学员英文名 Student's English name; renewal reminder unchanged (already neutral).
+- **Learner type** = the app's existing adult rule (same as prices / partner rates): DATABASE school grade WA / UM / U# / PhD / ADULT,
+  or age ≥ 20 and not a G# grade. `coe-student` v2 returns `adult` on sign-in, in `all.student` and per student in `sList`.
+  Unknown → young-learner wording. Today 46 of 681 DATABASE rows count as adults.
+- **Home greeting:** adults "Simon 您好 / Hello Simon"; young learners "Mia 家长您好 / Hello, Mia's family".
+- **Copy WeChat message:** two templates (adult: 您的课表 / your English name; young learner: Mia 家长您好 / Mia's English name).
+  The panel rows show "Adult" or "Young learner".
+- Rollback: branch `rollback-pre-1352`.

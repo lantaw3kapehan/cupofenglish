@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-student (27 Oct 2026) · student / parent access (mostly mainland China, phones, WeChat browser). Never calls Google.
+// CupOfEnglish · coe-student (27 Oct 2026; v2 1352: inclusive Student portal, adult flag) · student / parent access (mostly mainland China, phones, WeChat browser). Never calls Google.
 // Sign-in (Misty's rule): username = the student's ST code, password = the student's English name (case-insensitive, trimmed; any
 // DATABASE row's English name or the ACTIVE package name for that code). If the parent set their own password, only that works.
 // Protections: 5 wrong tries per code → 15 min lock; 30 wrong tries per connection per hour; sessions 30 days; sign-ins logged;
@@ -67,12 +67,14 @@ async function packagesOf(code: string) {
   return (C || []).map((x: any) => { const used = Math.max(0, Number(x.fin) || 0), left = Number(x.avail) || 0;
     return { total: used + left, used, left, buy: x.buy || "", valid: x.deadline || "", renew: left <= 4 }; }).sort((a: any, b: any) => String(a.buy).localeCompare(String(b.buy)));
 }
+// adult learner: the same rule as the app's isAdult / coe mgmtStudents (DATABASE school grade WA/UM/U#/PhD/ADULT, or age ≥ 20 and not a G# grade)
+const adultRow = (r: any[]) => { const gr = String(c(r, 8)).trim(); return /^(WA|UM|U\d|PhD|ADULT)$/i.test(gr) || (+c(r, 6) >= 20 && !/^(G\d+|GK)$/i.test(gr)); };
 async function namesOf(code: string) {
   const [R, { data: PK }] = await Promise.all([rowsBy("DATABASE", 0, code), db.from("coe_packages").select("name,cn").eq("code", code).is("removed_at", null).limit(20)]);
   const en = new Set<string>(), cn: string[] = []; let first = "";
   R.forEach((r: any[]) => { const n = norm(c(r, 2)); if (n) { en.add(nameKey(n)); first = first || n; } const z = norm(c(r, 1)); if (z && !cn.includes(z)) cn.push(z); });
   (PK || []).forEach((p: any) => { const n = norm(p.name); if (n) { en.add(nameKey(n)); first = first || n; } const z = norm(p.cn); if (z && !cn.includes(z)) cn.push(z); });
-  return { en, name: first, cn: cn[0] || "", rows: R };
+  return { en, name: first, cn: cn[0] || "", rows: R, adult: R.some(adultRow) };
 }
 const cls = (BT: Record<string, string>, x: any) => { const t = String((x.data && x.data.title) || ""), a = bj(x.starts_at);
   return { day: a.day, time: a.time, mins: Math.round((Date.parse(x.ends_at || x.data?.end || x.starts_at) - Date.parse(x.starts_at)) / 6e4) || 25,
@@ -93,13 +95,15 @@ Deno.serve(async (req: Request) => {
     const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
     if (!s || new Date(s.exp).getTime() < Date.now() || s.mode !== "mgmt") return out({ ok: false, error: "AUTH" }, 401);
     if (op === "sList") {
-      const [{ data: A }, { data: PK }] = await Promise.all([
+      const [{ data: A }, { data: PK }, DBR] = await Promise.all([
         db.from("student_access").select("code,active,pw_set_at,last_login,logins").limit(5000),
-        db.from("coe_packages").select("code,name,cn,active").is("removed_at", null).limit(5000)]);
+        db.from("coe_packages").select("code,name,cn,active").is("removed_at", null).limit(5000),
+        (async () => { const o: any[] = []; for (let f = 0; f < 20000; f += 1000) { const { data, error } = await db.from("sheet_rows").select("data").eq("tab", "DATABASE").order("r").range(f, f + 999); if (error || !data) break; o.push(...data); if (data.length < 1000) break; } return o; })()]);
+      const AD: Record<string, boolean> = {}; (DBR || []).forEach((x: any) => { const r = x.data || [], k = codeOf(c(r, 0)); if (k && adultRow(r)) AD[k] = true; });
       const m: Record<string, any> = {};
       (PK || []).forEach((p: any) => { const k = codeOf(p.code); if (!k) return; const o = m[k] = m[k] || { code: k, name: norm(p.name), cn: norm(p.cn), active: false }; if (p.active) o.active = true; if (!o.name) o.name = norm(p.name); if (!o.cn) o.cn = norm(p.cn); });
       (A || []).forEach((a: any) => { const o = m[a.code] = m[a.code] || { code: a.code, name: "", cn: "", active: false }; o.access = a.active; o.own = !!a.pw_set_at; o.last = a.last_login; o.logins = a.logins; });
-      const list = Object.values(m).map((o: any) => ({ code: o.code, name: o.name, cn: o.cn, enrolled: o.active, access: o.access !== false, own: !!o.own, last: o.last || null, logins: o.logins || 0 }))
+      const list = Object.values(m).map((o: any) => ({ code: o.code, name: o.name, cn: o.cn, adult: !!AD[o.code], enrolled: o.active, access: o.access !== false, own: !!o.own, last: o.last || null, logins: o.logins || 0 }))
         .sort((a: any, b: any) => (+b.enrolled - +a.enrolled) || a.code.localeCompare(b.code));
       return out({ ok: true, students: list });
     }
@@ -138,7 +142,7 @@ Deno.serve(async (req: Request) => {
     await db.from("student_sessions").insert({ token_hash: await sha(token), code, exp: new Date(Date.now() + 30 * 864e5).toISOString(), ua: String(req.headers.get("user-agent") || "").slice(0, 160) });
     const { data: cur } = await db.from("student_access").select("logins").eq("code", code).maybeSingle();
     await db.from("student_access").upsert({ code, last_login: new Date().toISOString(), logins: ((cur && cur.logins) || 0) + 1 }, { onConflict: "code" });
-    return out({ ok: true, token, code, name: nm.name, cn: nm.cn });
+    return out({ ok: true, token, code, name: nm.name, cn: nm.cn, adult: !!nm.adult });
   }
 
   // ───────── signed-in reads ─────────
@@ -209,7 +213,7 @@ Deno.serve(async (req: Request) => {
       .filter(Boolean).sort((a: any, b: any) => b.month.localeCompare(a.month));
     const pk = PK, left = pk.reduce((a: number, p: any) => a + p.left, 0), total = pk.reduce((a: number, p: any) => a + p.total, 0), used = pk.reduce((a: number, p: any) => a + p.used, 0);
     const valid = pk.map((p: any) => p.valid).filter(Boolean).sort().pop() || "";
-    return out({ ok: true, student: { code, name: N.name, cn: N.cn }, own: !!(SA && (SA as any).pw_set_at),
+    return out({ ok: true, student: { code, name: N.name, cn: N.cn, adult: !!N.adult }, own: !!(SA && (SA as any).pw_set_at),
       pkg: pk.length ? { total, used, left, valid, renew: left <= 4 } : null, upcoming: up, past, hw, journey, reports, at: nowIso, tz: "Asia/Shanghai (UTC+8)" });
   }
   return out({ ok: false, error: "unknown op" }, 400);
