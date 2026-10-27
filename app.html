@@ -2974,13 +2974,22 @@ while(cells.length < mx) cells.push('<span class="avn">—</span>');
 return `<div class="avc"><div class="avh2"><b>${AV_W[x.w].toUpperCase()}</b><span>${x.d.getDate()}/${x.d.getMonth() + 1} · 周${AV_WZ[x.w]}</span></div>${cells.join('')}</div>`; }).join('')}</div>
 <div class="small mute" style="margin-top:8px">Tap a time to book it · ${nf} open · ${nb} booked this week · China time 北京时间</div>`; }
 function avText(){ const A = AVD, W = avWeek(); if(!W.some(x => x.items.length || x.full)) return toast('No open slots this week');
-const t = `Teacher ${A.name} · weekly class times (China time · ${A.len} min per class)\n${tZh(A.name)} · 每周上课时间（北京时间 · 每节${A.len}分钟）\n\n` + W.map(x => `${AV_W[x.w]} 周${AV_WZ[x.w]}：${x.full ? 'Full · 已满' + (x.items.length ? '  ' : '') : ''}${x.items.length ? x.items.map(it => avT(it.t) + (it.b ? '（已约 booked）' : '')).join('  ') : x.full ? '' : x.off ? 'Not available · 不可约' : '—'}`).join('\n') + `\n\nOpen times can be booked · 未标“已约”的时间可预约\nChoose your regular weekly class times · 请选择每周固定上课时间`;
+const t = `Teacher ${A.name} · weekly class times (China time · ${A.len} min per class)\n${tZh(A.name)} · 每周上课时间（北京时间 · 每节${A.len}分钟）\n\n` + avCols(W).map((col, i) => { const x = W[i], it = col.filter(c => c.t != null), fu = col.some(c => c.full); return `${AV_W[x.w]} 周${AV_WZ[x.w]}：${fu ? 'Full · 已满' + (it.length ? '  ' : '') : ''}${it.length ? it.map(c => avT(c.t) + (c.b ? '（已约 booked）' : '')).join('  ') : fu ? '' : col.some(c => c.off) ? 'Not available · 不可约' : '—'}`; }).join('\n') + `\n\nOpen times can be booked · 未标“已约”的时间可预约\nChoose your regular weekly class times · 请选择每周固定上课时间`;
 navigator.clipboard.writeText(t).then(() => toast('Copied · paste it in WeChat'), () => toast('Could not copy')); }
+/* 1358 · Weekly class times picture · SHARED RULE: this exact function is in management (app.html) and the partner portal (partner/index.html).
+   Misty 20:36: in the current week, days that have passed are blank (faint "—" under the day header) and times already gone today are left out;
+   never "Full · 已满" or "Not available" for the past. items: [{ t, b: 0 open | 1 booked, gone }] in time order. */
+function wkpCol(pastDay, items, hasHours, fullSpec) {
+  if (pastDay) return [];
+  const L = items.filter(it => !it.gone), open = L.filter(it => !it.b).length, bk = L.length - open;
+  return (fullSpec || (!open && bk) ? [{ full: 1 }] : !hasHours && !items.length ? [{ off: 1 }] : []).concat(L); }
+function avCols(W){ const A = AVD, t0 = new Date(); t0.setHours(0, 0, 0, 0); const now = Date.now();
+  return W.map(x => wkpCol(x.d < t0, x.items.map(it => Object.assign({}, it, { gone: !!it.b && it.t < now })), !!A.days[x.w], A.days[x.w] === 'full')); }
 async function avPic(){ const A = AVD, W = avWeek(); if(!W.some(x => x.items.length || x.full)) return toast('No open slots this week');
 try{ await document.fonts.ready; await Promise.all(['400 40px "Fredoka One"', '700 20px Arvo', '400 20px Arvo'].map(f => document.fonts.load(f).catch(() => 0))); }catch(x){}
 const [logo, tag] = await Promise.all([prfLd((document.querySelector('#login img') || {}).src), prfLd((document.querySelector('#login .tagl img') || {}).src)]);
 const S = 2, CX = 80, Wc = 1160, F = '"Rockwell","Rockwell Nova",Arvo,"PingFang SC","Microsoft YaHei",serif', B = '"Fredoka One",' + F, NAVY = '#2B2253', MUTE = '#6F6B85';
-const cols = W.map(x => (x.full ? [{ full: 1 }] : x.off ? [{ off: 1 }] : []).concat(x.items)), rows = Math.max(1, ...cols.map(c => c.length)), gridTop = 520, H = gridTop + 90 + rows * 58 + 70 + 60 + 120;
+const cols = avCols(W), rows = Math.max(1, ...cols.map(c => c.length)), gridTop = 520, H = gridTop + 90 + rows * 58 + 70 + 60 + 120;
 const cv = document.createElement('canvas'); cv.width = (Wc + 60) * S; cv.height = (H + 60) * S; const c = cv.getContext('2d'); c.scale(S, S);
 const rr = (x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
 const chipOpen = (x, y, w, txt) => { c.fillStyle = '#F4FAFA'; c.strokeStyle = '#3FA7A8'; c.lineWidth = 1.6; rr(x, y, w, 44, 22); c.fill(); c.stroke(); c.fillStyle = NAVY; c.font = '700 22px ' + F; c.fillText(txt, x + w / 2, y + 30); };
@@ -6337,7 +6346,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1340;
+const COE_V = 1341;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
