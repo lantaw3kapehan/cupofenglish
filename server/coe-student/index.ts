@@ -83,6 +83,10 @@ const JENV: Record<string, any> = {};
 // the CEFR journey exactly as management's student page draws it (cjHtml + 1221), from the same pieces mgmtStudent sends
 async function journeyFor(code: string, N: any, TRr: any[][], PRr: any[][], LSn: any) {
   const a = await mgmtApp(); if (!JENV[a.hash]) JENV[a.hash] = buildJourney(a.src);
+  const { S, X } = await journeyInputs(code, N, TRr, PRr, LSn);
+  const r = JENV[a.hash].run(S, X); if (!r) return null; const { html, ...rest } = r; return rest;
+}
+async function journeyInputs(code: string, N: any, TRr: any[][], PRr: any[][], LSn: any) {
   const [{ data: parts }, { data: daily }, { data: cl }, SM] = await Promise.all([db.rpc("student_parts", { p_code: code }), db.rpc("coe_stu_daily", { p_code: code }),
     db.rpc("coe_stu_classes", { p_code: code, p_teacher: "" }), rowsBy("S-MONTHLY", 1, code)]);
   const d = parts && parts.db && parts.db.data, rows = d ? (d.rows || []).filter((r: any[]) => r[0] === code) : [];
@@ -96,7 +100,27 @@ async function journeyFor(code: string, N: any, TRr: any[][], PRr: any[][], LSn:
   const S = { code, r: { profile, trial, monthly, checks }, s: { left: LSn && LSn.left != null ? LSn.left : null, shared: !!(LSn && LSn.shared), name: N.name, cn: N.cn }, cls: Array.isArray(cl) ? cl : [] };
   const m = N.rows.length ? merge(N.rows) : null;
   const X = { at: Date.now(), cj: m ? { first: m.first, td: m.td, tb: m.tb, tc: m.tc, cb: m.cb } : null, trials: TRr.map(trOf).filter((t) => t.date) };
-  const r = JENV[a.hash].run(S, X); if (!r) return null; const { html, ...rest } = r; return rest;
+  return { S, X };
+}
+// 1355 · preview a journey rule change: management's live code vs a branch of the app, for every active student → docs sys:cjdiff
+async function cjDiff(branch: string) {
+  const a = await mgmtApp(); if (!JENV[a.hash]) JENV[a.hash] = buildJourney(a.src);
+  const r = await fetch("https://raw.githubusercontent.com/lantaw3kapehan/cupofenglish/" + branch + "/app.html?t=" + Date.now()); if (!r.ok) throw new Error("branch " + r.status);
+  const B = buildJourney(await r.text()), A = JENV[a.hash];
+  const [{ env }, d] = await Promise.all([mgmtEnv(), mgmtDataCached()]); const at = await appliedAT(env, d);
+  const C: Record<string, number> = {}; (d.AT.cols as string[]).forEach((x, i) => C[x] = i);
+  const codes = [...new Set((d.AT.rows as any[]).filter((x) => x[C.active]).map((x) => String(x[C.code]).toUpperCase()))].sort();
+  const short = (j: any) => j ? (j.steps || []).map((x: any) => [x.d.slice(0, 7), x.en.replace(/ .*/, ""), x.lv, x.bk, x.u].filter((v) => v !== "" && v != null).join(" ")).join(" | ") + " · now " + j.now + " · " + j.tk : "—";
+  const changed: any[] = []; let n = 0, err = 0;
+  for (let i = 0; i < codes.length; i += 6) await Promise.all(codes.slice(i, i + 6).map(async (code) => { try {
+    const [N, TRr, PRr] = await Promise.all([namesOf(code), rowsBy("TR-DATA", 33, code), rowsBy("PR-DATA", 4, code)]);
+    const m = await mgmtSummary(env, at, d.mon, code, true), LSn = m ? { left: m.shared ? m.c.left : m.c.left, shared: m.shared } : null;
+    const inp = await journeyInputs(code, N, TRr, PRr, LSn), x = short(A.run(JSON.parse(JSON.stringify(inp.S)), JSON.parse(JSON.stringify(inp.X)))), y = short(B.run(JSON.parse(JSON.stringify(inp.S)), JSON.parse(JSON.stringify(inp.X))));
+    n++; if (x !== y) changed.push({ code, name: N.name, before: x, after: y }); } catch (e) { err++; } }));
+  changed.sort((p, q) => p.code.localeCompare(q.code));
+  const res = { at: new Date().toISOString(), branch, students: codes.length, done: n, errors: err, changed };
+  await db.from("docs").upsert({ key: "sys:cjdiff", scope: "mgmt", data: res, updated_at: res.at }, { onConflict: "key" });
+  return res;
 }
 async function mgmtEnv() { const a = await mgmtApp(); if (!ENV[a.hash]) ENV[a.hash] = buildSandbox(a.src); return { env: ENV[a.hash], hash: a.hash }; }
 function mgmtDataCached() { if (!DATA || Date.now() - DATA.at > 60e3) { const p = mgmtData(db); DATA = { at: Date.now(), p }; p.catch(() => { DATA = null; }); } return DATA!.p; }
@@ -208,6 +232,14 @@ Deno.serve(async (req: Request) => {
     const { data: last } = await db.from("docs").select("updated_at").eq("key", "sys:portalcheck").maybeSingle();
     if (last && Date.now() - Date.parse(last.updated_at) < 120e3) return out({ ok: true, skipped: "ran in the last 2 minutes" });
     try { const r = await checkAll(); return out({ ok: true, students: r.students, shown: r.shown, checking: r.checking, mismatches: r.mismatches.length, sheetDiff: r.sheetDiff.length, ms: r.ms }); }
+    catch (e) { return out({ ok: false, error: String((e as any)?.message || e).slice(0, 120) }, 500); }
+  }
+
+  if (op === "cjdiff") {   // 1355 preview (counts only in the reply; the list goes to docs sys:cjdiff for management)
+    const br = String(b.branch || ""); if (!/^test-[\w.-]{1,30}$/.test(br)) return out({ ok: false, error: "branch" }, 400);
+    const { data: last } = await db.from("docs").select("updated_at").eq("key", "sys:cjdiff").maybeSingle();
+    if (last && Date.now() - Date.parse(last.updated_at) < 120e3) return out({ ok: true, skipped: "ran in the last 2 minutes" });
+    try { const r = await cjDiff(br); return out({ ok: true, students: r.students, done: r.done, errors: r.errors, changed: r.changed.length }); }
     catch (e) { return out({ ok: false, error: String((e as any)?.message || e).slice(0, 120) }, 500); }
   }
 

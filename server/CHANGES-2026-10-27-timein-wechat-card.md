@@ -47,3 +47,14 @@ picture with everything management checks, and management can ask a teacher to r
 
 ## Rollback
 Screens: branch `rollback-pre-1270`. Server: leave coe-wct/tables (unused without the screens).
+
+## 27 Oct afternoon · release 1272 (after Teacher Pam's real picture, 15:21)
+- **Privacy:** while a time-in / redo / "I'm in" screen picture is taken (share prompt → frame grabbed) the whole app is covered by a
+  neutral screen (logo + "Taking your screen picture…"); everything else is hidden, so the pay rate, student codes and phone numbers
+  can never be in the picture. After sharing starts, a 3-second countdown asks the teacher to bring the VooV window to the front.
+  (This adds ~3 s to a time-in / "I'm in".)
+- **Upload "0.0 Mbps"** was a test that never ran (the download rounds used the whole time budget on a slower line). Upload now has
+  its own ~4.5 s, is sent the way Cloudflare accepts from another site (no-cors), and a missing/≤0.05 result shows "not measured"
+  everywhere (older saved "↑ 0.0 Mbps" results too). Thresholds unchanged.
+- The checklist row is now "Screen proof · check VooV + date/time" with the neutral "…" (it is a reminder, not checked automatically).
+- Rollback: branch `rollback-pre-1272`.
