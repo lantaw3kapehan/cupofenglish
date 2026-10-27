@@ -71,8 +71,8 @@ select id, code, teacher, m, mh + adj sheet_v,
   before_start, after_start, dtot daily_total
 from x;
 
-drop view if exists public.coe_lc_calc;
-create view public.coe_lc_calc as
+-- APPLIED 27 Oct as a NEW view (no drop): the first draft coe_lc_calc stays in place, unused.
+create view public.coe_lc_calc3 as
 -- fin / avail are the database's OWN numbers: taught lessons (coe_lc_mon) + substitute lessons, with NO sheet calibration
 -- (coe_packages.fin_adj / avail_adj are "sheet fix kept" corrections that make today's numbers equal the sheet; they are
 -- shown separately so every difference can be explained).
@@ -104,5 +104,9 @@ select x.id, x.code, x.name, x.teacher, x.buy, x.months, x.subs, x.fin,
   x.fin_adj, x.avail_adj, case when x.enrolled is not null then x.fin_adj + coalesce(shr.sfa, 0) end pkg_fin_adj, x.avail_off
 from c2 x left join shr on shr.pkg = x.pkg;
 
-revoke all on public.coe_lc_days, public.coe_lc_mon, public.coe_lc_calc from anon, authenticated;
-grant select on public.coe_lc_days, public.coe_lc_mon, public.coe_lc_calc to service_role;
+revoke all on public.coe_lc_days, public.coe_lc_mon, public.coe_lc_calc, public.coe_lc_calc3 from anon, authenticated;
+grant select on public.coe_lc_days, public.coe_lc_mon, public.coe_lc_calc, public.coe_lc_calc3 to service_role;
+
+-- Daily check → docs sys:lessoncheck (function coe_lc_check_run, applied as migration coe_lc_check_run_fn) and
+-- cron job 'coe-lc-check' at 20:20 UTC = 04:20 Manila: select cron.schedule('coe-lc-check', '20 20 * * *', 'select public.coe_lc_check_run()');
+
