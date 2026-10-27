@@ -1310,14 +1310,14 @@ if(!API_READ.test(fn) && !API_BG.test(fn) && !SB_R.test(fn) && !/Seen|Ack|Pulse|
 if(FAST_W[fn] && (fastOn() || (fn === 'timeIn' && D && D.mgr && (function(){ try{ return localStorage.getItem('coe.fast') !== '0'; }catch(e){ return true; } })()))) return fastWrite(fn, args);
 if(fastOnM(fn, args)) return fastWrite(fn, args);   /* 14 Oct night: management saves through the database */   /* 14 Oct: fast layer (test users first) */
 if(!API_READ.test(fn) && !API_BG.test(fn) && !(SB_R.test(fn) && sbOn())) return apiNow(fn, ...args);   /* 14 Oct: API_BG reads also wait in the queue */
-const k = fn + '|' + JSON.stringify(args); if(API_FLY[k]) return API_FLY[k];
+const k = fn + '|' + JSON.stringify(args), _uiNow = Date.now() - (window._ui || 0) < 1500, _fly = API_FLY[k]; if(_fly && (_fly._ui || !_uiNow)) return _fly;   /* 1280: a tap never waits behind a queued background read */
 const go = () => apiNow(fn, ...args);
 if((SB_R.test(fn) || (fn === 'getBootstrap' && D && !D.mgr && D.me && D.me.name)) && sbOn()){ const ui = Date.now() - (window._ui || 0) < 1500;   /* 14 Oct pm: database copy first */
-  const real = () => ui || /^(getBootstrap|mgmtOverview|mgmtRenewals|mgmtTrialFus)$/.test(fn) ? go() : new Promise((res, rej) => { API_Q.push(() => go().then(res, rej)); apiPump(); });
-  const sp = sbRead(fn, args, real, ui); API_FLY[k] = sp; sp.then(() => delete API_FLY[k], () => delete API_FLY[k]); return sp; }
+  const real = () => _fly ? _fly : ui || /^(getBootstrap|mgmtOverview|mgmtRenewals|mgmtTrialFus)$/.test(fn) ? go() : new Promise((res, rej) => { API_Q.push(() => go().then(res, rej)); apiPump(); });
+  const sp = sbRead(fn, args, real, ui); sp._ui = ui; API_FLY[k] = sp; const _dl = () => { if(API_FLY[k] === sp) delete API_FLY[k]; }; sp.then(_dl, _dl); return sp; }
 const p = Date.now() - (window._ui || 0) < 1500 || /^(getBootstrap|refresh|mgmtOverview|mgmtRenewals|mgmtTrialFus)$/.test(fn) ? go()   
 : new Promise((res, rej) => { API_Q.push(() => go().then(res, rej)); apiPump(); });
-API_FLY[k] = p; p.then(() => delete API_FLY[k], () => delete API_FLY[k]); return p;
+p._ui = _uiNow; API_FLY[k] = p; const _dl = () => { if(API_FLY[k] === p) delete API_FLY[k]; }; p.then(_dl, _dl); return p;
 }
 const API_SAFE = /^(saveNote|markHomework|timeIn|classIn|timeOut|tNoteTag|tGoalsSave|tVisitAck|tMsgSeen|mgmtMsgSeen|tMsgAck|tPayVerify|mgmtTaskStatus|setActiveTick|setCaseDone|mgmtReportSent|tSetMeet|mgmtAvailSave|mgmtProfileSave|mgmtAgreeSave|saveStudent|tHwFlag)$/;    
 let API_PEND = 0;
@@ -6241,7 +6241,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1313;
+const COE_V = 1314;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -29403,7 +29403,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   window.__keepSame = function(fn, self, args){ var el = cur(); if(!el) return fn.apply(self, args);
     var pre = el.innerHTML, kids = [].slice.call(el.childNodes), y = window.scrollY, r = fn.apply(self, args), el2 = cur();
     if(el2 === el && el.innerHTML !== pre){ try{ if(window.__p1000) __p1000(); }catch(e){} try{ if(window.d1007) d1007(); }catch(e){} try{ if(window.__p1102) __p1102(); }catch(e){} }
-    try{ if(el2 === el){ var post = el.innerHTML; if(post !== pre){ if(post === el.__raw1170 && kids.length){ el.replaceChildren.apply(el, kids); if(Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y); } else el.__raw1170 = post; } } }catch(e){}
+    try{ if(el2 === el){ var post = el.innerHTML; if(post !== pre){ if(post === el.__raw1170 && kids.length && kids[0] === el.__fc1170){ el.replaceChildren.apply(el, kids); if(Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y); } else el.__raw1170 = post; } el.__fc1170 = el.firstChild; } }catch(e){}   /* 1280: put the old screen back only if it is our own finished drawing, never a loading placeholder */
     return r; };
   var S = window.swr; if(typeof S === 'function') window.swr = swr = function(k, call, set, paint){ return S.call(this, k, call, set, function(){ return window.__keepSame(paint, this, arguments); }); };
   ['renderHome', 'renderMoney', 'renderFinOv', 'renderPerf', 'renderActive', 'renderPayroll', 'renderMonitor', 'renderSchedule', 'renderActions', 'renderReports', 'renderAStudents'].forEach(function(n){
