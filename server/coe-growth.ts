@@ -183,13 +183,17 @@ async function growth(name: string, google: any) {
   table(PR, "Student code").forEach((r) => { const b = isD(cell(r, 2)) && bin(String(cell(r, 2)).slice(0, 7)); if (b && lcOf(cell(r, 3)) === lc) b.feedback++; });
   table(TD, "TOTAL LIFETIME UNITS").forEach((r) => { if (lcOf(cell(r, 1)) === lc) { k.units = num(cell(r, 18)) + num(cell(r, 19)) + num(cell(r, 20)); k.rank = String(cell(r, 6) || ""); k.lifetime = num(cell(r, 2)); } });
   const praise = praiseOf(AC, lc), gpr = (google && Array.isArray(google.praise) ? google.praise : []) as any[];
-  praise.forEach((x: any) => { const m = gpr.find((y: any) => y.subject === x.subject && String(y.when).split(" ")[0] === String(x.when).split(" ")[0]); if (m) x.when = m.when; });   // the sheet's own date display for rows Google has shown
+  { const used = new Set<number>(), day = (w: any) => String(w).split(" ")[0];   // the sheet's own date display for rows Google has shown (one-to-one, exact first)
+    praise.forEach((x: any) => { const i = gpr.findIndex((y: any, j: number) => !used.has(j) && y.subject === x.subject && y.when === x.when); if (i > -1) { used.add(i); x._m = 1; } });
+    praise.forEach((x: any) => { if (x._m) { delete x._m; return; } const i = gpr.findIndex((y: any, j: number) => !used.has(j) && y.subject === x.subject && day(y.when) === day(x.when) && String(y.when).indexOf(" ") < 0); if (i > -1) { used.add(i); x.when = gpr[i].when; } }); }
   const g: any = { name, month: MON[n.m - 1] + " " + n.y, evals, kpi: k, praise, career: career(TD, MS, lc, RK), attend: attend(TH, lc, now) };
   try { liveCareer(g, await liveUnits(lc, smSync(SM, now), now), now); } catch (_e) { /* Google's answer keeps working */ }
   // parts that stay on Google's last answer
+  // homework counts: the database copy of S-HOMEWORK no longer holds the whole month (it starts on 8 Oct), so Google's count is kept
+  if (google && google.kpi) { if (google.kpi.homework != null) k.homework = google.kpi.homework; if (google.kpi.prev && google.kpi.prev.homework != null) k.prev.homework = google.kpi.prev.homework; }
   g.record = google && google.record !== undefined ? google.record : null;
   g.peer = { titles: (google && google.peer && google.peer.titles) || [], list: (google && google.peer && google.peer.list) || [], visits: (google && google.peer && google.peer.visits) || [] };
-  g._src = { db: true, at: new Date(now).toISOString(), google: { peer: "Google Form (last copy)", visits: "Google (last copy; acknowledging needs the exact saved time)", record: "Google (last copy)", at: google ? google.__at || null : null } };
+  g._src = { db: true, at: new Date(now).toISOString(), google: { peer: "Google Form (last copy)", visits: "Google (last copy; acknowledging needs the exact saved time)", record: "Google (last copy)", homework: "Google (last copy; S-HOMEWORK copy starts 8 Oct)", at: google ? google.__at || null : null } };
   return g;
 }
 

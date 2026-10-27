@@ -26,10 +26,16 @@ changed after Google's copy was made (Google's Growth is itself cached up to 6 h
 - classIns / classOnTime / timeIns / onTime: database higher by 1–4. Counting the database's time-ins only up to the
   moment of Google's copy gives Google's number for 13 of 14 time-in counts (Cy 4 vs 5: a time-in at the edge) and is within
   1–3 for "I'm in" (Google's answer is computed before the copy is stored).
-- homework: database lower (e.g. Dezza 101 vs 121). The S-HOMEWORK tab now starts on 8 Oct (rows rewritten today), so
-  homework before 8 Oct is no longer in the sheet; Google will show the same once its cache refreshes.
+- homework: the database copy of S-HOMEWORK starts on 8 Oct (Dezza 101 vs Google 121, Ara 65 vs 106). **Fixed (coe-growth v4):**
+  homework this month and last month are taken from Google's stored answer, labelled `_src.google.homework`, until the
+  database holds the full history. No database table holds it: `writes` has markHomework only since 14 Oct (358 saves);
+  there is no homework table or archive copy (Apps Script archives S-HOMEWORK only after 400 days). T-TIMEIN's copy also
+  starts on 8 Oct, but Google's own counts match it, so time-in counts are unaffected. Homework is display-only on Growth
+  ("homework given"); rank, rate, units and pay come from T-DASH and do not use it.
 - attend (current month) and kpi.units: the T-HISTORY / T-DASH rows for today changed after Google's copy.
-- praise.when for Mayi (3 Sep): 10:29 in the sheet now vs 10:27 in Google's copy (two items with the same subject and day).
+- praise.when for Mayi (3 Sep): fixed in v4 (two items with the same subject and day are now matched one-to-one).
+- Re-run after v4: the only differences left are time-dependent (time-ins / "I'm in" after Google's copy, today's T-HISTORY /
+  T-DASH values); 2 of 14 teachers identical.
 Bugs found and fixed during the check: T-HISTORY header handling dropped one row per teacher; evaluation and visit times
 lost their milliseconds.
 
