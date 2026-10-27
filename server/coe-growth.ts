@@ -52,13 +52,13 @@ function table(R: any[], key: string) {
 
 // qaAll_
 function qaAll(R: any[]) {
-  const out = R.filter((x) => x.r >= 2).map((x) => { const r = x.v; while (r.length < 27) r.push(""); return r; }).filter((r) => t(r[2])).map((r) => {
+  const out = R.filter((x) => x.r >= 2).map((x) => { const r = x.v; while (r.length < 27) r.push(""); return { r, x }; }).filter(({ r }) => t(r[2])).map(({ r, x }) => {
     const sc = [7, 9, 11, 13, 15].map((j) => num(r[j]));
     const doms = QA_DOMAINS.map((n, i) => ({ name: n, score: sc[i], std: QA_STD[sc[i]] || "", comment: t(r[8 + i * 2]) }));
     const ok = sc.filter((x) => x > 0), avg = ok.length ? ok.reduce((a, b) => a + b, 0) / ok.length : 0;
     const per = isD(r[1]) ? MON[parts(r[1]).m - 1] + " " + parts(r[1]).y : t(r[1]);
     return {
-      ts: isD(r[0]) ? ms(r[0]) : 0, period: per, teacher: t(r[2]),
+      ts: (x as any).ts || (isD(r[0]) ? ms(r[0]) : 0), period: per, teacher: t(r[2]),
       date: isD(r[3]) ? r[3].slice(0, 10) : t(r[3]), obsDate: isD(r[4]) ? r[4].slice(0, 10) : t(r[4]), observed: t(r[5]), evaluator: t(r[6]),
       domains: doms, avg: Math.round(avg * 10) / 10, pct: Math.round(avg / 5 * 100), decision: t(r[17]).split(" — ")[0], decisionFull: t(r[17]),
       cont: t(r[18]), dev: t(r[19]), next: t(r[20]), evidence: t(r[21]), progress: t(r[22]), progressEv: t(r[23]), rec: t(r[24]), direction: t(r[25]), final: t(r[26]),
@@ -170,6 +170,20 @@ async function growth(name: string, google: any) {
     rows("T-HISTORY", like("data->>2")), Promise.resolve([] as any[]), rows("MASTERLIST"), rows("S-MONTHLY", (q: any) => q.like("data->>0", ym + "%")),
     db.from("docs").select("data").eq("key", "sys:ranks").maybeSingle().then((r: any) => r.data && Array.isArray(r.data.data) && r.data.data.length ? r.data.data : RANKS0),
   ]);
+  // 1362 · evaluations sent from the app are in the database at once (coe_qa_saves); the QA-DATA copy follows within 1–2 h.
+  //   A saved one shows until the copy has it (same teacher, evaluation date, evaluator and class observed); then the copy's row
+  //   is used, keeping the time of the first save so the app does not take it for a new evaluation. Refused by Google: never shown;
+  //   not confirmed by Google after 3 h and not in the copy: not shown.
+  const qk = (r: any[]) => [lcOf(cell(r, 2)), String(cell(r, 3)).slice(0, 10), lcOf(cell(r, 6)), lcOf(cell(r, 5))].join("|");
+  const SV = await db.from("coe_qa_saves").select("row,status,created_at").ilike("teacher", name.trim()).in("status", ["pending", "landed"]).gte("created_at", new Date(now - 30 * 864e5).toISOString())
+    .then((r: any) => r.data || [], () => []);
+  const inCopy: Record<string, number> = {}; QA.filter((x) => x.r >= 2).forEach((x) => { inCopy[qk(x.v)] = x.r; });
+  const keepTs: Record<number, number> = {};
+  SV.forEach((x: any, i: number) => { const r = Array.isArray(x.row) ? x.row.slice() : []; const k = qk(r), t0 = Date.parse(x.created_at);
+    if (inCopy[k]) { keepTs[inCopy[k]] = t0; return; }
+    if (x.status === "pending" && now - t0 > 3 * 3600e3) return;
+    r[0] = loc(t0); QA.push({ r: 1e6 + i, v: r, ts: t0 }); });
+  QA.forEach((x: any) => { if (keepTs[x.r]) x.ts = keepTs[x.r]; });
   const evals = qaAll(QA).filter((e) => e.teacher.toLowerCase() === lc);
   // the sheet copy keeps whole seconds; Google's answer carries the exact time the app uses to know an evaluation (keep it)
   const gev = (google && Array.isArray(google.evals) ? google.evals : []) as any[];
