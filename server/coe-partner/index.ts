@@ -55,16 +55,44 @@ async function rows(tab: string, col?: number, val?: string) {
   return (await pages(() => db.from("sheet_rows").select("data").eq("tab", tab).order("r"))).map((x: any) => x.data || []);
 }
 // ── the partner's students ──
-async function partnerSet(sources: string[]) {
-  const S = new Set(sources.map(norm).filter(Boolean)); const out: Record<string, { code: string; name: string; cn: string }> = {};
-  if (!S.size) return out;
-  const [DB, { data: PK }] = await Promise.all([rows("DATABASE"), pages(() => db.from("coe_packages").select("code,name,cn,source").is("removed_at", null).order("code")).then((d) => ({ data: d }))]);
-  DB.forEach((r: any[]) => { const k = norm(c(r, 0)).toUpperCase(); if (!/^ST-\d{4}-\d{3}$/.test(k) || !S.has(norm(c(r, 22)))) return;
-    out[k] = out[k] || { code: k, name: norm(c(r, 2)), cn: norm(c(r, 1)) }; });
-  (PK || []).forEach((p: any) => { const k = norm(p.code).toUpperCase(); if (!/^ST-\d{4}-\d{3}$/.test(k) || !S.has(norm(p.source))) return;
-    out[k] = out[k] || { code: k, name: norm(p.name), cn: norm(p.cn) }; });
-  // names from DATABASE when a code came from ACTIVE only
-  DB.forEach((r: any[]) => { const k = norm(c(r, 0)).toUpperCase(); const o = out[k]; if (o && !o.name) { o.name = norm(c(r, 2)); o.cn = o.cn || norm(c(r, 1)); } });
+// 27 Oct (privacy fix, Misty 14:35): membership comes ONLY from the student record — every DATABASE row for the code must carry one
+// of the partner's sources. Match is tolerant only to dash / space variants and a leading "Partner – " (e.g. "Jinan – Dr. Spring" =
+// "Partner – Jinan – Dr. Spring" = "Jinan - Dr. Spring"). If an ACTIVE package (coe_packages) carries a different source, or DATABASE
+// rows disagree, or the code is only in ACTIVE, the student is EXCLUDED and reported as a conflict. No records are changed.
+const canon = (x: unknown) => norm(x).replace(/[–—]/g, "-").replace(/\s*-\s*/g, " - ").toLowerCase().replace(/^partner - /, "");
+async function partnerScan(sources: string[]) {
+  const S = new Set(sources.map(canon).filter(Boolean)); const out: Record<string, { code: string; name: string; cn: string }> = {}, conflicts: any[] = [];
+  if (!S.size) return { PS: out, conflicts, overrides: [] as any[] };
+  const [DB, PK] = await Promise.all([rows("DATABASE"), pages(() => db.from("coe_packages").select("code,name,cn,source").is("removed_at", null).order("code"))]);
+  const dbs: Record<string, { srcs: Set<string>; raw: Set<string>; name: string; cn: string }> = {};
+  DB.forEach((r: any[]) => { const k = norm(c(r, 0)).toUpperCase(); if (!/^ST-\d{4}-\d{3}$/.test(k)) return; const o = dbs[k] = dbs[k] || { srcs: new Set(), raw: new Set(), name: "", cn: "" };
+    const sv = norm(c(r, 22)); if (sv) { o.srcs.add(canon(sv)); o.raw.add(sv); } o.name = o.name || norm(c(r, 2)); o.cn = o.cn || norm(c(r, 1)); });
+  const pks: Record<string, { srcs: Set<string>; raw: Set<string>; name: string; cn: string }> = {};
+  (PK || []).forEach((p: any) => { const k = norm(p.code).toUpperCase(); if (!/^ST-\d{4}-\d{3}$/.test(k)) return; const o = pks[k] = pks[k] || { srcs: new Set(), raw: new Set(), name: norm(p.name), cn: norm(p.cn) };
+    const sv = norm(p.source); if (sv) { o.srcs.add(canon(sv)); o.raw.add(sv); } });
+  const codes = new Set([...Object.keys(dbs), ...Object.keys(pks)]);
+  codes.forEach((k) => { const d = dbs[k], p = pks[k], dIn = !!d && [...d.srcs].some((x) => S.has(x)), pIn = !!p && [...p.srcs].some((x) => S.has(x));
+    if (!dIn && !pIn) return;
+    const dOk = !!d && d.srcs.size > 0 && [...d.srcs].every((x) => S.has(x)), pOk = !p || [...p.srcs].every((x) => S.has(x));
+    if (dOk && pOk) { out[k] = { code: k, name: d!.name || (p ? p.name : ""), cn: d!.cn || (p ? p.cn : "") }; return; }
+    conflicts.push({ code: k, name: (d && d.name) || (p && p.name) || "", cn: (d && d.cn) || (p && p.cn) || "", database: d ? [...d.raw].join(" | ") || "(empty)" : "(no DATABASE row)", active: p ? [...p.raw].join(" | ") || "(empty)" : "(no package)" }); });
+  // Misty 15:00 · per-partner manual list, applied AFTER the source rule: "Always include" / "Always exclude" (partner_overrides).
+  const { data: OV } = await db.from("partner_overrides").select("partner,code,mode,note,marked_by,marked_at");
+  const ov = ((OV || []) as any[]).filter((o) => S.has(canon(o.partner)));
+  ov.filter((o) => o.mode === "include").forEach((o) => { const k = norm(o.code).toUpperCase(), d = dbs[k], p = pks[k]; if (!d && !p) return;
+    out[k] = { code: k, name: (d && d.name) || (p && p.name) || "", cn: (d && d.cn) || (p && p.cn) || "" }; });
+  ov.filter((o) => o.mode === "exclude").forEach((o) => { delete out[norm(o.code).toUpperCase()]; });
+  conflicts.forEach((x) => { const o = ov.find((y) => norm(y.code).toUpperCase() === x.code); if (o) x.resolved = o.mode; });
+  return { PS: out, conflicts, overrides: ov };
+}
+async function partnerSet(sources: string[]) { return (await partnerScan(sources)).PS; }
+// 27 Oct · lessons = the ONE shared SQL definition (coe_portal_pkgs: management's Lesson summary, also used by the student portal).
+// No ACTIVE row → null → the page shows "核对中 · Being checked" (never a guess). Shared packages: the family's package numbers.
+async function lessonsOf(codes: string[]) {
+  const out: Record<string, any> = {}; if (!codes.length) return out;
+  for (let i = 0; i < codes.length; i += 400) { const { data, error } = await db.rpc("coe_portal_pkgs", { p_codes: codes.slice(i, i + 400) }); if (error) { console.error("coe_portal_pkgs", error.message); break; }
+    (data || []).forEach((x: any) => { const p = x.pkg; out[x.code] = p ? { total: Number(p.total) || 0, used: Number(p.used) || 0, left: Number(p.left) || 0, over: Number(p.over) || 0, valid: p.valid || "", start: p.start || "",
+      active: !!p.active, shared: !!p.shared, renew: !!p.active && (Number(p.left) || 0) <= 4 } : null; }); }
   return out;
 }
 async function packagesOf(codes: string[]) {
@@ -81,6 +109,64 @@ const isTrial = (t: string) => /trial|试听|\bTC\b/i.test(t);
 const isSub = (t: string) => /\bSUB\b|\bSC\b|代课/i.test(t);
 const mnl = (iso: string) => { const d = new Date(Date.parse(iso) + 8 * 3600e3).toISOString(); return { day: d.slice(0, 10), time: d.slice(11, 16) }; };
 const prevMonth = (m: string) => { const x = String(m || "").match(/^(\d{4})-(\d{2})$/); if (!x) return m; let y = +x[1], mo = +x[2] - 1; if (mo < 1) { mo = 12; y--; } return y + "-" + String(mo).padStart(2, "0"); };
+// ── 1343 · payments at the partner price (amounts only: never the normal price, margin, RMB paid or remittance status) ──
+// Source of truth: the SALES copy (sheet_rows tab SALES · every payment row since Jan 2023, with lesson package, free lessons and the
+// PARTNERSHIP label). A login's rows = SALES rows whose label is in partner_accounts.sales_labels. Logins without labels fall back to the
+// ACTIVE copy (coe_packages: current packages of their students only). Rates: partner_rates for the login's sources; no rate → null ("—").
+const lbl = (x: unknown) => norm(x).replace(/[–—]/g, "-").toLowerCase();
+const PKG: Record<number, [number, number]> = { 15: [15, 0], 33: [30, 3], 68: [60, 8] };
+function ageAt(r: any[], date: string): number | null { const b = ymd(c(r, 5)); if (b && date) { let a = +date.slice(0, 4) - +b.slice(0, 4); if (date.slice(5) < b.slice(5)) a--; return a >= 0 && a < 100 ? a : null; }
+  const n = Number(c(r, 6)); return n > 0 && n < 100 ? n : null; }
+function whoOf(inv: string): string[] { const t = String(inv || "").replace(/\.(pdf|png|jpe?g)$/i, "").replace(/^.*_/, "").replace(/^(students?)\s+/i, "").replace(/[.\s]+$/, "").trim();
+  return t ? t.split(/\s*[&,+、和]\s*/).map((x) => x.trim()).filter(Boolean) : []; }
+const cap = (x: string) => x.replace(/\b[a-z]/g, (m) => m.toUpperCase());
+async function payFor(acc: any, PS: Record<string, { code: string; name: string; cn: string }>, withWhy = false) {
+  const labels = new Set(((acc.sales_labels || []) as string[]).map(lbl).filter(Boolean));
+  const [{ data: RT }, DB] = await Promise.all([db.from("partner_rates").select("source,learner,lessons,amount,valid_from").in("source", (acc.sources || []).length ? acc.sources : ["-"]), rows("DATABASE")]);
+  const age: Record<string, any[]> = {}; DB.forEach((r: any[]) => { const k = norm(c(r, 0)).toUpperCase(); if (PS[k]) age[k] = r; });
+  const rate = (learner: string, lessons: number, date: string) => { const L = (RT || []).filter((x: any) => x.learner === learner && +x.lessons === lessons && (!x.valid_from || !date || x.valid_from <= date))
+      .sort((a: any, b: any) => String(b.valid_from || "").localeCompare(String(a.valid_from || ""))); return L.length ? Number(L[0].amount) : null; };
+  const byName: Record<string, string[]> = {}; Object.values(PS).forEach((p) => { const k = p.name.toLowerCase(); if (k) (byName[k] = byName[k] || []).push(p.code); });
+  const out: any[] = [], unclear: any[] = []; let src = "SALES";
+  if (labels.size) {
+    const [SA, { data: LK }] = await Promise.all([pages(() => db.from("sheet_rows").select("r,data").eq("tab", "SALES").gte("r", 3).order("r")), db.from("docs").select("data").eq("key", "sys:pkglink").maybeSingle()]);
+    const link: Record<number, string> = {}; (((LK as any)?.data?.act) || []).forEach((a: any) => { if (+a.link > 0 && PS[norm(a.c).toUpperCase()]) link[+a.link] = norm(a.c).toUpperCase(); });
+    const one = async (x: any) => { const r = x.data || [], L = lbl(c(r, 4)), date = ymd(c(r, 0)); if (!labels.has(L) || !date) return;
+      const pkg = Number(c(r, 2)) || 0, free = Number(c(r, 3)) || 0; if (!pkg && !free) return;
+      const names = whoOf(String(c(r, 1))).map((n) => { const cs = byName[n.toLowerCase()] || []; return { name: cap(n), code: cs.length === 1 ? cs[0] : "" }; });
+      if (link[x.r]) { const lc = link[x.r], i = names.findIndex((n) => n.name.toLowerCase() === PS[lc].name.toLowerCase()); if (i >= 0) names[i].code = lc; else if (names.length <= 1) names.splice(0, 1, { name: PS[lc].name, code: lc }); }
+      let learner = /adult/.test(L) ? "adult" : /ielts|toefl|\bpet\b|\bket\b/.test(L) ? "exam" : "young";
+      const ages = names.filter((n) => n.code && age[n.code]).map((n) => ageAt(age[n.code], date)).filter((a) => a != null) as number[];
+      if (learner === "young" && ages.some((a) => a >= 18)) learner = "unclear";
+      if (learner === "adult" && ages.length && ages.every((a) => a < 18)) learner = "unclear";
+      const amount = learner === "adult" || learner === "young" ? (pkg ? rate(learner, pkg, date) : 0) : null;
+      const mineName = (n: any) => n.code || (byName[n.name.toLowerCase()] || []).length > 0;   // only names of this partner's own students
+      const row: any = { date, names: names.map((n) => mineName(n) ? { name: n.code ? PS[n.code].name : n.name, cn: n.code ? PS[n.code].cn : "", code: n.code } : { name: "", cn: "", code: "", hidden: true }), lessons: pkg, free, learner, amount,
+        why: amount != null ? "" : learner === "exam" ? "exam" : learner === "unclear" ? "unclear" : "norate" };
+      row.ref = "SALES:" + (await sha([0, 1, 2, 3, 4].map((j) => r[j] == null ? "" : typeof r[j] === "object" ? JSON.stringify(r[j]) : String(r[j])).join("|"))).slice(0, 32); row.sheetRow = x.r;
+      out.push(row); if (withWhy && learner === "unclear") unclear.push({ ...row, label: norm(c(r, 4)), ages, sheetRow: x.r }); }
+    for (const x of SA) await one(x);
+  } else {
+    src = "ACTIVE"; const codes = Object.keys(PS);
+    const P = codes.length ? await pages(() => db.from("coe_packages").select("code,buy,enrolled").in("code", codes).is("removed_at", null).not("enrolled", "is", null).order("buy")) : [];
+    P.forEach((p: any) => { const code = norm(p.code).toUpperCase(), date = p.buy || "", e = Number(p.enrolled) || 0; if (!date || !e) return; const [pkg, free] = PKG[e] || [e, 0];
+      const a = age[code] ? ageAt(age[code], date) : null, learner = a == null ? "unclear" : a >= 18 ? "adult" : "young", amount = learner === "unclear" ? null : rate(learner, pkg, date);
+      const row: any = { date, names: [{ name: PS[code].name, cn: PS[code].cn, code }], lessons: pkg, free, learner, amount, why: amount != null ? "" : learner === "unclear" ? "unclear" : "norate" };
+      row.ref = "PKG:" + code + "|" + date + "|" + e; out.push(row); if (withWhy && learner === "unclear") unclear.push({ ...row, ages: [] }); });
+  }
+  out.sort((a, b) => b.date.localeCompare(a.date));
+  // Misty 14:55 · paid status (partner_payments, per partner source). No record: "topay" when the login tracks payments, else null ("—").
+  const { data: PP } = await db.from("partner_payments").select("partner,ref,status,marked_by,marked_at,note").in("partner", (acc.sources || []).length ? acc.sources : ["-"]);
+  const st: Record<string, any> = {}; (PP || []).forEach((x: any) => { if (!st[x.ref] || x.marked_at > st[x.ref].marked_at) st[x.ref] = x; });
+  out.forEach((r) => { const m = st[r.ref]; r.status = m ? m.status : acc.pay_tracking ? "topay" : null; if (withWhy && m) { r.markedBy = m.marked_by; r.markedAt = m.marked_at; r.note = m.note || ""; } });
+  const months: Record<string, { m: string; total: number; n: number; none: number }> = {};
+  out.forEach((r) => { const m = r.date.slice(0, 7), o = months[m] = months[m] || { m, total: 0, n: 0, none: 0 }; o.n++; if (r.amount == null) o.none++; else o.total += r.amount; });
+  const M = Object.values(months).sort((a, b) => b.m.localeCompare(a.m));
+  const sum = (s: string) => out.filter((r) => r.status === s && r.amount != null).reduce((a, r) => a + r.amount, 0), cnt = (s: string) => out.filter((r) => r.status === s).length;
+  M.forEach((m: any) => { const R = out.filter((r) => r.date.slice(0, 7) === m.m); m.paid = R.filter((r) => r.status === "paid" && r.amount != null).reduce((a, r) => a + r.amount, 0); m.topay = R.filter((r) => r.status === "topay" && r.amount != null).reduce((a, r) => a + r.amount, 0); m.topayN = R.filter((r) => r.status === "topay").length; });
+  return { src, rows: out, months: M, total: M.reduce((a, x) => a + x.total, 0), none: M.reduce((a, x) => a + x.none, 0), count: out.length, unclear,
+    tracking: !!acc.pay_tracking, paid: sum("paid"), topay: sum("topay"), paidN: cnt("paid"), topayN: cnt("topay"), unmarkedN: out.filter((r) => !r.status).length };
+}
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: h });
@@ -91,7 +177,7 @@ Deno.serve(async (req: Request) => {
   const ip = String(req.headers.get("x-forwarded-for") || "").split(",")[0].trim().slice(0, 60);
 
   // ───────── management: create / reset / deactivate partner logins ─────────
-  if (/^p(List|Save|Active)$/.test(op)) {
+  if (/^p(List|Save|Active|Rates|RateSet|Labels|Pay|Conflicts|PaySet|PayAll|PayTrack|Over|OverSet)$/.test(op)) {
     const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
     const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
     if (!s || new Date(s.exp).getTime() < Date.now() || s.mode !== "mgmt") return out({ ok: false, error: "AUTH" }, 401);
@@ -125,6 +211,58 @@ Deno.serve(async (req: Request) => {
       row.created_by = s.name;
       const { error } = await db.from("partner_accounts").insert(row); if (error) return out({ ok: false, msg: /duplicate/i.test(error.message) ? "That username is taken" : "Not saved" });
       return out({ ok: true });
+    }
+    if (op === "pRates") {   // 1343 · partner prices + SALES labels
+      const [{ data: R }, SA, { data: A }] = await Promise.all([db.from("partner_rates").select("id,source,learner,lessons,amount,valid_from,updated_at,updated_by").order("source").order("learner").order("lessons"),
+        pages(() => db.from("sheet_rows").select("data").eq("tab", "SALES").gte("r", 3).order("r")), db.from("partner_accounts").select("id,username,display_name,sources,sales_labels").order("created_at")]);
+      const L: Record<string, { label: string; n: number; last: string }> = {}; SA.forEach((x: any) => { const r = x.data || [], k = norm(c(r, 4)); if (!k || !ymd(c(r, 0))) return; const o = L[k] = L[k] || { label: k, n: 0, last: "" }; o.n++; const d = ymd(c(r, 0)); if (d > o.last) o.last = d; });
+      return out({ ok: true, rates: R || [], labels: Object.values(L).sort((a, b) => b.n - a.n), accounts: A || [] });
+    }
+    if (op === "pRateSet") {
+      const source = norm(b.source), learner = String(b.learner || ""), lessons = Math.round(Number(b.lessons) || 0), vf = ymd(b.valid_from) || null;
+      if (!source || !/^(adult|young)$/.test(learner) || lessons <= 0 || lessons > 500) return out({ ok: false, msg: "Choose a source, learner type and lesson count" });
+      let q = db.from("partner_rates").delete().eq("source", source).eq("learner", learner).eq("lessons", lessons); q = vf ? q.eq("valid_from", vf) : q.is("valid_from", null); await q;
+      if (b.amount === null || b.amount === "" || b.amount === undefined) return out({ ok: true });
+      const amount = Number(b.amount); if (!(amount >= 0) || amount > 100000) return out({ ok: false, msg: "Amount: a number of yuan" });
+      const { error } = await db.from("partner_rates").insert({ source, learner, lessons, amount, valid_from: vf, updated_by: s.name }); return out({ ok: !error, msg: error ? "Not saved" : "" });
+    }
+    if (op === "pLabels") {
+      const labels = (Array.isArray(b.labels) ? b.labels : []).map(norm).filter(Boolean).slice(0, 20);
+      const { error } = await db.from("partner_accounts").update({ sales_labels: labels, updated_at: new Date().toISOString(), updated_by: s.name }).eq("id", String(b.id || "")); return out({ ok: !error });
+    }
+    if (op === "pConflicts") {   // students excluded because DATABASE and ACTIVE sources disagree (for Ops to correct)
+      const srcs = Array.isArray(b.sources) && b.sources.length ? b.sources.map(norm) : null; let list: string[] = srcs || [];
+      if (!srcs) { const { data: A } = await db.from("partner_accounts").select("sources"); list = [...new Set(((A || []) as any[]).flatMap((a) => a.sources || []))]; }
+      const R = await partnerScan(list); return out({ ok: true, sources: list, included: Object.keys(R.PS).length, conflicts: R.conflicts });
+    }
+    if (op === "pOver" || op === "pOverSet") {   // Misty 15:00 · "Always include" / "Always exclude" student codes per login (who / when / note)
+      const { data: A } = await db.from("partner_accounts").select("id,display_name,sources").eq("id", String(b.id || "")).maybeSingle(); if (!A) return out({ ok: false, msg: "No such login" });
+      const partner = (A.sources || [])[0]; if (!partner) return out({ ok: false, msg: "This login has no source" });
+      if (op === "pOverSet") { const code = norm(b.code).toUpperCase(), mode = String(b.mode || "");
+        if (!/^ST-\d{4}-\d{3}$/.test(code)) return out({ ok: false, msg: "Student code like ST-2024-117" });
+        const S = new Set((A.sources || []).map(canon)); const { data: OV } = await db.from("partner_overrides").select("id,partner,code"); const ids = ((OV || []) as any[]).filter((o) => S.has(canon(o.partner)) && norm(o.code).toUpperCase() === code).map((o) => o.id);
+        if (ids.length) { const { error } = await db.from("partner_overrides").delete().in("id", ids); if (error) return out({ ok: false, msg: "Not saved" }); }
+        if (mode === "include" || mode === "exclude") { const { error } = await db.from("partner_overrides").insert({ partner, code, mode, note: norm(b.note).slice(0, 200) || null, marked_by: s.name }); if (error) return out({ ok: false, msg: "Not saved" }); } }
+      const R = await partnerScan(A.sources || []);
+      return out({ ok: true, overrides: R.overrides.map((o: any) => ({ ...o, name: (R.PS[norm(o.code).toUpperCase()] || {} as any).name || "" })), included: Object.keys(R.PS).length, conflicts: R.conflicts });
+    }
+    if (op === "pPaySet" || op === "pPayAll" || op === "pPayTrack") {   // Misty 14:55 · mark paid / undo / bulk "all up to date as paid" / turn tracking on-off
+      const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id || "")).maybeSingle(); if (!A) return out({ ok: false, msg: "No such login" });
+      const partner = (A.sources || [])[0]; if (!partner) return out({ ok: false, msg: "This login has no source" });
+      if (op === "pPayTrack") { const { error } = await db.from("partner_accounts").update({ pay_tracking: !!b.on, updated_at: new Date().toISOString(), updated_by: s.name }).eq("id", A.id); return out({ ok: !error }); }
+      const P = await partnerSet(A.sources || []), all = await payFor(A, P, true), byRef: Record<string, any> = {}; all.rows.forEach((r: any) => { byRef[r.ref] = r; });
+      let refs: string[] = [], status: string | null = null; const note = norm(b.note).slice(0, 200) || null;
+      if (op === "pPayAll") { const upto = ymd(b.upto) || new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10); refs = all.rows.filter((r: any) => r.date <= upto && r.status !== "paid").map((r: any) => r.ref); status = "paid"; }
+      else { refs = (Array.isArray(b.refs) ? b.refs : [b.ref]).map(String).filter((r: string) => byRef[r]); status = b.status === "paid" || b.status === "topay" ? b.status : null; }
+      if (!refs.length) return out({ ok: true, n: 0 });
+      const { error: de } = await db.from("partner_payments").delete().in("partner", A.sources).in("ref", refs); if (de) return out({ ok: false, msg: "Not saved" });
+      if (status) { const { error } = await db.from("partner_payments").insert(refs.map((r) => ({ partner, ref: r, sale_date: byRef[r].date, sales_row: byRef[r].sheetRow || null, status, note, marked_by: s.name })));
+        if (error) return out({ ok: false, msg: "Not saved" }); }
+      return out({ ok: true, n: refs.length });
+    }
+    if (op === "pPay") {   // management preview of a login's Payments tab, plus the rows whose learner type is unclear
+      const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id || "")).maybeSingle(); if (!A) return out({ ok: false, msg: "No such login" });
+      const P = await partnerSet(A.sources || []); return out({ ok: true, partner: A.display_name, ...(await payFor(A, P, true)) });
     }
     // pActive
     const { error } = await db.from("partner_accounts").update({ active: !!b.active, updated_at: new Date().toISOString(), updated_by: s.name }).eq("id", String(b.id || ""));
@@ -164,7 +302,7 @@ Deno.serve(async (req: Request) => {
   const nowIso = new Date().toISOString();
 
   if (op === "list") {
-    const [PK, { data: UP }, TR, PR, DB] = await Promise.all([packagesOf(codes),
+    const [LS, { data: UP }, TR, PR, DB] = await Promise.all([lessonsOf(codes),
       codes.length ? pages(() => db.from("classes").select("code,starts_at").in("code", codes).gte("starts_at", nowIso).lte("starts_at", new Date(Date.now() + 21 * 864e5).toISOString()).eq("cancelled", false).not("id", "like", "pend-%").order("starts_at")).then((d) => ({ data: d })) : Promise.resolve({ data: [] as any[] }),
       rows("TR-DATA"), rows("PR-DATA"), rows("DATABASE")]);
     const R: Record<string, any[][]> = {}, T: Record<string, any[]> = {}, P: Record<string, any[]> = {}, next: Record<string, string> = {};
@@ -172,10 +310,9 @@ Deno.serve(async (req: Request) => {
     TR.forEach((r: any[]) => { const k = norm(c(r, 33)).toUpperCase(); if (PS[k]) (T[k] = T[k] || []).push(trOf(r)); });
     PR.forEach((r: any[]) => { const k = norm(c(r, 4)).toUpperCase(); if (PS[k]) (P[k] = P[k] || []).push(prOf(r)); });
     ((UP as any[]) || []).forEach((x: any) => { if (!next[x.code]) next[x.code] = x.starts_at; });
-    const students = codes.map((k) => { const pk = PK[k] || [], sum = pk.reduce((a: any, p: any) => ({ total: a.total + p.total, used: a.used + p.used, left: a.left + p.left }), { total: 0, used: 0, left: 0 });
-      const valid = pk.map((p: any) => p.valid).filter(Boolean).sort().pop() || "";
-      return { code: k, name: PS[k].name, cn: PS[k].cn, level: R[k] ? nowOf(R[k], T[k] || [], P[k] || []) : "", active: pk.length > 0,
-        pk: pk.length ? { ...sum, valid, renew: pk.some((p: any) => p.renew) } : null, next: next[k] ? mnl(next[k]) : null }; })
+    const students = codes.map((k) => { const L = LS[k];
+      return { code: k, name: PS[k].name, cn: PS[k].cn, level: R[k] ? nowOf(R[k], T[k] || [], P[k] || []) : "", active: L ? L.active : !!next[k], checking: !L && !!next[k], nopkg: !L && !next[k],
+        pk: L ? { total: L.total, used: L.used, left: L.left, over: L.over, valid: L.valid, renew: L.renew, shared: L.shared } : null, next: next[k] ? mnl(next[k]) : null }; })
       .sort((a, b) => (+b.active - +a.active) || String(a.name).localeCompare(String(b.name)));
     return out({ ok: true, partner: { name: acc.display_name }, students, at: nowIso });
   }
@@ -183,8 +320,8 @@ Deno.serve(async (req: Request) => {
   if (op === "student") {
     const code = norm(b.code).toUpperCase(); if (!PS[code]) return out({ ok: false, error: "not your student" }, 403);
     const since = new Date(Date.now() - 120 * 864e5).toISOString();
-    const [PK, { data: UP }, { data: PAST }, R, TRr, PRr, { data: RL }, { data: FB }, { data: TT }] = await Promise.all([
-      packagesOf([code]),
+    const [LS, { data: UP }, { data: PAST }, R, TRr, PRr, { data: RL }, { data: FB }, { data: TT }] = await Promise.all([
+      lessonsOf([code]),
       db.from("classes").select("starts_at,ends_at,data").eq("code", code).gte("starts_at", nowIso).eq("cancelled", false).not("id", "like", "pend-%").order("starts_at").limit(12),
       db.from("classes").select("starts_at,ends_at,cancelled,data").eq("code", code).lt("starts_at", nowIso).gte("starts_at", since).not("id", "like", "pend-%").order("starts_at", { ascending: false }).limit(60),
       rows("DATABASE", 0, code), rows("TR-DATA", 33, code), rows("PR-DATA", 4, code),
@@ -210,7 +347,7 @@ Deno.serve(async (req: Request) => {
       .filter(Boolean).sort((a: any, b: any) => b.month.localeCompare(a.month));
     const cls = (x: any) => { const t = String((x.data && x.data.title) || ""); const a = mnl(x.starts_at); return { day: a.day, time: a.time, mins: Math.round((Date.parse(x.ends_at || x.data?.end || x.starts_at) - Date.parse(x.starts_at)) / 6e4) || 25, book: book((x.data && x.data.book) || ""), kind: isTrial(t) ? "trial" : isSub(t) ? "sub" : "class" }; };
     const past = ((PAST as any[]) || []).map((x: any) => ({ ...cls(x), status: x.cancelled ? "cancelled" : "done" }));
-    return out({ ok: true, student: { code, name: PS[code].name, cn: PS[code].cn }, packages: PK[code] || [], upcoming: ((UP as any[]) || []).map(cls), attendance: past, journey, reports });
+    return out({ ok: true, student: { code, name: PS[code].name, cn: PS[code].cn }, packages: LS[code] ? [{ ...LS[code], buy: LS[code].start }] : [], checking: !LS[code], upcoming: ((UP as any[]) || []).map(cls), attendance: past, journey, reports });
   }
 
   if (op === "teachers") {
@@ -243,6 +380,12 @@ Deno.serve(async (req: Request) => {
         open: days.reduce((a, x) => a + x.slots.length, 0) }; })
       .filter((t) => t.open > 0 || t.mine.length || t.sub).sort((a, b) => (b.mine.length - a.mine.length) || (b.open - a.open));
     return out({ ok: true, teachers, from: today, tz: "Asia/Shanghai (UTC+8)" });
+  }
+  if (op === "payments") {   // 1343
+    const { data: A } = await db.from("partner_accounts").select("sources,sales_labels,pay_tracking").eq("id", acc.id).maybeSingle();
+    const r = await payFor({ ...acc, ...(A || {}) }, PS, false); delete (r as any).unclear;
+    r.rows.forEach((x: any) => { x.names.forEach((n: any) => delete n.code); delete x.ref; delete x.sheetRow; });   // codes are not needed on the page
+    return out({ ok: true, ...r });
   }
   // 27 Oct (1341) · weekly schedule: Mon–Sun this week + next 2 weeks, Beijing time, 25-min slots every 30 min.
   //   open  = the teacher's open hours (management availability) minus booked classes, from now + 2 h; no open slots on approved whole-day leave
