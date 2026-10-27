@@ -10,6 +10,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { PROF } from "./prof.ts";
+import { renewFlags } from "./renew.ts";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const ORIGINS = ["https://app.cupofenglishatph.com"];
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
@@ -93,8 +94,12 @@ async function lessonsOf(codes: string[]) {
   for (let i = 0; i < codes.length; i += 400) { const { data, error } = await db.rpc("coe_portal_pkgs", { p_codes: codes.slice(i, i + 400) }); if (error) { console.error("coe_portal_pkgs", error.message); break; }
     (data || []).forEach((x: any) => { const p = x.pkg; out[x.code] = p ? { total: Number(p.total) || 0, used: Number(p.used) || 0, left: Number(p.left) || 0, over: Number(p.over) || 0, valid: p.valid || "", start: p.start || "",
       active: !!p.active, shared: !!p.shared, renew: !!p.active && (Number(p.left) || 0) <= 4 } : null; }); }
+  // 1356 · renewal month still counts lessons from before the renewal date → 核对中 (the same check as the student portal)
+  const rf = await renewFlags(db).catch((e) => { console.error("renewFlags", String(e)); return null; });
+  codes.forEach((k) => { const K = String(k).toUpperCase(); if (!rf || rf.has(K)) { if (out[K]) RCHK.add(K); out[K] = null; } });
   return out;
 }
+const RCHK = new Set<string>();   // codes held back by the renewal-month check (they have a package; shown as 核对中, never "no package")
 async function packagesOf(codes: string[]) {
   if (!codes.length) return {} as Record<string, any[]>;
   const { data: P } = await db.from("coe_packages").select("id,code,active,removed_at").in("code", codes).is("removed_at", null).eq("active", true).limit(3000);
@@ -344,7 +349,7 @@ Deno.serve(async (req: Request) => {
     PR.forEach((r: any[]) => { const k = norm(c(r, 4)).toUpperCase(); if (PS[k]) (P[k] = P[k] || []).push(prOf(r)); });
     ((UP as any[]) || []).forEach((x: any) => { if (!next[x.code]) next[x.code] = x.starts_at; });
     const students = codes.map((k) => { const L = LS[k];
-      return { code: k, name: PS[k].name, cn: PS[k].cn, level: R[k] ? nowOf(R[k], T[k] || [], P[k] || []) : "", active: L ? L.active : !!next[k], checking: !L && !!next[k], nopkg: !L && !next[k],
+      return { code: k, name: PS[k].name, cn: PS[k].cn, level: R[k] ? nowOf(R[k], T[k] || [], P[k] || []) : "", active: L ? L.active : (!!next[k] || RCHK.has(k)), checking: !L && (!!next[k] || RCHK.has(k)), nopkg: !L && !next[k] && !RCHK.has(k),
         pk: L ? { total: L.total, used: L.used, left: L.left, over: L.over, valid: L.valid, renew: L.renew, shared: L.shared } : null, next: next[k] ? mnl(next[k]) : null }; })
       .sort((a, b) => (+b.active - +a.active) || String(a.name).localeCompare(String(b.name)));
     return out({ ok: true, partner: { name: acc.display_name }, students, at: nowIso });

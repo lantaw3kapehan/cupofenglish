@@ -15,6 +15,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { activeRows, lessonsOf, historyOf, paymentsOf, partnerish } from "./pkg.ts";
 import { buildSandbox, buildJourney, buildPicture, mgmtApp, mgmtData, mgmtSummary } from "./mgmt.ts";
 import { parseHTML } from "npm:linkedom@0.18.5";
+import { renewFlags } from "./renew.ts";
 const PIC: Record<string, any> = {};
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const ORIGINS = ["https://app.cupofenglishatph.com"];
@@ -133,7 +134,7 @@ function appliedAT(env: any, d: any) { let p = APPLIED.get(d); if (!p) { const a
 const r1 = (x: any) => Math.round((Number(x) || 0) * 10) / 10;
 const firstName = (s: unknown) => String(s ?? "").trim().split(/\s+/)[0] || "";
 // the numbers management's Lesson summary shows, in the portal's shape; checks decide whether they can be shown (else 核对中)
-async function lessonsFor(code: string, L2: any, opts: { pkgcheck?: any; pend?: Set<string>; au?: Record<number, any> } = {}) {
+async function lessonsFor(code: string, L2: any, opts: { pkgcheck?: any; pend?: Set<string>; au?: Record<number, any>; rf?: Map<string, any> | null } = {}) {
   let m: any = null, why: string[] = [];
   try { const [{ env }, d] = await Promise.all([mgmtEnv(), mgmtDataCached()]); m = await mgmtSummary(env, await appliedAT(env, d), d.mon, code, true); }
   catch (e) { why.push("management summary unavailable: " + String((e as any)?.message || e).slice(0, 80)); }
@@ -163,6 +164,10 @@ async function lessonsFor(code: string, L2: any, opts: { pkgcheck?: any; pend?: 
     const own = (d.AT.rows as any[]).find((r) => String(r[C.code]).toUpperCase() === out.owner && r[C.enrolled] !== "" && r[C.start] === out.start);
     const g = own ? opts.au[own[C.row]] : undefined;
     if (own && g !== undefined && g !== "" && own[C.available] !== "" && Math.abs(Number(g) - Number(own[C.available])) > 0.05) why.push("Google sheet shows " + g + " left, database " + own[C.available]); } catch (_) { why.push("sheet check unavailable"); } }
+  // guard 4 · 1356 · the renewal month must count only lessons from the renewal date (renew.ts; clears once ACTIVE is fixed)
+  if (opts.rf === null) why.push("renewal-month check unavailable");
+  if (opts.rf) { const f = codes.map((k) => opts.rf!.get(k)).find(Boolean) || opts.rf.get(code);
+    if (f) why.push("renewal month counts lessons before the renewal date (" + f.buy + ": counted " + f.counted + ", from the renewal date " + f.from + ")"); }
   // the picture: management's own HTML; a sibling's Chinese name is left out (first name + code only)
   let html = m.html as string; if (shared) c.kids.forEach((k: any) => { if (k.code !== code && k.cn) html = html.split(k.cn).join(""); });
   return { ok: why.length === 0, why, n: out, html };
@@ -177,10 +182,11 @@ async function checkAll() {
   const cols: string[] = d.AT.cols, C: Record<string, number> = {}; cols.forEach((c, i) => C[c] = i);
   const codes = [...new Set((d.AT.rows as any[]).filter((r) => r[C.active]).map((r) => String(r[C.code]).toUpperCase()))].sort();
   const au: Record<number, any> = {}; (((PL as any) && (PL as any).act) || []).forEach((a: any) => { au[+a.r] = a.au; });
+  const rf = await renewFlags(db).catch((e) => { console.error("renewFlags", String(e)); return null; });
   const bad: any[] = [], sheet: any[] = []; let ok = 0, checking = 0;
   for (const code of codes) {
     let L2: any = null; try { L2 = await lessonsOf(db, code, R); } catch (_) { /* counted below */ }
-    const x = await lessonsFor(code, L2, { pkgcheck: PC && (PC as any).data, pend, au });
+    const x = await lessonsFor(code, L2, { pkgcheck: PC && (PC as any).data, pend, au, rf });
     if (!x.n) { if (!x.none) bad.push({ code, why: x.why }); continue; }
     if (x.ok) ok++; else { checking++; bad.push({ code, shows: "核对中", why: x.why, mgmt: { used: x.n.used, left: x.n.left, total: x.n.total, valid: x.n.valid } }); }
     const ownerRow = (d.AT.rows as any[]).find((r) => String(r[C.code]).toUpperCase() === x.n.owner && r[C.enrolled] !== "" && r[C.start] === x.n.start);
@@ -188,7 +194,7 @@ async function checkAll() {
     if (ownerRow && g !== undefined && g !== "" && Math.abs(Number(g) - Number(ownerRow[C.available])) > 0.05) sheet.push({ code, owner: x.n.owner, db: ownerRow[C.available], sheet: g });
   }
   const { data: M1 } = await db.rpc("coe_pkg_mon_rows");   // what one unpaged call returns (management's coe-mon makes one call)
-  const res = { at: new Date().toISOString(), app: hash, monRows: d.mon.length, monRowsOneCall: (M1 || []).length, students: codes.length, shown: ok, checking, mismatches: bad, sheetDiff: sheet, pkglinkAt: (PL as any)?.at || null, ms: Date.now() - t0 };
+  const res = { at: new Date().toISOString(), app: hash, monRows: d.mon.length, monRowsOneCall: (M1 || []).length, students: codes.length, shown: ok, checking, renewFlagged: rf ? rf.size : null, mismatches: bad, sheetDiff: sheet, pkglinkAt: (PL as any)?.at || null, ms: Date.now() - t0 };
   await db.from("docs").upsert({ key: "sys:portalcheck", scope: "mgmt", data: res, updated_at: res.at }, { onConflict: "key" });
   return res;
 }
@@ -235,7 +241,7 @@ Deno.serve(async (req: Request) => {
   if (op === "check") {   // daily reconciliation (pg_cron) → docs sys:portalcheck; the reply carries counts only
     const { data: last } = await db.from("docs").select("updated_at").eq("key", "sys:portalcheck").maybeSingle();
     if (last && Date.now() - Date.parse(last.updated_at) < 120e3) return out({ ok: true, skipped: "ran in the last 2 minutes" });
-    try { const r = await checkAll(); return out({ ok: true, students: r.students, shown: r.shown, checking: r.checking, mismatches: r.mismatches.length, sheetDiff: r.sheetDiff.length, ms: r.ms }); }
+    try { const r = await checkAll(); return out({ ok: true, students: r.students, shown: r.shown, checking: r.checking, renewFlagged: (r as any).renewFlagged, mismatches: r.mismatches.length, sheetDiff: r.sheetDiff.length, ms: r.ms }); }
     catch (e) { return out({ ok: false, error: String((e as any)?.message || e).slice(0, 120) }, 500); }
   }
 
@@ -374,7 +380,8 @@ Deno.serve(async (req: Request) => {
     const today0 = nowIso.slice(0, 10), [{ data: PC }, { data: PLK }] = await Promise.all([db.from("docs").select("data").eq("key", "sys:pkgcheck").maybeSingle(), db.from("docs").select("act:data->act").eq("key", "sys:pkglink").maybeSingle()]);
     const au: Record<number, any> = {}; (((PLK as any) && (PLK as any).act) || []).forEach((a: any) => { au[+a.r] = a.au; });
     const pendC = new Set<string>(((SRC as any[]) || []).filter((x: any) => x.pend != null).map(() => code));
-    const LS = await lessonsFor(code, L, { pkgcheck: PC && (PC as any).data, pend: pendC, au });
+    const rf = await renewFlags(db).catch((e) => { console.error("renewFlags", String(e)); return null; });
+    const LS = await lessonsFor(code, L, { pkgcheck: PC && (PC as any).data, pend: pendC, au, rf });
     const n = LS.n;   // management's Lesson summary numbers; not shown (核对中) unless every check passes
     const pkg = n && !LS.ok ? { checking: true } : n ? { checking: false, total: n.total, used: n.used, left: n.left, over: n.over, valid: n.valid, start: n.start, shared: n.shared, kids: n.kids || [], teachers: n.teachers,
       expired: !!(n.valid && n.valid < today0 && n.left > 0),
