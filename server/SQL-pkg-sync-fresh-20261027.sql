@@ -9,3 +9,14 @@ begin
   select (length(d) - length(replace(d, a, ''))) / length(a) into n; if n <> 1 then raise exception 'fresh anchor %', n; end if;
   execute replace(d, a, b);
 end $m$;
+
+-- Step 2 (applied 11:12 UTC): ACTIVE~ is re-copied more often than S-MONTHLY, so comparing the two copy times made "fresh" flap
+-- (pend set at one run, cleared at the next). Final rule: S-MONTHLY was copied AFTER the last change to any ACTIVE~ row.
+do $m2$ declare d text; n int;
+  a text := 'fresh := coalesce((select synced_at from sheet_tabs where tab = ''S-MONTHLY'') >= (select synced_at from sheet_tabs where tab = ''ACTIVE~''), false);';
+  b text := 'fresh := coalesce((select synced_at from sheet_tabs where tab = ''S-MONTHLY'') >= (select max(updated_at) from sheet_rows where tab = ''ACTIVE~''), false);   -- 27 Oct: S-MONTHLY copied after ACTIVE~ last CHANGED';
+begin
+  d := pg_get_functiondef('public.coe_pkg_sync'::regproc);
+  select (length(d) - length(replace(d, a, ''))) / length(a) into n; if n <> 1 then raise exception 'fresh anchor %', n; end if;
+  execute replace(d, a, b);
+end $m2$;
