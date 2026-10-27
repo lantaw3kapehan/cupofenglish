@@ -3126,10 +3126,16 @@ const MO = (r.monthly || []).filter(x => x && x.m).filter((x, i, A) => !/unmatch
     const sx = T.find(x => x.start), s0 = String((sx || {}).d || ''), L = Object.keys(fm).filter(b => b && !/^(OTHER|FREETALK|FREE|TRIAL|TC|SC|SUB|\(UNMATCHED\))$/.test(b)).sort((a, b) => fm[a].localeCompare(fm[b]));
     if(sx && !sx.bk && L.length) sx.bk = nm0[L[0]] || L[0];   /* the first book they had with us */
     T.forEach(x => { const b = String(x.bk || '').trim().split(/[\s,]+/)[0].toUpperCase(); if(b) have[b] = 1; });
-    L.forEach((b, k) => { if(have[b]) return; if(k === 0 && (!s0 || fm[b] <= s0.slice(0, 7))) return; if(s0 && fm[b] < s0.slice(0, 7)) return; const d = fm[b] + '-01', at = T.filter(x => x.d && x.d <= d && !/^Trial/.test(x.en)).sort((p, q) => p.d.localeCompare(q.d)).pop();
+    const used1355 = {}; MO.forEach(x => { if(/unmatched/i.test(String(x.t || ''))) return; const c = String(x.c || '').trim().split(/\s+/)[0].toUpperCase(); if(c) used1355[c] = (used1355[c] || 0) + (Number(x.u) || Number(x.n) || 0); });   /* 1355 · a monthly book counts only with ≥ 1.5 lessons (3 × 25 min) taught on it */
+    L.forEach((b, k) => { if(have[b]) return; if((used1355[b] || 0) < 1.5) return; if(k === 0 && (!s0 || fm[b] <= s0.slice(0, 7))) return; if(s0 && fm[b] < s0.slice(0, 7)) return; const d = fm[b] + '-01', at = T.filter(x => x.d && x.d <= d && !/^Trial/.test(x.en)).sort((p, q) => p.d.localeCompare(q.d)).pop();
       T.push({ d, i: at ? at.i : (chain.length ? chain[chain.length - 1] : T[0].i), en: 'Book up', zh: '教材升级', bk: nm0[b] || b }); });
     { const C0 = (S && (S.cls || (window.CLSM && S.code && CLSM[S.code]))) || [], cf = {};   /* 19 Oct: the new book already in the calendar (from its first class) */
-      (Array.isArray(C0) ? C0 : []).forEach(e => { if(!e || e.cancelled || !e.book || !e.start || /-TC$/i.test(String(e.title || '').replace(/\s+X$/i, ''))) return; const b = String(e.book).trim().split(/[\s,]+/)[0], B = b.toUpperCase(), d = cjDay(e.start); if(B && d && (!cf[B] || d < cf[B].d)) cf[B] = { b, d }; });
+      /* 1355 · only the student's regular course: no trial (-TC), substitute (-SC / SUB / 代课) or cancelled class; a book counts when one teacher has taught or booked it ≥ 3 times, and only the CURRENT book (the latest regular class taught, else the next one booked) can be a calendar Book up (Shirui: an old WondersG1 calendar label had become the top step while she is on OD2) */
+      const reg1355 = (Array.isArray(C0) ? C0 : []).filter(e => e && !e.cancelled && e.book && e.start && !/(^|[-\s])(TC|SC|SUB)([-\s]|$)|代课/i.test(String(e.title || '').trim())), nowIso1355 = new Date().toISOString(), cnt1355 = {};
+      reg1355.forEach(e => { const B = String(e.book).trim().split(/[\s,]+/)[0].toUpperCase(), t = String(e.teacher || '').trim().toLowerCase(); cnt1355[B + '|' + t] = (cnt1355[B + '|' + t] || 0) + 1; });
+      const past1355 = reg1355.filter(e => String(e.start) <= nowIso1355).sort((p, q) => String(p.start).localeCompare(String(q.start))), next1355 = reg1355.filter(e => String(e.start) > nowIso1355).sort((p, q) => String(p.start).localeCompare(String(q.start)));
+      const curE1355 = past1355.length ? past1355[past1355.length - 1] : next1355[0], cur1355 = curE1355 ? String(curE1355.book).trim().split(/[\s,]+/)[0].toUpperCase() : '';
+      reg1355.forEach(e => { const b = String(e.book).trim().split(/[\s,]+/)[0], B = b.toUpperCase(), d = cjDay(e.start); if(B !== cur1355 || !Object.keys(cnt1355).some(k => k.indexOf(B + '|') === 0 && cnt1355[k] >= 3)) return; if(B && d && (!cf[B] || d < cf[B].d)) cf[B] = { b, d }; });
       Object.keys(cf).forEach(B => { if(have[B] || fm[B] || /^(OTHER|FREETALK|FREE|TRIAL|TC|SC|SUB)$/.test(B)) return; have[B] = 1; const d = cf[B].d; if(s0 && d < s0) return; const at = T.filter(x => x.d && x.d <= d && !/^Trial/.test(x.en)).sort((p, q) => p.d.localeCompare(q.d)).pop();
         T.push({ d, i: at ? at.i : (chain.length ? chain[chain.length - 1] : T[0].i), en: 'Book up', zh: '教材升级', bk: cf[B].b, cal: 1 }); }); } } }   /* 19 Oct: each new book is a step up (Misty) */   /* 14 Oct: level-up month from the -DAILY tabs */
 const DT = T.filter(x => x.d && !/^Trial/.test(x.en) && !x.cal).sort((a, b) => a.d.localeCompare(b.d)); DT.forEach((x, k) => { const a = x.d.slice(0, 7), b = k + 1 < DT.length ? DT[k + 1].d.slice(0, 7) : '9999-99'; x.u = MO.length ? rd(MO.filter(y => y.m >= a && y.m < b).reduce((s, y) => s + U(y), 0)) : null; });
@@ -6290,7 +6296,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1329;
+const COE_V = 1330;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
