@@ -43,7 +43,7 @@ Response-time metrics in Performance · Substitute "I'll take it" button · Expo
 ## 1401 · 27 Oct 19:40 · every teacher + WeChat-group basics
 - **Everyone:** `sys:chat.pilot = "*"` = every active teacher (signed in or taught in the last 30 days), minus `exclude`
   (Virgo, Daniela, Marife, Lovely — Misty 19:31). Excluded teachers get no menu item, are not members, can't be tagged, and their
-  time-in does not post. Members now: Misty, Celine + April, Ara, Christian, Cy, Dezza, Julia, Kat, Mayi, Pam, Resa, Rose.
+  time-in does not post. Members (before 19:56): Misty, Celine + April, Ara, Christian, Cy, Dezza, Julia, Kat, Mayi, Pam, Resa, Rose.
 - Misty's management account (CupOfEnglish, works@) shows as **Misty** (`alias`). Celine has her own account.
 - **Alerts for every group message** (All Teachers / Time-in / Substitutes): sent ~45 s later and merged per person
   ("Team Chat · N new messages"). **Mute** per group (bell, in the group header); tags, @All, Needs reply, Confirm, Announcements and
@@ -54,3 +54,9 @@ Response-time metrics in Performance · Substitute "I'll take it" button · Expo
 - **Voice messages:** hold the microphone (up to 60 s), stored in the chat bucket.
 - Teachers' Team Chat sits second in their menu (after Today).
 - Next: teacher-to-teacher private chats (not now — All Teachers is the shared space), response times in Performance, substitute claim, export.
+
+## 27 Oct 19:56 · names (Misty: "CupOfEnglish, just CupOfEnglish, and Misty if I use my teacher account")
+- `alias` removed from sys:chat: the management account shows as **CupOfEnglish** (Management chip); Celine stays Celine.
+- Misty's teacher-mode login is now a normal member **Misty** (groups, members list, @-taggable, own unread, time-in auto-post,
+  direct chat "Teacher Misty" for management). Members: CupOfEnglish, Celine (Management) + April, Ara, Christian, Cy, Dezza, Julia,
+  Kat, Mayi, Misty, Pam, Resa, Rose. Config-only change, no app release needed.
