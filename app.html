@@ -1208,7 +1208,7 @@ function fastAns(fn, args){ if(/Msg/.test(fn)) try{ Object.keys(SB_FRESH).forEac
   if(fn === 'markHomework') return { ok: true, queued: true, hw: { time: t, text: String(a.text || '') } };
   if(fn === 'timeOut'){ let hrs = ''; try{ const ti = (D && D.timeIn) || {}, m = String(ti.time || '').match(/(\d{1,2}):(\d{2})/); if(m){ const n = new Date(), a0 = new Date(); a0.setHours(+m[1], +m[2], 0, 0); const h = (n - a0) / 36e5; if(h > 0 && h < 24) hrs = Math.round(h * 10) / 10; } }catch(e){} return { ok: true, queued: true, out: { time: t, hours: hrs } }; }   /* 790 */
   if(fn === 'timeIn'){ const fl = (D.schedule || []).filter(x => x.day === D.today && !x.cancelled).sort((p, q) => String(p.start).localeCompare(String(q.start)))[0], mins = fl ? Math.round((new Date(fl.start).getTime() - Date.now()) / 60000) : '';
-    return { ok: true, queued: true, timeIn: { time: t, status: fl ? (mins >= 30 ? 'On time' : 'Late') : 'No class today', mins, place: '', proof: '', flag: '' } }; }
+    return { ok: true, queued: true, timeIn: { time: t, status: D && D.mgr ? '' : fl ? (mins >= 30 ? 'On time' : 'Late') : 'No class today', mins: D && D.mgr ? '' : mins, place: '', proof: '', flag: '' } }; }
   if(fn === 'classIn'){ const c = args[1] || {}, x = (D.classIns || {})[c.id] || { time: t, status: 'On time', mins: '' }; return { ok: true, queued: true, classIn: Object.assign({}, x, { pending: false, proof: '', flag: '', speed: '' }) }; }
   if(fn === 'tFbSubmit'){ let t = ''; try{ t = fbTotals().total; }catch(e){} return { ok: true, queued: true, done: { total: t, at: 'sending' }, total: t, student: (typeof FBF !== 'undefined' && FBF && (FBF.student || FBF.name)) || args[1] }; }
   if(fn === 'tPeerSubmit'){ let t = '', p = ''; try{ const x = prTot(); t = x.t; p = x.p; }catch(e){} return { ok: true, queued: true, total: t, pct: p }; }
@@ -1307,7 +1307,7 @@ async function sbRead(fn, args, real, ui){
 function api(fn, ...args){
 if(!LIVE) return DEMO_API(fn, ...args);
 if(!API_READ.test(fn) && !API_BG.test(fn) && !SB_R.test(fn) && !/Seen|Ack|Pulse|Nudge/.test(fn)) SB_LASTW = Date.now();   /* a save: read fresh for 2 min */
-if(FAST_W[fn] && fastOn()) return fastWrite(fn, args);
+if(FAST_W[fn] && (fastOn() || (fn === 'timeIn' && D && D.mgr && (function(){ try{ return localStorage.getItem('coe.fast') !== '0'; }catch(e){ return true; } })()))) return fastWrite(fn, args);
 if(fastOnM(fn, args)) return fastWrite(fn, args);   /* 14 Oct night: management saves through the database */   /* 14 Oct: fast layer (test users first) */
 if(!API_READ.test(fn) && !API_BG.test(fn) && !(SB_R.test(fn) && sbOn())) return apiNow(fn, ...args);   /* 14 Oct: API_BG reads also wait in the queue */
 const k = fn + '|' + JSON.stringify(args); if(API_FLY[k]) return API_FLY[k];
@@ -1864,16 +1864,16 @@ if(shot.err === 'not shared') return toast('Choose Entire screen to time in');
 if(shot.surface && shot.surface !== 'monitor') return toast('Choose “Entire screen” so your date, time and LAN icon show');
 if(!shot.b64) return toast('The screen picture did not work. Tap again.'); }
 const b = $('tiGo'); if(b){ b.disabled = true; b.textContent = 'Saving…'; }
-const loc = await LOC;
+const loc = await Promise.race([LOC, new Promise(z => setTimeout(() => z({ locErr: 'timed out' }), D.shift ? 4000 : 9000))]);
 if(loc.denied){ if(b){ b.disabled=false; b.textContent = D.shift?'Confirm time-in':'Share entire screen · Time in'; } return toast('Allow location for this app to time in'); }
 const prev = D.timeIn; D.timeIn = { time: new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false}), status: 'Saving', mins: '', pending: true };
 closeSheet(); if(D.mgr) renderTeam(); else renderToday(); toast('Timed in · ' + D.timeIn.time + (shot ? ' · saving screen proof' : ''));
 try{
-const dv = Object.assign({ device: deviceInfo(), shotSurf: shot && shot.surface || '', shotLabel: shot && shot.label || '' }, await NET, loc);
+const dv = Object.assign({ device: deviceInfo(), shotSurf: shot && shot.surface || '', shotLabel: shot && shot.label || '' }, await Promise.race([NET, new Promise(z => setTimeout(() => z({}), D.shift ? 2500 : 8000))]), loc);
 let r; for(let i = 0; i < 2; i++){ try{ r = await api('timeIn', TOKEN, shot ? shot.b64 : '', shot ? 'image/jpeg' : '', dv); if(r && r.ok) break; }catch(e){ r = e; } await new Promise(z => setTimeout(z, 800)); }
 if(!r || !r.ok) throw r;
 D.timeIn = r.timeIn; store('set', KEY_D, JSON.stringify(D)); if(D.mgr){ renderTeam(); loadMgmt(true); } else if(VIEW==='today') renderToday();
-toast((r.dup ? 'Already timed in · ' : 'Time-in saved · ') + r.timeIn.time + (r.timeIn.status!=='On time' ? ' · ' + r.timeIn.status : '') + (r.timeIn.flag ? ' · ' + r.timeIn.flag : ''));
+toast((r.dup ? 'Already timed in · ' : 'Time-in saved · ') + r.timeIn.time + (r.timeIn.status && r.timeIn.status!=='On time' ? ' · ' + r.timeIn.status : '') + (r.timeIn.flag ? ' · ' + r.timeIn.flag : ''));
 }catch(e){ D.timeIn = prev; if(D.mgr) renderTeam(); else if(VIEW==='today') renderToday(); toast(e && e.msg ? e.msg : 'Time-in not saved. Tap Time in again.'); }
 }
 /* "I'm in": on the class laptop the teacher shares the VooV window once → one picture is saved as proof (sharing stops at once).
@@ -6241,7 +6241,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1312;
+const COE_V = 1313;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
