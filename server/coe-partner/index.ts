@@ -244,5 +244,50 @@ Deno.serve(async (req: Request) => {
       .filter((t) => t.open > 0 || t.mine.length || t.sub).sort((a, b) => (b.mine.length - a.mine.length) || (b.open - a.open));
     return out({ ok: true, teachers, from: today, tz: "Asia/Shanghai (UTC+8)" });
   }
+  // 27 Oct (1341) · weekly schedule: Mon–Sun this week + next 2 weeks, Beijing time, 25-min slots every 30 min.
+  //   open  = the teacher's open hours (management availability) minus booked classes, from now + 2 h; no open slots on approved whole-day leave
+  //   booked = start/end only; the partner's OWN students carry their names, every other booking is just "booked" (no names, no codes)
+  //   mine  = the partner's own students' classes in those 3 weeks, any teacher
+  if (op === "week") {
+    const LEN = 25, now = Date.now(), soon = now + 2 * 3600e3, today = new Date(now + 8 * 3600e3).toISOString().slice(0, 10);
+    const wd = (d: string) => (new Date(Date.parse(d + "T12:00:00+08:00") + 8 * 3600e3).getUTCDay() + 6) % 7;
+    const dayAt = (d: string, n: number) => new Date(Date.parse(d + "T12:00:00+08:00") + n * 864e5 + 8 * 3600e3).toISOString().slice(0, 10);
+    const mon = dayAt(today, -wd(today)), dates = Array.from({ length: 21 }, (_, n) => dayAt(mon, n));
+    const t0 = new Date(Date.parse(mon + "T00:00:00+08:00")).toISOString(), t1 = new Date(Date.parse(dates[20] + "T23:59:59+08:00")).toISOString();
+    const [{ data: AV }, CL, { data: LV }, { data: TT }] = await Promise.all([
+      db.from("docs").select("key,updated_at,data").like("key", "mgmt:mgmtAvailAll|%").order("updated_at", { ascending: false }).limit(30),
+      pages(() => db.from("classes").select("code,starts_at,ends_at,teachers,data").gte("starts_at", t0).lte("starts_at", t1).eq("cancelled", false).not("id", "like", "pend-%").order("starts_at")),
+      db.from("docs").select("data").eq("key", "mgmt:mgmtLeave|[]").maybeSingle(),
+      db.from("coe_book_titles").select("code,title").limit(500)]);
+    const BT: Record<string, string> = {}; (TT || []).forEach((x: any) => { BT[String(x.code).toLowerCase()] = x.title; });
+    const book = (x: string) => BT[String(x || "").toLowerCase()] || String(x || "").replace(/([a-z])([A-Z0-9])/g, "$1 $2");
+    const hours: Record<string, { name: string; days: string[]; at: number }> = {};
+    (AV || []).forEach((d: any) => ((d.data && d.data.teachers) || []).forEach((t: any) => { const k = String(t.name || "").toLowerCase(); if (!k) return;
+      const at = Number(t.at) || Date.parse(d.updated_at) || 0; if (!hours[k] || at > hours[k].at) hours[k] = { name: String(t.name), days: (t.days || []).slice(0, 7).map((x: any) => String(x || "")), at }; }));
+    const leave: Record<string, Set<string>> = {};
+    (((LV as any)?.data?.rows) || []).forEach((r: any) => { if (!/^approved/i.test(String(r.status || "")) || !/whole/i.test(String(r.part || "whole"))) return;
+      const k = String(r.teacher || "").toLowerCase(), f = ymd(r.from), t = ymd(r.to) || f; if (!k || !f) return;
+      for (let d = f, n = 0; d <= t && n < 60; d = dayAt(d, 1), n++) (leave[k] = leave[k] || new Set()).add(d); });
+    const hm = (ms: number) => new Date(ms + 8 * 3600e3).toISOString().slice(11, 16), dOf = (ms: number) => new Date(ms + 8 * 3600e3).toISOString().slice(0, 10);
+    const bk: Record<string, Record<string, { s: number; e: number; m: Set<string> }>> = {}, names: Record<string, string> = {}, mine: any[] = [];
+    (CL || []).forEach((x: any) => { const k = String((x.teachers || [])[0] || "").toLowerCase(); const s = Date.parse(x.starts_at), e = Date.parse(x.ends_at || x.data?.end || x.starts_at) || s + LEN * 6e4;
+      const code = norm(x.code).toUpperCase(), own = !!PS[code], title = String((x.data && x.data.title) || "");
+      if (own) mine.push({ date: dOf(s), t: hm(s), e: hm(e), teacher: String((x.teachers || [])[0] || ""), code, name: PS[code].name, cn: PS[code].cn,
+        book: book((x.data && x.data.book) || ""), kind: isTrial(title) ? "trial" : isSub(title) ? "sub" : "class" });
+      if (!k) return; names[k] = names[k] || String((x.teachers || [])[0]);
+      const o = (bk[k] = bk[k] || {}), key = String(s); (o[key] = o[key] || { s, e, m: new Set() }); if (e > o[key].e) o[key].e = e; if (own) o[key].m.add(code); });
+    const keys = new Set([...Object.keys(hours), ...Object.keys(bk).filter((k) => Object.values(bk[k]).some((b) => b.m.size))]);
+    const teachers = [...keys].map((k) => { const H = hours[k] || { name: names[k] || k, days: [], at: 0 }, B = Object.values(bk[k] || {}).sort((a, b) => a.s - b.s);
+      const days = dates.map((d) => { const w = wd(d), spec = String(H.days[w] || "").trim(), off = !!leave[k]?.has(d), open: string[] = [];
+        if (!off && spec && spec !== "full") spec.split(",").map((x) => x.trim()).filter(Boolean).forEach((x) => { const p = x.split("-"); if (p.length !== 2) return;
+          const s0 = Date.parse(d + "T" + p[0].trim().padStart(5, "0") + ":00+08:00"), e0 = Date.parse(d + "T" + p[1].trim().padStart(5, "0") + ":00+08:00"); if (isNaN(s0) || isNaN(e0)) return;
+          for (let t = s0; t + LEN * 6e4 <= e0; t += 30 * 6e4) { const te = t + LEN * 6e4; if (t >= soon && !B.some((y) => y.s < te && y.e > t)) open.push(hm(t)); } });
+        const booked = B.filter((b) => dOf(b.s) === d).map((b) => { const r: any = { t: hm(b.s), e: hm(b.e) }; if (b.m.size) r.m = [...b.m].map((cd) => ({ code: cd, name: PS[cd].name, cn: PS[cd].cn })); return r; });
+        return { date: d, w, hours: off ? "" : spec, full: spec === "full", off, open: [...new Set(open)].sort(), booked }; });
+      const pf = PROF[k] || null;
+      return { name: H.name, sub: pf ? pf.sub : "", hours: H.days, days, open: days.reduce((a, x) => a + x.open.length, 0), mine: days.reduce((a, x) => a + x.booked.filter((b: any) => b.m).length, 0) }; })
+      .filter((t) => t.open > 0 || t.mine > 0 || t.days.some((d) => d.booked.length)).sort((a, b) => (b.mine - a.mine) || (b.open - a.open) || a.name.localeCompare(b.name));
+    return out({ ok: true, from: mon, today, dates, teachers, mine: mine.sort((a, b) => (a.date + a.t).localeCompare(b.date + b.t)), tz: "Asia/Shanghai (UTC+8)" });
+  }
   return out({ ok: false, error: "unknown op" }, 400);
 });
