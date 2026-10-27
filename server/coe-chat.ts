@@ -121,7 +121,9 @@ Deno.serve(async (req: Request) => {
     }
     if (a === "poll") {
       const { data: L } = await db.from("chat_messages").select("id").order("id", { ascending: false }).limit(1);
-      return out({ ok: true, last: L && L[0] ? L[0].id : 0, groups: await groups(), today });
+      let inClass = false;
+      if (!mgmt) { const { data: C } = await db.from("classes").select("id").eq("day", today).lte("starts_at", now).gt("ends_at", now).eq("cancelled", false).contains("teachers", [lc(me)]).limit(1); inClass = !!(C && C.length); }
+      return out({ ok: true, last: L && L[0] ? L[0].id : 0, groups: await groups(), today, inClass });
     }
     if (a === "list") {
       const gid = str(b.gid, 60); if (!canSee(gid)) throw new Error("Not found"); const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? String(b.day) : today;
@@ -163,7 +165,7 @@ Deno.serve(async (req: Request) => {
       const others = mem.filter((n) => lc(n) !== lc(me));
       const loud: string[] = men.includes("all") || gid === "ann" || nr || cf || gid.startsWith("dm:") ? others : men;
       const what = body || (b.voice ? "Voice message" : "Sent a picture");
-      await push(loud, dn(me) + " · " + gname, (men.length ? "Tagged you: " : "") + what, "chat-" + m.id);
+      await push(loud, dn(me) + " · " + gname, (men.length ? "Tagged you: " : "") + what, "chat-at-" + m.id);   // chat-at-*: urgent (sw.js keeps it on screen)
       await push(others.filter((n) => !loud.some((x) => lc(x) === lc(n))), dn(me) + " · " + gname, what, "chat-" + m.id + "|" + gid, true);
       return out({ ok: true, msg: (await decorate([m]))[0] });
     }
@@ -205,11 +207,15 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, id: m.id });
     }
     if (a === "presence") {
-      const { data: P } = await db.from("coe_presence").select("name,at").gte("at", new Date(Date.now() - 24 * 3600e3).toISOString());
-      const { data: C } = await db.from("classes").select("teachers").eq("day", today).lte("starts_at", now).gt("ends_at", now).eq("cancelled", false);
-      const inC = new Set((C || []).flatMap((c: any) => (c.teachers || []).map((t: string) => lc(t)))), last: any = {};
+      const { data: P } = await db.from("coe_presence").select("name,at").gte("at", new Date(Date.now() - 7 * 864e5).toISOString());
+      const NOW = Date.now(), soon = new Date(NOW + 2 * 3600e3).toISOString();
+      const { data: C } = await db.from("classes").select("teachers,starts_at,ends_at").eq("day", today).lt("starts_at", soon).gt("ends_at", now).eq("cancelled", false);
+      const until: any = {}, next: any = {}, last: any = {};
+      (C || []).forEach((c: any) => (c.teachers || []).forEach((t: string) => { const k = lc(t), st = Date.parse(c.starts_at), en = Date.parse(c.ends_at);
+        if (st <= NOW) { if (!until[k] || en > until[k]) until[k] = en; } else if (!next[k] || st < next[k]) next[k] = st; }));
       (P || []).forEach((x: any) => { const k = lc(x.name); if (!last[k] || x.at > last[k]) last[k] = x.at; });
-      return out({ ok: true, members: everyone.map((n) => ({ name: n, mgmt: isMg(n), last: last[lc(n)] || null, online: !!last[lc(n)] && Date.now() - new Date(last[lc(n)]).getTime() < 3 * 60e3, inClass: inC.has(lc(n)) })) });
+      const iso = (t: number) => t ? new Date(t).toISOString() : null;
+      return out({ ok: true, members: everyone.map((n) => { const k = lc(n); return { name: n, mgmt: isMg(n), last: last[k] || null, online: !!last[k] && NOW - new Date(last[k]).getTime() < 3 * 60e3, inClass: !!until[k], until: iso(until[k]), next: iso(next[k]) }; }) });
     }
     return out({ ok: false, error: "Unknown action" }, 400);
   } catch (e) { return out({ ok: false, error: String((e as any)?.message || e) }); }

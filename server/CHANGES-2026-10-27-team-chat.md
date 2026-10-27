@@ -54,3 +54,21 @@ Response-time metrics in Performance · Substitute "I'll take it" button · Expo
 - **Voice messages:** hold the microphone (up to 60 s), stored in the chat bucket.
 - Teachers' Team Chat sits second in their menu (after Today).
 - Next: teacher-to-teacher private chats (not now — All Teachers is the shared space), response times in Performance, substitute claim, export.
+
+## 1402 + 1403 · 27 Oct 20:15 · design, mention sound, status, unread numbers
+- Design (Misty 19:56): one three-pane surface filling the screen (chats 260 px · conversation · members 260 px; members are a toggle under
+  1280 px and a sheet on phones); sidebar-sized list (15 px, no "Teacher" prefix, 28 px avatars); Reply/Edit/Pin/Hide as a small icon toolbar
+  on hover (laptop) or long-press (phone); quiet "Seen by"; consecutive messages grouped; own and management bubbles teal; composer chips in
+  one scrolling row; "No more messages today"; header "Today · N members · N online", Mute / History / Search / Members / Sound.
+- Mention sound (Misty 19:57): chime.wav (7 KB, served with the app) when a new message tags me / @All / Needs reply / a direct message,
+  on any screen; not for ordinary group messages; held while my class runs and played when it ends; "Tap to turn on chat sounds" if the
+  browser blocks sound; "Sound on/off" in the chat header (default on); purple pulsing Team Chat badge for mentions.
+  Phone alerts for those are urgent (tag chat-at-*): they stay on screen until clicked (requireInteraction, Android/desktop Chrome) and vibrate
+  longer on Android. The sound of a phone alert is the phone's own notification sound (iPhone: system sound).
+- Fixed: chat phone alerts never reached phones (names were not lower-cased for coe_push_subs — every chat alert said "no phone" before 20:10).
+- Status (Misty 19:59): Members in three sections ONLINE · IN CLASS · AWAY; "In class · until 20:25" (no student name); last seen with the day
+  ("Yesterday 22:05", "Mon 21:55"); "Not opened yet"; "Next class 20:40" for away teachers within 2 hours.
+- Unread numbers (Misty 20:00): each group and direct chat shows its unread number (purple when it includes a mention, teal otherwise);
+  the Team Chat menu item shows the total.
+- Retention: chat rows and the chat bucket are kept in CupOfEnglish's database; no cleanup job touches them (checked coe-log-clean,
+  coe-daily-archive, coe-speed-trim).
