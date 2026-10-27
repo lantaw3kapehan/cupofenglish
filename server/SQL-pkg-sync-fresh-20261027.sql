@@ -20,3 +20,17 @@ begin
   select (length(d) - length(replace(d, a, ''))) / length(a) into n; if n <> 1 then raise exception 'fresh anchor %', n; end if;
   execute replace(d, a, b);
 end $m2$;
+
+-- Step 3 (applied 11:3x UTC): ACTIVE~ rows keep changing (any edit anywhere) so a tab-wide test still blocked every fix. Final rule is per
+-- row: a package's sheet fix is only taken when S-MONTHLY was copied after THAT ACTIVE~ row last changed.
+do $m3$ declare d text; n int;
+  a1 text := E'p.code) pkg\n    from coe_packages p join cc c on c.id = p.id join (';
+  b1 text := E'p.code) pkg, (select x.updated_at from sheet_rows x where x.tab = ''ACTIVE~'' and x.r = p.sheet_r) s_at\n    from coe_packages p join cc c on c.id = p.id join (';
+  a2 text := E'    sf := rec.s_fin';
+  b2 text := E'    fresh := coalesce((select synced_at from sheet_tabs where tab = ''S-MONTHLY'') >= rec.s_at, false);   -- 27 Oct: per row – S-MONTHLY copied after this ACTIVE~ row last changed\n    sf := rec.s_fin';
+begin
+  d := pg_get_functiondef('public.coe_pkg_sync'::regproc);
+  select (length(d) - length(replace(d, a1, ''))) / length(a1) into n; if n <> 1 then raise exception 'a1 %', n; end if;
+  select (length(d) - length(replace(d, a2, ''))) / length(a2) into n; if n <> 1 then raise exception 'a2 %', n; end if;
+  execute replace(replace(d, a1, b1), a2, b2);
+end $m3$;
