@@ -56,9 +56,9 @@ Deno.serve(async (req: Request) => {
     const need = () => { if (!mgmt) throw new Error("Management only"); };
     const msg = async (id: number) => { const { data } = await db.from("chat_messages").select("*").eq("id", id).maybeSingle(); if (!data || !canSee(data.gid)) throw new Error("Not found"); return data; };
     async function signed(rows: any[]) {
-      const P = rows.filter((r) => r.img_path).map((r) => r.img_path); if (!P.length) return rows;
-      const { data } = await db.storage.from("chat").createSignedUrls(P, 3600); const U: any = {}; (data || []).forEach((x: any) => { if (x.path) U[x.path] = x.signedUrl; });
-      return rows.map((r) => r.img_path ? { ...r, img: U[r.img_path] || null } : r);
+      const P = rows.flatMap((r) => r.img_path ? [r.img_path, ...((r.meta && Array.isArray(r.meta.imgs)) ? r.meta.imgs : [])] : []); if (!P.length) return rows;
+      const { data } = await db.storage.from("chat").createSignedUrls([...new Set(P)], 3600); const U: any = {}; (data || []).forEach((x: any) => { if (x.path) U[x.path] = x.signedUrl; });
+      return rows.map((r) => r.img_path ? { ...r, img: U[r.img_path] || null, imgs: r.meta && Array.isArray(r.meta.imgs) ? r.meta.imgs.map((x: string) => U[x] || null).filter(Boolean) : null } : r);
     }
     async function decorate(rows: any[]) {
       if (!rows.length) return rows;
@@ -181,19 +181,21 @@ Deno.serve(async (req: Request) => {
       const cid = str(b.cid, 40), ckey = cid ? "c:" + lc(me) + ":" + cid : null;   // a retry of the same message never posts twice
       if (ckey) { const { data: ex } = await db.from("chat_messages").select("*").eq("ukey", ckey).maybeSingle(); if (ex) return out({ ok: true, msg: (await decorate([ex]))[0], again: true }); }
       const body = str(b.body, 2000), parent = Number(b.parent_id) || null; let img_path = null;
-      if (b.img) img_path = await upload(String(b.img), "m"); else if (b.voice) img_path = await upload(String(b.voice), "v");
+      const imgP: string[] = [];   // 1405: up to 5 pictures in one message (first in img_path, all in meta.imgs)
+      if (Array.isArray(b.imgs) && b.imgs.length) { for (const x of b.imgs.slice(0, 5)) imgP.push(await upload(String(x), "m")); img_path = imgP[0]; }
+      else if (b.img) img_path = await upload(String(b.img), "m"); else if (b.voice) img_path = await upload(String(b.voice), "v");
       if (!body && !img_path) throw new Error("Empty message");
       const mem = members(gid); let men = (Array.isArray(b.mentions) ? b.mentions : []).map(String).filter((n: string) => n === "all" || mem.some((x) => lc(x) === lc(n)));
       men = [...new Set(men.map((n: string) => n === "all" ? "all" : mem.find((x) => lc(x) === lc(n))!))];
       const nr = mgmt && !!b.needs_reply, cf = mgmt && !!b.confirm;
       const row = { gid, author: me, author_mgmt: mgmt, kind: b.voice && img_path ? "voice" : img_path ? "image" : (QUICK.includes(body) && parent ? "quick" : "text"), body, img_path, mentions: men, needs_reply: nr,
-        reply_by: nr && b.reply_by ? new Date(String(b.reply_by)).toISOString() : null, confirm: cf, pinned: mgmt && !!b.pin, parent_id: parent, ukey: ckey };
+        reply_by: nr && b.reply_by ? new Date(String(b.reply_by)).toISOString() : null, confirm: cf, pinned: mgmt && !!b.pin, parent_id: parent, ukey: ckey, meta: imgP.length > 1 ? { imgs: imgP } : null };
       const m = await insertMsg(row);
       await markReplied(gid, parent);
       const gname = gid.startsWith("dm:") ? (mgmt ? "Management" : "Teacher " + me) : ((await db.from("chat_groups").select("name").eq("id", gid).maybeSingle()).data?.name || "Team Chat");
       const others = mem.filter((n) => lc(n) !== lc(me));
       const loud: string[] = men.includes("all") || gid === "ann" || nr || cf || gid.startsWith("dm:") ? others : men;
-      const what = body || (b.voice ? "Voice message" : "Sent a picture");
+      const what = body || (b.voice ? "Voice message" : imgP.length > 1 ? "Sent " + imgP.length + " pictures" : "Sent a picture");
       await push(loud, dn(me) + " · " + gname, (men.length ? "Tagged you: " : "") + what, "chat-at-" + m.id);   // chat-at-*: urgent (sw.js keeps it on screen)
       await push(others.filter((n) => !loud.some((x) => lc(x) === lc(n))), dn(me) + " · " + gname, what, "chat-" + m.id + "|" + gid, true);
       return out({ ok: true, msg: (await decorate([m]))[0] });

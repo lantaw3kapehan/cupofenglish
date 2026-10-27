@@ -89,3 +89,16 @@ Response-time metrics in Performance · Substitute "I'll take it" button · Expo
 - Privacy: teacher tokens get names only from presence (no online / in class / last seen), no per-person readers list, and receipt counts
   only on their own messages ("Seen by N"). Management unchanged. coe-train "online" (management Online now) already refuses teachers.
 - Retention: chat rows and the chat bucket stay in CupOfEnglish's database; nothing is deleted by the app; no cleanup job touches them.
+
+## 1405 · 27 Oct 20:55 · paste / drop pictures (Misty 20:33)
+- Message box: paste a picture (Ctrl/Cmd+V — e.g. a copied time-in card or the partner Weekly class times picture) or drag pictures
+  onto the chat. They wait as small previews above the box (✕ removes one); nothing is sent until Send. Up to 5 per message
+  ("Up to 5 pictures per message · added N"); each is shrunk to ≤ 300 KB; the picture button now takes several files.
+- A paste with only text stays plain text; a paste with a picture and text keeps both (text goes into the box).
+- Where the box is off (Time-in and Announcements for teachers, History) a dropped picture shows "Pictures can't be sent in this chat";
+  drops inside Team Chat no longer trigger the class-video drop message.
+- Several pictures show as a small gallery (tap to enlarge); the alert says "Sent N pictures".
+- Server coe-chat v8: send accepts imgs (max 5, each checked and ≤ 400 KB as before); the first is img_path, all are in meta.imgs; all are
+  signed for 1 hour like single pictures. Retry de-duplication (cid) unchanged.
+- Laptop header: when the side panel narrows the chat, the header buttons show icons only (names kept for screen readers) so the title
+  "All Teachers · Today · N members" stays on one line (it wrapped into a narrow column in 1404).
