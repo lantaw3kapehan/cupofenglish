@@ -1,9 +1,9 @@
-// CupOfEnglish · coe-chat (27 Oct 2026 · 1400–1406): Team Chat — groups + direct chats, @mentions, seen/replied receipts,
+// CupOfEnglish · coe-chat (27 Oct 2026 · 1400–1415): Team Chat — groups + direct chats, @mentions, seen/replied receipts,
 // needs-reply, confirm, pinned, pictures (up to 5 per message), voice, time-in auto-post, search, Today/History, alerts for every group message
 // (merged, mutable), management roster (add / remove a teacher), retry-safe sending (cid). Teachers never receive other people's presence or
 // per-person receipts. Kept in CupOfEnglish's database: nothing is deleted by the app (teachers can edit, shown "edited"; management can hide).
 // Phone alerts: chat_outbox → coe_push_queue (coe_chat_out, every minute, held while the teacher has a class running, merged per person).
-// Flag: docs sys:chat { enabled, pilot:[teacher names] | "*", exclude?:[names], mgmt?:[names], alias?:{account:name} }.
+// Flag: docs sys:chat { enabled, pilot:[teacher names] | "*", exclude?:[names], gx?:{ groupId:[names left out] }, mgmt?:[names], alias?:{account:name} }.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -62,8 +62,11 @@ Deno.serve(async (req: Request) => {
     const isMg = (n: string) => mg.some((x) => lc(x) === lc(n));
     if (Array.isArray(cfg.exclude)) { const ex = new Set(cfg.exclude.map((x: unknown) => lc(String(x)))); pilot = pilot.filter((p) => !ex.has(lc(p))); }
     const everyone = [...new Set([...mg, ...pilot])];
-    const members = (gid: string) => gid.startsWith("dm:") ? [...mg, ...pilot.filter((p) => "dm:" + lc(p) === gid)] : everyone;
-    const canSee = (gid: string) => !gid.startsWith("dm:") || mgmt || gid === "dm:" + lc(me);
+    // 1413 (Misty 23:27): per-group membership · sys:chat gx = { groupId: [teacher names left out of that group] }; checked here on every action
+    const gx: Record<string, string[]> = cfg.gx && typeof cfg.gx === "object" ? cfg.gx : {};
+    const inGroup = (n: string, gid: string) => isMg(n) || !(Array.isArray(gx[gid]) ? gx[gid] : []).some((x) => lc(String(x)) === lc(n));
+    const members = (gid: string) => gid.startsWith("dm:") ? [...mg, ...pilot.filter((p) => "dm:" + lc(p) === gid)] : everyone.filter((n) => inGroup(n, gid));
+    const canSee = (gid: string) => gid.startsWith("dm:") ? (mgmt || gid === "dm:" + lc(me)) : (mgmt || inGroup(me, gid));
     const need = () => { if (!mgmt) throw new Error("Management only"); };
     const msg = async (id: number) => { const { data } = await db.from("chat_messages").select("*").eq("id", id).maybeSingle(); if (!data || !canSee(data.gid)) throw new Error("Not found"); return data; };
     async function signed(rows: any[]) {
@@ -94,7 +97,7 @@ Deno.serve(async (req: Request) => {
       const ids = L.map((g: any) => g.id);
       if (up) await db.from("chat_groups").upsert(L.filter((g: any) => g.kind === "direct").map((g: any) => ({ id: g.id, name: g.name, kind: "direct", sort: 100 })), { onConflict: "id", ignoreDuplicates: true });
       const un: any = {}, at: any = {}; (U || []).forEach((x: any) => { const m = x.chat_messages, g = m.gid; if (!ids.includes(g)) return; un[g] = (un[g] || 0) + 1; if ((m.mentions || []).some((n: string) => lc(n) === lc(me) || n === "all") || m.needs_reply) at[g] = (at[g] || 0) + 1; });
-      return L.map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, unread: un[g.id] || 0, tagged: at[g.id] || 0 }));
+      return L.filter((g: any) => canSee(g.id)).map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, unread: un[g.id] || 0, tagged: at[g.id] || 0 }));
     }
     async function push(to: string[], title: string, body: string, tag: string, soft = false) {
       let T = [...new Set(to.filter((n) => n && lc(n) !== lc(me)))]; if (!T.length) return;
@@ -130,7 +133,18 @@ Deno.serve(async (req: Request) => {
     }
     if (a === "roster" || a === "member") {   // management: who is in Team Chat (applies to every group and direct chat)
       need();
-      if (a === "member") {
+      if (a === "member" && b.gid) {   // 1413: one group only (e.g. Time-in only); the teacher's chat with management is not affected
+        const who = str(b.name, 40), gid = str(b.gid, 60); if (!who) throw new Error("Pick a teacher");
+        const { data: G1 } = await db.from("chat_groups").select("id,name,kind").eq("id", gid).maybeSingle(); if (!G1 || G1.kind !== "group") throw new Error("Pick a group");
+        const { data: cur } = await db.from("docs").select("data").eq("key", "sys:chat").maybeSingle(); const base = (cur && cur.data) || cfg;
+        const GX: Record<string, string[]> = base.gx && typeof base.gx === "object" ? { ...base.gx } : {}; const L0 = (Array.isArray(GX[gid]) ? GX[gid] : []).map(String), has = L0.some((x) => lc(x) === lc(who));
+        if (b.on ? has : !has) {
+          GX[gid] = b.on ? L0.filter((x) => lc(x) !== lc(who)) : [...L0, who]; if (!GX[gid].length) delete GX[gid];
+          await db.from("docs").update({ data: { ...base, gx: GX }, updated_at: now }).eq("key", "sys:chat"); CFG = null;
+          await db.from("chat_messages").insert({ gid: /^zz/i.test(who) ? "zztest" : gid, author: me, author_mgmt: true, kind: "system", body: dn(me) + (b.on ? " added Teacher " + who + " to " : " removed Teacher " + who + " from ") + G1.name, mentions: [] });
+        }
+        cfg.gx = GX; for (const k of Object.keys(gx)) delete gx[k]; Object.assign(gx, GX);
+      } else if (a === "member") {
         const who = str(b.name, 40); if (!who) throw new Error("Pick a teacher");
         const ex: string[] = Array.isArray(cfg.exclude) ? cfg.exclude.map(String) : [], has = ex.some((x) => lc(x) === lc(who));
         const next = b.on ? ex.filter((x) => lc(x) !== lc(who)) : (has ? ex : [...ex, who]);
@@ -145,8 +159,10 @@ Deno.serve(async (req: Request) => {
       const nm = await activeTeachers();
       (Array.isArray(cfg.exclude) ? cfg.exclude : []).forEach((x: string) => { if (!nm[lc(x)]) nm[lc(x)] = String(x); });
       const exs = new Set((Array.isArray(cfg.exclude) ? cfg.exclude : []).map((x: string) => lc(x)));
-      const list = Object.keys(nm).filter((k) => !mg.some((x) => lc(x) === k) && !/^zz/.test(k) && !/test/.test(k)).sort().map((k) => ({ name: nm[k], in: !exs.has(k) }));
-      return out({ ok: true, teachers: list });
+      const { data: GG } = await db.from("chat_groups").select("id,name,kind,sort").eq("kind", "group").order("sort");
+      const glist = (GG || []).filter((g: any) => g.id !== "ann").map((g: any) => ({ id: g.id, name: g.name }));
+      const list = Object.keys(nm).filter((k) => !mg.some((x) => lc(x) === k) && !/^zz/.test(k) && !/test/.test(k)).sort().map((k) => ({ name: nm[k], in: !exs.has(k), groups: glist.filter((g: any) => inGroup(nm[k], g.id)).map((g: any) => g.id) }));
+      return out({ ok: true, teachers: list, groups: glist });
     }
     if (a === "mute") {
       const gid = str(b.gid, 60); if (!canSee(gid) || gid === "ann") throw new Error("This group can't be muted");
@@ -170,6 +186,18 @@ Deno.serve(async (req: Request) => {
       // 1406: Announcements left the channel list (Misty 21:13); their open Confirm / Needs reply items show in All Teachers until done
       const open = DO.filter((m: any) => m.gid !== gid || m.day < today).filter((m: any) => mgmt ? (m.needs_reply ? m.replied < m.n : m.confirmed < m.n) : (m.mine && (m.needs_reply ? !m.mine.replied : !m.mine.confirmed))).slice(0, 10);
       return out({ ok: true, gid, day, today, msgs: DM, pinned: DP, open, members: members(gid) });
+    }
+    if (a === "todo") {   // 1415 (Misty 23:27): open chat items for Today · Needs reply / @name / Confirm not answered yet (last 3 days, visible chats only)
+      const since = new Date(Date.now() - 3 * 864e5).toISOString();
+      const [{ data: R }, G] = await Promise.all([db.from("chat_reads").select("mid,replied_at,confirmed_at,chat_messages!inner(id,gid,author,author_mgmt,body,kind,mentions,needs_reply,reply_by,confirm,hidden,created_at,day)").eq("name", me).eq("chat_messages.hidden", false).gte("chat_messages.created_at", since).order("mid", { ascending: false }).limit(300), groups()]);
+      const gn: Record<string, string> = {}; (G || []).forEach((g: any) => { gn[g.id] = g.name; });
+      const items = (R || []).flatMap((x: any) => { const m = x.chat_messages; if (!m || !gn[m.gid] || lc(m.author) === lc(me) || m.kind === "system") return [];
+        const named = (m.mentions || []).some((n: string) => lc(n) === lc(me));
+        const base = { id: m.id, gid: m.gid, chat: gn[m.gid], author: m.author, mgmt: m.author_mgmt, body: String(m.body || (m.kind === "voice" ? "Voice message" : m.kind === "image" ? "Picture" : "")).slice(0, 140), day: m.day, at: m.created_at, by: m.reply_by };
+        if (m.confirm && !x.confirmed_at) return [{ ...base, kind: "confirm" }];
+        if ((m.needs_reply || named) && !x.replied_at) return [{ ...base, kind: "reply" }];
+        return []; }).slice(0, 12);
+      return out({ ok: true, items });
     }
     if (a === "days") {
       const gid = str(b.gid, 60); if (!canSee(gid)) throw new Error("Not found");
