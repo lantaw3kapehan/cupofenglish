@@ -35,6 +35,30 @@ function block1196(src: string): string {
 }
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("").slice(0, 16); }
 
+// 1356s · management runs on phones in China: its code runs here on Asia/Shanghai time (the edge runtime's clock is UTC).
+// A Date whose local fields, local constructors and toLocale* are Beijing time (UTC+8, no daylight saving); the instant is unchanged.
+const H8 = 8 * 3600e3, LOCAL_DT = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
+export class SD extends Date {
+  constructor(...a: any[]) {
+    if (a.length >= 2 && a.every((x) => typeof x === "number")) super(Date.UTC(...(a as [number, number])) - H8);
+    else if (a.length === 1 && typeof a[0] === "string" && LOCAL_DT.test(a[0].trim())) super(a[0].trim().replace(" ", "T") + "+08:00");
+    else super(...(a as []));
+  }
+  static parse(t: string) { return LOCAL_DT.test(String(t).trim()) ? Date.parse(String(t).trim().replace(" ", "T") + "+08:00") : Date.parse(t); }
+  private s() { return new Date(this.getTime() + H8); }
+  private put(f: (d: Date) => void) { const d = this.s(); f(d); return this.setTime(d.getTime() - H8); }
+  getFullYear() { return this.s().getUTCFullYear(); } getMonth() { return this.s().getUTCMonth(); } getDate() { return this.s().getUTCDate(); }
+  getDay() { return this.s().getUTCDay(); } getHours() { return this.s().getUTCHours(); } getMinutes() { return this.s().getUTCMinutes(); }
+  getSeconds() { return this.s().getUTCSeconds(); } getMilliseconds() { return this.s().getUTCMilliseconds(); } getTimezoneOffset() { return -480; }
+  setFullYear(...a: any[]) { return this.put((d) => (d.setUTCFullYear as any)(...a)); } setMonth(...a: any[]) { return this.put((d) => (d.setUTCMonth as any)(...a)); }
+  setDate(x: number) { return this.put((d) => d.setUTCDate(x)); } setHours(...a: any[]) { return this.put((d) => (d.setUTCHours as any)(...a)); }
+  setMinutes(...a: any[]) { return this.put((d) => (d.setUTCMinutes as any)(...a)); } setSeconds(...a: any[]) { return this.put((d) => (d.setUTCSeconds as any)(...a)); }
+  toLocaleDateString(l?: any, o?: any) { return super.toLocaleDateString(l, Object.assign({ timeZone: "Asia/Shanghai" }, o || {})); }
+  toLocaleTimeString(l?: any, o?: any) { return super.toLocaleTimeString(l, Object.assign({ timeZone: "Asia/Shanghai" }, o || {})); }
+  toLocaleString(l?: any, o?: any) { return super.toLocaleString(l, Object.assign({ timeZone: "Asia/Shanghai" }, o || {})); }
+  toDateString() { return this.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "2-digit", year: "numeric" }).replace(/,/g, ""); }
+}
+
 // the management functions, instrumented to hand back the numbers they compute (CAP), in a sandbox
 export function buildSandbox(app: string) {
   const ls = topFn(app, "lsHtml"), sh = topFn(app, "shHtml");
@@ -43,19 +67,19 @@ export function buildSandbox(app: string) {
   const ls2 = ls.replace(A, "CAP.ls = { done, total, left, over, enrolled, carry, inc, incTx, pct, T, name, cn, code: o[C.code], course: C.course != null ? o[C.course] : '', book: C.book != null ? o[C.book] : '', start: o[C.start], deadline: o[C.deadline], owner: o[C.code], hist: hist.map(x => ({ ym: x.ym, v: months[x.i] || 0 })), sub: C.sub != null ? n1(rows0.reduce((a, x) => a + (+x[C.sub] || 0), 0)) : 0, rows: rows0.map(x => x[C.row]) }; " + A);
   const sh2 = sh.replace(A, "CAP.sh = { done, tot, left, enrolled, carry, trf, inc, pct, T, names, cns, owner: o[C.code], start: o[C.start], deadline: o[C.deadline], course: C.course != null ? o[C.course] : '', book: C.book != null ? o[C.book] : '', kids: kids.map(k => ({ code: k.code, name: k.name, cn: k.cn, finished: k.finished, teachers: k.teachers })), hist: rows.map(x => ({ ym: x.ym, v: kids.map(k => k.months[x.i] || 0) })), rows: G.members.map(x => x[C.row]).concat(G.unlinked.map(x => x[C.row])) }; " + A);
   const code = [
-    "'use strict'; let AT = null, CAP = {}; const window = W; const document = { querySelector: () => null }; const D = { mgr: false };",
+    "'use strict'; const Date = SD_; let AT = null, CAP = {}; const window = W; const document = { querySelector: () => null }; const D = { mgr: false };",
     "const esc = s => String(s == null ? '' : s).replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));",
     "const cxCnOf = () => ''; const pkCourse = v => String(v || '').split(',').map(x => x.trim()).filter(Boolean).map(x => x.replace(/([a-z])([A-Z])/g, '$1 $2')).join(' · ');",
     "function vnLine(){ return ''; }",
     topFn(app, "pkgGroup"), topFn(app, "shGroup"), topFn(app, "shLeft"), topFn(app, "lsRows"), ls2, sh2,
     "return { set: v => { AT = v; }, cap: () => { const c = CAP; CAP = {}; return c; }, shGroup, lsRows, lsHtml, shHtml, pkgGroup };"].join("\n");
-  const S = new Function("W", code)({});
+  const S = new Function("W", "SD_", code)({}, SD);
   // patch 1196, run as management runs it: its own loader is fed the coe-mon rows instead of a network call
   const mon = block1196(app);
   const run1196 = (rows: any[], AT: any) => {
     const W: any = {};
     const fetchStub = () => Promise.resolve({ json: () => Promise.resolve({ ok: true, rows }) });
-    new Function("window", "fetch", "TOKEN", "D", "FAST_URL", "AbortController", "setTimeout", "clearTimeout", "AT", "VIEW", mon)(W, fetchStub, "x", { mgr: true }, "x", undefined, setTimeout, clearTimeout, undefined, "");
+    new Function("window", "fetch", "TOKEN", "D", "FAST_URL", "AbortController", "setTimeout", "clearTimeout", "AT", "VIEW", "Date", mon)(W, fetchStub, "x", { mgr: true }, "x", undefined, setTimeout, clearTimeout, undefined, "", SD);
     return W.coeMonLoad(true).then(() => W.coeMonApply(AT));
   };
   return { S, run1196 };
@@ -98,7 +122,7 @@ export function buildJourney(app: string) {
   const k1221 = app.indexOf("/* 1221 · one CEFR level everywhere"); if (k1221 < 0) throw new Error("missing 1221");
   const f = app.indexOf("(function(){", k1221), b = app.indexOf("{", f); const iife = app.slice(f, skipBlock(app, b)) + ")();";
   const code = [
-    "const window = W; const document = { querySelector: () => null, querySelectorAll: () => [] }; const D = { mgr: false }; const $ = () => null;",
+    "const Date = SD_; const window = W; const document = { querySelector: () => null, querySelectorAll: () => [] }; const D = { mgr: false }; const $ = () => null;",
     "const esc = s => String(s == null ? '' : s).replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));",
     LVsrc, "window.CEFR_LV = LV; const CEFR_LV = LV;",
     lineFrom(app, "const CJ_L = ["), lineFrom(app, "const ymdLocal = "),
@@ -106,7 +130,7 @@ export function buildJourney(app: string) {
     "window.cjHtml = cjHtml;", iife,
     "return { run: (S, X) => { window.CJX[S.code] = X; window._CJ = null; const h = window.cjHtml(S); const J = window._CJ; return J ? { html: h, now: CJ_L[J.now] || '', next: CJ_L[J.nxt] || '', up: J.up, since: J.since, tk: J.tk, tkAll: J.tkAll,",
     "  steps: J.T.map(x => ({ d: x.d || '', lv: CJ_L[x.i] || '', en: x.en, zh: x.zh, bk: x.bk || '', u: x.u == null ? null : x.u, start: !!x.start, dd: !!x.dd, chk: !!x.chk, after: x.after || '' })) } : null; } };"].join("\n");
-  return new Function("W", code)({});
+  return new Function("W", "SD_", code)({}, SD);
 }
 
 // ── 1355b · the monthly report picture parents receive, by management's own code (patches 1090, 1095–1098 on rpPicHtml) ──
@@ -119,7 +143,7 @@ export function buildPicture(app: string, parseHTML: any) {
   const fn = new Function("W", "with (W) {\n" + code + "\n}");
   return async (report: any, fb: any, hist: any[]) => {
     const { document } = parseHTML('<html><body><section id="login"><img src="' + logo + '"><div class="tagl"><img src="' + tag + '"></div></section></body></html>');
-    const W: any = { document, RPD: { report, fb }, FAST_URL: "x", TOKEN: "x", toast: () => {}, navigator: {}, setTimeout, clearTimeout, console,
+    const W: any = { Date: SD, document, RPD: { report, fb }, FAST_URL: "x", TOKEN: "x", toast: () => {}, navigator: {}, setTimeout, clearTimeout, console,
       fetch: () => Promise.resolve({ json: () => Promise.resolve({ ok: true, hist, sub: [] }) }) };
     W.window = W; fn(W);
     if (typeof W.rpPicPrep === "function") await W.rpPicPrep();

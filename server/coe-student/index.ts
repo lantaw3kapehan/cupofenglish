@@ -254,7 +254,7 @@ async function cardFor(code: string, ptok: string, LS: any) {
     db.from("coe_packages").select("active").eq("code", code).is("removed_at", null).limit(20), activeRows(db)]);
   const d = parts && parts.db && parts.db.data, row: any[] = d ? ((d.rows || []).find((r: any[]) => r[0] === code) || []) : [];
   const v = (j: number) => String(row[j] == null ? "" : row[j]).trim();
-  let cycle = ""; for (let j = 25; j < Math.min(row.length, 41); j++) if (v(j)) cycle = v(j);   // pf29: the last filled RENEWAL CYCLE column
+  let cycle = ""; for (let j = 25; j < Math.min(row.length, 41); j++) if (/^\d+$/.test(v(j))) cycle = v(j);   // pf29: the last filled RENEWAL CYCLE column
   const firsts = N.rows.map((r: any[]) => ymd(c(r, 16))).filter(Boolean).sort(), first = firsts[0] || ymd(v(16));
   let since = ""; if (first) { const t = new Date(Date.now() + 8 * 3600e3); let mo = (t.getUTCFullYear() - +first.slice(0, 4)) * 12 + (t.getUTCMonth() + 1 - +first.slice(5, 7)); if (t.getUTCDate() < +first.slice(8, 10)) mo--;
     if (mo >= 0) { const y = Math.floor(mo / 12), m = mo % 12; since = (mo < 1 ? "New this month" : "With us " + (y ? y + " yr" + (y > 1 ? "s" : "") : "") + (y && m ? " " : "") + (m ? m + " mo" : "")) + " · since " + MONS[+first.slice(5, 7) - 1] + " " + first.slice(0, 4); } }
