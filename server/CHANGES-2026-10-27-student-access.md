@@ -157,3 +157,15 @@ Rollback: `rollback-pre-1355`.
   (coe-pkg-sync), sheet guard copied every 2 min; journey: DATABASE (database original, at once), classes (≤ 3 min), class notes (at once),
   -DAILY / S-MONTHLY sheet copies ≤ 30–60 min, management code cached 15 min after a release; monthly feedback: sys:fb copy of the sheet every 30 min.
 - coe-student v8–v11 (journey notes/package inputs, cjdiff, feedback list, book, week). Rollback: `rollback-pre-1355b`.
+
+## Patch 1355c · monthly report = the picture report parents receive (27 Oct, main 2cffe4c, COE_V 1333, portal 1355e, coe-student v12)
+- **Portal monthly report:** same content and month label as management's picture report (patches 1090 / 1095–1098): "10月学习报告 · October report"
+  (report key 2026-11 = October classes), score with "▲ 14 points from September · 比9月提高14分", progress over the months (same teacher),
+  four skills /25 with arrows, Strengths / Areas / Next steps in 中文 + English, then the 20-skill breakdown (1–5 dots, ▲ / ▼ vs the same
+  teacher's previous report), groups collapsible (open for the latest month). Reports the tracker marks Ready or Sent are shown.
+- **保存图片 · Save picture** on every month: coe-student op `fbpic` runs management's own picture code (rpPicPrep / rpPicHtml chain, linkedom DOM)
+  on the same data (sys:fb + reviewed Chinese fbcn) → identical picture (Una: 1080 × 6.8k, same sections and arrows).
+- **Journey:** steps with 日期核对中 are hidden in the portal (management still shows them; list in docs sys:cjdiff); 1355c gives a hidden step's
+  lessons to the nearest confirmed step before it (Nico ST-2025-127). Totals and Now unchanged.
+- Verified on Una (83, +14 from September, 20 sub-skills matching the picture), Shirui (80, +3 from August), Gaby (July Cy report 88 with ▼).
+Rollback: `rollback-pre-1355c`.
