@@ -134,7 +134,7 @@ function appliedAT(env: any, d: any) { let p = APPLIED.get(d); if (!p) { const a
 const r1 = (x: any) => Math.round((Number(x) || 0) * 10) / 10;
 const firstName = (s: unknown) => String(s ?? "").trim().split(/\s+/)[0] || "";
 // the numbers management's Lesson summary shows, in the portal's shape; checks decide whether they can be shown (else 核对中)
-async function lessonsFor(code: string, L2: any, opts: { pkgcheck?: any; pend?: Set<string>; au?: Record<number, any>; rf?: Map<string, any> | null } = {}) {
+async function lessonsFor(code: string, L2: any, opts: { pkgcheck?: any; pend?: Set<string>; au?: Record<number, any>; rf?: Map<string, any> | null; keep?: Set<string> } = {}) {
   let m: any = null, why: string[] = [];
   try { const [{ env }, d] = await Promise.all([mgmtEnv(), mgmtDataCached()]); m = await mgmtSummary(env, await appliedAT(env, d), d.mon, code, true); }
   catch (e) { why.push("management summary unavailable: " + String((e as any)?.message || e).slice(0, 80)); }
@@ -169,7 +169,7 @@ async function lessonsFor(code: string, L2: any, opts: { pkgcheck?: any; pend?: 
   if (opts.rf) { const f = codes.map((k) => opts.rf!.get(k)).find(Boolean) || opts.rf.get(code);
     if (f) why.push("renewal month counts lessons before the renewal date (" + f.buy + ": counted " + f.counted + ", from the renewal date " + f.from + ")"); }
   // the picture: management's own HTML; a sibling's Chinese name is left out (first name + code only)
-  let html = m.html as string; if (shared) c.kids.forEach((k: any) => { if (k.code !== code && k.cn) html = html.split(k.cn).join(""); });
+  let html = m.html as string; if (shared) c.kids.forEach((k: any) => { if (k.code !== code && k.cn && !(opts.keep && opts.keep.has(k.code))) html = html.split(k.cn).join(""); });
   return { ok: why.length === 0, why, n: out, html };
 }
 // sign-off for every active student: management's numbers vs the independent calculation vs Google's sheet (sys:pkglink AU)
@@ -197,6 +197,53 @@ async function checkAll() {
   const res = { at: new Date().toISOString(), app: hash, monRows: d.mon.length, monRowsOneCall: (M1 || []).length, students: codes.length, shown: ok, checking, renewFlagged: rf ? rf.size : null, mismatches: bad, sheetDiff: sheet, pkglinkAt: (PL as any)?.at || null, ms: Date.now() - t0 };
   await db.from("docs").upsert({ key: "sys:portalcheck", scope: "mgmt", data: res, updated_at: res.at }, { onConflict: "key" });
   return res;
+}
+
+// 1356q · partner membership = coe-partner's own `student` op (its rules, not a copy): 200 + ok → this partner's student
+async function partnerMine(ptok: string, k: string) {
+  const r = await fetch(Deno.env.get("SUPABASE_URL") + "/functions/v1/coe-partner", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ op: "student", token: ptok, code: k }) });
+  let j: any = null; try { j = await r.json(); } catch (_) { /* below */ } return { status: r.status, ok: r.status === 200 && !!(j && j.ok) };
+}
+const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MONS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// management's student header card fields (stuRender · 358 "With us" chip · 739/746 WeChat group · pf29 journey), for a partner's own student
+async function cardFor(code: string, ptok: string, LS: any) {
+  const [N, TRr, PRr, { data: parts }, { data: WX }, { data: FB }, { data: UP }, { data: PK }, R] = await Promise.all([namesOf(code), rowsBy("TR-DATA", 33, code), rowsBy("PR-DATA", 4, code),
+    db.rpc("student_parts", { p_code: code }), db.from("docs").select("data").eq("key", "mgmt:wxgroup").maybeSingle(), db.from("docs").select("v:data->" + code).eq("key", "sys:fb").maybeSingle(),
+    db.from("classes").select("starts_at,ends_at,teachers,data").eq("code", code).gte("starts_at", new Date().toISOString()).lte("starts_at", new Date(Date.now() + 15 * 864e5).toISOString()).eq("cancelled", false).not("id", "like", "pend-%").order("starts_at").limit(40),
+    db.from("coe_packages").select("active").eq("code", code).is("removed_at", null).limit(20), activeRows(db)]);
+  const d = parts && parts.db && parts.db.data, row: any[] = d ? ((d.rows || []).find((r: any[]) => r[0] === code) || []) : [];
+  const v = (j: number) => String(row[j] == null ? "" : row[j]).trim();
+  let cycle = ""; for (let j = 25; j < Math.min(row.length, 41); j++) if (v(j)) cycle = v(j);   // pf29: the last filled RENEWAL CYCLE column
+  const firsts = N.rows.map((r: any[]) => ymd(c(r, 16))).filter(Boolean).sort(), first = firsts[0] || ymd(v(16));
+  let since = ""; if (first) { const t = new Date(Date.now() + 8 * 3600e3); let mo = (t.getUTCFullYear() - +first.slice(0, 4)) * 12 + (t.getUTCMonth() + 1 - +first.slice(5, 7)); if (t.getUTCDate() < +first.slice(8, 10)) mo--;
+    if (mo >= 0) { const y = Math.floor(mo / 12), m = mo % 12; since = (mo < 1 ? "New this month" : "With us " + (y ? y + " yr" + (y > 1 ? "s" : "") : "") + (y && m ? " " : "") + (m ? m + " mo" : "")) + " · since " + MONS[+first.slice(5, 7) - 1] + " " + first.slice(0, 4); } }
+  // WeChat family group (746): the manual link (mgmt:wxgroup) else ACTIVE's shared column; names of children who are not this partner's are left out
+  const up = (x: unknown) => String(x ?? "").trim().toUpperCase(), M0: any = (WX && (WX as any).data) || {};
+  let main = (M0[code] && M0[code].to) || code, fam = [main].concat(Object.keys(M0).filter((k) => M0[k] && M0[k].to === main && k !== main));
+  if (fam.length < 2) { const S: string[] = []; R.forEach((r: any) => { const a = up(r.code), b = (up(r.shared).match(/ST-\d{4}-\d{3}/) || [""])[0]; if (!b || a === b || r.enrolled === "") return; if (a === code || b === code) S.push(a + ">" + b); });
+    if (S.length) { const [hold] = S[0].split(">"); main = hold; fam = [hold].concat(S.map((x) => x.split(">")[1]).filter((x, i, a) => a.indexOf(x) === i)); } else fam = [code]; }
+  const en = (n: string) => String(n || "").replace(/[　-鿿＀-￯].*$/, "").trim() || String(n || "").trim();
+  const nameOf = (k: string) => { const r = R.find((x: any) => up(x.code) === k); return r ? r.name : ""; };
+  const ok = new Set<string>([code]); (await Promise.all(fam.filter((k) => k !== code).map(async (k) => ({ k, ok: (await partnerMine(ptok, k)).ok })))).forEach((x) => { if (x.ok) ok.add(x.k); });
+  const wechat = "一杯英语 " + fam.filter((k) => ok.has(k)).map((k) => en(k === code ? N.name : nameOf(k))).join(" & ") + " (" + main + ")";
+  const shares = fam.filter((k) => k !== code && ok.has(k)).map((k) => ({ code: k, name: en(nameOf(k)) }));
+  // KPIs: lessons left (only when every Lesson summary check passed), CEFR now (management's journey code), latest monthly feedback /100
+  const n = LS && LS.ok ? LS.n : null;
+  const CJ = await journeyFor(code, N, TRr, PRr, n, LS && LS.n).catch(() => null);
+  const fbs: any[] = Array.isArray(FB && (FB as any).v) ? (FB as any).v : [], f0 = fbs.filter((f) => f && /^\d{4}-\d{2}$/.test(String(f.month || ""))).sort((a, b) => String(b.month).localeCompare(String(a.month)))[0];
+  // fixed weekly times: weekday + time + teacher seen in the next 15 days (Beijing time)
+  const W: Record<string, any> = {}; let next: any = null;
+  ((UP as any[]) || []).forEach((x: any) => { const t = String((x.data && x.data.title) || ""); if (isTrial(t)) return; const a = bj(x.starts_at), w = WD[new Date(Date.parse(a.day + "T12:00:00Z")).getUTCDay()];
+    const len = Math.round((Date.parse(x.ends_at || x.data?.end || x.starts_at) - Date.parse(x.starts_at)) / 6e4) || 25, te = cap(String((x.teachers || [])[0] || ""));
+    if (!next) next = { date: a.day, time: a.time, teacher: te, len };
+    const k = w + "|" + a.time + "|" + te; W[k] = W[k] || { d: w, t: a.time, len, teacher: te, n: 0 }; W[k].n++; });
+  const order = (x: any) => ((WD.indexOf(x.d) + 6) % 7) * 1440 + (+x.t.slice(0, 2)) * 60 + (+x.t.slice(3, 5));
+  const WV = Object.values(W), fixed = WV.filter((x: any) => x.n >= 2);   // seen twice in 15 days = a fixed weekly time
+  const weekly = (fixed.length ? fixed : WV).sort((a: any, b: any) => order(a) - order(b)).map(({ n: _n, ...x }: any) => x);
+  return { name: N.name, cn: N.cn, active: ((PK as any[]) || []).some((p: any) => p.active), wechat, shares,
+    age: v(6), city: v(9), since, teachers: n ? n.teachers || [] : (LS && LS.n ? LS.n.teachers || [] : []), book: (LS && LS.n && LS.n.book) || "", level: v(19),
+    left: n ? n.left : null, checking: !n, cefr: (CJ && CJ.now) || "", latest: f0 ? Number(f0.total) || 0 : null,
+    weekly, next, journey: { len: v(15), trial: ymd(v(10)), first: ymd(v(16)), renewed: ymd(v(24)), cycle } };
 }
 
 Deno.serve(async (req: Request) => {
@@ -251,6 +298,33 @@ Deno.serve(async (req: Request) => {
     if (last && Date.now() - Date.parse(last.updated_at) < 120e3) return out({ ok: true, skipped: "ran in the last 2 minutes" });
     try { const r = await cjDiff(br, (Array.isArray(b.sample) ? b.sample : []).map((x: any) => codeOf(x)).filter(Boolean).slice(0, 5)); return out({ ok: true, students: r.students, done: r.done, errors: r.errors, changed: r.changed.length }); }
     catch (e) { return out({ ok: false, error: String((e as any)?.message || e).slice(0, 120) }, 500); }
+  }
+
+  // 1356q · Dr. Spring's partner portal: management's Lesson summary picture for one of HER students (partner session token).
+  // Auth + membership = coe-partner's own `student` op (no rules duplicated here). Same lessons path and guards as the student
+  // portal; numbers + html only when every check passes, else 核对中. A sibling's Chinese name stays only if that sibling is hers too.
+  if (op === "plsum" || op === "pcard") {
+    const ptok = String(b.token || ""), code = codeOf(b.code); if (ptok.length < 32 || !code) return out({ ok: false, error: "AUTH" }, 401);
+    const mine = (k: string) => partnerMine(ptok, k);
+    const me = await mine(code);
+    if (me.status === 401) return out({ ok: false, error: "AUTH" }, 401);
+    if (me.status === 403) return out({ ok: false, error: "not your student" }, 403);
+    if (!me.ok) return out({ ok: false, checking: true });
+    try {
+      const [R, { data: PC }, { data: PLK }, { data: PE }] = await Promise.all([activeRows(db), db.from("docs").select("data").eq("key", "sys:pkgcheck").maybeSingle(),
+        db.from("docs").select("act:data->act").eq("key", "sys:pkglink").maybeSingle(), db.from("coe_packages").select("code").not("pend", "is", null).is("removed_at", null)]);
+      const L2 = await lessonsOf(db, code, R);
+      const au: Record<number, any> = {}; (((PLK as any) && (PLK as any).act) || []).forEach((a: any) => { au[+a.r] = a.au; });
+      const pend = new Set<string>(((PE as any[]) || []).map((x: any) => String(x.code).toUpperCase()));
+      const rf = await renewFlags(db).catch((e) => { console.error("renewFlags", String(e)); return null; });
+      const sib = L2 && L2.cur && L2.cur.shared ? (L2.cur.kids || []).map((k: any) => k.code).filter((k: string) => k !== code) : [];
+      const keep = new Set<string>(); (await Promise.all(sib.map(async (k: string) => ({ k, ok: (await mine(k)).ok })))).forEach((x) => { if (x.ok) keep.add(x.k); });
+      const LS = await lessonsFor(code, L2, { pkgcheck: PC && (PC as any).data, pend, au, rf, keep });
+      if (op === "pcard") return out({ ok: true, card: await cardFor(code, ptok, LS), at: new Date().toISOString() });
+      if (!LS.ok || !LS.n) { if (LS.n) console.warn("plsum checking", code, JSON.stringify(LS.why)); return out({ ok: false, checking: true }); }
+      const n = LS.n;
+      return out({ ok: true, html: LS.html, n: { total: n.total, used: n.used, left: n.left, over: n.over, valid: n.valid, start: n.start, shared: n.shared, kids: n.kids || [] }, at: new Date().toISOString() });
+    } catch (e) { console.error(op, e); return out({ ok: false, checking: true }); }
   }
 
   // ───────── sign-in: ST code + English name (or own password) ─────────
