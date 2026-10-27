@@ -199,6 +199,47 @@ async function checkAll() {
   return res;
 }
 
+// 1355b · the monthly report picture parents receive (management's picture code); held back unless the tracker says Sent / Ready
+async function fbPicFor(code: string, mo: string, tc: string) {
+  const [{ data: FB }, { data: RL }, { data: CN }, N] = await Promise.all([db.from("docs").select("v:data->" + code).eq("key", "sys:fb").maybeSingle(),
+    db.from("docs").select("key,data").like("key", "mgmt:mgmtReports|%").limit(40), db.from("docs").select("data").eq("key", "fbcn:" + code + "|" + mo).maybeSingle(), namesOf(code)]);
+  let held = false; (RL || []).forEach((d: any) => ((d.data && d.data.rows) || []).forEach((r: any) => { if (codeOf(r.code) === code && r.month === mo && String(r.teacher).toLowerCase() === tc && !/^(sent|ready)/i.test(String(r.status || ""))) held = true; }));
+  const fbs: any[] = Array.isArray(FB && (FB as any).v) ? (FB as any).v : [], e = fbs.filter((f) => f && f.month === mo && String(f.teacher || "").toLowerCase() === tc).pop();
+  if (!e || held) return { ok: false, msg: "no report" };
+  const c0 = (CN && (CN as any).data) || {}, fb = { ...e, cn: Object.assign({}, e.cn || {}, ...["strengths", "areas", "next"].filter((k) => c0[k]).map((k) => ({ [k]: c0[k] }))) };
+  const hist = fbs.filter((f) => f && String(f.teacher || "").toLowerCase() === tc).map((f) => ({ month: f.month, total: f.total, l: f.l, s: f.s, r: f.r, w: f.w, items: f.items }));
+  try { const a = await mgmtApp(); if (!PIC[a.hash]) PIC[a.hash] = buildPicture(a.src, parseHTML);
+    const html = await PIC[a.hash]({ code, month: mo, student: e.student || N.name, teacher: e.teacher }, fb, hist); return { ok: !!html, html }; }
+  catch (x) { console.error("fbpic", x); return { ok: false }; }
+}
+// 1356r · progress evidence for a partner's own student (same sources as the Student portal): journey (confirmed steps), monthly
+// reports (Sent / Ready only, reviewed Chinese), last class notes (parent-facing fields), attendance per month (last 6 months)
+async function progFor(code: string) {
+  const since = new Date(Date.now() - 200 * 864e5).toISOString(), nowIso = new Date().toISOString();
+  const [N, R, TRr, PRr, NO, { data: RL }, { data: FB }, BT, { data: PAST }] = await Promise.all([namesOf(code), activeRows(db), rowsBy("TR-DATA", 33, code), rowsBy("PR-DATA", 4, code), rowsBy("S-NOTES", 3, code),
+    db.from("docs").select("key,data").like("key", "mgmt:mgmtReports|%").limit(40), db.from("docs").select("v:data->" + code).eq("key", "sys:fb").maybeSingle(), bookTitles(),
+    db.from("classes").select("starts_at,cancelled,data").eq("code", code).lt("starts_at", nowIso).gte("starts_at", since).not("id", "like", "pend-%").limit(400)]);
+  const L = await lessonsOf(db, code, R).catch(() => null);
+  const LSn = L && L.cur ? { left: null, shared: L.cur.shared, course: L.cur.course, start: L.cur.start } : null;   // the journey needs the package's course/start only
+  const J: any = await journeyFor(code, N, TRr, PRr, null, LSn).catch(() => null);
+  const cj = J ? { ...J, steps: (J.steps || []).filter((x: any) => !x.chk) } : null;
+  const track: Record<string, string> = {};
+  (RL || []).forEach((d: any) => ((d.data && d.data.rows) || []).forEach((r: any) => { if (codeOf(r.code) === code) track[String(r.teacher).toLowerCase() + "|" + r.month] = String(r.status || ""); }));
+  const fbs: any[] = Array.isArray(FB && (FB as any).v) ? (FB as any).v : [], byK: Record<string, any> = {};
+  fbs.forEach((f: any) => { if (!f || !/^\d{4}-\d{2}$/.test(String(f.month || ""))) return; const k = String(f.teacher || "").toLowerCase() + "|" + f.month; if (track[k] !== undefined && !/^(sent|ready)/i.test(track[k])) return; byK[k] = f; });
+  const reports = Object.keys(byK).map((k) => { const mo = k.split("|")[1], e = byK[k];
+    return { month: mo, classMonth: prevMonth(mo), teacher: cap(String(e.teacher || "")), total: Number(e.total) || 0, l: e.l, r: e.r, s: e.s, w: e.w, course: bookOf(BT, e.course || ""), items: Array.isArray(e.items) ? e.items : null }; })
+    .sort((a: any, b: any) => b.month.localeCompare(a.month) || a.teacher.localeCompare(b.teacher));
+  const first = (t: string) => { const x = String(t || "").replace(/\s+/g, " ").trim(); const m = x.match(/^.*?[.!?。！？](\s|$)/); return (m ? m[0] : x).trim().slice(0, 160); };
+  const notes = NO.map((r: any[]) => ({ date: ymd(c(r, 1)), teacher: cap(String(c(r, 2) || "")), ended: norm(c(r, 5)), obs: String(c(r, 9) || "").trim() }))
+    .filter((n: any) => n.date && (n.ended || n.obs)).sort((a: any, b: any) => b.date.localeCompare(a.date)).slice(0, 10)
+    .map((n: any) => ({ date: n.date, teacher: n.teacher, text: [n.ended, first(n.obs)].filter(Boolean).join(" · ") }));
+  const A: Record<string, any> = {}; const m0 = new Date(Date.now() + 8 * 3600e3); m0.setUTCDate(1); m0.setUTCMonth(m0.getUTCMonth() - 5); const from = m0.toISOString().slice(0, 7);
+  ((PAST as any[]) || []).forEach((x: any) => { const t = String((x.data && x.data.title) || ""); if (isTrial(t)) return; const m = bj(x.starts_at).day.slice(0, 7); if (m < from) return;
+    const o = A[m] = A[m] || { m, done: 0, cancelled: 0, absent: 0, late: null }; if (x.cancelled) o.cancelled++; else if (isAbsent(t)) o.absent++; else o.done++; });
+  const att = Object.values(A).sort((a: any, b: any) => a.m.localeCompare(b.m));
+  return { cj, reports, notes, att };
+}
 // 1356q · partner membership = coe-partner's own `student` op (its rules, not a copy): 200 + ok → this partner's student
 async function partnerMine(ptok: string, k: string) {
   const r = await fetch(Deno.env.get("SUPABASE_URL") + "/functions/v1/coe-partner", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ op: "student", token: ptok, code: k }) });
@@ -303,13 +344,15 @@ Deno.serve(async (req: Request) => {
   // 1356q · Dr. Spring's partner portal: management's Lesson summary picture for one of HER students (partner session token).
   // Auth + membership = coe-partner's own `student` op (no rules duplicated here). Same lessons path and guards as the student
   // portal; numbers + html only when every check passes, else 核对中. A sibling's Chinese name stays only if that sibling is hers too.
-  if (op === "plsum" || op === "pcard") {
+  if (op === "plsum" || op === "pcard" || op === "pprog" || op === "pfbpic") {
     const ptok = String(b.token || ""), code = codeOf(b.code); if (ptok.length < 32 || !code) return out({ ok: false, error: "AUTH" }, 401);
     const mine = (k: string) => partnerMine(ptok, k);
     const me = await mine(code);
     if (me.status === 401) return out({ ok: false, error: "AUTH" }, 401);
     if (me.status === 403) return out({ ok: false, error: "not your student" }, 403);
     if (!me.ok) return out({ ok: false, checking: true });
+    if (op === "pfbpic") { const mo = String(b.month || ""), tc = String(b.teacher || "").trim().toLowerCase(); if (!/^\d{4}-\d{2}$/.test(mo) || !tc) return out({ ok: false }, 400); return out(await fbPicFor(code, mo, tc)); }
+    if (op === "pprog") { try { return out({ ok: true, ...(await progFor(code)), at: new Date().toISOString() }); } catch (e) { console.error("pprog", e); return out({ ok: false }); } }
     try {
       const [R, { data: PC }, { data: PLK }, { data: PE }] = await Promise.all([activeRows(db), db.from("docs").select("data").eq("key", "sys:pkgcheck").maybeSingle(),
         db.from("docs").select("act:data->act").eq("key", "sys:pkglink").maybeSingle(), db.from("coe_packages").select("code").not("pend", "is", null).is("removed_at", null)]);
@@ -380,16 +423,7 @@ Deno.serve(async (req: Request) => {
 
   if (op === "fbpic") {   // 1355b · the monthly report picture, made by management's own picture code (same as the one sent to parents)
     const mo = String(b.month || ""), tc = String(b.teacher || "").trim().toLowerCase(); if (!/^\d{4}-\d{2}$/.test(mo) || !tc) return out({ ok: false }, 400);
-    const [{ data: FB }, { data: RL }, { data: CN }, N] = await Promise.all([db.from("docs").select("v:data->" + code).eq("key", "sys:fb").maybeSingle(),
-      db.from("docs").select("key,data").like("key", "mgmt:mgmtReports|%").limit(40), db.from("docs").select("data").eq("key", "fbcn:" + code + "|" + mo).maybeSingle(), namesOf(code)]);
-    let held = false; (RL || []).forEach((d: any) => ((d.data && d.data.rows) || []).forEach((r: any) => { if (codeOf(r.code) === code && r.month === mo && String(r.teacher).toLowerCase() === tc && !/^(sent|ready)/i.test(String(r.status || ""))) held = true; }));
-    const fbs: any[] = Array.isArray(FB && (FB as any).v) ? (FB as any).v : [], e = fbs.filter((f) => f && f.month === mo && String(f.teacher || "").toLowerCase() === tc).pop();
-    if (!e || held) return out({ ok: false, msg: "no report" });
-    const c0 = (CN && (CN as any).data) || {}, fb = { ...e, cn: Object.assign({}, e.cn || {}, ...["strengths", "areas", "next"].filter((k) => c0[k]).map((k) => ({ [k]: c0[k] }))) };
-    const hist = fbs.filter((f) => f && String(f.teacher || "").toLowerCase() === tc).map((f) => ({ month: f.month, total: f.total, l: f.l, s: f.s, r: f.r, w: f.w, items: f.items }));
-    try { const a = await mgmtApp(); if (!PIC[a.hash]) PIC[a.hash] = buildPicture(a.src, parseHTML);
-      const html = await PIC[a.hash]({ code, month: mo, student: e.student || N.name, teacher: e.teacher }, fb, hist); return out({ ok: !!html, html }); }
-    catch (x) { console.error("fbpic", x); return out({ ok: false }); }
+    const r = await fbPicFor(code, mo, tc); return out(r);
   }
 
   if (op === "all" || op === "notes") {   // one call for the whole page (fewer round trips from China)
