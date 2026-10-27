@@ -90,3 +90,24 @@ on all 5 tabs; tap targets ≥ 44 px; role=tab + aria-selected; Esc closes sheet
 management student record, which the portal does not load) — same levels, not the same drawing code. 保存图片 uses an SVG→PNG render with the
 phone's fonts (Rockwell/Arvo fall back to serif). Payments before the app's links (ACTIVE column J) can't be matched to a student and are not shown.
 Rollback: `rollback-pre-1353`; server: redeploy coe-student v2 (1352) if needed.
+
+## 1354 · Portals update themselves · full welcome message · CEFR journey from management's code (COE_V 1327, commit d7c214d; coe-student v6)
+
+- **Auto-update (shared `/portal-update.js`, also used by partner/):** the page knows its version (`<meta name="portal-version">`);
+  `student/version.txt` is fetched with `cache:'no-store'` on open, every 5 min and whenever the page becomes visible again (WeChat keeps
+  pages alive). If it differs, the page reloads to `?v=<new>` at a safe moment (no field focused, no sheet / picture open); otherwise a
+  small "有新版本 · 点此更新 Update" bar, reloading on tap or once idle. Never loops (one try per version per tab). Data also refreshes
+  quietly every 5 min and on return (repaints only if something changed, keeps the scroll and notes already loaded).
+  `?v=` on fonts, manifest and the updater; `<meta http-equiv="Cache-Control" content="no-cache">`; sw.js skips /student/, /partner/ and
+  /portal-update.js. Tested: same version → no reload; new version while typing → bar; tap → reload; no loop.
+- **Version bump for every portal release:** `tools/portal-bump.sh student <version>` (or `partner`) — writes `<dir>/version.txt`, the
+  page's portal-version meta and every `?v=`. Commit those with the release.
+- **Add to Home Screen:** student/manifest.webmanifest (scope /student/, 一杯英语 学员专区), apple-touch-icon, title 一杯英语 · 学员专区.
+- **CEFR journey = management's card:** coe-student v6 runs app.html's cjHtml + patch 1221 on the same pieces mgmtStudent sends
+  (student_parts DATABASE row, TR-DATA, PR-DATA, S-MONTHLY + coe_stu_daily, coe_stu_classes, coe-cj). ST-2022-044 now reads, top to
+  bottom: 2026年9月 教材升级 WondersG1 · 2026年3月 续费 · 2025年9月 升级 OD2 44.5 课时 · 2022年8月 入学 TheAlphabet 230.5 课时 · 2022年7月
+  试听 — 共 275 课时, the same as management. "已上课时" on 我的记录 uses the same 275.
+- **Welcome message (patch 1354):** Student access › Copy WeChat message and a new "复制学员专区消息 Copy portal message" button on each
+  student's page give the full text: 【一杯英语 · 学员专区】, parent (“{name}家长您好”) or adult (“{name}您好…您的课表”) by learner type,
+  链接/账号/密码 (or “密码：您设置的密码（如忘记请联系我们重置）”), iPhone and Android home-screen steps, 收藏/浮窗 tip, one English line.
+Rollback: `rollback-pre-1354`.

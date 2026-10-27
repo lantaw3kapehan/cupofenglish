@@ -13,7 +13,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { activeRows, lessonsOf, historyOf, paymentsOf, partnerish } from "./pkg.ts";
-import { buildSandbox, mgmtApp, mgmtData, mgmtSummary } from "./mgmt.ts";
+import { buildSandbox, buildJourney, mgmtApp, mgmtData, mgmtSummary } from "./mgmt.ts";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const ORIGINS = ["https://app.cupofenglishatph.com"];
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
@@ -64,13 +64,6 @@ const prevMonth = (m: string) => { const x = String(m || "").match(/^(\d{4})-(\d
 const cap = (s: string) => String(s || "").replace(/\b[a-z]/g, (x) => x.toUpperCase());
 async function bookTitles() { const { data } = await db.from("coe_book_titles").select("code,title").limit(500); const BT: Record<string, string> = {}; (data || []).forEach((x: any) => { BT[String(x.code).toLowerCase()] = x.title; }); return BT; }
 const bookOf = (BT: Record<string, string>, x: string) => BT[String(x || "").toLowerCase()] || String(x || "").replace(/([a-z])([A-Z0-9])/g, "$1 $2");
-async function packagesOf(code: string) {
-  const { data: P } = await db.from("coe_packages").select("id").eq("code", code).is("removed_at", null).eq("active", true).limit(50);
-  const ids = (P || []).map((p: any) => p.id); if (!ids.length) return [] as any[];
-  const { data: C } = await db.from("coe_pkg_calc").select("id,buy,fin,avail,deadline").in("id", ids).limit(50);
-  return (C || []).map((x: any) => { const used = Math.max(0, Number(x.fin) || 0), left = Number(x.avail) || 0;
-    return { total: used + left, used, left, buy: x.buy || "", valid: x.deadline || "", renew: left <= 4 }; }).sort((a: any, b: any) => String(a.buy).localeCompare(String(b.buy)));
-}
 // adult learner: the same rule as the app's isAdult / coe mgmtStudents (DATABASE school grade WA/UM/U#/PhD/ADULT, or age ≥ 20 and not a G# grade)
 const adultRow = (r: any[]) => { const gr = String(c(r, 8)).trim(); return /^(WA|UM|U\d|PhD|ADULT)$/i.test(gr) || (+c(r, 6) >= 20 && !/^(G\d+|GK)$/i.test(gr)); };
 async function namesOf(code: string) {
@@ -86,6 +79,25 @@ const cls = (BT: Record<string, string>, x: any) => { const t = String((x.data &
 
 // ── Lesson summary by management's own code (mgmt.ts), with a second independent calculation (pkg.ts) as a guard ──
 const ENV: Record<string, any> = {}; let DATA: { at: number; p: Promise<any> } | null = null; const APPLIED = new WeakMap<any, Promise<any>>();
+const JENV: Record<string, any> = {};
+// the CEFR journey exactly as management's student page draws it (cjHtml + 1221), from the same pieces mgmtStudent sends
+async function journeyFor(code: string, N: any, TRr: any[][], PRr: any[][], LSn: any) {
+  const a = await mgmtApp(); if (!JENV[a.hash]) JENV[a.hash] = buildJourney(a.src);
+  const [{ data: parts }, { data: daily }, { data: cl }, SM] = await Promise.all([db.rpc("student_parts", { p_code: code }), db.rpc("coe_stu_daily", { p_code: code }),
+    db.rpc("coe_stu_classes", { p_code: code, p_teacher: "" }), rowsBy("S-MONTHLY", 1, code)]);
+  const d = parts && parts.db && parts.db.data, rows = d ? (d.rows || []).filter((r: any[]) => r[0] === code) : [];
+  const profile = rows.length ? { head: d.head, row: rows[0].slice(0, -1), packages: rows.length } : null;
+  const isD = (x: any) => /^\d{4}-\d{2}-\d{2}T/.test(String(x || ""));
+  let trial: any = null; TRr.forEach((r) => { if (isD(c(r, 2))) trial = { date: String(c(r, 2)).slice(0, 10), teacher: c(r, 4), cefr: c(r, 23), total: Number(c(r, 18)) || 0 }; });
+  const checks = PRr.filter((r) => isD(c(r, 2))).map((r) => ({ date: String(c(r, 2)).slice(0, 10), teacher: c(r, 3), cefr: c(r, 22) || c(r, 20), total: Number(c(r, 19)) || 0 })).sort((x, y) => y.date.localeCompare(x.date));
+  const base = SM.map((r) => ({ m: String(c(r, 0)).slice(0, 7), t: String(c(r, 3) || ""), c: String(c(r, 4) || ""), n: Number(c(r, 5)) || 0, u: Number(c(r, 6)) || 0 })).filter((x) => /^\d{4}-\d{2}$/.test(x.m));
+  const D = Array.isArray(daily) ? daily : [], have: Record<string, number> = {}; D.forEach((x: any) => { have[x.m] = 1; });
+  const monthly = D.map((x: any) => ({ m: x.m, t: x.t, c: x.c, u: Number(x.u) || 0, n: 0, lv: x.lv })).concat(base.filter((x) => !have[x.m]));
+  const S = { code, r: { profile, trial, monthly, checks }, s: { left: LSn && LSn.left != null ? LSn.left : null, shared: !!(LSn && LSn.shared), name: N.name, cn: N.cn }, cls: Array.isArray(cl) ? cl : [] };
+  const m = N.rows.length ? merge(N.rows) : null;
+  const X = { at: Date.now(), cj: m ? { first: m.first, td: m.td, tb: m.tb, tc: m.tc, cb: m.cb } : null, trials: TRr.map(trOf).filter((t) => t.date) };
+  const r = JENV[a.hash].run(S, X); if (!r) return null; const { html, ...rest } = r; return rest;
+}
 async function mgmtEnv() { const a = await mgmtApp(); if (!ENV[a.hash]) ENV[a.hash] = buildSandbox(a.src); return { env: ENV[a.hash], hash: a.hash }; }
 function mgmtDataCached() { if (!DATA || Date.now() - DATA.at > 60e3) { const p = mgmtData(db); DATA = { at: Date.now(), p }; p.catch(() => { DATA = null; }); } return DATA!.p; }
 // patch 1196 applied once per data copy (management applies it to its ACTIVE rows the same way)
@@ -310,10 +322,11 @@ Deno.serve(async (req: Request) => {
       renew: LS.ok && n.left <= 4 && !(n.left <= 0 && up.length > 0) } : null;   // never a renewal nudge from a zero while classes are booked
     if (!LS.ok && n) console.warn("checking", code, JSON.stringify(LS.why));
     const partnerStudent = ((SRC as any[]) || []).some((x: any) => partnerish(x.source)) || N.rows.some((r: any[]) => partnerish(c(r, 22)));
-    const [H, PAY] = await Promise.all([historyOf(db, code, N.rows).catch(() => null), paymentsOf(db, code, L, partnerStudent, N.name, N.cn).catch((e) => { console.error("pay", e); return null; })]);
+    const [H, PAY, CJ] = await Promise.all([historyOf(db, code, N.rows).catch(() => null), paymentsOf(db, code, L, partnerStudent, N.name, N.cn).catch((e) => { console.error("pay", e); return null; }),
+      journeyFor(code, N, TRr, PRr, LS.ok ? n : null).catch((e) => { console.error("cj", e); return null; })]);
     const lessons = n ? { ok: LS.ok, cur: LS.ok ? n : null, html: LS.ok ? LS.html : "", packages: LS.ok && L ? L.packages.map((p: any) => { const { row, ...rest } = p; return rest; }) : [] } : null;
     return out({ ok: true, student: { code, name: N.name, cn: N.cn, adult: !!N.adult }, own: !!(SA && (SA as any).pw_set_at),
-      pkg, lessons, history: H, pay: PAY, upcoming: up, past, hw: hw.slice(0, 20), hwTotal: hw.length, notesKpi, journey, reports, at: nowIso, tz: "Asia/Shanghai (UTC+8)" });
+      pkg, lessons, history: H, pay: PAY, cj: CJ, upcoming: up, past, hw: hw.slice(0, 20), hwTotal: hw.length, notesKpi, journey, reports, at: nowIso, tz: "Asia/Shanghai (UTC+8)" });
   }
   return out({ ok: false, error: "unknown op" }, 400);
 });

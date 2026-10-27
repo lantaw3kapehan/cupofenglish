@@ -6,15 +6,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FFFFFF">
 <meta name="robots" content="noindex">
-<title>学员专区 · Student portal · CupOfEnglish</title>
+<meta http-equiv="Cache-Control" content="no-cache">
+<meta name="portal-version" content="1354">
+<title>一杯英语 · 学员专区</title>
 <link rel="icon" href="../icon-192.png">
-<link rel="preload" href="inter-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="manifest" href="manifest.webmanifest?v=1354">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="一杯英语">
+<link rel="preload" href="inter-var.woff2?v=1354" as="font" type="font/woff2" crossorigin>
 <style>
 /* 1353 · 27 Oct 2026 · CupOfEnglish 学员专区 Student portal — redesigned to the management app's system (1101/1102 colours, line icons,
    KPI cards, Lesson summary picture, Notes cards) and Chinese-user minimal rules. Works from mainland China: no Google, fonts self-hosted
    (Fredoka One + Inter for Latin; the phone's own Chinese font for CJK). No layout jumps: fixed header + bottom bar, reserved sizes. */
-@font-face{font-family:"Fredoka One";src:url(fredoka-one.woff2) format("woff2");font-display:optional}
-@font-face{font-family:"Inter";src:url(inter-var.woff2) format("woff2");font-weight:100 900;font-display:optional;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215}
+@font-face{font-family:"Fredoka One";src:url(fredoka-one.woff2?v=1354) format("woff2");font-display:optional}
+@font-face{font-family:"Inter";src:url(inter-var.woff2?v=1354) format("woff2");font-weight:100 900;font-display:optional;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215}
 :root{--ink:#2B2450;--teal:#00707A;--teal2:#16BCB0;--tealT:#E3F4F5;--purple:#5B4B9E;--purpleT:#EEEAF8;--mute:#5E5A76;--soft:#8A87A0;--line:#E7E5EF;--bg:#F5F6F8;--card:#fff;
   --amber:#8A5300;--amberT:#FFF0D2;--red:#B42318;--redT:#FDECEA;--green:#1F7A55;--greenT:#E7F5EE;--coral:#C2412D;
   --f:Inter,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;--fh:"Fredoka One",Inter,"PingFang SC","Microsoft YaHei",sans-serif;--nav:62px}
@@ -180,10 +186,15 @@ async function signOut() { const t = get(KEY); put(KEY, ''); put(DKEY, ''); S.d 
 function nav() { $('navIn').innerHTML = TABS.map(([k, cn, e, i]) => `<button role="tab" id="t_${k}" aria-selected="${S.tab === k}" aria-controls="main" onclick="tab('${k}')">${ic(i, 22)}<b>${cn}</b><i>${e}</i></button>`).join(''); }
 function tab(t) { S.tab = t; put(TKEY, t); nav(); paint(); window.scrollTo(0, 0); }
 function start() { show(true); try { const c = JSON.parse(get(DKEY) || 'null'); if (c && c.ok) S.d = c; } catch (e) {} const t = get(TKEY); if (TABS.some(x => x[0] === t)) S.tab = t; nav(); paint(); load(); }
-async function load() {
-  try { const r = await call('all', { token: get(KEY) }); if (r && r.ok) { S.d = r; S.err = 0; S.more = 0; try { put(DKEY, JSON.stringify(r)); } catch (e) {} } else if (!S.d) S.err = 1; }
+let LOADING = false;
+async function load(quiet) {   // quiet: the 5-minute / back-to-the-page refresh — repaints only if something changed, keeps the scroll position
+  if (LOADING) return; LOADING = true;
+  const sig = x => { try { const { at, ...r } = x || {}; return JSON.stringify(r); } catch (e) { return ''; } };
+  try { const r = await call('all', { token: get(KEY) }); if (r && r.ok) { const same = quiet && S.d && sig(S.d) === sig(r) && (S.d.hw || []).length <= (r.hw || []).length;
+      if (quiet && S.d && (S.d.hw || []).length > (r.hw || []).length) r.hw = (r.hw || []).concat(S.d.hw.slice((r.hw || []).length));   /* keep notes already loaded with 加载更多 */
+      S.d = r; S.err = 0; try { put(DKEY, JSON.stringify(r)); } catch (e) {} if (same) { LOADING = false; return; } } else if (!S.d) S.err = 1; }
   catch (e) { if (e.message !== 'AUTH' && !S.d) S.err = 1; }
-  paint();
+  LOADING = false; paint();
 }
 function head() { const d = S.d; if (!d) return; $('sname').textContent = d.student.name + (d.student.cn ? ' · ' + d.student.cn : ''); $('scode').textContent = d.student.code; }
 const SK = { h: [46, 132, 96, 96, 140], s: [44, 70, 70, 70, 70], l: [40, 96, 96, 260], n: [96, 96, 160, 220], p: [230, 140, 160] };
@@ -285,23 +296,27 @@ async function hwTick(day, ev, done) { const k = day + '|' + ev, x = (S.d.hw || 
 const CJ = [['Pre-A1', '启蒙'], ['A1', '入门'], ['A2', '初级'], ['B1', '中级'], ['B2', '中高级'], ['C1', '高级'], ['C2', '精通']];
 const cjK = l => { const m = String(l || '').match(/(pre-?\s*a1|[abc][12])/i); if (!m) return -1; const b = /pre/i.test(m[1]) ? 'Pre-A1' : m[1].toUpperCase(); return CJ.findIndex(x => x[0] === b); };
 const monEn = d => d ? ME[+d.slice(5, 7) - 1] + ' ' + d.slice(0, 4) : '';
-function journeyHtml() { const J = S.d.journey, H = S.d.history; if (!J) return '';
-  const now = cjK(J.now), st = cjK(J.trial && J.trial.level || J.start.level), up = now >= 0 && st >= 0 ? now - st : 0;
-  const steps = CJ.map((x, k) => { const cls = k < now ? 'dn' : k === now ? 'now' : k === now + 1 ? 'nx' : ''; const hgt = 52 + k * 14;
-    return `<div class="stp ${cls}" style="height:${hgt}px">${k === now ? '<span class="mk">现在 Now</span>' : k === now + 1 ? '<span class="mk">目标 Next</span>' : ''}<b>${x[0]}</b>${x[1]}</div>`; }).join('');
-  const M = []; if (J.trial && J.trial.date) M.push([J.trial.date, '试听 Trial', J.trial.level]);
-  if (J.start && J.start.date) M.push([J.start.date, '入学 Start', [J.start.level, J.start.book].filter(Boolean).join(' · ')]);
-  (J.path || []).forEach(p => M.push(['', '升级 · 教材 Up', p]));
-  (J.checks || []).forEach(c => M.push([c.date, '测评 Check', c.level]));
+// the CEFR journey: management's own steps (cjHtml via coe-student), newest at the top like climbing stairs, the trial at the bottom
+const EVZ = x => x.start ? '入学 Start' : /^Trial/.test(x.en) ? '试听 Trial' : /^Renew/.test(x.en) ? '续费 Renewed' : /^Book/.test(x.en) ? '教材升级 Book up' : /^Level/.test(x.en) ? '升级 Up' : '测评 Check';
+function journeyHtml() { const C = S.d.cj, J = S.d.journey; if (!C && !J) return '';
+  const nowL = C ? C.now : J.now, now = cjK(nowL), nxK = now + 1, up = C ? C.up : 0;
+  const steps = CJ.map((x, k) => { const cls = k < now ? 'dn' : k === now ? 'now' : k === nxK ? 'nx' : ''; const hgt = 52 + k * 14;
+    return `<div class="stp ${cls}" style="height:${hgt}px">${k === now ? '<span class="mk">现在 Now</span>' : k === nxK ? '<span class="mk">目标 Next</span>' : ''}<b>${x[0]}</b>${x[1]}</div>`; }).join('');
+  let M = [];
+  if (C) M = C.steps.filter(x => !/^Trial/.test(x.en)).sort((a, b) => String(b.d || '').localeCompare(String(a.d || ''))).concat(C.steps.filter(x => /^Trial/.test(x.en)))
+    .map(x => [x.d, EVZ(x), [x.lv, x.bk].filter(Boolean).join(' · '), x.u != null && x.u > 0 ? x.u : null]);
+  else { if (J.trial && J.trial.date) M.push([J.trial.date, '试听 Trial', J.trial.level, null]); if (J.start && J.start.date) M.unshift([J.start.date, '入学 Start', [J.start.level, J.start.book].filter(Boolean).join(' · '), null]); }
+  const since = C && C.since ? C.since : '';
   return `<div class="card" id="cjCard" style="margin-top:14px"><div class="row"><b class="grow" style="font-size:17px">学习进阶<span class="en" style="display:inline;margin-left:6px">CEFR journey</span></b><button class="chipb" onclick="cjPic()">${ic('img')}保存图片</button></div>`
-    + `<div class="small" style="margin:6px 0 26px">${up > 0 ? '<b>进步 ' + up + ' 个级别</b> · 自' + esc(mCn((J.trial && J.trial.date || J.start.date || '').slice(0, 7))) : '当前水平 <b>' + esc(J.now || '—') + '</b>'}${en(up > 0 ? 'Up ' + up + ' level' + (up > 1 ? 's' : '') + ' since ' + monEn(J.trial && J.trial.date || J.start.date) : 'Current level')}</div>`
+    + `<div class="small" style="margin:6px 0 26px">${up > 0 ? '<b>进步 ' + up + ' 个级别</b>' : '当前水平 <b>' + esc(nowL || '—') + '</b>'}${since ? en((up > 0 ? 'Up ' + up + ' level' + (up > 1 ? 's' : '') + ' since ' : 'With us since ') + esc(since)) : ''}</div>`
     + `<div class="stair">${steps}</div>`
-    + '<div style="margin-top:12px">' + M.map(x => `<div class="ms"><span class="d">${x[0] ? esc(x[0].slice(0, 4) + '年' + (+x[0].slice(5, 7)) + '月') : ''}</span><span class="grow"><b>${esc(x[1])}</b>${x[2] ? ' · ' + esc(x[2]) : ''}</span></div>`).join('') + '</div>'
+    + '<div style="margin-top:12px">' + M.map(x => `<div class="ms"><span class="d">${x[0] ? esc(x[0].slice(0, 4) + '年' + (+x[0].slice(5, 7)) + '月') : ''}</span><span class="grow"><b>${esc(x[1])}</b>${x[2] ? ' · ' + esc(x[2]) : ''}${x[3] ? '<div class="m">' + num(x[3]) + ' 课时 lessons</div>' : ''}</span></div>`).join('') + '</div>'
+    + (C && C.tk ? `<div style="margin-top:8px"><b>共 ${num(C.tk)} 课时</b>${en(num(C.tk) + ' lessons with us')}</div>` : '')
     + `<div class="small mute" style="margin-top:8px">CEFR 是国际通用的英语水平标准（Pre-A1 至 C2）</div></div>`; }
 function progHtml() { const d = S.d, R = d.reports || [], P = d.past || [], H = d.history;
   let h = journeyHtml();
   if (H) h += h2('我的记录', 'Since joining') + `<div class="kpis"><div class="kpi"><div class="l">首次上课</div><div class="v sm">${H.first ? esc(yCn(H.first)) : '—'}</div><div class="s">First class${H.trial ? ' · 试听 ' + esc(H.trial.slice(0, 7)) : ''}</div></div>`
-    + `<div class="kpi teal"><div class="l">已上课时</div><div class="v">${num(H.total)}</div><div class="s">${H.years && H.years.length ? '自' + esc(H.years[0].y) + '年起（App 记录）' : 'Lessons recorded'}</div></div></div>`
+    + (d.cj && d.cj.tk ? `<div class="kpi teal"><div class="l">已上课时</div><div class="v">${num(d.cj.tk)}</div><div class="s">Lessons with us</div></div></div>` : `<div class="kpi teal"><div class="l">已上课时</div><div class="v">${num(H.total)}</div><div class="s">${H.years && H.years.length ? '自' + esc(H.years[0].y) + '年起（App 记录）' : 'Lessons recorded'}</div></div></div>`)
     + (H.teachers && H.teachers.length ? `<div class="card" style="margin-top:10px"><b>任课老师</b>${en('Teachers')}<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:6px">${H.teachers.map(t => `<span class="tag grey">${esc(t.name)} · ${num(t.v)} 节</span>`).join('')}</div></div>` : '');
   const dn = P.filter(x => x.status === 'done').length, ab = P.filter(x => x.status === 'absent').length, all = dn + ab;
   h += h2('出勤', 'Attendance · last 4 months') + `<div class="kpis"><div class="kpi"><div class="l">已上课</div><div class="v">${dn}<small>节</small></div><div class="s">Attended</div></div><div class="kpi teal"><div class="l">出勤率</div><div class="v">${all ? Math.round(100 * dn / all) + '%' : '—'}</div><div class="s">${ab ? '缺课 ' + ab + ' 节' : '无缺课 · No absences'}</div></div></div>`;
@@ -322,10 +337,10 @@ async function snap(el, w) {
     const c = document.createElement('canvas'), k = 2; c.width = w * k; c.height = h * k; const x = c.getContext('2d'); x.scale(k, k); x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0); return c.toDataURL('image/png'); }
   catch (e) { return src; }
 }
-async function picSheet(title, build, w) {
+async function picSheet(title, build, w) { S.snap = 1;
   $('shIn').innerHTML = `<h3>${title}</h3><div class="skel" style="height:320px"></div>`; $('sh').classList.remove('hide');
   const st = $('stage'); st.style.width = w + 'px'; st.innerHTML = build(); logos();
-  await new Promise(r => setTimeout(r, 60)); const url = await snap(st.firstElementChild, w); st.innerHTML = '';
+  await new Promise(r => setTimeout(r, 60)); const url = await snap(st.firstElementChild, w); st.innerHTML = ''; S.snap = 0;
   $('shIn').innerHTML = `<h3>${title}</h3><img class="pic" src="${url}" alt="${title}"><p class="small mute" style="text-align:center;margin:10px 0 0">长按图片保存 · Long-press the picture to save</p><a class="btn block" href="${url}" download="CupOfEnglish.png">${ic('img')}保存图片 · Save picture</a><button class="btn ghost block" style="margin-top:8px" onclick="closeSh()">关闭 · Close</button>`; }
 function lsPic() { const L = S.d.lessons; if (!L || !L.ok || !L.html) return; picSheet('课时汇总 · Lesson summary', () => `<div style="padding:28px 30px;background:#fff"><div style="text-align:center"><img data-logo width="186" height="54"></div>${L.html}</div>`, 760); }
 function cjPic() { picSheet('学习进阶 · CEFR journey', () => `<div style="padding:16px;background:#fff">${journeyHtml().replace(/<button[\s\S]*?<\/button>/, '')}<div style="text-align:center;margin-top:10px"><img data-logo width="140" height="41"></div></div>`, 420); }
@@ -357,6 +372,11 @@ async function setPw() { const a = $('np').value, b = $('np2').value, e = $('pe'
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeSh(); });
 logos(); eyes();
 if (get(KEY)) start(); else show(false);
+</script>
+<script src="../portal-update.js?v=1354"></script>
+<script>
+// 1354 · new versions and new data arrive by themselves: version.txt on open, every 5 min, and back to the page; data quietly every 5 min
+try { PortalUpdate.init({ url: 'version.txt', busy: () => !!S.snap || !$('sh').classList.contains('hide') || LOADING, refresh: () => { if (get(KEY) && S.d) load(true); } }); } catch (e) {}
 </script>
 </body>
 </html>

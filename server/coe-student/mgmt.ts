@@ -89,3 +89,22 @@ export async function mgmtSummary(env: { S: any; run1196: any }, AT: any, mon: a
   const c = shared ? cap.sh : cap.ls; if (!c) throw new Error("no capture");
   return { shared, html, c };
 }
+
+// ── the CEFR journey, by management's own code (cjHtml + patch 1221's prep), same way as the Lesson summary (1354) ──
+function lineFrom(src: string, start: string): string { const k = src.indexOf("\n" + start); if (k < 0) throw new Error("missing " + start); const e = src.indexOf("\n", k + 1); return src.slice(k + 1, e); }
+export function buildJourney(app: string) {
+  const lvAt = app.indexOf("const LV = [\n{ k: 'C2'"); if (lvAt < 0) throw new Error("missing CEFR_LV");
+  const lvEnd = app.indexOf("}];", lvAt); const LVsrc = app.slice(lvAt, lvEnd + 3);
+  const k1221 = app.indexOf("/* 1221 · one CEFR level everywhere"); if (k1221 < 0) throw new Error("missing 1221");
+  const f = app.indexOf("(function(){", k1221), b = app.indexOf("{", f); const iife = app.slice(f, skipBlock(app, b)) + ")();";
+  const code = [
+    "const window = W; const document = { querySelector: () => null, querySelectorAll: () => [] }; const D = { mgr: false }; const $ = () => null;",
+    "const esc = s => String(s == null ? '' : s).replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));",
+    LVsrc, "window.CEFR_LV = LV; const CEFR_LV = LV;",
+    lineFrom(app, "const CJ_L = ["), lineFrom(app, "const ymdLocal = "),
+    topFn(app, "cjLv"), topFn(app, "cjDay"), topFn(app, "cjPath"), topFn(app, "cjNewest"), topFn(app, "cjHtml"),
+    "window.cjHtml = cjHtml;", iife,
+    "return { run: (S, X) => { window.CJX[S.code] = X; window._CJ = null; const h = window.cjHtml(S); const J = window._CJ; return J ? { html: h, now: CJ_L[J.now] || '', next: CJ_L[J.nxt] || '', up: J.up, since: J.since, tk: J.tk, tkAll: J.tkAll,",
+    "  steps: J.T.map(x => ({ d: x.d || '', lv: CJ_L[x.i] || '', en: x.en, zh: x.zh, bk: x.bk || '', u: x.u == null ? null : x.u, start: !!x.start })) } : null; } };"].join("\n");
+  return new Function("W", code)({});
+}
