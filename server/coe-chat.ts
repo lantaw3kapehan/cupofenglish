@@ -1,6 +1,7 @@
-// CupOfEnglish · coe-chat (27 Oct 2026 · 1400/1401): Team Chat — groups + direct chats, @mentions, seen/replied receipts,
-// needs-reply, confirm, pinned, pictures, voice, time-in auto-post, search, Today/History, alerts for every group message (merged, mutable).
-// History is permanent: nothing is ever deleted (teachers can edit, shown "edited"; management can hide, the row stays).
+// CupOfEnglish · coe-chat (27 Oct 2026 · 1400–1404): Team Chat — groups + direct chats, @mentions, seen/replied receipts,
+// needs-reply, confirm, pinned, pictures, voice, time-in auto-post, search, Today/History, alerts for every group message (merged, mutable),
+// management roster (add / remove a teacher), retry-safe sending (cid).
+// Kept in CupOfEnglish's database: nothing is deleted by the app (teachers can edit, shown "edited"; management can hide, the row stays).
 // Phone alerts: chat_outbox → coe_push_queue (coe_chat_out, every minute, held while the teacher has a class running, merged per person).
 // Flag: docs sys:chat { enabled, pilot:[teacher names] | "*", exclude?:[names], mgmt?:[names], alias?:{account:name} }.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -55,9 +56,9 @@ Deno.serve(async (req: Request) => {
     const need = () => { if (!mgmt) throw new Error("Management only"); };
     const msg = async (id: number) => { const { data } = await db.from("chat_messages").select("*").eq("id", id).maybeSingle(); if (!data || !canSee(data.gid)) throw new Error("Not found"); return data; };
     async function signed(rows: any[]) {
-      const P = rows.filter((r) => r.img_path).map((r) => r.img_path); if (!P.length) return rows;
-      const { data } = await db.storage.from("chat").createSignedUrls(P, 3600); const U: any = {}; (data || []).forEach((x: any) => { if (x.path) U[x.path] = x.signedUrl; });
-      return rows.map((r) => r.img_path ? { ...r, img: U[r.img_path] || null } : r);
+      const P = rows.flatMap((r) => r.img_path ? [r.img_path, ...((r.meta && Array.isArray(r.meta.imgs)) ? r.meta.imgs : [])] : []); if (!P.length) return rows;
+      const { data } = await db.storage.from("chat").createSignedUrls([...new Set(P)], 3600); const U: any = {}; (data || []).forEach((x: any) => { if (x.path) U[x.path] = x.signedUrl; });
+      return rows.map((r) => r.img_path ? { ...r, img: U[r.img_path] || null, imgs: r.meta && Array.isArray(r.meta.imgs) ? r.meta.imgs.map((x: string) => U[x] || null).filter(Boolean) : null } : r);
     }
     async function decorate(rows: any[]) {
       if (!rows.length) return rows;
@@ -65,11 +66,12 @@ Deno.serve(async (req: Request) => {
       const by: any = {}; (R || []).forEach((x: any) => { (by[x.mid] = by[x.mid] || []).push(x); });
       const pids = [...new Set(rows.filter((r) => r.parent_id).map((r) => r.parent_id))], PQ: any = {};
       if (pids.length) { const { data: PP } = await db.from("chat_messages").select("id,author,body,kind,hidden").in("id", pids); (PP || []).forEach((x: any) => { PQ[x.id] = { author: x.author, body: x.hidden ? "" : String(x.body || (x.kind === "voice" ? "Voice message" : "Picture")).slice(0, 120) }; }); }
-      return signed(rows.map((r) => { const L = by[r.id] || [], mine = L.find((x: any) => lc(x.name) === lc(me)) || null;
+      return signed(rows.map((r) => { const L0 = by[r.id] || [], mine = L0.find((x: any) => lc(x.name) === lc(me)) || null;
+        const L = mgmt || lc(r.author) === lc(me) ? L0 : [];   // (Misty 20:24) teachers get receipt numbers only for their own messages
         return { id: r.id, gid: r.gid, author: r.author, mgmt: r.author_mgmt, kind: r.kind, body: r.hidden && !mgmt ? "" : r.body, img_path: r.hidden && !mgmt ? null : r.img_path, meta: r.meta,
           quote: r.parent_id ? PQ[r.parent_id] || null : null, mentions: r.mentions, needs_reply: r.needs_reply, reply_by: r.reply_by, confirm: r.confirm, pinned: r.pinned, hidden: r.hidden, parent_id: r.parent_id, edited: !!r.edited_at,
           day: r.day, at: r.created_at, n: L.length, seen: L.filter((x: any) => x.seen_at).length, replied: L.filter((x: any) => x.replied_at).length, confirmed: L.filter((x: any) => x.confirmed_at).length,
-          mine: mine ? { seen: mine.seen_at, replied: mine.replied_at, confirmed: mine.confirmed_at } : null }; }));
+          mine: mine ? { seen: mine.seen_at, replied: mine.replied_at, confirmed: mine.confirmed_at } : null, ...(mgmt || lc(r.author) === lc(me) ? {} : { replied: 0, confirmed: 0 }) }; }));
     }
     async function groups() {
       const { data: G } = await db.from("chat_groups").select("id,name,kind,sort").order("sort");
@@ -114,6 +116,30 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, me, mgmt, today, alias, muted: (MU || []).map((x: any) => x.gid), members: everyone.map((n) => ({ name: n, mgmt: isMg(n) })), groups: await groups(),
         quick: QUICK, ready: mgmt ? ["Please redo your time-in check now (tap Redo now on Today).", "You're late for your class. Please join now and reply here.", "Substitute needed at [time] for [student]. Who can take it?"] : [] });
     }
+    if (a === "roster" || a === "member") {   // management: who is in Team Chat (applies to every group and direct chat)
+      need();
+      if (a === "member") {
+        const who = str(b.name, 40); if (!who) throw new Error("Pick a teacher");
+        const ex: string[] = Array.isArray(cfg.exclude) ? cfg.exclude.map(String) : [], has = ex.some((x) => lc(x) === lc(who));
+        const next = b.on ? ex.filter((x) => lc(x) !== lc(who)) : (has ? ex : [...ex, who]);
+        if (b.on ? has : !has) {   // a real change: save it, log it in All Teachers (kept in the database), stop alerts already waiting
+          const { data: cur } = await db.from("docs").select("data").eq("key", "sys:chat").maybeSingle();
+          await db.from("docs").update({ data: { ...((cur && cur.data) || cfg), exclude: next }, updated_at: now }).eq("key", "sys:chat");
+          await db.from("chat_messages").insert({ gid: /^zz/i.test(who) ? "zztest" : "all", author: me, author_mgmt: true, kind: "system", body: dn(me) + (b.on ? " added Teacher " : " removed Teacher ") + who, mentions: [] });
+          if (!b.on) await db.from("chat_outbox").update({ queued_at: now }).is("queued_at", null).ilike("to_name", who);
+        }
+        cfg.exclude = next;
+      }
+      const since = new Date(Date.now() - 30 * 864e5).toISOString();
+      const { data: TS } = await db.from("app_sessions").select("name").eq("mode", "teacher").gt("exp", since);
+      const { data: TC } = await db.from("classes").select("teachers").gte("day", since.slice(0, 10)).eq("cancelled", false).limit(20000);
+      const nm: Record<string, string> = {}; (TS || []).forEach((x: any) => { nm[lc(x.name)] = String(x.name); });
+      (TC || []).forEach((c: any) => (c.teachers || []).forEach((t: string) => { const k = lc(t); if (k && !nm[k]) nm[k] = k.charAt(0).toUpperCase() + k.slice(1); }));
+      (Array.isArray(cfg.exclude) ? cfg.exclude : []).forEach((x: string) => { if (!nm[lc(x)]) nm[lc(x)] = String(x); });
+      const exs = new Set((Array.isArray(cfg.exclude) ? cfg.exclude : []).map((x: string) => lc(x)));
+      const list = Object.keys(nm).filter((k) => !mg.some((x) => lc(x) === k) && !/^zz/.test(k) && !/test/.test(k)).sort().map((k) => ({ name: nm[k], in: !exs.has(k) }));
+      return out({ ok: true, teachers: list });
+    }
     if (a === "mute") {
       const gid = str(b.gid, 60); if (!canSee(gid) || gid === "ann") throw new Error("This group can't be muted");
       if (b.on) await db.from("chat_mutes").upsert({ name: me, gid }, { onConflict: "name,gid" }); else await db.from("chat_mutes").delete().eq("name", me).eq("gid", gid);
@@ -121,7 +147,9 @@ Deno.serve(async (req: Request) => {
     }
     if (a === "poll") {
       const { data: L } = await db.from("chat_messages").select("id").order("id", { ascending: false }).limit(1);
-      return out({ ok: true, last: L && L[0] ? L[0].id : 0, groups: await groups(), today });
+      let inClass = false;
+      if (!mgmt) { const { data: C } = await db.from("classes").select("id").eq("day", today).lte("starts_at", now).gt("ends_at", now).eq("cancelled", false).contains("teachers", [lc(me)]).limit(1); inClass = !!(C && C.length); }
+      return out({ ok: true, last: L && L[0] ? L[0].id : 0, groups: await groups(), today, inClass });
     }
     if (a === "list") {
       const gid = str(b.gid, 60); if (!canSee(gid)) throw new Error("Not found"); const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? String(b.day) : today;
@@ -149,21 +177,26 @@ Deno.serve(async (req: Request) => {
     }
     if (a === "send") {
       const gid = str(b.gid, 60); if (!canSee(gid)) throw new Error("Not found"); if (gid === "ann" && !mgmt) throw new Error("Only management posts announcements");
+      if (gid === "timein" && !mgmt) throw new Error("Time-in cards post here by themselves");
+      const cid = str(b.cid, 40), ckey = cid ? "c:" + lc(me) + ":" + cid : null;   // a retry of the same message never posts twice
+      if (ckey) { const { data: ex } = await db.from("chat_messages").select("*").eq("ukey", ckey).maybeSingle(); if (ex) return out({ ok: true, msg: (await decorate([ex]))[0], again: true }); }
       const body = str(b.body, 2000), parent = Number(b.parent_id) || null; let img_path = null;
-      if (b.img) img_path = await upload(String(b.img), "m"); else if (b.voice) img_path = await upload(String(b.voice), "v");
+      const imgP: string[] = [];   // 1405: up to 5 pictures in one message (first in img_path, all in meta.imgs)
+      if (Array.isArray(b.imgs) && b.imgs.length) { for (const x of b.imgs.slice(0, 5)) imgP.push(await upload(String(x), "m")); img_path = imgP[0]; }
+      else if (b.img) img_path = await upload(String(b.img), "m"); else if (b.voice) img_path = await upload(String(b.voice), "v");
       if (!body && !img_path) throw new Error("Empty message");
       const mem = members(gid); let men = (Array.isArray(b.mentions) ? b.mentions : []).map(String).filter((n: string) => n === "all" || mem.some((x) => lc(x) === lc(n)));
       men = [...new Set(men.map((n: string) => n === "all" ? "all" : mem.find((x) => lc(x) === lc(n))!))];
       const nr = mgmt && !!b.needs_reply, cf = mgmt && !!b.confirm;
       const row = { gid, author: me, author_mgmt: mgmt, kind: b.voice && img_path ? "voice" : img_path ? "image" : (QUICK.includes(body) && parent ? "quick" : "text"), body, img_path, mentions: men, needs_reply: nr,
-        reply_by: nr && b.reply_by ? new Date(String(b.reply_by)).toISOString() : null, confirm: cf, pinned: mgmt && !!b.pin, parent_id: parent };
+        reply_by: nr && b.reply_by ? new Date(String(b.reply_by)).toISOString() : null, confirm: cf, pinned: mgmt && !!b.pin, parent_id: parent, ukey: ckey, meta: imgP.length > 1 ? { imgs: imgP } : null };
       const m = await insertMsg(row);
       await markReplied(gid, parent);
       const gname = gid.startsWith("dm:") ? (mgmt ? "Management" : "Teacher " + me) : ((await db.from("chat_groups").select("name").eq("id", gid).maybeSingle()).data?.name || "Team Chat");
       const others = mem.filter((n) => lc(n) !== lc(me));
       const loud: string[] = men.includes("all") || gid === "ann" || nr || cf || gid.startsWith("dm:") ? others : men;
-      const what = body || (b.voice ? "Voice message" : "Sent a picture");
-      await push(loud, dn(me) + " · " + gname, (men.length ? "Tagged you: " : "") + what, "chat-" + m.id);
+      const what = body || (b.voice ? "Voice message" : imgP.length > 1 ? "Sent " + imgP.length + " pictures" : "Sent a picture");
+      await push(loud, dn(me) + " · " + gname, (men.length ? "Tagged you: " : "") + what, "chat-at-" + m.id);   // chat-at-*: urgent (sw.js keeps it on screen)
       await push(others.filter((n) => !loud.some((x) => lc(x) === lc(n))), dn(me) + " · " + gname, what, "chat-" + m.id + "|" + gid, true);
       return out({ ok: true, msg: (await decorate([m]))[0] });
     }
@@ -184,6 +217,7 @@ Deno.serve(async (req: Request) => {
     if (a === "hide") { need(); const p = await msg(Number(b.id)); await db.from("chat_messages").update({ hidden: !!b.on, hidden_by: b.on ? me : null, updated_at: now }).eq("id", p.id); return out({ ok: true }); }
     if (a === "pin") { need(); const p = await msg(Number(b.id)); await db.from("chat_messages").update({ pinned: !!b.on, updated_at: now }).eq("id", p.id); return out({ ok: true }); }
     if (a === "readers") {
+      need();   // (Misty 20:24) who saw what, and when, is for management only
       const p = await msg(Number(b.id)); const { data: R } = await db.from("chat_reads").select("name,seen_at,replied_at,confirmed_at").eq("mid", p.id);
       return out({ ok: true, readers: (R || []).sort((x: any, y: any) => String(x.seen_at || "9").localeCompare(String(y.seen_at || "9"))) });
     }
@@ -204,12 +238,17 @@ Deno.serve(async (req: Request) => {
       await push(everyone, dn(me) + " · Time-in", body, "chat-" + m.id + "|timein", true);
       return out({ ok: true, id: m.id });
     }
+    if (a === "presence" && !mgmt) return out({ ok: true, members: everyone.map((n) => ({ name: n, mgmt: isMg(n) })) });   // (Misty 20:24) teachers: names only
     if (a === "presence") {
-      const { data: P } = await db.from("coe_presence").select("name,at").gte("at", new Date(Date.now() - 24 * 3600e3).toISOString());
-      const { data: C } = await db.from("classes").select("teachers").eq("day", today).lte("starts_at", now).gt("ends_at", now).eq("cancelled", false);
-      const inC = new Set((C || []).flatMap((c: any) => (c.teachers || []).map((t: string) => lc(t)))), last: any = {};
+      const { data: P } = await db.from("coe_presence").select("name,at").gte("at", new Date(Date.now() - 7 * 864e5).toISOString());
+      const NOW = Date.now(), soon = new Date(NOW + 2 * 3600e3).toISOString();
+      const { data: C } = await db.from("classes").select("teachers,starts_at,ends_at").eq("day", today).lt("starts_at", soon).gt("ends_at", now).eq("cancelled", false);
+      const until: any = {}, next: any = {}, last: any = {};
+      (C || []).forEach((c: any) => (c.teachers || []).forEach((t: string) => { const k = lc(t), st = Date.parse(c.starts_at), en = Date.parse(c.ends_at);
+        if (st <= NOW) { if (!until[k] || en > until[k]) until[k] = en; } else if (!next[k] || st < next[k]) next[k] = st; }));
       (P || []).forEach((x: any) => { const k = lc(x.name); if (!last[k] || x.at > last[k]) last[k] = x.at; });
-      return out({ ok: true, members: everyone.map((n) => ({ name: n, mgmt: isMg(n), last: last[lc(n)] || null, online: !!last[lc(n)] && Date.now() - new Date(last[lc(n)]).getTime() < 3 * 60e3, inClass: inC.has(lc(n)) })) });
+      const iso = (t: number) => t ? new Date(t).toISOString() : null;
+      return out({ ok: true, members: everyone.map((n) => { const k = lc(n); return { name: n, mgmt: isMg(n), last: last[k] || null, online: !!last[k] && NOW - new Date(last[k]).getTime() < 3 * 60e3, inClass: !!until[k], until: iso(until[k]), next: iso(next[k]) }; }) });
     }
     return out({ ok: false, error: "Unknown action" }, 400);
   } catch (e) { return out({ ok: false, error: String((e as any)?.message || e) }); }

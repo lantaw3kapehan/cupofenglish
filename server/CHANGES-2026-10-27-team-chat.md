@@ -43,7 +43,7 @@ Response-time metrics in Performance · Substitute "I'll take it" button · Expo
 ## 1401 · 27 Oct 19:40 · every teacher + WeChat-group basics
 - **Everyone:** `sys:chat.pilot = "*"` = every active teacher (signed in or taught in the last 30 days), minus `exclude`
   (Virgo, Daniela, Marife, Lovely — Misty 19:31). Excluded teachers get no menu item, are not members, can't be tagged, and their
-  time-in does not post. Members (before 19:56): Misty, Celine + April, Ara, Christian, Cy, Dezza, Julia, Kat, Mayi, Pam, Resa, Rose.
+  time-in does not post. Members now: Misty, Celine + April, Ara, Christian, Cy, Dezza, Julia, Kat, Mayi, Pam, Resa, Rose.
 - Misty's management account (CupOfEnglish, works@) shows as **Misty** (`alias`). Celine has her own account.
 - **Alerts for every group message** (All Teachers / Time-in / Substitutes): sent ~45 s later and merged per person
   ("Team Chat · N new messages"). **Mute** per group (bell, in the group header); tags, @All, Needs reply, Confirm, Announcements and
@@ -55,8 +55,50 @@ Response-time metrics in Performance · Substitute "I'll take it" button · Expo
 - Teachers' Team Chat sits second in their menu (after Today).
 - Next: teacher-to-teacher private chats (not now — All Teachers is the shared space), response times in Performance, substitute claim, export.
 
-## 27 Oct 19:56 · names (Misty: "CupOfEnglish, just CupOfEnglish, and Misty if I use my teacher account")
-- `alias` removed from sys:chat: the management account shows as **CupOfEnglish** (Management chip); Celine stays Celine.
-- Misty's teacher-mode login is now a normal member **Misty** (groups, members list, @-taggable, own unread, time-in auto-post,
-  direct chat "Teacher Misty" for management). Members: CupOfEnglish, Celine (Management) + April, Ara, Christian, Cy, Dezza, Julia,
-  Kat, Mayi, Misty, Pam, Resa, Rose. Config-only change, no app release needed.
+## 1402 + 1403 · 27 Oct 20:15 · design, mention sound, status, unread numbers
+- Design (Misty 19:56): one three-pane surface filling the screen (chats 260 px · conversation · members 260 px; members are a toggle under
+  1280 px and a sheet on phones); sidebar-sized list (15 px, no "Teacher" prefix, 28 px avatars); Reply/Edit/Pin/Hide as a small icon toolbar
+  on hover (laptop) or long-press (phone); quiet "Seen by"; consecutive messages grouped; own and management bubbles teal; composer chips in
+  one scrolling row; "No more messages today"; header "Today · N members · N online", Mute / History / Search / Members / Sound.
+- Mention sound (Misty 19:57): chime.wav (7 KB, served with the app) when a new message tags me / @All / Needs reply / a direct message,
+  on any screen; not for ordinary group messages; held while my class runs and played when it ends; "Tap to turn on chat sounds" if the
+  browser blocks sound; "Sound on/off" in the chat header (default on); purple pulsing Team Chat badge for mentions.
+  Phone alerts for those are urgent (tag chat-at-*): they stay on screen until clicked (requireInteraction, Android/desktop Chrome) and vibrate
+  longer on Android. The sound of a phone alert is the phone's own notification sound (iPhone: system sound).
+- Fixed: chat phone alerts never reached phones (names were not lower-cased for coe_push_subs — every chat alert said "no phone" before 20:10).
+- Status (Misty 19:59): Members in three sections ONLINE · IN CLASS · AWAY; "In class · until 20:25" (no student name); last seen with the day
+  ("Yesterday 22:05", "Mon 21:55"); "Not opened yet"; "Next class 20:40" for away teachers within 2 hours.
+- Unread numbers (Misty 20:00): each group and direct chat shows its unread number (purple when it includes a mention, teal otherwise);
+  the Team Chat menu item shows the total.
+- Retention: chat rows and the chat bucket are kept in CupOfEnglish's database; no cleanup job touches them (checked coe-log-clean,
+  coe-daily-archive, coe-speed-trim).
+
+## 1404 · 27 Oct 20:35 · clarity, member management, teacher privacy (Misty 20:06 / 20:12 / 20:24)
+- Side panel "In this chat · N people can read this chat" = the actual participants of the selected conversation.
+- One-line description under each conversation; "Formal requests, leave and notices stay in Messages."
+- Time-in / Announcements: Reply removed for teachers (they can't post there) with a clear note; the server refuses teacher posts in Time-in.
+- "Back to Today" from History / Search; "View history" on an empty day; History empty text states the retention.
+- Search: labelled Keyword / Person / From date / To date, scope line, Clear filters, result count, helpful no-results, Open in context.
+- Members panel collapsible on laptop (remembered).
+- Composer: Send disabled when empty; "Enter sends · Shift+Enter new line"; a draft per conversation; Sending / Not sent + Retry
+  (server de-duplicates retries by a client id); picture preview; voice preview with Send voice / Cancel (the microphone is only asked for
+  when the teacher holds the mic button).
+- "New messages below" button instead of pulling the reader down.
+- Management: "Manage members" (Add / Remove a teacher for all of Team Chat; the change is a line in All Teachers and saved in sys:chat).
+  Teacher tokens are refused for roster / member.
+- Privacy: teacher tokens get names only from presence (no online / in class / last seen), no per-person readers list, and receipt counts
+  only on their own messages ("Seen by N"). Management unchanged. coe-train "online" (management Online now) already refuses teachers.
+- Retention: chat rows and the chat bucket stay in CupOfEnglish's database; nothing is deleted by the app; no cleanup job touches them.
+
+## 1405 · 27 Oct 20:55 · paste / drop pictures (Misty 20:33)
+- Message box: paste a picture (Ctrl/Cmd+V — e.g. a copied time-in card or the partner Weekly class times picture) or drag pictures
+  onto the chat. They wait as small previews above the box (✕ removes one); nothing is sent until Send. Up to 5 per message
+  ("Up to 5 pictures per message · added N"); each is shrunk to ≤ 300 KB; the picture button now takes several files.
+- A paste with only text stays plain text; a paste with a picture and text keeps both (text goes into the box).
+- Where the box is off (Time-in and Announcements for teachers, History) a dropped picture shows "Pictures can't be sent in this chat";
+  drops inside Team Chat no longer trigger the class-video drop message.
+- Several pictures show as a small gallery (tap to enlarge); the alert says "Sent N pictures".
+- Server coe-chat v8: send accepts imgs (max 5, each checked and ≤ 400 KB as before); the first is img_path, all are in meta.imgs; all are
+  signed for 1 hour like single pictures. Retry de-duplication (cid) unchanged.
+- Laptop header: when the side panel narrows the chat, the header buttons show icons only (names kept for screen readers) so the title
+  "All Teachers · Today · N members" stays on one line (it wrapped into a narrow column in 1404).
