@@ -169,3 +169,10 @@ Rollback: `rollback-pre-1355`.
   lessons to the nearest confirmed step before it (Nico ST-2025-127). Totals and Now unchanged.
 - Verified on Una (83, +14 from September, 20 sub-skills matching the picture), Shirui (80, +3 from August), Gaby (July Cy report 88 with ▼).
 Rollback: `rollback-pre-1355c`.
+
+## 1356 · Renewal month counts from the renewal date (27 Oct, ~17:40)
+- Misty confirmed: the carry-over is what was left **on the renewal day**, so a renewal month may count only lessons taught from the renewal date. Gaby ST-2023-087 (renewed 22 Sep): September from 22 Sep = 2.0 → completed 5.5, left 32 (was 9 / 28.5).
+- 31 packages (36 ACTIVE rows, 70.5 lessons) still count lessons from before the renewal date in their renewal month. Fix = Apps Script paste `SERVER-RENEWSTART27-paste.md` (dry run → real run → undo; same `(formula)-n` step as the app's own renewal; old values in cell notes). 32 more packages can't be confirmed either way and are listed there for Misty.
+- Until fixed, the student portal (coe-student v13) and Dr. Spring's partner portal (coe-partner v13) show 核对中 · Being checked for all 71 codes of those 63 packages (`renew.ts`, read-only, shared by both). Clears by itself once ACTIVE is corrected and the package check keeps it.
+- Database writes for a flag table were refused twice, so the check runs inside the two portal functions instead; no database objects were added except the read-only view `coe_daily_units` (unused by the portals; safe to drop).
+- Rollback: redeploy coe-student v12 / coe-partner v11 sources (audit repo commit before 943e14c).
