@@ -6016,7 +6016,7 @@ window.enTfS = function(){ const box = $('enTS'), i = $('enTf'); if(!box || !i) 
     : '<div class="small mute">No student with a package in ACTIVE matches · if the giver is an old student not in our sheet, tick the box below</div>'; };
 window.ENPRE = window.ENPRE || {};
 window.enPre = function(code){ const k = String(code || '').toUpperCase(), x = ENPRE[k]; if(x && Date.now() - x.t < 300000) return x.p;
-  const p = api('mgmtEnrolPaid', TOKEN, { code: k, dry: true }).catch(e => ({ ok: false, msg: String((e && (e.msg || e.message)) || e) })); ENPRE[k] = { t: Date.now(), p: p };
+  const g = api('mgmtEnrolPaid', TOKEN, { code: k, dry: true }).catch(e => ({ ok: false, msg: String((e && (e.msg || e.message)) || e), gerr: 1 })), d = window.pkcDb ? pkcDb('enrol', { code: k }) : Promise.resolve(null), p = d.then(x => x || g); if(window.pkcVerify) pkcVerify('enrol', k, d, g); ENPRE[k] = { t: Date.now(), p: p };   /* 1290 */
   p.then(r => { if(!r || !r.ok) delete ENPRE[k]; }); return p; };
 window.enDoneFu = function(code, name, r){ const T = (typeof TRL !== 'undefined' && TRL && TRL.rows) || [], up = s => String(s || '').toUpperCase();
   const t = T.filter(x => up(x.code) === up(code)).sort((a, b) => String(b.date).localeCompare(String(a.date)))[0]; if(!t) return;
@@ -6254,7 +6254,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1318;
+const COE_V = 1319;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -6465,7 +6465,8 @@ function rpOther(){ RPS.pkg = ''; RPS.free = 0; document.querySelectorAll('.rpk'
 const RP_PRE = {};
 function rpWarm(code, teacher){ const k = String(code).toUpperCase(), x = RP_PRE[k]; if(x && Date.now() - x.t < 120000) return x.p;
   const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
-  const p = Promise.all([api('mgmtRenewPaid', TOKEN, { code, teacher, dry: true, date: today }).catch(e => ({ ok: false, msg: String(e && e.message || e) })), api('mgmtStuClasses', TOKEN, code).catch(() => null)]);
+  const g = api('mgmtRenewPaid', TOKEN, { code, teacher, dry: true, date: today }).catch(e => ({ ok: false, msg: String(e && e.message || e), gerr: 1 })), sc = api('mgmtStuClasses', TOKEN, code).catch(() => null), d = window.pkcDb ? pkcDb('renew', { code, teacher, date: today }) : Promise.resolve(null);   /* 1290 */
+  const p = Promise.all([d.then(x => x || g), sc]); if(window.pkcVerify) pkcVerify('renew', k, d, g, sc);
   RP_PRE[k] = { t: Date.now(), p }; p.then(([r]) => { if(!r || !r.ok) delete RP_PRE[k]; }); return p; }
 async function renPaidSheet(code, name, teacher, again){ RPS = { code, name, teacher, pkg: 30, free: 3, info: null, sched: '', again: !!again, touched: false };
 const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), pend = rpWarm(code, teacher);
@@ -30419,6 +30420,29 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   setInterval(function(){ try{ if(typeof VIEW !== 'undefined' && (VIEW === 'team' || VIEW === 'monitor') && !document.hidden) loadDay(); }catch(e){} }, 20000);
   var _go = window.go; if(typeof _go === 'function') window.go = function(v){ var r = _go.apply(this, arguments); try{ if(v === 'team' || v === 'monitor') loadDay(); if(v === 'today') mine(); }catch(e){} return r; };
   setTimeout(function(){ try{ if(D && D.mgr) loadDay(true); else mine(true); }catch(e){} }, 2500);
+})();
+</script>
+<script>
+/* 1290 · package check from the database (coe-pkc); Google verifies behind and wins */
+(function(){
+  if(window.__1290) return; window.__1290 = 1;
+  window.pkcDb = function(op, body){
+    try{ if(typeof D === 'undefined' || !D || !D.mgr || typeof TOKEN === 'undefined' || !TOKEN) return Promise.resolve(null); }catch(e){ return Promise.resolve(null); }
+    const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 3000) : 0;
+    return fetch(FAST_URL + '-pkc', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, op: op }, body || {})), signal: ac ? ac.signal : undefined })
+      .then(r => r.json()).then(r => (r && r.src === 'db') ? r : null).catch(() => null).finally(() => clearTimeout(tid)); };
+  const keyR = o => o && JSON.stringify([!!o.ok, o.msg || '', o.row, o.left, o.teacher, o.name, o.month, o.prev, o.pkg, o.free, o.method, o.partner, o.deadline, o.total]);
+  const keyE = o => o && JSON.stringify([!!o.ok, o.msg || '', o.name, o.cn, o.firstClass, o.dbRow, o.sales]);
+  window.pkcVerify = function(op, k, d, g, sc){
+    Promise.all([d, g]).then(([x, y]) => {
+      if(!x || !y || y.gerr) return;                      /* database not used, or Google could not answer: nothing to correct */
+      if((op === 'renew' ? keyR : keyE)(x) === (op === 'renew' ? keyR : keyE)(y)) return;
+      console.warn('1290 package check: Google differs, using Google', op, k, x, y);
+      if(op === 'renew'){ RP_PRE[k] = { t: Date.now(), p: Promise.all([Promise.resolve(y), sc]) };
+        try{ if(typeof RPS !== 'undefined' && RPS && String(RPS.code).toUpperCase() === k && $('rpS') && !/Saving/.test($('rpS').textContent)){ renPaidSheet(RPS.code, RPS.name, RPS.teacher, RPS.again); toast('Updated from Google'); } }catch(e){} }
+      else { ENPRE[k] = { t: Date.now(), p: Promise.resolve(y) };
+        try{ if(typeof ENS !== 'undefined' && ENS && String(ENS.code).toUpperCase() === k && $('enPay') && !$('enSaving')){ if(!ENS.touched && !ENS.tr){ enSheet(ENS.code, ENS.name, ENS.teacher); toast('Updated from Google'); } else toast('SALES changed while you were filling this in · close and open Enrolled · paid again'); } }catch(e){} }
+    }).catch(() => {}); };
 })();
 </script>
 </body>
