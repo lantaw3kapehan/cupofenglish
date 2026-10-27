@@ -72,3 +72,20 @@ Response-time metrics in Performance · Substitute "I'll take it" button · Expo
   the Team Chat menu item shows the total.
 - Retention: chat rows and the chat bucket are kept in CupOfEnglish's database; no cleanup job touches them (checked coe-log-clean,
   coe-daily-archive, coe-speed-trim).
+
+## 1404 · 27 Oct 20:35 · clarity, member management, teacher privacy (Misty 20:06 / 20:12 / 20:24)
+- Side panel "In this chat · N people can read this chat" = the actual participants of the selected conversation.
+- One-line description under each conversation; "Formal requests, leave and notices stay in Messages."
+- Time-in / Announcements: Reply removed for teachers (they can't post there) with a clear note; the server refuses teacher posts in Time-in.
+- "Back to Today" from History / Search; "View history" on an empty day; History empty text states the retention.
+- Search: labelled Keyword / Person / From date / To date, scope line, Clear filters, result count, helpful no-results, Open in context.
+- Members panel collapsible on laptop (remembered).
+- Composer: Send disabled when empty; "Enter sends · Shift+Enter new line"; a draft per conversation; Sending / Not sent + Retry
+  (server de-duplicates retries by a client id); picture preview; voice preview with Send voice / Cancel (the microphone is only asked for
+  when the teacher holds the mic button).
+- "New messages below" button instead of pulling the reader down.
+- Management: "Manage members" (Add / Remove a teacher for all of Team Chat; the change is a line in All Teachers and saved in sys:chat).
+  Teacher tokens are refused for roster / member.
+- Privacy: teacher tokens get names only from presence (no online / in class / last seen), no per-person readers list, and receipt counts
+  only on their own messages ("Seen by N"). Management unchanged. coe-train "online" (management Online now) already refuses teachers.
+- Retention: chat rows and the chat bucket stay in CupOfEnglish's database; nothing is deleted by the app; no cleanup job touches them.
