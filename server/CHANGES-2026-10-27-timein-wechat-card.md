@@ -58,3 +58,19 @@ Screens: branch `rollback-pre-1270`. Server: leave coe-wct/tables (unused withou
   everywhere (older saved "↑ 0.0 Mbps" results too). Thresholds unchanged.
 - The checklist row is now "Screen proof · check VooV + date/time" with the neutral "…" (it is a reminder, not checked automatically).
 - Rollback: branch `rollback-pre-1272`.
+
+## 27 Oct evening · release 1273 (after April / Kat / Mayi's cards, 16:54 — "there's no green light if the timein is okay")
+- **No copy while measuring:** Copy picture / Save picture stay off with "Checking internet… a few seconds" until the internet
+  result is in; after 25 s without a result the card says "Internet · not measured". A later result still updates the card, the
+  database and management (a card already posted while measuring is corrected in the app, not in WeChat).
+- **Green status:** "All good · Ready to teach" pill at the top when on time, class laptop, good internet and location shared;
+  otherwise "Needs a look" (red) or "Please check below" (amber). LAN cable and Screen proof are neutral "check in picture" rows
+  (eye icon) — management's visual checks, they do not block the green. Line icons on every row.
+- **Same look everywhere:** the card's fonts (Fredoka One + Inter) ship with the app (`fonts/card-*.woff2`) and are loaded before
+  the picture is drawn (the page's Google fonts use display=optional, so some computers drew the card in a fallback font). Fixed
+  left column; long text ends with "…" instead of running under the screen picture.
+- **Jitter thresholds:** amber over 30 ms, red over 100 ms (were 15 / 30); download (red < 10, amber < 25 Mbps) and ping (red > 200,
+  amber > 100 ms) unchanged. One rule for the card, Today, management rows and details.
+- **Screen picture:** after Share the app shows "Click your VooV class window now" and takes the picture once the app window is in
+  the background (up to 6 s); while the picture is taken the cover is blank, so "Taking your screen picture…" can no longer appear in it.
+- Rollback: branch `rollback-pre-1273`.
