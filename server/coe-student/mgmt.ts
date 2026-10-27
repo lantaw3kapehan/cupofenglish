@@ -40,8 +40,8 @@ export function buildSandbox(app: string) {
   const ls = topFn(app, "lsHtml"), sh = topFn(app, "shHtml");
   const A = "return `<table class=\"sd\"";
   if (ls.split(A).length !== 2 || sh.split(A).length !== 2) throw new Error("summary template changed");
-  const ls2 = ls.replace(A, "CAP.ls = { done, total, left, over, enrolled, carry, inc, incTx, pct, T, name, cn, code: o[C.code], course: C.course != null ? o[C.course] : '', start: o[C.start], deadline: o[C.deadline], owner: o[C.code], hist: hist.map(x => ({ ym: x.ym, v: months[x.i] || 0 })), sub: C.sub != null ? n1(rows0.reduce((a, x) => a + (+x[C.sub] || 0), 0)) : 0, rows: rows0.map(x => x[C.row]) }; " + A);
-  const sh2 = sh.replace(A, "CAP.sh = { done, tot, left, enrolled, carry, trf, inc, pct, T, names, cns, owner: o[C.code], start: o[C.start], deadline: o[C.deadline], course: C.course != null ? o[C.course] : '', kids: kids.map(k => ({ code: k.code, name: k.name, cn: k.cn, finished: k.finished, teachers: k.teachers })), hist: rows.map(x => ({ ym: x.ym, v: kids.map(k => k.months[x.i] || 0) })), rows: G.members.map(x => x[C.row]).concat(G.unlinked.map(x => x[C.row])) }; " + A);
+  const ls2 = ls.replace(A, "CAP.ls = { done, total, left, over, enrolled, carry, inc, incTx, pct, T, name, cn, code: o[C.code], course: C.course != null ? o[C.course] : '', book: C.book != null ? o[C.book] : '', start: o[C.start], deadline: o[C.deadline], owner: o[C.code], hist: hist.map(x => ({ ym: x.ym, v: months[x.i] || 0 })), sub: C.sub != null ? n1(rows0.reduce((a, x) => a + (+x[C.sub] || 0), 0)) : 0, rows: rows0.map(x => x[C.row]) }; " + A);
+  const sh2 = sh.replace(A, "CAP.sh = { done, tot, left, enrolled, carry, trf, inc, pct, T, names, cns, owner: o[C.code], start: o[C.start], deadline: o[C.deadline], course: C.course != null ? o[C.course] : '', book: C.book != null ? o[C.book] : '', kids: kids.map(k => ({ code: k.code, name: k.name, cn: k.cn, finished: k.finished, teachers: k.teachers })), hist: rows.map(x => ({ ym: x.ym, v: kids.map(k => k.months[x.i] || 0) })), rows: G.members.map(x => x[C.row]).concat(G.unlinked.map(x => x[C.row])) }; " + A);
   const code = [
     "'use strict'; let AT = null, CAP = {}; const window = W; const document = { querySelector: () => null }; const D = { mgr: false };",
     "const esc = s => String(s == null ? '' : s).replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));",
@@ -105,6 +105,6 @@ export function buildJourney(app: string) {
     topFn(app, "cjLv"), topFn(app, "cjDay"), topFn(app, "cjPath"), topFn(app, "cjNewest"), topFn(app, "cjHtml"),
     "window.cjHtml = cjHtml;", iife,
     "return { run: (S, X) => { window.CJX[S.code] = X; window._CJ = null; const h = window.cjHtml(S); const J = window._CJ; return J ? { html: h, now: CJ_L[J.now] || '', next: CJ_L[J.nxt] || '', up: J.up, since: J.since, tk: J.tk, tkAll: J.tkAll,",
-    "  steps: J.T.map(x => ({ d: x.d || '', lv: CJ_L[x.i] || '', en: x.en, zh: x.zh, bk: x.bk || '', u: x.u == null ? null : x.u, start: !!x.start })) } : null; } };"].join("\n");
+    "  steps: J.T.map(x => ({ d: x.d || '', lv: CJ_L[x.i] || '', en: x.en, zh: x.zh, bk: x.bk || '', u: x.u == null ? null : x.u, start: !!x.start, dd: !!x.dd, chk: !!x.chk, after: x.after || '' })) } : null; } };"].join("\n");
   return new Function("W", code)({});
 }

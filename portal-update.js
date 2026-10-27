@@ -3,12 +3,12 @@
    fetched with cache:'no-store' when the page opens, every 5 minutes while it is open, and when it becomes visible again (WeChat keeps
    pages alive in the background). If version.txt differs, the page reloads at a safe moment (no text field focused, no picture being
    made, no sheet open); otherwise a small bar "有新版本 · 点此更新 Update" appears and reloads on tap, or by itself once idle.
-   The same timer refreshes the page's data quietly (opts.refresh), never while the person is typing or a picture is being made.
+   The same timer refreshes the page's data quietly (opts.refresh; every opts.dataEvery ms if set — the Student portal uses 60 s), never while the person is typing or a picture is being made.
    Release step: bump <folder>/version.txt and the page's portal-version (tools/portal-bump.sh <folder> <version>). */
 (function () {
   'use strict';
   if (window.PortalUpdate) return;
-  var O = { url: 'version.txt', every: 5 * 60e3, busy: null, refresh: null }, CUR = '', NEW = '', last = 0, lastData = Date.now(), checking = false, bar = null, idleT = 0;
+  var O = { url: 'version.txt', every: 5 * 60e3, dataEvery: 0, busy: null, refresh: null }, CUR = '', NEW = '', last = 0, lastData = Date.now(), checking = false, bar = null, idleT = 0;
   function meta() { var m = document.querySelector('meta[name="portal-version"]'); return m ? String(m.content || '').trim() : ''; }
   function typing() { var a = document.activeElement; return !!(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable)); }
   function busy() { try { return typing() || (typeof O.busy === 'function' && !!O.busy()); } catch (e) { return true; } }
@@ -30,7 +30,7 @@
       .then(function (t) { t = String(t || '').trim(); if (t && t !== CUR && /^[\w.-]{1,40}$/.test(t)) { NEW = t; whenSafe(); } })
       .catch(function () {}).then(function () { checking = false; });
   }
-  function data(force) { if (typeof O.refresh !== 'function' || busy() || document.hidden) return; if (!force && Date.now() - lastData < O.every - 5e3) return; lastData = Date.now(); try { O.refresh(); } catch (e) {} }
+  function data(force) { if (typeof O.refresh !== 'function' || busy() || document.hidden) return; if (!force && Date.now() - lastData < (O.dataEvery || O.every) - 5e3) return; lastData = Date.now(); try { O.refresh(); } catch (e) {} }
   function tick() { if (document.hidden) return; if (Date.now() - last >= O.every - 5e3) check(); data(false); }
   window.PortalUpdate = {
     init: function (opts) { for (var k in opts) O[k] = opts[k]; CUR = meta(); check(); setInterval(tick, 30e3);

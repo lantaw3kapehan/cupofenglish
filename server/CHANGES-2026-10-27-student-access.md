@@ -129,3 +129,31 @@ Rollback: `rollback-pre-1354`.
 - **Data for Ops (not code):** Shirui's ACTIVE package course chip says OD1 (Lesson summary header) and her September monthly report course
   says WONDERS 1; both should be OD2.
 Rollback: `rollback-pre-1355`.
+
+## Patch 1355b · journey dates from real classes, monthly feedback, this week's classes, arrows (27 Oct, main 25e85df → b0a8c13, COE_V 1332, portal 1355d)
+- **Journey (management card + portal, same cjHtml):** a book / level step is dated by the first regular class on that book (class-note book first,
+  matched to the calendar's book names; else the calendar book; no trial / TC / SC / SUB / cancelled class), any teacher, after the main
+  teacher's last class on the old book; a real switch needs ≥ 3 classes on the new book and the classes booked ahead (≥ 80 %) on it.
+  Exact day shown (2026年10月18日). A month with a switch shares its lessons by the classes before / from that day (half-lesson steps).
+  The book before the switch: class notes, else the package's course (Lesson summary) from the package start when that month's level is on record.
+  **No more "2025年9月" fallback:** a step dated only by the first month of the app's records shows 日期核对中 · being checked, its lessons stay with the step before.
+- **Results (201 active, 0 errors, vs live 1355):** 104 changed; 0 negative lessons; 21 now have real dates, e.g.
+  Shirui 044: OD1 from 2026-03-21 (30) → **OD2 from 2026-10-18 (2)**; Gaby 087: OD1 167.5 → **REF from 2026-10-12 (4)**; Apple 029 REF 2026-10-03;
+  Penny 003 REF 2026-09-28; Candy 034 OD2 2026-09-15 → REF 2026-10-16; Bill 167 OD1 2026-09-14 → OD2 2026-10-23; Lily 025 OD2 2026-10-18;
+  Tony 035 REF 2026-10-09; Cherry 043 2026-09-30; Dario 065 2026-10-11; Lewis 067; Aurora 082 2026-10-14; Cici 110; Pec 020 OD2 2026-10-07;
+  Simone 037; Mandy 048 Pathways1 2026-09-30; Freya 069; Kaylee 100 OD2 2026-10-22. 84 steps are now "being checked" (were 2025年9月).
+  Full before → after list: docs `sys:cjdiff`. Known edge: Nico ST-2025-127 has two undated steps; 39.5 lessons sit on the first (being checked).
+- **Lesson summary header:** coe_active_screen has a new last column `book` (latest regular class taught with that package's teacher);
+  lsHtml shows it (else the course). Shirui: OD2. `course` (which books a package counts) is unchanged.
+- **Portal:** monthly class feedback = management's card (score ring, teacher / book chips, 听力 口语 阅读 写作 bars /25, 优势表现 · 需要加强的方面 ·
+  下一步学习目标, English original), every report the teacher wrote (sys:fb; one the October tracker holds back is hidden), newest open, older
+  months below. Labels follow management (report sent in Oct = "2026年9月" classes). Change arrows (management's .dl pill, line arrows):
+  score and each skill vs the same teacher's previous report; lessons attended this month vs last month; none on lessons used / left.
+  Home: 本周课表 list under the Next class card (today highlighted, 已取消 / 已改期 → new time, 全部 → Classes; 本周课程 tile scrolls to it),
+  剩余 N 节 pill in the Next class card (核对中 when not confirmed). Lessons card shows the current book. Data refresh every 60 s (shared
+  portal-update.js `dataEvery`), repaint only when the data changed.
+- **Delays (worst case = source delay + 60 s refresh):** schedule: classes table — app changes at once, Google Calendar edits ≤ 3 min (poll);
+  class notes: database original (log_rows / writes) — at once; lessons left / used: coe_packages database original, ACTIVE rebuilt every 5 min
+  (coe-pkg-sync), sheet guard copied every 2 min; journey: DATABASE (database original, at once), classes (≤ 3 min), class notes (at once),
+  -DAILY / S-MONTHLY sheet copies ≤ 30–60 min, management code cached 15 min after a release; monthly feedback: sys:fb copy of the sheet every 30 min.
+- coe-student v8–v11 (journey notes/package inputs, cjdiff, feedback list, book, week). Rollback: `rollback-pre-1355b`.

@@ -81,14 +81,14 @@ const cls = (BT: Record<string, string>, x: any) => { const t = String((x.data &
 const ENV: Record<string, any> = {}; let DATA: { at: number; p: Promise<any> } | null = null; const APPLIED = new WeakMap<any, Promise<any>>();
 const JENV: Record<string, any> = {};
 // the CEFR journey exactly as management's student page draws it (cjHtml + 1221), from the same pieces mgmtStudent sends
-async function journeyFor(code: string, N: any, TRr: any[][], PRr: any[][], LSn: any) {
+async function journeyFor(code: string, N: any, TRr: any[][], PRr: any[][], LSn: any, PK?: any) {
   const a = await mgmtApp(); if (!JENV[a.hash]) JENV[a.hash] = buildJourney(a.src);
-  const { S, X } = await journeyInputs(code, N, TRr, PRr, LSn);
+  const { S, X } = await journeyInputs(code, N, TRr, PRr, LSn, PK);
   const r = JENV[a.hash].run(S, X); if (!r) return null; const { html, ...rest } = r; return rest;
 }
-async function journeyInputs(code: string, N: any, TRr: any[][], PRr: any[][], LSn: any) {
-  const [{ data: parts }, { data: daily }, { data: cl }, SM] = await Promise.all([db.rpc("student_parts", { p_code: code }), db.rpc("coe_stu_daily", { p_code: code }),
-    db.rpc("coe_stu_classes", { p_code: code, p_teacher: "" }), rowsBy("S-MONTHLY", 1, code)]);
+async function journeyInputs(code: string, N: any, TRr: any[][], PRr: any[][], LSn: any, PK?: any) {
+  const [{ data: parts }, { data: daily }, { data: cl }, SM, NO] = await Promise.all([db.rpc("student_parts", { p_code: code }), db.rpc("coe_stu_daily", { p_code: code }),
+    db.rpc("coe_stu_classes", { p_code: code, p_teacher: "" }), rowsBy("S-MONTHLY", 1, code), rowsBy("S-NOTES", 3, code)]);
   const d = parts && parts.db && parts.db.data, rows = d ? (d.rows || []).filter((r: any[]) => r[0] === code) : [];
   const profile = rows.length ? { head: d.head, row: rows[0].slice(0, -1), packages: rows.length } : null;
   const isD = (x: any) => /^\d{4}-\d{2}-\d{2}T/.test(String(x || ""));
@@ -97,28 +97,30 @@ async function journeyInputs(code: string, N: any, TRr: any[][], PRr: any[][], L
   const base = SM.map((r) => ({ m: String(c(r, 0)).slice(0, 7), t: String(c(r, 3) || ""), c: String(c(r, 4) || ""), n: Number(c(r, 5)) || 0, u: Number(c(r, 6)) || 0 })).filter((x) => /^\d{4}-\d{2}$/.test(x.m));
   const D = Array.isArray(daily) ? daily : [], have: Record<string, number> = {}; D.forEach((x: any) => { have[x.m] = 1; });
   const monthly = D.map((x: any) => ({ m: x.m, t: x.t, c: x.c, u: Number(x.u) || 0, n: 0, lv: x.lv })).concat(base.filter((x) => !have[x.m]));
-  const S = { code, r: { profile, trial, monthly, checks }, s: { left: LSn && LSn.left != null ? LSn.left : null, shared: !!(LSn && LSn.shared), name: N.name, cn: N.cn }, cls: Array.isArray(cl) ? cl : [] };
+  const notes = NO.map((r: any[]) => ({ date: ymd(c(r, 1)), teacher: String(c(r, 2) || ""), ended: String(c(r, 5) || "") })).filter((n: any) => n.date);   // 1355b: the class notes' book per class
+  const pk = PK || LSn, S = { code, pk: pk && pk.course != null ? { course: pk.course, start: pk.start } : null, r: { profile, trial, monthly, checks, notes }, s: { left: LSn && LSn.left != null ? LSn.left : null, shared: !!(LSn && LSn.shared), name: N.name, cn: N.cn }, cls: Array.isArray(cl) ? cl : [] };
   const m = N.rows.length ? merge(N.rows) : null;
   const X = { at: Date.now(), cj: m ? { first: m.first, td: m.td, tb: m.tb, tc: m.tc, cb: m.cb } : null, trials: TRr.map(trOf).filter((t) => t.date) };
   return { S, X };
 }
 // 1355 · preview a journey rule change: management's live code vs a branch of the app, for every active student → docs sys:cjdiff
-async function cjDiff(branch: string) {
+async function cjDiff(branch: string, sample: string[] = []) {
   const a = await mgmtApp(); if (!JENV[a.hash]) JENV[a.hash] = buildJourney(a.src);
   const r = await fetch("https://raw.githubusercontent.com/lantaw3kapehan/cupofenglish/" + branch + "/app.html?t=" + Date.now()); if (!r.ok) throw new Error("branch " + r.status);
   const B = buildJourney(await r.text()), A = JENV[a.hash];
   const [{ env }, d] = await Promise.all([mgmtEnv(), mgmtDataCached()]); const at = await appliedAT(env, d);
   const C: Record<string, number> = {}; (d.AT.cols as string[]).forEach((x, i) => C[x] = i);
   const codes = [...new Set((d.AT.rows as any[]).filter((x) => x[C.active]).map((x) => String(x[C.code]).toUpperCase()))].sort();
-  const short = (j: any) => j ? (j.steps || []).map((x: any) => [x.d.slice(0, 7), x.en.replace(/ .*/, ""), x.lv, x.bk, x.u].filter((v) => v !== "" && v != null).join(" ")).join(" | ") + " · now " + j.now + " · " + j.tk : "—";
-  const changed: any[] = []; let n = 0, err = 0;
+  const short = (j: any) => j ? (j.steps || []).map((x: any) => [x.d ? (x.dd ? x.d : x.d.slice(0, 7)) : (x.chk ? "being-checked" : ""), x.en.replace(/ .*/, ""), x.lv, x.bk, x.u].filter((v) => v !== "" && v != null).join(" ")).join(" | ") + " · now " + j.now + " · " + j.tk : "—";
+  const changed: any[] = [], html: Record<string, any> = {}; let n = 0, err = 0;
   for (let i = 0; i < codes.length; i += 6) await Promise.all(codes.slice(i, i + 6).map(async (code) => { try {
     const [N, TRr, PRr] = await Promise.all([namesOf(code), rowsBy("TR-DATA", 33, code), rowsBy("PR-DATA", 4, code)]);
-    const m = await mgmtSummary(env, at, d.mon, code, true), LSn = m ? { left: m.shared ? m.c.left : m.c.left, shared: m.shared } : null;
+    const m = await mgmtSummary(env, at, d.mon, code, true), LSn = m ? { left: m.c.left, shared: m.shared, course: m.c.course, start: m.c.start } : null;
     const inp = await journeyInputs(code, N, TRr, PRr, LSn), x = short(A.run(JSON.parse(JSON.stringify(inp.S)), JSON.parse(JSON.stringify(inp.X)))), y = short(B.run(JSON.parse(JSON.stringify(inp.S)), JSON.parse(JSON.stringify(inp.X))));
-    n++; if (x !== y) changed.push({ code, name: N.name, before: x, after: y }); } catch (e) { err++; } }));
+    n++; if (x !== y) changed.push({ code, name: N.name, before: x, after: y });
+    if (sample.includes(code)) { const jb = B.run(JSON.parse(JSON.stringify(inp.S)), JSON.parse(JSON.stringify(inp.X))); html[code] = { mgmt: jb && jb.html, steps: jb && jb.steps, now: jb && jb.now, tk: jb && jb.tk, up: jb && jb.up, since: jb && jb.since, next: jb && jb.next }; } } catch (e) { err++; } }));
   changed.sort((p, q) => p.code.localeCompare(q.code));
-  const res = { at: new Date().toISOString(), branch, students: codes.length, done: n, errors: err, changed };
+  const res = { at: new Date().toISOString(), branch, students: codes.length, done: n, errors: err, changed, html };
   await db.from("docs").upsert({ key: "sys:cjdiff", scope: "mgmt", data: res, updated_at: res.at }, { onConflict: "key" });
   return res;
 }
@@ -137,11 +139,11 @@ async function lessonsFor(code: string, L2: any, opts: { pkgcheck?: any; pend?: 
   const c = m.c, shared = m.shared;
   const out: any = shared
     ? { shared: true, total: r1(c.tot), used: r1(c.done), left: r1(c.left), over: 0, enrolled: r1(c.enrolled), carry: r1(c.carry), transfer: r1(c.trf), free: r1(c.inc), pct: c.pct, teachers: c.T,
-        start: c.start, valid: c.deadline, course: c.course, owner: c.owner,
+        start: c.start, valid: c.deadline, course: c.course, book: c.book || "", owner: c.owner,
         kids: c.kids.map((k: any) => ({ code: k.code, name: firstName(k.name), used: r1(k.finished), me: k.code === code })),
         months: c.hist.map((h: any) => ({ m: h.ym, v: r1(h.v.reduce((a: number, x: number) => a + (+x || 0), 0)), mine: r1(h.v[c.kids.findIndex((k: any) => k.code === code)] || 0) })) }
     : { shared: false, total: r1(c.total), used: r1(c.done), left: r1(c.left), over: r1(c.over), enrolled: r1(c.enrolled), carry: r1(c.carry), free: r1(c.inc), pct: c.pct, teachers: c.T,
-        start: c.start, valid: c.deadline, course: c.course, owner: c.owner, sub: r1(c.sub), months: c.hist.map((h: any) => ({ m: h.ym, v: r1(h.v) })) };
+        start: c.start, valid: c.deadline, course: c.course, book: c.book || "", owner: c.owner, sub: r1(c.sub), months: c.hist.map((h: any) => ({ m: h.ym, v: r1(h.v) })) };
   // guard 1 · a second, independent calculation (pkg.ts on the sheet copy of ACTIVE) must agree
   const cu = L2 && L2.cur;
   if (!cu) why.push("second calculation missing");
@@ -239,7 +241,7 @@ Deno.serve(async (req: Request) => {
     const br = String(b.branch || ""); if (!/^test-[\w.-]{1,30}$/.test(br)) return out({ ok: false, error: "branch" }, 400);
     const { data: last } = await db.from("docs").select("updated_at").eq("key", "sys:cjdiff").maybeSingle();
     if (last && Date.now() - Date.parse(last.updated_at) < 120e3) return out({ ok: true, skipped: "ran in the last 2 minutes" });
-    try { const r = await cjDiff(br); return out({ ok: true, students: r.students, done: r.done, errors: r.errors, changed: r.changed.length }); }
+    try { const r = await cjDiff(br, (Array.isArray(b.sample) ? b.sample : []).map((x: any) => codeOf(x)).filter(Boolean).slice(0, 5)); return out({ ok: true, students: r.students, done: r.done, errors: r.errors, changed: r.changed.length }); }
     catch (e) { return out({ ok: false, error: String((e as any)?.message || e).slice(0, 120) }, 500); }
   }
 
@@ -308,6 +310,12 @@ Deno.serve(async (req: Request) => {
       db.from("docs").select("v:data->" + code).eq("key", "sys:fb").maybeSingle(),
       bookTitles(),
       db.from("student_access").select("pw_set_at").eq("code", code).maybeSingle()]);
+    // 1355b · this week (Beijing today … +7 days) with cancelled and moved classes, for the Home "本周课表" list
+    const bjDay0 = new Date(Date.parse(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10) + "T00:00:00+08:00")).toISOString();
+    const { data: WK } = await db.from("classes").select("starts_at,ends_at,teachers,cancelled,data").eq("code", code).gte("starts_at", bjDay0).lte("starts_at", new Date(Date.parse(bjDay0) + 8 * 864e5).toISOString()).not("id", "like", "pend-%").order("starts_at").limit(40);
+    const mvOf = (x: any) => { let m = x.data && x.data.mv; if (typeof m === "string") { try { m = JSON.parse(m); } catch { m = null; } } return m && m.start ? bj(m.start) : null; };
+    const week = ((WK as any[]) || []).map((x: any) => { const t = String((x.data && x.data.title) || ""), mv = x.cancelled ? mvOf(x) : null;
+      return { ...cls(BT, x), status: x.cancelled ? (mv ? "moved" : "cancelled") : Date.parse(x.starts_at) < Date.now() ? (isAbsent(t) ? "absent" : "done") : "up", to: mv }; });
     const up = ((UP as any[]) || []).map((x: any) => cls(BT, x));
     const past = ((PAST as any[]) || []).map((x: any) => { const t = String((x.data && x.data.title) || ""); return { ...cls(BT, x), status: x.cancelled ? "cancelled" : isAbsent(t) ? "absent" : "done" }; });
     // homework & class notes: sheet copies + saves not copied yet (newest wins), last 60 days
@@ -334,15 +342,18 @@ Deno.serve(async (req: Request) => {
     const T = TRr.map(trOf), P = PRr.map(prOf), m = N.rows.length ? merge(N.rows) : null;
     const journey = m ? { start: { date: m.first || m.td, level: CJ_L[lv(m.tc)] || "", book: bookOf(BT, m.tb) }, path: m.cb.split(/→|->/).map((x) => x.trim()).filter(Boolean), now: nowOf(N.rows, T, P), trial: m.td ? { date: ymd(m.td), level: CJ_L[lv(m.tc)] || "" } : null, first: m.first,
       checks: P.filter((p) => p.date && lv(p.cefr) >= 0).map((p) => ({ date: p.date, level: CJ_L[lv(p.cefr)] })).sort((a, b) => a.date.localeCompare(b.date)) } : null;
-    const sent: Record<string, any> = {};
-    (RL || []).forEach((d: any) => ((d.data && d.data.rows) || []).forEach((r: any) => { if (codeOf(r.code) === code && /^sent/i.test(String(r.status || ""))) sent[String(r.teacher).toLowerCase() + "|" + r.month] = r; }));
-    const fbs: any[] = Array.isArray(FB && (FB as any).v) ? (FB as any).v : [], keys = Object.keys(sent), cnOver: Record<string, any> = {};
+    // monthly class feedback (1355b): every report the teacher wrote for the family (sys:fb, the same source as management's monthly feedback),
+    // newest first; a report the October tracker (mgmtReports) still holds back (not "Sent" yet) is left out. Family-facing fields only.
+    const track: Record<string, string> = {};
+    (RL || []).forEach((d: any) => ((d.data && d.data.rows) || []).forEach((r: any) => { if (codeOf(r.code) === code) track[String(r.teacher).toLowerCase() + "|" + r.month] = String(r.status || ""); }));
+    const fbs: any[] = Array.isArray(FB && (FB as any).v) ? (FB as any).v : [], byK: Record<string, any> = {}, cnOver: Record<string, any> = {};
+    fbs.forEach((f: any) => { if (!f || !/^\d{4}-\d{2}$/.test(String(f.month || ""))) return; const k = String(f.teacher || "").toLowerCase() + "|" + f.month; if (track[k] !== undefined && !/^sent/i.test(track[k])) return; byK[k] = f; });
+    const keys = Object.keys(byK);
     if (keys.length) { const { data: CN } = await db.from("docs").select("key,data").in("key", [...new Set(keys.map((k) => "fbcn:" + code + "|" + k.split("|")[1]))]); (CN || []).forEach((x: any) => { cnOver[x.key.split("|")[1]] = x.data; }); }
-    const reports = keys.map((k) => { const [t, mo] = k.split("|"), e = fbs.filter((f) => String(f.teacher || "").toLowerCase() === t && f.month === mo).pop(); if (!e) return null;
-      const cn = Object.assign({}, e.cn || {}, cnOver[mo] || {});
-      return { month: mo, classMonth: prevMonth(mo), teacher: String(e.teacher || sent[k].teacher || ""), total: Number(e.total) || 0, l: e.l, r: e.r, s: e.s, w: e.w, course: bookOf(BT, e.course || ""),
+    const reports = keys.map((k) => { const mo = k.split("|")[1], e = byK[k], cn = Object.assign({}, e.cn || {}, cnOver[mo] || {});
+      return { month: mo, classMonth: prevMonth(mo), teacher: cap(String(e.teacher || "")), total: Number(e.total) || 0, l: e.l, r: e.r, s: e.s, w: e.w, course: bookOf(BT, e.course || ""),
         cn: { strengths: cn.strengths || "", areas: cn.areas || "", next: cn.next || "" }, en: { strengths: e.strengths || "", areas: e.areas || "", next: e.next || "" } }; })
-      .filter(Boolean).sort((a: any, b: any) => b.month.localeCompare(a.month));
+      .sort((a: any, b: any) => b.month.localeCompare(a.month) || a.teacher.localeCompare(b.teacher));
     // lessons: exactly management's Lesson summary (shared packages: the owner's package, lessons left for the whole family)
     const today0 = nowIso.slice(0, 10), [{ data: PC }, { data: PLK }] = await Promise.all([db.from("docs").select("data").eq("key", "sys:pkgcheck").maybeSingle(), db.from("docs").select("act:data->act").eq("key", "sys:pkglink").maybeSingle()]);
     const au: Record<number, any> = {}; (((PLK as any) && (PLK as any).act) || []).forEach((a: any) => { au[+a.r] = a.au; });
@@ -355,10 +366,10 @@ Deno.serve(async (req: Request) => {
     if (!LS.ok && n) console.warn("checking", code, JSON.stringify(LS.why));
     const partnerStudent = ((SRC as any[]) || []).some((x: any) => partnerish(x.source)) || N.rows.some((r: any[]) => partnerish(c(r, 22)));
     const [H, PAY, CJ] = await Promise.all([historyOf(db, code, N.rows).catch(() => null), paymentsOf(db, code, L, partnerStudent, N.name, N.cn).catch((e) => { console.error("pay", e); return null; }),
-      journeyFor(code, N, TRr, PRr, LS.ok ? n : null).catch((e) => { console.error("cj", e); return null; })]);
+      journeyFor(code, N, TRr, PRr, LS.ok ? n : null, n).catch((e) => { console.error("cj", e); return null; })]);
     const lessons = n ? { ok: LS.ok, cur: LS.ok ? n : null, html: LS.ok ? LS.html : "", packages: LS.ok && L ? L.packages.map((p: any) => { const { row, ...rest } = p; return rest; }) : [] } : null;
     return out({ ok: true, student: { code, name: N.name, cn: N.cn, adult: !!N.adult }, own: !!(SA && (SA as any).pw_set_at),
-      pkg, lessons, history: H, pay: PAY, cj: CJ, upcoming: up, past, hw: hw.slice(0, 20), hwTotal: hw.length, notesKpi, journey, reports, at: nowIso, tz: "Asia/Shanghai (UTC+8)" });
+      pkg, lessons, history: H, pay: PAY, cj: CJ, upcoming: up, week, past, hw: hw.slice(0, 20), hwTotal: hw.length, notesKpi, journey, reports, at: nowIso, tz: "Asia/Shanghai (UTC+8)" });
   }
   return out({ ok: false, error: "unknown op" }, 400);
 });
