@@ -84,6 +84,7 @@ footer{text-align:center;color:var(--mute);font-size:12px;margin-top:30px}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .tile{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 2px 12px rgba(43,36,80,.06)}.tile span{display:block;font-size:12.5px;color:var(--mute)}.tile b{display:block;font-size:24px;line-height:1.25;margin-top:2px}.tile small{font-size:12.5px;color:var(--mute)}
 .note{border-radius:16px;padding:12px 14px;margin-top:12px;font-size:14px;line-height:1.5}svg.ic{vertical-align:-3px;flex:none}.hwbox b svg.ic,.note b svg.ic{margin-right:2px}.chip svg.ic{vertical-align:-2px}
+.pw{position:relative}.pw input{padding-right:96px!important}.eye{position:absolute;right:2px;top:1px;height:44px;min-width:44px;padding:0 10px;display:flex;align-items:center;gap:4px;border:0;background:transparent;color:var(--teal);font-weight:700;font-size:13px;cursor:pointer;border-radius:10px}.eye:focus-visible{outline:2px solid var(--teal2)}
 .note.amber{background:var(--amberT);color:var(--amber)}.note b{display:block;margin-bottom:2px}
 .cl2{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}.cl2:first-child{border-top:0}
 .cl2 .tm{width:56px;flex:none;font-weight:800;font-size:16px}.cl2 .tm small{display:block;font-weight:400;font-size:12px;color:var(--mute)}
@@ -105,7 +106,7 @@ footer{text-align:center;color:var(--mute);font-size:12px;margin-top:30px}
     <h1 class="brand">家长专区<small>PARENT PORTAL</small></h1>
     <p>查看孩子的课表、作业、课堂反馈与学习进度<br>Your child's classes, homework, class notes and progress</p>
     <label for="u">学号 <span>Student code</span></label><input id="u" type="text" autocomplete="username" autocapitalize="characters" spellcheck="false" placeholder="ST-2024-001" required>
-    <label for="p">密码 <span>Password · 孩子的英文名 child's English name</span></label><input id="p" type="password" autocomplete="current-password" required>
+    <label for="p">密码 <span>Password · 孩子的英文名 child's English name</span></label><div class="pw"><input id="p" type="password" autocomplete="current-password" required><button type="button" class="eye" aria-pressed="false" aria-controls="p" aria-label="显示密码 Show password" onclick="eye(this)"></button></div>
     <button id="go" class="btn block" type="submit">登录 · Sign in</button>
     <div id="err" class="err" role="alert"></div>
     <p style="margin:8px 0 0;font-size:12.5px">首次登录：学号 + 孩子的英文名（不区分大小写）<br>First time: student code + your child's English name</p>
@@ -158,7 +159,7 @@ async function signIn() {
   try {
     const r = await call('login', { code: $('u').value, password: $('p').value });
     if (!r || !r.ok) { e.textContent = (r && r.msg) || '登录失败，请重试 · Could not sign in, try again'; return; }
-    put(KEY, r.token); $('p').value = ''; S.d = null; start();
+    put(KEY, r.token); $('p').value = ''; $('p').type = 'password'; document.querySelectorAll('.eye').forEach(b => { b.setAttribute('aria-pressed', 'false'); b.innerHTML = EYE(false); }); S.d = null; start();
   } catch (x) { if (String(x && x.message) !== 'AUTH') e.textContent = '网络连接失败，请稍后再试 · Network problem, please try again'; }
   finally { b.disabled = false; b.textContent = '登录 · Sign in'; }
 }
@@ -221,15 +222,19 @@ function progHtml() { const d = S.d, J = d.journey, R = d.reports || [], P = d.p
     ${r.cn.strengths ? `<div class="sec"><b>本月亮点 · Strengths</b><p>${esc(r.cn.strengths)}</p></div>` : ''}${r.cn.areas ? `<div class="sec"><b>待提升 · To work on</b><p>${esc(r.cn.areas)}</p></div>` : ''}${r.cn.next ? `<div class="sec"><b>下一步计划 · Next steps</b><p>${esc(r.cn.next)}</p></div>` : ''}
     ${r.en.strengths || r.en.areas || r.en.next ? `<details><summary>查看英文原文 · Teacher's English original</summary>${r.en.strengths ? `<div class="sec"><b>Strengths</b><p>${esc(r.en.strengths)}</p></div>` : ''}${r.en.areas ? `<div class="sec"><b>To work on</b><p>${esc(r.en.areas)}</p></div>` : ''}${r.en.next ? `<div class="sec"><b>Next steps</b><p>${esc(r.en.next)}</p></div>` : ''}</details>` : ''}</div>`).join('') : '<div class="card mute">暂无月度报告 · No monthly report yet</div>');
   return h + '<footer>CupOfEnglish 一杯英语 · Learn with the best</footer>'; }
+const EYE = on => '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (on ? '<path d="M3 3l18 18"/><path d="M10.6 5.6A9.7 9.7 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-3.2 3.9M6.2 6.9A17 17 0 0 0 2.5 12S6 18.5 12 18.5a9.5 9.5 0 0 0 4.3-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>' : '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>') + '</svg>' + (on ? '隐藏 Hide' : '显示 Show');
+function eye(b) { const i = $(b.getAttribute('aria-controls')); if (!i) return; const show = i.type === 'password'; i.type = show ? 'text' : 'password'; b.setAttribute('aria-pressed', show ? 'true' : 'false'); b.setAttribute('aria-label', show ? '隐藏密码 Hide password' : '显示密码 Show password'); b.innerHTML = EYE(show); try { i.focus({ preventScroll: true }); } catch (e) {} }
+function eyes() { document.querySelectorAll('.eye').forEach(b => { if (!b.innerHTML) b.innerHTML = EYE(false); }); }
 function closeSh() { $('sh').classList.add('hide'); }
 function pwSheet() { $('shIn').innerHTML = `<h2 style="margin-top:0">设置新密码<small>Set my own password</small></h2><p class="small mute" style="margin:0">设置后，孩子的英文名将不能再用来登录，请记住新密码。忘记密码时请联系 CupOfEnglish 运营老师重置。<br>After this, the English name no longer works for signing in. If you forget it, ask CupOfEnglish to reset it.</p>
-  <label for="np">新密码 <span>New password · 至少6位 at least 6</span></label><input id="np" type="password" autocomplete="new-password"><label for="np2">再输入一次 <span>Type it again</span></label><input id="np2" type="password" autocomplete="new-password">
-  <div id="pe" class="err"></div><button id="pg" class="btn block" onclick="setPw()">保存 · Save</button><button class="btn ghost block" style="margin-top:8px" onclick="closeSh()">取消 · Cancel</button>`; $('sh').classList.remove('hide'); }
+  <label for="np">新密码 <span>New password · 至少6位 at least 6</span></label><div class="pw"><input id="np" type="password" autocomplete="new-password"><button type="button" class="eye" aria-pressed="false" aria-controls="np" aria-label="显示密码 Show password" onclick="eye(this)"></button></div><label for="np2">再输入一次 <span>Type it again</span></label><div class="pw"><input id="np2" type="password" autocomplete="new-password"><button type="button" class="eye" aria-pressed="false" aria-controls="np2" aria-label="显示密码 Show password" onclick="eye(this)"></button></div>
+  <div id="pe" class="err"></div><button id="pg" class="btn block" onclick="setPw()">保存 · Save</button><button class="btn ghost block" style="margin-top:8px" onclick="closeSh()">取消 · Cancel</button>`; $('sh').classList.remove('hide'); eyes(); }
 async function setPw() { const a = $('np').value, b = $('np2').value, e = $('pe'); e.textContent = '';
   if (a.length < 6) { e.textContent = '密码至少6位 · At least 6 characters'; return; } if (a !== b) { e.textContent = '两次输入不一致 · The two passwords differ'; return; }
   $('pg').disabled = true; try { const r = await call('setpw', { token: get(KEY), password: a }); if (r && r.ok) { closeSh(); S.d.own = true; alert('新密码已保存 · New password saved'); } else e.textContent = (r && r.msg) || '没有保存 · Not saved'; }
   catch (x) { if (x.message !== 'AUTH') e.textContent = '网络连接失败 · Network problem'; } finally { const g = $('pg'); if (g) g.disabled = false; } }
 document.addEventListener('click', ev => { const m = $('mn'); if (m && !m.classList.contains('hide') && !ev.target.closest('.menu') && !ev.target.closest('.hd .btn')) m.classList.add('hide'); });
+eyes();
 if (get(KEY)) start(); else show(false);
 </script>
 </body>
