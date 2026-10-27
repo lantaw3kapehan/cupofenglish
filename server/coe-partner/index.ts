@@ -10,7 +10,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { PROF } from "./prof.ts";
-import { renewFlags } from "./renew.ts";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const ORIGINS = ["https://app.cupofenglishatph.com"];
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
@@ -94,12 +93,8 @@ async function lessonsOf(codes: string[]) {
   for (let i = 0; i < codes.length; i += 400) { const { data, error } = await db.rpc("coe_portal_pkgs", { p_codes: codes.slice(i, i + 400) }); if (error) { console.error("coe_portal_pkgs", error.message); break; }
     (data || []).forEach((x: any) => { const p = x.pkg; out[x.code] = p ? { total: Number(p.total) || 0, used: Number(p.used) || 0, left: Number(p.left) || 0, over: Number(p.over) || 0, valid: p.valid || "", start: p.start || "",
       active: !!p.active, shared: !!p.shared, renew: !!p.active && (Number(p.left) || 0) <= 4 } : null; }); }
-  // 1356 · renewal month still counts lessons from before the renewal date → 核对中 (the same check as the student portal)
-  const rf = await renewFlags(db).catch((e) => { console.error("renewFlags", String(e)); return null; });
-  codes.forEach((k) => { const K = String(k).toUpperCase(); if (!rf || rf.has(K)) { if (out[K]) RCHK.add(K); out[K] = null; } });
   return out;
 }
-const RCHK = new Set<string>();   // codes held back by the renewal-month check (they have a package; shown as 核对中, never "no package")
 async function packagesOf(codes: string[]) {
   if (!codes.length) return {} as Record<string, any[]>;
   const { data: P } = await db.from("coe_packages").select("id,code,active,removed_at").in("code", codes).is("removed_at", null).eq("active", true).limit(3000);
@@ -194,6 +189,18 @@ async function payFor(acc: any, PS: Record<string, { code: string; name: string;
     earn: out.reduce((a, r) => a + (r.earn || 0), 0), student: out.reduce((a, r) => a + (r.student || 0), 0), earnN: out.filter((r) => r.earn != null).length, discount: disc(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)), discounts: DC.map((x: any) => ({ program: x.program || "", per_lesson: Number(x.per_lesson), valid_from: x.valid_from || "" })),
     tracking: !!acc.pay_tracking, paid: sum("paid"), topay: sum("topay"), paidN: cnt("paid"), topayN: cnt("topay"), unmarkedN: out.filter((r) => !r.status).length };
 }
+// 1357 · teaching hours + calendar bookings exactly as management last loaded them (docs cache of mgmtAvailAll / mgmtAvail).
+//   Per teacher the most recently FETCHED copy wins (updated_at), so a newer single-teacher load beats an older all-teacher one.
+async function availDocs() {
+  const [{ data: A }, { data: O }] = await Promise.all([
+    db.from("docs").select("key,updated_at,data").like("key", "mgmt:mgmtAvailAll|%").order("updated_at", { ascending: false }).limit(30),
+    db.from("docs").select("key,updated_at,data").like("key", "mgmt:mgmtAvail|%").order("updated_at", { ascending: false }).limit(80)]);
+  const H: Record<string, { name: string; days: string[]; busy: [number, number][]; at: number }> = {};
+  const add = (name: string, days: any, busy: any, at: number) => { const k = String(name || "").toLowerCase(); if (!k || !Array.isArray(days) || (H[k] && H[k].at >= at)) return;
+    H[k] = { name: String(name), days: days.slice(0, 7).map((x: any) => String(x || "")), busy: (Array.isArray(busy) ? busy : []).map((b: any) => [Date.parse(b.s), Date.parse(b.e)] as [number, number]).filter((b) => !isNaN(b[0]) && !isNaN(b[1])), at }; };
+  (A || []).forEach((d: any) => ((d.data && d.data.teachers) || []).forEach((t: any) => add(t.name, t.days, t.busy, Date.parse(d.updated_at) || 0)));
+  (O || []).forEach((d: any) => { let nm = ""; try { nm = JSON.parse(String(d.key).slice("mgmt:mgmtAvail|".length))[0]; } catch { return; } if (d.data && d.data.days) add(nm, d.data.days, d.data.busy, Date.parse(d.updated_at) || 0); });
+  return H; }
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: h });
@@ -349,7 +356,7 @@ Deno.serve(async (req: Request) => {
     PR.forEach((r: any[]) => { const k = norm(c(r, 4)).toUpperCase(); if (PS[k]) (P[k] = P[k] || []).push(prOf(r)); });
     ((UP as any[]) || []).forEach((x: any) => { if (!next[x.code]) next[x.code] = x.starts_at; });
     const students = codes.map((k) => { const L = LS[k];
-      return { code: k, name: PS[k].name, cn: PS[k].cn, level: R[k] ? nowOf(R[k], T[k] || [], P[k] || []) : "", active: L ? L.active : (!!next[k] || RCHK.has(k)), checking: !L && (!!next[k] || RCHK.has(k)), nopkg: !L && !next[k] && !RCHK.has(k),
+      return { code: k, name: PS[k].name, cn: PS[k].cn, level: R[k] ? nowOf(R[k], T[k] || [], P[k] || []) : "", active: L ? L.active : !!next[k], checking: !L && !!next[k], nopkg: !L && !next[k],
         pk: L ? { total: L.total, used: L.used, left: L.left, over: L.over, valid: L.valid, renew: L.renew, shared: L.shared } : null, next: next[k] ? mnl(next[k]) : null }; })
       .sort((a, b) => (+b.active - +a.active) || String(a.name).localeCompare(String(b.name)));
     return out({ ok: true, partner: { name: acc.display_name }, students, at: nowIso });
@@ -435,16 +442,14 @@ Deno.serve(async (req: Request) => {
     const dayAt = (d: string, n: number) => new Date(Date.parse(d + "T12:00:00+08:00") + n * 864e5 + 8 * 3600e3).toISOString().slice(0, 10);
     const mon = dayAt(today, -wd(today)), dates = Array.from({ length: 21 }, (_, n) => dayAt(mon, n));
     const t0 = new Date(Date.parse(mon + "T00:00:00+08:00")).toISOString(), t1 = new Date(Date.parse(dates[20] + "T23:59:59+08:00")).toISOString();
-    const [{ data: AV }, CL, { data: LV }, { data: TT }] = await Promise.all([
-      db.from("docs").select("key,updated_at,data").like("key", "mgmt:mgmtAvailAll|%").order("updated_at", { ascending: false }).limit(30),
-      pages(() => db.from("classes").select("code,starts_at,ends_at,teachers,data").gte("starts_at", t0).lte("starts_at", t1).eq("cancelled", false).not("id", "like", "pend-%").order("starts_at")),
+    const [AVH, CL, { data: LV }, { data: TT }] = await Promise.all([
+      availDocs(),   // 1357: pending bookings (pend-…) count as booked, like management's calendar
+      pages(() => db.from("classes").select("code,starts_at,ends_at,teachers,data").gte("starts_at", t0).lte("starts_at", t1).eq("cancelled", false).order("starts_at")),
       db.from("docs").select("data").eq("key", "mgmt:mgmtLeave|[]").maybeSingle(),
       db.from("coe_book_titles").select("code,title").limit(500)]);
     const BT: Record<string, string> = {}; (TT || []).forEach((x: any) => { BT[String(x.code).toLowerCase()] = x.title; });
     const book = (x: string) => BT[String(x || "").toLowerCase()] || String(x || "").replace(/([a-z])([A-Z0-9])/g, "$1 $2");
-    const hours: Record<string, { name: string; days: string[]; at: number }> = {};
-    (AV || []).forEach((d: any) => ((d.data && d.data.teachers) || []).forEach((t: any) => { const k = String(t.name || "").toLowerCase(); if (!k) return;
-      const at = Number(t.at) || Date.parse(d.updated_at) || 0; if (!hours[k] || at > hours[k].at) hours[k] = { name: String(t.name), days: (t.days || []).slice(0, 7).map((x: any) => String(x || "")), at }; }));
+    const hours: Record<string, { name: string; days: string[]; at: number }> = AVH;
     const leave: Record<string, Set<string>> = {};
     (((LV as any)?.data?.rows) || []).forEach((r: any) => { if (!/^approved/i.test(String(r.status || "")) || !/whole/i.test(String(r.part || "whole"))) return;
       const k = String(r.teacher || "").toLowerCase(), f = ymd(r.from), t = ymd(r.to) || f; if (!k || !f) return;
@@ -457,6 +462,9 @@ Deno.serve(async (req: Request) => {
         book: book((x.data && x.data.book) || ""), kind: isTrial(title) ? "trial" : isSub(title) ? "sub" : "class" });
       if (!k) return; names[k] = names[k] || String((x.teachers || [])[0]);
       const o = (bk[k] = bk[k] || {}), key = String(s); (o[key] = o[key] || { s, e, m: new Set() }); if (e > o[key].e) o[key].e = e; if (own) o[key].m.add(code); });
+    // 1357: bookings management's calendar copy knows about (holds, trials, pending) also block the slot · never shown with names
+    Object.keys(AVH).forEach((k) => AVH[k].busy.forEach(([s, e]) => { if (s < Date.parse(t0) || s > Date.parse(t1) + 864e5) return; const o = (bk[k] = bk[k] || {}), key = String(s);
+      if (!o[key]) o[key] = { s, e, m: new Set() }; else if (e > o[key].e) o[key].e = e; names[k] = names[k] || AVH[k].name; }));
     const keys = new Set([...Object.keys(hours), ...Object.keys(bk).filter((k) => Object.values(bk[k]).some((b) => b.m.size))]);
     const teachers = [...keys].map((k) => { const H = hours[k] || { name: names[k] || k, days: [], at: 0 }, B = Object.values(bk[k] || {}).sort((a, b) => a.s - b.s);
       const days = dates.map((d) => { const w = wd(d), spec = String(H.days[w] || "").trim(), off = !!leave[k]?.has(d), open: string[] = [];
@@ -468,7 +476,7 @@ Deno.serve(async (req: Request) => {
       const pf = PROF[k] || null;
       return { name: H.name, sub: pf ? pf.sub : "", hours: H.days, days, open: days.reduce((a, x) => a + x.open.length, 0), mine: days.reduce((a, x) => a + x.booked.filter((b: any) => b.m).length, 0) }; })
       .filter((t) => t.open > 0 || t.mine > 0 || t.days.some((d) => d.booked.length)).sort((a, b) => (b.mine - a.mine) || (b.open - a.open) || a.name.localeCompare(b.name));
-    return out({ ok: true, from: mon, today, dates, teachers, mine: mine.sort((a, b) => (a.date + a.t).localeCompare(b.date + b.t)), tz: "Asia/Shanghai (UTC+8)" });
+    return out({ ok: true, asOf: new Date(now).toISOString(), from: mon, today, dates, teachers, mine: mine.sort((a, b) => (a.date + a.t).localeCompare(b.date + b.t)), tz: "Asia/Shanghai (UTC+8)" });
   }
   return out({ ok: false, error: "unknown op" }, 400);
 });
