@@ -124,10 +124,15 @@ const progOf = (L: string) => /adult/.test(L) ? "adult" : /ielts/.test(L) ? "iel
 const cap = (x: string) => x.replace(/\b[a-z]/g, (m) => m.toUpperCase());
 async function payFor(acc: any, PS: Record<string, { code: string; name: string; cn: string }>, withWhy = false) {
   const labels = new Set(((acc.sales_labels || []) as string[]).map(lbl).filter(Boolean));
-  const [{ data: RT }, DB, { data: DC }] = await Promise.all([db.from("partner_rates").select("source,program,learner,lessons,amount,valid_from,confirmed").in("source", (acc.sources || []).length ? acc.sources : ["-"]), rows("DATABASE"),
-    db.from("partner_discounts").select("source,per_lesson,valid_from").in("source", (acc.sources || []).length ? acc.sources : ["-"])]);
+  const [{ data: RT }, DB, { data: DC0 }, { data: DP }] = await Promise.all([db.from("partner_rates").select("source,program,learner,lessons,amount,valid_from,confirmed").in("source", (acc.sources || []).length ? acc.sources : ["-"]), rows("DATABASE"),
+    db.from("partner_discounts").select("source,per_lesson,valid_from").in("source", (acc.sources || []).length ? acc.sources : ["-"]),
+    db.from("partner_program_discounts").select("source,program,per_lesson,valid_from").in("source", (acc.sources || []).length ? acc.sources : ["-"])]);
+  const DC = [...(DC0 || []), ...(DP || [])];
   // Misty 15:28 · partner earnings per PAID lesson (free / bonus lessons earn nothing); the latest valid_from on or before the sale date
-  const disc = (date: string) => { const L = (DC || []).filter((x: any) => !x.valid_from || !date || x.valid_from <= date).sort((a: any, b: any) => String(b.valid_from || "").localeCompare(String(a.valid_from || ""))); return L.length ? Number(L[0].per_lesson) : null; };
+  // Misty 16:05 · earnings per paid lesson can differ by program (Dr. Spring: IELTS ¥30, everything else ¥20): a program row
+  // (partner_program_discounts) wins over the all-programs row (partner_discounts)
+  const disc = (date: string, program = "") => { const L = DC.filter((x: any) => (!x.program || x.program === program) && (!x.valid_from || !date || x.valid_from <= date))
+      .sort((a: any, b: any) => (+!!b.program - +!!a.program) || String(b.valid_from || "").localeCompare(String(a.valid_from || ""))); return L.length ? Number(L[0].per_lesson) : null; };
   const age: Record<string, any[]> = {}; DB.forEach((r: any[]) => { const k = norm(c(r, 0)).toUpperCase(); if (PS[k]) age[k] = r; });
   // Misty 15:30 · rates per program × package size; only CONFIRMED rates are used (derived ones wait for Misty → "—")
   const rateRow = (program: string, lessons: number, date: string, conf: boolean) => (RT || []).filter((x: any) => (x.program || (x.learner === "adult" ? "adult" : "yl")) === program && +x.lessons === lessons && (!conf || x.confirmed !== false) && (!x.valid_from || !date || x.valid_from <= date))
@@ -169,7 +174,7 @@ async function payFor(acc: any, PS: Record<string, { code: string; name: string;
   }
   out.sort((a, b) => b.date.localeCompare(a.date));
   // remitted = partner price (amount); earnings = discount × paid lessons; student price = remitted + earnings. Unknown → null ("—"), never guessed.
-  out.forEach((r) => { const d = r.amount != null ? disc(r.date) : null; r.earn = r.amount != null && d != null ? Math.round(d * (r.lessons || 0) * 100) / 100 : null; r.student = r.earn != null ? r.amount + r.earn : null; });
+  out.forEach((r) => { const d = r.amount != null ? disc(r.date, r.program) : null; r.earn = r.amount != null && d != null ? Math.round(d * (r.lessons || 0) * 100) / 100 : null; r.student = r.earn != null ? r.amount + r.earn : null; });
   // Misty 14:55 · paid status (partner_payments, per partner source). No record: "topay" when the login tracks payments, else null ("—").
   const { data: PP } = await db.from("partner_payments").select("partner,ref,status,marked_by,marked_at,note").in("partner", (acc.sources || []).length ? acc.sources : ["-"]);
   const st: Record<string, any> = {}; (PP || []).forEach((x: any) => { if (!st[x.ref] || x.marked_at > st[x.ref].marked_at) st[x.ref] = x; });
@@ -181,7 +186,7 @@ async function payFor(acc: any, PS: Record<string, { code: string; name: string;
   M.forEach((m: any) => { const R = out.filter((r) => r.date.slice(0, 7) === m.m); m.earn = R.reduce((a, r) => a + (r.earn || 0), 0); m.student = R.reduce((a, r) => a + (r.student || 0), 0); m.paid = R.filter((r) => r.status === "paid" && r.amount != null).reduce((a, r) => a + r.amount, 0); m.topay = R.filter((r) => r.status === "topay" && r.amount != null).reduce((a, r) => a + r.amount, 0); m.topayN = R.filter((r) => r.status === "topay").length; });
   return { src, rows: out, months: M, total: M.reduce((a, x) => a + x.total, 0), none: M.reduce((a, x) => a + x.none, 0), count: out.length, unclear, dropped, mismatch: withWhy ? out.filter((r) => r.rmb != null && r.amount != null && Math.abs(r.rmb - r.amount) > 0.5).map((r) => ({ date: r.date, sheetRow: r.sheetRow, lessons: r.lessons, program: r.program, rate: r.amount, rmb: r.rmb, names: r.names.filter((n: any) => !n.hidden).map((n: any) => n.name) })) : [],
     programs: Object.values(out.reduce((o: any, r) => { const k = r.program || "yl", x = o[k] = o[k] || { program: k, n: 0, priced: 0, remitted: 0, earn: 0, student: 0, none: 0 }; x.n++; if (r.amount == null) x.none++; else { x.priced++; x.remitted += r.amount; x.earn += r.earn || 0; x.student += r.student || 0; } return o; }, {})),
-    earn: out.reduce((a, r) => a + (r.earn || 0), 0), student: out.reduce((a, r) => a + (r.student || 0), 0), earnN: out.filter((r) => r.earn != null).length, discount: disc(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)),
+    earn: out.reduce((a, r) => a + (r.earn || 0), 0), student: out.reduce((a, r) => a + (r.student || 0), 0), earnN: out.filter((r) => r.earn != null).length, discount: disc(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)), discounts: DC.map((x: any) => ({ program: x.program || "", per_lesson: Number(x.per_lesson), valid_from: x.valid_from || "" })),
     tracking: !!acc.pay_tracking, paid: sum("paid"), topay: sum("topay"), paidN: cnt("paid"), topayN: cnt("topay"), unmarkedN: out.filter((r) => !r.status).length };
 }
 Deno.serve(async (req: Request) => {
@@ -233,7 +238,7 @@ Deno.serve(async (req: Request) => {
       const [{ data: R }, SA, { data: A }] = await Promise.all([db.from("partner_rates").select("id,source,program,learner,lessons,amount,valid_from,confirmed,note,updated_at,updated_by").order("source").order("program").order("lessons"),
         pages(() => db.from("sheet_rows").select("data").eq("tab", "SALES").gte("r", 3).order("r")), db.from("partner_accounts").select("id,username,display_name,sources,sales_labels").order("created_at")]);
       const L: Record<string, { label: string; n: number; last: string }> = {}; SA.forEach((x: any) => { const r = x.data || [], k = norm(c(r, 4)); if (!k || !ymd(c(r, 0))) return; const o = L[k] = L[k] || { label: k, n: 0, last: "" }; o.n++; const d = ymd(c(r, 0)); if (d > o.last) o.last = d; });
-      const [{ data: DS }, { data: NP }] = await Promise.all([db.from("partner_discounts").select("id,source,per_lesson,valid_from,updated_at,updated_by").order("source"), db.from("program_prices").select("program,lessons,price,valid_from,source_note").order("program").order("lessons")]);
+      const [{ data: DS }, { data: NP }] = await Promise.all([db.from("partner_discounts").select("id,source,per_lesson,valid_from,updated_at,updated_by").order("source").then(async (r: any) => { const { data: P } = await db.from("partner_program_discounts").select("id,source,program,per_lesson,valid_from,updated_at,updated_by").order("source"); return { data: [...(r.data || []), ...(P || [])] }; }), db.from("program_prices").select("program,lessons,price,valid_from,source_note").order("program").order("lessons")]);
       return out({ ok: true, rates: R || [], discounts: DS || [], normal: NP || [], labels: Object.values(L).sort((a, b) => b.n - a.n), accounts: A || [] });
     }
     if (op === "pRateSet") {
@@ -247,11 +252,12 @@ Deno.serve(async (req: Request) => {
       const { error } = await db.from("partner_rates").insert({ source, program, learner, lessons, amount, valid_from: vf, confirmed: true, note: "set by " + s.name, updated_by: s.name }); return out({ ok: !error, msg: error ? "Not saved" : "" });
     }
     if (op === "pDiscSet") {   // Misty 15:28 · partner earnings per paid lesson (¥), optional valid-from; empty amount removes it
-      const source = norm(b.source), vf = ymd(b.valid_from) || null; if (!source) return out({ ok: false, msg: "Choose a source" });
-      let q = db.from("partner_discounts").delete().eq("source", source); q = vf ? q.eq("valid_from", vf) : q.is("valid_from", null); await q;
+      const source = norm(b.source), vf = ymd(b.valid_from) || null, program = /^(yl|adult|ielts|toefl|pet|ket|reading)$/.test(String(b.program || "")) ? String(b.program) : ""; if (!source) return out({ ok: false, msg: "Choose a source" });
+      const TBL = program ? "partner_program_discounts" : "partner_discounts";
+      let q = db.from(TBL).delete().eq("source", source); q = vf ? q.eq("valid_from", vf) : q.is("valid_from", null); if (program) q = q.eq("program", program); await q;
       if (b.per_lesson === null || b.per_lesson === "" || b.per_lesson === undefined) return out({ ok: true });
       const v = Number(b.per_lesson); if (!(v >= 0) || v > 1000) return out({ ok: false, msg: "Yuan per paid lesson" });
-      const { error } = await db.from("partner_discounts").insert({ source, per_lesson: v, valid_from: vf, updated_by: s.name }); return out({ ok: !error, msg: error ? "Not saved" : "" });
+      const { error } = await db.from(TBL).insert(program ? { source, program, per_lesson: v, valid_from: vf, updated_by: s.name } : { source, per_lesson: v, valid_from: vf, updated_by: s.name }); return out({ ok: !error, msg: error ? "Not saved" : "" });
     }
     if (op === "pLabels") {
       const labels = (Array.isArray(b.labels) ? b.labels : []).map(norm).filter(Boolean).slice(0, 20);
