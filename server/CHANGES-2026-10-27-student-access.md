@@ -1,4 +1,4 @@
-# 27 Oct 2026 · Parent / student access (release 1350, COE_V 1324)
+# 27 Oct 2026 · Student portal 学员专区 (releases 1350–1352)
 
 **Link for parents:** https://app.cupofenglishatph.com/student/
 
@@ -30,6 +30,10 @@ password, **Copy WeChat message** (Chinese + English, with the link, the ST code
 
 **Not done / untested:** real access from mainland China and inside WeChat's browser; teachers do not yet see the parents' "homework
 done" ticks in the app (stored only); management panel tested with mock data only.
+
+## 1351 · Show / Hide password (commit f3da826)
+
+- Eye line icon toggle (44 px, aria-pressed) on sign-in and on Set my own password. No emojis anywhere: app line icons + 1101 colours.
 
 ## 1352 · Student portal 学员专区 — inclusive for adult students (COE_V 1326, commit c0ff26e)
 
