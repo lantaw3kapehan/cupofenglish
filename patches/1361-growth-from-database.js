@@ -1,0 +1,11 @@
+// 1361 · Growth from the database (Misty 27 Oct: port Growth to the database).
+//   tGrowth (teacher) and mgmtGrowth (management, a teacher's Growth) are answered by the edge function coe-growth, a port of
+//   Google's growth_ / career_ / attend_ / qaAll_ / praise / live units, reading the database copies of the sheet tabs.
+//   Peer reviews, class visits and the monthly record still come from Google's last answer (coe-growth adds them, labelled _src).
+//   Switch: docs 'sys:growthdb' {"on": true|false}. Off, or any error → Google exactly as before.
+//   Google's own copy (used for the parts above) is still asked behind the screen when it is over 30 min old.
+const file = process.argv[2];
+require('../tools/lib.js')(file, [
+  ["</script>\n<script>\n/* 767 · monthly feedback form from the database */",
+   "</script>\n<script>\n/* 1361 · Growth from the database (coe-growth); switched by docs sys:growthdb; Google when off or on any error */\n(function(){\n  const base = window.api; if(!base || base.__1361) return;\n  const URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-growth'; let last = 0;\n  const w = function(fn){ const a = Array.prototype.slice.call(arguments, 1), self = this, go = () => base.apply(self, [fn].concat(a));\n    if((fn === 'tGrowth' || fn === 'mgmtGrowth') && typeof LIVE !== 'undefined' && LIVE && a[0] && (fn === 'tGrowth' || a[1])){\n      const body = fn === 'tGrowth' ? { op: 'growth', token: a[0] } : { op: 'growth', token: a[0], name: a[1] };\n      return fetch(URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }).then(x => x.json()).then(r => {\n        if(!(r && r.ok && r.data)) return go();\n        try{ const g = r.data._src && r.data._src.google, at = g && g.at ? Date.parse(g.at) : 0; if(Date.now() - at > 30 * 6e4 && Date.now() - last > 10 * 6e4){ last = Date.now(); setTimeout(() => { try{ go().catch(() => {}); }catch(e){} }, 3000); } }catch(e){}   /* keeps Google's peer reviews / visits / record copy fresh */\n        return r.data; }, go); }\n    return base.apply(this, arguments); };\n  w.__1361 = 1; window.api = w;\n})();\n</script>\n<script>\n/* 767 · monthly feedback form from the database */"],
+]);
