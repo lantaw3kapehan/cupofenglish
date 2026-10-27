@@ -199,6 +199,52 @@ async function checkAll() {
   return res;
 }
 
+// 1356t · one hold snapshot (Misty: the partner Students list and the card must always agree). Every code on management's ACTIVE screen
+// goes through lessonsFor with the same guards; held = any guard fails. Shared by all instances via docs sys:portalholds and refreshed
+// when older than 60 s (the previous snapshot is served while a new one is computed in the background).
+declare const EdgeRuntime: any;
+let HRUN: Promise<any> | null = null, HMEM: { at: number; snap: any } | null = null;
+function holdsRun() {
+  if (HRUN) return HRUN;
+  HRUN = (async () => { const t0 = Date.now();
+    const [{ env }, d, R, { data: PC }, { data: PL }, { data: PE }, { data: OLD }] = await Promise.all([mgmtEnv(), mgmtData(db), activeRows(db),
+      db.from("docs").select("data").eq("key", "sys:pkgcheck").maybeSingle(), db.from("docs").select("act:data->act").eq("key", "sys:pkglink").maybeSingle(),
+      db.from("coe_packages").select("code").not("pend", "is", null).is("removed_at", null), db.from("docs").select("data").eq("key", "sys:portalholds").maybeSingle()]);
+    if (OLD && (OLD as any).data) await db.from("docs").update({ data: { ...(OLD as any).data, run: new Date().toISOString() } }).eq("key", "sys:portalholds");
+    DATA = { at: Date.now(), p: Promise.resolve(d) }; await appliedAT(env, d);
+    const pend = new Set<string>(((PE as any[]) || []).map((x: any) => String(x.code).toUpperCase()));
+    const C: Record<string, number> = {}; (d.AT.cols as string[]).forEach((x, i) => C[x] = i);
+    const codes = [...new Set((d.AT.rows as any[]).map((r) => String(r[C.code]).toUpperCase()).filter((k) => /^ST-/.test(k)))].sort();
+    const au: Record<number, any> = {}; (((PL as any) && (PL as any).act) || []).forEach((a: any) => { au[+a.r] = a.au; });
+    const rf = await renewFlags(db).catch(() => null);
+    const hold: string[] = [], ok: string[] = [];
+    for (let i = 0; i < codes.length; i += 8) await Promise.all(codes.slice(i, i + 8).map(async (code) => {
+      let L2: any = null; try { L2 = await lessonsOf(db, code, R); } catch (_) { /* guard 1 fails */ }
+      let x: any; try { x = await lessonsFor(code, L2, { pkgcheck: PC && (PC as any).data, pend, au, rf }); } catch (_) { x = { ok: false }; }
+      if (x.none) return; (x.ok ? ok : hold).push(code); }));   // no Lesson summary at all = "no package", not held
+    const snap = { at: new Date().toISOString(), codes: hold.sort(), ok: ok.sort(), ms: Date.now() - t0 };
+    await db.from("docs").upsert({ key: "sys:portalholds", scope: "mgmt", data: snap, updated_at: snap.at }, { onConflict: "key" });
+    HMEM = { at: Date.now(), snap }; return snap; })().finally(() => { HRUN = null; });
+  return HRUN;
+}
+async function holds(force = false): Promise<{ at: string; hold: Set<string>; seen: Set<string> }> {
+  let snap: any = HMEM && Date.now() - HMEM.at < 10e3 ? HMEM.snap : null;
+  if (!snap) { const { data } = await db.from("docs").select("data").eq("key", "sys:portalholds").maybeSingle(); snap = data && (data as any).data; if (snap && snap.at) HMEM = { at: Date.now(), snap }; }
+  if (!snap || !snap.at) snap = await holdsRun();
+  else { const age = Date.now() - Date.parse(snap.at), run = snap.run ? Date.now() - Date.parse(snap.run) : 1e9;
+    if ((force || age > 60e3) && run > 120e3) { const p = holdsRun().catch((e) => console.error("holds", String(e))); try { EdgeRuntime.waitUntil(p); } catch (_) { /* best effort */ } } }
+  return { at: snap.at, hold: new Set<string>(snap.codes || []), seen: new Set<string>([...(snap.codes || []), ...(snap.ok || [])]) };
+}
+// the snapshot decides; a live guard that fails also holds (and asks for a fresh snapshot so the list catches up)
+async function applyHold(code: string, LS: any) {
+  if (!LS || !LS.n) return LS;
+  const H = await holds().catch(() => null), codes: string[] = LS.n.shared ? (LS.n.kids || []).map((k: any) => k.code) : [code];
+  if (!H) { LS.ok = false; LS.why.push("hold snapshot unavailable"); return LS; }
+  if (codes.some((k) => H.hold.has(k))) { if (LS.ok) LS.why.push("held in snapshot " + H.at); LS.ok = false; }
+  else if (!LS.ok && H.seen.has(code)) holds(true).catch(() => null);
+  return LS;
+}
+
 // 1355b · the monthly report picture parents receive (management's picture code); held back unless the tracker says Sent / Ready
 async function fbPicFor(code: string, mo: string, tc: string) {
   const [{ data: FB }, { data: RL }, { data: CN }, N] = await Promise.all([db.from("docs").select("v:data->" + code).eq("key", "sys:fb").maybeSingle(),
@@ -283,7 +329,7 @@ async function cardFor(code: string, ptok: string, LS: any) {
   const weekly = (fixed.length ? fixed : WV).sort((a: any, b: any) => order(a) - order(b)).map(({ n: _n, ...x }: any) => x);
   return { name: N.name, cn: N.cn, active: ((PK as any[]) || []).some((p: any) => p.active), wechat, shares,
     age: v(6), city: v(9), since, teachers: n ? n.teachers || [] : (LS && LS.n ? LS.n.teachers || [] : []), book: (LS && LS.n && LS.n.book) || "", level: v(19),
-    left: n ? n.left : null, checking: !n, cefr: (CJ && CJ.now) || "", latest: f0 ? Number(f0.total) || 0 : null,
+    left: n ? n.left : null, checking: !n && !(LS && LS.none), nopkg: !!(LS && LS.none), cefr: (CJ && CJ.now) || "", latest: f0 ? Number(f0.total) || 0 : null,
     weekly, next, journey: { len: v(15), trial: ymd(v(10)), first: ymd(v(16)), renewed: ymd(v(24)), cycle } };
 }
 
@@ -341,6 +387,15 @@ Deno.serve(async (req: Request) => {
     catch (e) { return out({ ok: false, error: String((e as any)?.message || e).slice(0, 120) }, 500); }
   }
 
+  if (op === "pholds") {   // 1356t · the hold snapshot for THIS partner's students (membership = coe-partner's own list)
+    const ptok = String(b.token || ""); if (ptok.length < 32) return out({ ok: false, error: "AUTH" }, 401);
+    const [r, H] = await Promise.all([fetch(Deno.env.get("SUPABASE_URL") + "/functions/v1/coe-partner", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ op: "list", token: ptok }) }), holds()]);
+    if (r.status === 401) return out({ ok: false, error: "AUTH" }, 401);
+    let j: any = null; try { j = await r.json(); } catch (_) { /* below */ } if (!r.ok || !j || !j.ok) return out({ ok: false }, 502);
+    const mine = ((j.students || []) as any[]).map((x) => codeOf(x.code)).filter(Boolean);
+    return out({ ok: true, at: H.at, codes: mine.filter((k) => H.hold.has(k)), nopkg: mine.filter((k) => !H.seen.has(k)) });
+  }
+
   // 1356q · Dr. Spring's partner portal: management's Lesson summary picture for one of HER students (partner session token).
   // Auth + membership = coe-partner's own `student` op (no rules duplicated here). Same lessons path and guards as the student
   // portal; numbers + html only when every check passes, else 核对中. A sibling's Chinese name stays only if that sibling is hers too.
@@ -362,7 +417,7 @@ Deno.serve(async (req: Request) => {
       const rf = await renewFlags(db).catch((e) => { console.error("renewFlags", String(e)); return null; });
       const sib = L2 && L2.cur && L2.cur.shared ? (L2.cur.kids || []).map((k: any) => k.code).filter((k: string) => k !== code) : [];
       const keep = new Set<string>(); (await Promise.all(sib.map(async (k: string) => ({ k, ok: (await mine(k)).ok })))).forEach((x) => { if (x.ok) keep.add(x.k); });
-      const LS = await lessonsFor(code, L2, { pkgcheck: PC && (PC as any).data, pend, au, rf, keep });
+      const LS = await lessonsFor(code, L2, { pkgcheck: PC && (PC as any).data, pend, au, rf, keep }); await applyHold(code, LS);
       if (op === "pcard") return out({ ok: true, card: await cardFor(code, ptok, LS), at: new Date().toISOString() });
       if (!LS.ok || !LS.n) { if (LS.n) console.warn("plsum checking", code, JSON.stringify(LS.why)); return out({ ok: false, checking: true }); }
       const n = LS.n;
@@ -489,7 +544,7 @@ Deno.serve(async (req: Request) => {
     const au: Record<number, any> = {}; (((PLK as any) && (PLK as any).act) || []).forEach((a: any) => { au[+a.r] = a.au; });
     const pendC = new Set<string>(((SRC as any[]) || []).filter((x: any) => x.pend != null).map(() => code));
     const rf = await renewFlags(db).catch((e) => { console.error("renewFlags", String(e)); return null; });
-    const LS = await lessonsFor(code, L, { pkgcheck: PC && (PC as any).data, pend: pendC, au, rf });
+    const LS = await lessonsFor(code, L, { pkgcheck: PC && (PC as any).data, pend: pendC, au, rf }); await applyHold(code, LS);
     const n = LS.n;   // management's Lesson summary numbers; not shown (核对中) unless every check passes
     const pkg = n && !LS.ok ? { checking: true } : n ? { checking: false, total: n.total, used: n.used, left: n.left, over: n.over, valid: n.valid, start: n.start, shared: n.shared, kids: n.kids || [], teachers: n.teachers,
       expired: !!(n.valid && n.valid < today0 && n.left > 0),

@@ -176,3 +176,11 @@ Rollback: `rollback-pre-1355c`.
 - Until fixed, the student portal (coe-student v13) and Dr. Spring's partner portal (coe-partner v13) show 核对中 · Being checked for all 71 codes of those 63 packages (`renew.ts`, read-only, shared by both). Clears by itself once ACTIVE is corrected and the package check keeps it.
 - Database writes for a flag table were refused twice, so the check runs inside the two portal functions instead; no database objects were added except the read-only view `coe_daily_units` (unused by the portals; safe to drop).
 - Rollback: redeploy coe-student v12 / coe-partner v11 sources (audit repo commit before 943e14c).
+
+## 1356s/t · coe-student v17–v18 (27 Oct, evening)
+- v17: management's sandboxes (Lesson summary, journey, report picture) run on Asia/Shanghai time (SD Date class in mgmt.ts). "生成时间" now shows China time (checked: 14:24Z → 22:24). pcard.journey.cycle is digits only ("" for #REF! etc.).
+- v18: one hold snapshot `sys:portalholds { at, codes (held), ok, ms }` — every ACTIVE-screen code through lessonsFor with the same guards; shared by all instances; refreshed in the background when older than 60 s (previous snapshot served meanwhile). Full pass ≈ 10.5 s for 236 codes (8 at a time).
+- plsum / pcard / Student portal: held if the snapshot holds the code (or any code on its shared package), or if a live guard fails (that also asks for a fresh snapshot). Codes with no Lesson summary are neither held nor ok → "no package"; pcard now returns `nopkg` and `checking` is false for them.
+- New op `pholds` { token } → { ok, at, codes: held codes among this partner's students, nopkg: her students with no Lesson summary }. Membership = one coe-partner `list` call.
+- Checked: pholds 30 held of Dr. Spring's; ST-2024-101 held in pholds, pcard checking and plsum checking; ST-2024-016 ok in all three (34 left); ST-2026-126 nopkg in both.
+- Rollback: redeploy v17 (commit 62593c9) or v16 (f51561d).
