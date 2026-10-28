@@ -87,6 +87,9 @@ function run(file) {
   ok('wiring · renewal picture header uses coeRenew.line', s.indexOf("c.fillText(window.coeRenew ? coeRenew.line(Q)") > -1, 0);
   ok('wiring · picture / Lesson Summary / form / App health guard present', /window\.__1540 = 1/.test(s) && s.indexOf('window.lsHtml = function(code){ const h = _ls.apply') > -1 && s.indexOf('R.formHold(S.info.left') > -1 && s.indexOf("'Renewal · ' + x.name") > -1, 0);
   ok('wiring · no "carry + new" estimate of lessons now', s.indexOf("Q.now = fresh && +b.left < Q.tot") < 0 && s.indexOf('Q.carry = Math.round(+b.left * 10) / 10') < 0, 0);
+  // the database cases (server/TEST-renewals-1540.sql) must keep the payment-time cases (1542): the payment time is the Payment Confirmation's generated time
+  { const sq = require('path').join(require('path').dirname(require('path').resolve(file)), 'server', 'TEST-renewals-1540.sql');
+    if (fs.existsSync(sq)) { const t = fs.readFileSync(sq, 'utf8'); ok('database cases · payment time from the Payment Confirmation (S7) and a void one (S8) are kept', /S7 payment time taken from the confirmation/.test(t) && /S8 void confirmation/.test(t), 0); } }
   console.log(out.join('\n')); console.log(bad ? '\n' + bad + ' renewal check(s) FAILED' : '\nAll ' + out.length + ' renewal checks passed');
   return bad ? 1 : 0;
 }
