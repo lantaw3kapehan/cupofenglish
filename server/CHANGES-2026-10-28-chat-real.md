@@ -9,3 +9,12 @@
 - Jump-to-latest round button when scrolled up more than a screen.
 - Picture viewer: zoom with the wheel, pinch, double-tap or the buttons; drag to move; Escape / ✕ closes.
 - "Copy link" on each message (tools on hover / long-press): the link opens the app on that message; the server still checks who may see it.
+
+## 1417 · emojis and reactions (server coe-chat v12 · table chat_reacts)
+- Emoji picker (smiley button in the box): recent emojis first, then Smileys · Gestures · Hearts · Work · Food · Nature (about 200,
+  built into the app: works offline and in China). Inserts at the cursor; Escape or a click elsewhere closes it.
+- Reactions: hover a message (laptop) or long-press (phone) → React → 👍 ❤️ 😂 😮 🙏 ✅ or + for more. Count chips under the bubble
+  (mine highlighted); tap a chip → who reacted + add / remove mine. No alert is sent for a reaction. Everyone can see who reacted
+  (like a real chat); management keeps its full read receipts.
+- Live test (v12, hidden test message 38): 👍 saved and returned with the message; "<b>" refused ("Pick an emoji").
+- Emojis are people's own content in chat; the app's own buttons and labels keep line icons.

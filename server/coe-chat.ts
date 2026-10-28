@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-chat (27 Oct 2026 · 1400–1415): Team Chat — groups + direct chats, @mentions, seen/replied receipts,
+// CupOfEnglish · coe-chat (27–28 Oct 2026 · 1400–1419): Team Chat — groups + direct chats, @mentions, seen/replied receipts,
 // needs-reply, confirm, pinned, pictures (up to 5 per message), voice, time-in auto-post, search, Today/History, alerts for every group message
 // (merged, mutable), management roster (add / remove a teacher), retry-safe sending (cid). Teachers never receive other people's presence or
 // per-person receipts. Kept in CupOfEnglish's database: nothing is deleted by the app (teachers can edit, shown "edited"; management can hide).
@@ -76,8 +76,10 @@ Deno.serve(async (req: Request) => {
     }
     async function decorate(rows: any[]) {
       if (!rows.length) return rows;
-      const { data: R } = await db.from("chat_reads").select("mid,name,seen_at,replied_at,confirmed_at").in("mid", rows.map((r) => r.id));
+      const [{ data: R }, { data: X }] = await Promise.all([db.from("chat_reads").select("mid,name,seen_at,replied_at,confirmed_at").in("mid", rows.map((r) => r.id)),
+        db.from("chat_reacts").select("mid,name,emoji,at").in("mid", rows.map((r) => r.id)).order("at")]);
       const by: any = {}; (R || []).forEach((x: any) => { (by[x.mid] = by[x.mid] || []).push(x); });
+      const rx: any = {}; (X || []).forEach((x: any) => { const L = rx[x.mid] = rx[x.mid] || []; let g = L.find((y: any) => y.e === x.emoji); if (!g) L.push(g = { e: x.emoji, n: 0, who: [], mine: false }); g.n++; g.who.push(dn(x.name)); if (lc(x.name) === lc(me)) g.mine = true; });   // 1417 reactions (names are shown to everyone, like a real chat)
       const pids = [...new Set(rows.filter((r) => r.parent_id).map((r) => r.parent_id))], PQ: any = {};
       if (pids.length) { const { data: PP } = await db.from("chat_messages").select("id,author,body,kind,hidden").in("id", pids); (PP || []).forEach((x: any) => { PQ[x.id] = { author: x.author, body: x.hidden ? "" : String(x.body || (x.kind === "voice" ? "Voice message" : "Picture")).slice(0, 120) }; }); }
       return signed(rows.map((r) => { const L0 = by[r.id] || [], mine = L0.find((x: any) => lc(x.name) === lc(me)) || null;
@@ -85,7 +87,7 @@ Deno.serve(async (req: Request) => {
         return { id: r.id, gid: r.gid, author: r.author, mgmt: r.author_mgmt, kind: r.kind, body: r.hidden && !mgmt ? "" : r.body, img_path: r.hidden && !mgmt ? null : r.img_path, meta: r.meta,
           quote: r.parent_id ? PQ[r.parent_id] || null : null, mentions: r.mentions, needs_reply: r.needs_reply, reply_by: r.reply_by, confirm: r.confirm, pinned: r.pinned, hidden: r.hidden, parent_id: r.parent_id, edited: !!r.edited_at,
           day: r.day, at: r.created_at, n: L.length, seen: L.filter((x: any) => x.seen_at).length, replied: L.filter((x: any) => x.replied_at).length, confirmed: L.filter((x: any) => x.confirmed_at).length,
-          mine: mine ? { seen: mine.seen_at, replied: mine.replied_at, confirmed: mine.confirmed_at } : null, ...(mgmt || lc(r.author) === lc(me) ? {} : { replied: 0, confirmed: 0 }) }; }));
+          rx: rx[r.id] || [], mine: mine ? { seen: mine.seen_at, replied: mine.replied_at, confirmed: mine.confirmed_at } : null, ...(mgmt || lc(r.author) === lc(me) ? {} : { replied: 0, confirmed: 0 }) }; }));
     }
     async function groups(up = false) {
       const [G, { data: U }] = await Promise.all([
@@ -170,11 +172,15 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true });
     }
     if (a === "poll") {
-      const [{ data: L }, C, gr] = await Promise.all([   // 1406: the three look-ups run side by side
+      const tg = str(b.gid, 60), tOk = !!tg && canSee(tg);
+      const [{ data: L }, C, gr, { data: RV }, TY] = await Promise.all([   // 1406: the look-ups run side by side
         db.from("chat_messages").select("id").order("id", { ascending: false }).limit(1),
         mgmt ? Promise.resolve(null) : db.from("classes").select("id").eq("day", today).lte("starts_at", now).gt("ends_at", now).eq("cancelled", false).contains("teachers", [lc(me)]).limit(1).then((r: any) => r.data),
-        groups()]);
-      return out({ ok: true, last: L && L[0] ? L[0].id : 0, groups: gr, today, inClass: !!(C && C.length) });
+        groups(), db.from("chat_reacts").select("at").order("at", { ascending: false }).limit(1),
+        tOk ? db.from("chat_typing").select("name,at").eq("gid", tg).gt("at", new Date(Date.now() - 6000).toISOString()).neq("name", me).then((r: any) => r.data || []) : Promise.resolve([])]);
+      // 1419 typing: the open chat only; teachers see only management typing (no presence of other teachers)
+      const typing = (TY || []).filter((x: any) => mgmt || isMg(x.name) || tg.startsWith("dm:")).map((x: any) => dn(x.name));
+      return out({ ok: true, last: L && L[0] ? L[0].id : 0, rv: RV && RV[0] ? RV[0].at : null, typing, groups: gr, today, inClass: !!(C && C.length) });
     }
     if (a === "list") {
       const gid = str(b.gid, 60); if (!canSee(gid)) throw new Error("Not found"); const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? String(b.day) : today;
@@ -198,6 +204,17 @@ Deno.serve(async (req: Request) => {
         if ((m.needs_reply || named) && !x.replied_at) return [{ ...base, kind: "reply" }];
         return []; }).slice(0, 12);
       return out({ ok: true, items });
+    }
+    if (a === "react") {   // 1417: add / remove my reaction (no alert)
+      const p = await msg(Number(b.id)); if (p.hidden) throw new Error("Not found"); const e = str(b.emoji, 16);
+      if (!e || /[A-Za-z0-9<>&"'\s]/.test(e) || [...e].length > 6) throw new Error("Pick an emoji");
+      if (b.on) await db.from("chat_reacts").upsert({ mid: p.id, name: me, emoji: e, at: now }, { onConflict: "mid,name,emoji", ignoreDuplicates: true });
+      else await db.from("chat_reacts").delete().eq("mid", p.id).eq("name", me).eq("emoji", e);
+      return out({ ok: true, msg: (await decorate([p]))[0] });
+    }
+    if (a === "typing") {   // 1419: "… is typing" for the open chat (kept 6 s)
+      const gid = str(b.gid, 60); if (!canSee(gid) || (gid === "timein" && !mgmt)) return out({ ok: true });
+      await db.from("chat_typing").upsert({ name: me, gid, at: now }, { onConflict: "name,gid" }); return out({ ok: true });
     }
     if (a === "days") {
       const gid = str(b.gid, 60); if (!canSee(gid)) throw new Error("Not found");
