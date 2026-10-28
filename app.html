@@ -3647,10 +3647,27 @@ if(miss.length){ $('qaErr').textContent = miss.length + ' required question' + (
 const tItem = QF.form.items.find(x => qaRole(x) === 'teacher'), who = tItem ? a[tItem.id] : '';
 if(!confirm('Send this QA evaluation' + (who ? ' to Teacher ' + who : '') + '? It goes to their QA feedback tab.')) return;
 const b = $('qaGo'); b.disabled = true; b.textContent = 'Sending…'; qaSave();
+var qaRid1362 = 'qa-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+const QURL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-qa', rid = qaRid1362, dk = qaDraftK();
+const qpost = o => fetch(QURL, { method:'POST', headers:{ 'Content-Type':'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, rid }, o)) }).then(x => x.json());
+let saved = null;
+if(typeof LIVE !== 'undefined' && LIVE) try{ const its = QF.form.items.map(x => ({ id: x.id, title: x.title, type: x.type }));
+  saved = await Promise.race([qpost({ op:'save', items: its, answers: a }), new Promise(res => setTimeout(() => res(null), 6000))]); }catch(e){ saved = null; }
+if(saved && saved.ok && saved.status === 'pending'){
+  closeSheet(); toast('✓ QA evaluation sent · Teacher ' + who + ' · it is on their QA feedback now');
+  PF = null; try{ store('del','coe.m.perf'); }catch(e){}
+  const done = (ok, msg) => qpost({ op:'done', ok, msg }).catch(() => {});
+  api('mgmtQaSubmit', TOKEN, a).then(r => { if(!r || !r.ok) throw r || {};
+      try{ store('del', dk); }catch(e){} done(true); if(VIEW === 'perf' && typeof loadPerf === 'function') loadPerf(); })
+    .catch(e => { const m = (e && e.msg) || '';
+      done(false, m || 'not sent'); toast('QA evaluation for Teacher ' + who + ' did not reach Google' + (m ? ' · ' + m : '') + ' · your writing is kept · open QA and send again'); });
+  return; }
 try{ const r = await api('mgmtQaSubmit', TOKEN, a); if(!r.ok) throw r;
+if(typeof LIVE !== 'undefined' && LIVE) qpost({ op:'done', ok:true }).catch(() => {});   /* also when the database save was slow */
 store('del', qaDraftK()); closeSheet(); toast('✓ QA evaluation sent · Teacher ' + (r.teacher || who) + (r.period ? ' · ' + r.period : '') + ' · it is on their QA feedback now');
 PF = null; try{ store('del','coe.m.perf'); }catch(e){} if(VIEW === 'perf' && typeof loadPerf === 'function') loadPerf(); }
-catch(e){ b.disabled = false; b.textContent = 'Send evaluation'; $('qaErr').textContent = (e && e.msg) || 'Not sent. Your writing is kept · try again.'; }
+catch(e){ if(typeof LIVE !== 'undefined' && LIVE) try{ fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-qa', { method:'POST', headers:{ 'Content-Type':'text/plain' }, body: JSON.stringify({ op:'done', token: TOKEN, rid: qaRid1362, ok: false, msg: (e && e.msg) || 'not sent' }) }).catch(() => {}); }catch(x){}
+b.disabled = false; b.textContent = 'Send evaluation'; $('qaErr').textContent = (e && e.msg) || 'Not sent. Your writing is kept · try again.'; }
 }
 /* LEAVE — a teacher asks in the app with proof (or Operations files it for them) → Operations checks the proof and the classes,
 asks for more details if needed → raises it to the President → the President approves or declines → the teacher sees the status.
@@ -6349,7 +6366,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1355;
+const COE_V = 1356;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
