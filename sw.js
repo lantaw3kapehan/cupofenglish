@@ -20,6 +20,8 @@ self.addEventListener('fetch', e => {
 self.addEventListener('push', e => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch (x) { d = { title: 'CupOfEnglish', body: e.data ? e.data.text() : '' }; }
   const at = /^chat-at/.test(d.tag || '');   // 1402: Team Chat mention / needs reply / direct message: stays until clicked, stronger vibration
+  const ch = /^chat/.test(d.tag || '');      // 1419 (Misty 10:11): every Team Chat alert says it is from our Team Chat; sender and group go in the text
+  if (ch) { d.body = (d.title ? d.title + ': ' : '') + (d.body || ''); d.title = 'CupOfEnglish Team Chat'; }
   e.waitUntil(self.registration.showNotification(d.title || 'CupOfEnglish', { body: d.body || '', tag: d.tag || 'coe', renotify: true, requireInteraction: at, silent: false, icon: 'icon-192.png', badge: 'icon-192.png', vibrate: at ? [300, 120, 300, 120, 500] : [200, 100, 200], data: { url: d.url || './' } }));
 });
 self.addEventListener('notificationclick', e => {

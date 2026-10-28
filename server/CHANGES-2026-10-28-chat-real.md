@@ -25,3 +25,19 @@
   place of the original; tick "Keep the original too" to send both.
 - A received picture: open it → "Mark up and reply": the marked-up copy is attached to the box as a reply to that message.
 - Built into the app (canvas, no outside library); works with mouse, pen and touch.
+
+## 1419 · loud Team Chat sound, tab alert, push wording, settings, typing (Misty 10:11 / 10:12) · both views
+- Our own sound (built into the app, works offline and in China): chat-alert.wav — rising G–C–E–G chime (0.8 s), played twice, for
+  tagged / @All / Needs reply / direct messages; chat-msg.wav — short E–A chime (0.4 s), once, for an ordinary group message (not for
+  muted groups; can be switched off). Both normalised to −1 dBFS and played at the chosen volume (default 100 %). Different from the
+  class-reminder sounds. Nothing rings while my class is running; the alert rings when the class ends.
+- Laptop in the background: the tab title blinks "(2) New message · Team Chat" and the tab icon gets a red number; both stop when the
+  app is looked at again.
+- Phone alerts: title "CupOfEnglish Team Chat", sender and group in the text, app icon, Android vibration, mentions stay on screen until
+  tapped (sw.js). The phone itself chooses the alert sound.
+- Chat sounds (sound button in the chat header): Chat sounds on/off · Ordinary group messages on/off · Volume · Test sound /
+  Test message sound.
+- "… is typing" for the open chat only (shares the 4-second check; kept 6 s). Teachers only see management typing (privacy rule:
+  no presence of other teachers).
+- Stability: teacher Team Chat open 0.28 on some runs comes from a sheet that opens by itself in the preview about 9 s after load;
+  it happens on the build before 1419 too (2 of 3 runs) — not from these changes.
