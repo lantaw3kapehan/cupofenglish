@@ -3,6 +3,9 @@
 // (merged, mutable), management roster (add / remove a teacher), retry-safe sending (cid). Teachers never receive other people's presence or
 // per-person receipts. Kept in CupOfEnglish's database: nothing is deleted by the app (teachers can edit, shown "edited"; management can hide).
 // Phone alerts: chat_outbox → coe_push_queue (coe_chat_out, every minute, held while the teacher has a class running, merged per person).
+// 1495 (Misty 17:59): teachers may post class check-in pictures (picture + short caption) in Time-in; Time-in receipts, unread and alerts
+// are for management only (teachers are not alerted about each other's check-ins). A post waiting on a weak signal or refused is noted in
+// chat_pending (action pend) so management sees it; teachers never see other teachers' notes.
 // Flag: docs sys:chat { enabled, pilot:[teacher names] | "*", exclude?:[names], gx?:{ groupId:[names left out] }, mgmt?:[names], alias?:{account:name} }.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -134,7 +137,9 @@ Deno.serve(async (req: Request) => {
       else L.push({ id: "dm:" + lc(me), name: "Management", kind: "direct", sort: 100 });
       const ids = L.map((g: any) => g.id);
       if (up) await db.from("chat_groups").upsert(L.filter((g: any) => g.kind === "direct").map((g: any) => ({ id: g.id, name: g.name, kind: "direct", sort: 100 })), { onConflict: "id", ignoreDuplicates: true });
-      const un: any = {}, at: any = {}; (U || []).forEach((x: any) => { const m = x.chat_messages, g = m.gid; if (!ids.includes(g)) return; un[g] = (un[g] || 0) + 1; if ((m.mentions || []).some((n: string) => lc(n) === lc(me) || n === "all") || m.needs_reply) at[g] = (at[g] || 0) + 1; });
+      const un: any = {}, at: any = {}; (U || []).forEach((x: any) => { const m = x.chat_messages, g = m.gid; if (!ids.includes(g)) return; const tg = (m.mentions || []).some((n: string) => lc(n) === lc(me) || n === "all") || m.needs_reply;
+        if (g === "timein" && !mgmt && !tg) return;   // 1495: other teachers' check-ins never count as unread for a teacher
+        un[g] = (un[g] || 0) + 1; if (tg) at[g] = (at[g] || 0) + 1; });
       return L.filter((g: any) => canSee(g.id)).map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, unread: un[g.id] || 0, tagged: at[g.id] || 0 }));
     }
     async function push(to: string[], title: string, body: string, tag: string, soft = false) {
@@ -159,7 +164,7 @@ Deno.serve(async (req: Request) => {
     }
     async function insertMsg(row: any) {
       const { data, error } = await db.from("chat_messages").insert(row).select("*").single(); if (error) throw error;
-      const rec = members(row.gid).filter((n) => lc(n) !== lc(me));
+      const rec = (row.gid === "timein" && !row.author_mgmt ? [...mg] : members(row.gid)).filter((n) => lc(n) !== lc(me));   // 1495: Time-in receipts are for management only
       if (rec.length) await db.from("chat_reads").insert(rec.map((n) => ({ mid: data.id, name: n })));
       return data;
     }
@@ -230,7 +235,8 @@ Deno.serve(async (req: Request) => {
       const [DM, DP, DO] = await Promise.all([decorate(M || []), decorate(P || []), decorate(O || [])]);
       // 1406: Announcements left the channel list (Misty 21:13); their open Confirm / Needs reply items show in All Teachers until done
       const open = DO.filter((m: any) => m.gid !== gid || m.day < today).filter((m: any) => mgmt ? (m.needs_reply ? m.replied < m.n : m.confirmed < m.n) : (m.mine && (m.needs_reply ? !m.mine.replied : !m.mine.confirmed))).slice(0, 10);
-      return out({ ok: true, gid, day, today, msgs: DM, pinned: DP, open, members: members(gid) });
+      const pending = mgmt && gid === "timein" && day === today ? ((await db.from("chat_pending").select("name,what,net,st,at").gt("at", new Date(Date.now() - 18 * 36e5).toISOString()).order("at")).data || []) : [];
+      return out({ ok: true, gid, day, today, msgs: DM, pinned: DP, open, members: members(gid), pending });
     }
     if (a === "todo") {   // 1415 (Misty 23:27): open chat items for Today · Needs reply / @name / Confirm not answered yet (last 3 days, visible chats only)
       const since = new Date(Date.now() - 3 * 864e5).toISOString();
@@ -268,15 +274,17 @@ Deno.serve(async (req: Request) => {
     }
     if (a === "send") {
       const gid = str(b.gid, 60); if (!canSee(gid)) throw new Error("Not found"); if (gid === "ann" && !mgmt) throw new Error("Only management posts announcements");
-      if (gid === "timein" && !mgmt) throw new Error("Time-in cards post here by themselves");
+      const tiT = gid === "timein" && !mgmt;   // 1495: a teacher's class check-in: a picture with a short caption, nothing else
+      if (tiT && (b.voice || !(b.img || (Array.isArray(b.imgs) && b.imgs.length)))) throw new Error("Time-in takes a picture with a short caption");
+      if (tiT && str(b.body, 2000).length > 140) throw new Error("Keep the caption short (140 characters)");
       const cid = str(b.cid, 40), ckey = cid ? "c:" + lc(me) + ":" + cid : null;   // a retry of the same message never posts twice
       if (ckey) { const { data: ex } = await db.from("chat_messages").select("*").eq("ukey", ckey).maybeSingle(); if (ex) return out({ ok: true, msg: (await decorate([ex]))[0], again: true }); }
-      const body = str(b.body, 2000), parent = Number(b.parent_id) || null; let img_path = null;
+      const body = str(b.body, 2000), parent = tiT ? null : Number(b.parent_id) || null; let img_path = null;
       const imgP: string[] = [];   // 1405: up to 5 pictures in one message (first in img_path, all in meta.imgs)
       if (Array.isArray(b.imgs) && b.imgs.length) { for (const x of b.imgs.slice(0, 5)) imgP.push(await upload(String(x), "m")); img_path = imgP[0]; }
       else if (b.img) img_path = await upload(String(b.img), "m"); else if (b.voice) img_path = await upload(String(b.voice), "v");
       if (!body && !img_path) throw new Error("Empty message");
-      const mem = members(gid); let men = (Array.isArray(b.mentions) ? b.mentions : []).map(String).filter((n: string) => n === "all" || mem.some((x) => lc(x) === lc(n)));
+      const mem = members(gid); let men = (tiT ? [] : Array.isArray(b.mentions) ? b.mentions : []).map(String).filter((n: string) => n === "all" || mem.some((x) => lc(x) === lc(n)));
       men = [...new Set(men.map((n: string) => n === "all" ? "all" : mem.find((x) => lc(x) === lc(n))!))];
       const nr = mgmt && !!b.needs_reply, cf = mgmt && !!b.confirm;
       const row = { gid, author: me, author_mgmt: mgmt, kind: b.voice && img_path ? "voice" : img_path ? "image" : (QUICK.includes(body) && parent ? "quick" : "text"), body, img_path, mentions: men, needs_reply: nr,
@@ -284,8 +292,8 @@ Deno.serve(async (req: Request) => {
       const m = await insertMsg(row);
       await markReplied(gid, parent);
       const gname = gid.startsWith("dm:") ? (mgmt ? "Management" : (meKind === "teacher" ? "Teacher " : "") + me) : ((await db.from("chat_groups").select("name").eq("id", gid).maybeSingle()).data?.name || "Team Chat");
-      const others = mem.filter((n) => lc(n) !== lc(me));
-      const loud: string[] = men.includes("all") || gid === "ann" || nr || cf || gid.startsWith("dm:") ? others : men;
+      const others = (tiT ? mg : mem).filter((n) => lc(n) !== lc(me));   // 1495: Time-in alerts go to management only (soft)
+      const loud: string[] = tiT ? [] : men.includes("all") || gid === "ann" || nr || cf || gid.startsWith("dm:") ? others : men;
       const what = body || (b.voice ? "Voice message" : imgP.length > 1 ? "Sent " + imgP.length + " pictures" : "Sent a picture");
       await push(loud, dn(me) + " · " + gname, (men.length ? "Tagged you: " : "") + what, "chat-at-" + m.id);   // chat-at-*: urgent (sw.js keeps it on screen)
       await push(others.filter((n) => !loud.some((x) => lc(x) === lc(n))), dn(me) + " · " + gname, what, "chat-" + m.id + "|" + gid, true);
@@ -326,12 +334,20 @@ Deno.serve(async (req: Request) => {
       const { data: ex } = await db.from("chat_messages").select("id").eq("ukey", ukey).maybeSingle();
       if (ex) { await db.from("chat_messages").update({ img_path: path, meta, body, edited_at: b.redo ? now : null, updated_at: now }).eq("id", ex.id); return out({ ok: true, id: ex.id, replaced: true }); }
       const m = await insertMsg({ gid: "timein", author: me, author_mgmt: false, kind: "timein", body, img_path: path, meta, ukey, mentions: [] });
-      await push(members("timein"), dn(me) + " · Time-in", body, "chat-" + m.id + "|timein", true);
+      await push([...mg], dn(me) + " · Time-in", body, "chat-" + m.id + "|timein", true);
       return out({ ok: true, id: m.id });
+    }
+    if (a === "pend") {   // 1495 (Misty 18:06): my Time-in post is waiting (weak internet) or failed · off = it arrived
+      const k = str(b.k, 80); if (!k) throw new Error("Missing key");
+      if (b.off) await db.from("chat_pending").delete().eq("name", me).eq("k", k);
+      else await db.from("chat_pending").upsert({ name: me, k, what: str(b.what, 60) || "Time-in post", net: str(b.net, 80), st: b.st === "failed" ? "failed" : "pending", at: now }, { onConflict: "name,k" });
+      return out({ ok: true });
     }
     if (a === "presence" && !mgmt) return out({ ok: true, members: vis.map(mem) });   // (Misty 20:24) teachers: names only
     if (a === "presence") {
-      const { data: P } = await db.from("coe_presence").select("name,at").gte("at", new Date(Date.now() - 7 * 864e5).toISOString());
+      const [{ data: P }, { data: PD }] = await Promise.all([db.from("coe_presence").select("name,at").gte("at", new Date(Date.now() - 7 * 864e5).toISOString()),
+        db.from("chat_pending").select("name,what,net,st,at").gt("at", new Date(Date.now() - 18 * 36e5).toISOString())]);
+      const pd: any = {}; (PD || []).forEach((x: any) => { (pd[lc(x.name)] = pd[lc(x.name)] || []).push({ what: x.what, net: x.net, st: x.st, at: x.at }); });
       const NOW = Date.now(), soon = new Date(NOW + 2 * 3600e3).toISOString();
       const { data: C } = await db.from("classes").select("teachers,starts_at,ends_at").eq("day", today).lt("starts_at", soon).gt("ends_at", now).eq("cancelled", false);
       const until: any = {}, next: any = {}, last: any = {};
@@ -339,7 +355,7 @@ Deno.serve(async (req: Request) => {
         if (st <= NOW) { if (!until[k] || en > until[k]) until[k] = en; } else if (!next[k] || st < next[k]) next[k] = st; }));
       (P || []).forEach((x: any) => { const k = lc(x.name); if (!last[k] || x.at > last[k]) last[k] = x.at; });
       const iso = (t: number) => t ? new Date(t).toISOString() : null;
-      return out({ ok: true, members: everyone.map((n) => { const k = lc(n); return { ...mem(n), last: last[k] || null, online: !!last[k] && NOW - new Date(last[k]).getTime() < 3 * 60e3, inClass: !!until[k], until: iso(until[k]), next: iso(next[k]) }; }) });
+      return out({ ok: true, members: everyone.map((n) => { const k = lc(n); return { ...mem(n), pend: pd[k] || [], last: last[k] || null, online: !!last[k] && NOW - new Date(last[k]).getTime() < 3 * 60e3, inClass: !!until[k], until: iso(until[k]), next: iso(next[k]) }; }) });
     }
     return out({ ok: false, error: "Unknown action" }, 400);
   } catch (e) { return out({ ok: false, error: String((e as any)?.message || e) }); }
