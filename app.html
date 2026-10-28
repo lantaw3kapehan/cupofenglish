@@ -1712,7 +1712,7 @@ h += `<h2>Time-in</h2><div class="tin done"><div class="grow"><div class="big nu
 <span class="chip ${chip}">${esc(ti.status)}</span></div>`;
 } else {
 h += `<h2>Time-in</h2><div class="tin"><div class="grow"><div class="lab">${first?`First class ${tm(first.start)}${first.student?' · '+esc(first.student):''}`:'No class on your calendar today'}</div>
-<div class="small mute">Time in here · then copy the time-in picture to our WeChat corner</div></div>
+<div class="small mute">Time in here · then send your time-in picture to Team Chat › Time-in</div></div>
 <button class="btn teal" onclick="timeInSheet()">Time in</button></div>`;
 }
 
@@ -1897,7 +1897,7 @@ openSheet(head + `<div class="fbfix" style="margin-top:12px"><b>Time in from you
 return;
 }
 openSheet(head + `
-${D.shift?'':`<input type="checkbox" id="wcOk" checked hidden><div class="small mute" style="margin-bottom:8px">After you time in, the app makes one picture for the WeChat corner · no speed-test screenshot needed.</div>
+${D.shift?'':`<input type="checkbox" id="wcOk" checked hidden><div class="small mute" style="margin-bottom:8px">After you time in, the app makes one picture and you send it to Team Chat › Time-in · no speed-test screenshot needed.</div>
 <div class="mini" style="margin-top:12px"><b>Proof you're in class</b> · share your <b>Entire screen</b>, not one window. We take one picture, then sharing stops by itself. The picture must show:
 <ol style="margin:8px 0 0 18px;padding:0;line-height:1.6"><li>Your <b>VooV class</b> with your student</li><li>Your computer's <b>full date and time</b> (Windows: taskbar clock, bottom right · Mac: menu bar, top right)</li><li>The <b>LAN cable icon</b>, not Wi-Fi · turn Wi-Fi off during class</li></ol></div>`}
 <div id="netLine" class="small mute" style="margin-top:10px">Checking internet connection…</div>
@@ -2056,7 +2056,7 @@ if(!D || D.mgr || !D.schedule) return;
 const now = new Date(), live = (D.schedule||[]).filter(c => c.day===D.today && !c.cancelled).sort((a,b)=>a.start.localeCompare(b.start)), first = live[0];
 live.forEach(c => {
 const toStart = (new Date(c.start) - now) / 60000, toEnd = (new Date(c.end) - now) / 60000, who = c.student || c.code || 'your student';
-if(c === first && !D.timeIn && toStart <= 40 && toStart > -10 && !remTold('ti')) notify('Time-in is open', who + ' at ' + tm(c.start) + '. Time in by ' + tm(new Date(new Date(c.start).getTime() - 30*60000).toISOString()) + ' (30 min before class). Post your screenshot in the WeChat corner, then tap Time in.', 'coe-ti');
+if(c === first && !D.timeIn && toStart <= 40 && toStart > -10 && !remTold('ti')) notify('Time-in is open', who + ' at ' + tm(c.start) + '. Time in by ' + tm(new Date(new Date(c.start).getTime() - 30*60000).toISOString()) + ' (30 min before class). Time in on the app, then send your time-in picture to Team Chat › Time-in.', 'coe-ti');
 const inAlready = (D.classIns||{})[c.id], i = live.indexOf(c), prev = live.slice(0, i).filter(x => new Date(x.end) <= new Date(c.start)).pop();
 const gap = prev ? (new Date(c.start) - new Date(prev.end)) / 60000 : 1e9, back = gap < 20, teaching = live.some(x => now >= new Date(x.start) && now < new Date(x.end));
 const once = k => !HW_TOLD[k] && (HW_TOLD[k] = 1) && !remTold(k);
@@ -6381,7 +6381,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1382;
+const COE_V = 1384;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -22888,11 +22888,19 @@ go();
   const ICO = { ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     no: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg>',
     wait: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"/></svg>' };
-  let RES_T = 0;
+  let RES_T = 0, CI_CAP = null;
   function res(kind, title, sub, btns){ clearTimeout(RES_T); let w = document.getElementById('tapRes'); if(!w){ w = document.createElement('div'); w.id = 'tapRes'; document.body.appendChild(w); }
     w.onclick = ev => { if(ev.target === w && kind !== 'wait') w.remove(); };
     w.innerHTML = '<div class="tr-c ' + kind + '"><div class="tr-i">' + ICO[kind] + '</div><h2>' + title + '</h2>' + (sub ? '<div class="tr-s">' + sub + '</div>' : '') + '<div class="tr-b">' + (btns || '') + (kind === 'wait' ? '' : '<button class="btn ghost block" onclick="tapResClose()">' + (kind === 'ok' ? 'Done' : 'Close') + '</button>') + '</div></div>';
     if(kind === 'ok') RES_T = setTimeout(tapResClose, 6000); }
+  window.ciSend1496 = async function(id){ const c = CI_CAP; if(!c || c.id !== id || c.busy || c.sent) return; c.busy = 1; let b = document.getElementById('ciSend'), s = document.getElementById('ciSt');
+    if(b){ b.disabled = true; b.textContent = 'Sending…'; } if(s){ s.className = 'ci-st'; s.textContent = ''; }
+    const k = 'ci:' + c.day + ':' + id, r = await window.chatSend1495('send', { gid: 'timein', body: c.cap, img: 'data:image/jpeg;base64,' + c.shot, cid: ('ci-' + c.day + '-' + id).slice(0, 40) }, k, 'Class check-in', typeof c.net === 'string' ? c.net : '');
+    c.busy = 0; b = document.getElementById('ciSend'); s = document.getElementById('ciSt');
+    if(r === true){ c.sent = 1; if(b){ b.textContent = 'Sent to Time-in ✓'; } if(s){ s.className = 'ci-st ok'; s.textContent = ''; } RES_T = setTimeout(tapResClose, 2500); }
+    else if(r === 'queued'){ if(b){ b.disabled = false; b.textContent = 'Try again'; } if(s){ s.className = 'ci-st warn'; s.innerHTML = window.failMsg1496 ? failMsg1496(typeof c.net === 'string' ? c.net : '', c.time || '') : 'Not sent yet · tap Try again'; } }
+    else { if(b){ b.disabled = false; b.textContent = 'Try again'; } if(s){ s.className = 'ci-st no'; s.textContent = 'Not sent' + (r && r.error ? ' · ' + r.error : '') + ' · tap Try again'; } } };
+  window.addEventListener('chq1495', ev => { const d = ev.detail || {}, c = CI_CAP; if(!c || !d.ok || d.k !== 'ci:' + c.day + ':' + c.id) return; c.sent = 1; const b = document.getElementById('ciSend'), s = document.getElementById('ciSt'); if(b){ b.disabled = true; b.textContent = 'Sent to Time-in ✓'; } if(s){ s.className = 'ci-st ok'; s.textContent = ''; } });
   window.tapResClose = () => { clearTimeout(RES_T); const w = document.getElementById('tapRes'); if(w) w.remove(); };
   window.tapCopyShot = async function(){ try{ if(!SHOT || !window.ClipboardItem) throw 0;
       const img = new Image(); img.src = 'data:image/jpeg;base64,' + SHOT; await img.decode(); const cv = document.createElement('canvas'); cv.width = img.naturalWidth; cv.height = img.naturalHeight; cv.getContext('2d').drawImage(img, 0, 0);
@@ -22912,7 +22920,7 @@ go();
     Promise.resolve(p).then(() => {}, () => {}).then(() => { BUSY = 0; try{ tinNag(); }catch(e){}
       const ti = D.timeIn; if(MACP) return;
       if(ti && !ti.pending && !mgr && window.wcStep1270){ window.wcStep1270(SHOT); return; }
-      if(ti && !ti.pending){         res('ok', 'Time-in saved · ' + (ti.time || hmNow()), (ti.status ? ti.status : '') + (ti.flag ? ' · ' + ti.flag : '') + (mgr ? '' : '<br>Post the same picture in the WeChat corner.'),
+      if(ti && !ti.pending){         res('ok', 'Time-in saved · ' + (ti.time || hmNow()), (ti.status ? ti.status : '') + (ti.flag ? ' · ' + ti.flag : '') + (mgr ? '' : '<br>Send your time-in picture to Team Chat › Time-in from Today.'),
           !mgr && SHOT ? '<button class="btn teal block" onclick="tapCopyShot()">Copy picture for WeChat</button>' : ''); return; }
       try{ closeSheet(); }catch(e){}
       res('no', 'Not timed in yet', (why() || 'It did not save.') + '<br>Tap Try again · pick <b>Entire screen</b>.', '<button class="btn teal block" onclick="tapResClose();tapTimeIn()">Try again</button>'); }); };
@@ -22922,7 +22930,11 @@ go();
     const nm = c.student || c.code || 'class', p = classInGo(id, true);
     Promise.resolve(p).then(() => {}, () => {}).then(() => { BUSY = 0; try{ tinNag(); }catch(e){}
       if(MACP) return; const x = (D.classIns || {})[id];
-      if(x && !x.pending){         res('ok', "I'm in · " + esc(nm), (x.time || hmNow()) + ' · ' + (x.status || 'saved') + (x.flag ? ' · ' + esc(x.flag) : '') + (x.proof || SHOT ? ' · screen proof saved' : '')); return; }
+      if(x && !x.pending){ const cap = ('In, ' + nm + "'s class · " + (x.time || hmNow()) + (x.status ? ' · ' + x.status : '')).slice(0, 140), can = !!(SHOT && window.chatSend1495);   /* 1496: the class check-in goes to Time-in in one tap */
+        res('ok', "I'm in · " + esc(nm), (x.time || hmNow()) + ' · ' + (x.status || 'saved') + (x.flag ? ' · ' + esc(x.flag) : '') + (x.proof || SHOT ? ' · screen proof saved' : '')
+          + (can ? '<div class="ci-pv"><img alt="Screen proof that will be sent" src="data:image/jpeg;base64,' + SHOT + '"><div><span>Will be sent to Team Chat › Time-in</span>' + esc(cap) + '</div></div>' : ''),
+          can ? '<button class="btn teal block" id="ciSend" onclick="ciSend1496(\'' + esc(id) + '\')">Send to Time-in</button><div class="ci-st" id="ciSt" role="status" aria-live="polite"></div>' : '');
+        if(can){ clearTimeout(RES_T); CI_CAP = { id: id, cap: cap, shot: SHOT, day: D.today || '', time: x.time || '', net: x.speed || (x.net && x.net.speed) || '' }; } return; }
       res('no', "“I'm in” not saved", (why() || 'It did not save.') + '<br>Tap Try again · pick <b>Entire screen</b>.', '<button class="btn teal block" onclick="tapResClose();tapClassIn(\'' + esc(id) + '\')">Try again</button>'); }); };
   window.tapTimeOut = function(b){ if(BUSY) return;
     if(Date.now() - OUT_ARM > 4000){ OUT_ARM = Date.now(); b.className = 'arm'; b.innerHTML = IC + 'Tap again to time out'; setTimeout(() => { if(Date.now() - OUT_ARM >= 3900) try{ tinNag(); }catch(e){} }, 4000); return; }
@@ -30669,17 +30681,18 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     finally{ box.remove(); } }
   window.__pic1270 = picture; window.__card1270 = card;
   function stepsHtml(redo){ var n = 0; try{ n = +localStorage.getItem(SEEN) || 0; }catch(e){}
-    var inner = '<ol><li>Tap <b>Copy picture</b></li><li>Open the <b>WeChat corner</b> and paste it (<b>Ctrl+V</b> · Mac <b>⌘V</b>)</li><li><b>Send</b></li><li>Come back and tick <b>Posted in WeChat</b></li></ol><div class="wc-note">You no longer need to send the speed-test screenshot — this picture has everything.</div>';
-    return n < 3 || redo ? '<div class="wc-steps"><b>Post it in the WeChat corner</b>' + inner + '</div>' : '<details class="wc-steps"><summary>How to post it in the WeChat corner</summary>' + inner + '</details>'; }
-  function tickHtml(p){ return '<button type="button" class="wc-tick' + (p ? ' on' : '') + '" id="wcTick" aria-pressed="' + (p ? 'true' : 'false') + '" onclick="wcTick1270()"><span class="bx">' + (p ? '✓' : '') + '</span><span>' + (p ? 'Posted in WeChat · ' + E(p.time || '') : 'Posted in WeChat') + '</span></button>'; }
+    var inner = '<ol><li>Check the picture below · it has your time-in, the internet check and your screen proof</li><li>Tap <b>Send to Time-in</b> · it goes straight to Team Chat › Time-in for management</li></ol><div class="wc-note">No WeChat copy and no speed-test screenshot needed.</div>';
+    return n < 3 || redo ? '<div class="wc-steps"><b>Send it to Team Chat › Time-in</b>' + inner + '</div>' : '<details class="wc-steps"><summary>How to send it</summary>' + inner + '</details>'; }
+  function tickHtml(p){ return '<div class="wc-st' + (p ? ' ok' : '') + '" id="wcTick" role="status" aria-live="polite">' + (p ? 'Sent to Time-in · ' + E(p.time || '') : 'Not sent yet') + '</div>'; }   /* 1496: the send state (was the "Posted in WeChat" tick) */
   var STEP = null;
   async function render(){ if(!STEP) return; var st = STEP; if(PINGP) await race(PINGP, 5000, 0); var x = await data(st.shot, st.redo), pv = document.getElementById('wcPrev'); if(!pv) return;
     try{ var P = await picture(x); if(STEP !== st) return; PIC = P; pv = document.getElementById('wcPrev'); if(!pv) return; var u = URL.createObjectURL(P.blob), im = new Image(); im.alt = 'Time-in picture for the WeChat corner'; im.src = u; try{ await im.decode(); }catch(e){}
       pv.style.aspectRatio = P.w + ' / ' + P.h; pv.innerHTML = ''; pv.appendChild(im);
-      ['wcCopy', 'wcSave'].forEach(function(id){ var b = document.getElementById(id); if(b) b.disabled = !!x.measuring; });
-      var nm = document.getElementById('wcNet'); if(nm) nm.textContent = x.measuring ? 'Checking internet… a few seconds · Copy picture turns on when it is done' : '';
+      st.x = x; var rdy = !x.measuring && !!x.shot && !!x.time && !!x.status;   /* 1496 (Misty 18:02): nothing is sent until every part is there */
+      ['wcSend', 'wcCopy', 'wcSave'].forEach(function(id){ var b = document.getElementById(id); if(b) b.disabled = id === 'wcSend' ? (!rdy || !!st.busy) : !!x.measuring; });
+      var nm = document.getElementById('wcNet'); if(nm) nm.textContent = x.measuring ? 'Checking internet… a few seconds · Send to Time-in turns on when it is done' : !x.shot ? 'Your screen picture is kept on the laptop you timed in on · open Today there to send it' : !x.time || !x.status ? 'Your time-in is still saving… Send to Time-in turns on when it is saved' : '';
       if(x.measuring && !st.to){ st.to = setTimeout(function(){ if(STEP === st && st.measuring && !NETF){ window.__netRun1273 = 0; NETF = { speed: '', timeout: 1 }; render(); } }, Math.max(500, 25000 - (Date.now() - (st.at || Date.now())))); }
-      st.measuring = x.measuring; if(!x.measuring && !st.chat1400 && window.chatTimein1400){ st.chat1400 = 1; try{ chatTimein1400(P.blob, x, st.redo); }catch(e){} } }
+      st.measuring = x.measuring; if(window.chatQueued1495 && chatQueued1495('ti:' + (D.today || '') + (st.redo ? ':redo' : ''))) weak1496(x); }
     catch(e){ pv.innerHTML = '<div class="wc-wait">The picture could not be made here · take a screenshot of your time-in instead</div>'; } }
   function refreshStep(){ if(STEP && !STEP.redo && document.getElementById('wcPrev')) render(); }
   window.wcStep1270 = function(shot, redo){
@@ -30688,14 +30701,31 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     var ti = D.timeIn; STEP = { shot: shot || null, redo: redo || null, at: Date.now() }; PIC = null;
     var p = redo ? (redo.posted ? { time: redo.posted } : null) : posted();
     openSheet('<div class="wc70"><h1>' + (redo ? 'Internet re-checked · ' + E(redo.time) : 'Time-in saved · ' + E(ti.time || '')) + '</h1><div class="wc-ok">' + (redo ? 'Your time-in stays ' + E(ti.time || '') + ' · ' + E(ti.status || '') : E(ti.status || 'Saved') + (ti.flag ? ' · ' + E(ti.flag) : '')) + '</div>' + stepsHtml(!!redo)
-      + '<div class="wc-prev" id="wcPrev"><div class="wc-wait">Making the picture…</div></div><div class="wc-net" id="wcNet" aria-live="polite">' + (!redo && !ti.speed && window.__netRun1273 ? 'Checking internet… a few seconds · Copy picture turns on when it is done' : '') + '</div>'
-      + '<div class="wc-btns"><button class="btn teal" id="wcCopy" onclick="wcCopy1270()" disabled>Copy picture</button><button class="btn ghost" id="wcSave" onclick="wcSave1270()" disabled>Save picture</button></div>'
-      + '<div class="wc-copied" id="wcMsg" aria-live="polite"></div>' + tickHtml(p) + '</div>');
+      + '<div class="wc-prev" id="wcPrev"><div class="wc-wait">Making the picture…</div></div><div class="wc-net" id="wcNet" aria-live="polite">' + (!redo && !ti.speed && window.__netRun1273 ? 'Checking internet… a few seconds · Send to Time-in turns on when it is done' : '') + '</div>'
+      + tickHtml(p) + '<div class="wc-btns"><button class="btn teal" id="wcSend" onclick="wcSend1496()" disabled>' + (p ? 'Send again' : 'Send to Time-in') + '</button></div><div class="wc-alt"><button type="button" id="wcCopy" onclick="wcCopy1270()" disabled>Copy picture for WeChat</button><span aria-hidden="true">·</span><button type="button" id="wcSave" onclick="wcSave1270()" disabled>Save picture</button></div>'
+      + '<div class="wc-copied" id="wcMsg" aria-live="polite"></div></div>');
     render(); };
   window.wcCopy1270 = async function(){ var m = document.getElementById('wcMsg'); if(!PIC) return;
     try{ if(!window.ClipboardItem || !navigator.clipboard || !navigator.clipboard.write) throw 0; await navigator.clipboard.write([new ClipboardItem({ 'image/png': PIC.blob })]);
-      if(m) m.textContent = 'Copied ✓ · now paste it in the WeChat corner (Ctrl+V · ⌘V) and send' + (STEP && STEP.measuring ? ' · the internet check is still running: copy again in a few seconds for the full picture' : ''); }
+      if(m) m.textContent = 'Copied ✓ · you can paste it in WeChat too · Send to Time-in is what management checks'; }
     catch(e){ window.wcSave1270(); if(m) m.textContent = 'Copy is blocked in this browser · the picture was saved instead · drag it into the WeChat corner'; } };
+  /* 1496 (Misty 18:02–18:06): one tap sends the picture to Team Chat › Time-in · Sending / Sent / weak internet + Try again (kept until sent) */
+  /* (review 18:20) say "weak" only when the last reading is poor; a good reading means the connection dropped · the reading is labelled with its time */
+  window.failMsg1496 = function(sp, at){ sp = String(sp || ''); var q = typeof netQ === 'function' ? netQ(sp) : { lvl: '' }, e = typeof esc === 'function' ? esc : function(t){ return String(t); };
+    return q.lvl === 'weak' ? '<b>Your internet is weak · not sent yet.</b> Check your LAN cable / Wi-Fi, then tap Try again.<span class="wc-q">Internet' + (at ? ' checked ' + e(at) : '') + ': ' + e(sp) + '</span><span class="wc-q">It also keeps trying by itself.</span>'
+      : '<b>Not sent yet · connection dropped.</b> Check your LAN cable / Wi-Fi, then tap Try again.<span class="wc-q">It also keeps trying by itself.</span>'; };
+  function weak1496(x){ var s = document.getElementById('wcTick'), b = document.getElementById('wcSend'); if(b){ b.disabled = false; b.textContent = 'Try again'; }
+    var at = STEP && STEP.redo ? STEP.redo.time : ((D && D.timeIn) || {}).time; if(s){ s.className = 'wc-st warn'; s.innerHTML = failMsg1496(x && x.speed, at || ''); } }
+  window.wcSend1496 = async function(){ var st = STEP; if(!st || !PIC || st.busy) return; var x = st.x || {}, b = document.getElementById('wcSend'), s = document.getElementById('wcTick');
+    if(x.measuring || !x.shot || !x.time || !x.status){ if(s){ s.className = 'wc-st'; s.textContent = 'Not ready yet · wait until the picture is complete'; } return; }
+    if(!window.chatTimein1400){ if(s){ s.className = 'wc-st no'; s.textContent = 'Team Chat is not available here · use Copy picture for WeChat'; } return; }
+    st.busy = 1; if(b){ b.disabled = true; b.textContent = 'Sending…'; } if(s){ s.className = 'wc-st'; s.textContent = 'Sending to Time-in…'; }
+    var r = await chatTimein1400(PIC.blob, x, st.redo); st.busy = 0; if(STEP !== st) return; b = document.getElementById('wcSend'); s = document.getElementById('wcTick');
+    if(r === true){ try{ window.wcTick1270(); }catch(e){} s = document.getElementById('wcTick'); if(s){ s.className = 'wc-st ok'; s.textContent = 'Sent to Time-in · ' + hmM(Date.now()); } if(b){ b.disabled = false; b.textContent = 'Send again'; } }
+    else if(r === 'queued') weak1496(x);
+    else { if(b){ b.disabled = false; b.textContent = 'Try again'; } if(s){ s.className = 'wc-st no'; s.textContent = 'Not sent' + (r && r.error ? ' · ' + r.error : '') + ' · tap Try again'; } } };
+  window.addEventListener('chq1495', function(ev){ var d = ev.detail || {}; if(!/^ti:/.test(d.k || '') || !d.ok) return; try{ window.wcTick1270(); }catch(e){} var s = document.getElementById('wcTick'), b = document.getElementById('wcSend');
+    if(s){ s.className = 'wc-st ok'; s.textContent = 'Sent to Time-in · ' + hmM(Date.now()); } if(b){ b.textContent = 'Send again'; b.disabled = false; } try{ if(VIEW === 'today') renderToday(); }catch(e){} });
   window.wcSave1270 = function(){ if(!PIC) return; var u = URL.createObjectURL(PIC.blob), a = document.createElement('a'); a.href = u; a.download = PIC.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); }, 4000); };
   window.wcTick1270 = async function(){ var t = hmM(Date.now()), b = document.getElementById('wcTick');
     if(STEP && STEP.redo){ if(STEP.redo.posted) return; STEP.redo.posted = t; if(MINE && MINE.redone && MINE.redone.id === STEP.redo.id) MINE.redone.posted_at = new Date().toISOString(); if(b) b.outerHTML = tickHtml({ time: t }); call('redoPost', { id: STEP.redo.id, time: t }); try{ if(VIEW === 'today') renderToday(); }catch(e){} return; }
@@ -30719,17 +30749,17 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   var _m = window._MUST;
   try{ Object.defineProperty(window, '_MUST', { configurable: true, get: function(){ return _m; }, set: function(v){ _m = v; try{
     if(!Array.isArray(v) || typeof D === 'undefined' || !D || D.mgr || D.shift || !D.timeIn || !D.timeIn.time || D.timeIn.pending) return; mine();
-    var mk = function(fn){ var li = document.createElement('div'); li.onclick = fn; return li; };
+    var mk = function(fn){ var li = document.createElement('div'); li.onclick = fn; return li; }, wk = window.chatQueued1495 && chatQueued1495('ti:' + (D.today || ''));
     if(MINE && MINE.redo) v.unshift({ label: 'Time-in', red: true, title: 'Management asked you to redo your time-in check', sub: (MINE.redo.reason || '') + ' · your time-in time stays the same', verb: 'Redo now', li: mk(function(){ window.wcRedo1270(); }) });
-    else if(MINE && MINE.redone && !MINE.redone.posted_at) v.push({ label: 'WeChat', red: false, title: 'Post your redo picture in the WeChat corner', sub: 'Internet re-checked ' + (MINE.redone.done_time || '') + ' · copy · paste · tick Posted', verb: 'Open', li: mk(function(){ window.wcRedoCard1270(); }) });
-    if(!posted()) v.push({ label: 'WeChat', red: false, title: 'Post your time-in picture in the WeChat corner', sub: 'Copy picture · paste it in the WeChat corner · tick Posted in WeChat', verb: 'Open', li: mk(function(){ window.wcStep1270(); }) }); }catch(e){} } }); }catch(e){}
+    else if(MINE && MINE.redone && !MINE.redone.posted_at) v.push({ label: 'Time-in', red: false, title: 'Send your redo picture to Team Chat', sub: 'Internet re-checked ' + (MINE.redone.done_time || '') + ' · check it · tap Send to Time-in', verb: 'Open', li: mk(function(){ window.wcRedoCard1270(); }) });
+    if(!posted()) v.push({ label: 'Time-in', red: !!wk, title: wk ? 'Your time-in picture is not sent yet' : 'Send your time-in picture to Team Chat', sub: wk ? 'Check your LAN cable / Wi-Fi, then tap Try again' : 'Check the picture · tap Send to Time-in', verb: wk ? 'Try again' : 'Open', li: mk(function(){ window.wcStep1270(); }) }); }catch(e){} } }); }catch(e){}
 
   /* ── teacher: redo the time-in check (the time-in time and On time / Late never change) ── */
   var RNET = null, RLOC = null, LASTREDO = null;
   window.wcRedo1270 = function(){ if(!MINE || !MINE.redo) return; var r = MINE.redo, ti = D.timeIn || {};
     REDO_RUN = 1; RNET = full(); RLOC = typeof getLoc === 'function' ? getLoc(true) : Promise.resolve({});
     openSheet('<div class="wc70"><h1>Redo your time-in check</h1><div class="wc-why"><b>Management asked:</b> ' + E(r.reason || '') + '</div>'
-      + '<div class="mute small" style="margin-top:10px">Your time-in stays <b>' + E(ti.time || '') + ' · ' + E(ti.status || '') + '</b>. Only the internet check, the screen picture and the location are taken again, then you post the new picture in the WeChat corner.</div>'
+      + '<div class="mute small" style="margin-top:10px">Your time-in stays <b>' + E(ti.time || '') + ' · ' + E(ti.status || '') + '</b>. Only the internet check, the screen picture and the location are taken again, then you send the new picture to Team Chat › Time-in.</div>'
       + '<div class="fbfix" style="margin-top:12px"><b>Pick “Entire screen”, then Share</b>Show VooV, your computer’s date and time, and the LAN cable icon.</div>'
       + '<div class="wc-net" id="wcRNet" aria-live="polite">Checking internet…</div>'
       + '<button class="btn teal block" id="wcRGo" style="margin-top:12px" onclick="wcRedoGo1270()">Share entire screen · Re-check</button></div>');
@@ -31314,7 +31344,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     var ft = '';
     if(m.needs_reply) ft += '<span class="ch-chip ' + (m.replied >= m.n && m.n ? 'ok' : 'red') + '">Reply requested' + (m.reply_by ? ' by ' + tm(m.reply_by) : '') + (m.n ? ' · ' + m.replied + ' of ' + m.n + ' replied' : (m.mine && m.mine.replied ? ' · you replied' : '')) + '</span>';
     if(m.confirm) ft += '<span class="ch-chip ' + (m.confirmed >= m.n && m.n ? 'ok' : 'pur') + '">' + (m.n ? m.confirmed + ' of ' + m.n + ' acknowledged' : (m.mine && m.mine.confirmed ? 'You acknowledged' : 'Please acknowledge')) + '</span>';
-    if(m.n && !nxc) ft += isMgr() ? '<button type="button" class="ch-chip seen" onclick="chat1400.readers(' + m.id + ')">' + I.eye.replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' Seen by ' + m.seen + ' of ' + m.n + '</button>' : '<span class="ch-chip seen">' + I.eye.replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' Seen by ' + m.seen + '</span>';
+    if(m.n && !nxc && (isMgr() || m.seen)) ft += isMgr() ? '<button type="button" class="ch-chip seen" onclick="chat1400.readers(' + m.id + ')">' + I.eye.replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' Seen by ' + m.seen + ' of ' + m.n + '</button>' : '<span class="ch-chip seen">' + I.eye.replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' Seen by ' + m.seen + '</span>';
     var act = '', tl = '';
     if(m.pending) ft += '<span>Sending…</span>'; if(m.failed) ft += '<span style="color:#9B2C1F;font-weight:600">Not sent</span>' + ('<button type="button" class="ch-chip" onclick="chat1400.retry(' + m.id + ')">Retry</button>');
     if(!ro && !m.hidden && !m.pending){
@@ -31332,7 +31362,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
   function cmpHtml(){ var M = isMgr(), ro = S.day && S.day !== S.init.today;
     if(ro) return '<div class="ch-cmp"><div class="ch-note">History is read-only · <button type="button" class="ch-b sm" onclick="chat1400.today()">Back to conversation</button></div></div>';
     if(S.gid === 'ann') return '<div class="ch-cmp"><div class="ch-note">Earlier announcements · read-only. Formal notices now go in Notices &amp; requests. Use the buttons under a message to answer.</div></div>';
-    if(S.gid === 'timein' && !M) return '<div class="ch-cmp"><div class="ch-note">Your time-in card is posted here automatically when you time in.</div></div>';
+    var tiT = S.gid === 'timein' && !M;   /* 1495 (Misty 17:59): teachers post class check-in screenshots here · a picture with a short caption */
     var o = S.opt, opts = M ? '<div class="ch-opts"><button type="button" class="ch-b sm' + (o.nr ? ' on' : '') + '" aria-pressed="' + !!o.nr + '" onclick="chat1400.opt(\'nr\')" title="Everyone in this chat is asked to reply (Noted, On it or Done counts)">' + (o.nr ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : '') + 'Requires reply</button>'
       + (o.nr ? '<label style="font-size:13px">by <input type="time" id="chBy" value="' + esc(o.by || '') + '" onchange="chat1400.by(this.value)"></label>' : '')
       + '<button type="button" class="ch-b sm' + (o.cf ? ' on' : '') + '" aria-pressed="' + !!o.cf + '" onclick="chat1400.opt(\'cf\')" title="Everyone taps Acknowledge to show they have read and understood it. This is not the same as finishing a task.">' + (o.cf ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : '') + 'Requires acknowledgement</button><button type="button" class="ch-b sm' + (o.pin ? ' on' : '') + '" aria-pressed="' + !!o.pin + '" onclick="chat1400.opt(\'pin\')" title="Keeps this message at the top of the chat for everyone">' + (o.pin ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : '') + 'Pin message</button>'
@@ -31342,12 +31372,13 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     var rp = S.replyTo ? '<div class="ch-q" style="margin-bottom:6px">Replying to ' + esc(disp(S.replyTo.author)) + ' · <button type="button" class="ch-chip" onclick="chat1400.reply(0)">Cancel</button></div>' : '';
     var vo = S.voice ? '<div class="ch-q ch-vo"><audio controls src="' + S.voice + '"></audio><button type="button" class="ch-b sm pri" onclick="chat1400.sendVoice()">Send voice</button><button type="button" class="ch-b sm" onclick="chat1400.noVoice()">Cancel</button></div>' : '';
     var IM = S.imgs || [], im = IM.length ? '<div class="ch-thumbs">' + IM.map(function(u, i){ return '<span class="ch-th"><img src="' + u + '" alt="Picture ' + (i + 1) + ' to send"><button type="button" class="ed" aria-label="Mark up picture ' + (i + 1) + '" title="Mark up (circle, arrow, text, crop)" onclick="chat1400.markup(' + i + ')"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button><button type="button" aria-label="Remove picture ' + (i + 1) + '" onclick="chat1400.noimg(' + i + ')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg></button></span>'; }).join('') + '<span class="ch-note" style="padding:0">' + IM.length + ' of 5 · type a caption, then Send</span></div>' : '';
-    return '<div class="ch-cmp">' + '<div id="chTyping" class="ch-typing" aria-live="polite">' + esc(typingText()) + '</div>' + emoPanel() + opts + rp + im + vo + '<div id="chAc"></div><div class="ch-row"><label for="chTx" style="position:absolute;left:-9999px">Message</label><textarea id="chTx" rows="1" onpaste="chat1400.paste(event)" placeholder="' + PH() + '" oninput="chat1400.typing(this)" onkeydown="chat1400.key(event)"></textarea>'
+    return '<div class="ch-cmp' + (tiT ? ' ti' : '') + '">' + (tiT ? '<div class="ch-note ch-tin">Post your class check-in here: add the screenshot (picture button or paste), write a short caption such as <b>In, Abner\'s class</b>, then send. Your time-in picture is sent from Today.</div>' : '') + '<div id="chTyping" class="ch-typing" aria-live="polite">' + esc(typingText()) + '</div>' + emoPanel() + opts + rp + im + vo + '<div id="chAc"></div><div class="ch-row"><label for="chTx" style="position:absolute;left:-9999px">Message</label><textarea id="chTx" rows="1"' + (tiT ? ' maxlength="140"' : '') + ' onpaste="chat1400.paste(event)" placeholder="' + PH() + '" oninput="chat1400.typing(this)" onkeydown="chat1400.key(event)"></textarea>'
       + '<button type="button" class="ch-ib' + (S.emoOpen && S.emoMode !== 'react' ? ' on' : '') + '" id="chEmoB" aria-label="Emoji" title="Emoji" aria-expanded="' + !!(S.emoOpen && S.emoMode !== 'react') + '" onclick="chat1400.emo()"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01\"/></svg></button><input type="file" id="chFile" accept="image/*" multiple hidden onchange="chat1400.file(this)"><button type="button" class="ch-ib" aria-label="Add picture" onclick="document.getElementById(\'chFile\').click()">' + I.pic + '</button>'
       + '<button type="button" class="ch-ib" id="chMic" aria-label="Hold to record a voice message" title="Hold to record" onpointerdown="chat1400.rec(event,1)" onpointerup="chat1400.rec(event,0)" onpointerleave="chat1400.rec(event,0)" oncontextmenu="return false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/></svg></button>' + '<button type="button" class="ch-ib pri" id="chSend" aria-label="Send" title="Send"' + (S.img ? '' : ' disabled') + ' onclick="chat1400.send()">' + I.send + '</button></div><div class="ch-hint" aria-hidden="true">' + HINT() + '</div></div>'; }
   function lastTxt(t){ if(!t) return ''; var d = new Date(t), k = function(x){ return new Date(x.getTime() + 8 * 3600e3).toISOString().slice(0, 10); }, today = S.init && S.init.today, y = new Date(Date.parse(today + 'T00:00:00Z') - 864e5).toISOString().slice(0, 10), dd = k(d);
     if(dd === today) return tm(t); if(dd === y) return 'Yesterday ' + tm(t); try{ return d.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'Asia/Manila' }) + ' ' + tm(t); }catch(e){ return tm(t); } }
-  window.chatStatus1403 = function(m){ return m.inClass ? 'In class' + (m.until ? ' · until ' + tm(m.until) : '') : m.online ? 'Online' : m.last ? 'Last active ' + lastTxt(m.last) + (m.next ? ' · Next class ' + tm(m.next) : '') : 'Not opened yet'; };
+  window.chatPend1495 = function(m){ var p = m && m.pend && m.pend[0]; return p ? p.what + (p.st === 'failed' ? ' not sent' : ' waiting · weak internet') + (p.net ? ' (' + p.net + ')' : '') : ''; };
+  window.chatStatus1403 = function(m){ if(m && m.pend && m.pend.length) return chatPend1495(m); return m.inClass ? 'In class' + (m.until ? ' · until ' + tm(m.until) : '') : m.online ? 'Online' : m.last ? 'Last active ' + lastTxt(m.last) + (m.next ? ' · Next class ' + tm(m.next) : '') : 'Not opened yet'; };
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && S.memOpen && !isMgr()){ S.memOpen = false; render(true); var mb = document.querySelector('#v-chat .ch-memb'); if(mb) mb.focus(); } });
   document.addEventListener('click', function(e){ if(!S.memOpen || isMgr() || !e.target || !e.target.closest) return; if(e.target.closest('#v-chat .ch-mem') || e.target.closest('#v-chat .ch-memb')) return; S.memOpen = false; render(true); }, true);
   /* 1416: picture viewer · zoom with the wheel, pinch or the buttons, drag to move, double-tap to zoom, Escape / ✕ closes */
@@ -31465,11 +31496,14 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     var X = '<button type="button" class="ch-memx" aria-label="Hide the participant panel" title="Hide the participant panel" onclick="chat1400.memT()"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg></button>';
     if(!isMgr()) return '<h2>In this chat</h2><div class="ch-note" style="padding:0 0 4px">' + L.length + ' people can read this chat</div>' + L.map(function(m){ return '<div class="ch-mi"><span class="nm">' + esc(disp(m.name).replace(/^Teacher /, '')) + '</span>' + chip(m.name, m.mgmt) + '</div>'; }).join('');
     return X + '<h2>In this chat</h2><div class="ch-note" style="padding:0 0 4px">' + L.length + ' people can read this chat</div>' + (isMgr() ? '<button type="button" class="ch-b sm" style="margin:4px 0 2px" onclick="chat1400.roster()">Manage members</button>' : '') + sec('ONLINE', on) + sec('IN CLASS', cls) + sec('AWAY', off); }
-  var DESC = { all: 'Chat with teachers and management here. For official notices, leave requests, or pay-related inquiries, go to Notices & requests.', timein: 'Time-in cards are posted here automatically for management to review.', ann: 'Earlier announcements (read-only).', subs: 'Ask for a substitute or offer to cover a class.' };
+  var DESC = { all: 'Chat with teachers and management here. Class check-in screenshots go in Time-in. For official notices, leave requests, or pay-related inquiries, go to Notices & requests.', timein: 'Time-in pictures and class check-in screenshots go here for management to review.', ann: 'Earlier announcements (read-only).', subs: 'Ask for a substitute or offer to cover a class.' };
   function chanDesc(){ var t = S.gid && S.gid.indexOf('dm:') === 0 ? (isMgr() ? ((memOf(S.gid.slice(3)) || {}).kind === 'staff' ? 'Private chat with ' + (memOf(S.gid.slice(3)) || {}).name + '. Only management and ' + (memOf(S.gid.slice(3)) || {}).name + ' can read it.' : 'Private chat with this teacher. Only management and the teacher can read it.') : 'Private chat between you and management. Only you and management can read it.') : (DESC[S.gid] || '');
-    return '<div class="ch-desc' + (S.descOpen ? ' open' : '') + '" role="button" tabindex="0" aria-expanded="' + !!S.descOpen + '" title="' + (S.descOpen ? 'Show less' : 'Show all') + '" onclick="chat1400.descT()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();chat1400.descT();}">' + esc(t) + (S.gid === 'all' ? '' : ' <span>For official notices, leave requests, or pay-related inquiries, go to Notices &amp; requests.</span>') + '</div>'; }
+    return '<div class="ch-desc' + (S.descOpen ? ' open' : '') + '" role="button" tabindex="0" aria-expanded="' + !!S.descOpen + '" title="' + (S.descOpen ? 'Show less' : 'Show all') + '" onclick="chat1400.descT()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();chat1400.descT();}">' + esc(t) + (S.gid === 'all' ? '' : ' <span>For official notices, leave requests, or pay-related inquiries, go to Notices &amp; requests.</span>') + '</div>'
+      + (S.gid === 'timein' && isMgr() && S.data && (S.data.pending || []).length ? '<div class="ch-pend" role="status"><b>Not arrived yet</b> · ' + S.data.pending.map(function(p){ return esc(p.name) + ': ' + esc(p.what) + (p.st === 'failed' ? ' (not sent)' : ' (weak internet since ' + tm(p.at) + ')') + (p.net ? ' · ' + esc(p.net) : ''); }).join(' · ') + '</div>' : ''); }
   function syncSend(){ var b = document.getElementById('chSend'), t = document.getElementById('chTx'); if(b) b.disabled = !((t && t.value.trim()) || S.img); }
-  var PH = function(){ return 'Message…'; }, HINT = function(){ return /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'Type @ to tag someone' : 'Enter to send · Shift+Enter new line · @ to tag'; };
+  var ciLike1495 = function(v){ v = String(v || '').trim(); if(!v) return nearClass1495(); return v.length <= 140 && /^(i'?m in\b|i am in\b|in\b|check(ed)?[ -]?in\b|time[ -]?in\b|class check)/i.test(v); };
+  var nearClass1495 = function(){ try{ var now = Date.now(); return (D.schedule || []).some(function(c){ if(c.day !== D.today || c.cancelled) return false; var st = new Date(c.start).getTime(); return now >= st - 60 * 6e4 && now <= st + 15 * 6e4; }); }catch(e){ return false; } };
+  var PH = function(){ return S.gid === 'timein' && !isMgr() ? 'Caption, e.g. In, Abner\'s class' : 'Message…'; }, HINT = function(){ return /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'Type @ to tag someone' : 'Enter to send · Shift+Enter new line · @ to tag'; };
   function render(quiet){ var R = root(); if(!R || !S.init) return; var d = S.data, g = (S.init.groups || []).find(function(x){ return x.id === S.gid; }) || { name: 'Team Chat' };
     var L = R.querySelector('.ch-list'), keep = L && quiet ? L.scrollHeight - L.scrollTop - L.clientHeight : 0, top0 = L ? L.scrollTop : 0, tx = document.getElementById('chTx'), draft = tx ? tx.value : '';
     var head = '<div class="ch-hd"><button type="button" class="ch-ib ch-back" aria-label="Back to chats" onclick="chat1400.list()">' + I.back + '</button><div style="flex:1;min-width:0"><div class="chT">' + esc(S.view === 'search' ? 'Search all my chats' : g.name) + '</div><small>'
@@ -31610,15 +31644,22 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     pick: function(i){ var t = document.getElementById('chTx'), a = S.ac; if(!t || !a) return; var n = a.list[i]; t.value = t.value.slice(0, a.at) + '@' + (AL()[n] || n) + ' ' + t.value.slice(t.selectionStart); S.ac = null; document.getElementById('chAc').innerHTML = ''; t.focus(); },
     key: function(e){ if(S.ac && S.ac.list.length && (e.key === 'Enter' || e.key === 'Tab')){ e.preventDefault(); A.pick(S.ac.i); return; } if(e.key === 'Enter' && !e.shiftKey && !/Mobi|Android|iPhone/i.test(navigator.userAgent)){ e.preventDefault(); A.send(); } },
     send: async function(voice){ var t = document.getElementById('chTx'); if(!t || S.sending) return; var v = voice ? '' : t.value.trim(); if(!v && !S.img && !voice) return;
+      var gs = S.gid; if(S.tiTo){ gs = S.tiTo; S.tiTo = null; }   /* 1495: a check-in in All Teachers asks first (nothing is moved silently) */
+      else if(gs === 'all' && !voice && S.img && !isMgr() && (!S.init.kind || S.init.kind === 'teacher') && ciLike1495(v)){ A.tiAsk(); return; }
+      if(gs === 'timein' && !isMgr()){ if(voice || !S.img){ toast2('Time-in takes a picture with a short caption · add your screenshot first'); return; } if(v.length > 140){ toast2('Keep the caption short (140 characters)'); return; } }
       var mem = (S.data && S.data.members) || [], men = []; (v.match(/@[A-Za-z]+/g) || []).forEach(function(x){ var n = x.slice(1); if(n.toLowerCase() === 'all') men.push('all'); else { var f = mem.find(function(m){ return m.toLowerCase() === n.toLowerCase() || String(AL()[m] || '').toLowerCase() === n.toLowerCase(); }); if(f) men.push(f); } });
       var by = null; if(S.opt.nr && S.opt.by){ var p = S.opt.by.split(':'); by = new Date(S.init.today + 'T' + ('0' + p[0]).slice(-2) + ':' + p[1] + ':00+08:00').toISOString(); }
       var img = voice ? null : S.img, imgs = voice ? [] : (S.imgs || []).slice(), rt = S.replyTo, op = S.opt;
-      var cid = S.cid || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)); S.cid = null; var tmp = { cid: cid, id: -Date.now(), gid: S.gid, author: S.init.me, mgmt: isMgr(), kind: voice ? 'voice' : img ? 'image' : 'text', body: v, img: voice || img, imgs: imgs.length > 1 ? imgs : null, at: new Date().toISOString(), n: 0, seen: 0, replied: 0, confirmed: 0, mentions: men, quote: rt ? { author: rt.author, body: rt.body } : null, pending: 1, rs: { img: img, imgs: imgs, voice: voice || null, rt: rt, op: op } };
-      if(S.data && (!S.day || S.day === S.init.today)) S.data.msgs.push(tmp); if(!voice){ t.value = ''; S.img = null; S.imgs = []; } S.replyTo = null; S.opt = {}; render();
-      S.sending = 1; try{ var r = await post('send', { gid: S.gid, body: v, mentions: men, needs_reply: !!op.nr, reply_by: by, confirm: !!op.cf, pin: !!op.pin, img: imgs.length > 1 ? null : img, imgs: imgs.length > 1 ? imgs : null, voice: voice || null, parent_id: rt ? rt.id : null, cid: cid });
-        if(r && r.ok){ if(S.data){ var ix = S.data.msgs.indexOf(tmp); if(ix > -1) S.data.msgs[ix] = r.msg; S.last = Math.max(S.last, r.msg.id); } render(true); load(true); }
-        else { tmp.pending = 0; tmp.failed = 1; render(true); toast2((r && r.error) || 'Not sent · check the internet and try again'); } }
-      catch(e){ tmp.pending = 0; tmp.failed = 1; render(true); toast2('Not sent · check the internet and try again'); } finally{ S.sending = 0; } },
+      var cid = S.cid || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)); S.cid = null; var tmp = { cid: cid, id: -Date.now(), gid: gs, author: S.init.me, mgmt: isMgr(), kind: voice ? 'voice' : img ? 'image' : 'text', body: v, img: voice || img, imgs: imgs.length > 1 ? imgs : null, at: new Date().toISOString(), n: 0, seen: 0, replied: 0, confirmed: 0, mentions: men, quote: rt ? { author: rt.author, body: rt.body } : null, pending: 1, rs: { img: img, imgs: imgs, voice: voice || null, rt: rt, op: op } };
+      if(S.data && gs === S.gid && (!S.day || S.day === S.init.today)) S.data.msgs.push(tmp); if(!voice){ t.value = ''; S.img = null; S.imgs = []; } S.replyTo = null; S.opt = {}; render();
+      S.sending = 1; try{ var r = await post('send', { gid: gs, body: v, mentions: men, needs_reply: !!op.nr, reply_by: by, confirm: !!op.cf, pin: !!op.pin, img: imgs.length > 1 ? null : img, imgs: imgs.length > 1 ? imgs : null, voice: voice || null, parent_id: rt ? rt.id : null, cid: cid });
+        if(r && r.ok){ if(S.data){ var ix = S.data.msgs.indexOf(tmp); if(ix > -1) S.data.msgs[ix] = r.msg; S.last = Math.max(S.last, r.msg.id); } render(true); load(true); if(gs !== S.gid){ toast2(gs === 'timein' ? 'Posted in Time-in' : 'Posted'); A.open(gs); } }
+        else { tmp.pending = 0; tmp.failed = 1; if(gs !== S.gid){ S.imgs = imgs; S.img = img; } render(true); if(gs !== S.gid){ var t2 = document.getElementById('chTx'); if(t2) t2.value = v; } toast2((r && r.error) || 'Not sent · check the internet and try again'); } }
+      catch(e){ tmp.pending = 0; tmp.failed = 1; if(gs !== S.gid){ S.imgs = imgs; S.img = img; } render(true); if(gs !== S.gid){ var t3 = document.getElementById('chTx'); if(t3) t3.value = v; } toast2('Not sent · check the internet and try again'); } finally{ S.sending = 0; } },
+    tiAsk: function(){ if(typeof openSheet !== 'function'){ S.tiTo = 'all'; A.send(); return; }
+      openSheet('<h2 style="font-family:\'Fredoka One\',sans-serif;font-weight:400;margin:0 0 6px">Post in Time-in instead?</h2><div style="color:#5E6272;font-size:14px;line-height:1.5">This looks like a class check-in. Check-in screenshots go in <b>Time-in</b>, where management reviews them, so All Teachers stays for team talk.</div>'
+        + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:16px"><button type="button" class="btn teal block" onclick="chat1400.tiGo(\'timein\')">Post in Time-in</button><button type="button" class="btn ghost block" onclick="chat1400.tiGo(\'all\')">Post in All Teachers</button></div>'); },
+    tiGo: function(g){ try{ closeSheet(); }catch(e){} S.tiTo = g === 'timein' ? 'timein' : 'all'; A.send(); },
     mute: async function(){ var M = S.init.muted || (S.init.muted = []), g0 = S.gid, on = M.indexOf(g0) < 0; if(on) M.push(g0); else M.splice(M.indexOf(g0), 1); render(true); var r0 = await post('mute', { gid: g0, on: on }).catch(function(){ return null; }); if(!r0 || !r0.ok){ if(on) M.splice(M.indexOf(g0), 1); else M.push(g0); render(true); toast2((r0 && r0.error) || 'Not saved · check the internet and try again'); return; } toast2(on ? 'Muted · you still get alerts when you are tagged' : 'Alerts on for this group'); render(true); },
     lp: function(e, id){ clearTimeout(S.lpT); S.lpT = setTimeout(function(){ var el = document.getElementById('chm' + id); document.querySelectorAll('#v-chat .ch-m.tools').forEach(function(x){ if(x !== el) x.classList.remove('tools'); }); if(el) el.classList.toggle('tools'); }, 500); },
     lpx: function(){ clearTimeout(S.lpT); },
@@ -31651,9 +31692,29 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
         + r.readers.map(function(x){ var s = []; if(x.seen_at) s.push('Seen ' + tm(x.seen_at)); if(x.replied_at) s.push('Replied ' + tm(x.replied_at)); if(x.confirmed_at) s.push('Acknowledged ' + tm(x.confirmed_at)); return '<div class="ch-rd"><span>' + esc(disp(x.name)) + '</span><span' + (x.seen_at ? '' : ' style="color:#9B2C1F"') + '>' + (s.length ? s.join(' · ') : 'Not seen yet') + '</span></div>'; }).join('')); }
   };
   /* time-in card posts itself in the Time-in group (WeChat copy stays as it is) */
-  window.chatTimein1400 = async function(blob, x, redo){ if(!S.on || !hasD() || D.mgr || !blob) return; try{ var ti = D.timeIn || {}, img = await shrink(blob, 300000);
+  window.chatTimein1400 = async function(blob, x, redo){ if(!hasD() || D.mgr || !blob) return false; var ti = D.timeIn || {}, img; try{ img = await shrink(blob, 300000); }catch(e){ return { error: 'The picture could not be read' }; }
       var meta = { time: ti.time || '', status: ti.status || '', speed: x && x.speed ? String(x.speed).slice(0, 80) : '' };
-      await post('timein', { img: img, meta: meta, redo: !!redo, body: 'Time-in ' + (ti.time || '') + (ti.status ? ' · ' + ti.status : '') + (redo ? ' · Redo' : '') }); }catch(e){} };
+      return sendQ1495({ a: 'timein', w: redo ? 'Redo time-in picture' : 'Time-in picture', net: x && x.speed ? String(x.speed).slice(0, 80) : '', k: 'ti:' + (D.today || '') + (redo ? ':redo' : ''), o: { img: img, meta: meta, redo: !!redo, body: 'Time-in ' + (ti.time || '') + (ti.status ? ' · ' + ti.status : '') + (redo ? ' · Redo' : '') } }); };
+  /* 1495 (Misty 18:02): one sender for Time-in posts · true = sent · 'queued' = weak signal, kept on this device and sent by itself · { error } = refused */
+  var QK1495 = 'coe.chq1495', QM1495 = {};
+  function qRead(){ try{ return JSON.parse(localStorage.getItem(QK1495) || '{}') || {}; }catch(e){ return QM1495; } }
+  function qWrite(o){ QM1495 = o; try{ localStorage.setItem(QK1495, JSON.stringify(o)); }catch(e){} }
+  /* (Misty 18:06) management sees a post that is waiting or failed (a tiny note, sent even on a weak line); cleared when it arrives */
+  function pend(it, st){ try{ post('pend', { k: it.k, what: it.w || 'Time-in post', net: it.net || '', st: st }).then(function(r){ if(r && r.ok){ var o = qRead(); if(o[it.k]){ o[it.k].pn = 1; qWrite(o); } } }, function(){}); }catch(e){} }
+  async function sendQ1495(it){ var r = null; try{ r = await post(it.a, it.o); }catch(e){ r = null; }
+    var had = qRead()[it.k];
+    if(r && r.ok && !r.off){ var o = qRead(); if(o[it.k]){ delete o[it.k]; qWrite(o); } if(had || it.pn){ try{ post('pend', { k: it.k, off: 1 }).catch(function(){}); }catch(e){} } return true; }
+    if(r && r.off) return { error: 'Team Chat is off for you' };
+    if(r && r.error){ pend(it, 'failed'); return { error: String(r.error) }; }
+    var o2 = qRead(); o2[it.k] = { a: it.a, o: it.o, w: it.w || '', net: it.net || '', at: (had && had.at) || Date.now() }; qWrite(o2); pend(it, 'pending'); return 'queued'; }
+  window.chatQueued1495 = function(k){ return !!qRead()[k]; };
+  async function qFlush(){ if(!hasD() || qFlush.busy) return; var o = qRead(), ks = Object.keys(o); if(!ks.length) return; qFlush.busy = 1;
+    try{ for(var i = 0; i < ks.length; i++){ var k = ks[i], it = o[k]; if(!it || Date.now() - it.at > 18 * 36e5){ var q = qRead(); delete q[k]; qWrite(q); continue; }
+      var r = await sendQ1495({ a: it.a, o: it.o, k: k, w: it.w, net: it.net, pn: it.pn }); if(r === 'queued') break; if(r && r.error){ var q2 = qRead(); delete q2[k]; qWrite(q2); }
+      try{ window.dispatchEvent(new CustomEvent('chq1495', { detail: { k: k, ok: r === true, error: r && r.error } })); }catch(e){} } }
+    finally{ qFlush.busy = 0; } }
+  setInterval(function(){ qFlush(); }, 30000); window.addEventListener('online', function(){ setTimeout(qFlush, 1500); }); setTimeout(qFlush, 8000);
+  window.chatSend1495 = async function(a, o, k, w, net){ if(o && typeof o.img === 'string' && o.img.length * 0.75 > 380000){ try{ var bl = await (await fetch(o.img)).blob(); o = Object.assign({}, o, { img: await shrink(bl, 300000) }); }catch(e){} } return sendQ1495({ a: a, o: o, k: k, w: w, net: net }); };
   /* 1414: management's Online now uses the same In class rule as the Team Chat members list (a class running now, from the database) */
   window.chatMem1414 = async function(){ if(!S.on || !isMgr()) return null; await A.members(); return S.mem; };
   window.chatInClass1414 = function(){ var o = {}; (S.mem || []).forEach(function(m){ if(m && m.inClass) o[String(m.name).toLowerCase()] = m; }); return o; };
@@ -32445,5 +32506,23 @@ nav button[data-v="chat"] .dot.at.chN:not(.hide){background:#5B4B9A!important}
     last = now; }, true);
 })();
 </script>
+<style id="css1495">
+/* 1495 · Time-in composer for teachers: picture + short caption */
+#v-chat .ch-cmp.ti #chMic,#v-chat .ch-cmp.ti #chEmoB{display:none}
+#v-chat .ch-pend{margin:6px 0 0;padding:8px 12px;border-radius:10px;background:#FFF4E5;color:#7A4A0E;font-size:13px;line-height:1.45}
+#v-chat .ch-note.ch-tin{padding:2px 2px 8px;color:#4C4868;font-size:13px;line-height:1.45}
+</style>
+<style id="css1496">
+/* 1496 · Send to Time-in (time-in picture and "I'm in") */
+.wc70 .wc-btns #wcSend{min-width:200px}
+.wc70 .wc-alt{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:6px;color:#8A879E;font-size:13px}
+.wc70 .wc-alt button{background:none;border:0;padding:4px 2px;color:#5E5A76;font:500 13px Inter,sans-serif;text-decoration:underline;cursor:pointer}.wc70 .wc-alt button:disabled{opacity:.45;cursor:default}
+.wc-st{margin:10px 0 2px;padding:10px 12px;border-radius:12px;background:#F3F4F7;color:#4C4868;font-size:14px;line-height:1.45;text-align:left}
+.wc-st.ok{background:#E7F6EF;color:#16704C;font-weight:600}.wc-st.no{background:#FDECEA;color:#9B2C1F}
+.wc-st.warn{background:#FFF1DC;color:#7A4A0E;border:1.5px solid #E7A33E}.wc-st .wc-q{display:block;margin-top:4px;font-size:13px}
+#tapRes .ci-pv{display:flex;gap:10px;align-items:center;margin-top:12px;padding:8px;border:1px solid #E8ECF0;border-radius:12px;text-align:left}
+#tapRes .ci-pv img{width:96px;height:60px;object-fit:cover;border-radius:8px;flex:none}#tapRes .ci-pv div{font-size:13px;color:#2B2253;line-height:1.35}#tapRes .ci-pv span{display:block;font-size:11px;color:#6E6A85;margin-bottom:2px}
+#tapRes .ci-st{font-size:13px;line-height:1.45;text-align:left;border-radius:10px}#tapRes .ci-st.warn{background:#FFF1DC;color:#7A4A0E;border:1.5px solid #E7A33E;padding:9px 11px}#tapRes .ci-st .wc-q{display:block;margin-top:4px}#tapRes .ci-st.no{background:#FDECEA;color:#9B2C1F;padding:9px 11px}
+</style>
 </body>
 </html>
