@@ -1269,7 +1269,7 @@ function fastAns(fn, args){ if(/Msg/.test(fn)) try{ Object.keys(SB_FRESH).forEac
     const txt = !st ? '' : st + (st === 'Paused' && un ? ' until ' + un : '') + ' · ' + now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' + who + (nt ? ' · ' + nt : '');
     return { ok: true, queued: true, status: txt, note: (txt ? st : 'Status cleared') + (st === 'Not renewing' ? ' · unticked in ACTIVE within a minute' : '') }; }
   if(fn === 'mgmtRenewPaid' || fn === 'mgmtEnrolPaid'){ const f = args[1] || {}, tot = (+f.pkg || 0) + (+f.free || 0), mo = x => x < 30 ? 4 : x < 60 ? 8 : 12;
-    const addM = (s, k) => { const d = new Date(String(s).slice(0, 10) + 'T12:00:00'); if(isNaN(d)) return ''; const x = new Date(d.getFullYear(), d.getMonth() + k, d.getDate(), 12); return ymdLocal(x); };
+    const addM = (s, k) => { const d = new Date(String(s).slice(0, 10) + 'T12:00:00'); if(isNaN(d)) return ''; const last = new Date(d.getFullYear(), d.getMonth() + k + 1, 0).getDate(); const x = new Date(d.getFullYear(), d.getMonth() + k, Math.min(d.getDate(), last), 12); return ymdLocal(x); };   /* 1423: 31 Oct + 8 months = 30 Jun */
     const paid = f.date ? new Date(f.date + 'T12:00:00') : now, pd = paid.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     try{ Object.keys(SB_FRESH).forEach(k => { if(/(mgmtActive|mgmtStudents?|mgmtRenewals)\|/.test(k)) delete SB_FRESH[k]; }); }catch(e){}
     if(fn === 'mgmtRenewPaid'){ const I = (typeof RPS !== 'undefined' && RPS && RPS.info) || {}, left = +I.left || 0, oldTot = (+I.pkg || 0) + (+I.free || 0);
@@ -4962,13 +4962,13 @@ const rowsM = G.members.map(x => ({ name: String(x[C.name] || ''), cn: String(x[
 const byC = {}; rowsM.forEach(x => { const k = x.code.toUpperCase(), o = byC[k] || (byC[k] = Object.assign({}, x, { finished: 0, teachers: [] })); o.finished = n1(o.finished + x.finished); if(x.teacher && o.teachers.indexOf(x.teacher) < 0) o.teachers.push(x.teacher); if(!o.cn && x.cn) o.cn = x.cn; });
 const mem = Object.keys(byC).map(k => Object.assign(byC[k], { teacher: byC[k].teachers.join(', ') }));
 const byT = mem.length === 1 ? rowsM.filter(x => x.teacher).map(x => ({ teacher: x.teacher, finished: x.finished })) : null;
-const bal = { enrolled: o[C.enrolled], finished: n1(mem.reduce((a, x) => a + x.finished, 0)), left: o[C.available] === '' ? '' : Math.max(0, n1(+o[C.available] - others + (G.extra || 0))), deadline: o[C.deadline], carry: o[C.carry], today: G.members.reduce((a, x) => a + td(x), 0), members: mem.length > 1 ? mem : null, byTeacher: byT && byT.length > 1 ? byT : null };
+const bal = { enrolled: o[C.enrolled], finished: n1(mem.reduce((a, x) => a + x.finished, 0)), left: o[C.available] === '' ? '' : Math.max(0, n1(+o[C.available] - others + (G.extra || 0))), deadline: o[C.deadline], start: o[C.start], carry: o[C.carry], today: G.members.reduce((a, x) => a + td(x), 0), members: mem.length > 1 ? mem : null, byTeacher: byT && byT.length > 1 ? byT : null };
 const T = [...new Set(mem.map(x => x.teacher).filter(Boolean).flatMap(t => t.split(/\s*[,/&]\s*/)))];
 const keep = keepSheet && CXP && CXP.kind === 'bal' ? { cn: CXP.cn, t: CXP.t } : null;
 CXP = { kind: 'bal', e: { student: mem.map(x => x.name).join(' & '), code: [...new Set(mem.map(x => x.code))].join(' · '), teacher: T.join(', '), start: new Date().toISOString(), end: new Date().toISOString() }, bal, why: '', by: '', zh: '', cn: keep ? keep.cn : mem.map(x => x.cn).filter(Boolean).join(' · '), url: '' };
 return open();
 }
-const bal = { enrolled: r[C.enrolled], finished: r[C.finished], left: r[C.available] === '' ? '' : Math.round((+r[C.available] + (G.extra || 0)) * 10) / 10, deadline: r[C.deadline], carry: r[C.carry], today: 0 };
+const bal = { enrolled: r[C.enrolled], finished: r[C.finished], left: r[C.available] === '' ? '' : Math.round((+r[C.available] + (G.extra || 0)) * 10) / 10, deadline: r[C.deadline], start: r[C.start], carry: r[C.carry], today: 0 };
 bal.today = (C.today != null && +r[C.today]) || 0;   // ACTIVE + classes ended since S-MONTHLY's last update (server: liveGap_)
 const keep = keepSheet && CXP && CXP.kind === 'bal' ? CXP.cn : null;
 CXP = { kind: 'bal', e: { student: r[C.name], code: r[C.code], teacher: r[C.teacher], start: new Date().toISOString(), end: new Date().toISOString() }, bal, why: '', by: '', zh: '', cn: keep != null ? keep : (String(r[C.cn] || '') || cxCnOf(r[C.code])), url: '' };
@@ -5033,13 +5033,13 @@ if(lv.length) rows.push(cxTrial(e) && (cl || mv) ? ['Starting level', '起始级
 if(cxTrial(e) && (cl || mv) && !rows.some(r => r[0] === 'Starting level')) rows.push(['Starting level', '起始级别', ['To be assessed in the trial class'], ['试听课后由老师评估确认']]);
 if(cl && P.pkg){ const sl = (t, sep, f) => [].concat(...String(t || '').split(sep).map((s, i) => wrap((i ? sep.replace(/^ · /, '').replace(/^l/, 'L') : '') + s, f, 740)));
 rows.push(['Schedule', '课程安排', sl(P.pkg.en, ' · last class', '400 30px ' + F), sl(P.pkg.zh, ' · 最后一节课', '400 24px ' + F)]); }
-if(bl && P.renew){ const Q = P.renew, pd = pD(Q.paid), dl = pD(P.bal.deadline), tt = String(e.teacher || '').split(/\s*,\s*/).filter(Boolean); rows.length = 0;
+if(bl && P.renew){ const Q = P.renew, pd = pD(Q.paid), dl = Q.dl ? pD(Q.dl) : null,   /* 1423: never the old package's end */ tt = String(e.teacher || '').split(/\s*,\s*/).filter(Boolean); rows.length = 0;
 rows.push(['New package', '新课时包', [Q.pkg + (Q.free ? ' + ' + Q.free + ' free' : '') + ' lessons'], [Q.pkg + ' 课时' + (Q.free ? ' + 赠送 ' + Q.free + ' 课时' : '')]]);
 if(+Q.carry) rows.push(['Carried over', '结转课时', [Q.carry + ' lessons from the last package'], [Q.carry + ' 课时（上期剩余）']]);
 rows.push([tt.length > 1 ? 'Teachers' : 'Teacher', '老师', [tt.map(tName).join(' · ')], [tt.map(tZh).join(' · ')]]);
 if(Q.en) rows.push(['Class time', '上课时间', [Q.en], [Q.zh]]);
 if(pd) rows.push(['Paid on', '付款日期', [dEn(pd)], [dZh(pd)]]);
-if(dl) rows.push(['Valid until', '有效期至', [dEn(dl)], [dZh(dl)]]);
+if(dl){ const sd = pD(Q.start); rows.push(['Valid until', '有效期至', [dEn(dl)].concat(sd ? ['Counted from the first class · ' + sd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })] : []), [dZh(dl)].concat(sd ? ['有效期从首课 ' + (sd.getMonth() + 1) + '月' + sd.getDate() + '日 起计算'] : [])]); }
 rows.push(['__POL__']); rows.push(['', '', ['Thank you for continuing with us!'], ['感谢您的信任与续费！']]); }
 if((cl || mv) && e.meet) rows.push(['VooV meeting ID', '腾讯会议号', [String(e.meet)], []]);
 if((cl || mv) && !bl && !cxTrial(e) && window.cxPol) rows.push(['__POL__']);   /* every scheduled or rescheduled class (not trials, not cancellations) */
@@ -6367,7 +6367,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1362;
+const COE_V = 1363;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -6663,7 +6663,15 @@ function rnDays(cl){ const now = Date.now(), up = (Array.isArray(cl) ? cl : []).
 const wk = d => new Date(d).toLocaleString('en-GB', { timeZone: 'Asia/Shanghai', weekday: 'short' }), hm = d => new Date(d).toLocaleTimeString('en-GB', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit' }), O = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], pat = {};
 up.slice(0, 12).forEach(c => { const k = wk(c.start) + ' ' + hm(c.start); pat[k] = (pat[k] || 0) + 1; }); const d = Object.keys(pat).filter(k => pat[k] > 1).sort((a, b) => O.indexOf(a.slice(0, 3)) - O.indexOf(b.slice(0, 3))); return d.length ? d : [wk(up[0].start) + ' ' + hm(up[0].start)]; }
 const _cxdRN = cxDraw;
-cxDraw = async function(){ const P = CXP; if(P && P.kind === 'bal') P.renew = rnFor(P) || null;
+const RN_ST = {};   /* 1423: first class of the new package, by student */
+function rnAddM(ymd, k){ const p = String(ymd || '').slice(0, 10).split('-').map(Number); if(p.length < 3 || !p[0]) return ''; const last = new Date(p[0], p[1] - 1 + k + 1, 0).getDate(); const x = new Date(p[0], p[1] - 1 + k, Math.min(p[2], last), 12); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); }
+function rnValid(P){ const Q = P && P.renew, b = P && P.bal; if(!Q || !Q.paid) return; const ymdM = s => new Date(new Date(s).getTime() + 8 * 3600e3).toISOString().slice(0, 10), wk = rnAddM(Q.paid, 0) && new Date(new Date(Q.paid + 'T12:00:00').getTime() - 7 * 864e5).toISOString().slice(0, 10);
+  let st = ''; try{ const R = window.pkRows ? pkRows() : null; if(window.pkPaid) pkPaid(Q.code, '', ''); if(R) Object.keys(R).forEach(k => { if(k.indexOf(String(Q.code).toUpperCase() + '|') === 0) R[k].forEach(x => { if(x.paid === Q.paid && x.st && (!st || x.st > st)) st = x.st; }); }); }catch(x){}   /* the new package row linked to this payment (ACTIVE col J → SALES) */
+  if(!st){ const bs = String((b && b.start) || '').slice(0, 10); if(/^\d{4}-\d{2}-\d{2}$/.test(bs) && bs >= wk) st = bs; }
+  if(!st){ Q.dl = ''; Q.start = ''; if(!P._rnS){ P._rnS = 1; setTimeout(() => { if(CXP === P){ P.url = ''; cxDraw(); } }, 4000); setTimeout(() => { if(CXP === P){ P._rnS = 0; P.url = ''; cxDraw(); } }, 90000); } return; }   /* no guess: the line waits for the new package row */
+  Q.start = st; Q.dl = rnAddM(st, (+Q.tot || 0) < 30 ? 4 : (+Q.tot || 0) < 60 ? 8 : 12); }
+window.rnValid = rnValid; window.rnAddM = rnAddM;
+cxDraw = async function(){ const P = CXP; if(P && P.kind === 'bal') P.renew = rnFor(P) || null; try{ rnValid(P); }catch(x){}
   try{ const Q = P && P.renew, b = P && P.bal; if(Q && b && b.left !== '' && b.left != null){ const dl = String(b.deadline || '').slice(0, 10), old = !/^\d{4}-\d{2}-\d{2}$/.test(dl) || dl < Q.paid;   /* 341 */
     if(old){ Q.carry = Math.round(+b.left * 10) / 10; Q.now = Math.round((+b.left + Q.tot) * 10) / 10; }
     else { const fresh = (Date.now() - new Date(Q.paid + 'T00:00:00+08:00').getTime()) < 2 * 864e5; Q.now = fresh && +b.left < Q.tot ? Math.round(((+b.carry || +Q.carry || 0) + Q.tot) * 10) / 10 : +b.left; } } }catch(x){}   /* 342 */ const r = await _cxdRN.apply(this, arguments);
@@ -30310,6 +30318,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     if(!L.length) Object.keys(M).forEach(k => { if(k.indexOf(c0) === 0) L = L.concat(M[k]); }); if(!L.length) return { paid: '' };
     const s = String(start || '').slice(0, 10), hit = L.find(x => x.st === s) || (L.length === 1 ? L[0] : null); return { paid: hit ? hit.paid : '' }; };
   /* the chip text: the paid date, or the start date with a ? when no payment is linked */
+  window.pkRows = () => M;   /* 1423 */
   window.pkChipDate = function(code, teacher, start){ const p = window.pkPaid(code, teacher, start), sd = typeof tdDate === 'function' ? tdDate(start) : String(start || '');
     if(p && p.paid) return '<span title="Paid ' + esc(p.paid) + ' · classes start ' + esc(String(start || '').slice(0, 10)) + '">' + (typeof tdDate === 'function' ? tdDate(p.paid) : esc(p.paid)) + '</span>';
     return '<span title="' + (M ? 'No payment linked in SALES for this package · showing the class start date' : 'Checking the payment date…') + '">' + sd + (M ? ' <sup style="opacity:.7">?</sup>' : '') + '</span>'; };
