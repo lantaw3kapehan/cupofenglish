@@ -85,3 +85,34 @@ Save picture = JPEG (phones: the share sheet).
 - Portal: `student/index.html` from `rollback-pre-1530`.
 - coe-student: redeploy `supabase-coe-student-v21/`.
 - Data: `delete from docs where key in ('sys:pricing_ph','sys:ph_learners')` (new rows only).
+
+---
+
+# Follow-up · releases 1531–1532 (28 Oct 2026, 22:xx)
+
+Review of 1530 + Misty (22:34): "make the Philippine price list follow the same template as the China price list, for uniformity."
+
+## 1531 · thumbnails, subtitle, Market memory
+- Flyer thumbnails (Enquiries and portal Programme › Pictures) load and decode at once (no `loading="lazy"`, no async decode);
+  space reserved (width/height + aspect-ratio). The blank tiles in the first screenshots were off-screen lazy tiles in a full-page
+  capture; over HTTP all 8 load and Copy / Save give the real 2000×1677 picture for each (PNG to clipboard, JPEG file).
+- Enquiries subtitle follows the Market (China text unchanged; Philippines: "For enquiries from the Philippines · prices in pesos
+  (₱) · flyer pictures and text for Messenger, Viber or e-mail").
+- Market remembered per device: `localStorage coe.enqMarket` (try/catch), checked across a reload.
+- Portal `student/` version 1531 (tiles eager).
+
+## 1532 · Philippine market on the China template (one builder)
+- `pricePic` / `ppSheet` / `ppDraw` / `ppText` take a market (`pricePic({ ph: 'adult' | 'ielts', rec })` → `PP.m = 'ph'`). Every
+  China literal is kept; Philippines swaps only content from `sys:pricing_ph`: English text, ₱ prices and per-lesson price, the
+  Foundation / Professional / Mastery tracks (lessons + mock tests / tasks, hours, CEFR or band target + gain, goal, outcome),
+  notes from the flyers. Same sheet (Learner: Adult English 1:1 / IELTS 1:1 · Recommend · Copy picture · Share / save · Copy message
+  with the English enrolment/payment lines), same picture, file `CupOfEnglish-price-ph-adult.png` / `-ph-ielts.png`.
+- `coeCard(pill, body, { en: 1 })`: English-only labels; without the option (all China pictures) unchanged.
+- China pictures byte-identical before/after (SHA-256 of 16 pictures: kids, adults, IELTS, PET, KET, partner prices, Xiaolan's
+  students, None, personalised student picture, CEFR picture, course plan).
+- Enquiries › Philippines = the China toolkit in English: "Pictures & messages · in English, for Messenger, Viber or e-mail",
+  stage 1 "Before the trial" with the same cards: Price list (Price picture) · Learning roadmap (Roadmap: generated picture in the
+  same frame and components: programme, track hero, 4 skills with core skills, IELTS key focus per track, result, notes) · Invite to a
+  trial (Copy message, English) · Original flyers (Misty's 8 flyers, Copy / Save). The 1530 programme cards and sheet are retired.
+- PH enquiry rows: PH price → price picture on its programme with its track recommended; PH roadmap → roadmap on its track.
+- Tests: regress-saves 17/17; stability base vs new (enquiry, astudents, laptop + phone) all ok; PH tab open/repaint shift 0.
