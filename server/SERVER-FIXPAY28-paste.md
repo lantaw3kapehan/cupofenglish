@@ -8,7 +8,7 @@
 1. **Fixed pay.** For each person in the database setting `sys:fixedpay` (now: Katherine ₱5,000), it fills a blank month-end TIME-IN amount for this month, and for last month while it is unpaid.
    - It never overwrites an amount that was typed, and never touches a paid month.
    - PAYROLL, the PAY tab, payslip and Mark paid then work exactly as in September.
-2. **Missing PAYROLL rows.** Anyone who taught that month (the class calendar), is on T-DASH and has no PAYROLL row for this month or last month (while unpaid) gets one.
+2. **Missing or incomplete PAYROLL rows.** A row typed by hand with only a name and month (like Rose's row 50, added 11:56) gets the standard formulas. Anyone who taught that month (the class calendar), is on T-DASH and has no PAYROLL row for this month or last month (while unpaid) gets one.
    - The row is copied from a colleague's row for the same month, so every formula is the standard one: units, rate, bonus, deductions, gross, net, status.
    - Every row it adds is logged.
 3. **Nothing else changes.** No other teacher's pay is affected, and September (all paid) is untouched.
@@ -50,6 +50,11 @@ function fixPay28_() {
     const taught = {}; C.forEach(x => { const t = String(((x.data || {}).teachers || [])[0] || '').trim().toLowerCase(); if (t) taught[t] = 1; });
     const have = {}; L.forEach(r => have[r.name.toLowerCase()] = 1);
     const tpl = L.find(r => !r.paid && P.getRange(r.row, 5).getFormula()) || L.find(r => P.getRange(r.row, 5).getFormula()); if (!tpl) return;
+    L.forEach(r => {                                                                                                // a row typed by hand (name + month only) gets the standard formulas
+      if (r.paid || P.getRange(r.row, 5).getFormula() || r.row === tpl.row) return;
+      [[4, 8], [16, 3]].forEach(([c0, n]) => P.getRange(tpl.row, c0, 1, n).copyTo(P.getRange(r.row, c0, 1, n), SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false));
+      out.push('PAYROLL row completed · ' + r.name + ' · ' + ym + ' (row ' + r.row + ': formulas D–K and P–R)');
+    });
     Object.keys(taught).forEach(t => {
       if (have[t] || !proper[t]) return;
       const last = Math.max.apply(null, monthRows(ym).map(r => r.row));
