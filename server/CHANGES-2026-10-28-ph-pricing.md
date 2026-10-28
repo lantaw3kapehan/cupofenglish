@@ -223,3 +223,12 @@ Review of 1530 + Misty (22:34): "make the Philippine price list follow the same 
 - Enquiries › Philippines: "Original flyers" card removed. Portal Programme › Pictures removed (the Programme tab already shows tracks
   and skills); hosted flyer files kept. Portal version 1536.
 - Tests: China pictures/sheet/message identical; regress-saves 17/17; stability enquiry ok.
+
+# 1539c · Service agreement: one entry point, market first · PH chip font (29 Oct 2026, Misty 02:58–03:01)
+- Enquiries › Service agreement dialog starts with China · bilingual / Philippines · English (default = the Enquiries Market; the last
+  choice is remembered on this device, `coe.enqAgrMk`). China: today's fields, button and output (agreement HTML + message identical at
+  390 / 1024 / 1440). Philippines: "Service agreement", Learner's name, Programme (from sys:pricing_ph, so new PH programmes appear by
+  themselves), optional Track (its lesson box ticked) → "Make agreement" → the English-only agreement, sheet set to Philippines · English.
+- Enquiries › Philippines › 2 Enrolling: card 6 "Service agreement (English)" opens the same dialog on Philippines (one component).
+- Student page / trial "Enrolling" › Service agreement: unchanged (English automatically for PH learners).
+- PH pictures: the top-right chip is Inter bold ("Price List" / "Learning Roadmap") instead of the frame's slab serif. China unchanged here.
