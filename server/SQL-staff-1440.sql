@@ -30,3 +30,18 @@ create table if not exists public.staff_log (
   id bigserial primary key, at timestamptz not null default now(), by text, name text, what text, detail jsonb
 );
 alter table public.staff_log enable row level security;
+-- 28 Oct (applied as staff_1440_ml): the person's MASTERLIST row, by column index (same order as the sheet)
+alter table public.staff add column if not exists ml jsonb not null default '{}'::jsonb;
+-- 1441 (applied as staff_1441_onboarding + staff_1441_grants): checklist ticks, class figures for onboarding / offboarding
+alter table public.staff add column if not exists ob jsonb not null default '{}'::jsonb;
+create or replace function public.staff_class_stats()
+returns table(t text, first_day date, future int, future_students int)
+language sql stable security definer set search_path = public as $$
+  select lower(teachers->>0), min(day) filter (where starts_at < now()), count(*) filter (where starts_at >= now())::int,
+         count(distinct code) filter (where starts_at >= now())::int
+  from classes where not cancelled and teachers->>0 is not null group by 1
+$$;
+revoke all on function public.staff_class_stats() from public, anon, authenticated;
+grant select, insert, update, delete on public.staff, public.staff_log to service_role;
+grant usage, select on sequence public.staff_id_seq, public.staff_log_id_seq to service_role;
+grant execute on function public.staff_class_stats() to service_role;
