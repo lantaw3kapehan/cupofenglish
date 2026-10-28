@@ -6349,7 +6349,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1352;
+const COE_V = 1353;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31028,7 +31028,10 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     mem.sort(function(a, b){ return b.length - a.length; }).forEach(function(n){ var re = new RegExp('@' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
       t = t.replace(re, function(x){ var me = n.toLowerCase() === meLc() || n === 'All' || n === AL()[S.init.me]; return '<span class="ch-at' + (me ? ' me' : '') + '">' + x + '</span>'; }); });
     return t; }
-  function msgHtml(m, byId, pv){ if(m.kind === 'system') return '<div class="ch-sys">' + esc(m.body) + ' · ' + tm(m.at) + '</div>'; var cont = !!(pv && pv.author === m.author && !m.quote && !m.parent_id && !pv.hidden && pv.kind !== 'timein' && m.kind !== 'timein' && Date.parse(m.at) - Date.parse(pv.at) < 300000); var me = String(m.author).toLowerCase() === meLc(), M = isMgr(), ro = S.day && S.day !== S.init.today;
+  function msgHtml(m, byId, pv, nx){ if(m.kind === 'system') return '<div class="ch-sys">' + esc(m.body) + ' · ' + tm(m.at) + '</div>'; var cont = !!(pv && pv.author === m.author && !m.quote && !m.parent_id && !pv.hidden && pv.kind !== 'timein' && m.kind !== 'timein' && Date.parse(m.at) - Date.parse(pv.at) < 300000); var me = String(m.author).toLowerCase() === meLc(), M = isMgr(), ro = S.day && S.day !== S.init.today;
+    /* 1416: a run = the next message is from the same person within 5 minutes (same rule as grouping) · "Seen by" only under its last bubble */
+    var nxc = !!(nx && nx.author === m.author && !nx.quote && !nx.parent_id && !m.hidden && nx.kind !== 'timein' && m.kind !== 'timein' && nx.kind !== 'system' && Date.parse(nx.at) - Date.parse(m.at) < 300000);
+    var full = new Date(m.at).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' });
     var who = '<div class="ch-who"><b>' + esc(disp(m.author)) + '</b>' + (m.mgmt ? '<span class="ch-tag">Management</span>' : '') + ' <span>' + tm(m.at) + (m.edited ? ' · edited' : '') + '</span>' + (m.pinned ? ' <span class="ch-tag" style="background:#FBF6E8;color:#5A4A14">Pinned</span>' : '') + '</div>';
     var q0 = m.quote || (m.parent_id && byId[m.parent_id]); if(q0 && !m.quote) q0 = { author: q0.author, body: q0.body }; var par = q0 ? '<div class="ch-q">' + esc(disp(q0.author)) + ': ' + esc(String(q0.body || 'Picture').slice(0, 90)) + '</div>' : ''; var par0 = m.parent_id && byId[m.parent_id] ? '<div class="ch-q">Reply to ' + esc(disp(byId[m.parent_id].author)) + ': ' + esc(String(byId[m.parent_id].body || 'picture').slice(0, 90)) + '</div>' : '';
     var inner = m.hidden ? (M ? '<span>Hidden · still kept in the history</span><br>' + esc(m.body) : 'Hidden by management') : body(m);
@@ -31037,7 +31040,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     var ft = '';
     if(m.needs_reply) ft += '<span class="ch-chip ' + (m.replied >= m.n && m.n ? 'ok' : 'red') + '">Needs reply' + (m.reply_by ? ' by ' + tm(m.reply_by) : '') + (m.n ? ' · ' + m.replied + ' of ' + m.n + ' replied' : (m.mine && m.mine.replied ? ' · you replied' : '')) + '</span>';
     if(m.confirm) ft += '<span class="ch-chip ' + (m.confirmed >= m.n && m.n ? 'ok' : 'pur') + '">' + (m.n ? m.confirmed + ' of ' + m.n + ' confirmed' : (m.mine && m.mine.confirmed ? 'You confirmed' : 'Please confirm')) + '</span>';
-    if(m.n) ft += isMgr() ? '<button type="button" class="ch-chip seen" onclick="chat1400.readers(' + m.id + ')">' + I.eye.replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' Seen by ' + m.seen + ' of ' + m.n + '</button>' : '<span class="ch-chip seen">' + I.eye.replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' Seen by ' + m.seen + '</span>';
+    if(m.n && !nxc) ft += isMgr() ? '<button type="button" class="ch-chip seen" onclick="chat1400.readers(' + m.id + ')">' + I.eye.replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' Seen by ' + m.seen + ' of ' + m.n + '</button>' : '<span class="ch-chip seen">' + I.eye.replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' Seen by ' + m.seen + '</span>';
     var act = '', tl = '';
     if(m.pending) ft += '<span>Sending…</span>'; if(m.failed) ft += '<span style="color:#9B2C1F;font-weight:600">Not sent</span>' + ('<button type="button" class="ch-chip" onclick="chat1400.retry(' + m.id + ')">Retry</button>');
     if(!ro && !m.hidden && !m.pending){
@@ -31045,11 +31048,12 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
       if(m.mine && m.confirm && !m.mine.confirmed) act += '<button type="button" class="ch-b sm pri" onclick="chat1400.confirm(' + m.id + ')">' + I.ok + ' Confirm</button>';
       if(m.mine && (m.mentions || []).some(function(n){ return n.toLowerCase() === meLc(); }) && !m.needs_reply && !m.mine.replied) act += (S.init.quick || []).map(function(q){ return '<button type="button" class="ch-b sm" onclick="chat1400.quick(' + m.id + ',\'' + q + '\')">' + q + '</button>'; }).join('');
       if(M || (S.gid !== 'timein' && S.gid !== 'ann')) tl += '<button type="button" class="ch-tb" aria-label="Reply" title="Reply" onclick="chat1400.reply(' + m.id + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-2"/></svg></button>';
+      if(m.id > 0) tl += '<button type="button" class="ch-tb" aria-label="Copy link" title="Copy link to this message" onclick="chat1400.link(' + m.id + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></button>';
       if(me && m.kind === 'text') tl += '<button type="button" class="ch-tb" aria-label="Edit" title="Edit" onclick="chat1400.edit(' + m.id + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>';
       if(M) tl += '<button type="button" class="ch-tb' + (m.pinned ? ' on' : '') + '" aria-label="' + (m.pinned ? 'Unpin' : 'Pin') + '" title="' + (m.pinned ? 'Unpin' : 'Pin') + '" onclick="chat1400.pin(' + m.id + ',' + (m.pinned ? 0 : 1) + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 17v5M5 3h14l-2 7 3 4H4l3-4-2-7z"/></svg></button><button type="button" class="ch-tb" aria-label="Hide" title="Hide (kept in the history)" onclick="chat1400.hide(' + m.id + ',1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M17.9 17.9A10 10 0 0 1 12 19c-7 0-11-7-11-7a18 18 0 0 1 5.1-5.9M9.9 4.2A9 9 0 0 1 12 4c7 0 11 7 11 7a18 18 0 0 1-2.2 3.2M1 1l22 22"/></svg></button>';
     } else if(M && m.hidden) act = '<button type="button" class="ch-b sm" onclick="chat1400.hide(' + m.id + ',0)">Show again</button>';
-    return '<div class="ch-m' + (cont ? ' cont' : '') + '" id="chm' + m.id + '"' + (m.id > 0 && !ro ? ' ontouchstart="chat1400.lp(event,' + m.id + ')" ontouchend="chat1400.lpx()" ontouchmove="chat1400.lpx()" oncontextmenu="chat1400.reply(' + m.id + ');return false"' : '') + '><span class="ch-av' + (m.mgmt ? ' mg' : '') + (cont ? ' ghost' : '') + '" aria-hidden="' + cont + '">' + esc(String(disp(m.author)).replace('Teacher ', '').charAt(0)) + '</span><div class="ch-body">' + (tl ? '<div class="ch-tools">' + tl + '</div>' : '') + (cont ? '' : who) + par
-      + '<div class="ch-bub' + (me || m.mgmt ? ' me' : '') + (m.hidden ? ' hid' : '') + '">' + inner + '</div>' + (ft ? '<div class="ch-ft">' + ft + '</div>' : '') + (act ? '<div class="ch-act">' + act + '</div>' : '') + '</div></div>'; }
+    return '<div class="ch-m' + (cont ? ' cont' : '') + (me ? ' mine' : '') + (nxc ? ' run' : '') + '" id="chm' + m.id + '" data-t="' + esc(full) + '"' + (m.id > 0 && !ro ? ' ontouchstart="chat1400.lp(event,' + m.id + ')" ontouchend="chat1400.lpx()" ontouchmove="chat1400.lpx()" oncontextmenu="chat1400.reply(' + m.id + ');return false"' : '') + '><span class="ch-av' + (m.mgmt ? ' mg' : '') + (cont ? ' ghost' : '') + '" aria-hidden="' + cont + '">' + esc(String(disp(m.author)).replace('Teacher ', '').charAt(0)) + '</span><div class="ch-body">' + (tl ? '<div class="ch-tools">' + tl + '</div>' : '') + (cont ? '' : who) + par
+      + '<div class="ch-bub' + (me ? ' me' : '') + (m.hidden ? ' hid' : '') + '" onclick="chat1400.tt(event,' + m.id + ')">' + inner + '</div>' + '<span class="ch-ht"><span class="s">' + tm(m.at) + '</span><span class="f">' + esc(full) + '</span></span>' + (ft ? '<div class="ch-ft">' + ft + '</div>' : '') + (act ? '<div class="ch-act">' + act + '</div>' : '') + '</div></div>'; }
   function cmpHtml(){ var M = isMgr(), ro = S.day && S.day !== S.init.today;
     if(ro) return '<div class="ch-cmp"><div class="ch-note">History is read-only · <button type="button" class="ch-b sm" onclick="chat1400.today()">Back to Today</button></div></div>';
     if(S.gid === 'ann') return '<div class="ch-cmp"><div class="ch-note">Earlier announcements · read-only. Formal notices now go in Notices &amp; requests. Use the buttons under a message to answer.</div></div>';
@@ -31070,6 +31074,29 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
   window.chatStatus1403 = function(m){ return m.inClass ? 'In class' + (m.until ? ' · until ' + tm(m.until) : '') : m.online ? 'Online' : m.last ? lastTxt(m.last) + (m.next ? ' · Next class ' + tm(m.next) : '') : 'Not opened yet'; };
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && S.memOpen && !isMgr()){ S.memOpen = false; render(true); var mb = document.querySelector('#v-chat .ch-memb'); if(mb) mb.focus(); } });
   document.addEventListener('click', function(e){ if(!S.memOpen || isMgr() || !e.target || !e.target.closest) return; if(e.target.closest('#v-chat .ch-mem') || e.target.closest('#v-chat .ch-memb')) return; S.memOpen = false; render(true); }, true);
+  /* 1416: picture viewer · zoom with the wheel, pinch or the buttons, drag to move, double-tap to zoom, Escape / ✕ closes */
+  function lightbox(src){ var old = document.getElementById('chLb'); if(old) old.remove();
+    var d = document.createElement('div'); d.id = 'chLb'; d.className = 'ch-lb'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Picture');
+    var B = function(a, l, p){ return '<button type="button" data-a="' + a + '" aria-label="' + l + '" title="' + l + '"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">' + p + '</svg></button>'; };
+    d.innerHTML = '<div class="ch-lbw"><img alt="Picture" draggable="false"></div><div class="ch-lbt">' + B('out', 'Zoom out', '<circle cx="11" cy="11" r="7"/><path d="M8 11h6M21 21l-5-5"/>') + B('in', 'Zoom in', '<circle cx="11" cy="11" r="7"/><path d="M8 11h6M11 8v6M21 21l-5-5"/>') + B('fit', 'Fit', '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>')
+      + (window.chatMarkup1418 ? B('mark', 'Mark up and reply', '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>') : '') + B('x', 'Close', '<path d="M18 6L6 18M6 6l12 12"/>') + '</div>';
+    document.body.appendChild(d); var im = d.querySelector('img'), z = 1, x = 0, y = 0, P = {}, pd = 0, pz = 1, last = 0;
+    im.src = src; var ap = function(){ im.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + z + ')'; }, set = function(n){ z = Math.max(1, Math.min(6, n)); if(z === 1){ x = 0; y = 0; } ap(); };
+    var close = function(){ d.remove(); document.removeEventListener('keydown', key); }, key = function(e){ if(e.key === 'Escape') close(); };
+    document.addEventListener('keydown', key);
+    d.addEventListener('click', function(e){ var b = e.target.closest('button'); if(b){ var a = b.dataset.a; if(a === 'x') close(); else if(a === 'in') set(z * 1.5); else if(a === 'out') set(z / 1.5); else if(a === 'fit') set(1); else if(a === 'mark'){ close(); window.chatMarkup1418(src, true); } return; } if(e.target === d || e.target.classList.contains('ch-lbw')) close(); });
+    d.addEventListener('wheel', function(e){ e.preventDefault(); set(z * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); }, { passive: false });
+    im.addEventListener('dblclick', function(){ set(z > 1 ? 1 : 2.5); });
+    im.addEventListener('pointerdown', function(e){ im.setPointerCapture(e.pointerId); P[e.pointerId] = { x: e.clientX, y: e.clientY }; var k = Object.keys(P); if(k.length === 2){ pd = Math.hypot(P[k[0]].x - P[k[1]].x, P[k[0]].y - P[k[1]].y); pz = z; }
+      if(e.pointerType === 'touch' && Date.now() - last < 300) set(z > 1 ? 1 : 2.5); last = Date.now(); });
+    im.addEventListener('pointermove', function(e){ var p = P[e.pointerId]; if(!p) return; var k = Object.keys(P);
+      if(k.length === 2){ P[e.pointerId] = { x: e.clientX, y: e.clientY }; var nd = Math.hypot(P[k[0]].x - P[k[1]].x, P[k[0]].y - P[k[1]].y); if(pd) set(pz * nd / pd); return; }
+      if(z > 1){ x += e.clientX - p.x; y += e.clientY - p.y; ap(); } P[e.pointerId] = { x: e.clientX, y: e.clientY }; });
+    var up = function(e){ delete P[e.pointerId]; if(Object.keys(P).length < 2) pd = 0; }; im.addEventListener('pointerup', up); im.addEventListener('pointercancel', up);
+    var cb = d.querySelector('[data-a="x"]'); if(cb) cb.focus(); }
+  /* 1416: a copied message link (?go=chat&cm=group|day|id) opens that message; the server still checks who may see it */
+  (function(){ try{ var q = new URLSearchParams(location.search).get('cm'); if(!q) return; var p = q.split('|'); if(p.length !== 3) return;
+    (function w(n){ if(S.init && S.on){ try{ history.replaceState(history.state, '', location.pathname + location.hash); }catch(e){} if(typeof go === 'function') go('chat'); A.jump(p[0], p[1], Number(p[2])); } else if(n < 40) setTimeout(function(){ w(n + 1); }, 500); })(0); }catch(e){} })();
   function SKEL(n){ var h = '<div class="ch-skel" role="status" aria-label="Loading">'; for(var i = 0; i < n; i++) h += '<div style="width:' + [72, 54, 86, 64, 48][i % 5] + '%"></div>'; return h + '</div>'; }
   function memHtml(){ var L = S.mem || (S.init.members || []).map(function(m){ return { name: m.name, mgmt: m.mgmt }; }); var P = S.data && S.data.members; if(P && S.view === 'chat'){ var ps = P.map(function(x){ return String(x).toLowerCase(); }); L = L.filter(function(m){ return ps.indexOf(String(m.name).toLowerCase()) > -1; }); }
     var cls = L.filter(function(m){ return m.inClass; }), on = L.filter(function(m){ return m.online && !m.inClass; }), off = L.filter(function(m){ return !m.online && !m.inClass; }).sort(function(a, b){ return String(b.last || '').localeCompare(String(a.last || '')); });
@@ -31099,15 +31126,15 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     else { var byId = {}; ((d && d.msgs) || []).forEach(function(m){ byId[m.id] = m; });
       var pin = d && d.pinned && d.pinned[0] ? '<div class="ch-pin">' + I.pin + '<div><b>Pinned</b> · ' + esc(String(d.pinned[0].body).slice(0, 220)) + '<br><span style="font-size:12px">Seen by ' + d.pinned[0].seen + ' of ' + d.pinned[0].n + '</span></div></div>' : '';
       var op = d && d.open && d.open.length ? '<div class="ch-open"><b>Still open from earlier (' + d.open.length + ')</b>' + d.open.map(function(m){ return '<div><button type="button" onclick="chat1400.jump(\'' + esc(m.gid) + '\',\'' + m.day + '\',' + m.id + ')">' + esc(dayName(m.day)) + ' · ' + esc(disp(m.author)) + ': ' + esc(String(m.body).slice(0, 80)) + '</button> · ' + (m.needs_reply ? m.replied + ' of ' + m.n + ' replied' : m.confirmed + ' of ' + m.n + ' confirmed') + '</div>'; }).join('') + '</div>' : '';
-      var ms = d ? (d.msgs.length ? '<div class="ch-day">' + esc(dayName(d.day)) + '</div>' + d.msgs.map(function(m, i){ return (S.fu && m.id === S.fu ? '<div class="ch-day" style="background:#FDECEA;color:#9B2C1F">New messages</div>' : '') + msgHtml(m, byId, i ? d.msgs[i - 1] : null); }).join('') + (d.day === S.init.today ? '<div class="ch-end">No more messages today</div>' : '') : '<div class="ch-empty">' + (d.day === S.init.today ? 'No messages today yet. <button type="button" class="ch-b sm" onclick="chat1400.hist()">View history</button>' : 'Nothing was posted that day.') + '</div>') : SKEL(5);
+      var ms = d ? (d.msgs.length ? '<div class="ch-day">' + esc(dayName(d.day)) + '</div>' + d.msgs.map(function(m, i){ return (S.fu && m.id === S.fu ? '<div class="ch-day" style="background:#FDECEA;color:#9B2C1F">New messages</div>' : '') + msgHtml(m, byId, i ? d.msgs[i - 1] : null, d.msgs[i + 1] || null); }).join('') + (d.day === S.init.today ? '<div class="ch-end">No more messages today</div>' : '') : '<div class="ch-empty">' + (d.day === S.init.today ? 'No messages today yet. <button type="button" class="ch-b sm" onclick="chat1400.hist()">View history</button>' : 'Nothing was posted that day.') + '</div>') : SKEL(5);
       mid = chanDesc() + pin + op + '<div class="ch-list" id="chList">' + ms + '</div>' + cmpHtml(); }
     if(S.memHide === undefined){ try{ S.memHide = localStorage.getItem('coe.chatMem') === '0'; }catch(e){ S.memHide = false; } }
     if(quiet && keep >= 60 && d && S.lastN && d.msgs.length > S.lastN && S.lastG === S.gid) S.newBelow = true; S.lastN = d ? d.msgs.length : 0; S.lastG = S.gid;
     var cls = 'ch' + (S.ph === 'conv' ? ' conv' : '') + (S.memOpen ? ' mem' : '') + (S.memHide ? ' nomem' : '') + (isMgr() ? '' : ' tch');
-    setHtml(R, '<div class="' + cls + '"><div class="ch-side">' + sideHtml() + '</div><div class="ch-main" ondragover="chat1400.dov(event)" ondrop="chat1400.drop(event)">' + head + mid + (S.newBelow && S.view === 'chat' ? '<button type="button" id="chNewB" class="ch-newb" onclick="chat1400.toBottom()">New messages below</button>' : '') + '</div><div class="ch-mem">' + memHtml() + '</div></div>');
+    setHtml(R, '<div class="' + cls + '"><div class="ch-side">' + sideHtml() + '</div><div class="ch-main" ondragover="chat1400.dov(event)" ondrop="chat1400.drop(event)">' + head + mid + (S.newBelow && S.view === 'chat' ? '<button type="button" id="chNewB" class="ch-newb" onclick="chat1400.toBottom()">New messages below</button>' : '') + (S.view === 'chat' ? '<button type="button" id="chJump" class="ch-jump" aria-label="Jump to the latest message" title="Jump to the latest message" onclick="chat1400.toBottom()" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button>' : '') + '</div><div class="ch-mem">' + memHtml() + '</div></div>');
     var OO = R.querySelector('.ch-opts'); if(OO) OO.classList.toggle('ovf', OO.scrollWidth > OO.clientWidth + 1);
     var L2 = R.querySelector('#chList'); if(L2){ L2.scrollTop = quiet ? (keep < 60 ? L2.scrollHeight : top0) : L2.scrollHeight; if(S.fu && !quiet){ var fe = document.getElementById('chm' + S.fu); if(fe) L2.scrollTop = Math.max(0, fe.offsetTop - L2.offsetTop - 40); } }
-    var t2 = document.getElementById('chTx'); if(t2){ if(S.restore){ t2.value = (S.drafts || {})[S.gid] || ''; S.restore = 0; } else if(draft) t2.value = draft; } syncSend(); if(L2) L2.onscroll = function(){ if(S.newBelow && L2.scrollHeight - L2.scrollTop - L2.clientHeight < 60){ S.newBelow = false; var nb = document.getElementById('chNewB'); if(nb) nb.remove(); } };
+    var t2 = document.getElementById('chTx'); if(t2){ if(S.restore){ t2.value = (S.drafts || {})[S.gid] || ''; S.restore = 0; } else if(draft) t2.value = draft; } syncSend(); if(L2) L2.onscroll = function(){ var jb = document.getElementById('chJump'); if(jb) jb.hidden = L2.scrollHeight - L2.scrollTop - L2.clientHeight < 300; if(S.newBelow && L2.scrollHeight - L2.scrollTop - L2.clientHeight < 60){ S.newBelow = false; var nb = document.getElementById('chNewB'); if(nb) nb.remove(); } };
     if(S.focus){ var el = document.getElementById('chm' + S.focus); if(el){ el.scrollIntoView({ block: 'center' }); el.querySelector('.ch-bub').style.outline = '2px solid #5B4B9A'; } S.focus = 0; } }
   function shell(){ var R = root(); if(!R) return; if(!R.querySelector('.ch')) R.innerHTML = '<div class="ch"><div class="ch-side"></div><div class="ch-main"><div class="ch-empty">Loading Team Chat…</div></div><div class="ch-mem"></div></div>'; }
 
@@ -31176,7 +31203,11 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     paste: function(e){ var it = (e.clipboardData && e.clipboardData.items) || [], F = []; for(var i = 0; i < it.length; i++){ if(it[i].kind === 'file' && /^image\//.test(it[i].type)){ var f = it[i].getAsFile(); if(f) F.push(f); } } if(!F.length) return; var txt = e.clipboardData.getData('text/plain'); e.preventDefault(); if(txt){ var t = e.target, a = t.selectionStart, b = t.selectionEnd; t.value = t.value.slice(0, a) + txt + t.value.slice(b); } A.addImgs(F); },
     dov: function(e){ if(!e.dataTransfer || [].slice.call(e.dataTransfer.types || []).indexOf('Files') < 0) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = document.getElementById('chTx') ? 'copy' : 'none'; },
     drop: function(e){ if(!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return; e.preventDefault(); e.stopPropagation(); if(!document.getElementById('chTx')){ toast2('Pictures can\'t be sent in this chat'); return; } A.addImgs([].slice.call(e.dataTransfer.files)); },
-    zoom: function(src){ if(typeof openSheet === 'function') openSheet('<img src="' + esc(src) + '" alt="Picture" style="width:100%;border-radius:12px">'); },
+    zoom: function(src){ lightbox(src); },
+    tt: function(e, id){ if(e && e.target && e.target.closest && e.target.closest('a,img,button,audio,video,input')) return; var el = document.getElementById('chm' + id); if(el) el.classList.toggle('showt'); },
+    link: function(id){ var u = location.origin + location.pathname + '?go=chat&cm=' + encodeURIComponent(S.gid + '|' + (S.day || S.init.today) + '|' + id);
+      var done = function(){ toast2('Link copied · only people in this chat can open it'); };
+      try{ if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(done, function(){ prompt('Copy this link', u); }); else prompt('Copy this link', u); }catch(e){ prompt('Copy this link', u); } },
     typing: function(t){ syncSend(); t.style.height = 'auto'; t.style.height = Math.min(140, t.scrollHeight) + 'px'; var v = t.value.slice(0, t.selectionStart), m = /@([A-Za-z]*)$/.exec(v), box = document.getElementById('chAc'); if(!box) return;
       if(!m){ box.innerHTML = ''; S.ac = null; return; } var q = m[1].toLowerCase(), L = (S.data && S.data.members || []).filter(function(n){ return n.toLowerCase() !== meLc() && (AL()[n] || n).toLowerCase().indexOf(q) === 0; }).slice(0, 6);
       if('all'.indexOf(q) === 0 && (S.gid !== 'timein')) L.push('All'); S.ac = { list: L, i: 0, at: v.length - m[0].length };
@@ -31443,6 +31474,39 @@ nav button[data-v="chat"] .dot.at.chN:not(.hide){background:#5B4B9A!important}
 .ch-gt.on{background:#E6F3F2;border-color:#9FCFCB;color:#0B5F63}
 .ch-gt:disabled{opacity:.6;cursor:progress}
 .ch-gt:focus-visible{outline:2px solid #0B5F63;outline-offset:2px}
+</style>
+<style id="css1416">
+/* 1416 · real-chat layout: mine on the right in teal, others on the left in white; grouped runs; time on hover / tap */
+#v-chat .ch-m.mine{flex-direction:row-reverse;margin-left:auto}
+#v-chat .ch-m.mine .ch-av{display:none}
+#v-chat .ch-m.mine .ch-body{display:flex;flex-direction:column;align-items:flex-end}
+#v-chat .ch-m.mine .ch-who b,#v-chat .ch-m.mine .ch-who .ch-tag:first-of-type{display:none}
+#v-chat .ch-m.mine .ch-tools{right:auto;left:0}
+#v-chat .ch-bub{background:#fff;border:1px solid #E3E7EB;border-radius:4px 16px 16px 16px;box-shadow:0 1px 1px rgba(20,40,40,.04)}
+#v-chat .ch-m.cont .ch-bub{border-top-left-radius:16px}
+#v-chat .ch-m.run .ch-bub{border-bottom-left-radius:6px}
+#v-chat .ch-bub.me{background:#0E7C7B;border-color:#0E7C7B;color:#fff;border-radius:16px 4px 16px 16px}
+#v-chat .ch-m.mine.cont .ch-bub{border-top-right-radius:16px}
+#v-chat .ch-m.mine.run .ch-bub{border-bottom-right-radius:6px}
+#v-chat .ch-bub.me a{color:#fff;text-decoration:underline}
+#v-chat .ch-bub.me .ch-q{background:rgba(255,255,255,.16);color:#F2FBFA;border-left-color:rgba(255,255,255,.6)}
+#v-chat .ch-bub.me .ch-ti,#v-chat .ch-bub.me div[style*="color:#5E6272"]{color:#E6F5F4!important}
+#v-chat .ch-bub.me .ch-at,#v-chat .ch-bub.me .ch-men{background:rgba(255,255,255,.2);color:#fff}
+#v-chat .ch-ft,#v-chat .ch-act{margin-top:4px}
+#v-chat .ch-ht{display:none;font-size:11.5px;color:#7A7F8C;margin-top:2px;white-space:nowrap}
+#v-chat .ch-ht .f{display:none}
+#v-chat .ch-m.cont:hover .ch-ht,#v-chat .ch-m.cont:focus-within .ch-ht{display:block}
+#v-chat .ch-m.showt .ch-ht{display:block}
+#v-chat .ch-m.showt .ch-ht .s{display:none}
+#v-chat .ch-m.showt .ch-ht .f{display:inline}
+#v-chat .ch-jump{position:absolute;right:18px;bottom:96px;width:40px;height:40px;border-radius:50%;border:1px solid #DCE1E6;background:#fff;color:#0B5F63;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(20,40,40,.14);cursor:pointer;z-index:5}
+#v-chat .ch-jump[hidden]{display:none}
+.ch-lb{position:fixed;inset:0;z-index:2147483000;background:rgba(15,20,24,.92);display:flex;align-items:center;justify-content:center;touch-action:none}
+.ch-lbw{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ch-lb img{max-width:92vw;max-height:84vh;transform-origin:center;transition:transform .08s;cursor:grab;user-select:none;border-radius:6px;background:#fff}
+.ch-lbt{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;display:flex;gap:8px}
+.ch-lbt button{width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ch-lbt button:hover,.ch-lbt button:focus-visible{background:rgba(255,255,255,.28);outline:2px solid #fff;outline-offset:1px}
 </style>
 </body>
 </html>
