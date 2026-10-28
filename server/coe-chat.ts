@@ -1,10 +1,9 @@
-// CupOfEnglish · coe-chat (27–28 Oct 2026 · 1400–1419): Team Chat — groups + direct chats, @mentions, seen/replied receipts,
+// CupOfEnglish · coe-chat (27–28 Oct 2026 · 1400–1451): Team Chat — groups + direct chats, @mentions, seen/replied receipts,
 // needs-reply, confirm, pinned, pictures (up to 5 per message), voice, time-in auto-post, search, Today/History, alerts for every group message
 // (merged, mutable), management roster (add / remove a teacher), retry-safe sending (cid). Teachers never receive other people's presence or
 // per-person receipts. Kept in CupOfEnglish's database: nothing is deleted by the app (teachers can edit, shown "edited"; management can hide).
 // Phone alerts: chat_outbox → coe_push_queue (coe_chat_out, every minute, held while the teacher has a class running, merged per person).
 // Flag: docs sys:chat { enabled, pilot:[teacher names] | "*", exclude?:[names], gx?:{ groupId:[names left out] }, mgmt?:[names], alias?:{account:name} }.
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const ORIGINS = ["https://app.cupofenglishatph.com"];
@@ -19,6 +18,21 @@ const QUICK = ["Noted", "On it", "Done"];
 let CFG: { at: number; data: any } | null = null;
 let ROS: { at: number; nm: Record<string, string> } | null = null;
 let GRP: { at: number; rows: any[] } | null = null;
+// 1451 (Misty 12:53–12:54): members come from the staff table (active + "In Team Chat" ticked). Teachers (role teacher, or anyone who
+// signs in with the teacher app) are in the teacher groups; other staff only have a direct chat with management. Cached 2 minutes.
+let SR: { at: number; rows: Record<string, any>; tsess: Set<string>; sess: Set<string>; mrole: Record<string, string> } | null = null;
+async function staffRoster() {
+  if (SR && Date.now() - SR.at < 120e3) return SR;
+  const since = new Date(Date.now() - 30 * 864e5).toISOString();
+  const [{ data: ST }, { data: TS }, { data: AS }] = await Promise.all([
+    db.from("staff").select("id,name,role,position,status,chat,email"),
+    db.from("app_sessions").select("name").eq("mode", "teacher").gt("exp", since),
+    db.from("app_sessions").select("name,mode,role")]);
+  const rows: Record<string, any> = {}; (ST || []).forEach((x: any) => { if (x.name) rows[lc(x.name)] = x; });
+  const tsess = new Set<string>((TS || []).map((x: any) => lc(x.name))), sess = new Set<string>((AS || []).map((x: any) => lc(x.name)));
+  const mrole: Record<string, string> = {}; (AS || []).forEach((x: any) => { if (x.mode === "mgmt" && x.role) mrole[lc(x.name)] = String(x.role); });
+  SR = { at: Date.now(), rows, tsess, sess, mrole }; return SR;
+}
 async function activeTeachers(): Promise<Record<string, string>> {
   if (ROS && Date.now() - ROS.at < 300e3) return { ...ROS.nm };
   const since = new Date(Date.now() - 30 * 864e5).toISOString();
@@ -37,9 +51,9 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return out({ ok: false, error: "POST only" }, 405);
   let b: any; try { b = JSON.parse(await req.text()); } catch { return out({ ok: false, error: "bad request" }, 400); }
   const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
-  const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
+  const { data: s } = await db.from("app_sessions").select("name,mode,exp,role").eq("token_hash", await sha(token)).maybeSingle();
   if (!s || new Date(s.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
-  const mgmt = s.mode === "mgmt", me = String(s.name || ""), a = String(b.action || ""), now = new Date().toISOString(), today = mnl();
+  let mgmt = s.mode === "mgmt"; const me = String(s.name || ""), a = String(b.action || ""), now = new Date().toISOString(), today = mnl();
   try {
     if (!CFG || Date.now() - CFG.at > 10e3) { const { data: cd } = await db.from("docs").select("data").eq("key", "sys:chat").maybeSingle(); CFG = { at: Date.now(), data: (cd && cd.data) || {} }; }
     const cfg: any = JSON.parse(JSON.stringify(CFG.data));
@@ -52,22 +66,44 @@ Deno.serve(async (req: Request) => {
     if (!mgmt && Array.isArray(cfg.exclude) && cfg.exclude.some((x: unknown) => lc(String(x)) === lc(me))) return out({ ok: true, off: true });   // (Misty) not in Team Chat
     let mg: string[] = Array.isArray(cfg.mgmt) ? cfg.mgmt.map(String) : [];
     if (!mg.length) { const { data: M } = await db.from("app_sessions").select("name").eq("mode", "mgmt").gt("exp", new Date(Date.now() - 30 * 864e5).toISOString()); mg = [...new Set((M || []).map((x: any) => String(x.name)))]; }
+    // 1451: a management-app sign-in is chat management only for the management list or an operations / admin / president role
+    // (staff given management-app access, e.g. a content creator, are ordinary members: no presence, no receipts, no member management)
+    if (mgmt && !mg.some((x) => lc(x) === lc(me)) && !/oper|ops|admin|president|manag/i.test(String(s.role || ""))) mgmt = false;
     if (mgmt && !mg.some((x) => lc(x) === lc(me))) mg.push(me);
-    if (ALL) {   // every active teacher: signed in during the last 30 days or taught a class in the last 30 days
-      const nm = await activeTeachers();
-      const skip = new Set([...mg.map(lc), ...Object.values(alias).map(lc), ...(Array.isArray(cfg.exclude) ? cfg.exclude.map((x: unknown) => lc(String(x))) : [])]);
-      pilot = Object.keys(nm).filter((k) => !skip.has(k) && !/^zz/.test(k) && !/test/.test(k)).map((k) => nm[k]).sort();
-      if (!mgmt && !pilot.some((p) => lc(p) === lc(me))) pilot.push(me);
+    const SRo = await staffRoster(), EXS = new Set((Array.isArray(cfg.exclude) ? cfg.exclude : []).map((x: unknown) => lc(String(x))));
+    let staffL: string[] = [];
+    if (ALL) {
+      const skip = new Set([...mg.map(lc), ...Object.values(alias).map(lc), ...EXS]);
+      const ok = (k: string) => !skip.has(k) && !/^zz/.test(k) && !/test/.test(k);
+      const T: Record<string, string> = {};
+      Object.values(SRo.rows).forEach((x: any) => { const k = lc(x.name); if (x.status === "active" && x.chat !== false && ok(k) && (x.role === "teacher" || SRo.tsess.has(k))) T[k] = String(x.name); });
+      SRo.tsess.forEach((k) => { if (!SRo.rows[k] && ok(k)) T[k] = k.charAt(0).toUpperCase() + k.slice(1); });   // a teacher sign-in not in the staff table yet
+      pilot = Object.values(T).sort();
+      staffL = Object.values(SRo.rows).filter((x: any) => { const k = lc(x.name); return x.status === "active" && x.chat !== false && ok(k) && !T[k]; }).map((x: any) => String(x.name)).sort();
+      if (!mgmt && !pilot.some((p) => lc(p) === lc(me)) && !staffL.some((p) => lc(p) === lc(me))) { if (/^zz/i.test(me) && cfg.allowTest) { if (s.mode === "teacher") pilot.push(me); else staffL.push(me); } else return out({ ok: true, off: true }); }
     }
     const isMg = (n: string) => mg.some((x) => lc(x) === lc(n));
     if (Array.isArray(cfg.exclude)) { const ex = new Set(cfg.exclude.map((x: unknown) => lc(String(x)))); pilot = pilot.filter((p) => !ex.has(lc(p))); }
-    const everyone = [...new Set([...mg, ...pilot])];
+    const everyone = [...new Set([...mg, ...pilot, ...staffL])];
+    const isStaff = (n: string) => staffL.some((x) => lc(x) === lc(n)), kindOf = (n: string) => isMg(n) ? "mgmt" : isStaff(n) ? "staff" : "teacher";
+    const meKind = mgmt ? "mgmt" : kindOf(me);
+    // chip (display only): team · designation from the staff table
+    const tag = (n: string) => { const r = SRo.rows[lc(n)], k = kindOf(n), role = r ? String(r.role || "") : "";
+      // (Misty 12:55) CupOfEnglish / admin / president show only "Management"; operations shows "Management · Operations"
+      if (k === "mgmt" || /^(ops|admin)$/.test(role)) return { team: "Management", des: role === "ops" || (!r && /oper/i.test(SRo.mrole[lc(n)] || "")) ? "Operations" : (r && role !== "admin" && r.position && !/president/i.test(String(r.position)) ? String(r.position) : "") };
+      if (k === "staff") return { team: "Staff", des: r && r.position ? String(r.position) : "" };
+      return { team: "Teacher", des: "" }; };
+    const mem = (n: string) => ({ name: n, mgmt: isMg(n), kind: kindOf(n), ...tag(n) });
+    // who this person may see by name: management sees everyone; teachers see management + teachers; other staff see management only
+    const vis = mgmt ? everyone : meKind === "staff" ? [...new Set([...mg, me])] : [...new Set([...mg, ...pilot])];
     // 1413 (Misty 23:27): per-group membership · sys:chat gx = { groupId: [teacher names left out of that group] }; checked here on every action
     const gx: Record<string, string[]> = cfg.gx && typeof cfg.gx === "object" ? cfg.gx : {};
     const inGroup = (n: string, gid: string) => isMg(n) || !(Array.isArray(gx[gid]) ? gx[gid] : []).some((x) => lc(String(x)) === lc(n));
-    const members = (gid: string) => gid.startsWith("dm:") ? [...mg, ...pilot.filter((p) => "dm:" + lc(p) === gid)] : everyone.filter((n) => inGroup(n, gid));
-    const canSee = (gid: string) => gid.startsWith("dm:") ? (mgmt || gid === "dm:" + lc(me)) : (mgmt || inGroup(me, gid));
+    const members = (gid: string) => gid.startsWith("dm:") ? [...mg, ...pilot.filter((p) => "dm:" + lc(p) === gid), ...staffL.filter((p) => "dm:" + lc(p) === gid)]
+      : gid === "staff" ? [...mg, ...staffL] : [...mg, ...pilot].filter((n) => inGroup(n, gid));   // teacher groups: management + teachers only
+    const canSee = (gid: string) => gid.startsWith("dm:") ? (mgmt || gid === "dm:" + lc(me)) : (mgmt || (gid === "staff" ? meKind === "staff" : meKind === "teacher" && inGroup(me, gid)));
     const need = () => { if (!mgmt) throw new Error("Management only"); };
+    const lbl = (n: string) => { const r = SRo.rows[lc(n)]; return (r && r.role !== "teacher" && !SRo.tsess.has(lc(n)) ? "" : "Teacher ") + n; };
     const msg = async (id: number) => { const { data } = await db.from("chat_messages").select("*").eq("id", id).maybeSingle(); if (!data || !canSee(data.gid)) throw new Error("Not found"); return data; };
     async function signed(rows: any[]) {
       const P = rows.flatMap((r) => r.img_path ? [r.img_path, ...((r.meta && Array.isArray(r.meta.imgs)) ? r.meta.imgs : [])] : []); if (!P.length) return rows;
@@ -94,7 +130,7 @@ Deno.serve(async (req: Request) => {
         GRP && Date.now() - GRP.at < 60e3 ? Promise.resolve(GRP.rows) : db.from("chat_groups").select("id,name,kind,sort").eq("kind", "group").order("sort").then((r: any) => { GRP = { at: Date.now(), rows: r.data || [] }; return GRP.rows; }),
         db.from("chat_reads").select("mid,chat_messages!inner(gid,mentions,needs_reply,hidden)").eq("name", me).is("seen_at", null).eq("chat_messages.hidden", false).limit(1000)]);
       const L = (G || []).filter((g: any) => g.kind === "group").map((g: any) => ({ ...g }));
-      if (mgmt) pilot.forEach((p) => L.push({ id: "dm:" + lc(p), name: "Teacher " + p, kind: "direct", sort: 100 }));
+      if (mgmt) { pilot.forEach((p) => L.push({ id: "dm:" + lc(p), name: "Teacher " + p, kind: "direct", sort: 100 })); staffL.forEach((p) => L.push({ id: "dm:" + lc(p), name: p, kind: "direct", sort: 101 })); }
       else L.push({ id: "dm:" + lc(me), name: "Management", kind: "direct", sort: 100 });
       const ids = L.map((g: any) => g.id);
       if (up) await db.from("chat_groups").upsert(L.filter((g: any) => g.kind === "direct").map((g: any) => ({ id: g.id, name: g.name, kind: "direct", sort: 100 })), { onConflict: "id", ignoreDuplicates: true });
@@ -130,7 +166,7 @@ Deno.serve(async (req: Request) => {
 
     if (a === "init") {
       const { data: MU } = await db.from("chat_mutes").select("gid").eq("name", me);
-      return out({ ok: true, me, mgmt, today, alias, muted: (MU || []).map((x: any) => x.gid), members: everyone.map((n) => ({ name: n, mgmt: isMg(n) })), groups: await groups(true),
+      return out({ ok: true, me, mgmt, today, alias, muted: (MU || []).map((x: any) => x.gid), members: vis.map(mem), kind: meKind, groups: await groups(true),
         quick: QUICK, ready: mgmt ? ["Please redo your time-in check now (tap Redo now on Today).", "You're late for your class. Please join now and reply here.", "Substitute needed at [time] for [student]. Who can take it?"] : [] });
     }
     if (a === "roster" || a === "member") {   // management: who is in Team Chat (applies to every group and direct chat)
@@ -143,7 +179,7 @@ Deno.serve(async (req: Request) => {
         if (b.on ? has : !has) {
           GX[gid] = b.on ? L0.filter((x) => lc(x) !== lc(who)) : [...L0, who]; if (!GX[gid].length) delete GX[gid];
           await db.from("docs").update({ data: { ...base, gx: GX }, updated_at: now }).eq("key", "sys:chat"); CFG = null;
-          await db.from("chat_messages").insert({ gid: /^zz/i.test(who) ? "zztest" : gid, author: me, author_mgmt: true, kind: "system", body: dn(me) + (b.on ? " added Teacher " + who + " to " : " removed Teacher " + who + " from ") + G1.name, mentions: [] });
+          await db.from("chat_messages").insert({ gid: /^zz/i.test(who) ? "zztest" : gid, author: me, author_mgmt: true, kind: "system", body: dn(me) + (b.on ? " added " + lbl(who) + " to " : " removed " + lbl(who) + " from ") + G1.name, mentions: [] });
         }
         cfg.gx = GX; for (const k of Object.keys(gx)) delete gx[k]; Object.assign(gx, GX);
       } else if (a === "member") {
@@ -153,17 +189,20 @@ Deno.serve(async (req: Request) => {
         if (b.on ? has : !has) {   // a real change: save it, log it in All Teachers (kept in the database), stop alerts already waiting
           const { data: cur } = await db.from("docs").select("data").eq("key", "sys:chat").maybeSingle();
           await db.from("docs").update({ data: { ...((cur && cur.data) || cfg), exclude: next }, updated_at: now }).eq("key", "sys:chat"); CFG = null; ROS = null;
-          await db.from("chat_messages").insert({ gid: /^zz/i.test(who) ? "zztest" : "all", author: me, author_mgmt: true, kind: "system", body: dn(me) + (b.on ? " added Teacher " : " removed Teacher ") + who, mentions: [] });
+          await db.from("chat_messages").insert({ gid: /^zz/i.test(who) ? "zztest" : "all", author: me, author_mgmt: true, kind: "system", body: dn(me) + (b.on ? " added " : " removed ") + lbl(who), mentions: [] });
           if (!b.on) await db.from("chat_outbox").update({ queued_at: now }).is("queued_at", null).ilike("to_name", who);
         }
         cfg.exclude = next;
       }
-      const nm = await activeTeachers();
-      (Array.isArray(cfg.exclude) ? cfg.exclude : []).forEach((x: string) => { if (!nm[lc(x)]) nm[lc(x)] = String(x); });
+      SR = null; const R2 = await staffRoster();
       const exs = new Set((Array.isArray(cfg.exclude) ? cfg.exclude : []).map((x: string) => lc(x)));
       const { data: GG } = await db.from("chat_groups").select("id,name,kind,sort").eq("kind", "group").order("sort");
       const glist = (GG || []).filter((g: any) => g.id !== "ann").map((g: any) => ({ id: g.id, name: g.name }));
-      const list = Object.keys(nm).filter((k) => !mg.some((x) => lc(x) === k) && !/^zz/.test(k) && !/test/.test(k)).sort().map((k) => ({ name: nm[k], in: !exs.has(k), groups: glist.filter((g: any) => inGroup(nm[k], g.id)).map((g: any) => g.id) }));
+      const people: any[] = Object.values(R2.rows).filter((x: any) => x.status === "active" && !isMg(x.name) && !/^zz/i.test(x.name) && !/test/i.test(x.name));
+      R2.tsess.forEach((k) => { if (!R2.rows[k] && !/^zz/.test(k) && !/test/.test(k) && !isMg(k)) people.push({ name: k.charAt(0).toUpperCase() + k.slice(1), role: "teacher", chat: true, status: "active" }); });
+      const list = people.sort((x: any, y: any) => String(x.name).localeCompare(String(y.name))).map((x: any) => { const k = lc(x.name), teach = x.role === "teacher" || R2.tsess.has(k);
+        return { name: x.name, in: x.chat !== false && !exs.has(k), off: x.chat === false, kind: teach ? "teacher" : "staff", ...(teach ? tag(x.name) : { team: "Staff", des: String(x.position || "") }), groups: teach ? glist.filter((g: any) => inGroup(x.name, g.id)).map((g: any) => g.id) : [],
+          access: R2.sess.has(k) || !!(x.email && String(x.email).trim()), sid: x.id || null }; });
       return out({ ok: true, teachers: list, groups: glist });
     }
     if (a === "mute") {
@@ -244,7 +283,7 @@ Deno.serve(async (req: Request) => {
         reply_by: nr && b.reply_by ? new Date(String(b.reply_by)).toISOString() : null, confirm: cf, pinned: mgmt && !!b.pin, parent_id: parent, ukey: ckey, meta: imgP.length > 1 ? { imgs: imgP } : null };
       const m = await insertMsg(row);
       await markReplied(gid, parent);
-      const gname = gid.startsWith("dm:") ? (mgmt ? "Management" : "Teacher " + me) : ((await db.from("chat_groups").select("name").eq("id", gid).maybeSingle()).data?.name || "Team Chat");
+      const gname = gid.startsWith("dm:") ? (mgmt ? "Management" : (meKind === "teacher" ? "Teacher " : "") + me) : ((await db.from("chat_groups").select("name").eq("id", gid).maybeSingle()).data?.name || "Team Chat");
       const others = mem.filter((n) => lc(n) !== lc(me));
       const loud: string[] = men.includes("all") || gid === "ann" || nr || cf || gid.startsWith("dm:") ? others : men;
       const what = body || (b.voice ? "Voice message" : imgP.length > 1 ? "Sent " + imgP.length + " pictures" : "Sent a picture");
@@ -287,10 +326,10 @@ Deno.serve(async (req: Request) => {
       const { data: ex } = await db.from("chat_messages").select("id").eq("ukey", ukey).maybeSingle();
       if (ex) { await db.from("chat_messages").update({ img_path: path, meta, body, edited_at: b.redo ? now : null, updated_at: now }).eq("id", ex.id); return out({ ok: true, id: ex.id, replaced: true }); }
       const m = await insertMsg({ gid: "timein", author: me, author_mgmt: false, kind: "timein", body, img_path: path, meta, ukey, mentions: [] });
-      await push(everyone, dn(me) + " · Time-in", body, "chat-" + m.id + "|timein", true);
+      await push(members("timein"), dn(me) + " · Time-in", body, "chat-" + m.id + "|timein", true);
       return out({ ok: true, id: m.id });
     }
-    if (a === "presence" && !mgmt) return out({ ok: true, members: everyone.map((n) => ({ name: n, mgmt: isMg(n) })) });   // (Misty 20:24) teachers: names only
+    if (a === "presence" && !mgmt) return out({ ok: true, members: vis.map(mem) });   // (Misty 20:24) teachers: names only
     if (a === "presence") {
       const { data: P } = await db.from("coe_presence").select("name,at").gte("at", new Date(Date.now() - 7 * 864e5).toISOString());
       const NOW = Date.now(), soon = new Date(NOW + 2 * 3600e3).toISOString();
@@ -300,7 +339,7 @@ Deno.serve(async (req: Request) => {
         if (st <= NOW) { if (!until[k] || en > until[k]) until[k] = en; } else if (!next[k] || st < next[k]) next[k] = st; }));
       (P || []).forEach((x: any) => { const k = lc(x.name); if (!last[k] || x.at > last[k]) last[k] = x.at; });
       const iso = (t: number) => t ? new Date(t).toISOString() : null;
-      return out({ ok: true, members: everyone.map((n) => { const k = lc(n); return { name: n, mgmt: isMg(n), last: last[k] || null, online: !!last[k] && NOW - new Date(last[k]).getTime() < 3 * 60e3, inClass: !!until[k], until: iso(until[k]), next: iso(next[k]) }; }) });
+      return out({ ok: true, members: everyone.map((n) => { const k = lc(n); return { ...mem(n), last: last[k] || null, online: !!last[k] && NOW - new Date(last[k]).getTime() < 3 * 60e3, inClass: !!until[k], until: iso(until[k]), next: iso(next[k]) }; }) });
     }
     return out({ ok: false, error: "Unknown action" }, 400);
   } catch (e) { return out({ ok: false, error: String((e as any)?.message || e) }); }
