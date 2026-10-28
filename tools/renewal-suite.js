@@ -91,8 +91,41 @@ function run(file) {
   // the database cases (server/TEST-renewals-1540.sql) must keep the payment-time cases (1542): the payment time is the Payment Confirmation's generated time
   { const sq = require('path').join(require('path').dirname(require('path').resolve(file)), 'server', 'TEST-renewals-1540.sql');
     if (fs.existsSync(sq)) { const t = fs.readFileSync(sq, 'utf8'); ok('database cases · payment time from the Payment Confirmation (S7) and a void one (S8) are kept', /S7 payment time taken from the confirmation/.test(t) && /S8 void confirmation/.test(t), 0); } }
-  console.log(out.join('\n')); console.log(bad ? '\n' + bad + ' renewal check(s) FAILED' : '\nAll ' + out.length + ' renewal checks passed');
-  return bad ? 1 : 0;
+  // 1546 · the portal's renewal-month hold (supabase-coe-student-v*/renew.ts, newest): 核对中 only where the numbers really disagree
+  return guard1546(file, ok).then(() => { console.log(out.join('\n')); console.log(bad ? '\n' + bad + ' renewal check(s) FAILED' : '\nAll ' + out.length + ' renewal checks passed'); return bad ? 1 : 0; });
+}
+async function guard1546(file, ok) {
+  const P = require('path'), root = P.dirname(P.resolve(file));
+  const dirs = fs.readdirSync(root).filter((d) => /^supabase-coe-student-v\d+$/.test(d) && fs.existsSync(P.join(root, d, 'renew.ts'))).sort((a, b) => +a.split('-v')[1] - +b.split('-v')[1]);
+  if (!dirs.length) return;
+  const src = fs.readFileSync(P.join(root, dirs[dirs.length - 1], 'renew.ts'), 'utf8');
+  ok('portal hold · uses the calendar from Oct 2026, the row start day, and the payment time (1546)', /CAL = "2026-10"/.test(src) && /const sb = r\.buy/.test(src) && /!paid && x >= post - bd/.test(src), 0);
+  const strip = require('module').stripTypeScriptTypes; if (typeof strip !== 'function') return;   // behaviour cases need Node ≥ 22.13
+  const js = strip(src).replace(/^export /gm, '');
+  const flags = async (T) => {   // T: table → rows; a tiny read-only stand-in for supabase-js (filters ignored except range paging)
+    const q = (t) => { const b = { a: 0, z: 1e9 }; const o = { select: () => o, is: () => o, order: () => o, ilike: () => o, gt: () => o, eq: () => o, range: (a, z) => { b.a = a; b.z = z; return o; },
+      then: (res) => res({ data: (T[t] || []).slice(b.a, b.z + 1), error: null }) }; return o; };
+    const ctx = { Date, Math, Number, String, JSON, Map, Set, Promise, Error, console }; vm.createContext(ctx);
+    vm.runInContext(js + '\nthis.renewFlags = renewFlags;', ctx); return ctx.renewFlags({ from: q });
+  };
+  const daily = (tab, m0, rows) => [{ tab, r: 1, data: [0, 0, 0, 0, m0] }].concat(rows.map(([code, t, days], i) => { const d = [code, '', t, '']; for (let j = 0; j < 31; j++) d.push(days[j + 1] || ''); return { tab, r: 3 + i, data: d }; }));
+  const pk = (id, code, t, buy, x) => Object.assign({ id, code, teacher: t, buy, enrolled: 33, active: true, shared: null, fin_adj: 0 }, x || {});
+  const C = 'ST-2099-001';
+  const mar = (c, extra) => ({ coe_packages: [pk('a', C, 'Kat', '2026-03-10')].concat(extra ? extra.pk : []), coe_pkg_mon: [{ id: 'a', m: '2026-03-01', v: c }].concat(extra ? extra.mon : []),
+    sheet_rows: daily('MAR-DAILY', '2026-03-01', [[C, 'Kat', { 5: 1, 10: 0.5, 20: 1.5 }]]), coe_renew_at: [], coe_cls_days: [] });
+  ok('portal hold · counted from the payment date (2) → shown', !(await flags(mar(2))).has(C), 0);
+  ok('portal hold · start-day class on the old side, no payment time (1.5) → shown', !(await flags(mar(1.5))).has(C), 0);
+  { const T = mar(1.5); T.coe_renew_at = [{ code: C, buy: '2026-03-10' }]; ok('portal hold · same with a recorded payment time saying after → 核对中', (await flags(T)).has(C), 0); }
+  ok('portal hold · whole month counted (3, a class before the payment twice) → 核对中', (await flags(mar(3))).has(C), 0);
+  ok('portal hold · a teacher row with no DAILY record that month is not compared', !(await flags(mar(2, { pk: [pk('b', C, 'Mayi', '2026-03-10', { enrolled: null })], mon: [{ id: 'b', m: '2026-03-01', v: 4 }] }))).has(C), 0);
+  const oct = (cal, c) => ({ coe_packages: [pk('o', C, 'April', '2026-10-10')], coe_pkg_mon: [{ id: 'o', m: '2026-10-01', v: c }],
+    sheet_rows: daily('OCT-DAILY', '2026-10-01', [[C, 'April', { 3: 1.5, 12: 3 }]]), coe_renew_at: [], coe_cls_days: cal.map(([day, h]) => ({ code: C, t: 'april', day, h, hb: 0 })) });
+  ok('portal hold · from Oct the calendar decides, not the DAILY copy (2.5 = calendar) → shown', !(await flags(oct([['2026-10-03', 1.5], ['2026-10-12', 2.5]], 2.5))).has(C), 0);
+  ok('portal hold · from Oct a real difference with the calendar → 核对中', (await flags(oct([['2026-10-03', 1.5], ['2026-10-12', 2.5]], 4))).has(C), 0);
+  { const T = { coe_packages: [pk('d', C, 'Dezza', '2026-10-10'), pk('r', 'ST-2099-002', 'Rose', '2026-10-05', { enrolled: null, shared: C })],
+      coe_pkg_mon: [{ id: 'd', m: '2026-10-01', v: 2 }, { id: 'r', m: '2026-10-01', v: 2.5 }], sheet_rows: [], coe_renew_at: [],
+      coe_cls_days: [{ code: C, t: 'dezza', day: '2026-10-03', h: 1, hb: 0 }, { code: C, t: 'dezza', day: '2026-10-14', h: 2, hb: 0 }, { code: 'ST-2099-002', t: 'rose', day: '2026-10-06', h: 1, hb: 0 }, { code: 'ST-2099-002', t: 'rose', day: '2026-10-12', h: 1.5, hb: 0 }] };
+    ok('portal hold · a shared row counts from its own start day (Rose 5 Oct, owner 10 Oct) → shown', !(await flags(T)).has(C), 0); }
 }
 module.exports = run;
-if (require.main === module) process.exit(run(process.argv[2] || 'app.html'));
+if (require.main === module) Promise.resolve(run(process.argv[2] || 'app.html')).then((c) => process.exit(c));
