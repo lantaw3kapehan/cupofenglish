@@ -6381,7 +6381,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1380;
+const COE_V = 1381;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7915,46 +7915,64 @@ const norm = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim
 const pages = t => { const out = []; const re = /\b(?:p|pp|pg|page|pages)\.?\s*(\d+)(?:\s*(?:-|–|to|and|&)\s*(\d+))?/gi; let m; while((m = re.exec(String(t || '')))){ out.push(+m[1]); if(m[2]) out.push(+m[2]); } return out; };
 const isWb = t => /work\s*book|\bwb\b/i.test(String(t || ''));
 const fd = d => { try{ return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); }catch(e){ return d; } };
-function check(text, list, eventId){
+const bkK = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+const BK1483 = {};   /* code|day → book of my class that day ('' = looked up, not found) */
+const bookNow = (code, eventId) => { const c = (D.schedule || []).find(x => x.id === eventId && (!code || String(x.code || '').toUpperCase() === String(code).toUpperCase())) || (D.schedule || []).find(x => String(x.code || '').toUpperCase() === String(code || '').toUpperCase() && x.day === D.today);
+  const s = (D.students || []).find(x => String(x.code || '').toUpperCase() === String(code || '').toUpperCase()); return (c && c.book) || (s && s.book) || ''; };
+const CHG = /\b(updated|new book|next book|moved to|changed? to|start(?:ed|s|ing)? (?:the )?(?:new |next )?book)\b/i;
+async function books1483(code, list, text){   /* looks up only the earlier homework's class day that could matter, once */
+  const L = list.filter(x => !/^no homework/i.test(x.text)), pg = text == null ? [1] : pages(text); if(!pg.length) return;
+  const prev = L.find(x => pages(x.text).length && (text == null || isWb(x.text) === isWb(text))); if(!prev) return;
+  if(text != null && Math.min.apply(null, pg) > Math.max.apply(null, pages(prev.text))) return;
+  const d = String(prev.date || '').slice(0, 10); if(!/^\d{4}-\d{2}-\d{2}$/.test(d) || (code + '|' + d) in BK1483) return;
+  await Promise.race([api('tSchedule', TOKEN, d, 1).then(r => { const ev = ((r && (r.events || (r.data && r.data.events))) || []).find(e => String(e.code || '').toUpperCase() === String(code).toUpperCase() && !e.cancelled); BK1483[code + '|' + d] = ev ? String(ev.book || '') : ''; }).catch(() => {}), new Promise(z => setTimeout(z, 2500))]); }
+function check(text, list, eventId, code){
 if(!text || /^no homework/i.test(text)) return null;
 const L = list.filter(x => x.eventId !== eventId && !/^no homework/i.test(x.text));
 const same = L.find(x => norm(x.text) === norm(text));
-if(same) return { issue: 'Same homework as before', msg: 'This is the same homework as on ' + fd(same.date) + ' (' + same.text + '). Give the next pages or a new task.', last: same };
+if(same) return { issue: 'Same homework as before', msg: 'This is the same homework as on ' + fd(same.date) + ' (' + same.text + '). Give the next pages or a new task — or keep it if you meant to.', last: same };
 const pg = pages(text); if(!pg.length) return null;
-const prev = L.find(x => pages(x.text).length && isWb(x.text) === isWb(text)); if(!prev) return null;
+const pi = L.findIndex(x => pages(x.text).length && isWb(x.text) === isWb(text)); if(pi < 0) return null; const prev = L[pi];
+if(L.slice(0, pi).some(x => CHG.test(x.text))) return null;                       /* a book change was written in between */
+const cur = bookNow(code, eventId), kc = bkK(cur), day = String(prev.date || '').slice(0, 10), bd = BK1483[code + '|' + day];
+const kp = bd ? bkK(bd) : (kc && bkK(prev.text).indexOf(kc) > -1 ? kc : '');
+if(!kc || !kp || kc !== kp) return null;                                           /* different or unknown book: pages are not compared */
 const lastMax = Math.max.apply(null, pages(prev.text)), curMin = Math.min.apply(null, pg);
-if(curMin <= lastMax) return { issue: 'Pages go back', msg: 'Page ' + curMin + ' comes before the last homework (' + prev.text + ', ' + fd(prev.date) + '). ' + (isWb(text) ? 'Workbook pages should move forward' : 'Pages should move forward') + ': next is p. ' + (lastMax + 1) + '.', last: prev };
+if(curMin <= lastMax) return { issue: 'Pages go back', msg: 'Page ' + curMin + ' comes before the last homework in ' + cur + ' (' + prev.text + ', ' + fd(prev.date) + '). Next would be p. ' + (lastMax + 1) + '. If this is a review or a new part, keep it.', last: prev };
 return null;
 }
 const lastLine = (list, ev) => { const x = list.filter(y => y.eventId !== ev && !/^no homework/i.test(y.text))[0]; return x ? '<div class="small" id="hwLast" style="margin-top:6px;background:#F3F6FA;border-radius:10px;padding:7px 10px;color:#4A4860">📚 <b>Last homework:</b> ' + esc(x.text) + ' · ' + esc(fd(x.date)) + (x.teacher ? ' · ' + esc(String(x.teacher).split(' ')[0]) : '') + '<br><span class="mute" id="hwLastTip">Give the next pages in order · not the same homework again</span></div>' : ''; };
 function live(inputId, code, ev){ const el = $(inputId); if(!el || el.dataset.hwl) return; el.dataset.hwl = '1';
-const paint = () => { const box = $('hwLast'), tip = $('hwLastTip'); if(!box) return; const h = HWH[code], w = h ? check(el.value.trim(), h.list, ev) : null;
+const paint = () => { const box = $('hwLast'), tip = $('hwLastTip'); if(!box) return; const h = HWH[code], w = h ? check(el.value.trim(), h.list, ev, code) : null;
 box.style.background = w ? '#FDECEA' : '#F3F6FA'; box.style.border = w ? '2px solid #D93F2B' : '0'; box.style.color = w ? '#8E1F12' : '#4A4860';
 if(tip){ tip.innerHTML = w ? '<b style="color:#D93F2B">⚠ ' + esc(w.msg) + '</b>' : 'Give the next pages in order · not the same homework again'; tip.className = w ? '' : 'mute'; }
 el.style.borderColor = w ? '#D93F2B' : ''; };
 el.addEventListener('input', paint); paint(); }
-function warn(inputId, w){ const el = $(inputId); if(!el) return; const old = $('hwWarn'); if(old) old.remove();
-el.insertAdjacentHTML('afterend', '<div id="hwWarn" class="gx-tip" style="margin-top:6px;background:#FDECEA;border:2px solid #D93F2B;border-radius:10px;padding:8px 10px;color:#8E1F12"><b style="color:#D93F2B">⚠ Check the homework</b><br>' + esc(w.msg) + '<br><span class="small">Change it, or tap Save again to keep it as it is.</span></div>');
+function warn(inputId, w, keep){ const el = $(inputId); if(!el) return; const old = $('hwWarn'); if(old) old.remove();
+el.insertAdjacentHTML('afterend', '<div id="hwWarn" class="gx-tip" role="alert" style="margin-top:6px;background:#FFF6E8;border:1.5px solid #E2A33A;border-radius:10px;padding:8px 10px;color:#6B4A0E"><b style="color:#8A5300">' + (w.issue === 'Pages go back' ? 'Check the pages' : 'Same homework as before?') + '</b><br>' + esc(w.msg) + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button type="button" class="btn ghost sm" id="hwWarnFix">Change it</button><button type="button" class="btn teal sm" id="hwWarnKeep">Keep it</button></div><span class="small" style="display:block;margin-top:4px">Keep it saves it as it is · management sees a note about it.</span></div>');
+{ const f = $('hwWarnFix'), k = $('hwWarnKeep'); if(f) f.onclick = () => { try{ el.focus(); el.select && el.select(); }catch(e){} }; if(k) k.onclick = () => { k.disabled = true; k.textContent = 'Saving…'; if(keep) keep(); }; }
 el.style.borderColor = '#D93F2B'; el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 let OK_ONCE = '';
-function flag(c, text, w){ try{ api('tHwFlag', TOKEN, { date: c.day || D.today, code: c.code, student: c.student || '', text, issue: w.issue, last: w.last ? w.last.text + ' (' + w.last.date + ')' : '' }); }catch(e){} }
+const FLAGGED = {}; function flag(c, text, w){ const fk = [c.code, c.day || D.today, text, w.issue].join('|'); if(FLAGGED[fk]) return; FLAGGED[fk] = 1; try{ api('tHwFlag', TOKEN, { date: c.day || D.today, code: c.code, student: c.student || '', text, issue: w.issue, last: w.last ? w.last.text + ' (' + w.last.date + ')' : '' }); }catch(e){} }
 const _hs = window.hwSheet;
-if(_hs) window.hwSheet = function(id){ _hs(id); OK_ONCE = ''; try{ const c = (D.schedule || []).find(x => x.id === id); if(!c || !c.code) return; hist(c.code).then(L => { const t = $('hwT'); if(t && !$('hwLast')) t.insertAdjacentHTML('afterend', lastLine(L, id)); live('hwT', c.code, id); }); }catch(e){} };
+if(_hs) window.hwSheet = function(id){ _hs(id); OK_ONCE = ''; try{ const c = (D.schedule || []).find(x => x.id === id); if(!c || !c.code) return; hist(c.code).then(L => { books1483(c.code, L); const t = $('hwT'); if(t && !$('hwLast')) t.insertAdjacentHTML('afterend', lastLine(L, id)); live('hwT', c.code, id); }); }catch(e){} };
 const _mh = window.markHw;
 if(_mh) window.markHw = async function(id, btn){
 const t = $('hwT'), c = (D.schedule || []).find(x => x.id === id);
-if(t && c && c.code && !($('hwNo') && $('hwNo').checked)){ const text = t.value.trim(), w = check(text, await hist(c.code), id);
-if(w && OK_ONCE !== text){ OK_ONCE = text; warn('hwT', w); return; }
+if(window._hw1483 === id) return; window._hw1483 = id; try{
+if(t && c && c.code && !($('hwNo') && $('hwNo').checked)){ const text = t.value.trim(), L = await hist(c.code); await books1483(c.code, L, text); const w = check(text, L, id, c.code);
+if(w && OK_ONCE !== text){ OK_ONCE = text; warn('hwT', w, () => { window._hw1483 = ''; window.markHw(id, btn); }); return; }
 if(w) flag(c, text, w); }
+}finally{ window._hw1483 = ''; }
 return _mh(id, btn);
 };
 const _ns = window.noteSheet;
-if(_ns) window.noteSheet = function(code, eventId, day){ _ns(code, eventId, day); OK_ONCE = ''; try{ if(D.mgr) return; hist(code).then(L => { const h = $('nH'); if(h && !$('hwLast')) h.insertAdjacentHTML('afterend', lastLine(L, eventId || '')); live('nH', code, eventId || ''); }); }catch(e){} };
+if(_ns) window.noteSheet = function(code, eventId, day){ _ns(code, eventId, day); OK_ONCE = ''; try{ if(D.mgr) return; hist(code).then(L => { books1483(code, L); const h = $('nH'); if(h && !$('hwLast')) h.insertAdjacentHTML('afterend', lastLine(L, eventId || '')); live('nH', code, eventId || ''); }); }catch(e){} };
 const _sn = window.saveNote;
 if(_sn) window.saveNote = async function(code, eventId, day){
 try{ const h = $('nH'); if(h && !($('nNoH') && $('nNoH').checked) && !D.mgr){ const text = h.value.trim(), c = (D.schedule || []).find(x => x.id === eventId) || { code, day: day || D.today, student: '' };
-const w = check(text, await hist(code), eventId || '');
-if(w && OK_ONCE !== text){ OK_ONCE = text; warn('nH', w); return; }
+if(window._sn1483 === code + eventId) return; window._sn1483 = code + eventId; let w = null; try{ const L = await hist(code); await books1483(code, L, text); w = check(text, L, eventId || '', code); }finally{ window._sn1483 = ''; }
+if(w && OK_ONCE !== text){ OK_ONCE = text; warn('nH', w, () => window.saveNote(code, eventId, day)); return; }
 if(w) flag(c, text, w); } }catch(e){}
 return _sn(code, eventId, day);
 };
