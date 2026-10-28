@@ -4867,8 +4867,8 @@ const T = [...new Set(SL.teachers.concat(e.teacher && e.teacher!=='—' ? [e.tea
 CE = { e, i, src }; const nw0 = Date.now(), ph = e.cancelled ? 'cx' : nw0 < st - 5 * 6e4 ? 'pre' : nw0 <= +new Date(e.end) + 10 * 6e4 ? 'live' : 'post', late2 = !e.cancelled && st - nw0 < 2 * 36e5; window._ceLate = late2;   /* pre = before class · live = class on now · post = finished; late2 = under 2 h before the start (policy) */
 openSheet(`<h1>${esc(e.student || e.title)}</h1><div class="mute small">${esc(e.title)} · ${esc(svDate(ymdLocal(st),{weekday:'short',day:'numeric',month:'short'}))} ${tm(e.start)}–${tm(e.end)}</div>
 ${e.cancelled?'<div class="mini" style="margin-top:10px;background:var(--coralT);color:#9A4330"><b>Cancelled</b> on the calendar</div>':`<div id="ceMon" class="mon">${monHtml(e, null)}</div>`}
-${e.cancelled ? '' : ph === 'pre' ? `<button class="btn teal block" style="margin-top:12px" onclick="cxClassProof(${i},'${src}')">Class details to send (picture)</button>
-<div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost grow" id="ceBMv" onclick="ceOpen('ceMv')">Move · reschedule</button><button class="btn ghost grow" id="ceBCx" onclick="ceOpen('ceCx')">${late2 ? 'Cancel · under 2 h' : 'Cancel class'}</button></div>` : `<div class="small" style="margin-top:14px;text-align:center"><a class="link" onclick="this.parentNode.remove();$('ceMore').classList.remove('hide')">${ph === 'live' ? 'Need to change this class?' : 'Picture · move · cancel'}</a></div><div id="ceMore" class="hide"><button class="btn ghost block" style="margin-top:12px" onclick="cxClassProof(${i},'${src}')">Class details to send (picture)</button><div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost grow" id="ceBMv" onclick="ceOpen('ceMv')">Move · reschedule</button><button class="btn ghost grow" id="ceBCx" onclick="ceOpen('ceCx')">Cancel class</button></div></div>`}
+${e.cancelled ? '' : ph !== 'live' ? `${ph === 'post' ? '<div id="cePost" class="mini" style="margin-top:12px">' + cePostNote(e) + '</div>' : ''}<button class="btn ${ph === 'post' ? 'ghost' : 'teal'} block" style="margin-top:12px" onclick="cxClassProof(${i},'${src}')">Class details to send (picture)</button>
+<div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost grow" id="ceBMv" onclick="ceOpen('ceMv')">Move · reschedule</button><button class="btn ghost grow" id="ceBCx" onclick="ceOpen('ceCx')">${late2 && ph === 'pre' ? 'Cancel · under 2 h' : 'Cancel class'}</button></div>` : `<div class="small" style="margin-top:14px;text-align:center"><a class="link" onclick="this.parentNode.remove();$('ceMore').classList.remove('hide')">${ph === 'live' ? 'Need to change this class?' : 'Picture · move · cancel'}</a></div><div id="ceMore" class="hide"><button class="btn ghost block" style="margin-top:12px" onclick="cxClassProof(${i},'${src}')">Class details to send (picture)</button><div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost grow" id="ceBMv" onclick="ceOpen('ceMv')">Move · reschedule</button><button class="btn ghost grow" id="ceBCx" onclick="ceOpen('ceCx')">Cancel class</button></div></div>`}
 <div id="ceMv" class="${e.cancelled ? '' : 'hide'}"><h2 style="margin-top:18px">${e.cancelled ? 'Change this class' : 'Move · reschedule'}</h2>
 <div class="row" style="gap:10px;align-items:flex-start"><div class="grow"><label>Date</label><input id="eD" class="in-t" type="date" value="${esc(ymdLocal(st))}"></div>
 <div class="grow"><label>Time</label>${timeSel('eH', tm(e.start))}</div>
@@ -5130,6 +5130,17 @@ else if(e.code && now > en.getTime() + 15*60000) out.push(`<span class="chip cor
 return out.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${out.join('')}</div>` : '';
 }
 function voovLink(id){ const n = String(id||'').replace(/\D/g,''); return n.length >= 9 ? 'voovmeeting:'+SL2+'page/inmeeting?meeting_code='+n : ''; }
+/* 1500 · what happened to this class: held = a class time-in, a video or a class note (Monitor's copy) */
+function ceHeld(e){ const ci = e && e.ci, v = e && e.vid, w = [];
+  if(ci && ci.time) w.push((ci.first ? 'time-in ' : '“I\'m in” ') + ci.time); if(v && v.url) w.push('a class video');
+  try{ const M = window.__monData && window.__monData(); (M && M.teachers || []).forEach(t => (t.classes || []).forEach(c => { if(c.id === e.id && c.note) w.push('a class note'); })); }catch(x){}
+  return w; }
+function ceStat(e, ci, v){ const now = Date.now(), st = +new Date(e.start), en = +new Date(e.end);
+  if(e.cancelled) return 'Cancelled'; if(now < st - 5 * 6e4) return 'Scheduled'; if(now <= en) return 'Live now';
+  const h = ceHeld(Object.assign({}, e, { ci: ci || e.ci, vid: v || e.vid })); return h.length ? 'Ended · held' : 'Ended · not held'; }
+function cePostNote(e){ const h = ceHeld(e);
+  return h.length ? '<b>Ended · held</b> · ' + esc(h.join(' · ')) + '<div class="small mute">Moving it asks you first.</div>'
+    : '<b>Ended · not held</b> · no time-in, no video, no class note<div class="small mute">Parent rescheduled? Tap Move · reschedule and choose the new day.</div>'; }
 function monHtml(e, info){
 const ci = (info && info.ci) || e.ci, v = (info && info.vid) || e.vid, st = new Date(e.start), now = Date.now(), vv = voovLink(e.meet);
 const ciH = ci && ci.time ? `<div class="mon-r"><b>${ci.first?'Time-in':'“I\'m in”'} ${esc(ci.time)}</b> <span class="chip ${ci.status==='On time'?'green':'red'}">${esc(/^Late/.test(ci.status)?Math.abs(+ci.mins||0)+' min late':ci.status)}</span>${ci.first?'<div class="small mute">First class of the day · the teacher\'s time-in counts as “I\'m in”</div>':''}
@@ -5140,7 +5151,7 @@ ${/^http/.test(ci.proof||'')?`<a class="btn sm teal" style="margin-top:8px" href
 const vH = v && v.url ? `<div class="mon-r"><b>Class video ✓</b><div class="small mute">${v.app === true ? 'Uploaded in the app' : v.app === false ? 'Uploaded by the teacher in Drive (not the app)' : 'Video found'}${v.at?' · '+esc(v.at):''}${v.by==='daily'?' · linked in '+esc(new Date(e.start).toLocaleDateString('en-GB',{month:'long'}).toUpperCase())+'-DAILY':''}</div><a class="btn sm" style="margin-top:8px" href="${esc(v.url)}" target="_blank">Open video</a></div>`
 : now < st.getTime() ? '' : `<div class="mon-r"><b>${now > new Date(e.end) ? 'No class video yet' : 'Video after class'}</b>${v && v.folder?`<div><a class="link small" href="${esc(v.folder)}" target="_blank">Open the student's folder</a></div>`:''}</div>`;
 const dec = ci && ci.decision;
-return `<div class="mon-g">${ciH}${vH}<div class="mon-r"><b>Live class</b><div class="small mute">VooV ${esc(e.meet || '—')}</div>
+return `<div class="mon-g">${ciH}${vH}<div class="mon-r"><b>${ceStat(e, ci, v)}</b><div class="small mute">VooV ${esc(e.meet || '—')}</div>
 <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">${e.meet?`<button class="btn sm" onclick="copyId('${esc(e.meet)}')">Copy ID</button>`:''}${vv?`<a class="btn sm teal" href="${esc(vv)}">Open VooV</a>`:''}</div></div></div>
 ${dec ? `<div class="fbfix" style="margin-top:10px"><b>Tagged</b>${esc(dec)}</div>` : now < st.getTime() ? '' : `<div class="mon-tag"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b class="grow">Tag this class</b>
 <div class="seg" style="margin:0"><button id="tgK1" class="on" onclick="tgKind('late')">Late to class</button><button id="tgK2" onclick="tgKind('video')">Late video</button></div></div>
@@ -5156,7 +5167,7 @@ const b = $('tgGo'); if(b){ b.disabled = !c; b.textContent = c ? (c==='Waive' ? 
 async function monLoad(){
 if(!CE || CE.e.cancelled) return; const e = CE.e;
 try{ const r = await api('mgmtClassInfo', TOKEN, { id: e.id, start: e.start, end: e.end, teacher: e.teacher, code: e.code, book: e.book, type: e.type });
-if(CE && CE.e === e && $('ceMon')){ if(r.ci) e.ci = r.ci; if(r.vid) e.vid = r.vid; $('ceMon').innerHTML = monHtml(e, r); TG = { kind:'late', cond:'' }; } }catch(x){}
+if(CE && CE.e === e && $('ceMon')){ if(r.ci) e.ci = r.ci; if(r.vid) e.vid = r.vid; $('ceMon').innerHTML = monHtml(e, r); TG = { kind:'late', cond:'' }; const pn = $('cePost'); if(pn) pn.innerHTML = cePostNote(e); } }catch(x){}
 }
 async function tgSend(){
 const e = CE.e, b = $('tgGo'); if(!TG.cond) return; b.disabled = true; b.textContent = 'Saving…';
@@ -5185,6 +5196,8 @@ if(!same && b && D && D.mgr) ckRun({ teacher: tc, dates: [d], time: t, mins: m, 
 }
 async function sendEdit(i, action, src){
 const L = evList(src), e = L[i]; if(!e) return;
+if(action === 'move' && !e.cancelled && Date.now() > +new Date(e.end)){ const h = ceHeld(e); if(h.length && !confirm('This class was held (' + h.join(', ') + ').\nMoving it takes it off ' + svDate(ymdLocal(new Date(e.start)), { weekday: 'short', day: 'numeric', month: 'short' }) + ' — the lesson count and pay follow the new day.\n\nMove it anyway?')) return; }
+if(action !== 'restore') setTimeout(() => { try{ if(window.moLoad) moLoad(); }catch(x){} try{ if(window.coeStampCheck) coeStampCheck(); }catch(x){} }, 4000);   /* 1500: Monitor / To do drop the old class */
 const f = {action, start:e.start, date:$('eD').value, time:$('eH').value.trim(), mins:$('eM').value, teacher:$('eT').value, makeup: !!($('eMk') && $('eMk').checked), reason: (($('eR')||{}).value||'').trim(), forward: action==='move' ? !!($('eFw') && $('eFw').checked) : action==='cancel' && (!!($('eStop') && $('eStop').checked) || !!window._cxStop), force: action==='move' && ckForce()};
 if(action==='move' && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(f.time)) return toast('Choose a time');
 if(action==='cancel' && !e.cancelled && window._ceLate && !/teacher|internet|power|outage|cupofenglish/i.test(f.reason)) return toast('Under 2 hours: a parent cancellation counts as a completed class. Choose a teacher / CupOfEnglish reason.');
@@ -6367,7 +6380,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1374;
+const COE_V = 1375;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
