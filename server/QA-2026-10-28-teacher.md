@@ -123,7 +123,7 @@ Counts: 48 rows · Pass 34 · Fail → fixed 8 (+ status/role fixes inside Pass 
 
 | Release | What | Rollback |
 |---|---|---|
-| 1480 `patches/1480-teacher-calm-status.js` | D1 D2 D3 D4 | `rollback-pre-1480` (main before 1480–1482) |
+| 1480 `patches/1480-teacher-calm-status.js` | D1 D2 D3 D4 | `rollback-pre-1480` (40989e2) · main c193719 · COE_V 1395 · CI and Pages deploy passed 13:10Z |
 | 1481 `patches/1481-teacher-words-dates.js` | D6 D7 D8 D9 | (same branch) |
 | 1482 `patches/1482-teacher-icons-touch.js` | D5 D10 D11 D12 | (same branch) |
 | 1483 `patches/1483-homework-pages-same-book.js` (shipped first, priority) | D13 D14 | `rollback-pre-1483` (6b905d3) · main d70015d · COE_V 1381 |
