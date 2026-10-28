@@ -2447,7 +2447,7 @@ let h = `<div class="lead"><h1>Pay</h1><div class="mute small">${month} so far �
 <div class="small mute" style="margin-top:8px">Regular ${me.nowReg||0} · Trial ${me.nowTrial||0} · Sub ${me.nowSub||0} · ${peso(me.rate)}/lesson</div></div>`;
 if(me.rank){
 h += `<h2>Rank</h2><div class="card"><div class="row"><b class="grow">${esc(me.rank)}</b><span class="num">${peso(me.rate)}/lesson</span></div>
-<div class="small mute">${(me.lifetime||0).toLocaleString()} lifetime units${me.rankDate?' · since '+esc(me.rankDate):''}</div></div>`;
+<div class="small mute">${(m => { const now = (+m.nowReg || 0) + (+m.nowTrial || 0) + (+m.nowSub || 0), l = +m.lifetime || 0; return l < now ? (Math.round((l + now) * 10) / 10).toLocaleString() + ' lifetime units incl. this month' : l.toLocaleString() + ' lifetime units'; })(me)}${me.rankDate?' · since '+esc(me.rankDate):''}</div></div>`;
 }
 h += `<h2>Pay history</h2>`;
 h += pay.length ? `<table><tr><th>Month</th><th>Units</th><th>Net</th><th>Status</th></tr>${pay.map(p=>`<tr onclick='paySheet(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="cursor:pointer"><td>${esc(p.month)}</td><td class="num">${p.units}</td><td class="num"><b>${peso(p.net)}</b></td>
@@ -4609,7 +4609,7 @@ setTimeout(() => { if($('tmR')) $('tmR').value = t; if(po){ const p = document.q
 setInterval(() => { if(!D || document.hidden) return; if(D.mgr) loadMsgs(true); else loadTMsgs(); }, 120000);
 
 let PCK = null, PCKM = null;
-async function loadPayCheck(){ if(!TOKEN) return; try{ await swr('paychk', () => api('tPayCheck', TOKEN), v => PCK = v, () => { if(VIEW === 'pay') renderPay(); if(VIEW === 'today') renderToday(); }); }catch(e){} }
+async function loadPayCheck(){ if(!TOKEN) return; try{ await swr('paychk', () => api('tPayCheck', TOKEN), v => PCK = (v => { try{ const n = String((v && v.me && v.me.name) || '').trim().toLowerCase(), m = String((typeof D !== 'undefined' && D && D.me && D.me.name) || '').trim().toLowerCase(); return v && v.me && (!m || n !== m) ? Object.assign({}, v, { me: null }) : v; }catch(e){ return v; } })(v), () => { if(VIEW === 'pay') renderPay(); if(VIEW === 'today') renderToday(); }); }catch(e){} }
 const pckState = p => { if(!p || !p.me) return ''; const c = p.check || {}; if(c.status === 'Verified' && c.net && +c.net !== +p.me.net) return 'Changed'; return c.status || ''; };
 function payPaid(mon){ const k = s => { const t = String(s || '').trim(), m = t.match(/([A-Za-z]{3})[a-z]*\.?\s+(\d{4})/); return m ? m[1].toLowerCase() + m[2] : t.toLowerCase(); }, key = k(mon); if(!key) return false;
   return !!(PCK && PCK.me && PCK.me.paid && k(PCK.month) === key) || ((D && D.pay) || []).some(x => k(x.month) === key && /paid/i.test(String(x.status || ''))); }   /* 14 Oct */
@@ -6367,7 +6367,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1367;
+const COE_V = 1368;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -20121,7 +20121,7 @@ body:not(.mgr) #v-pay{background:none!important;border:0!important;box-shadow:no
     /* rank → header line */
     const hr = H.find(x => /^Rank/.test(x.textContent.trim())), lead = v.querySelector('.lead');
     if(lead && !lead.querySelector('.rk509') && me.rank){ const since = me.rankDate ? (() => { const m = String(me.rankDate).match(/^(\d{4})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, 1).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : me.rankDate; })() : '';
-      lead.insertAdjacentHTML('beforeend', `<div class="rk509"><b>${IC}${esc(me.rank)}</b><span>${esc(peso(me.rate))}/lesson</span><span>· ${(me.lifetime || 0).toLocaleString()} lifetime units</span>${since ? `<span>· since ${esc(since)}</span>` : ''}</div>`); }
+      lead.insertAdjacentHTML('beforeend', `<div class="rk509"><b>${IC}${esc(me.rank)}</b><span>${esc(peso(me.rate))}/lesson</span><span>· ${(m => { const now = (+m.nowReg || 0) + (+m.nowTrial || 0) + (+m.nowSub || 0), l = +m.lifetime || 0; return l < now ? (Math.round((l + now) * 10) / 10).toLocaleString() + ' lifetime units incl. this month' : l.toLocaleString() + ' lifetime units'; })(me)}</span>${since ? `<span>· since ${esc(since)}</span>` : ''}</div>`); }
     if(hr){ const c = hr.nextElementSibling; if(c && c.classList.contains('card')) c.remove(); hr.remove(); }
     /* history table → fold under the chart */
     const hh = H.find(x => /^History/.test(x.textContent.trim()));
@@ -20167,7 +20167,9 @@ body:not(.mgr) #v-pay{background:none!important;border:0!important;box-shadow:no
     const est = [...v.querySelectorAll('.card')].find(c => /^\s*Estimated/.test(c.textContent)); if(!est) return; est.insertAdjacentHTML('afterend', h); const nb = v.querySelector('.at516'); if(nb) nb._h = h; }   /* 516 · 517 */
   css.textContent += `#v-pay .at516 .yr{flex:none}#v-pay .at516 .bs{display:flex;align-items:flex-end;gap:12px;height:78px;padding-top:16px}#v-pay .at516 .bs>div{position:relative;width:46px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}#v-pay .at516 .bs i{flex:none;display:block;width:30px;border-radius:7px 7px 2px 2px;background:linear-gradient(180deg,#47B985,#2F9A68)}#v-pay .at516 .bs s{text-decoration:none;font-size:11px;font-weight:700;color:#1E6B4A;margin-bottom:3px;white-space:nowrap}#v-pay .at516 .bs span{font-size:11px;color:#8A87A0;margin-top:3px}`;
   css.textContent += `#v-pay .at516{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:12px;padding:16px 18px;background:linear-gradient(135deg,#F1FAF5,#fff 65%)!important}#v-pay .at516 .tx{flex:1;min-width:200px}#v-pay .at516 span{display:block;font-size:12.5px;color:#4F8A6E;font-weight:700;letter-spacing:.02em}#v-pay .at516 b{display:block;font-size:30px;color:#1E6B4A;font-variant-numeric:tabular-nums;letter-spacing:-.5px;margin:2px 0}#v-pay .at516 em{font-style:normal;font-size:12.5px;color:#6B6884}#v-pay .at516 em i{font-style:normal;color:#B5793A;font-weight:700}#v-pay .at516 .sp{width:220px;max-width:100%;height:46px;flex:none}@media(max-width:560px){#v-pay .at516 .sp{width:100%}}`;
-  function paidLine(){ const v = $('v-pay'); if(!v || v.querySelector('.pl512')) return; const p = typeof PCK !== 'undefined' && PCK; if(!p || !p.me || !p.me.paid) return;
+  function paidLine(){ const v = $('v-pay'); if(!v) return; const p = typeof PCK !== 'undefined' && PCK, old = v.querySelector('.pl512');   /* 1366: own pay only */
+    const mine = !!(p && p.me && p.me.paid && D && D.me && String(p.me.name || '').trim().toLowerCase() === String(D.me.name || '').trim().toLowerCase());
+    if(!mine){ if(old) old.remove(); return; } if(old) return;
     const est = [...v.querySelectorAll('.card')].find(c => /^\s*Estimated/.test(c.textContent)); if(!est) return;
     est.insertAdjacentHTML('beforeend', `<div class="pl512"><span>✓</span><b>${esc(p.month)} pay · ${esc(peso(p.me.net))}</b><em>paid</em></div>`); }   /* 512 */
   css.textContent += `#v-pay .pl512{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px dashed #E9E7F1;font-size:13px;color:#4A4766}#v-pay .pl512 span{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#E8F5EF;color:#1E7A55;font-weight:700;font-size:12px}#v-pay .pl512 em{font-style:normal;color:#1E7A55;font-weight:700;font-size:12px;margin-left:auto;padding:2px 9px;border-radius:999px;background:#E8F5EF}`;
@@ -23916,6 +23918,28 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   w.__762 = 1; window.api = w;
   /* the ↻ Refresh button asks everything fresh */
   document.addEventListener('click', ev => { try{ const b = ev.target && ev.target.closest && ev.target.closest('#rf'); if(b) FORCE = Date.now(); }catch(e){} }, true);
+})();
+</script>
+<script>
+/* 1366 · each person sees only their own data on this device: the device remembers whose data it holds; a different person signing in,
+   or anyone signing out, clears every saved copy and the in-memory pay data. */
+(function(){
+  const OWN = 'coe.owner', who = () => (typeof D !== 'undefined' && D && D.me && D.me.name) ? String(D.me.name).trim().toLowerCase() + (D.mgr ? '|m' : '|t') : '';
+  function forget(){
+    try{ Object.keys(MEM).forEach(k => { delete MEM[k]; }); }catch(e){}
+    try{ idbDo('readwrite', s => s.clear()); }catch(e){}
+    try{ for(let i = localStorage.length - 1; i >= 0; i--){ const k = localStorage.key(i) || ''; if(/^coe\.(m|stu|cls|doc|ts)\./.test(k) || k === 'coe.payall') localStorage.removeItem(k); } }catch(e){}
+    try{ PCK = null; }catch(e){} try{ PCKM = null; }catch(e){} try{ MYR = null; }catch(e){} try{ MYP = null; }catch(e){}
+  }
+  const stranger = w => { try{ const p = MEM['coe.m.paychk'] ? JSON.parse(MEM['coe.m.paychk']) : null, n = p && p.me && p.me.name ? String(p.me.name).trim().toLowerCase() : ''; return !!n && n + '|t' !== w; }catch(e){ return false; } };
+  const r0 = window.render;
+  if(typeof r0 === 'function') window.render = render = function(){
+    try{ const w = who(); if(w){ let o = ''; try{ o = localStorage.getItem(OWN) || ''; }catch(e){}
+      if((o && o !== w) || (!o && stranger(w))) forget();
+      if(o !== w) try{ localStorage.setItem(OWN, w); }catch(e){} } }catch(e){}
+    return r0.apply(this, arguments); };
+  const l0 = window.logout;
+  if(typeof l0 === 'function') window.logout = logout = function(){ const r = l0.apply(this, arguments); forget(); try{ localStorage.removeItem(OWN); }catch(e){} return r; };
 })();
 </script>
 <script>
