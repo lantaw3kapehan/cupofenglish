@@ -232,3 +232,12 @@ Review of 1530 + Misty (22:34): "make the Philippine price list follow the same 
 - Enquiries › Philippines › 2 Enrolling: card 6 "Service agreement (English)" opens the same dialog on Philippines (one component).
 - Student page / trial "Enrolling" › Service agreement: unchanged (English automatically for PH learners).
 - PH pictures: the top-right chip is Inter bold ("Price List" / "Learning Roadmap") instead of the frame's slab serif. China unchanged here.
+
+# 1539d · Picture frame in the brand fonts (29 Oct 2026, Misty 03:01–03:02: "fix China too, font only")
+- coeCard (China price lists, partner prices, personalised price, CEFR picture, course plan; PH price lists and roadmaps) drew text in a
+  slab-serif stack (Rockwell / Arvo, falling back to a Times-like serif where those fonts do not load, e.g. Google Fonts blocked in
+  mainland China). Now Inter (text) + Fredoka One (headings) from the app's own font files, loaded before the canvas draws; Chinese
+  characters still PingFang SC / Microsoft YaHei / Noto Sans SC. Wording, layout and picture sizes unchanged (same heights before/after).
+- Before/after: scratchpad/phprice/font-compare-china-*.png.
+- Not in the frame (own fonts, not changed; listed for Misty): weekly open/class times pictures, Payment Confirmation, some document
+  pictures (Rockwell / Arvo stacks in their own CSS / canvas code).
