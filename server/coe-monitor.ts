@@ -40,7 +40,8 @@ Deno.serve(async (req: Request) => {
     db.from("classes").select("data").eq("day", day).limit(1000),
     db.from("writes").select("fn,who,args,status,error,created_at").gte("created_at", from).lt("created_at", to).neq("status", "test").order("created_at", { ascending: false }).limit(1500),
     db.from("coe_activity").select("fn,who,ok,detail,at").gte("at", from).lt("at", to).order("at", { ascending: false }).limit(600),
-    db.from("coe_class_videos").select("event_id,teacher").eq("day", day).limit(1000),
+    Promise.all([db.from("coe_class_videos").select("event_id,teacher").eq("day", day).limit(1000), db.from("coe_class_video_days").select("event_id,teacher").eq("day", day).limit(1000)])   // 1364: the day's own records too
+      .then(([a, d]: any[]) => ({ data: [...(a.data || []), ...(d.data || [])] })),
     db.from("docs").select("data").eq("key", "sys:vids").maybeSingle(),
     db.from("log_rows").select("data").eq("tab", "T-TIMEIN").like("data->>0", day + "%").limit(1500),
     db.from("sheet_rows").select("data").eq("tab", "S-HOMEWORK").like("data->>1", day + "%").limit(1500),

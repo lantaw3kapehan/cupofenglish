@@ -315,7 +315,8 @@ Deno.serve(async (req: Request) => {
       for (let k = 1; k <= 7; k++) { const ds = new Date(Date.now() + 8 * 3600e3 - k * 864e5).toISOString().slice(0, 10); if (ds >= FROM) days.push(ds); }
       if (!days.length) return out({ ok: true, db: true, list: [] });
       const [C, U] = await Promise.all([db.from("classes").select("data,day").in("day", days).limit(2000),
-        db.from("coe_class_videos").select("event_id,day").in("day", days).limit(2000)]);
+        Promise.all([db.from("coe_class_videos").select("event_id,day").in("day", days).limit(2000), db.from("coe_class_video_days").select("event_id,day").in("day", days).limit(4000)])   // 1364: the day's own records too
+          .then(([a, d]: any[]) => ({ data: [...(a.data || []), ...(d.data || [])] }))]);
       if (C.error) return out({ ok: false, fallback: true });
       const up = new Set((U.data || []).map((x: any) => String(x.event_id) + "|" + String(x.day))), has = V.days || {};
       const list = (C.data || []).map((r: any) => ({ e: r.data || {}, ds: String(r.day) })).filter(({ e, ds }: any) => !e.cancelled && e.code && (e.teachers || []).map((t: string) => String(t).toLowerCase()).includes(lc)

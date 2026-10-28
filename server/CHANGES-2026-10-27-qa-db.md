@@ -26,11 +26,12 @@ Growth reads the saved evaluations from the table `coe_qa_saves`.
 ## Checks
 - **Column mapping:** tested against the real QA-DATA headings and the real form (cached in docs). All 27 columns are filled, the five comment columns are taken in turn, scores are stored as numbers, and checkbox answers are joined the same way the sheet joins them.
 - **Fails safe:** if the form's titles change and no longer match the headings, the save is marked *unmapped*. It is never shown, and Google still gets the evaluation as before.
-- **Release:** the stability check passed, the rollback branch is `rollback-pre-1362`, and CI passed.
+- **Release:** main `31e947a` (COE_V 1356). Rollback branch `rollback-pre-1362` (= `bc903b7`). CI "Apply screen changes" passed.
+- **Stability:** all 16 teacher screens and the QA, Performance, Team and Today screens were stable on the release version. Phone › Books moves 0.039 on open, and it moves exactly the same on the version before 1362, so that comes from an earlier change, not this one.
+- **Slow database save:** if the database save takes more than 6 s, the app waits for Google as before, and Google's answer is still recorded against the save, so a refused evaluation is never shown.
 
-## Not done
-- **Apps Script paste:** not needed for this change, because Google keeps working through the app exactly as today. The Code.gs source could not be read tonight because the browser link to the computer is disconnected. A later step, where the server writes QA-DATA itself, will need that source.
-- **Night report (mgmtNight) from the database:** blocked for the same reason. The port needs the Code.gs source.
+## Apps Script
+No paste is needed. Google keeps receiving every evaluation through the app exactly as today.
 
 ## Rollback
 - **App:** revert the release to the branch `rollback-pre-1362`.

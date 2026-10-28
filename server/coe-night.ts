@@ -62,7 +62,7 @@ async function recDay(ds: string, google: any) {
     all(() => db.from("log_rows").select("data").eq("tab", "S-HOMEWORK").order("ord", { ascending: false }).limit(1500)),
     all(() => db.from("log_rows").select("data").eq("tab", "S-NOTES").order("ord", { ascending: false }).limit(1500)),
     all(() => db.from("coe_vid_log").select("code,teacher,found_at,file_url,uploaded_at,source").eq("day", ds)),
-    all(() => db.from("coe_class_videos").select("event_id,code,teacher,uploaded_at,via").eq("day", ds)),
+    Promise.all([all(() => db.from("coe_class_videos").select("event_id,code,teacher,uploaded_at,via").eq("day", ds)), all(() => db.from("coe_class_video_days").select("event_id,code,teacher,uploaded_at,via").eq("day", ds))]).then(([a, d]) => [...a, ...d]),   // 1364: the day's own records too
     names(),
   ]);
   const dayIn: Record<string, any> = {}, clsIn: Record<string, any> = {}, clsAt: Record<string, any> = {};
