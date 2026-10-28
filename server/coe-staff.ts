@@ -8,7 +8,7 @@
 // - Google follows within a minute (STAFF28): MASTERLIST row, PAYROLL name dropdowns, PAYROLL rows, sign-in store, access off.
 // - Management only. Ops / Admin (management access) can only be given, changed or removed by the President. The President's
 //   own row cannot be changed here.
-// Actions: list · check (validate only, nothing saved) · save · off · on.
+// Actions: list · check (validate only, nothing saved) · save · off · on · ob (checklists, 1441) · log (history, 1441).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -78,11 +78,14 @@ Deno.serve(async (req: Request) => {
         db.from("staff").select("*").order("status").order("name"),
         db.from("sheet_tabs").select("head,synced_at").eq("tab", "MASTERLIST").maybeSingle(),
         db.from("auth_users").select("email"), db.from("auth_pw").select("email")]);
+      const [{ data: SS }, { data: CS }] = await Promise.all([db.from("app_sessions").select("email"), db.rpc("staff_class_stats")]);   // 1441: first sign-in, first class, classes to reassign
+      const seen = new Set((SS || []).map((x: any) => lc(x.email))), cls: Record<string, any> = {}; (CS || []).forEach((x: any) => { cls[x.t] = x; });
       const au = new Set((A || []).map((x: any) => lc(x.email))), ap = new Set((P || []).map((x: any) => lc(x.email)));
       const people = (S || []).map((p: any) => {
         const o: any = { ...p }; PRIV.slice(4).forEach((k) => delete o[k]);
         o.signin = p.email ? (ap.has(lc(p.email)) ? "ready" : au.has(lc(p.email)) ? "no password" : "not yet") : "none";
         o.pw_pending = !!p.pw_hash; o.president = isPresRow(p);
+        o.seen = !!(p.email && seen.has(lc(p.email))); const c = cls[lc(p.name)] || {}; o.cls = { first: c.first_day || null, future: c.future || 0, students: c.future_students || 0 };
         return o;
       });
       return out({ ok: true, pres, head: (hd && hd.head) || [], sens: ML_SENSITIVE, map: ML, people });
@@ -148,6 +151,23 @@ Deno.serve(async (req: Request) => {
       await db.from("staff_log").insert({ by: me, name, what: cur ? "edit" : "add", detail: { role, email, pay_type: payType, pw: !!pw, fields: Object.keys(mlIn).map(Number).filter((i) => !ML_SENSITIVE.includes(i)) } });
       await syncDocs();
       return out({ ok: true, id: res.data.id, name, role, email, pw: !!pw, isNew: !cur });
+    }
+    if (a === "ob") {   // 1441: onboarding / offboarding checklist ticks (merged; history in staff_log)
+      const id = Number(b.id) || 0; const { data: cur } = await db.from("staff").select("id,name,role,position,ob").eq("id", id).maybeSingle();
+      if (!cur) return out({ ok: false, msg: "Not found." });
+      if (isMgmtRole(cur.role) && !pres) return out({ ok: false, msg: "Only the President can change management records." });
+      const set: Record<string, unknown> = {}, k = b.set && typeof b.set === "object" ? b.set : {};
+      Object.keys(k).slice(0, 20).forEach((x) => { if (/^[a-z_]{2,20}$/.test(x)) set[x] = k[x] ? { at: new Date().toISOString().slice(0, 10), by: me } : null; });
+      const ob = { ...(cur.ob || {}), ...set }; Object.keys(ob).forEach((x) => { if (ob[x] === null) delete ob[x]; });
+      await db.from("staff").update({ ob }).eq("id", id);
+      await db.from("staff_log").insert({ by: me, name: cur.name, what: "checklist", detail: k });
+      return out({ ok: true, ob });
+    }
+    if (a === "log") {   // 1441: who changed what (private values are never written to the log)
+      const id = Number(b.id) || 0; const { data: cur } = await db.from("staff").select("name").eq("id", id).maybeSingle();
+      const q = db.from("staff_log").select("at,by,name,what,detail").order("at", { ascending: false }).limit(80);
+      const { data: L } = cur ? await q.ilike("name", cur.name) : await q;
+      return out({ ok: true, log: L || [] });
     }
     if (a === "off" || a === "on") {
       const id = Number(b.id) || 0; const { data: cur } = await db.from("staff").select("*").eq("id", id).maybeSingle();
