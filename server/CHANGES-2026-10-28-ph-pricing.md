@@ -116,3 +116,81 @@ Review of 1530 + Misty (22:34): "make the Philippine price list follow the same 
   trial (Copy message, English) · Original flyers (Misty's 8 flyers, Copy / Save). The 1530 programme cards and sheet are retired.
 - PH enquiry rows: PH price → price picture on its programme with its track recommended; PH roadmap → roadmap on its track.
 - Tests: regress-saves 17/17; stability base vs new (enquiry, astudents, laptop + phone) all ok; PH tab open/repaint shift 0.
+
+---
+
+# Follow-up · releases 1533–1538 (28–29 Oct 2026, Misty 23:03 → 23:53)
+
+## 1533 · UnionBank payment · Facebook source
+- PH payment = CupOfEnglish's UnionBank account or QR, its own setting (docs `sys:pricing_ph.payment`), separate from China's
+  "Payment with". Enquiries › Market: Philippines (₱) › **2 Enrolling › Payment QR · UnionBank** › Open: the QR (Copy QR / Save QR,
+  lossless PNG at full size), the payment message (Copy message) and **Payment details** (bank, account name, account shown masked,
+  method, note, QR upload; saved by coe-student op `sPhPay`, management only). Empty → "Payment: UnionBank account or QR · details
+  from CupOfEnglish".
+- Prefilled from Misty's QR (23:06): UnionBank of the Philippines · CUPOFENGLISH ONLINE TUTORIAL SERVICES · `**** **** 8123`
+  (masked; the full number is never stored) · InstaPay QR · "Transfer fees may apply." · QR = `ph/unionbank-qr.png` (lossless PNG of
+  her card, 1206×847; decodes with OpenCV and jsQR to the same 150-character payload as her original).
+- PH price sheet: the "Payment with" (China helper, e.g. "Dr. @Sunshine") is replaced by the UnionBank line; PH message payment
+  lines from the same setting. Recommended stays Professional by default; None works (no recommendation sentence).
+- New enquiry › Found us through: + Facebook (stats table counts it).
+
+## 1534 + coe-student v23 · PH sign-in = first name only
+- A Philippine learner (Student access › Market = Philippines) signs in with the ST code + the FIRST WORD of their English name
+  ("Maria" for "Maria Santos"; case-insensitive, trimmed). The full name is not accepted for them. China families unchanged.
+  Same rate limits / lockout (5 wrong tries per code → 15 min; 30 per connection per hour), own password still overrides.
+- Tested on the real handler (stubbed DB): PH "Maria", "  mARIA " OK; "Maria Santos", "Santos" 401; PH one-word OK; China
+  "lily", "anna li" OK, "Anna" 401 (as before); 5 fails → 429; own password → name refused; access off → 401.
+- English access message, Student access row ("password = first name (Maria)") and note updated. Portal login hint in English.
+
+## 1535 + coe-student v24 · PH cancellation notice 4 hours · British Council line
+- `sys:pricing_ph.cancel_hours = 4` (China stays 2, byte-identical). Rendered in: PH price picture "Good to know" line, PH price
+  message, PH roadmap message, PH portal Classes tab ("Cancelling or moving a class", from `ph.cancelHours`, coe-student v24),
+  the cancellation policy box on class / move / renewal pictures and its copied text (PH learner: English box, "4 hours",
+  bar to scale, "Messenger, Viber or our group chat", Philippine time), the Class notice policy line.
+- Enforcement in the app (management class editor): "Cancel · under N h", "Less than N hours before class" and the save guard
+  ("a parent cancellation counts as a completed class") use the learner's market: PH learner (docs `sys:ph_learners`) → 4 h,
+  everyone else → 2 h as before. Monitor / To do have no late-cancellation tags (nothing to change).
+- NOT changed (for Misty): the Apps Script that applies a cancellation (it is not in this repo; the 2-hour rule is enforced by the app
+  before it calls the script, so PH now gets 4 h there); stored classes / past cancellations are not touched.
+- British Council footer on both PH price pictures (Adult English and IELTS), Misty's final wording, stored as
+  `sys:pricing_ph.bc_line`: "CupOfEnglish assists eligible candidates with IELTS registration through its partnership with the British
+  Council Philippines." One plain centred line at the bottom, separate from the logo and the "Good to know" list, no prefix, no logos.
+  China pictures unchanged.
+
+## 1536 · New enquiry form · PH mode + phone layout
+- PH mode (a "PH …" programme picked; the form opens on PH Adult English 1:1 when Enquiries is on Philippines): Found us through =
+  Facebook · Website · Referral · Other (WeChat, 小红书, Partner hidden); contact field "Facebook / Messenger / mobile (optional)" on its
+  own line (same stored field); name hint "Facebook name is fine". China mode: original list and "WeChat ID (optional)".
+- Phone: chip groups wrap as plain chips (the rounded track clipped wrapped chips and drew the curved mask); inputs 16 px (no iPhone
+  zoom on focus, which pushed Age / level / Save off the edge). 390 and 375, China and PH: no element past the edge, no sideways scroll.
+
+## 1537 · PH Price picture sheet on the phone
+- Banner + Copy button (patch 34x) named the China learner ("KIDS & TEENS · 4–17", "Copy picture · Kids & teens") in the PH sheet:
+  now "ADULT ENGLISH 1:1 · price · check this matches the learner before you copy" / "IELTS 1:1 · …" and "Copy picture · Adult English"
+  / "· IELTS" (teal). China sheet unchanged.
+- PH sheet: Learner and Recommend chips wrap ("Mastery · 60" no longer cut), Copy picture full width, Save / Copy message side by side.
+
+## 1538 · PH Learner Service Agreement in English
+- Same flow (student page or trial "Enrolling" › Service agreement › picture + message › Mark as sent › on file in S-AGREE), same layout.
+  Chosen automatically for a PH learner (Market = Philippines, or an enquiry "PH Adult English 1:1 / PH IELTS 1:1" with that name);
+  the sheet has "Agreement: China · bilingual / Philippines · English" to switch by hand.
+- English text only (no Chinese lines, no gaps); PH tracks with ₱ prices (Foundation 15 · Professional 30 · Mastery 60, package ticked)
+  and the programme name; payment = UnionBank account transfer or InstaPay QR (from the payment setting); notice = 4 hours; contact =
+  Messenger / Viber or our group chat; "Class times are Philippine time"; reply "I have read and agree". Every other clause
+  (validity 4/8/12 months, refund, conduct/recording, 1-on-1 rules, acceptance) is the English text of the current agreement.
+- China agreement: HTML, message and picture byte-identical before/after (two China learners compared). Stored signed agreements
+  (S-AGREE rows, Drive files) untouched; the saved "how" values are the same.
+- For Misty (China-specific or unclear clauses, not guessed): (1) the provider clause "Provider cancellation or lateness under N hours"
+  now uses 4 h for PH like the learner clauses, confirm; (2) "25 minutes for younger learners" kept from the English text; (3) the
+  "Parent" row and "Learner / Parent / Guardian signature" kept for adults; (4) Place of signing "Online" (China: "Online · WeChat").
+
+## Database writes (all on our own doc row `sys:pricing_ph`, no schema change)
+- `payment` = the UnionBank details above (qr `ph/unionbank-qr.png`); `cancel_hours` = 4; `bc_line` = Misty's sentence.
+- coe-student v23 → v24 deployed (index.ts only; pkg/mgmt/renew unchanged); deployed source = repo copy (byte compare).
+
+## Tests
+- check.js OK (incl. 42 renewal checks); regress-saves 17/17; stability: enquiry, astudents, schedule, trials, mtoday, laptop + phone
+  ok (astudents laptop 0.0018 = base when run alone).
+- China price pictures (16) byte-identical as a set, China sheet + message identical; China policy box picture + text and Class
+  notice identical; China class editor unchanged (2 h).
+- PH: class editor 3 h before class → "Cancel · under 4 h"; China learner same time → "Cancel class".
