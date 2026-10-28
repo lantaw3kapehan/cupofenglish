@@ -126,7 +126,7 @@ Counts: 48 rows · Pass 34 · Fail → fixed 8 (+ status/role fixes inside Pass 
 | 1480 `patches/1480-teacher-calm-status.js` | D1 D2 D3 D4 | `rollback-pre-1480` (40989e2) · main c193719 · COE_V 1395 · CI and Pages deploy passed 13:10Z |
 | 1481 `patches/1481-teacher-words-dates.js` | D6 D7 D8 D9 | (same branch) |
 | 1482 `patches/1482-teacher-icons-touch.js` | D5 D10 D11 D12 | (same branch) |
-| 1484–1486 `patches/1484-today-in-place.js` · `1485-queue-steady-one-place.js` · `1486-today-keep-focus.js` | phone flicker (header, Today order, banners) · S4 · S1 · S5 | `rollback-pre-1484` |
+| 1484–1486 `patches/1484-today-in-place.js` · `1485-queue-steady-one-place.js` · `1486-today-keep-focus.js` | phone flicker (header, Today order, banners, Pay punctuality) · S4 · S1 · S5 | `rollback-pre-1484` (9b53575) · main a0efd58 · COE_V 1418 · CI and Pages deploy passed 16:24Z |
 | 1483 `patches/1483-homework-pages-same-book.js` (shipped first, priority) | D13 D14 | `rollback-pre-1483` (6b905d3) · main d70015d · COE_V 1381 |
 
 Checks before release (latest main + 1480–1482): `check.js` all scripts OK; regress-saves 17/17; fix tests t1480 / t1481 pass; emoji scan 0; management sanity (Leave keeps "President" for management, Notices, no page errors); full stability (44 management + 16 teacher checks): management all stable except one schedule refresh 0.03 (not touched by these patches); teacher repeats clean except an intermittent **phone Today** shift (0.08–0.09, banner inserted above Now & next ~3.5 s after a refresh).
