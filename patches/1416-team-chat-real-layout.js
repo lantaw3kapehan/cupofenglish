@@ -1,0 +1,58 @@
+// 1416: (Misty 10:09) Team Chat like a real chat · my messages on the right in teal, others on the left in white; runs grouped with
+//   name and avatar once; time on hover (laptop) or full time on tap (phone); "Seen by" only under the last bubble of a run;
+//   jump-to-latest button; picture viewer with zoom (wheel, pinch, double-tap, buttons); copy a link to a message. Both views.
+const lib = require('../tools/lib.js'), file = process.argv[2];
+lib(file, [
+[
+"  function msgHtml(m, byId, pv){",
+"  function msgHtml(m, byId, pv, nx){"
+],
+[
+"var me = String(m.author).toLowerCase() === meLc(), M = isMgr(), ro = S.day && S.day !== S.init.today;",
+"var me = String(m.author).toLowerCase() === meLc(), M = isMgr(), ro = S.day && S.day !== S.init.today;\n    /* 1416: a run = the next message is from the same person within 5 minutes (same rule as grouping) · \"Seen by\" only under its last bubble */\n    var nxc = !!(nx && nx.author === m.author && !nx.quote && !nx.parent_id && !m.hidden && nx.kind !== 'timein' && m.kind !== 'timein' && nx.kind !== 'system' && Date.parse(nx.at) - Date.parse(m.at) < 300000);\n    var full = new Date(m.at).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' });"
+],
+[
+"msgHtml(m, byId, i ? d.msgs[i - 1] : null)",
+"msgHtml(m, byId, i ? d.msgs[i - 1] : null, d.msgs[i + 1] || null)"
+],
+[
+"    if(m.n) ft += isMgr() ?",
+"    if(m.n && !nxc) ft += isMgr() ?"
+],
+[
+"'<div class=\"ch-bub' + (me || m.mgmt ? ' me' : '') + (m.hidden ? ' hid' : '') + '\">'",
+"'<div class=\"ch-bub' + (me ? ' me' : '') + (m.hidden ? ' hid' : '') + '\" onclick=\"chat1400.tt(event,' + m.id + ')\">'"
+],
+[
+"    return '<div class=\"ch-m' + (cont ? ' cont' : '') + '\" id=\"chm' + m.id + '\"'",
+"    return '<div class=\"ch-m' + (cont ? ' cont' : '') + (me ? ' mine' : '') + (nxc ? ' run' : '') + '\" id=\"chm' + m.id + '\" data-t=\"' + esc(full) + '\"'"
+],
+[
+"(ft ? '<div class=\"ch-ft\">' + ft + '</div>' : '') + (act ? '<div class=\"ch-act\">' + act + '</div>' : '') + '</div></div>'; }",
+"'<span class=\"ch-ht\"><span class=\"s\">' + tm(m.at) + '</span><span class=\"f\">' + esc(full) + '</span></span>' + (ft ? '<div class=\"ch-ft\">' + ft + '</div>' : '') + (act ? '<div class=\"ch-act\">' + act + '</div>' : '') + '</div></div>'; }"
+],
+[
+"      if(me && m.kind === 'text') tl +=",
+"      if(m.id > 0) tl += '<button type=\"button\" class=\"ch-tb\" aria-label=\"Copy link\" title=\"Copy link to this message\" onclick=\"chat1400.link(' + m.id + ')\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7\"/><path d=\"M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7\"/></svg></button>';\n      if(me && m.kind === 'text') tl +="
+],
+[
+"(S.newBelow && S.view === 'chat' ? '<button type=\"button\" id=\"chNewB\" class=\"ch-newb\" onclick=\"chat1400.toBottom()\">New messages below</button>' : '')",
+"(S.newBelow && S.view === 'chat' ? '<button type=\"button\" id=\"chNewB\" class=\"ch-newb\" onclick=\"chat1400.toBottom()\">New messages below</button>' : '') + (S.view === 'chat' ? '<button type=\"button\" id=\"chJump\" class=\"ch-jump\" aria-label=\"Jump to the latest message\" title=\"Jump to the latest message\" onclick=\"chat1400.toBottom()\" hidden><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M12 5v14M6 13l6 6 6-6\"/></svg></button>' : '')"
+],
+[
+"if(L2) L2.onscroll = function(){",
+"if(L2) L2.onscroll = function(){ var jb = document.getElementById('chJump'); if(jb) jb.hidden = L2.scrollHeight - L2.scrollTop - L2.clientHeight < 300;"
+],
+[
+"zoom: function(src){ if(typeof openSheet === 'function') openSheet('<img src=\"' + esc(src) + '\" alt=\"Picture\" style=\"width:100%;border-radius:12px\">'); },",
+"zoom: function(src){ lightbox(src); },\n    tt: function(e, id){ if(e && e.target && e.target.closest && e.target.closest('a,img,button,audio,video,input')) return; var el = document.getElementById('chm' + id); if(el) el.classList.toggle('showt'); },\n    link: function(id){ var u = location.origin + location.pathname + '?go=chat&cm=' + encodeURIComponent(S.gid + '|' + (S.day || S.init.today) + '|' + id);\n      var done = function(){ toast2('Link copied · only people in this chat can open it'); };\n      try{ if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(done, function(){ prompt('Copy this link', u); }); else prompt('Copy this link', u); }catch(e){ prompt('Copy this link', u); } },"
+],
+[
+"  function SKEL(n){",
+"  /* 1416: picture viewer · zoom with the wheel, pinch or the buttons, drag to move, double-tap to zoom, Escape / ✕ closes */\n  function lightbox(src){ var old = document.getElementById('chLb'); if(old) old.remove();\n    var d = document.createElement('div'); d.id = 'chLb'; d.className = 'ch-lb'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Picture');\n    var B = function(a, l, p){ return '<button type=\"button\" data-a=\"' + a + '\" aria-label=\"' + l + '\" title=\"' + l + '\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\">' + p + '</svg></button>'; };\n    d.innerHTML = '<div class=\"ch-lbw\"><img alt=\"Picture\" draggable=\"false\"></div><div class=\"ch-lbt\">' + B('out', 'Zoom out', '<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"M8 11h6M21 21l-5-5\"/>') + B('in', 'Zoom in', '<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"M8 11h6M11 8v6M21 21l-5-5\"/>') + B('fit', 'Fit', '<path d=\"M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5\"/>')\n      + (window.chatMarkup1418 ? B('mark', 'Mark up and reply', '<path d=\"M12 20h9\"/><path d=\"M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z\"/>') : '') + B('x', 'Close', '<path d=\"M18 6L6 18M6 6l12 12\"/>') + '</div>';\n    document.body.appendChild(d); var im = d.querySelector('img'), z = 1, x = 0, y = 0, P = {}, pd = 0, pz = 1, last = 0;\n    im.src = src; var ap = function(){ im.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + z + ')'; }, set = function(n){ z = Math.max(1, Math.min(6, n)); if(z === 1){ x = 0; y = 0; } ap(); };\n    var close = function(){ d.remove(); document.removeEventListener('keydown', key); }, key = function(e){ if(e.key === 'Escape') close(); };\n    document.addEventListener('keydown', key);\n    d.addEventListener('click', function(e){ var b = e.target.closest('button'); if(b){ var a = b.dataset.a; if(a === 'x') close(); else if(a === 'in') set(z * 1.5); else if(a === 'out') set(z / 1.5); else if(a === 'fit') set(1); else if(a === 'mark'){ close(); window.chatMarkup1418(src, true); } return; } if(e.target === d || e.target.classList.contains('ch-lbw')) close(); });\n    d.addEventListener('wheel', function(e){ e.preventDefault(); set(z * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); }, { passive: false });\n    im.addEventListener('dblclick', function(){ set(z > 1 ? 1 : 2.5); });\n    im.addEventListener('pointerdown', function(e){ im.setPointerCapture(e.pointerId); P[e.pointerId] = { x: e.clientX, y: e.clientY }; var k = Object.keys(P); if(k.length === 2){ pd = Math.hypot(P[k[0]].x - P[k[1]].x, P[k[0]].y - P[k[1]].y); pz = z; }\n      if(e.pointerType === 'touch' && Date.now() - last < 300) set(z > 1 ? 1 : 2.5); last = Date.now(); });\n    im.addEventListener('pointermove', function(e){ var p = P[e.pointerId]; if(!p) return; var k = Object.keys(P);\n      if(k.length === 2){ P[e.pointerId] = { x: e.clientX, y: e.clientY }; var nd = Math.hypot(P[k[0]].x - P[k[1]].x, P[k[0]].y - P[k[1]].y); if(pd) set(pz * nd / pd); return; }\n      if(z > 1){ x += e.clientX - p.x; y += e.clientY - p.y; ap(); } P[e.pointerId] = { x: e.clientX, y: e.clientY }; });\n    var up = function(e){ delete P[e.pointerId]; if(Object.keys(P).length < 2) pd = 0; }; im.addEventListener('pointerup', up); im.addEventListener('pointercancel', up);\n    var cb = d.querySelector('[data-a=\"x\"]'); if(cb) cb.focus(); }\n  /* 1416: a copied message link (?go=chat&cm=group|day|id) opens that message; the server still checks who may see it */\n  (function(){ try{ var q = new URLSearchParams(location.search).get('cm'); if(!q) return; var p = q.split('|'); if(p.length !== 3) return;\n    (function w(n){ if(S.init && S.on){ try{ history.replaceState(history.state, '', location.pathname + location.hash); }catch(e){} if(typeof go === 'function') go('chat'); A.jump(p[0], p[1], Number(p[2])); } else if(n < 40) setTimeout(function(){ w(n + 1); }, 500); })(0); }catch(e){} })();\n  function SKEL(n){"
+],
+[
+"</body>\n</html>",
+"<style id=\"css1416\">\n/* 1416 · real-chat layout: mine on the right in teal, others on the left in white; grouped runs; time on hover / tap */\n#v-chat .ch-m.mine{flex-direction:row-reverse;margin-left:auto}\n#v-chat .ch-m.mine .ch-av{display:none}\n#v-chat .ch-m.mine .ch-body{display:flex;flex-direction:column;align-items:flex-end}\n#v-chat .ch-m.mine .ch-who b,#v-chat .ch-m.mine .ch-who .ch-tag:first-of-type{display:none}\n#v-chat .ch-m.mine .ch-tools{right:auto;left:0}\n#v-chat .ch-bub{background:#fff;border:1px solid #E3E7EB;border-radius:4px 16px 16px 16px;box-shadow:0 1px 1px rgba(20,40,40,.04)}\n#v-chat .ch-m.cont .ch-bub{border-top-left-radius:16px}\n#v-chat .ch-m.run .ch-bub{border-bottom-left-radius:6px}\n#v-chat .ch-bub.me{background:#0E7C7B;border-color:#0E7C7B;color:#fff;border-radius:16px 4px 16px 16px}\n#v-chat .ch-m.mine.cont .ch-bub{border-top-right-radius:16px}\n#v-chat .ch-m.mine.run .ch-bub{border-bottom-right-radius:6px}\n#v-chat .ch-bub.me a{color:#fff;text-decoration:underline}\n#v-chat .ch-bub.me .ch-q{background:rgba(255,255,255,.16);color:#F2FBFA;border-left-color:rgba(255,255,255,.6)}\n#v-chat .ch-bub.me .ch-ti,#v-chat .ch-bub.me div[style*=\"color:#5E6272\"]{color:#E6F5F4!important}\n#v-chat .ch-bub.me .ch-at,#v-chat .ch-bub.me .ch-men{background:rgba(255,255,255,.2);color:#fff}\n#v-chat .ch-ft,#v-chat .ch-act{margin-top:4px}\n#v-chat .ch-ht{display:none;font-size:11.5px;color:#7A7F8C;margin-top:2px;white-space:nowrap}\n#v-chat .ch-ht .f{display:none}\n#v-chat .ch-m.cont:hover .ch-ht,#v-chat .ch-m.cont:focus-within .ch-ht{display:block}\n#v-chat .ch-m.showt .ch-ht{display:block}\n#v-chat .ch-m.showt .ch-ht .s{display:none}\n#v-chat .ch-m.showt .ch-ht .f{display:inline}\n#v-chat .ch-jump{position:absolute;right:18px;bottom:96px;width:40px;height:40px;border-radius:50%;border:1px solid #DCE1E6;background:#fff;color:#0B5F63;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(20,40,40,.14);cursor:pointer;z-index:5}\n#v-chat .ch-jump[hidden]{display:none}\n.ch-lb{position:fixed;inset:0;z-index:2147483000;background:rgba(15,20,24,.92);display:flex;align-items:center;justify-content:center;touch-action:none}\n.ch-lbw{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}\n.ch-lb img{max-width:92vw;max-height:84vh;transform-origin:center;transition:transform .08s;cursor:grab;user-select:none;border-radius:6px;background:#fff}\n.ch-lbt{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;display:flex;gap:8px}\n.ch-lbt button{width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}\n.ch-lbt button:hover,.ch-lbt button:focus-visible{background:rgba(255,255,255,.28);outline:2px solid #fff;outline-offset:1px}\n</style>\n</body>\n</html>"
+]
+]);
