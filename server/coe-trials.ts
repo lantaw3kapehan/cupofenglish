@@ -1,5 +1,8 @@
 // CupOfEnglish · 20 Oct 2026 · a teacher's trial reports already made (TR-DATA copy + reports sent in the app), last 60 days.
 // The app uses it to clear "Write report" for a trial that was moved to another day (the old rule matched only the same date + name).
+// 29 Oct v11 · POST { token, recon: days } (management, read-only) → { sessions: Trial log rows (TC&SUB) grouped by calendar event id + day, each with
+//   cal = where that event is now { day, x: cancelled, mv: moved from }, reports: TR-DATA { d, code, s, label }, next: docs sys:trial_next items }.
+//   POST { token, op: 'setNext', k, what, owner, due, note } (management) → one trial's next step in docs `sys:trial_next` (empty = back to automatic).
 // 25 Oct v10 · n = the teacher's note per skill. v9 · each report also carries its progress for the teacher's "Report sent" card: at (sent), t (total /36), cefr, pdf, sent (sent to the parent line),
 //   enr (Enrolled? auto), fc (first class), fu (follow-up), q: 1 = sent in the app, Google has not copied it into TR-DATA yet.
 // POST { token, tall: true } → v8: every trial in DATABASE { m: yyyy-MM, e: enrolled 1/0, t: trial teacher, c: trial CEFR, s: source }.
@@ -80,6 +83,51 @@ Deno.serve(async (req: Request) => {
       if (tc.length) code = String(tc[0].code).toUpperCase(); }
     const { data: S2 } = nm ? await db.from("coe_students").select("code,data").ilike("data->>2", nm).is("removed_at", null).limit(30) : { data: [] };
     return out({ ok: true, code, list: (S2 || []).map((x: any) => ({ code: x.code, cn: String((x.data || [])[1] || ""), trial: String((x.data || [])[10] || "").slice(0, 10), teacher: String((x.data || [])[14] || "") })).sort((a: any, z: any) => z.code.localeCompare(a.code)) });
+  }
+  if (b.recon) {   // 29 Oct v11 · trial sessions by calendar event id (management, read-only), so a moved or re-logged trial is matched to its report by the session, not the date
+    if (s.mode !== "mgmt") return out({ ok: false, error: "AUTH" }, 401);
+    const days = Math.min(400, Math.max(7, Number(b.recon) || 75)), now = Date.now() + 8 * 3600e3;
+    const since = new Date(now - days * 864e5).toISOString().slice(0, 10), rsince = new Date(now - (days + 30) * 864e5).toISOString().slice(0, 10);
+    const [{ data: L, error: le }, { data: T }] = await Promise.all([
+      db.from("sheet_rows").select("r,data").eq("tab", "TC&SUB").gt("r", 1).order("r").limit(5000),
+      db.from("sheet_rows").select("data").eq("tab", "TR-DATA").gt("r", 1).order("r").limit(5000)]);
+    if (le) return out({ ok: false, error: "db" }, 500);
+    const str = (x: unknown) => String(x ?? "").trim(), hm = (x: unknown) => { const m = str(x).match(/T(\d{2}:\d{2})/); return m ? m[1] : ""; };
+    const S: Record<string, any> = {};
+    (L || []).forEach((x: any) => { const d = x.data || [], day = ymd(d[0]); if (!day || day < since || !/trial/i.test(str(d[2]))) return;
+      const ev = str(d[12]).replace(/@google\.com$/i, ""), k = (ev || "r" + x.r) + "|" + day;
+      if (S[k]) { S[k].n++; return; }
+      S[k] = { ev, d: day, tm: hm(d[1]) || hm(d[0]), code: str(d[3]).toUpperCase(), s: str(d[4]), t: str(d[5]), n: 1, cal: null }; });
+    const evs = [...new Set(Object.values(S).map((x: any) => x.ev).filter(Boolean))], C: Record<string, any[]> = {};
+    for (let i = 0; i < evs.length; i += 80) {
+      const { data: K } = await db.from("classes").select("day,data").in("data->>id", evs.slice(i, i + 80)).limit(4000);
+      (K || []).forEach((c: any) => { const id = str((c.data || {}).id); (C[id] = C[id] || []).push({ day: String(c.day).slice(0, 10), x: (c.data || {}).cancelled ? 1 : 0, mv: ymd(((c.data || {}).mv || {}).start) }); }); }
+    Object.values(S).forEach((x: any) => { const K = C[x.ev] || []; if (!K.length) return;
+      const same = K.find((c) => c.day === x.d);
+      if (same) { x.cal = same; return; }
+      const t0 = Date.parse(x.d), near = K.filter((c) => !c.x && Math.abs(Date.parse(c.day) - t0) <= 45 * 864e5).sort((a, z) => Math.abs(Date.parse(a.day) - t0) - Math.abs(Date.parse(z.day) - t0));
+      x.cal = near[0] || K.find((c) => c.mv === x.d) || null; });
+    const reports: any[] = [];
+    (T || []).forEach((x: any) => { const r = x.data || [], d = ymd(r[2]); if (!d || d < rsince) return; reports.push({ d, code: str(r[33]).toUpperCase(), s: str(r[5]).toLowerCase(), label: str(r[0]) }); });
+    const { data: NX } = await db.from("docs").select("data").eq("key", "sys:trial_next").maybeSingle();
+    return out({ ok: true, since, sessions: Object.values(S).sort((a: any, z: any) => z.d.localeCompare(a.d)), reports, next: ((NX && NX.data) || {}).items || {} });
+  }
+  if (b.op === "setNext") {   // 29 Oct v11 · a trial's next step (what, owner, follow-up date) in docs `sys:trial_next` (management; one item per trial key)
+    if (s.mode !== "mgmt") return out({ ok: false, error: "AUTH" }, 401);
+    const k = String(b.k || "").trim().slice(0, 140); if (!k) return out({ ok: false, error: "key" }, 400);
+    const clip = (x: unknown, n: number) => String(x ?? "").trim().slice(0, n), due = clip(b.due, 10);
+    if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) return out({ ok: false, error: "date" }, 400);
+    const item = { what: clip(b.what, 80), owner: clip(b.owner, 40), due, note: clip(b.note, 300), by: String(s.name || ""), at: new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 16).replace("T", " ") };
+    for (let tries = 0; tries < 4; tries++) {
+      const { data: row } = await db.from("docs").select("data,updated_at").eq("key", "sys:trial_next").maybeSingle();
+      const items = Object.assign({}, ((row && row.data) || {}).items || {});
+      if (!item.what && !item.owner && !item.due && !item.note) delete items[k]; else items[k] = item;
+      const data = { items, updated: new Date().toISOString() }, now = new Date().toISOString();
+      if (!row) { const { error } = await db.from("docs").insert({ key: "sys:trial_next", scope: "mgmt", data, updated_at: now }); if (!error) return out({ ok: true, item: items[k] || null }); continue; }
+      const { data: up, error } = await db.from("docs").update({ data, updated_at: now }).eq("key", "sys:trial_next").eq("updated_at", row.updated_at).select("key");
+      if (!error && up && up.length) return out({ ok: true, item: items[k] || null });
+    }
+    return out({ ok: false, error: "busy", msg: "Someone else saved at the same moment · try again" }, 409);
   }
   const since = new Date(Date.now() + 8 * 3600e3 - 60 * 864e5).toISOString().slice(0, 10), list: any[] = [];
   const [{ data: T, error: te }, { data: W }] = await Promise.all([
