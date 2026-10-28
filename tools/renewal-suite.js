@@ -85,7 +85,8 @@ function run(file) {
     ok('no first class yet → no valid-until (never a guess)', R.validFrom('', 33) === '', 0); }
   // static: every screen still goes through the one calculation
   ok('wiring · renewal picture header uses coeRenew.line', s.indexOf("c.fillText(window.coeRenew ? coeRenew.line(Q)") > -1, 0);
-  ok('wiring · picture / Lesson Summary / form / App health guard present', /window\.__1540 = 1/.test(s) && s.indexOf('window.lsHtml = function(code){ const h = _ls.apply') > -1 && s.indexOf('R.formHold(S.info.left') > -1 && s.indexOf("'Renewal · ' + x.name") > -1, 0);
+  ok('wiring · picture / Lesson Summary / form / App health guard present', /window\.__1540 = 1/.test(s) && s.indexOf('window.lsHtml = function(code){') > -1 && s.indexOf('_ls.apply(this, arguments)') > -1 && s.indexOf('R.formHold(S.info.left') > -1 && s.indexOf("'Renewal · ' + x.name") > -1, 0);
+  ok('wiring · lesson-balance picture and Lesson Summary use the first-class valid-until (1543)', s.indexOf('if(P.bal && !Q0 && row && row.validRule) P.bal.deadline = row.validRule;') > -1 && s.indexOf('k0.o[k0.C.deadline] = rw0.validRule') > -1, 0);
   ok('wiring · no "carry + new" estimate of lessons now', s.indexOf("Q.now = fresh && +b.left < Q.tot") < 0 && s.indexOf('Q.carry = Math.round(+b.left * 10) / 10') < 0, 0);
   // the database cases (server/TEST-renewals-1540.sql) must keep the payment-time cases (1542): the payment time is the Payment Confirmation's generated time
   { const sq = require('path').join(require('path').dirname(require('path').resolve(file)), 'server', 'TEST-renewals-1540.sql');
