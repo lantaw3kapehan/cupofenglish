@@ -6367,7 +6367,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1372;
+const COE_V = 1373;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23918,6 +23918,31 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   w.__762 = 1; window.api = w;
   /* the ↻ Refresh button asks everything fresh */
   document.addEventListener('click', ev => { try{ const b = ev.target && ev.target.closest && ev.target.closest('#rf'); if(b) FORCE = Date.now(); }catch(e){} }, true);
+})();
+</script>
+<script>
+/* 1373 · fixed monthly pay (sys:fixedpay via coe-fixedpay): no pace projected from units on the Payroll card or the person's own Pay card */
+(function(){
+  const URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-fixedpay';
+  let FX = null, at = 0, busy = 0;
+  const who = () => (typeof D !== 'undefined' && D && D.me && D.me.name) ? String(D.me.name).trim().toLowerCase() + (D.mgr ? '|m' : '|t') : '';
+  function load(){ if(busy || typeof TOKEN === 'undefined' || !TOKEN || (typeof LIVE !== 'undefined' && !LIVE)) return; const w = who(); if(!w || (FX && FX.who === w && Date.now() - at < 10 * 6e4)) return; busy = 1;
+    fetch(URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN }) }).then(x => x.json())
+      .then(r => { if(r && r.ok && who() === w){ FX = { list: Array.isArray(r.list) ? r.list : null, me: r.me || null, who: w }; at = Date.now(); apply(); } }).catch(() => {}).finally(() => { busy = 0; }); }
+  const fixedOf = name => { if(!FX || FX.who !== who()) return null; const n = String(name || '').trim().toLowerCase().replace(/^teacher\s+/, '');
+    if(FX.list) return FX.list.find(x => String(x.name).toLowerCase() === n) || null; return FX.me && String(FX.me.name).toLowerCase() === n ? FX.me : null; };
+  function cards(){ document.querySelectorAll('#pyCur .py-row').forEach(r => { const m = String(r.getAttribute('onclick') || '').match(/payslipNow\('(.+)'\)/); if(!m) return;
+      const f = fixedOf(m[1].replace(/&#39;/g, "'").replace(/&amp;/g, '&')), sm = r.querySelector('.py-n small'); if(!sm) return;
+      if(!f){ if(sm.dataset.fx1373){ delete sm.dataset.fx1373; sm.className = ''; sm.textContent = 'so far this month'; } return; } const t = 'fixed monthly pay · ' + peso(f.monthly);
+      if(sm.dataset.fx1373 !== t){ sm.dataset.fx1373 = t; sm.className = 'c60 r65 fx1373'; sm.textContent = t; sm.title = 'Paid a fixed amount each month, not per lesson'; } }); }
+  function own(){ if(typeof D === 'undefined' || !D || !D.me) return; const f = fixedOf(D.me.name);
+    if(!f){ document.querySelectorAll('#v-pay .pc70 .t[data-fx1373], #v-mypay .pc70 .t[data-fx1373]').forEach(t => { const p = t.closest('.pc70'); if(p) p.remove(); }); return; }
+    ['v-pay', 'v-mypay'].forEach(id => { const v = document.getElementById(id); if(!v) return; v.querySelectorAll('.pc70 .t').forEach(t => {
+      const html = '<span>Fixed monthly pay</span><span><b>' + esc(peso(f.monthly)) + '</b> a month · not paid per lesson</span>'; if(t.dataset.fx1373 !== html){ t.dataset.fx1373 = html; t.innerHTML = html; } }); }); }
+  function apply(){ try{ cards(); own(); }catch(e){} }
+  let q = 0; new MutationObserver(() => { if(q || !FX) return; q = requestAnimationFrame(() => { q = 0; apply(); }); }).observe(document.body, { childList: true, subtree: true });
+  ['renderPayroll', 'renderPay', 'renderMyPay'].forEach(fn => { const o = window[fn]; if(typeof o !== 'function') return; window[fn] = function(){ const r = o.apply(this, arguments); try{ load(); apply(); }catch(e){} return r; }; });
+  window.__fx1373 = { set: v => { FX = Object.assign({ who: who() }, v); at = Date.now(); apply(); } };   /* preview test hook */
 })();
 </script>
 <script>
