@@ -6387,7 +6387,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1395;
+const COE_V = 1397;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -22406,7 +22406,7 @@ go();
   document.addEventListener('visibilitychange', () => { if(document.hidden) flush(true); });
   /* taps and buttons */
   const baseApi = window.api;
-  if(baseApi) window.api = function(fn){ const t0 = performance.now(), ui = Date.now() - (window._ui || 0) < 1500, p = baseApi.apply(this, arguments);
+  if(baseApi) window.api = function(fn){ const t0 = performance.now(), ui = Date.now() - (window._ui || 0) < 1500 && !(window.__quick && Date.now() - (window.__quick[fn] || 0) < 8000), p = baseApi.apply(this, arguments);   /* 1526: a read answered from the last copy is not a wait */
     try{ Promise.resolve(p).then(() => { const ms = performance.now() - t0; if(ui || ms > 3000) push(fn, ms, ui); }, () => push(fn + ':err', performance.now() - t0, ui)); }catch(x){}
     return p; };
   /* screens */
@@ -23976,6 +23976,56 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
 })();
 </script>
 <script>
+/* 1526 · teacher cards from this device's last copy, read behind */
+(function(){
+  const base = window.api; if(!base || base.__1526) return;
+  const QUICK = /^(tFbStatus|tMyVisits|tPeerForm)$/, MAX = 3 * 864e5;
+  const w = function(fn){ const args = Array.prototype.slice.call(arguments, 1), self = this;
+    try{
+      if(QUICK.test(fn) && typeof LIVE !== 'undefined' && LIVE && typeof D !== 'undefined' && D && !D.mgr && D.me && D.me.name && typeof sbKey === 'function' && args[0] === TOKEN){
+        const lk = 'coe.m.q:' + sbKey(fn, args); let L = null; try{ L = JSON.parse(localStorage.getItem(lk) || 'null'); }catch(e){}
+        const quick = !!(L && L.data != null && Date.now() - L.t < MAX); if(quick) (window.__quick = window.__quick || {})[fn] = Date.now();
+        const p = Promise.resolve(base.apply(self, [fn].concat(args)));
+        p.then(x => { try{ if(x == null || (x && x.ok === false)) return; const s = JSON.stringify(x); if(s.length < 150000) localStorage.setItem(lk, JSON.stringify({ t: Date.now(), data: x }));
+          if(L && JSON.stringify(L.data) !== s && typeof sbRedraw === 'function') sbRedraw(fn, args, x); }catch(e){} }, () => {});
+        if(quick) return Promise.resolve(L.data);
+        return p; }
+    }catch(e){}
+    return base.apply(this, arguments); };
+  w.__1526 = 1; for(const k in base) try{ w[k] = base[k]; }catch(e){} window.api = w;
+})();
+</script>
+<script>
+/* 1525 · background Google cuts + why each Google read happened */
+(function(){
+  if(window.__1525) return; window.__1525 = 1;
+  try{ if(typeof SB_BGAGE !== 'undefined') SB_BGAGE.schedLists = 60 * 6e4; }catch(e){}
+  /* the class-brief prefetch: database copy only */
+  if(typeof window.briefPrefetch === 'function') window.briefPrefetch = briefPrefetch = async function(){
+    if(!TOKEN || !D || D.mgr || window._bpf || typeof sbOn !== 'function' || !sbOn()) return; window._bpf = 1;
+    try{ const codes = [...new Set((D.schedule || []).filter(x => x.day >= D.today && x.code && !x.cancelled).sort((a, b) => String(a.start).localeCompare(String(b.start))).map(x => x.code))].slice(0, 15);
+      for(const code of codes){ while(document.hidden) await new Promise(r => setTimeout(r, 5000));
+        let c = null; try{ c = JSON.parse(store('get', 'coe.stu.' + code) || 'null'); }catch(e){}
+        if(c && c._at && Date.now() - c._at < 6 * 3600e3){ if(typeof STU_CACHE !== 'undefined' && !STU_CACHE[code]) STU_CACHE[code] = c; continue; }
+        try{ const d = await Promise.race([sbDoc(sbKey('tStudent', [TOKEN, code])), new Promise(z => setTimeout(() => z(null), 8000))]);
+          const r = d && d.data; if(r && r.ok !== false && !r.error){ r._at = Date.now(); try{ store('set', 'coe.stu.' + code, JSON.stringify(r)); }catch(e){} if(typeof STU_CACHE !== 'undefined') STU_CACHE[code] = r; } }catch(e){}
+        await new Promise(r => setTimeout(r, 700)); }
+    }catch(e){} finally{ window._bpf = 0; } };
+  /* why a Google read happened (watched screens only) */
+  const WATCH = /^(tStudent|tGrowth|tFbStatus|mgmtStudent|schedLists|tPayCheck|tPayReady|tMsgs|getBootstrap|mgmtStuClasses|tStuClasses|mgmtActive|tMyVisits|tPeerForm)$/, LAST = {}, Q = [];
+  if(typeof window.sbDocV === 'function'){ const sv = window.sbDocV; window.sbDocV = sbDocV = function(key){ const p = sv.apply(this, arguments);
+    try{ Promise.resolve(p).then(d => { LAST[key] = { t: Date.now(), d: d ? { at: d.at, live: !!d.live } : null }; }, () => { LAST[key] = { t: Date.now(), d: null }; }); }catch(e){} return p; }; }
+  if(typeof window.apiNow === 'function'){ const an = window.apiNow; window.apiNow = apiNow = function(fn){ const p = an.apply(this, arguments);
+    try{ if(WATCH.test(fn) && typeof sbKey === 'function' && typeof D !== 'undefined' && D){ const args = Array.prototype.slice.call(arguments, 1), key = sbKey(fn, args), L = LAST[key], now = Date.now(), ui = now - (window._ui || 0) < 1500;
+      let why = 'direct'; if(L && now - L.t < 15000){ const d = L.d; why = !d ? 'nocopy' : (typeof SB_LASTW !== 'undefined' && SB_LASTW && now - SB_LASTW < 120000 && Date.parse(d.at) < SB_LASTW) ? 'aftersave' : !d.live ? 'notlive' : 'old' + Math.min(99, Math.round((now - Date.parse(d.at)) / 36e5)) + 'h'; }
+      const t0 = performance.now(); Promise.resolve(p).then(() => push(), () => push()); function push(){ if(Q.length < 200) Q.push({ fn: ('g:' + fn + ':' + why).slice(0, 40), ms: Math.round(performance.now() - t0), ui: ui, view: typeof VIEW !== 'undefined' ? String(VIEW || '') : '', v: typeof COE_V !== 'undefined' ? COE_V : 0, dev: (window.innerWidth || 0) < 900 ? 'phone' : 'laptop', at: new Date().toISOString() }); } } }catch(e){}
+    return p; }; }
+  function flush(leaving){ try{ if(!Q.length || typeof TOKEN === 'undefined' || !TOKEN || typeof LIVE === 'undefined' || !LIVE) return; const rows = Q.splice(0, 200);
+    fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-notice', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'speed', rows: rows }), keepalive: !!leaving }).catch(() => {}); }catch(e){} }
+  setInterval(flush, 60000); document.addEventListener('visibilitychange', () => { if(document.hidden) flush(true); });
+})();
+</script>
+<script>
 /* 1374 · progress reports / lesson summaries / payslips: the saved copy at once, Google behind */
 (function(){
   const base = window.docGet; if(typeof base !== 'function') return;
@@ -24092,7 +24142,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       const body = fn === 'tGrowth' ? { op: 'growth', token: a[0] } : { op: 'growth', token: a[0], name: a[1] };
       return fetch(URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }).then(x => x.json()).then(r => {
         if(!(r && r.ok && r.data)) return go();
-        try{ const g = r.data._src && r.data._src.google, at = g && g.at ? Date.parse(g.at) : 0; if(Date.now() - at > 30 * 6e4 && Date.now() - last > 10 * 6e4){ last = Date.now(); setTimeout(() => { try{ go().catch(() => {}); }catch(e){} }, 3000); } }catch(e){}   /* keeps Google's peer reviews / visits / record copy fresh */
+        try{ const g = r.data._src && r.data._src.google, at = g && g.at ? Date.parse(g.at) : 0; if(Date.now() - at > ((typeof VIEW !== 'undefined' && VIEW === 'growth') ? 30 : 180) * 6e4 && Date.now() - last > 30 * 6e4){ last = Date.now(); setTimeout(() => { try{ go().catch(() => {}); }catch(e){} }, 3000); } }catch(e){}   /* keeps Google's peer reviews / visits / record copy fresh */
         return r.data; }, go); }
     return base.apply(this, arguments); };
   w.__1361 = 1; window.api = w;
