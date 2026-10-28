@@ -1907,7 +1907,7 @@ NET.then(n => { const el = $('netLine'); if (el) el.textContent = [n.net, n.spee
 LOC.then(l => { const el = $('locLine'); if (!el) return; el.textContent = l.lat != null ? 'Location ready · accurate to ' + Math.round(l.acc) + ' m' : l.denied ? 'Location is blocked. Allow location for this app in your browser settings, then open Time in again.' : 'Location ' + l.locErr + ' · it will be recorded as not available'; if (l.denied) el.style.color = 'var(--red)'; });
 }
 async function sendTimeIn(){
-if(!D.shift && !$('wcOk').checked) return toast('Post your screenshot in the WeChat corner first');
+if(!D.shift && !$('wcOk').checked) return toast('Tap Time in again');
 let shot = null;
 if(!D.shift){ shot = await grabScreen();          /* the entire screen: VooV, date and time, LAN icon */
 if(shot.err === 'blocked') return macPerm();
@@ -6381,7 +6381,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1384;
+const COE_V = 1385;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -22921,7 +22921,7 @@ go();
       const ti = D.timeIn; if(MACP) return;
       if(ti && !ti.pending && !mgr && window.wcStep1270){ window.wcStep1270(SHOT); return; }
       if(ti && !ti.pending){         res('ok', 'Time-in saved · ' + (ti.time || hmNow()), (ti.status ? ti.status : '') + (ti.flag ? ' · ' + ti.flag : '') + (mgr ? '' : '<br>Send your time-in picture to Team Chat › Time-in from Today.'),
-          !mgr && SHOT ? '<button class="btn teal block" onclick="tapCopyShot()">Copy picture for WeChat</button>' : ''); return; }
+          ''); return; }
       try{ closeSheet(); }catch(e){}
       res('no', 'Not timed in yet', (why() || 'It did not save.') + '<br>Tap Try again · pick <b>Entire screen</b>.', '<button class="btn teal block" onclick="tapResClose();tapTimeIn()">Try again</button>'); }); };
   window.tapClassIn = function(id){ if(BUSY) return; const c = (D.schedule || []).find(x => x.id === id); if(!c) return;
@@ -22930,7 +22930,7 @@ go();
     const nm = c.student || c.code || 'class', p = classInGo(id, true);
     Promise.resolve(p).then(() => {}, () => {}).then(() => { BUSY = 0; try{ tinNag(); }catch(e){}
       if(MACP) return; const x = (D.classIns || {})[id];
-      if(x && !x.pending){ const cap = ('In, ' + nm + "'s class · " + (x.time || hmNow()) + (x.status ? ' · ' + x.status : '')).slice(0, 140), can = !!(SHOT && window.chatSend1495);   /* 1496: the class check-in goes to Time-in in one tap */
+      if(x && !x.pending){ const cap = ('In, ' + nm + "'s class · " + (x.time || hmNow()) + (x.status ? ' · ' + x.status : '')).slice(0, 140), can = false;   /* 1497 (Misty 19:58): only the first time-in of the day posts to Time-in · later classes are recorded as before, never posted */   /* 1496: the class check-in goes to Time-in in one tap */
         res('ok', "I'm in · " + esc(nm), (x.time || hmNow()) + ' · ' + (x.status || 'saved') + (x.flag ? ' · ' + esc(x.flag) : '') + (x.proof || SHOT ? ' · screen proof saved' : '')
           + (can ? '<div class="ci-pv"><img alt="Screen proof that will be sent" src="data:image/jpeg;base64,' + SHOT + '"><div><span>Will be sent to Team Chat › Time-in</span>' + esc(cap) + '</div></div>' : ''),
           can ? '<button class="btn teal block" id="ciSend" onclick="ciSend1496(\'' + esc(id) + '\')">Send to Time-in</button><div class="ci-st" id="ciSt" role="status" aria-live="polite"></div>' : '');
@@ -30681,16 +30681,17 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     finally{ box.remove(); } }
   window.__pic1270 = picture; window.__card1270 = card;
   function stepsHtml(redo){ var n = 0; try{ n = +localStorage.getItem(SEEN) || 0; }catch(e){}
-    var inner = '<ol><li>Check the picture below · it has your time-in, the internet check and your screen proof</li><li>Tap <b>Send to Time-in</b> · it goes straight to Team Chat › Time-in for management</li></ol><div class="wc-note">No WeChat copy and no speed-test screenshot needed.</div>';
+    var inner = '<ol><li>Check the picture below · it has your time-in, the internet check and your screen proof</li><li>Tap <b>Send to Time-in</b> · it goes straight to Team Chat › Time-in for management</li></ol><div class="wc-note">No speed-test screenshot needed.</div>';
     return n < 3 || redo ? '<div class="wc-steps"><b>Send it to Team Chat › Time-in</b>' + inner + '</div>' : '<details class="wc-steps"><summary>How to send it</summary>' + inner + '</details>'; }
   function tickHtml(p){ return '<div class="wc-st' + (p ? ' ok' : '') + '" id="wcTick" role="status" aria-live="polite">' + (p ? 'Sent to Time-in · ' + E(p.time || '') : 'Not sent yet') + '</div>'; }   /* 1496: the send state (was the "Posted in WeChat" tick) */
   var STEP = null;
   async function render(){ if(!STEP) return; var st = STEP; if(PINGP) await race(PINGP, 5000, 0); var x = await data(st.shot, st.redo), pv = document.getElementById('wcPrev'); if(!pv) return;
-    try{ var P = await picture(x); if(STEP !== st) return; PIC = P; pv = document.getElementById('wcPrev'); if(!pv) return; var u = URL.createObjectURL(P.blob), im = new Image(); im.alt = 'Time-in picture for the WeChat corner'; im.src = u; try{ await im.decode(); }catch(e){}
+    try{ var P = await picture(x); if(STEP !== st) return; PIC = P; pv = document.getElementById('wcPrev'); if(!pv) return; var u = URL.createObjectURL(P.blob), im = new Image(); im.alt = 'Time-in picture for Team Chat'; im.src = u; try{ await im.decode(); }catch(e){}
       pv.style.aspectRatio = P.w + ' / ' + P.h; pv.innerHTML = ''; pv.appendChild(im);
-      st.x = x; var rdy = !x.measuring && !!x.shot && !!x.time && !!x.status;   /* 1496 (Misty 18:02): nothing is sent until every part is there */
+      st.x = x; if(x.shot && st.selfFor !== x.shot){ st.selfFor = x.shot; st.self = await selfShot1497(x.shot); } x.self = !!(x.shot && st.self); var rdy = !x.measuring && !!x.shot && !x.self && !!x.time && !!x.status;
+      var rb = document.getElementById('wcRetake'); if(rb) rb.hidden = !x.self;   /* 1496 (Misty 18:02): nothing is sent until every part is there */
       ['wcSend', 'wcCopy', 'wcSave'].forEach(function(id){ var b = document.getElementById(id); if(b) b.disabled = id === 'wcSend' ? (!rdy || !!st.busy) : !!x.measuring; });
-      var nm = document.getElementById('wcNet'); if(nm) nm.textContent = x.measuring ? 'Checking internet… a few seconds · Send to Time-in turns on when it is done' : !x.shot ? 'Your screen picture is kept on the laptop you timed in on · open Today there to send it' : !x.time || !x.status ? 'Your time-in is still saving… Send to Time-in turns on when it is saved' : '';
+      var nm = document.getElementById('wcNet'); if(nm) nm.textContent = x.self ? 'Your screen picture shows this app, not your class · tap Retake screen picture, Share, then click your VooV window' : x.measuring ? 'Checking internet… a few seconds · Send to Time-in turns on when it is done' : !x.shot ? 'Your screen picture is kept on the laptop you timed in on · open Today there to send it' : !x.time || !x.status ? 'Your time-in is still saving… Send to Time-in turns on when it is saved' : '';
       if(x.measuring && !st.to){ st.to = setTimeout(function(){ if(STEP === st && st.measuring && !NETF){ window.__netRun1273 = 0; NETF = { speed: '', timeout: 1 }; render(); } }, Math.max(500, 25000 - (Date.now() - (st.at || Date.now())))); }
       st.measuring = x.measuring; if(window.chatQueued1495 && chatQueued1495('ti:' + (D.today || '') + (st.redo ? ':redo' : ''))) weak1496(x); }
     catch(e){ pv.innerHTML = '<div class="wc-wait">The picture could not be made here · take a screenshot of your time-in instead</div>'; } }
@@ -30702,7 +30703,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     var p = redo ? (redo.posted ? { time: redo.posted } : null) : posted();
     openSheet('<div class="wc70"><h1>' + (redo ? 'Internet re-checked · ' + E(redo.time) : 'Time-in saved · ' + E(ti.time || '')) + '</h1><div class="wc-ok">' + (redo ? 'Your time-in stays ' + E(ti.time || '') + ' · ' + E(ti.status || '') : E(ti.status || 'Saved') + (ti.flag ? ' · ' + E(ti.flag) : '')) + '</div>' + stepsHtml(!!redo)
       + '<div class="wc-prev" id="wcPrev"><div class="wc-wait">Making the picture…</div></div><div class="wc-net" id="wcNet" aria-live="polite">' + (!redo && !ti.speed && window.__netRun1273 ? 'Checking internet… a few seconds · Send to Time-in turns on when it is done' : '') + '</div>'
-      + tickHtml(p) + '<div class="wc-btns"><button class="btn teal" id="wcSend" onclick="wcSend1496()" disabled>' + (p ? 'Send again' : 'Send to Time-in') + '</button></div><div class="wc-alt"><button type="button" id="wcCopy" onclick="wcCopy1270()" disabled>Copy picture for WeChat</button><span aria-hidden="true">·</span><button type="button" id="wcSave" onclick="wcSave1270()" disabled>Save picture</button></div>'
+      + tickHtml(p) + '<div class="wc-btns"><button class="btn teal" id="wcSend" onclick="wcSend1496()" disabled>' + (p ? 'Send again' : 'Send to Time-in') + '</button></div><div class="wc-alt"><button type="button" id="wcRetake" onclick="wcRetake1497()" hidden>Retake screen picture</button></div>'
       + '<div class="wc-copied" id="wcMsg" aria-live="polite"></div></div>');
     render(); };
   window.wcCopy1270 = async function(){ var m = document.getElementById('wcMsg'); if(!PIC) return;
@@ -30716,9 +30717,10 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
       : '<b>Not sent yet · connection dropped.</b> Check your LAN cable / Wi-Fi, then tap Try again.<span class="wc-q">It also keeps trying by itself.</span>'; };
   function weak1496(x){ var s = document.getElementById('wcTick'), b = document.getElementById('wcSend'); if(b){ b.disabled = false; b.textContent = 'Try again'; }
     var at = STEP && STEP.redo ? STEP.redo.time : ((D && D.timeIn) || {}).time; if(s){ s.className = 'wc-st warn'; s.innerHTML = failMsg1496(x && x.speed, at || ''); } }
+  window.wcRetake1497 = async function(){ if(!STEP || typeof window.grabScreen !== 'function') return; var r = await window.grabScreen(); if(r && r.b64){ STEP.shot = r.b64; STEP.self = null; STEP.selfFor = null; PIC = null; var pv = document.getElementById('wcPrev'); if(pv) pv.innerHTML = '<div class="wc-wait">Making the picture…</div>'; render(); } };
   window.wcSend1496 = async function(){ var st = STEP; if(!st || !PIC || st.busy) return; var x = st.x || {}, b = document.getElementById('wcSend'), s = document.getElementById('wcTick');
     if(x.measuring || !x.shot || !x.time || !x.status){ if(s){ s.className = 'wc-st'; s.textContent = 'Not ready yet · wait until the picture is complete'; } return; }
-    if(!window.chatTimein1400){ if(s){ s.className = 'wc-st no'; s.textContent = 'Team Chat is not available here · use Copy picture for WeChat'; } return; }
+    if(!window.chatTimein1400){ if(s){ s.className = 'wc-st no'; s.textContent = 'Team Chat is not available here · open Team Chat once, then tap Send to Time-in again'; } return; }
     st.busy = 1; if(b){ b.disabled = true; b.textContent = 'Sending…'; } if(s){ s.className = 'wc-st'; s.textContent = 'Sending to Time-in…'; }
     var r = await chatTimein1400(PIC.blob, x, st.redo); st.busy = 0; if(STEP !== st) return; b = document.getElementById('wcSend'); s = document.getElementById('wcTick');
     if(r === true){ try{ window.wcTick1270(); }catch(e){} s = document.getElementById('wcTick'); if(s){ s.className = 'wc-st ok'; s.textContent = 'Sent to Time-in · ' + hmM(Date.now()); } if(b){ b.disabled = false; b.textContent = 'Send again'; } }
@@ -30815,7 +30817,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
       if(h){ if(cl) cl.insertAdjacentHTML('beforebegin', h); else sb.insertAdjacentHTML('beforeend', h); } }catch(e){} return r; };
   var RS = ['Internet too weak', 'Screen proof not clear / not entire screen', 'Wi-Fi not LAN', 'Not the class laptop', 'Other'], PICK = [];
   window.wcAsk1270 = function(who){ PICK = []; who = String(who || '').replace(/^teacher\s+/i, '');
-    openSheet('<div class="wc70"><h1>Ask ' + E(who) + ' to redo the time-in check</h1><div class="mute small">The time-in time and On time / Late stay as they are. ' + E(who) + ' sees it at the top of Today, re-checks internet, screen and location, and posts a new picture in the WeChat corner.</div>'
+    openSheet('<div class="wc70"><h1>Ask ' + E(who) + ' to redo the time-in check</h1><div class="mute small">The time-in time and On time / Late stay as they are. ' + E(who) + ' sees it at the top of Today, re-checks internet, screen and location, and sends a new picture to Team Chat › Time-in.</div>'
       + '<div class="wc-rs" id="wcRs">' + RS.map(function(x, i){ return '<button type="button" aria-pressed="false" onclick="wcPick1270(' + i + ',this)">' + E(x) + '</button>'; }).join('') + '</div>'
       + '<textarea id="wcRt" rows="2" placeholder="Add a note (needed for Other)" style="margin-top:10px;width:100%;box-sizing:border-box"></textarea>'
       + '<button class="btn teal block" id="wcRgo" style="margin-top:12px" onclick="wcAskGo1270(\'' + E(who.replace(/'/g, '')) + '\')">Send the request</button></div>'); };
@@ -30835,11 +30837,11 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
       if(q) q.style.display = o.redo && o.redo.speed ? 'none' : '';
       var orig = q ? ((q.getAttribute('data-nb') || '') || ((q.getAttribute('title') || '').match(/((?:↓|~)[^·]*(?:·[^·]*){0,3}ms(?: · jitter [\d.]+ ms)?)/) || ['', ''])[1]) : '';
       if(cur){ var cx = { kind: 'timein', who: who, date: d, at: tin ? tin.textContent : '' }; if(o.redo && o.redo.speed){ cx.orig = orig.trim(); cx.redo = o.redo.time; } var nb = '<span class="wc-x">' + _nb(cur, cx) + '</span>'; if(q) q.insertAdjacentHTML('afterend', nb); else tags.insertAdjacentHTML('afterbegin', nb); }
-      var h = chips(o); if(timed) h += (o.posted ? '<span class="wc-chip ok" title="Posted the time-in picture in the WeChat corner">WeChat ✓ ' + E(o.posted) + '</span>' : '<span class="wc-chip no">WeChat not posted</span>') + '<button type="button" class="wc-ask" onclick="event.stopPropagation();wcAsk1270(\'' + E(who.replace(/'/g, '')) + '\')">Ask to redo check</button>';
+      var h = chips(o); if(timed) h += (o.posted ? '<span class="wc-chip ok" title="Sent the time-in picture to Team Chat › Time-in">Sent to Time-in ✓ ' + E(o.posted) + '</span>' : '<span class="wc-chip no">Not sent to Time-in</span>') + '<button type="button" class="wc-ask" onclick="event.stopPropagation();wcAsk1270(\'' + E(who.replace(/'/g, '')) + '\')">Ask to redo check</button>';
       if(h) tags.insertAdjacentHTML('beforeend', '<span class="wc-x">' + h + '</span>'); });
     [].forEach.call(document.querySelectorAll('#v-monitor .mo-r'), function(row){ var nm = row.querySelector('b'), cell = nm && nm.nextElementSibling; if(!nm || !cell) return; var who = nm.textContent.trim(), o = OV[key((window.M && M.day) || d, who)] || {}, sig = JSON.stringify(o);
       if(row.dataset.w1270 === sig && !force) return; row.dataset.w1270 = sig; var old = cell.querySelector('.wc-mo'); if(old) old.remove();
-      if(!/\d/.test(cell.textContent)) return; var h = (o.posted ? '<span class="wc-chip ok">WeChat ✓</span>' : '<span class="wc-chip no">WeChat –</span>') + (o.asked ? '<span class="wc-chip amb">Redo asked</span>' : o.redo ? '<span class="wc-chip tl">Redone ' + E(o.redo.time) + '</span>' : '');
+      if(!/\d/.test(cell.textContent)) return; var h = (o.posted ? '<span class="wc-chip ok">Time-in ✓</span>' : '<span class="wc-chip no">Time-in –</span>') + (o.asked ? '<span class="wc-chip amb">Redo asked</span>' : o.redo ? '<span class="wc-chip tl">Redone ' + E(o.redo.time) + '</span>' : '');
       cell.insertAdjacentHTML('beforeend', '<span class="wc-mo">' + h + '</span>'); }); }catch(e){} }
   var mq = 0, mo = new MutationObserver(function(){ if(mq) return; mq = 1; queueMicrotask(function(){ mq = 0; deco(false); }); });
   (function w(){ var a = document.getElementById('v-team'), b = document.getElementById('v-monitor'); if(a) mo.observe(a, { childList: true, subtree: true }); if(b) mo.observe(b, { childList: true, subtree: true }); if(!a && !b) setTimeout(w, 1500); })();
@@ -31105,7 +31107,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
           if(!surf || surf === 'monitor'){ var t0 = Date.now(), away = function(){ return document.visibilityState === 'hidden' || !document.hasFocus(); };   /* 1273: wait until VooV is in front (the app window loses focus), up to 6 s */
             while(Date.now() - t0 < 6000 && !away()){ show('Click your VooV class window now', 'The picture is taken when <b>VooV</b> is in front.<br>It shows VooV, your clock and the LAN icon.', Math.ceil((6000 - (Date.now() - t0)) / 1000)); await new Promise(function(z){ setTimeout(z, 200); }); }
             if(away()) await new Promise(function(z){ setTimeout(z, 450); }); }
-          var ob = document.getElementById('cap1272'); if(ob) ob.innerHTML = '';   /* blank cover while the picture is taken: no text in the proof */ }catch(e){} }
+          var ob = document.getElementById('cap1272'); if(ob) ob.innerHTML = ''; await new Promise(function(z){ setTimeout(z, 900); });   /* 1497: a fresh frame, never the cover text · blank cover while the picture is taken: no text in the proof */ }catch(e){} }
       return st; }; }catch(e){}
   var _g = window.grabScreen;
   if(typeof _g === 'function') window.grabScreen = async function(){ CAP = 1; show('Taking your screen picture…', 'Choose <b>Entire screen</b>, then Share.', '');
@@ -31709,7 +31711,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     var o2 = qRead(); o2[it.k] = { a: it.a, o: it.o, w: it.w || '', net: it.net || '', at: (had && had.at) || Date.now() }; qWrite(o2); pend(it, 'pending'); return 'queued'; }
   window.chatQueued1495 = function(k){ return !!qRead()[k]; };
   async function qFlush(){ if(!hasD() || qFlush.busy) return; var o = qRead(), ks = Object.keys(o); if(!ks.length) return; qFlush.busy = 1;
-    try{ for(var i = 0; i < ks.length; i++){ var k = ks[i], it = o[k]; if(!it || Date.now() - it.at > 18 * 36e5){ var q = qRead(); delete q[k]; qWrite(q); continue; }
+    try{ for(var i = 0; i < ks.length; i++){ var k = ks[i], it = o[k]; if(!it || /^ci:/.test(k) || Date.now() - it.at > 18 * 36e5){ var q = qRead(); delete q[k]; qWrite(q); if(/^ci:/.test(k)){ try{ post('pend', { k: k, off: 1 }).catch(function(){}); }catch(e){} } continue; }   /* 1497: queued class check-ins are dropped */
       var r = await sendQ1495({ a: it.a, o: it.o, k: k, w: it.w, net: it.net, pn: it.pn }); if(r === 'queued') break; if(r && r.error){ var q2 = qRead(); delete q2[k]; qWrite(q2); }
       try{ window.dispatchEvent(new CustomEvent('chq1495', { detail: { k: k, ok: r === true, error: r && r.error } })); }catch(e){} } }
     finally{ qFlush.busy = 0; } }
@@ -32524,5 +32526,11 @@ nav button[data-v="chat"] .dot.at.chN:not(.hide){background:#5B4B9A!important}
 #tapRes .ci-pv img{width:96px;height:60px;object-fit:cover;border-radius:8px;flex:none}#tapRes .ci-pv div{font-size:13px;color:#2B2253;line-height:1.35}#tapRes .ci-pv span{display:block;font-size:11px;color:#6E6A85;margin-bottom:2px}
 #tapRes .ci-st{font-size:13px;line-height:1.45;text-align:left;border-radius:10px}#tapRes .ci-st.warn{background:#FFF1DC;color:#7A4A0E;border:1.5px solid #E7A33E;padding:9px 11px}#tapRes .ci-st .wc-q{display:block;margin-top:4px}#tapRes .ci-st.no{background:#FDECEA;color:#9B2C1F;padding:9px 11px}
 </style>
+<script>
+/* 1497 (Misty 19:58) · the screen picture must show the class, never this app */
+window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) return z(false); var im = new Image(); im.onload = function(){ try{ var c = document.createElement('canvas'); c.width = 64; c.height = 36; var g = c.getContext('2d'); g.drawImage(im, 0, 0, 64, 36);
+    var d = g.getImageData(0, 0, 64, 36).data, n = 0, cov = 0, lt = 0; for(var i = 0; i < d.length; i += 4){ n++; var r = d[i], gg = d[i + 1], bb = d[i + 2]; if(r > 225 && gg > 225 && bb > 225) lt++; if(Math.abs(r - 243) < 10 && Math.abs(gg - 246) < 10 && Math.abs(bb - 247) < 10) cov++; }
+    z(lt / n > 0.8 && cov / n > 0.3); }catch(e){ z(false); } }; im.onerror = function(){ z(false); }; im.src = 'data:image/jpeg;base64,' + b64; }); };
+</script>
 </body>
 </html>
