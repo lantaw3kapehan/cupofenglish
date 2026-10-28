@@ -6340,7 +6340,7 @@ return `<div class="mini" style="margin-top:12px;background:var(--tint)"><b>${sa
 <table style="margin-top:10px">${kv.map(([k,v])=>`<tr><td class="mute">${k}</td><td style="text-align:right">${esc(v)}</td></tr>`).join('')}</table>
 <h2>Lessons by month</h2><div class="gx"><table><tr>${AT.months.map(m=>`<th>${esc(m)}</th>`).join('')}</tr><tr>${r[C.months].map(x=>`<td class="num">${x||'·'}</td>`).join('')}</tr></table></div>
 <button class="btn ghost sm" style="margin-top:12px" onclick="tabSheet('INDPKG','Lesson summary','${esc(r[C.code])}')">Lesson summary (IND-PKG)</button>`);
-if(r[C.code] && !docHave('INDPKG', r[C.code], '')) docGet('INDPKG', r[C.code], '').catch(()=>{});
+if(r[C.code] && !docHave('INDPKG', r[C.code], '') && !(D && D.mgr)) docGet('INDPKG', r[C.code], '').catch(()=>{});   /* 1374: management's Lesson summary is drawn from ACTIVE — no Google prefetch */
 }
 async function shareSave(row, code){
 const v = (($('shW') || {}).value || ''), owner = ((v.match(/ST-\d{4}-\d{3}/i) || [''])[0]).toUpperCase();
@@ -6367,7 +6367,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1373;
+const COE_V = 1374;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23918,6 +23918,30 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   w.__762 = 1; window.api = w;
   /* the ↻ Refresh button asks everything fresh */
   document.addEventListener('click', ev => { try{ const b = ev.target && ev.target.closest && ev.target.closest('#rf'); if(b) FORCE = Date.now(); }catch(e){} }, true);
+})();
+</script>
+<script>
+/* 1374 · progress reports / lesson summaries / payslips: the saved copy at once, Google behind */
+(function(){
+  const base = window.docGet; if(typeof base !== 'function') return;
+  const SAFE = /^(PRREP|INDPKG|PAYSLIP)$/, same = (a, b) => JSON.stringify(a && a.rows) === JSON.stringify(b && b.rows);
+  window.docGet = docGet = function(key, pick, pick2, force){
+    try{
+      if(force || !SAFE.test(key) || !pick || typeof LIVE === 'undefined' || !LIVE || typeof sbOn !== 'function' || !sbOn()) return base.apply(this, arguments);
+      const k = docK(key, pick, pick2); if(DOCFLY[k]) return DOCFLY[k];
+      const fn = D && D.mgr ? 'mgmtTab' : 'tDoc', args = [TOKEN, key, pick || '', pick2 || '', 1, false], box = typeof $ === 'function' ? $('stuSB') : null;
+      const p = Promise.race([sbDoc(sbKey(fn, args)), new Promise(z => setTimeout(() => z(null), 3000))]).then(d => {
+        const c = d && d.data && d.data.rows ? d.data : null;
+        if(!c){ delete DOCFLY[k]; return base(key, pick, pick2); }   /* never saved → Google, as before */
+        DOCMEM[k] = c; try{ store('set', k, JSON.stringify(c)); }catch(e){}
+        setTimeout(() => { apiNow(fn, ...args).then(r => { if(!r || !r.rows || same(r, c)) return; DOCMEM[k] = r; try{ store('set', k, JSON.stringify(r)); }catch(e){}
+          try{ const on = $('sheet') && $('sheet').classList.contains('on');
+            if(on && DOCV && DOCV.key === key && String(DOCV.pick || '') === String(pick || '') && $('docP')) docShow(key, DOCV.title, r, pick, pick2);
+            else if(key === 'PRREP' && box && $('stuSB') === box && JSON.stringify((c.rows || []).slice(29, 44)) !== JSON.stringify(r.rows.slice(29, 44))){ box.innerHTML = docHtml('PRREP', r.rows, 30, 44); docFit(box); }
+          }catch(e){} }).catch(() => {}); }, 400);
+        delete DOCFLY[k]; return c; }, () => { delete DOCFLY[k]; return base(key, pick, pick2); });
+      return DOCFLY[k] = p;
+    }catch(e){ return base.apply(this, arguments); } };
 })();
 </script>
 <script>
