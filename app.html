@@ -6483,7 +6483,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1401;
+const COE_V = 1403;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -8484,13 +8484,25 @@ const PARTNERS = { 'Dr. Spring': { k: 20, a: 20 }, 'Xiaolan': { k: 15, a: 15 } }
      adult picture, savings worked out the same way: against the 15-lesson price per lesson), only the three prices change. */
   XLS = { 'Xiaolan students': [1800, 3000, 5400] }, xlP = L => { const pr = XLS[PP.partner], base = Math.round(pr[0] / L[0].n);
     return L.map((p, i) => { const price = pr[i] || p.price, sv = (p.n + p.bonus) * base - price; return Object.assign({}, p, { price, save: i && sv > 0 ? sv : 0, saveT: i && sv > 0 ? '节省 ¥' + (Math.floor(sv / 100) * 100).toLocaleString('en-US') + '+' : '' }); }); }, ppOff = () => ((PARTNERS[PP.partner] || {})[PP.ad ? 'a' : 'k']) || 0;   /* 346 */
-const ppL = () => PP.ad === true && XLS[PP.partner] ? xlP(PKA) : PP.partner && PARTNERS[PP.partner] && (PP.ad === true || !PP.ad) ? (PP.ad ? PKA : PK).map(p => Object.assign({}, p, { price: (Math.round(p.price / p.n) - ppOff()) * p.n, save: 0, saveT: '' })) : PP.ad === 4 ? PKK : PP.ad === 3 ? PKP : PP.ad === 2 ? PKI : PP.ad ? PKA : PK;
+const ppL = () => PP.m === 'ph' ? phL() : PP.ad === true && XLS[PP.partner] ? xlP(PKA) : PP.partner && PARTNERS[PP.partner] && (PP.ad === true || !PP.ad) ? (PP.ad ? PKA : PK).map(p => Object.assign({}, p, { price: (Math.round(p.price / p.n) - ppOff()) * p.n, save: 0, saveT: '' })) : PP.ad === 4 ? PKK : PP.ad === 3 ? PKP : PP.ad === 2 ? PKI : PP.ad ? PKA : PK;
 const recOf = c => { c = String(c || ''); return /^(B1|B2|C1|C2)/.test(c) ? 'a' : /^(A1|A2)/.test(c) ? 'c' : 'f'; };
+/* 1532 · Philippine market content for the same builder (docs sys:pricing_ph via 1530) */
+const phPrg = () => { const D = window.phPricing1530 && phPricing1530(); return D && (D.programs || []).find(x => x.id === (PP && PP.ad === 2 ? 'ielts' : 'adult')) || null; };
+const phL = () => { const P = phPrg(); if(!P) return []; const KS = { foundation: 'f', professional: 'c', mastery: 'a' }, band = P.measure === 'Band';
+  return (P.tracks || []).map(t => { const mk = (String(t.extra || '').match(/^(\d+) mock/) || [])[1];
+    return { k: KS[t.id] || t.id, zh: t.name + ' Track', en: t.name, n: t.lessons, bonus: 0, mock: mk ? +mk : 0, pe: mk ? '' : (t.extra || ''), price: t.price, pt: '₱' + Number(t.price).toLocaleString('en-US'), save: 0,
+      hrs: '≈' + t.hours + ' hours', mins: P.lessonMins, tgt: band ? 'Target band ' + t.target + (t.gain ? ' · expected band gain ' + t.gain : '') : 'CEFR target ' + t.target + ' · ' + t.goal, d: band ? t.goal + ' ' + t.outcome : t.outcome }; }); };
+const phQ = () => { const P = phPrg() || {}, S = P.system || {}, band = P.measure === 'Band';
+  return { sub: P.name || '', l3: (S.skills || []).map(k => k.name).join(' · ') + ' · ' + (band ? 'aligned with official IELTS band descriptors' : 'CEFR-aligned · adult learners'),
+    l2: p => p.hrs + ' · ' + p.mins + '-minute lessons · 1:1', per: p => '≈ ₱' + Math.round(p.price / (p.n + p.bonus)).toLocaleString('en-US') + ' / lesson',
+    notes: [{ t: P.small || '' }, { t: (P.method || '') + '.' }, { t: (S.footer || []).join(' · ') + '.' }, { t: 'Please tell your teacher at least 2 hours before class if you need to cancel or move a lesson.', red: 1 }]
+      .concat(band ? [{ t: 'Target bands are a guide; progress depends on starting level, effort and consistency. Official results come from the IELTS test.', mute: 1 }] : []),
+    bc: 'CupOfEnglish helps eligible learners register for the IELTS test through its partnership with British Council Philippines.' }; };
 let PP = null;
-window.pricePic = function(o){ o = o || {}; PP = { o: o, rec: o.cefr ? recOf(o.cefr) : 'c', ad: o.ket ? 4 : o.pet ? 3 : o.ielts ? 2 : !!o.adult }; ppSheet(); };
+window.pricePic = function(o){ o = o || {}; if(o.ph){ if(!(window.phPricing1530 && phPricing1530())) return toast('Philippine price list still loading · try again in a moment'); PP = { o: {}, m: 'ph', rec: o.rec ? ({ foundation: 'f', professional: 'c', mastery: 'a' })[o.rec] || 'c' : 'c', ad: o.ph === 'ielts' ? 2 : true }; return ppSheet(); } PP = { o: o, rec: o.cefr ? recOf(o.cefr) : 'c', ad: o.ket ? 4 : o.pet ? 3 : o.ielts ? 2 : !!o.adult }; ppSheet(); };
 function ppSheet(){
-openSheet('<h1>Price picture</h1><div class="mute small">' + (PP.o.student ? 'For ' + esc(PP.o.student) + (PP.o.cefr ? ' · trial ' + esc(PP.o.cefr) + (PP.o.total ? ' · ' + PP.o.total + '/36' : '') : '') : 'General price list for new enquiries') + ' · Chinese for parents</div>' +
-'<div class="small" style="margin-top:12px"><b>Learner</b></div><div class="seg" id="ppAd" style="flex-wrap:wrap">' + ['Kids &amp; teens · 4–17', 'Adults · 18+', 'IELTS', 'PET', 'KET'].map((t, i) => '<button class="' + ((+PP.ad || 0) === i ? 'on' : '') + '" onclick="ppAd(' + i + ')">' + t + '</button>').join('') + '</div>' + (PP.ad === true || !PP.ad ? '<div class="small" style="margin-top:12px"><b>Price for</b> <span class="mute">· partner = what the partner remits to us</span></div><div class="seg">' + (PP.ad === true ? ['', 'Dr. Spring', 'Xiaolan', 'Xiaolan students'] : ['', 'Dr. Spring', 'Xiaolan']).map(n => '<button class="' + ((PP.partner || '') === n ? 'on' : '') + '" onclick="ppPartner(\'' + n + '\')">' + (n && XLS[n] ? 'Xiaolan\'s Language Center · Adult · ¥' + XLS[n].join(' / ') : n ? n + ' · −¥' + PARTNERS[n][PP.ad ? 'a' : 'k'] + '/lesson' : 'Normal (students)') + '</button>').join('') + '</div>' : '') + '<div class="small" style="margin-top:12px"><b>Recommend</b></div><div class="seg" id="ppRec">' + ppL().map(p => '<button class="' + (PP.rec === p.k ? 'on' : '') + '" onclick="ppRec(\'' + p.k + '\')">' + (p.en || p.zh) + ' · ' + p.n + (p.bonus ? '+' + p.bonus : '') + '</button>').join('') + '<button class="' + (PP.rec === '' ? 'on' : '') + '" onclick="ppRec(\'\')">None</button>' + '</div>' +
+openSheet('<h1>Price picture</h1><div class="mute small">' + (PP.o.student ? 'For ' + esc(PP.o.student) + (PP.o.cefr ? ' · trial ' + esc(PP.o.cefr) + (PP.o.total ? ' · ' + PP.o.total + '/36' : '') : '') : 'General price list for new enquiries') + (PP.m === 'ph' ? ' · English · Philippine market (₱)' : ' · Chinese for parents') + '</div>' +
+'<div class="small" style="margin-top:12px"><b>Learner</b></div><div class="seg" id="ppAd" style="flex-wrap:wrap">' + (PP.m === 'ph' ? [, 'Adult English 1:1', 'IELTS 1:1'] : ['Kids &amp; teens · 4–17', 'Adults · 18+', 'IELTS', 'PET', 'KET']).map((t, i) => '<button class="' + ((+PP.ad || 0) === i ? 'on' : '') + '" onclick="ppAd(' + i + ')">' + t + '</button>').join('') + '</div>' + (PP.m !== 'ph' && (PP.ad === true || !PP.ad) ? '<div class="small" style="margin-top:12px"><b>Price for</b> <span class="mute">· partner = what the partner remits to us</span></div><div class="seg">' + (PP.ad === true ? ['', 'Dr. Spring', 'Xiaolan', 'Xiaolan students'] : ['', 'Dr. Spring', 'Xiaolan']).map(n => '<button class="' + ((PP.partner || '') === n ? 'on' : '') + '" onclick="ppPartner(\'' + n + '\')">' + (n && XLS[n] ? 'Xiaolan\'s Language Center · Adult · ¥' + XLS[n].join(' / ') : n ? n + ' · −¥' + PARTNERS[n][PP.ad ? 'a' : 'k'] + '/lesson' : 'Normal (students)') + '</button>').join('') + '</div>' : '') + '<div class="small" style="margin-top:12px"><b>Recommend</b></div><div class="seg" id="ppRec">' + ppL().map(p => '<button class="' + (PP.rec === p.k ? 'on' : '') + '" onclick="ppRec(\'' + p.k + '\')">' + (p.en || p.zh) + ' · ' + p.n + (p.bonus ? '+' + p.bonus : '') + '</button>').join('') + '<button class="' + (PP.rec === '' ? 'on' : '') + '" onclick="ppRec(\'\')">None</button>' + '</div>' +
 '<div class="row" style="gap:8px;margin-top:12px"><button class="btn teal grow" id="ppC" onclick="ppCopy()">Copy picture</button><button class="btn ghost grow" onclick="ppSave()">' + (navigator.share ? 'Share / save' : 'Save picture') + '</button><button class="btn ghost" onclick="ppText()">Copy message</button></div>' +
 '<div class="card" style="margin-top:10px;padding:10px 12px"><label class="check" for="ppPayOn" style="margin:0"><input type="checkbox" id="ppPayOn" ' + (PP.pay === false ? '' : 'checked') + ' onchange="PP.pay=this.checked"><span>Add the enrolment and payment lines to the message</span></label><div class="row" style="gap:8px;align-items:center;margin-top:6px"><span class="small mute">Payment with</span><input id="ppPayNm" class="in-t grow" style="margin:0" value="' + esc(ppPayNm()) + '" onchange="try{localStorage.setItem(\'coe.ppPay\',this.value.trim())}catch(e){}"></div></div>' +
 '<div id="ppImg" style="margin-top:12px"><div class="sk"></div><div class="sk"></div></div>');
@@ -8502,35 +8514,38 @@ window.ppRec = function(k){ PP.rec = k; document.querySelectorAll('#ppRec button
 function wrap(x, t, mw){ const out = []; let line = ''; for(const ch of String(t).split(/(?=[\u4e00-\u9fff])|(?<=[\u4e00-\u9fff])|\s+/).filter(Boolean)){ const tst = line ? line + (/[\u4e00-\u9fff]/.test(ch) || /[\u4e00-\u9fff]$/.test(line) ? '' : ' ') + ch : ch; if(x.measureText(tst).width > mw && line){ out.push(line); line = ch; } else line = tst; } if(line) out.push(line); return out; }
 function rr(x, X, Y, w, h, r){ x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + w, Y, X + w, Y + h, r); x.arcTo(X + w, Y + h, X, Y + h, r); x.arcTo(X, Y + h, X, Y, r); x.arcTo(X, Y, X + w, Y, r); x.closePath(); }
 async function ppDraw(){
-const o = PP.o, L = ppL(), IE = PP.ad >= 2, PE = PP.ad >= 3, KE = PP.ad === 4, rec = L.find(p => p.k === PP.rec);
-PP.blob = await coeCard(o.student ? 'Course packages · 课程方案' : KE ? 'KET price list · 剑桥KET课程价格' : PE ? 'PET price list · 剑桥PET课程价格' : IE ? 'IELTS price list · 雅思课程价格' : PP.ad ? (PP.ad === true && PP.partner && !XLS[PP.partner] ? 'Partner price list · 合作伙伴结算价' : 'Adult price list · 成人课程价格') : (PP.partner ? 'Partner price list · 合作伙伴结算价' : 'Price list · 课程价格'), (T, y) => {
+const o = PP.o, L = ppL(), IE = PP.ad >= 2, PE = PP.ad >= 3, KE = PP.ad === 4, rec = L.find(p => p.k === PP.rec), Q = PP.m === 'ph' ? phQ() : null;
+PP.blob = await coeCard(Q ? (IE ? 'IELTS price list' : 'Adult English price list') : o.student ? 'Course packages · 课程方案' : KE ? 'KET price list · 剑桥KET课程价格' : PE ? 'PET price list · 剑桥PET课程价格' : IE ? 'IELTS price list · 雅思课程价格' : PP.ad ? (PP.ad === true && PP.partner && !XLS[PP.partner] ? 'Partner price list · 合作伙伴结算价' : 'Adult price list · 成人课程价格') : (PP.partner ? 'Partner price list · 合作伙伴结算价' : 'Price list · 课程价格'), (T, y) => {
 if(o.student){ y = coeWho(T, o, y);
 if(o.cefr) y = coeHero(T, String(o.cefr).split(' ')[0], 'Trial result', '试听评估 · CEFR ' + (window.cefrZh ? cefrZh(o.cefr) : o.cefr), rec ? 'Teacher recommends · 老师推荐：' + rec.zh + '（' + rec.n + '节' + (rec.bonus ? ' + 赠送' + rec.bonus + '节' : '') + '）' : '', y);
 y = coeTeacher(T, o.teacher, y);
-} else { T.label('Course', '课程', y); T.text(KE ? '1-on-1 KET' : PE ? '1-on-1 PET' : IE ? '1-on-1 IELTS' : '1-on-1 English', T.CX, y + 62, '400 56px ' + T.B, T.NAVY); T.text(KE ? '一对一剑桥 KET 少儿英语课程' : PE ? '一对一剑桥 PET 青少年英语课程' : IE ? 'EXPERT 剑桥雅思课程体系 · 1对1高端定制课程' : PP.ad ? '一对一成人英语课程 · 专业教师全程指导' : '一对一精品少儿及青少年英语课程', T.CX, y + 108, '400 32px ' + T.F, T.SUB); T.text(PE ? 'Speaking · Listening · Reading · Writing · 口语 · 听力 · 阅读 · 写作 · 剑桥 CEFR ' + (KE ? 'A2' : 'B1–B1+') : IE ? 'Speaking · Listening · Reading · Writing · 口语 · 听力 · 阅读 · 写作 · 对标官方雅思评分标准' : PP.ad ? 'Ages 18+ · CEFR-aligned · 建议年龄 18 岁以上 · 依据英语水平安排课程' : 'Ages 4–17 · CEFR-aligned · 建议年龄 4–17 岁 · 依据英语水平安排课程', T.CX, y + 148, '400 22px ' + T.F, T.MUTE); y += 196; }
-T.label('Lesson packages', '课程套餐 · 每节50分钟', y); y += 22;
+} else { T.label('Course', '课程', y); T.text(KE ? '1-on-1 KET' : PE ? '1-on-1 PET' : IE ? '1-on-1 IELTS' : '1-on-1 English', T.CX, y + 62, '400 56px ' + T.B, T.NAVY); T.text(Q ? Q.sub : KE ? '一对一剑桥 KET 少儿英语课程' : PE ? '一对一剑桥 PET 青少年英语课程' : IE ? 'EXPERT 剑桥雅思课程体系 · 1对1高端定制课程' : PP.ad ? '一对一成人英语课程 · 专业教师全程指导' : '一对一精品少儿及青少年英语课程', T.CX, y + 108, '400 32px ' + T.F, T.SUB); T.text(Q ? Q.l3 : PE ? 'Speaking · Listening · Reading · Writing · 口语 · 听力 · 阅读 · 写作 · 剑桥 CEFR ' + (KE ? 'A2' : 'B1–B1+') : IE ? 'Speaking · Listening · Reading · Writing · 口语 · 听力 · 阅读 · 写作 · 对标官方雅思评分标准' : PP.ad ? 'Ages 18+ · CEFR-aligned · 建议年龄 18 岁以上 · 依据英语水平安排课程' : 'Ages 4–17 · CEFR-aligned · 建议年龄 4–17 岁 · 依据英语水平安排课程', T.CX, y + 148, '400 22px ' + T.F, T.MUTE); y += 196; }
+T.label(Q ? 'Lesson packages · 50 minutes each' : 'Lesson packages', '课程套餐 · 每节50分钟', y); y += 22;
 L.forEach(p => { const isR = PP.rec === p.k, dl = T.wrap(p.d, 640, '400 22px ' + T.F).slice(0, 2), h = 170 + dl.length * 32 + (p.tgt ? 36 : 0), x0 = T.CX + 32, R = T.R - 32;
 T.box(T.CX, y, T.Wc - T.CX * 2, h, 26, isR ? T.OPEN : '#fff', isR ? T.EDGE : T.LINE, isR ? 2.6 : 2);
 T.text(p.zh, x0, y + 58, '700 34px ' + T.F, T.NAVY); const bx = x0 + T.w(p.zh, '700 34px ' + T.F) + 18;
-if(isR) T.chip('老师推荐 · Recommended', bx, y + 30, T.TEAL, '#fff'); else if(p.top) T.chip('家长首选 · Most chosen', bx, y + 30, T.AMB, T.AMBT);
+if(isR) T.chip(Q ? 'Recommended' : '老师推荐 · Recommended', bx, y + 30, T.TEAL, '#fff'); else if(p.top) T.chip(Q ? 'Most chosen' : '家长首选 · Most chosen', bx, y + 30, T.AMB, T.AMBT);
 T.text(p.en + ' · ' + p.n + (p.bonus ? ' + ' + p.bonus + ' free' : '') + ' lessons' + (p.mock ? ' + ' + p.mock + ' mock tests' : '') + (p.pe ? ' + ' + p.pe : ''), x0, y + 94, '400 22px ' + T.F, T.MUTE);
-T.text(p.n + '节课' + (p.bonus ? ' + 赠送' + p.bonus + '节' : '') + (p.mock ? ' + ' + p.mock + '次模考' : '') + (p.plus ? ' + ' + p.plus : '') + (p.hrs ? ' · ' + p.hrs : ''), x0, y + 130, '700 24px ' + T.F, T.SUB);
+T.text(Q ? Q.l2(p) : p.n + '节课' + (p.bonus ? ' + 赠送' + p.bonus + '节' : '') + (p.mock ? ' + ' + p.mock + '次模考' : '') + (p.plus ? ' + ' + p.plus : '') + (p.hrs ? ' · ' + p.hrs : ''), x0, y + 130, '700 24px ' + T.F, T.SUB);
 if(p.tgt) T.text(p.tgt, x0, y + 170, '700 22px ' + T.F, T.TEAL); dl.forEach((s, i) => T.text(s, x0, y + 170 + (p.tgt ? 36 : 0) + i * 32, '400 22px ' + T.F, T.SUB));
-T.text(p.pt || '¥' + p.price, R, y + 70, '400 56px ' + T.B, T.TEAL, 'right'); T.text('约 ¥' + Math.round(p.price / (p.n + p.bonus)) + ' / 节', R, y + 104, '400 21px ' + T.F, T.MUTE, 'right');
+T.text(p.pt || '¥' + p.price, R, y + 70, '400 56px ' + T.B, T.TEAL, 'right'); T.text(Q ? Q.per(p) : '约 ¥' + Math.round(p.price / (p.n + p.bonus)) + ' / 节', R, y + 104, '400 21px ' + T.F, T.MUTE, 'right');
 if(p.save) T.chip(p.saveT || '节省 ¥' + p.save, R, y + 118, T.AMB, T.AMBT, '700 20px ' + T.F, true);
 y += h + 18; });
-y = coeNotes(T, 'Good to know', '温馨提示', IE ? [{ t: PE ? KE ? '每节课50分钟 · 一对一个性化辅导 · 基于剑桥 CEFR A2 标准 · 100% 剑桥对标。' : '每节课50分钟 · 个性化一对一教学 · 符合剑桥 CEFR B1–B1+ 国际标准。' : '每节课50分钟 · 1对1个性化教学 · 对标官方雅思评分标准（Band Descriptors）。' }, { t: KE ? '技能时间分配：40% 口语 · 25% 写作 · 20% 听力 · 15% 阅读。' : PE ? '口语、听力、阅读、写作四项技能全面训练 · 阶段式学习路径：基础 · 进阶 · 冲刺。' : '可选择四项综合课程，或口语、听力、阅读、写作单项强化。' }, { t: KE ? '模拟考试与备考策略：70% 考试模拟 + 30% 应试策略（时间管理、错误分析与改正）。' : '70% 综合技能训练 + 30% 策略思维培养，结合实战模考与策略反馈。' }, { t: '温馨提醒：如需请假或调课，请至少提前 2 小时告知老师或助教。', red: 1 }, { t: '学习进度因基础、投入及持续学习而异；目标分数为参考范围，实际成绩以官方考试为准。', mute: 1 }] : [{ t: '每节课50分钟，也可拆分为两次25分钟的半节课（各计0.5课时），灵活安排上课时间。' }, { t: PP.ad ? '25分钟半节课适合工作繁忙或希望高频练习的学习者；50分钟完整课程适合希望系统提升英语能力的成人学习者。' : '25分钟课程适合低龄儿童（自然拼读、词汇、互动）；50分钟课程适合年龄稍大的学员（口语表达、话题讨论）。' }, { t: PP.ad ? '每节课后提供针对性练习与反馈 · 经验丰富的专业英语教师 · 4C 教学法 · 对标 CEFR 国际标准。' : '每节课后布置作业 · 持证专业教师授课 · 4C 教学法 · 对标 CEFR 国际标准。' }, { t: '温馨提醒：如需请假或调课，请至少提前 2 小时告知老师或助教。', red: 1 }], y + 22);
+y = coeNotes(T, 'Good to know', '温馨提示', Q ? Q.notes : IE ? [{ t: PE ? KE ? '每节课50分钟 · 一对一个性化辅导 · 基于剑桥 CEFR A2 标准 · 100% 剑桥对标。' : '每节课50分钟 · 个性化一对一教学 · 符合剑桥 CEFR B1–B1+ 国际标准。' : '每节课50分钟 · 1对1个性化教学 · 对标官方雅思评分标准（Band Descriptors）。' }, { t: KE ? '技能时间分配：40% 口语 · 25% 写作 · 20% 听力 · 15% 阅读。' : PE ? '口语、听力、阅读、写作四项技能全面训练 · 阶段式学习路径：基础 · 进阶 · 冲刺。' : '可选择四项综合课程，或口语、听力、阅读、写作单项强化。' }, { t: KE ? '模拟考试与备考策略：70% 考试模拟 + 30% 应试策略（时间管理、错误分析与改正）。' : '70% 综合技能训练 + 30% 策略思维培养，结合实战模考与策略反馈。' }, { t: '温馨提醒：如需请假或调课，请至少提前 2 小时告知老师或助教。', red: 1 }, { t: '学习进度因基础、投入及持续学习而异；目标分数为参考范围，实际成绩以官方考试为准。', mute: 1 }] : [{ t: '每节课50分钟，也可拆分为两次25分钟的半节课（各计0.5课时），灵活安排上课时间。' }, { t: PP.ad ? '25分钟半节课适合工作繁忙或希望高频练习的学习者；50分钟完整课程适合希望系统提升英语能力的成人学习者。' : '25分钟课程适合低龄儿童（自然拼读、词汇、互动）；50分钟课程适合年龄稍大的学员（口语表达、话题讨论）。' }, { t: PP.ad ? '每节课后提供针对性练习与反馈 · 经验丰富的专业英语教师 · 4C 教学法 · 对标 CEFR 国际标准。' : '每节课后布置作业 · 持证专业教师授课 · 4C 教学法 · 对标 CEFR 国际标准。' }, { t: '温馨提醒：如需请假或调课，请至少提前 2 小时告知老师或助教。', red: 1 }], y + 22);
 const d0 = coeDate(new Date()), d1 = coeDate(new Date(Date.now() + 7 * 864e5));
-[['Quoted on', '报价日期', d0], ['Valid until', '有效期至', d1]].forEach(r => { T.label(r[0], r[1], y); T.text(r[2][0], T.CX, y + 44, '400 32px ' + T.F, T.NAVY); T.text(r[2][1], T.CX, y + 82, '400 26px ' + T.F, T.SUB); y += 118; });
-T.wrap('一杯英语（CupOfEnglish）通过与菲律宾英国文化教育协会（British Council Philippines）的合作，协助符合条件的学员进行雅思（IELTS）报名。', T.Wc - T.CX * 2, '400 19px ' + T.F).forEach(s => { T.text(s, T.CX, y + 4, '400 19px ' + T.F, T.MUTE); y += 28; });
+[['Quoted on', '报价日期', d0], ['Valid until', '有效期至', d1]].forEach(r => { T.label(r[0], r[1], y); T.text(r[2][0], T.CX, y + 44, '400 32px ' + T.F, T.NAVY); if(!Q) T.text(r[2][1], T.CX, y + 82, '400 26px ' + T.F, T.SUB); y += Q ? 80 : 118; });
+T.wrap(Q ? Q.bc : '一杯英语（CupOfEnglish）通过与菲律宾英国文化教育协会（British Council Philippines）的合作，协助符合条件的学员进行雅思（IELTS）报名。', T.Wc - T.CX * 2, '400 19px ' + T.F).forEach(s => { T.text(s, T.CX, y + 4, '400 19px ' + T.F, T.MUTE); y += 28; });
 return y;
-});
+}, Q ? { en: 1 } : undefined);
 const el = $('ppImg'); if(el) el.innerHTML = '<img src="' + URL.createObjectURL(PP.blob) + '" style="width:100%;border-radius:12px;border:1px solid #E6EEF0">';
 }
-const nm = () => 'CupOfEnglish-price' + (PP.ad === 4 ? '-ket' : PP.ad === 3 ? '-pet' : PP.ad === 2 ? '-ielts' : PP.ad ? '-adult' : '') + (PP.o.student ? '-' + PP.o.student : '') + '.png';
-window.ppCopy = async function(){ if(!PP || !PP.blob) return toast('Still making the picture…'); try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': PP.blob })]); toast('Picture copied · paste it in WeChat'); }catch(e){ ppSave(); } };
+const nm = () => 'CupOfEnglish-price' + (PP.m === 'ph' ? '-ph' : '') + (PP.ad === 4 ? '-ket' : PP.ad === 3 ? '-pet' : PP.ad === 2 ? '-ielts' : PP.ad ? '-adult' : '') + (PP.o.student ? '-' + PP.o.student : '') + '.png';
+window.ppCopy = async function(){ if(!PP || !PP.blob) return toast('Still making the picture…'); try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': PP.blob })]); toast(PP.m === 'ph' ? 'Picture copied · paste it in Messenger, Viber or e-mail' : 'Picture copied · paste it in WeChat'); }catch(e){ ppSave(); } };
 window.ppSave = async function(){ if(!PP || !PP.blob) return; const f = new File([PP.blob], nm(), { type: 'image/png' }); if(navigator.canShare && navigator.canShare({ files: [f] })){ try{ await navigator.share({ files: [f] }); return; }catch(e){ if(e && e.name === 'AbortError') return; } } const a = document.createElement('a'); a.href = URL.createObjectURL(PP.blob); a.download = nm(); document.body.appendChild(a); a.click(); a.remove(); toast('Picture saved'); };
 window.ppText = async function(){ const p = ppL().find(z => z.k === PP.rec), o = PP.o;
+if(PP.m === 'ph'){ const P = phPrg() || {}, ex = ppExtra().split('\n').filter(l => !/[一-鿿]/.test(l)).join('\n').replace(/\[Joyful\]/g, '');   /* the English lines of the same enrolment / payment text */
+  const out = 'Hello! Thank you for your interest in CupOfEnglish ' + (P.name || '1:1 lessons') + '.' + (p ? ' We recommend starting with the ' + p.zh + ' (' + p.n + ' lessons' + (p.mock ? ' + ' + p.mock + ' mock tests' : p.pe ? ' + ' + p.pe : '') + ', ' + p.pt + ').' : '') + ' Please see the picture for the details of each track. You are welcome to book a trial class: your teacher will check your current level and suggest the right track.' + ex + '\n\nCupOfEnglish';
+  try{ await navigator.clipboard.writeText(out); toast('Message copied · paste it with the picture'); }catch(e){ toast(out); } return; }
 const t = (o.student ? '家长您好！感谢您带' + (o.cn || o.student) + '参加本次试听课。' + (o.cefr ? '根据老师的评估，孩子目前的英语水平为 CEFR ' + (window.cefrSay ? cefrSay(o.cefr, false, true) : o.cefr) + '。' : '') : '家长您好！感谢您对一杯英语（CupOfEnglish）的关注。欢迎预约试听课，老师会评估孩子目前的英语水平，并推荐合适的课程。') + (p ? '结合评估结果，老师建议从「' + p.zh + '」开始（' + p.n + '节' + (p.bonus ? ' + 赠送' + p.bonus + '节' : '') + '，¥' + p.price + '）。' : '') + '课程详情请参阅图片，如有任何问题，欢迎随时与我们联系。\n\n一杯英语（CupOfEnglish）';
 const tt = PP.ad >= 2 ? '您好！感谢您对一杯英语（CupOfEnglish）EXPERT ' + (PP.ad === 4 ? '剑桥 KET ' : PP.ad === 3 ? '剑桥 PET ' : '雅思') + '课程的关注。' + (p ? '建议从「' + p.zh + '」开始（' + p.n + '节课' + (p.mock ? ' + ' + p.mock + '次模考' : '') + (p.plus ? ' + ' + p.plus : '') + '，' + p.pt + '）。' : '') + '课程详情请参阅图片。欢迎预约试听课，老师会评估目前的英语水平，并制定个性化学习计划。\n\n一杯英语（CupOfEnglish）' : PP.ad ? t.replace('家长您好！', '您好！').replace(/感谢您带.+?参加本次试听课/, '感谢您参加本次试听课').replace(/孩子/g, '您') : t; const ex = ppExtra(), out = ex ? tt.replace(/\n\n一杯英语（CupOfEnglish）$/, '') + ex + '\n\n一杯英语（CupOfEnglish）' : tt;
 try{ await navigator.clipboard.writeText(out); toast('Message copied · paste it with the picture'); }catch(e){ toast(out); } };
@@ -8765,7 +8780,7 @@ if(el && TLD && !$('cpB')) el.insertAdjacentHTML('beforeend', '<button class="bt
 })();
 </script>
 <script>
-window.coeCard = async function(pill, body){
+window.coeCard = async function(pill, body, opt){
 try{ await document.fonts.ready; await Promise.all(['400 40px "Fredoka One"', '700 20px Arvo', '400 20px Arvo'].map(f => document.fonts.load(f).catch(() => 0))); }catch(e){}
 const ld = s => new Promise(r => { if(!s) return r(null); const im = new Image(); im.onload = () => r(im); im.onerror = () => r(null); im.src = s; });
 const [logo, tag] = await Promise.all([ld((document.querySelector('#login img') || {}).src), ld((document.querySelector('#login .tagl img') || {}).src)]);
@@ -8776,7 +8791,7 @@ const rr = (x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w
 const T = Object.assign({ c: c, draw: draw, rr: rr }, K);
 T.text = (t, x, y, font, color, align) => { if(!draw) return; c.font = font; c.fillStyle = color; c.textAlign = align || 'left'; c.fillText(t, x, y); };
 T.w = (t, font) => { c.font = font; return c.measureText(t).width; };
-T.label = (en, zh, y) => T.text(en + ' · ' + zh, CX, y, '400 22px ' + F, K.MUTE);
+T.label = (en, zh, y) => T.text(opt && opt.en ? en : en + ' · ' + zh, CX, y, '400 22px ' + F, K.MUTE);
 T.wrap = (t, mw, font) => { c.font = font; const out = []; let line = ''; for(const ch of String(t).match(/[A-Za-z0-9][A-Za-z0-9.'’-]*|[\s\S]/g) || []){ const tst = line + ch; if(c.measureText(tst).width > mw && line && !/^[）)。，、；：！？」]$/.test(ch)){ out.push(line.replace(/\s+$/, '')); line = ch.trim() ? ch : ''; } else line = tst; } if(line) out.push(line); return out; };
 T.box = (x, y, w, h, r, fill, stroke, lw, dash) => { if(!draw) return; rr(x, y, w, h, r); if(fill){ c.fillStyle = fill; c.fill(); } if(stroke){ c.save(); if(dash) c.setLineDash(dash); c.strokeStyle = stroke; c.lineWidth = lw || 1.6; c.stroke(); c.restore(); } };
 T.chip = (t, x, y, bg, fg, font, right) => { font = font || '700 20px ' + F; const w = T.w(t, font) + 32; const x0 = right ? x - w : x; T.box(x0, y, w, 38, 19, bg); if(draw){ c.save(); c.textBaseline = 'middle'; T.text(t, x0 + 16, y + 20, font, fg); c.restore(); } return w; };
@@ -32880,7 +32895,7 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
     fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: ['sys:pricing_ph'] }) }).then(function(r){ return r.json(); })
       .then(function(j){ var d = j && j.ok && j.docs && j.docs['sys:pricing_ph']; if(d && d.data && Array.isArray(d.data.programs)){ var ch = JSON.stringify(d.data) !== JSON.stringify(PHD); PHD = d.data; at = Date.now(); try{ localStorage.setItem(KEY, JSON.stringify(PHD)); }catch(x){} if(ch) repaint(); } })
       .catch(function(){}).finally(function(){ busy = 0; }); }
-  window.phPricing1530 = function(){ return PHD; };
+  window.phPricing1530 = function(){ if(!PHD) load(true); return PHD; }; window.phPics1530 = function(P){ return pics(P); };
 
   /* ── text with prices (Messenger / Viber / e-mail) ── */
   function text(P, tid){ var T = (P.tracks || []).filter(function(t){ return !tid || t.id === tid; }), L = [];
@@ -32905,8 +32920,8 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
   window.phPic = function(pid, id){ var P = prog(pid), f = P && (P.flyers || []).find(function(x){ return x.id === id; }); if(!f) return;
     openSheet('<div class="ph30-sh"><h1>' + e(f.title) + '</h1><div class="mute small">Philippine market · ' + e(P.short) + '</div><img class="ph30-big" style="margin-top:12px" src="' + img(id) + '" alt="' + e(f.title) + '">'
       + '<div class="row" style="gap:8px;margin-top:12px"><button class="btn teal grow" onclick="phCopyPic(\'' + id + '\')">' + ic('copy') + ' Copy picture</button><button class="btn ghost grow" onclick="phSavePic(\'' + id + '\')">' + ic('save') + ' Save picture</button></div>'
-      + '<button class="btn ghost block" style="margin-top:8px" onclick="phOpen(\'' + pid + '\')">‹ Back to ' + e(P.short) + '</button></div>'); try{ $('sheet').classList.add('wide'); }catch(x){} };
-  function pics(P){ return '<div class="ph30-pics">' + (P.flyers || []).map(function(f){ return '<div class="ph30-pic"><img loading="lazy" decoding="async" width="640" height="537" src="' + img(f.id, 1) + '" alt="' + e(f.title) + '" onclick="phPic(\'' + P.id + '\',\'' + f.id + '\')"><div class="ph30-pt" title="' + e(f.title) + '">' + e(f.title) + '</div><div class="ph30-pr"><button class="btn ghost sm" onclick="phCopyPic(\'' + f.id + '\')" aria-label="Copy picture: ' + e(f.title) + '">' + ic('copy') + ' Copy</button><button class="btn ghost sm" onclick="phSavePic(\'' + f.id + '\')" aria-label="Save picture: ' + e(f.title) + '">' + ic('save') + ' Save</button></div></div>'; }).join('') + '</div>'; }
+      + '<button class="btn ghost block" style="margin-top:8px" onclick="phFlyers()">‹ Back to the flyers</button></div>'); try{ $('sheet').classList.add('wide'); }catch(x){} };
+  function pics(P){ return '<div class="ph30-pics">' + (P.flyers || []).map(function(f){ return '<div class="ph30-pic"><img decoding="sync" width="640" height="537" src="' + img(f.id, 1) + '" alt="' + e(f.title) + '" onclick="phPic(\'' + P.id + '\',\'' + f.id + '\')"><div class="ph30-pt" title="' + e(f.title) + '">' + e(f.title) + '</div><div class="ph30-pr"><button class="btn ghost sm" onclick="phCopyPic(\'' + f.id + '\')" aria-label="Copy picture: ' + e(f.title) + '">' + ic('copy') + ' Copy</button><button class="btn ghost sm" onclick="phSavePic(\'' + f.id + '\')" aria-label="Save picture: ' + e(f.title) + '">' + ic('save') + ' Save</button></div></div>'; }).join('') + '</div>'; }
 
   /* ── Enquiries: the Philippine section ── */
   function card(P, tid){ return '<div class="ph30-card"><h3>' + e(P.short) + ' <span class="chip">' + (P.measure === 'Band' ? 'IELTS BAND' : 'CEFR') + '</span></h3><div class="ph30-sub">' + e(P.tagline) + ' · ' + P.lessonMins + '-minute lessons</div>'
@@ -32914,8 +32929,7 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
       + '<div class="ph30-sk">' + ((P.system && P.system.skills) || []).map(function(k){ return '<span>' + e(k.name) + '</span>'; }).join('') + '</div>'
       + '<div class="ph30-act"><button class="btn teal sm" onclick="phCopyText(\'' + P.id + '\')">' + ic('text') + ' Copy prices (text)</button><button class="btn ghost sm" onclick="phOpen(\'' + P.id + '\')">' + ic('map') + ' ' + (P.measure === 'Band' ? 'Skills & roadmaps' : 'Learning system') + '</button></div>'
       + pics(P) + '</div>'; }
-  function section(){ if(!PHD) return '<section id="ph30"><div class="ph30-intro">Loading the Philippine price list…</div><div class="ph30-sk0" aria-busy="true"></div></section>';
-    return '<section id="ph30"><div class="ph30-intro">For enquiries from the Philippines · prices in pesos (\u20B1), separate from the China price list · send a flyer picture or the price text on Messenger, Viber or e-mail. Price list updated ' + e(PHD.updated || '') + '.</div><div class="ph30-grid">' + (PHD.programs || []).map(function(P){ return card(P); }).join('') + '</div></section>'; }
+  function section(){ return window.phKit1532 ? phKit1532() : '<section id="ph30"></section>'; }
   var mode = function(){ try{ return localStorage.getItem(MK) === 'ph' ? 'ph' : 'cn'; }catch(x){ return 'cn'; } };
   function apply(el){ var m = mode(), sw = el.querySelector('#ph30sw');
     if(!sw){ var box = el.querySelector('#enqBox'); if(!box) return;
@@ -32938,7 +32952,7 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
       if(m[2] === 'p'){ b.textContent = 'PH price'; var P = prog(ph.pid), T = track(P, ph.tid), tags = b.closest('.tdr') && b.closest('.tdr').querySelector('.tags');
         if(tags && T && !tags.querySelector('.ph30-chip')) tags.insertAdjacentHTML('afterbegin', '<span class="chip ph30-chip">' + e(T.name) + ' · ' + peso(T.price) + '</span>'); }
       else b.textContent = 'PH roadmap'; }); }
-  var _p = window.enqPic; if(_p) window.enqPic = function(id, k){ if(k === 'p' || k === 'r'){ var q = ENQS().find(function(x){ return x && String(x.id) === String(id); }), ph = q && parse(q.prog); if(ph) return phOpen(ph.pid, ph.tid, k === 'r'); } return _p.apply(this, arguments); };
+  var _p = window.enqPic; if(_p) window.enqPic = function(id, k){ if(k === 'p' || k === 'r'){ var q = ENQS().find(function(x){ return x && String(x.id) === String(id); }), ph = q && parse(q.prog); if(ph) return k === 'r' ? phRoadPic(ph.pid, ph.tid) : pricePic({ ph: ph.pid, rec: ph.tid }); } return _p.apply(this, arguments); };
 
   var _r = window.renderEnq; if(_r) window.renderEnq = function(){ var r = _r.apply(this, arguments); try{ var el = $('v-enquiry'); if(el){ apply(el); rows(el); } }catch(x){ console.warn('ph1530', x); } return r; };
 
@@ -33214,6 +33228,89 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
     sw.__1506 = 1; window.store = sw; }
   var os = window.openSheet; if(typeof os === 'function') window.openSheet = function(){ MINE = {}; WARN = {}; return os.apply(this, arguments); };
   window.draft1506 = function(){ return { mine: Object.keys(MINE), warn: Object.keys(WARN) }; };   /* tests */
+})();
+</script>
+<script>
+/* 1531 · Enquiries subtitle follows the Market */
+(function(){
+  if(window.__1531) return; window.__1531 = 1;
+  var PH = 'For enquiries from the Philippines · prices in pesos (₱) · flyer pictures and text for Messenger, Viber or e-mail';
+  var mode = function(){ try{ return localStorage.getItem('coe.enqMarket') === 'ph' ? 'ph' : 'cn'; }catch(e){ return 'cn'; } };
+  function sub(){ try{ var el = document.getElementById('v-enquiry'), t = el && el.querySelector('.lead .mute'); if(!t) return;
+      if(!t.dataset.cn1531) t.dataset.cn1531 = t.textContent;
+      var want = mode() === 'ph' ? PH : t.dataset.cn1531; if(t.textContent !== want) t.textContent = want; }catch(e){} }
+  var _r = window.renderEnq; if(_r) window.renderEnq = function(){ var r = _r.apply(this, arguments); sub(); return r; };
+  var _m = window.phMarket; if(_m) window.phMarket = function(){ var r = _m.apply(this, arguments); sub(); return r; };
+  try{ if(typeof VIEW !== 'undefined' && VIEW === 'enquiry') sub(); }catch(e){}
+})();
+</script>
+<style id="css1532">
+/* 1532 · Philippine tab = the China toolkit in English */
+#v-enquiry #ph30{margin-top:0}
+#v-enquiry #ph30 > h2{font-family:var(--ui-font);font-weight:700;color:var(--ui-ink);font-size:var(--fs-h2,17px)}
+</style>
+<script>
+/* 1532 · Philippine toolkit (same cards as China) + the learning roadmap picture (same frame and components as the price picture) */
+(function(){
+  if(window.__1532) return; window.__1532 = 1;
+  var D = function(){ return window.phPricing1530 ? phPricing1530() : null; };
+  var prog = function(id){ var d = D(); return d && (d.programs || []).find(function(p){ return p.id === id; }) || null; };
+  window.phKit1532 = function(){
+    var C = function(n, t, d, b, fn){ return '<div style="background:#fff;border:1px solid #E6EEF0;border-radius:18px;padding:16px 18px;margin-top:12px;display:flex;gap:14px;align-items:center" class="eq2-t"><div style="width:36px;height:36px;border-radius:50%;background:#E3F6F6;color:#00737B;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">' + n + '</div><div class="grow" style="min-width:0"><b>' + t + '</b><div class="small mute" style="margin-top:3px">' + d + '</div></div><button class="btn teal sm x1101-sec" style="flex:none" onclick="' + fn + '">' + b + '</button></div>'; };
+    return '<section id="ph30"><h2 style="margin-top:22px">Pictures &amp; messages <span class="c">in English, for Messenger, Viber or e-mail</span></h2>'
+      + '<section class="eq2-g s1"><h3><span class="n31">1</span>Before the trial <span>answer the enquirer · invite to a trial</span></h3><div class="eq2-grid">'
+      + C(1, 'Price list', 'Adult English 1:1 or IELTS 1:1 · all three tracks in pesos (₱), price per lesson, quote date · valid 7 days. Tap None to highlight no track.', 'Price picture', "pricePic({ ph: 'adult' })")
+      + C(2, 'Learning roadmap', 'The 4-skill learning system · pick a track for its target and, for IELTS, the key focus areas of each skill.', 'Roadmap', "phRoadPic('adult')")
+      + C(3, 'Invite to a trial', 'A short English message asking for their goal, IELTS target (if any) and a good trial time.', 'Copy message', 'phInv()')
+      + C(4, 'Original flyers', 'Misty’s 8 designed flyers as they are · copy or save each picture.', 'Flyers', 'phFlyers()')
+      + '</div></section><div class="small mute" style="margin-top:18px;line-height:1.6"><b>Suggested order:</b> price picture → learning roadmap → trial invitation.</div></section>'; };
+  window.phInv = function(){ var t = 'Hello! Thank you for your interest in CupOfEnglish one-to-one English lessons.\n\nWe would be happy to invite you to a trial class with one of our teachers. It helps us check your current level and recommend the right track (Foundation, Professional or Mastery).\n\nMay we know:\n1. Your main goal for learning English (work, daily conversation, travel, IELTS or other)\n2. Your IELTS target band and test date, if you are preparing for IELTS\n3. A good day and time for your trial class\n\nThank you, and we look forward to meeting you!\nCupOfEnglish';
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ toast('Message copied · paste it in Messenger, Viber or e-mail'); }, function(){ try{ prompt('Copy this message', t); }catch(x){} }); };
+  window.phFlyers = function(){ var d = D(); if(!d) return toast('Philippine price list still loading · try again in a moment');
+    openSheet('<div class="ph30-sh"><h1>Original flyers</h1><div class="mute small">Misty’s designed flyers, as they are · Copy or Save each picture</div>' + (d.programs || []).map(function(P){ return '<h2>' + esc(P.short) + '</h2>' + (window.phPics1530 ? phPics1530(P) : ''); }).join('') + '</div>'); try{ $('sheet').classList.add('wide'); }catch(x){} };
+
+  /* the learning roadmap picture: coeCard frame (English), the price picture's components */
+  var RP = null;
+  window.phRoadPic = function(pid, tid){ if(!D()) return toast('Philippine price list still loading · try again in a moment'); RP = { pid: pid === 'ielts' ? 'ielts' : 'adult', tid: tid || '' }; rpSheet(); };
+  window.rpSet = function(k, v){ if(!RP) return; RP[k] = v; if(k === 'pid' && v !== RP.pid0) RP.pid0 = v; rpSheet(); };
+  function rpSheet(){ var d = D(), P = prog(RP.pid); if(!P) return;
+    var seg = function(k, opts){ return '<div class="seg" style="flex-wrap:wrap">' + opts.map(function(o){ return '<button class="' + (RP[k] === o[0] ? 'on' : '') + '" onclick="rpSet(\'' + k + '\',\'' + o[0] + '\')">' + esc(o[1]) + '</button>'; }).join('') + '</div>'; };
+    openSheet('<h1>Learning roadmap</h1><div class="mute small">General learning roadmap for new enquiries · English · Philippine market</div>'
+      + '<div class="small" style="margin-top:12px"><b>Learner</b></div>' + seg('pid', (d.programs || []).map(function(p){ return [p.id, p.short]; }))
+      + '<div class="small" style="margin-top:12px"><b>Track</b></div>' + seg('tid', (P.tracks || []).map(function(t){ return [t.id, t.name + ' · ' + t.lessons]; }).concat([['', 'All tracks']]))
+      + '<div class="row" style="gap:8px;margin-top:12px"><button class="btn teal grow" onclick="rpCopy()">Copy picture</button><button class="btn ghost grow" onclick="rpSave()">' + (navigator.share ? 'Share / save' : 'Save picture') + '</button><button class="btn ghost" onclick="rpText()">Copy message</button></div>'
+      + '<div id="rpImg" style="margin-top:12px"><div class="sk"></div><div class="sk"></div></div>');
+    try{ $('sheet').classList.add('wide'); }catch(x){} rpDraw(); }
+  async function rpDraw(){ var P = prog(RP.pid); if(!P) return; var S = P.system || {}, band = P.measure === 'Band', T0 = (P.tracks || []).find(function(t){ return t.id === RP.tid; }) || null, my = RP;
+    var blob = await coeCard(band ? 'IELTS learning roadmap' : 'Learning roadmap', function(T, y){
+      T.label('Programme', '', y); T.text(band ? '1-on-1 IELTS' : '1-on-1 English', T.CX, y + 62, '400 56px ' + T.B, T.NAVY); T.text(S.title || P.name, T.CX, y + 108, '400 32px ' + T.F, T.SUB);
+      T.text((S.sub || '') + ' · ' + P.lessonMins + '-minute lessons', T.CX, y + 148, '400 22px ' + T.F, T.MUTE); y += 196;
+      if(T0) y = coeHero(T, T0.name, 'Your track', (band ? 'Target band ' : 'CEFR ') + T0.target, T0.lessons + ' lessons' + (T0.extra ? ' + ' + T0.extra : '') + ' · ≈' + T0.hours + ' hours' + (T0.gain ? ' · expected band gain ' + T0.gain : ''), y);
+      else { T.label('Tracks', '', y); y += 22; (P.tracks || []).forEach(function(t){ var h = 116; T.box(T.CX, y, T.Wc - T.CX * 2, h, 26, '#fff', T.LINE, 2);
+          T.text(t.name + ' Track', T.CX + 32, y + 52, '700 32px ' + T.F, T.NAVY); T.text(t.lessons + ' lessons' + (t.extra ? ' + ' + t.extra : '') + ' · ≈' + t.hours + ' hours', T.CX + 32, y + 90, '400 22px ' + T.F, T.MUTE);
+          T.text((band ? 'Band ' : 'CEFR ') + t.target, T.R - 32, y + 66, '700 26px ' + T.F, T.TEAL, 'right'); y += h + 18; }); y += 8; }
+      T.label(T0 && band ? 'Four skills · key focus for the ' + T0.name + ' Track' : 'Four skills', '', y); y += 22;
+      (S.skills || []).forEach(function(k){ var x0 = T.CX + 32, W = T.Wc - T.CX * 2 - 64, FA = T0 && k.focus && k.focus[T0.id] ? k.focus[T0.id] : [];
+        var aim = T.wrap(k.aim, W, '400 22px ' + T.F), core = T.wrap((k.core || []).join(' · '), W, '400 22px ' + T.F), res = T.wrap(k.result, W, '700 22px ' + T.F), fl = FA.map(function(f){ return T.wrap(f[0] + ' — ' + f[1], W - 26, '400 21px ' + T.F); });
+        var lay = function(go){ var yy = y + 54; if(go) T.text(k.name, x0, yy, '700 32px ' + T.F, T.NAVY); yy += 40;
+          aim.forEach(function(s){ if(go) T.text(s, x0, yy, '400 22px ' + T.F, T.SUB); yy += 30; }); yy += 6;
+          core.forEach(function(s){ if(go) T.text(s, x0, yy, '400 22px ' + T.F, T.MUTE); yy += 30; });
+          if(fl.length){ yy += 14; if(go) T.text('Key focus · ' + T0.name + ' Track', x0, yy, '700 20px ' + T.F, T.TEAL); yy += 32;
+            fl.forEach(function(L){ if(go) T.dot(x0 + 6, yy - 7, T.EDGE); L.forEach(function(s){ if(go) T.text(s, x0 + 26, yy, '400 21px ' + T.F, T.SUB); yy += 28; }); yy += 6; }); }
+          yy += 8; res.forEach(function(s){ if(go) T.text(s, x0, yy, '700 22px ' + T.F, T.TEAL); yy += 30; }); return yy; };
+        var end = lay(false); T.box(T.CX, y, T.Wc - T.CX * 2, end - y + 4, 26, '#fff', T.LINE, 2); lay(true); y = end + 22; });
+      y = coeNotes(T, 'Good to know', '', [{ t: (P.method || '') + '.' }, { t: (S.footer || []).join(' · ') + '.' }, { t: P.small || '', mute: 1 }], y + 10);
+      return y; }, { en: 1 });
+    if(RP !== my) return; RP.blob = blob; var el = $('rpImg'); if(el) el.innerHTML = '<img src="' + URL.createObjectURL(blob) + '" style="width:100%;border-radius:12px;border:1px solid #E6EEF0">'; }
+  var rpName = function(){ return 'CupOfEnglish-roadmap-ph-' + RP.pid + (RP.tid ? '-' + RP.tid : '') + '.png'; };
+  window.rpCopy = async function(){ if(!RP || !RP.blob) return toast('Still making the picture…'); try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': RP.blob })]); toast('Picture copied · paste it in Messenger, Viber or e-mail'); }catch(e){ rpSave(); } };
+  window.rpSave = async function(){ if(!RP || !RP.blob) return; var f = new File([RP.blob], rpName(), { type: 'image/png' }); if(navigator.canShare && navigator.canShare({ files: [f] })){ try{ await navigator.share({ files: [f] }); return; }catch(e){ if(e && e.name === 'AbortError') return; } } var a = document.createElement('a'); a.href = URL.createObjectURL(RP.blob); a.download = rpName(); document.body.appendChild(a); a.click(); a.remove(); toast('Picture saved'); };
+  window.rpText = async function(){ var P = prog(RP.pid) || {}, T0 = (P.tracks || []).find(function(t){ return t.id === RP.tid; }), band = P.measure === 'Band';
+    var out = 'Hello! Here is the CupOfEnglish ' + (P.name || '') + ' learning roadmap. Each lesson is ' + P.lessonMins + ' minutes, one-to-one, with ' + ((P.system && P.system.skills) || []).map(function(k){ return k.name; }).join(', ') + '.'
+      + (T0 ? ' The ' + T0.name + ' Track is ' + T0.lessons + ' lessons' + (T0.extra ? ' + ' + T0.extra : '') + ' (≈' + T0.hours + ' hours), ' + (band ? 'target band ' : 'CEFR target ') + T0.target + (T0.gain ? ', expected band gain ' + T0.gain : '') + ': ' + String(T0.goal || '').replace(/\.$/, '') + '.' : '')
+      + ' Please see the picture for the skills you will work on. You are welcome to book a trial class.\n\nCupOfEnglish';
+    try{ await navigator.clipboard.writeText(out); toast('Message copied · paste it with the picture'); }catch(e){ toast(out); } };
+  try{ if(typeof VIEW !== 'undefined' && VIEW === 'enquiry') renderEnq(); }catch(x){}
 })();
 </script>
 </body>
