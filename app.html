@@ -1172,6 +1172,9 @@ html.cur1320 #app{visibility:hidden!important}
 
 <script>
 const GAS = typeof google !== 'undefined' && google.script && google.script.run;
+/* 1465 · line icons for management app text (bell, map pin) — defined before the first screen is drawn */
+window.li1465 = (function(){ var P = { bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>', place: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>' };
+  return function(k){ return '<svg class="li1465" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (P[k] || '') + '</svg>'; }; })();
 const API_URL = window.COE_API || '';
 const LIVE = GAS || !!API_URL;
 const KEY_T = 'coe.token', KEY_D = 'coe.data';
@@ -1507,7 +1510,7 @@ $('pwBox').innerHTML = `${note ? `<p class="small" style="color:#9A4330">${esc(n
 async function mgPwList(){
 openSheet('<h1>Management passwords</h1><div class="sk"></div>');
 const r = await api('mgmtPwPeople', TOKEN).catch(() => null);
-if(!r || !r.ok){ $('sheetBody').innerHTML = '<h1>Management passwords</h1><div class="empty" role="alert">' + (isPres() ? 'Could not load the list. <button class="btn ghost sm" onclick="mgPwList()">Try again</button>' : 'Only the President can open this.') + '</div>'; return; }
+if(!r || !r.ok){ $('sheetBody').innerHTML = '<h1>Management passwords</h1><div class="empty" role="alert">' + (isPres() ? 'Could not load the list. <button class="btn ghost sm" onclick="mgPwList()">Try again</button>' : 'Only management can open this.') + '</div>'; return; }
 $('sheetBody').innerHTML = '<h1>Management passwords</h1><p class="small mute">Only the President sets these. Whoever uses these accounts cannot change them.</p>' + r.people.map(p => `<button class="btn ghost block" style="margin-top:8px" onclick="pwSet('${esc(p.name)}', 1)">${esc(p.name)} · ${esc(p.role)}</button>`).join('');
 }
 function pwMake(){ const W = ['Mango','Pearl','Cedar','Lotus','River','Maple','Comet','Bamboo','Coral','Sunny','Tiger','Panda','Olive','Amber','Cloud','Lemon']; const r = new Uint32Array(3); crypto.getRandomValues(r); return W[r[0]%W.length] + '-' + String(1000 + r[1]%9000) + '-' + W[r[2]%W.length]; }
@@ -3436,7 +3439,7 @@ ${x.base?`<tr><td>Base</td><td class="num">${peso(x.base)}</td></tr>`:''}<tr><td
 <tr><td><b>Net</b></td><td class="num"><b>${peso(x.net)}</b></td></tr></table>${pchkSheetHtml(x)}${rdyList(x.name)}
 ${!x.paid && rdyN(x.name) ? `<div class="row" style="gap:8px;margin-top:10px"><button class="btn teal grow" onclick="payNudge(['${esc(x.name)}'])">Remind Teacher ${esc(x.name)} in the app</button><button class="btn ghost" onclick="payNudgeCopy('${esc(x.name)}')">Copy for WeChat</button></div>` : ''}
 <div class="row" style="gap:8px;margin-top:14px">${isPres() ? `<button class="btn grow ${x.paid?'ghost':'teal'}" id="pdGo" onclick="togglePaid(${i})">${x.paid?'Undo paid':'✔ Mark paid'}</button>` : ''}
-<button class="btn ${isPres() ? 'ghost' : 'teal'} grow" onclick="payslip('${esc(x.name)}')">Payslip</button></div><p class="small mute" style="margin-top:8px">${isPres() ? 'Mark paid ticks ✔ PAID on the PAY tab.' : 'The President marks pay as paid. Send the payslip from here.'}</p>`); }
+<button class="btn ${isPres() ? 'ghost' : 'teal'} grow" onclick="payslip('${esc(x.name)}')">Payslip</button></div><p class="small mute" style="margin-top:8px">${isPres() ? 'Mark paid ticks ✔ PAID on the PAY tab.' : 'Management marks pay as paid. Send the payslip from here.'}</p>`); }
 
 let TT = null, URLS = null;
 const sheetLink = tab => URLS && URLS[tab] ? ` <a class="link small" style="margin-left:auto;letter-spacing:0;text-transform:none;font-weight:400" href="${esc(URLS[tab])}" target="_blank">Open in sheet ↗</a>` : '';
@@ -3676,7 +3679,7 @@ var LV = (() => { try{ return JSON.parse(localStorage.getItem('coe.m.leave')||'n
 const lvNice = d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' });
 const lvWin = r => (String(r.part || '').match(/(\d\d:\d\d)–(\d\d:\d\d)/) || []).slice(1);
 const lvDates = r => lvNice(r.from) + (r.to && r.to !== r.from ? ' – ' + lvNice(r.to) : '') + (/some/i.test(r.part) ? ' · ' + (lvWin(r).length ? lvWin(r).join('–') : 'some classes') : r.days > 1 ? ' · ' + r.days + ' days' : '');
-const lvStage = r => r.status !== 'Pending' ? r.status : r.ask ? 'More details needed' : r.ops ? 'Waiting for the President' : 'Waiting for Operations';
+const lvStage = r => r.status !== 'Pending' ? r.status : r.ask ? 'More details needed' : r.ops ? 'Waiting for management' : 'Waiting for Operations';
 const lvChip = r => { const st = typeof r === 'string' ? r : lvStage(r); return `<span class="chip ${st === 'Approved' ? 'green' : st === 'More details needed' ? 'red' : /^(Pending|Waiting)/.test(st) ? 'amber' : st === 'Declined' ? 'red' : ''}">${esc(st)}</span>`; };
 const lvClsShort = r => r.classes && r.classes !== 'No classes' ? String(r.classes).split(':')[0] : 'No classes';
 function lvCls(r){ const s = String(r.classes || ''), i = s.indexOf(':'); if(i < 0 || /^No classes/.test(s)) return [];
@@ -3723,14 +3726,14 @@ const row = (r, btn) => `<div class="li" onclick="lvSheet('${esc(r.id)}')"><div 
 ${r.status === 'Pending' ? `<div class="small mute ell">${(r.proof||[]).length ? (window.IC1120 ? IC1120('clip') : '') + r.proof.length + ' proof file' + (r.proof.length === 1 ? '' : 's') : 'No proof yet'}${r.ask ? ' · asked: ' + esc(r.ask) : r.ops ? ' · checked by ' + esc(r.ops) : ''}</div>` : ''}${btn ? '<div class="row" style="gap:8px;margin-top:8px">' + btn + '</div>' : ''}</div>${btn ? '' : '<span class="vl1121">View ›</span>'}</div>`;
 const dec = r => `<button class="btn teal sm" onclick="event.stopPropagation();lvDecide('${esc(r.id)}','Approved')">Approve</button><button class="btn ghost sm" onclick="event.stopPropagation();lvDecide('${esc(r.id)}','Declined')">Decline</button><button class="btn ghost sm" onclick="event.stopPropagation();lvSheet('${esc(r.id)}')">Review request</button>`;
 const chk = r => `<button class="btn teal sm" onclick="event.stopPropagation();lvSheet('${esc(r.id)}')">Check proof</button>`;
-let h = `<div class="lead row"><div class="grow"><h1>Leave</h1><div class="mute small">Requests with proof · Operations checks · the President approves · saved in T-LEAVE</div></div><button class="btn sm teal" onclick="lvSheet()">${P ? '+ Lodge leave' : '+ File leave'}</button></div>
+let h = `<div class="lead row"><div class="grow"><h1>Leave</h1><div class="mute small">Requests with proof · Operations checks · management approves · saved in T-LEAVE</div></div><button class="btn sm teal" onclick="lvSheet()">${P ? '+ Lodge leave' : '+ File leave'}</button></div>
 <div class="stats" style="margin-top:14px"><div class="stat"><b class="num">${onToday.length}</b><span>on leave today</span></div><div class="stat"><b class="num">${now.length - onToday.length}</b><span>coming up</span></div><div class="stat"><b class="num ${(P ? toPres : toCheck).length ? 'minus' : ''}">${(P ? toPres : toCheck).length}</b><span>${P ? 'waiting for your approval' : 'to check'}</span></div></div>
-<div class="small mute" style="margin-top:10px">Teacher asks with proof → Operations checks it (and asks for more details if needed) → the President approves → the teacher sees it in the app</div>`;
+<div class="small mute" style="margin-top:10px">Teacher asks with proof → Operations checks it (and asks for more details if needed) → management approves → the teacher sees it in the app</div>`;
 if(P){ if(toPres.length) h += `<h2>Waiting for your approval <span class="c">${toPres.length}</span></h2>` + toPres.map(r => row(r, dec(r))).join('');
 if(toCheck.length + asked.length) h += `<h2>With Operations <span class="c">${toCheck.length + asked.length}</span></h2>` + toCheck.concat(asked).map(r => row(r)).join(''); }
 else { if(toCheck.length) h += `<h2>To check <span class="c">${toCheck.length}</span></h2>` + toCheck.map(r => row(r, chk(r))).join('');
 if(asked.length) h += `<h2>Waiting for the teacher's answer <span class="c">${asked.length}</span></h2>` + asked.map(r => row(r)).join('');
-if(toPres.length) h += `<h2>Sent to the President <span class="c">${toPres.length}</span></h2>` + toPres.map(r => row(r)).join(''); }
+if(toPres.length) h += `<h2>Sent to management <span class="c">${toPres.length}</span></h2>` + toPres.map(r => row(r)).join(''); }
 h += `<h2>On leave now &amp; coming up <span class="c">${now.length}</span></h2>` + (now.length ? now.map(r => row(r)).join('') : '<div class="tdok">Nobody is on leave.</div>');
 const tk = Object.keys(tot).sort((a,b) => tot[b] - tot[a]);
 if(tk.length) h += `<h2>Days of leave in ${y} <span class="c">approved</span></h2><div class="lv-tot">${tk.map(n => `<span class="chip" onclick="LV_Q='${esc(n)}';renderLeave()">${esc(tName(n))} · ${tot[n]} day${tot[n] === 1 ? '' : 's'}</span>`).join('')}</div>`;
@@ -3746,11 +3749,11 @@ const pill = (k, v, cur, extra) => `<button type="button" class="${v === cur ? '
 const stOpts = P ? ['Approved','Pending','Declined','Cancelled'] : ['Pending','Cancelled'].concat(x && stOpts0(x) ? [x.status] : []);
 const pend = x && x.status === 'Pending', canAsk = pend && (P || !x.ops);
 let act;
-if(!x) act = `<button class="btn block" id="lvGo" style="margin-top:14px" onclick="lvSave()">${P ? 'Lodge leave' : 'File & send to President'}</button>`;
-else if(!P && pend && !x.ops) act = `<button class="btn block teal" id="lvGo" style="margin-top:14px" onclick="lvSave(false, true)"${x.ask ? ' disabled' : ''}>Mark checked · raise to the President</button>${x.ask ? '<div class="small mute">Waiting for the teacher\'s answer first · or close the question below</div>' : ''}<button class="btn ghost block" style="margin-top:8px" onclick="lvSave()">Save only</button>`;
+if(!x) act = `<button class="btn block" id="lvGo" style="margin-top:14px" onclick="lvSave()">${P ? 'Lodge leave' : 'File & send to management'}</button>`;
+else if(!P && pend && !x.ops) act = `<button class="btn block teal" id="lvGo" style="margin-top:14px" onclick="lvSave(false, true)"${x.ask ? ' disabled' : ''}>Mark checked · raise to management</button>${x.ask ? '<div class="small mute">Waiting for the teacher\'s answer first · or close the question below</div>' : ''}<button class="btn ghost block" style="margin-top:8px" onclick="lvSave()">Save only</button>`;
 else if(P && pend) act = `<div class="row" style="gap:8px;margin-top:14px"><button class="btn teal grow" id="lvGo" onclick="LVF.status='Approved';lvSave()">Approve</button><button class="btn ghost grow" onclick="lvDecide('${esc(x.id)}','Declined',1)">Decline</button></div><button class="btn ghost block" style="margin-top:8px" onclick="lvSave()">Save only</button>`;
 else act = `<button class="btn block" id="lvGo" style="margin-top:14px" onclick="lvSave()">Save changes</button>`;
-openSheet(`<h1>${x ? esc(tName(x.teacher)) + ' · leave' : P ? 'Lodge leave' : 'File leave'}</h1><div class="mute small">${x ? 'Lodged ' + esc(x.at) + ' by ' + esc(x.by) + (x.ops ? ' · checked by ' + esc(x.ops) : '') + (x.decidedBy ? ' · ' + esc(x.status) + ' by ' + esc(x.decidedBy) : '') : P ? 'Lodged by the President · approved at once · the teacher sees it in the app' : 'Filed by Operations for the teacher · goes to the President for approval'}</div>
+openSheet(`<h1>${x ? esc(tName(x.teacher)) + ' · leave' : P ? 'Lodge leave' : 'File leave'}</h1><div class="mute small">${x ? 'Lodged ' + esc(x.at) + ' by ' + esc(x.by) + (x.ops ? ' · checked by ' + esc(x.ops) : '') + (x.decidedBy ? ' · ' + esc(x.status) + ' by ' + esc(x.decidedBy) : '') : P ? 'Lodged by the President · approved at once · the teacher sees it in the app' : 'Filed by Operations for the teacher · goes to management for approval'}</div>
 ${x ? `<div style="margin-top:10px">${lvChip(x)}</div>` : ''}
 ${x ? `<label>Proof</label><div class="row" style="gap:6px;flex-wrap:wrap">${(x.proof || []).map((p, i) => `<button class="btn sm ghost" onclick="lvProof('${esc(x.id)}',${i})">${window.IC1120 ? IC1120('clip') : ''}${esc(p.name.replace(/^\d{4}-\d\d-\d\d \d{4} [^·]*· /, '').slice(0, 30))}</button>`).join('') || '<span class="small" style="color:var(--coral)">No proof attached</span>'}</div><div id="lvPv"></div>` : ''}
 ${x && (x.thread || []).length ? `<label>Messages</label><div class="small" style="display:grid;gap:4px">${x.thread.map(l => `<div class="card" style="padding:8px 10px">${esc(l)}</div>`).join('')}</div>` : ''}
@@ -3766,7 +3769,7 @@ ${lvTimeRow('lv', part0 === 'Some classes' ? (w[0] || '') : null, w[1] || '')}
 <label>Reason</label><textarea id="lvR" class="in-t" rows="2" placeholder="e.g. fever · family emergency · out of town">${esc(x ? x.reason : '')}</textarea>
 <label>Lessons affected</label><div id="lvC" class="small mute">${x ? esc(x.classes || '—') : 'Pick the person and dates'}</div>${x && x.status !== 'Declined' && x.status !== 'Cancelled' ? lvInfHtml(x, 'm') : ''}
 ${lvDrop('lvFile', 'lvFiles', x ? 'Add proof' : 'Attach proof (if the teacher sent it)')}
-${x ? `<label>Status</label><div class="qa-ch">${[...new Set(stOpts)].map(v => pill('status', v, LVF.status)).join('')}</div>${P ? '' : '<div class="small mute">Only the President approves or declines.</div>'}` : ''}
+${x ? `<label>Status</label><div class="qa-ch">${[...new Set(stOpts)].map(v => pill('status', v, LVF.status)).join('')}</div>${P ? '' : '<div class="small mute">Only management approves or declines.</div>'}` : ''}
 <label>Cover plan / note${P ? ' (the teacher sees it)' : ''}</label><input id="lvN" class="in-t" value="${esc(x ? x.note : '')}" placeholder="e.g. sub: Teacher Pam · classes moved to Saturday">
 ${act}
 ${x && (P || x.status !== 'Approved') ? `<button class="btn ghost block" style="margin-top:8px" onclick="if(confirm('Remove this leave from T-LEAVE?'))lvSave(true)">Remove</button>` : ''}
@@ -3791,7 +3794,7 @@ const some = LVF.part === 'Some classes';
 const f = { endorse: !!endorse, clearAsk: !!LVF.clearAsk, id: LVF.id, teacher: ($('lvT')||{}).value, type: LVF.type, from: ($('lvF')||{}).value, to: ($('lvTo')||{}).value, part: LVF.part, tFrom: some ? ($('lvA')||{}).value : '', tTo: some ? ($('lvB')||{}).value : '', notice: LVF.notice, reason: ($('lvR')||{}).value, note: ($('lvN')||{}).value, status: LVF.status, remove: !!remove, files: LVFILES };
 LVF.clearAsk = 0;
 if(!remove){ if(!f.id && !f.teacher) return toast('Choose the teacher'); if(!f.type) return toast('Choose the type of leave'); if(!f.from) return toast('Choose the dates'); if(some && (!f.tFrom || !f.tTo)) return toast('Pick from what time to what time'); }
-if(endorse){ const x = LV.rows.find(r => r.id === f.id); if(x && !(x.proof || []).length && !LVFILES.length && !confirm('There is no proof attached. Raise it to the President anyway?')) return; }
+if(endorse){ const x = LV.rows.find(r => r.id === f.id); if(x && !(x.proof || []).length && !LVFILES.length && !confirm('There is no proof attached. Raise it to management anyway?')) return; }
 const b = $('lvGo'); if(b){ b.disabled = true; b.textContent = 'Saving…'; }
 const _sn = sheetSnap(); closeSheet(); toast('Saving leave…');
 try{ const r = await api('mgmtLeaveSave', TOKEN, f); if(!r.ok) throw r; toast('✓ ' + r.note); loadLeave(true); }
@@ -3831,7 +3834,7 @@ async function tlvReply(id){ const txt = ($('tlA_' + id)||{}).value || ''; if(!t
 toast('Sending…'); try{ const r = await api('tLeaveReply', TOKEN, id, txt, LVFILES); if(!r.ok) throw r; LVFILES = []; toast('✓ ' + r.note); loadTLeave(); }catch(e){ toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); } }
 function tlvSheet(){ const t0 = ymdLocal(new Date()), types = (TLV && TLV.types) || Object.keys(LV_HINT); LVF = { type: '', part: 'Whole day', later: false }; LVFILES = [];
 const pill = (k, v, cur, extra) => `<button type="button" class="${v === cur ? 'on' : ''}" onclick="LVF.${k}='${esc(v)}';this.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===this));${extra || ''}">${esc(v)}</button>`;
-openSheet(`<h1>Request leave</h1><div class="mute small">Attach your proof · Operations checks it and may ask for more details · then the President approves · you see the status here</div>
+openSheet(`<h1>Request leave</h1><div class="mute small">Attach your proof · Operations checks it and may ask for more details · then management approves · you see the status here</div>
 <label>Type</label><div class="qa-ch">${types.map(v => pill('type', v, '', "$('tlH').textContent=LV_HINT[LVF.type]||''")).join('')}</div>
 <div class="row" style="gap:10px;align-items:flex-start"><div class="grow"><label>From</label><input id="tlF" class="in-t" type="date" value="${t0}" onchange="if($('tlT').value<this.value)$('tlT').value=this.value;tlvClasses()"></div><div class="grow"><label>To</label><input id="tlT" class="in-t" type="date" value="${t0}" onchange="tlvClasses()"></div></div>
 <label>How much</label><div class="qa-ch">${['Whole day','Some classes'].map(v => pill('part', v, 'Whole day', "$('tlW').style.display=LVF.part==='Some classes'?'':'none';tlvClasses()")).join('')}</div>
@@ -4253,7 +4256,7 @@ const Q = [], W = [], ok = [], add = (list, n, x) => { if(n > 0) list.push(Objec
 const late = (MO && MO.late) || [];
 { const P = LV ? LV.rows.filter(r => r.status === 'Pending' && !r.ask && (isPres() ? r.ops : !r.ops)) : []; add(Q, P.length, { tone:'hot', t: isPres() ? 'Leave waiting for your approval' : 'Leave requests to check', s: P.slice(0,3).map(r => tName(r.teacher) + ' · ' + lvDates(r)).join(' · '), go:"go('leave')", okLabel:'Leave' }); }
 if(MSG){ const nw = (MSG.threads || []).filter(t => t && t.root && !/^App health$/i.test(String(t.root.from || '')) && [t.root].concat(t.replies).some(msgNewM)); add(Q, nw.length, { tone:'hot', t:'New messages', s: nw.slice(0,3).map(t => tName(t.teacher)).join(' · '), go:"go('msgs')", okLabel:'Notices & requests' });
-const na = (MSG.threads || []).filter(t => t.root.role === 'mgmt' && t.root.need && !t.root.ack && t.root.at.slice(0, 10) >= new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)); add(W, na.length, { tone:'', t:'Notices without “Got it”', s: [...new Set(na.map(t => tName(t.teacher)))].slice(0,5).join(' · '), go:"go('msgs')" }); }
+const na = (MSG.threads || []).filter(t => t.root.role === 'mgmt' && t.root.need && !t.root.ack && t.root.at.slice(0, 10) >= new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)); add(W, na.length, { tone:'', t:'Notices without “Got it” (last 7 days)', s: [...new Set(na.map(t => tName(t.teacher)))].slice(0,5).join(' · '), go:"go('msgs')" }); }
 if(PCKM){ const q = Object.keys(PCKM.checks || {}).filter(k => PCKM.checks[k].status === 'Disputed'); add(Q, q.length, { tone:'hot', t:'Pay questions from teachers', s: q.slice(0,3).map(k => tName(k)).join(' · '), go:"go('payroll')", okLabel:'Pay checks' }); }
 add(Q, late.length, { tone:'hot', t:'Late time-ins to decide', s: late.slice(0,3).map(x => tName(x.teacher) + (x.mins !== '' && x.mins != null ? ' · ' + Math.abs(x.mins) + ' min' : '')).join(' · '), go:"go('team')", okLabel:'Time-ins' });
 const T = hmTodo();
@@ -4477,7 +4480,7 @@ try{ navigator.clipboard.writeText(t); toast('Copied · paste it in WeChat'); }c
 
 let MSG = null, TMSG = null, MSG_N = -1, TMSG_N = -1;
 const msgIsM = n => !!(MSG && (MSG.mgmtAll || []).some(x => String(x).toLowerCase() === String(n).toLowerCase()));
-const msgMName = n => { const m = ((MSG && MSG.mgmt) || []).find(x => String(x.name).toLowerCase() === String(n).toLowerCase()); return (m && /pres/i.test(m.role)) || /^cupofenglish$/i.test(String(n)) ? 'President' : String(n); };
+const msgMName = n => { const m = ((MSG && MSG.mgmt) || []).find(x => String(x.name).toLowerCase() === String(n).toLowerCase()); return (m && /pres/i.test(m.role)) || /^cupofenglish$/i.test(String(n)) ? 'Management' : String(n); };
 const msgWho = n => msgIsM(n) ? msgMName(n) : 'Teacher ' + n;
 const msgNewM = r => !r.seen && (r.role !== 'mgmt' || (MSG && String(r.to).toLowerCase() === String(MSG.me).toLowerCase()));
 const msgAt = s => { const d = String(s || ''), m = +d.slice(5, 7); if(/^\d{4}-\d{2}-\d{2}/.test(d) && m >= 1 && m <= 12) return (+d.slice(8, 10) + ' ' + 'JanFebMarAprMayJunJulAugSepOctNovDec'.substr(m * 3 - 3, 3) + ' ' + d.slice(11, 16)).trim();   /* 1471: day first, as on every other screen */
@@ -4520,7 +4523,7 @@ const T = MF === 'all' || !window.msgCats ? TA : TA.filter(t => msgCats(t, unrea
 let h = '<div class="lead row"><div class="grow"><h1>Notices &amp; requests</h1><div class="mute small">Formal notices and requests · teachers tap Got it so you know they have read it · tap a row to see each person’s status</div></div><button class="btn teal sm" onclick="msgNew()">+ New notice</button></div>' + (window.msgTabs ? msgTabs(TA, unread) : '');
 if(MSG.leave && MSG.leave.length) h += '<div class="card" style="margin-top:14px;cursor:pointer" onclick="go(\'leave\')"><b>' + MSG.leave.length + ' leave request' + (MSG.leave.length > 1 ? 's' : '') + ' waiting</b><div class="small mute">' + MSG.leave.slice(0, 4).map(l => esc(tName(l.teacher)) + ' · ' + esc(l.type) + ' ' + esc(l.from)).join(' · ') + '</div></div>';
 MSG_G = MF === 'pc' && window.msgPcGroups ? msgPcGroups(T) : msgGroups(T); h += T.length ? '<div style="margin-top:12px">' + MSG_G.map((g, gi) => g.pc ? pcRow(g, gi, unread) : g.length > 1 ? msgGroupRow(g, gi, unread) : (t => { const r = t.root, u = unread(t), last = t.replies.length ? t.replies[t.replies.length - 1] : r, mg = r.role === 'mgmt';
-const st = (r.kind === 'memo' ? '<span class="chip red" style="margin-right:4px">Memo</span>' : '') + (mg ? (r.ack ? '<span class="chip ' + (/^🙋/.test(r.react || '') ? 'coral' : 'teal') + '">' + esc(ackLbl(r)) + ' ' + esc(msgAt(r.ack)) + '</span>' : r.seen ? '<span class="chip">Seen ' + esc(msgAt(r.seen)) + '</span>' : '<span class="chip amber">Not seen yet</span>') : '<span class="chip coral">' + (r.to === 'President' ? 'To the President only' : 'From the teacher') + '</span>');
+const st = (r.kind === 'memo' ? '<span class="chip red" style="margin-right:4px">Memo</span>' : '') + (mg ? (r.ack ? '<span class="chip ' + (/^🙋/.test(r.react || '') ? 'coral' : 'teal') + '">' + esc(ackLbl(r)) + ' ' + esc(msgAt(r.ack)) + '</span>' : r.seen ? '<span class="chip">Seen ' + esc(msgAt(r.seen)) + '</span>' : '<span class="chip amber">Not seen yet</span>') : '<span class="chip coral">' + (r.to === 'President' ? 'Private · management only' : 'From the teacher') + '</span>');
 return '<div class="li" onclick="msgOpen(\'' + r.id + '\')" style="cursor:pointer;' + (u ? 'background:#FFF6EE' : '') + '"><div class="av">' + esc(String(t.teacher).slice(0, 2).toUpperCase()) + '</div><div class="grow" style="min-width:0"><b>' + esc(mg && msgIsM(r.to) ? msgMName(String(r.from).toLowerCase() === String(MSG.me).toLowerCase() ? r.to : r.from) : msgWho(t.teacher)) + '</b>' + (window.msgCatChip ? msgCatChip(t) : '') + (u ? ' <span class="chip red">' + u + ' new</span>' : '') + '<div class="small mute ell">' + esc(r.kind === 'memo' && last === r ? r.memoNo + ' · ' + r.subject : (String(last.from).toLowerCase() === String(MSG.me).toLowerCase() ? 'You: ' : last.role === 'mgmt' ? msgMName(last.from) + ': ' : '') + last.text) + '</div></div><div style="text-align:right">' + st + '<div class="small mute">' + esc(msgAt(t.lastAt)) + (t.replies.length ? ' · ' + t.replies.length + ' repl' + (t.replies.length > 1 ? 'ies' : 'y') : '') + '</div></div></div>'; })(g[0])).join('') + '</div>'
 : MF !== 'all' ? '<div class="empty" style="margin-top:14px">Nothing here · all clear ✓</div>' : '<div class="empty" style="margin-top:14px">No messages yet. Send a notice to teachers here instead of the group chat · you’ll see who read it and who tapped “Got it”.</div>';
 el.innerHTML = h; }
@@ -4599,8 +4602,8 @@ if(ask){ document.querySelectorAll('.reacts').forEach(x => x.remove()); const R 
 if(VIEW === 'today') setTimeout(() => { try{ renderToday(); }catch(x){} }, 500);
 try{ const r = await api('tMsgAck', TOKEN, id, react); if(!r.ok) throw r; if(!ask) toast('✓ ' + r.note); }
 catch(e){ if(t){ t.root.ack = old; t.root.react = ''; } keep('tmsgs', TMSG); toast((e && (e.msg || e.message)) || 'Not saved. Try again.'); if(VIEW === 'today') try{ renderToday(); }catch(x){} } }
-function tMsgNew(){ openSheet('<h1>Message management</h1><div class="seg" id="tmTo" style="margin-top:10px"><button type="button" class="on" data-p="" onclick="tmTo(this)">Management</button><button type="button" data-p="1" onclick="tmTo(this)">President only</button></div><div class="mute small" id="tmToN">Operations and the President see it in the app</div><textarea id="tmR" class="in-t" rows="5" style="margin-top:12px" placeholder="Write your message"></textarea>' + emojiBar('tmR') + '<button class="btn teal block" style="margin-top:10px" id="tmRB" onclick="tMsgSend(\'\')">Send</button>'); }
-function tmTo(b){ document.querySelectorAll('#tmTo button').forEach(x => x.classList.toggle('on', x === b)); const n = $('tmToN'); if(n) n.textContent = b.dataset.p ? 'Only the President sees it (private)' : 'Operations and the President see it in the app'; }
+function tMsgNew(){ openSheet('<h1>Message management</h1><div class="seg" id="tmTo" style="margin-top:10px"><button type="button" class="on" data-p="" onclick="tmTo(this)">Management</button><button type="button" data-p="1" onclick="tmTo(this)">Management only</button></div><div class="mute small" id="tmToN">Operations and management see it in the app</div><textarea id="tmR" class="in-t" rows="5" style="margin-top:12px" placeholder="Write your message"></textarea>' + emojiBar('tmR') + '<button class="btn teal block" style="margin-top:10px" id="tmRB" onclick="tMsgSend(\'\')">Send</button>'); }
+function tmTo(b){ document.querySelectorAll('#tmTo button').forEach(x => x.classList.toggle('on', x === b)); const n = $('tmToN'); if(n) n.textContent = b.dataset.p ? 'Only management sees it (private, not Operations)' : 'Operations and management see it in the app'; }
 async function tMsgSend(parent){ const t = ($('tmR') || {}).value || ''; if(!t.trim()) return toast('Write the message');
 const po = !parent && !!(document.querySelector('#tmTo button.on') || {dataset:{}}).dataset.p;
 closeSheet(); toast('Sending…');
@@ -5370,12 +5373,12 @@ function scSig(){ if(!SC) return ''; const n = Date.now(); return (remFresh() ? 
 let SC_SIG = '';
 function scRefresh(){ const g = scSig(); if(g === SC_SIG) return; renderSchedule(); }
 function scSent(e, st){ if(REM.map[scRemKey(e, st)]) return true; try{ return localStorage.getItem(scRemKey(e, st)) === '1'; }catch(x){ return false; } }
-function scRemChips(e){ const c = ['2h', '10m'].map(st => { const r = REM.map[scRemKey(e, st)]; return r ? `<span class="chip teal">🔔 ${st === '10m' ? '10-min' : 'Early'} reminder · ${esc(r.by)} ${esc(r.at)}</span>` : ''; }).filter(Boolean); return c.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${c.join('')}</div>` : ''; }
+function scRemChips(e){ const c = ['2h', '10m'].map(st => { const r = REM.map[scRemKey(e, st)]; return r ? `<span class="chip teal">${window.li1465 ? li1465('bell') : ''}${st === '10m' ? '10-min' : 'Early'} reminder · ${esc(r.by)} ${esc(r.at)}</span>` : ''; }).filter(Boolean); return c.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${c.join('')}</div>` : ''; }
 function scDueBox(){
-if(!SC || SC_OFF) return ''; if(!remFresh()){ if(!REM.busy) setTimeout(remLoad, 0); return SC.events.some(e => scStage(e)) ? '<div class="small mute" style="margin-top:10px">🔔 Checking which reminders were already sent…</div>' : ''; } const due = SC.events.filter(e => { const st = scStage(e); return st && !scSent(e, st) && !remByTeacher(e); }).sort((a, b) => a.start.localeCompare(b.start));
+if(!SC || SC_OFF) return ''; if(!remFresh()){ if(!REM.busy) setTimeout(remLoad, 0); return SC.events.some(e => scStage(e)) ? '<div class="small mute" style="margin-top:10px">' + (window.li1465 ? li1465('bell') : '') + 'Checking which reminders were already sent…</div>' : ''; } const due = SC.events.filter(e => { const st = scStage(e); return st && !scSent(e, st) && !remByTeacher(e); }).sort((a, b) => a.start.localeCompare(b.start));
 const sent = SC.events.filter(e => { const st = scStage(e); return st && scSent(e, st); }).length;
-if(!due.length){ const nx = scNextRem(); return (sent || nx) ? `<div class="small mute" style="margin-top:10px">🔔 Reminders: ${sent ? 'all sent ✓ (' + sent + ')' : 'none due now'}${nx ? ' · next opens ' + tm(new Date(nx.at).toISOString()) + ' · ' + esc(nx.e.student || nx.e.title) + ' (' + (nx.st === '10m' ? '10-min' : 'early') + ')' : ''}</div>` : ''; }
-return `<div class="card" style="margin-top:12px;border:1.5px solid #00A3AD"><b>🔔 Reminders due · ${due.length}</b><div class="small mute">Copy, then paste in the class WeChat group (type @ to tag the teacher and parent)${sent ? ' · ' + sent + ' sent' : ''}</div>` +
+if(!due.length){ const nx = scNextRem(); return (sent || nx) ? `<div class="small mute" style="margin-top:10px">${window.li1465 ? li1465('bell') : ''}Reminders: ${sent ? 'all sent ✓ (' + sent + ')' : 'none due now'}${nx ? ' · next opens ' + tm(new Date(nx.at).toISOString()) + ' · ' + esc(nx.e.student || nx.e.title) + ' (' + (nx.st === '10m' ? '10-min' : 'early') + ')' : ''}</div>` : ''; }
+return `<div class="card" style="margin-top:12px;border:1.5px solid #00A3AD"><b>${window.li1465 ? li1465('bell') : ''}Reminders due · ${due.length}</b><div class="small mute">Copy, then paste in the class WeChat group (type @ to tag the teacher and parent)${sent ? ' · ' + sent + ' sent' : ''}</div>` +
 due.map(e => { const st = scStage(e), i = SC.events.indexOf(e); return `<div class="row" style="gap:8px;margin-top:8px;align-items:center"><div class="grow"><b>${tm(e.start)}</b> ${esc(e.student || e.title)}${e.code ? ` <button type="button" title="Copy the student code to find the WeChat group" style="border:1.5px solid #2B2253;background:#fff;color:#2B2253;border-radius:8px;padding:1px 8px;font:700 13px ui-monospace,Menlo,monospace;cursor:pointer;vertical-align:1px" onclick="navigator.clipboard.writeText('${esc(e.code)}').then(()=>toast('${esc(e.code)} copied · paste it in WeChat search to open the right group'))">${esc(e.code)}</button>` : ''} <span class="small mute">· ${esc(tName(e.teacher || ''))}</span><div class="small" style="color:${st === '10m' ? '#C0392B' : '#00737B'}">${st === '10m' ? '10-minute reminder' : 'Early reminder · 2–3 hours before'}${remByTeacher(e) ? ' · <b style="color:#8A5A00">teacher’s turn (Ops off)</b>' : ''}</div></div><button class="btn sm ghost" title="Already sent in WeChat · clear it" onclick="scRemDone([${i}])">Mark as sent</button><button class="btn sm teal" onclick="scRemind(${i},1)">Copy</button></div>`; }).join('') + (due.length > 1 ? `<div style="text-align:right;margin-top:10px"><button class="btn sm ghost" onclick="if(confirm('Mark all ${due.length} as sent? Use this when they were already reminded in WeChat.'))scRemDone([${due.map(e => SC.events.indexOf(e)).join(',')}])">✓ Mark all ${due.length} sent</button></div>` : '') + `</div>`;
 }
 async function scRemDone(ix){
@@ -5427,7 +5430,7 @@ const row = (e, who) => { const on = !e.cancelled && now >= new Date(e.start) &&
 const mon = e.cancelled ? '' : monChips(e, now);
 return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type==='Sub'?'sub':''} ${on?'now':''}" style="cursor:pointer;--c:${bookCol(e.book)}" onclick="classEdit(${SC.events.indexOf(e)})"><div class="t"><b>${tm(e.start)}</b><span>${tm(e.end)}</span></div><div class="bar"></div>
 <div class="grow"><div class="row" style="gap:6px"><span class="nm ell">${esc(e.student||e.title)}</span>${e.type?`<span class="chip ${e.type==='Trial'?'coral':''}">${e.type}</span>`:''}${e.cancelled?'<span class="chip red">Cancelled</span>':''}${on?'<span class="live-b"><i></i>Live</span>':''}</div>${e.cancelled && e.why ? `<div class="cxw">Why: ${cxWhy(e.why)}</div>` : ''}${e.cancelled ? `<button class="cxbtn" onclick="event.stopPropagation();cxProof(${SC.events.indexOf(e)})">Proof for the parent</button>` : ''}
-<div class="small mute ell">${[who?`<b style="color:var(--ink2)">${esc(e.teacher)}</b>`:'', esc([e.code,e.book,e.meet].filter(Boolean).join(' · '))].filter(Boolean).join(' · ')}</div>${mon}${scRemChips(e)}${(st => st && !scSent(e, st))(scStage(e)) ? `<button class="cxbtn" onclick="event.stopPropagation();scRemind(${SC.events.indexOf(e)})">🔔 Remind · copy message</button>` : ''}</div></div>`; };
+<div class="small mute ell">${[who?`<b style="color:var(--ink2)">${esc(e.teacher)}</b>`:'', esc([e.code,e.book,e.meet].filter(Boolean).join(' · '))].filter(Boolean).join(' · ')}</div>${mon}${scRemChips(e)}${(st => st && !scSent(e, st))(scStage(e)) ? `<button class="cxbtn" onclick="event.stopPropagation();scRemind(${SC.events.indexOf(e)})">${window.li1465 ? li1465('bell') : ''}Remind · copy message</button>` : ''}</div></div>`; };
 if(!L.length) h += `<div class="empty">No classes on the calendar.</div>`;
 else if(SC_BY==='teacher'){ const by = {}; L.forEach(e => (by[e.teacher]=by[e.teacher]||[]).push(e));
 h += Object.keys(by).sort().map(t => `<h2>${esc(t)} <span class="c">${by[t].filter(e=>!e.cancelled).length} classes${by[t].some(e=>e.cancelled)?' · '+by[t].filter(e=>e.cancelled).length+' cancelled':''}</span></h2>` + svNowFirst(by[t]).map(e=>row(e,false)).join('')).join(''); }
@@ -5588,7 +5591,7 @@ openSheet(`<h1>New case</h1><div class="mute small">Added at the top of ACTIONS 
 <div class="row" style="gap:10px"><div class="grow"><label>Employee</label><select id="cE" class="in-t"><option></option>${opts(L.employee)}</select></div>
 <div class="grow"><label>Type</label><select id="cT" class="in-t"><option></option>${opts(L.type)}</select></div></div>
 <label>Student (optional)</label><input id="cSt" class="in-t" placeholder="Weiwei ST-2026-118">
-<div class="row" style="gap:10px"><div class="grow"><label>Source</label><select id="cSo" class="in-t">${opts(L.source,'Operations')}</select></div>
+<div class="row" style="gap:10px"><div class="grow"><label>Source</label><select id="cSo" class="in-t">${opts(L.source,'Operations').replace('<option>President</option>','<option value="President">Management</option>')}</select></div>
 <div class="grow"><label>Condition</label><select id="cC" class="in-t"><option></option>${opts(L.condition)}</select></div></div>
 <div class="row" style="gap:10px"><div class="grow"><label>Status</label><select id="cSt2" class="in-t"><option></option>${opts(L.status)}</select></div>
 <div class="grow"><label>Teacher tier</label><select id="cTi" class="in-t"><option></option>${opts(L.tier)}</select></div></div>
@@ -6381,7 +6384,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1385;
+const COE_V = 1392;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -6540,7 +6543,7 @@ return `<div class="small" style="margin-top:6px;padding:6px 10px;border-radius:
 function fuBtns(x, fi){ const s = x.step; if(!s) return '';
 if(s.k === 'report') return s.tr && s.tr.label ? `<button class="btn teal sm" onclick="tlOpen(${(TRL.rows || []).indexOf(s.tr)})">Send report</button>` : '';
 if(s.k === 'close') return `<button class="btn ghost sm" onclick="fuQuick(${fi},'Not now','no reply after 3 follow-ups')">Close · Not now</button>`;
-return `<button class="btn ${s.due >= 0 ? 'teal' : 'ghost'} sm" onclick="fuCopy(${fi})">Copy message</button>${s.k === 'd7' && x.t ? `<button class="btn ghost sm" onclick="avOpen('${esc(String(x.t).replace(/^teacher\s+/i, '').split(/[,&/]/)[0].trim())}')">Open times</button>` : ''}<button class="btn ghost sm" onclick="fuQuick(${fi},'Following up','${esc(s.en.split(' · ')[0])} message sent')">✓ Message sent</button>`; }
+return `<button class="btn ${s.due >= 0 ? 'teal' : 'ghost'} sm" onclick="fuCopy(${fi})">Copy message</button>${s.k === 'd7' && x.t ? `<button class="btn ghost sm" onclick="avOpen('${esc(String(x.t).replace(/^teacher\s+/i, '').split(/[,&/]/)[0].trim())}')">Open times</button>` : ''}<button class="btn ghost sm" onclick="fuQuick(${fi},'Following up','${esc(s.en.split(' · ')[0])} message sent')">Mark as sent</button>`; }
 function whoW(code, group){ try{ if(/^adult/i.test(String(group || ''))) return 'student'; if(code && isAdult(code)) return 'student'; const T = (typeof TRL !== 'undefined' && TRL && TRL.rows) || [], t = T.find(y => String(y.code || '').toUpperCase() === String(code || '').toUpperCase() && y.group); if(t && /^adult/i.test(t.group)) return 'student'; }catch(e){} return 'parent'; }
 function fuMsg(x, k){ if(whoW(x.code, x.group) === 'student') return fuMsgAd(x, k); return fuMsgKid(x, k); }
 function fuMsgAd(x, k){ const nm = String(x.name || '').trim().split(/\s+/)[0] || '', T = String(x.t || '').replace(/^teacher\s+/i, '').split(/[,&/]/)[0].trim(), tzh = T ? T + '老师' : '老师', ten = T ? 'Teacher ' + T : 'our teacher';
@@ -7016,7 +7019,7 @@ return `<span class="ti-q ${weak ? 'weak' : ok ? 'ok' : 'good'}" title="${esc(s)
 const tiTown = x => { let p = String(x.place || ''); if(!p) return ''; const acc = +((p.match(/±\s*(\d+)/) || [])[1] || 0);
 p = p.replace(/\s*\(±[^)]*\)\s*$/, '').replace(/^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}\s*,?\s*/i, '').replace(/,\s*Philippines$/i, '').replace(/\b\d{4}\s+/g, '');
 const parts = p.split(',').map(s => s.trim()).filter(Boolean), town = parts.slice(-2).join(', ');
-return `<a class="ti-loc" href="${esc(x.map || '#')}" target="_blank" rel="noopener" title="${esc(x.place)}">📍 ${esc(town || p)}${acc > 5000 ? ' · approx.' : ''}</a>`; };
+return `<a class="ti-loc" href="${esc(x.map || '#')}" target="_blank" rel="noopener" title="${esc(x.place)}">${window.li1465 ? li1465('place') : ''}${esc(town || p)}${acc > 5000 ? ' · approx.' : ''}</a>`; };
 const tiMin = (x) => { if(!x.timeIn || !x.first) return ''; const f = new Date(x.first), [hh, mm] = String(x.timeIn).split(':').map(Number); if(isNaN(hh)) return ''; const d = f.getHours() * 60 + f.getMinutes() - (hh * 60 + mm);
 return d >= 0 ? d + ' min before class' : Math.abs(d) + ' min after class start'; };
 const tiChip = s => `<span class="chip ${s === 'On time' || s === 'Clocked in' ? 'green' : s === 'Late' || s === 'Missing' ? 'red' : s === 'Not on app' ? 'coral' : ''}">${esc(s)}</span>`;
@@ -7111,7 +7114,7 @@ try{ const _sto = sendTimeOut; sendTimeOut = async function(){
 if(SHT && SHT.items && !SHT.skip){ const left = SHT.items.filter(x => !SHT.pick[x.id]).length; if(left){ toast('Mark each task: Done, Carry over or Need help'); return; } }
 const S = SHT, items = S && S.items ? S.items.filter(x => S.pick[x.id]).map(x => ({ id: x.id, st: S.pick[x.id], note: S.note[x.id] || '' })) : [], bl = S ? String(S.bl || (($('shN') || {}).value) || '').trim() : '';
 SHT = null; const r = await _sto.apply(this, arguments);
-if(items.length || bl) try{ const x = await api('mgmtShiftClose', TOKEN, items, bl); if(x && x.ok) toast('Handover saved · ' + x.note); loadMsgs(true); }catch(e){ toast('Handover not saved · tell the President in Messages'); }
+if(items.length || bl) try{ const x = await api('mgmtShiftClose', TOKEN, items, bl); if(x && x.ok) toast('Handover saved · ' + x.note); loadMsgs(true); }catch(e){ toast('Handover not saved · tell management in Messages'); }
 return r; }; }catch(e){}
 
 
@@ -9965,7 +9968,7 @@ ${pr && pr[1] ? `<a class="ov-ql" onclick="go('perf')"><div class="ov-th"><span>
     // 2 · "Do next" with the buttons of each item
     const box = v.querySelector('#tdFocus'); if(!box) return;
     const src = [...v.querySelectorAll('[data-focus]')].filter(r => !box.contains(r));
-    const h2 = box.querySelector('h2'); if(h2) h2.innerHTML = `Do next <span class="c">in this order · ${src.length} thing${src.length === 1 ? '' : 's'} · act right here, or tap a line for details</span>`;
+    const h2 = box.querySelector('h2'); if(h2) h2.innerHTML = `Do next <span class="c">in this order · ${src.length} to act on now · act right here, or tap a line · the full lists are below</span>`;   /* 1463 */
     box.querySelectorAll('.li').forEach((li, i) => {
       const r = src[i]; if(!r || li.querySelector('.td2-a')) return;
       li.insertAdjacentHTML('afterbegin', `<span class="td2-n">${i + 1}</span>`);
@@ -10073,7 +10076,7 @@ ${scDueBox()}${bookKey()}<div class="fl"><span class="lbl">Teacher</span><button
     const card = (e, who) => { const on = !e.cancelled && now >= new Date(e.start) && now < new Date(e.end), i = SC.events.indexOf(e), mon = e.cancelled ? '' : monChips(e, now);
       return `<div class="cls ${e.cancelled ? 'x' : ''} ${e.type === 'Trial' ? 'trial' : e.type === 'Sub' ? 'sub' : ''} ${on ? 'now' : ''}" style="cursor:pointer;--c:${bookCol(e.book)}" onclick="classEdit(${i})"><div class="t"><b>${tm(e.start)}</b><span>${tm(e.end)}</span></div><div class="bar"></div>
 <div class="grow" style="min-width:0"><div class="row" style="gap:6px;align-items:center"><span class="nm ell">${esc(e.student || e.title)}</span>${e.type ? `<span class="chip ${e.type === 'Trial' ? 'coral' : ''}">${e.type}</span>` : ''}${e.cancelled ? '<span class="chip red">Cancelled</span>' : ''}${on ? '<span class="live-b"><i></i>Live</span>' : ''}<span class="s2-tm">${tm(e.start)}–${tm(e.end)}</span></div>${e.cancelled && e.why ? `<div class="cxw">Why: ${cxWhy(e.why)}</div>` : ''}${e.cancelled ? `<button class="cxbtn" onclick="event.stopPropagation();cxProof(${i})">Proof for the parent</button>` : ''}
-<div class="small mute ell">${[who ? `<b style="color:var(--ink2)">${esc(e.teacher)}</b>` : '', esc([e.code, e.book, e.meet].filter(Boolean).join(' · '))].filter(Boolean).join(' · ')}</div>${mon}${scRemChips(e)}${(s => s && !scSent(e, s))(scStage(e)) ? `<button class="cxbtn" onclick="event.stopPropagation();scRemind(${i})">🔔 Remind · copy message</button>` : ''}</div></div>`; };
+<div class="small mute ell">${[who ? `<b style="color:var(--ink2)">${esc(e.teacher)}</b>` : '', esc([e.code, e.book, e.meet].filter(Boolean).join(' · '))].filter(Boolean).join(' · ')}</div>${mon}${scRemChips(e)}${(s => s && !scSent(e, s))(scStage(e)) ? `<button class="cxbtn" onclick="event.stopPropagation();scRemind(${i})">${window.li1465 ? li1465('bell') : ''}Remind · copy message</button>` : ''}</div></div>`; };
     const slots = (list, who) => { const by = {}, order = []; list.forEach(e => { const k = tm(e.start); if(!by[k]){ by[k] = []; order.push(k); } by[k].push(e); });
       return order.map(k => { const g = by[k], on = g.some(e => !e.cancelled && now >= new Date(e.start) && now < new Date(e.end)), n = g.filter(e => !e.cancelled).length;
         return `<div class="s2-slot ${on ? 'now' : ''}"><b>${k}</b><span>${n} class${n === 1 ? '' : 'es'}${g.length - n ? ' · ' + (g.length - n) + ' cancelled' : ''}${on ? ' · live now' : ''}</span></div><div class="s2-g">${g.map(e => card(e, who)).join('')}</div>`; }).join(''); };
@@ -10379,7 +10382,7 @@ ${scDueBox()}${bookKey()}<div class="fl"><span class="lbl">Teacher</span><button
 const mon = e.cancelled ? '' : monChips(e, now);
 return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type==='Sub'?'sub':''} ${on?'now':''}" style="cursor:pointer;--c:${bookCol(e.book)}" onclick="classEdit(${SC.events.indexOf(e)})"><div class="t"><b>${tm(e.start)}</b><span>${tm(e.end)}</span></div><div class="bar"></div>
 <div class="grow"><div class="row" style="gap:6px"><span class="nm ell">${esc(e.student||e.title)}</span>${e.type?`<span class="chip ${e.type==='Trial'?'coral':''}">${e.type}</span>`:''}${e.cancelled?'<span class="chip red">Cancelled</span>':''}${on?'<span class="live-b"><i></i>Live</span>':''}</div>${e.cancelled && e.why ? `<div class="cxw">Why: ${cxWhy(e.why)}</div>` : ''}${e.cancelled ? `<button class="cxbtn" onclick="event.stopPropagation();cxProof(${SC.events.indexOf(e)})">Proof for the parent</button>` : ''}
-<div class="small mute ell">${[who?`<b style="color:var(--ink2)">${esc(e.teacher)}</b>`:'', esc([e.code,e.book,e.meet].filter(Boolean).join(' · '))].filter(Boolean).join(' · ')}</div>${mon}${scRemChips(e)}${(st => st && !scSent(e, st))(scStage(e)) ? `<button class="cxbtn" onclick="event.stopPropagation();scRemind(${SC.events.indexOf(e)})">🔔 Remind · copy message</button>` : ''}</div></div>`; };
+<div class="small mute ell">${[who?`<b style="color:var(--ink2)">${esc(e.teacher)}</b>`:'', esc([e.code,e.book,e.meet].filter(Boolean).join(' · '))].filter(Boolean).join(' · ')}</div>${mon}${scRemChips(e)}${(st => st && !scSent(e, st))(scStage(e)) ? `<button class="cxbtn" onclick="event.stopPropagation();scRemind(${SC.events.indexOf(e)})">${window.li1465 ? li1465('bell') : ''}Remind · copy message</button>` : ''}</div></div>`; };
     if(!L.length) h += `<div class="empty">No classes on the calendar.</div>`;
     else if(SC_BY==='teacher'){ const by = {}; L.forEach(e => (by[e.teacher]=by[e.teacher]||[]).push(e));
       h += Object.keys(by).sort().map(t => `<h2>${esc(t)} <span class="c">${by[t].filter(e=>!e.cancelled).length} classes${by[t].some(e=>e.cancelled)?' · '+by[t].filter(e=>e.cancelled).length+' cancelled':''}</span></h2>` + svNowFirst(by[t]).map(e=>row(e,false)).join('')).join(''); }
@@ -10661,7 +10664,7 @@ return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type=
       if(n.length && n.every(x => !x)){ S.outerHTML = '<div class="lv2-ok"><b>✓ All clear</b> · nobody on leave today · none coming up · nothing waiting for your approval</div>';
         const h = [...v.querySelectorAll('h2')].find(x => /On leave now/.test(x.textContent)); if(h && h.nextElementSibling && h.nextElementSibling.classList.contains('tdok')){ h.nextElementSibling.remove(); h.remove(); } }
       const fl = [...v.querySelectorAll('.small.mute')].find(x => /Teacher asks with proof/.test(x.textContent));
-      if(fl) fl.outerHTML = '<div class="lv2-flow">' + ['Teacher asks with proof', 'Operations checks', 'President approves', 'Teacher sees it in the app'].map(s => '<span>' + s + '</span>').join('<i>→</i>') + '</div>';
+      if(fl) fl.outerHTML = '<div class="lv2-flow">' + ['Teacher asks with proof', 'Operations checks', 'Management approves', 'Teacher sees it in the app'].map(s => '<span>' + s + '</span>').join('<i>→</i>') + '</div>';
     }catch(e){ console.warn('leave tidy', e); }
     return r; };
   try{ if(VIEW === 'leave') renderLeave(); }catch(e){}
@@ -11186,7 +11189,7 @@ function paintRows(){
       <span class="py-net">${peso(x.net)}</span>
       <div class="py-cks">${x.paid ? '' : ck('Feedback', r && r.fb) + ck('Peer review', r && r.peer) + ck('Videos', r && r.vid)}${pchkChip(x)}</div>
       <div class="py-st"><span class="${s}">${x.paid ? '✓ Paid' : s === 'ready' ? 'Ready to release' : r ? rdyN(x.name) + ' to finish' : 'Checking…'}</span></div></div>`; }).join('')
-    || `<div class="py-empty">${q ? 'No teacher matches “' + esc(q) + '” this month' : 'Nobody here'}</div>`;
+    || `<div class="py-empty">${q ? 'No teacher matches “' + esc(q) + '” this month' : (PRF === 'topay' ? 'Everyone is paid for ' + esc(MO.payMonth || 'this month') : PRF === 'paid' ? 'No one is marked paid yet for ' + esc(MO.payMonth || 'this month') : PRF === 'q' ? 'No pay questions from teachers' : 'No teachers on this month’s payroll yet')}</div>`;   /* 1465 */
 }
 
 window.renderPayroll = function(){
@@ -12767,8 +12770,8 @@ ${t.facts ? `<div class="kxf" hidden>${facts(t)}</div>` : ''}</div>`; }
     el.innerHTML = (top.length ? `<div class="row" style="gap:8px;margin:4px 0 10px">${top.map((t, i) => `<div class="card grow" style="padding:10px;text-align:center"><div style="font-size:22px">${['#1', '#2', '#3'][i]}</div><b>${esc(tName(t.name))}</b><div class="small mute">${t.total} · ${esc(t.level || '')}</div></div>`).join('')}</div>` : '')
       + (gaps.length ? `<p class="small mute">No data yet this month for: ${gaps.join(', ')} — the other parts are weighted up.</p>` : '')
       + R.map(row).join('')
-      + (U.length ? `<h3 style="margin:16px 0 4px">Not ranked</h3><p class="small mute">Under ${d.min} units this month, or the President.</p>` + U.map(row).join('') : '')
-      + `<details class="small" style="margin-top:12px"><summary style="cursor:pointer"><b>How this score is made</b> · missing data</summary><ul class="mute" style="margin:6px 0 0;padding-left:18px;line-height:1.5"><li>Four parts: Quality 35 · Reliability 35 · Progress 15 · Trust 15.</li><li>Inside a part, a measure with no data that month is <b>skipped</b>, not counted as 0; the measures that have data share the part.</li><li>A part with no data at all is <b>left out</b>, and the total is re-scaled over the parts that remain (for example, no Trust data: the total is out of the other 85 weight points, scaled to 100).</li><li>Attendance, class videos and demerits start at 100 and go down only when a record is found, so <b>no record counts as full marks</b>, not as missing.</li><li>QA uses the teacher's latest evaluation dated before the month ends, so it can be from an earlier month (see the QA line in the facts). Peer reviews received count only from 2 reviews; peer reviews given count once one is sent that month (or after the month ends).</li><li>No total (no data in any part), under ${d.min} units, or the President: not ranked.</li></ul></details>`
+      + (U.length ? `<h3 style="margin:16px 0 4px">Not ranked</h3><p class="small mute">Under ${d.min} units this month, or management.</p>` + U.map(row).join('') : '')
+      + `<details class="small" style="margin-top:12px"><summary style="cursor:pointer"><b>How this score is made</b> · missing data</summary><ul class="mute" style="margin:6px 0 0;padding-left:18px;line-height:1.5"><li>Four parts: Quality 35 · Reliability 35 · Progress 15 · Trust 15.</li><li>Inside a part, a measure with no data that month is <b>skipped</b>, not counted as 0; the measures that have data share the part.</li><li>A part with no data at all is <b>left out</b>, and the total is re-scaled over the parts that remain (for example, no Trust data: the total is out of the other 85 weight points, scaled to 100).</li><li>Attendance, class videos and demerits start at 100 and go down only when a record is found, so <b>no record counts as full marks</b>, not as missing.</li><li>QA uses the teacher's latest evaluation dated before the month ends, so it can be from an earlier month (see the QA line in the facts). Peer reviews received count only from 2 reviews; peer reviews given count once one is sent that month (or after the month ends).</li><li>No total (no data in any part), under ${d.min} units, or management: not ranked.</li></ul></details>`
       + `<p class="small mute" style="margin-top:12px">Quality 35 (monthly QA 55%, daily class visits 40%, peers 5%) · Reliability 35 (attendance & schedule, class videos by 23:59, class record, hours taught and opened, demerits, peer evaluation done) · Progress 15 (students' progress + her own growth) · Trust 15 (trials enrolled, students still studying with us, recognitions). Renewals are not counted. Gold 88+ · Silver 78+ · Bronze 65+. # is this month's place, not the teacher rank (Junior, Senior…). Tap a teacher for the facts behind the score. Worked out ${new Date(d.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.</p>`; }
   function load(ym, force){ KM = ym; if(KX[ym] && !KX[ym].err && !force && KX[ym]._at && Date.now() - KX[ym]._at < 5 * 6e4){ paint(); return; }   /* 333: last result shown at once, refreshed behind */
     const ck = 'coe.kx.' + ym; if(!KX[ym] || KX[ym].err){ try{ const c = JSON.parse(localStorage.getItem(ck) || 'null'); if(c && c.teachers) KX[ym] = c; else delete KX[ym]; }catch(e){ delete KX[ym]; } }
@@ -12776,7 +12779,7 @@ ${t.facts ? `<div class="kxf" hidden>${facts(t)}</div>` : ''}</div>`; }
     post('mgmtKpi', [ym]).then(d => { d._at = Date.now(); KX[ym] = d; try{ localStorage.setItem(ck, JSON.stringify(d)); }catch(e){} }).catch(e => { if(!KX[ym]) KX[ym] = { err: String(e && e.message || e) }; }).finally(() => { if(KM === ym) paint(); }); }
   window.kxMonth = ym => { const s = $('kxSel'); if(s) s.value = ym; load(ym); };
   window.kpiSheet = function(ym){ if(!(D && D.mgr)) return; const L = months(), m = ym || L[1];
-    openSheet(`<div class="row" style="align-items:center;gap:8px"><div class="grow"><h2 style="margin:0">Teacher Excellence</h2><div class="small mute">${isPres() ? 'Full view · tap a teacher for the facts behind the score' : 'Places, levels and the four parts · the facts behind each score stay with the President'}</div></div>
+    openSheet(`<div class="row" style="align-items:center;gap:8px"><div class="grow"><h2 style="margin:0">Teacher Excellence</h2><div class="small mute">${isPres() ? 'Full view · tap a teacher for the facts behind the score' : 'Places, levels and the four parts · the facts behind each score stay with management'}</div></div>
 <select id="kxSel" onchange="kxMonth(this.value)">${L.map(x => `<option value="${x}"${x === m ? ' selected' : ''}>${mLabel(x)}</option>`).join('')}</select></div><div id="kxBody" style="margin-top:8px"></div>`);
     load(m); };
   window.kpiReload = () => KM && load(KM, true);
@@ -12840,7 +12843,7 @@ ${t.facts ? `<div class="kxf" hidden>${facts(t)}</div>` : ''}</div>`; }
       const r = 21, c = 2 * Math.PI * r, d = pos(v) / 100 * c, col = v >= 80 ? '#2a9d8f' : v >= 60 ? '#e9c46a' : '#e76f51';
       return `<svg viewBox="0 0 52 52" style="width:52px;height:52px;flex:none"><circle cx="26" cy="26" r="${r}" fill="none" stroke="#eef0f2" stroke-width="6"/><circle cx="26" cy="26" r="${r}" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${d} ${c}" transform="rotate(-90 26 26)"/><text x="26" y="31" text-anchor="middle" style="font:700 14px var(--brand);fill:var(--ink)">${v}</text></svg>`; };
     const qsub = me => { const x = me.parts || {}, f = me.facts || {}, L = [];
-      if(x.qa != null) L.push(`Monthly QA (President) <b style="color:var(--ink)">${x.qa}</b>` + (f.qaPeriod ? ` <span style="opacity:.8">(${esc(f.qaPeriod)})</span>` : ''));
+      if(x.qa != null) L.push(`Monthly QA (management) <b style="color:var(--ink)">${x.qa}</b>` + (f.qaPeriod ? ` <span style="opacity:.8">(${esc(f.qaPeriod)})</span>` : ''));
       if(x.visits != null) L.push(`Daily visits (Ops) <b style="color:var(--ink)">${x.visits}</b> <span style="opacity:.8">(${f.visits || 0} visit${f.visits == 1 ? '' : 's'}${me.visitStrong || me.visitNeeds ? ' · ratings: ' + [me.visitStrong ? me.visitStrong + ' Strong' : '', me.visitNeeds ? me.visitNeeds + ' Needs work' : ''].filter(Boolean).join(', ') : ''})</span> · <a href="#" style="color:#2a9d8f;font-weight:600;text-decoration:none" onclick="event.preventDefault();kxVisits()">see visits ›</a>`);
       if(f.peerReviews >= 2) L.push('Peers <b style="color:var(--ink)">' + f.peerPct + '</b> <span style="opacity:.8">(' + f.peerReviews + ' reviews)</span>');
       return L.length ? L.join('<br>') : 'your QA and class visits'; };
@@ -15686,7 +15689,10 @@ section.sec{border-color:var(--line)}
         '<a onclick="go(\'schedule\')"><span>Classes</span><b>' + (E ? done.length + '/' + live.length : '—') + '</b><small>' + (E ? (next.length ? next.length + ' to go' : 'all done') : '') + '</small></a>' +
         '<a onclick="go(\'team\')"><span>On time</span><b>' + (due ? ontime + '/' + due : '—') + '</b><small>' + (team.length ? team.length + ' teaching' : 'no classes') + '</small></a>' +
         '<a onclick="go(\'schedule\')"><span>' + (on.length ? 'On now' : 'Next') + '</span><b>' + (on.length ? on.length : next.length ? tm(next[0].start) : '—') + '</b><small>' + (on.length ? esc(on.map(e => tName(e.teacher)).slice(0, 2).join(', ')) : next.length ? esc(tName(next[0].teacher)) : 'no more today') + '</small></a></div>' +
-        '<a class="x-todo ' + (hotN ? 'warm' : '') + '" onclick="go(\'mtoday\')"><i></i><b>' + (Q.length ? Q.length + (Q.length === 1 ? ' thing needs' : ' things need') + ' you' : 'Nothing needs you right now') + (W.length ? ' · ' + W.length + ' waiting on teachers' : '') + '</b><span>' + esc(names.slice(0, 4).join(' · ')) + '</span><em>To do ›</em></a></section>';
+        '<a class="x-todo ' + (hotN ? 'warm' : '') + '" onclick="go(\'mtoday\')"><i></i><b>' + (function(){ /* 1463: items, the same sum as the Overview badge */
+          const sum = L => L.reduce((a, x) => a + (+x.n || 0), 0), nh = sum(Q.filter(x => x.tone === 'hot')), no = sum(Q.filter(x => x.tone !== 'hot'));
+          const t = (nh ? nh + (nh === 1 ? ' item needs' : ' items need') + ' you now' : '') + (no ? (nh ? ' · ' : '') + no + ' more to look at' : '');
+          return t || 'Nothing needs you right now'; })() + '</b><span>' + esc(Q.map(x => x.t === 'Waiting in To do' && x.s ? x.s : x.t + ' ' + x.n).concat(W.length ? ['Waiting on teachers: ' + W.map(x => x.t + ' ' + x.n).join(' · ')] : []).join(' · ')) + '</span><em>To do ›</em></a></section>';
       const S = students();
       if(S){ const n = S.length, K = srcOf(S), kind = K.kind, P = Object.entries(K.partner).sort((a, b) => b[1] - a[1]).slice(0, 3), tot = n || 1;
         const c1 = '<a class="x-c" onclick="go(\'astudents\')"><div class="x-h"><b>Where students come from</b><span>active</span></div><div class="x-dn">' + donut(SRC.map(([k, l, c]) => [l, kind[k] || 0, c]), n, 'students') +
@@ -21100,7 +21106,7 @@ function tile(w){
   return `<div class="wl-t" style="--c:${s.c};--b:${s.b}"><div class="wl-h"><span class="wl-dot"></span>${w} <i>${s.zh}</i></div>
     <b>¥${n2(x.balance)}</b><small>${x.base_day ? `Checked ${dm(x.base_day)}: ¥${n2(x.base)}` : 'Not checked yet'}${since.length ? ' · ' + since.join(' · ') : ''}</small>${+x.nofee ? `<em class="wl-nf" onclick="wlHist()">${x.nofee} transfer${x.nofee == 1 ? '' : 's'} out waiting for the charge · add it</em>` : ''}</div>`; }
 function card(full){
-  if(!ST) return `<section id="wlCard" class="wl"><div class="wl-top"><h2>Wallets 钱包</h2><span class="mute small">President only · loading…</span></div><div class="wl-g">${full ? '<div class="wl-t sk"></div><div class="wl-t sk"></div><div class="wl-t sk"></div>' : ''}</div></section>`;
+  if(!ST) return `<section id="wlCard" class="wl"><div class="wl-top"><h2>Wallets 钱包</h2><span class="mute small">Private · loading…</span></div><div class="wl-g">${full ? '<div class="wl-t sk"></div><div class="wl-t sk"></div><div class="wl-t sk"></div>' : ''}</div></section>`;
   const last = (ST.entries || []).find(x => x.kind === 'remit' && !x.void_at);
   const tot = (ST.wallets || []).reduce((s, x) => s + (+x.balance || 0), 0);
   return `<section id="wlCard" class="wl">${full ? '<div class="wl870 full"><div class="wl870s">' : `<details class="wl870"${window.__wl870 ? ' open' : ''} ontoggle="window.__wl870 = this.open"><summary>`}<h2>Wallets 钱包</h2><span class="mute small">¥${n2(tot)} in total · recorded balances · only you see this</span>${full ? '</div>' : '<em>Show</em></summary>'}<div class="small mute" style="margin:2px 0 10px;line-height:1.45">Balances kept in this app: the last balance check + Alipay / WeChat sales in SALES since then ± the entries recorded here. These buttons record what you already did in the Alipay, WeChat or bank app. They do not send or move money.${full ? '' : ' <a class="lk" style="cursor:pointer" onclick="go(\'wallets\')">Open the Wallets tab ›</a>'}</div><div class="wl-top">
@@ -21536,7 +21542,7 @@ go();
       '<div class="row" style="gap:8px;margin-top:10px;align-items:center"><span class="small mute">Date</span><input class="in" type="date" style="width:auto" value="' + e(R.day) + '" onchange="rfSet(\'day\',this.value,1)"></div></div></div>' +
       '<div class="box"><h3>Message</h3><textarea id="rfMsg" oninput="R_MSG_EDIT(this.value)">' + e(R.msgEdited ? R.msg : msg()) + '</textarea><div class="row" style="gap:8px;margin-top:8px"><button class="btn sm" onclick="rfCopy()">Copy message 复制消息</button><span class="small mute">You can send it first and record the refund once it is agreed.</span></div></div>' +
       (P ? '<button class="btn go" id="rfGo" onclick="rfSave()"' + (c.amount > 0 || c.n > 0 ? '' : ' disabled') + '>Record refund · ' + yen(c.amount) + ' from ' + e(R.wallet) + '</button><div class="small mute" style="text-align:center;margin:8px 0 14px">Records R-' + '… · SALES minus line · lessons left to 0 · status Refunded · wallet goes down</div>'
-        : '<div class="warn">Only the President records refunds. You can copy the message.</div>') +
+        : '<div class="warn">Only management records refunds. You can copy the message.</div>') +
       '<div class="box"><h3>Policy</h3><div class="pol">' + e(POLICY) + '</div></div>' +
       (past ? '<div class="box"><h3>Past refunds</h3>' + past + '</div>' : '') + '</div>'; }
   function upd(){ const c = calc(); const a = $('rfAmt'), n = $('rfN'), g = $('rfGo'), m = $('rfMsg'), w = $('rfWhy');
@@ -21727,7 +21733,7 @@ go();
 
   function statusPill(r, d){ if(!r) return d.needs_sign ? '<span class="pill p-grey">On file</span>' : '';
     if(r.status === 'paper') return '<span class="pill p-ok">Signed on paper' + (r.scan_at ? ' · notarized ✓' : '') + '</span>';
-    if(r.status === 'signed') return '<span class="pill ' + (r.pres_at ? 'p-ok' : 'p-wait') + '">' + (r.pres_at ? 'Signed by both' + (r.scan_at ? ' · notarized ✓' : '') : 'Signed · waiting for the President') + '</span>';
+    if(r.status === 'signed') return '<span class="pill ' + (r.pres_at ? 'p-ok' : 'p-wait') + '">' + (r.pres_at ? 'Signed by both' + (r.scan_at ? ' · notarized ✓' : '') : 'Signed · waiting for management to countersign') + '</span>';
     if(r.status === 'declined') return '<span class="pill p-grey">You did not agree</span>';
     if(r.status === 'question') return '<span class="pill p-wait">Question sent</span>';
     const dd = dayD(r.due_at); return '<span class="pill p-due">Needs your signature' + (dd != null ? ' · ' + (dd > 0 ? dd + ' day' + (dd === 1 ? '' : 's') + ' left' : 'overdue') : '') + '</span>'; }
@@ -21823,7 +21829,7 @@ go();
     try{ const loc = await getLoc(); const hash = await sha(CUR.d.body);
       const j = await call('sign', { doc_id: CUR.d.id, typed_name: name, sig, loc, hash });
       const i = MY.rows.findIndex(r => r.doc_id === CUR.d.id); if(i >= 0) MY.rows[i] = j.row; else MY.rows.push(j.row); CUR.r = j.row; MYT = Date.now();
-      toast('Signed ✓ · the President will countersign'); paintDoc(); paintBanner(); $('sheetBody').scrollTop = 0; try{ $('sheet').scrollTop = 0; }catch(x){}
+      toast('Signed ✓ · management will countersign'); paintDoc(); paintBanner(); $('sheetBody').scrollTop = 0; try{ $('sheet').scrollTop = 0; }catch(x){}
     }catch(x){ g.disabled = false; g.textContent = 'Sign ' + CUR.d.title.split(' · ')[0]; toast(x.message || 'Could not sign'); } };
   window.ctAsk = function(kind){ const b = $('ctAskBox'); if(!b) return;
     b.innerHTML = '<div class="lab">' + (kind === 'declined' ? 'Why you do not agree (management will read this and talk with you)' : 'Your question') + '</div><textarea class="in" id="ctNote"></textarea><div class="row2"><button class="btn sm teal" onclick="ctSend(\'' + kind + '\')">Send</button></div>'; $('ctNote').focus(); };
@@ -22277,7 +22283,7 @@ go();
     if(!L){ if(!old) load(); return; } ITEMS = L;
     if(!L.length){ if(old) old.remove(); return; }
     const nb = L.filter(x => x.kind === 'bday').length, nk = L.length - nb;
-    const html = `<section class="sec" id="td-celebrate"><h2>Celebrate 🎉 <span class="c">${nb ? nb + ' birthday' + (nb === 1 ? '' : 's') : ''}${nb && nk ? ' · ' : ''}${nk ? nk + ' achievement' + (nk === 1 ? '' : 's') + ' (level up, new book or lessons)' : ''} · make the picture, send it in the class WeChat group, tap Mark as sent</span></h2>${L.map(rowHtml).join('')}</section>`;
+    const html = `<section class="sec" id="td-celebrate"><h2>Celebrate <span class="c">${nb ? nb + ' birthday' + (nb === 1 ? '' : 's') : ''}${nb && nk ? ' · ' : ''}${nk ? nk + ' achievement' + (nk === 1 ? '' : 's') + ' (level up, new book or lessons)' : ''} · make the picture, send it in the class WeChat group, tap Mark as sent</span></h2>${L.map(rowHtml).join('')}</section>`;
     if(old) old.outerHTML = html; else v.insertAdjacentHTML('beforeend', html); }
 
   /* the message (English and Chinese together, as the class reminders) */
@@ -24633,7 +24639,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       + step(true, false, 'Report sent', esc(x.at || '') + (x.t ? ' · ' + esc(x.t) + '/36' : '') + (x.cefr ? ' · CEFR ' + esc(x.cefr) : '') + (x.q ? ' · Google is adding it to the trial list' : ''))
       + step(pdf, !pdf, 'Parent report (PDF)', pdf ? 'Ready · <a class="link" href="' + esc(x.pdf) + '" target="_blank">Open the PDF</a>' : 'Being made from your answers · usually a few minutes')
       + step(sent, pdf && !sent, 'Sent to the family', sent ? esc(x.sent.replace(/^Report sent to parent\s*/i, '').replace(/^·\s*/, '')) : 'Ops sends it to the family on WeChat')
-      + step(enr, sent && !enr, 'The family’s answer', enr ? 'Enrolled' + (x.fc ? ' · first class ' + esc(fmt(x.fc)) : '') + ' 🎉' : fu ? esc(fu) : sent ? 'Ops is following up with the family' : 'After the report is sent')
+      + step(enr, sent && !enr, 'The family’s answer', enr ? 'Enrolled' + (x.fc ? ' · first class ' + esc(fmt(x.fc)) : '') : fu ? esc(fu) : sent ? 'Ops is following up with the family' : 'After the report is sent')
       + '<div class="small mute" style="margin-top:14px">Need to change something in this report? Message management. A report can only be sent once, so the family never gets two.</div>'
       + '</div>';
     if($('trPg')) $('trPg').outerHTML = h; else $('sheetBody').innerHTML = h; }
@@ -25403,7 +25409,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   function paintOv(){ const v = $('v-finov'); if(!v) return; const M = money(), mo = (typeof MO !== 'undefined' && MO) || {}, P = mo.payroll || []; if(M && M.L.length && (!OM || !M.L.some(x => x.m === OM))) OM = M.L[0].m;
     const head = '<div class="fx-h"><h1>Finance</h1><span class="fx-sub">' + (OM ? mL(OM) + (OM === ym(today()) ? ' · month to date' : '') : '') + '</span><span class="grow"></span>' +
       (typeof saleSheet === 'function' ? '<button class="btn teal sm" onclick="saleSheet()">+ Sale</button>' : '') + (typeof expSheet === 'function' ? '<button class="btn ghost sm" onclick="expSheet()">+ Expense</button>' : '') + '</div>';
-    if(!SC()){ v.innerHTML = '<div class="fx">' + head + '<div class="fx-card">Sales, costs and net are for the President. Payroll and Transactions are in the tabs above.</div></div>'; return; }
+    if(!SC()){ v.innerHTML = '<div class="fx">' + head + '<div class="fx-card">Sales, costs and net are not part of this account. Payroll and Transactions are in the tabs above.</div></div>'; return; }
     if(!M || !M.L.length){ v.innerHTML = '<div class="fx">' + head + '<div class="sk"></div><div class="sk"></div></div>'; return; }
     if(!OM || !M.L.some(x => x.m === OM)) OM = M.L[0].m;
     const j = M.L.findIndex(x => x.m === OM), x = M.L[j], pv = M.L[j + 1], run = OM === ym(today());
@@ -26215,9 +26221,9 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   try{ if(VIEWS.indexOf('wallets') < 0) VIEWS.push('wallets'); if(!$('v-wallets')){ const d = document.createElement('div'); d.id = 'v-wallets'; d.className = 'hide'; const ref = $('v-money'); ref.parentNode.insertBefore(d, ref.nextSibling); } }catch(e){ console.warn('875', e); }
   let tries = 0;
   function show(){ const v = $('v-wallets'); if(!v) return;
-    if(!v.querySelector('.wl870a')) v.insertAdjacentHTML('beforeend', '<div class="lead"><h1>Wallets</h1><div class="mute small">Alipay 支付宝 · WeChat 微信 · CCB 中国建设银行 · balances recorded in this app · President only</div></div><div id="wl875n"></div><div class="wl870a"></div>');
+    if(!v.querySelector('.wl870a')) v.insertAdjacentHTML('beforeend', '<div class="lead"><h1>Wallets</h1><div class="mute small">Alipay 支付宝 · WeChat 微信 · CCB 中国建设银行 · balances recorded in this app · private</div></div><div id="wl875n"></div><div class="wl870a"></div>');
     const n = $('wl875n'), ok = typeof isPres === 'function' && isPres();
-    if(n) n.innerHTML = ok ? '' : '<div class="empty">' + (typeof D !== 'undefined' && D && D.mgr ? 'Wallets are for the President only.' : 'Loading…') + '</div>';
+    if(n) n.innerHTML = ok ? '' : '<div class="empty">' + (typeof D !== 'undefined' && D && D.mgr ? 'Wallets are not part of this account.' : 'Loading…') + '</div>';
     if(ok && typeof window.wlPaint870 === 'function') window.wlPaint870(false);
     if(!ok && !(typeof D !== 'undefined' && D && D.mgr) && tries++ < 30) setTimeout(() => { if(VIEW === 'wallets') show(); }, 1000); }
   window.wlView875 = show;
@@ -26910,7 +26916,8 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
 /* 921 · Parent reports: failed month load keeps the page usable */
 (function(){ if(window.__921) return; window.__921 = 1;
   let PREV = null;
-  const ml = m => { const k = String(m || '').match(/^(\d{4})-(\d{2})/); return k ? new Date(+k[1], +k[2] - 1, 15).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'this month'; };
+  const ml = m => { if(typeof window.fbClsLab === 'function' && /^\d{4}-\d{2}/.test(String(m || ''))) return fbClsLab(m) + ' classes';   /* 1462: same month as the tabs */
+    const k = String(m || '').match(/^(\d{4})-(\d{2})/); return k ? new Date(+k[1], +k[2] - 1, 15).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'this month'; };
   const m0 = window.rpMonth;
   if(typeof m0 === 'function') window.rpMonth = function(m){ try{ if(RP) PREV = RP; }catch(e){} return m0.apply(this, arguments); };
   function paint(){ const el = document.getElementById('v-reports'); if(!el) return; try{ if(RP) return; }catch(e){ return; }
@@ -27126,7 +27133,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   var st = document.createElement('style'); st.id = 'ui931'; st.textContent = css; document.head.appendChild(st);
   /* plain-words subtitles + amber "waiting" count, after every repaint */
   var SUB = [
-    [/^Requests with proof · Operations checks · the President approves · saved in T-LEAVE$/, 'Who is away, what needs a decision, and the leave record'],
+    [/^Requests with proof · Operations checks · management approves · saved in T-LEAVE$/, 'Who is away, what needs a decision, and the leave record'],
     [/^Live from ACTIONS · newest first$/, 'Bonuses, deductions and incidents · newest first'],
   ];
   function tidy(){
@@ -27311,7 +27318,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     if(!e || !/Could not load MONEY/.test(e.textContent) || e.dataset.e942) return;
     var pres = typeof isPres === 'function' && isPres();
     e.dataset.e942 = '1'; e.setAttribute('role', 'alert');
-    e.innerHTML = '<b>Sales &amp; costs could not load.</b><br>The MONEY tab did not answer' + (pres ? ' · check the connection and try again.' : '. These figures are kept for the President; Payroll and Transactions are in the tabs above.') +
+    e.innerHTML = '<b>Sales &amp; costs could not load.</b><br>The MONEY tab did not answer' + (pres ? ' · check the connection and try again.' : '. These figures are not part of this account; Payroll and Transactions are in the tabs above.') +
       '<div style="margin-top:10px"><button class="btn ghost sm" onclick="this.disabled=true;this.textContent=\'Loading…\';loadMoney()">Try again</button></div>'; }
   var _lm = window.loadMoney;
   if(typeof _lm === 'function') window.loadMoney = loadMoney = function(){ var r = _lm.apply(this, arguments); Promise.resolve(r).then(moneyErr, moneyErr); return r; };
@@ -27963,7 +27970,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       (R.notes.length ? '<div class="fc-leg" style="display:block"><b>Notes:</b> ' + R.notes.map(E).join(' · ') + '</div>' : '') + '</div>'; }
 
   function paint(){ var v = document.getElementById('v-forecast'); if(!v) return; var tabs = v.querySelector(':scope > .grp-tabs'); var th = tabs ? tabs.outerHTML : '';
-    if(!pres()){ v.innerHTML = th + '<div class="fx"><div class="fx-h"><h1>Forecast</h1></div><div class="fx-card">' + (typeof D !== 'undefined' && D && D.mgr ? 'The forecast is for the President only.' : 'Loading…') + '</div></div>'; return; }
+    if(!pres()){ v.innerHTML = th + '<div class="fx"><div class="fx-h"><h1>Forecast</h1></div><div class="fx-card">' + (typeof D !== 'undefined' && D && D.mgr ? 'The forecast is not part of this account.' : 'Loading…') + '</div></div>'; return; }
     var I = inputs(), R;
     if(!I.money && !I.pl){ v.innerHTML = th + '<div class="fx">' + '<div class="fx-h"><h1>Forecast</h1><span class="fx-sub">loading the MONEY tab, PAYROLL, wallets and the calendar…</span></div><div class="sk"></div><div class="sk"></div></div>'; return; }
     try{ R = build(I, ST.A); }catch(e){ v.innerHTML = th + '<div class="fx"><div class="fx-h"><h1>Forecast</h1></div><div class="fx-card">Could not build the forecast: ' + E(e && e.message) + '</div></div>'; try{ console.warn('980', e); }catch(x){} return; }
@@ -29485,14 +29492,14 @@ function g1109F(mgr, k, p, pm){ var pc = (k.feedback || 0) + ' progress check' +
     var at = d.at ? new Date(d.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
     var head = '<tr><th>Position<small>this month</small></th><th>Teacher<small>career rank</small></th><th style="text-align:right">Score<small>of 100</small></th><th>Tier</th>' + PL.map(function(p){ return '<th style="text-align:right">' + p[1] + '<small>' + (w[p[0]] != null ? w[p[0]] + '% of score' : '') + '</small></th>'; }).join('') + '<th><span class="sr-only" style="position:absolute;left:-9999px">Details</span></th></tr>';
     var i = 0;
-    el.innerHTML = '<div class="kxm" role="note"><span>Reporting month · <b>' + E(d.label || mLabel(KM)) + '</b></span><span>Last worked out · <b>' + E(at) + '</b></span><span>Ranked · <b>' + E(d.min) + '+ lesson units</b> that month, not the President</span><span><b>' + R.length + '</b> ranked · <b>' + U.length + '</b> not ranked</span></div>'
+    el.innerHTML = '<div class="kxm" role="note"><span>Reporting month · <b>' + E(d.label || mLabel(KM)) + '</b></span><span>Last worked out · <b>' + E(at) + '</b></span><span>Ranked · <b>' + E(d.min) + '+ lesson units</b> that month, not management</span><span><b>' + R.length + '</b> ranked · <b>' + U.length + '</b> not ranked</span></div>'
       + '<div class="kxl"><span><i>Position</i> = this month\'s place (#1, #2, #3…)</span><span><i>Tier</i> = Gold 88+ · Silver 78+ · Bronze 65+ · else Developing</span><span><i>Career rank</i> = Newly Hired … Master Teacher (lifetime units) — separate from both</span><span><i>no data</i> = left out of the score, not 0</span></div>'
       + (gaps.length ? '<p class="small" style="margin:0 0 8px;color:#7A4A00">No data yet this month for: ' + E(gaps.join(', ')) + ' — the other parts are weighted up.</p>' : '')
       + '<div class="kxw"><table class="kxt"><thead>' + head + '</thead><tbody>'
       + (R.length ? R.map(function(t){ return trow(t, i++, d); }).join('') : '<tr><td colspan="9" class="mute" style="padding:16px">No teacher is ranked for this month yet.</td></tr>')
-      + (U.length ? '<tr class="g"><td colspan="9">Not ranked · under ' + E(d.min) + ' lesson units that month, no total, or the President</td></tr>' + U.map(function(t){ return trow(t, i++, d); }).join('') : '')
+      + (U.length ? '<tr class="g"><td colspan="9">Not ranked · under ' + E(d.min) + ' lesson units that month, no total, or management</td></tr>' + U.map(function(t){ return trow(t, i++, d); }).join('') : '')
       + '</tbody></table></div>'
-      + '<details class="kxs"><summary><b>How this score is made</b> · definitions, eligibility and missing data</summary><ul style="margin:6px 0 0;padding-left:18px"><li>Four parts: Quality 35 · Reliability 35 · Progress 15 · Trust 15.</li><li>Inside a part, a measure with no data that month is <b>skipped</b>, not counted as 0; the measures that have data share the part.</li><li>A part with no data at all is <b>left out</b>, and the total is re-scaled over the parts that remain (for example, no Trust data: the total is out of the other 85 weight points, scaled to 100).</li><li>Attendance, class videos and demerits start at 100 and go down only when a record is found, so <b>no record counts as full marks</b>, not as missing.</li><li>QA uses the teacher\'s latest evaluation dated before the month ends, so it can be from an earlier month (see the QA line in the facts). Peer reviews received count only from 2 reviews; peer reviews given count once one is sent that month (or after the month ends).</li><li>No total (no data in any part), under ' + E(d.min) + ' units, or the President: not ranked.</li></ul>'
+      + '<details class="kxs"><summary><b>How this score is made</b> · definitions, eligibility and missing data</summary><ul style="margin:6px 0 0;padding-left:18px"><li>Four parts: Quality 35 · Reliability 35 · Progress 15 · Trust 15.</li><li>Inside a part, a measure with no data that month is <b>skipped</b>, not counted as 0; the measures that have data share the part.</li><li>A part with no data at all is <b>left out</b>, and the total is re-scaled over the parts that remain (for example, no Trust data: the total is out of the other 85 weight points, scaled to 100).</li><li>Attendance, class videos and demerits start at 100 and go down only when a record is found, so <b>no record counts as full marks</b>, not as missing.</li><li>QA uses the teacher\'s latest evaluation dated before the month ends, so it can be from an earlier month (see the QA line in the facts). Peer reviews received count only from 2 reviews; peer reviews given count once one is sent that month (or after the month ends).</li><li>No total (no data in any part), under ' + E(d.min) + ' units, or management: not ranked.</li></ul>'
       + '<p style="margin:8px 0 0">Quality 35 (monthly QA 55%, daily class visits 40%, peers 5%) · Reliability 35 (attendance &amp; schedule, class videos by 23:59, class record, hours taught and opened, demerits, peer evaluation done) · Progress 15 (students\' progress + her own growth) · Trust 15 (trials enrolled, students still studying with us, recognitions). Renewals are not counted. Gold 88+ · Silver 78+ · Bronze 65+. # is this month\'s place, not the teacher rank (Junior, Senior…).' + (isPres() ? ' Use "Facts" for the facts behind a score.' : '') + '</p></details>'; }
   function load(ym, force){ KM = ym; if(KX[ym] && !KX[ym].err && !force && KX[ym]._at && Date.now() - KX[ym]._at < 5 * 6e4){ paint(); return; }
     var ck = 'coe.kx.' + ym; if(!KX[ym] || KX[ym].err || force){ try{ var c = JSON.parse(localStorage.getItem(ck) || 'null'); if(c && c.teachers && !force) KX[ym] = c; else if(force) delete KX[ym]; }catch(e){ delete KX[ym]; } }
@@ -29503,7 +29510,7 @@ function g1109F(mgr, k, p, pm){ var pc = (k.feedback || 0) + ' progress check' +
   window.kxMonth = function(ym){ var s = document.getElementById('kxSel'); if(s) s.value = ym; load(ym); };
   window.kpiReload = function(){ if(KM){ delete KX[KM]; load(KM, true); } };
   window.kpiSheet = function(ym){ if(!(D && D.mgr)) return; var L = months(), m = ym || L[1];
-    openSheet('<div class="kxh"><div style="flex:1 1 320px"><h2>' + IC1120('award') + 'Teacher Excellence</h2><div class="small mute" style="margin-top:2px">' + (isPres() ? 'Full view · use Facts for what is behind a score' : 'Positions, tiers and the four parts · the facts behind each score stay with the President') + '</div></div>'
+    openSheet('<div class="kxh"><div style="flex:1 1 320px"><h2>' + IC1120('award') + 'Teacher Excellence</h2><div class="small mute" style="margin-top:2px">' + (isPres() ? 'Full view · use Facts for what is behind a score' : 'Positions, tiers and the four parts · the facts behind each score stay with management') + '</div></div>'
       + '<label class="small mute" style="display:flex;flex-direction:column;gap:2px">Reporting month<select id="kxSel" onchange="kxMonth(this.value)">' + L.map(function(x){ return '<option value="' + x + '"' + (x === m ? ' selected' : '') + '>' + mLabel(x) + '</option>'; }).join('') + '</select></label></div><div id="kxBody" style="margin-top:8px"></div>');
     var sh = document.getElementById('sheet'); if(sh){ sh.classList.add('wide', 'kx1120'); }
     load(m); };
@@ -31121,8 +31128,8 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
 <style>
 /* 1400 · Team Chat pilot */
 #v-chat{min-height:calc(100vh - 170px)}
-.ch{display:grid;grid-template-columns:230px minmax(0,1fr) 220px;height:calc(100vh - 170px);min-height:520px;background:#fff;border:1px solid #E6E9EE;border-radius:18px;overflow:hidden;font-size:15px;color:#1F1D3A}
-.ch h2,.ch .chT{font-family:'Fredoka One','Fredoka',system-ui,sans-serif;font-weight:400;margin:0}
+:where(#v-chat) .ch{display:grid;grid-template-columns:230px minmax(0,1fr) 220px;height:calc(100vh - 170px);min-height:520px;background:#fff;border:1px solid #E6E9EE;border-radius:18px;overflow:hidden;font-size:15px;color:#1F1D3A}
+:where(#v-chat) .ch h2,:where(#v-chat) .ch .chT{font-family:'Fredoka One','Fredoka',system-ui,sans-serif;font-weight:400;margin:0}
 .ch-side{border-right:1px solid #EEF0F3;padding:14px 10px;overflow:auto;display:flex;flex-direction:column;gap:2px}
 .ch-side h2{font-size:19px;padding:2px 8px 10px}
 .ch-sec{font-size:11px;font-weight:700;letter-spacing:.06em;color:#6A6F7E;padding:12px 8px 4px}
@@ -31181,8 +31188,8 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
 .ch-back{display:none}
 #chHdr{display:none;position:relative;align-items:center;gap:6px;border:0;border-radius:999px;font:inherit;font-weight:700;font-size:13px;padding:7px 13px;margin-right:8px;cursor:pointer;background:#EEF8F7;color:#00737B;white-space:nowrap}
 #chHdr svg{width:16px;height:16px}#chHdr i{position:absolute;top:2px;right:4px;width:9px;height:9px;border-radius:50%;background:#C2410C;display:none}#chHdr.un i{display:block}
-@media(max-width:900px){.ch{grid-template-columns:200px minmax(0,1fr)}.ch-mem{display:none}.ch.mem .ch-mem{display:block;position:absolute;right:0;top:0;bottom:0;width:240px;background:#fff;z-index:6;box-shadow:-8px 0 24px rgba(0,0,0,.08)}.ch{position:relative}}
-@media(max-width:700px){.ch-pin>div,.ch-open{max-height:64px;overflow:auto}.ch-hd .ch-b span{display:none}.ch{grid-template-columns:minmax(0,1fr);height:calc(100dvh - 150px);border-radius:14px}.ch .ch-side{display:flex}.ch .ch-main{display:none}.ch.conv .ch-side{display:none}.ch.conv .ch-main{display:flex}.ch-back{display:inline-flex}.ch-hd{padding:8px 10px}.ch-list{padding:12px 10px}#chHdr{padding:6px 10px}}
+@media(max-width:900px){:where(#v-chat) .ch{grid-template-columns:200px minmax(0,1fr)}.ch-mem{display:none}.ch.mem .ch-mem{display:block;position:absolute;right:0;top:0;bottom:0;width:240px;background:#fff;z-index:6;box-shadow:-8px 0 24px rgba(0,0,0,.08)}.ch{position:relative}}
+@media(max-width:700px){.ch-pin>div,.ch-open{max-height:64px;overflow:auto}.ch-hd .ch-b span{display:none}:where(#v-chat) .ch{grid-template-columns:minmax(0,1fr);height:calc(100dvh - 150px);border-radius:14px}.ch .ch-side{display:flex}.ch .ch-main{display:none}.ch.conv .ch-side{display:none}.ch.conv .ch-main{display:flex}.ch-back{display:inline-flex}.ch-hd{padding:8px 10px}.ch-list{padding:12px 10px}#chHdr{padding:6px 10px}}
 </style>
 <script>
 /* 27 Oct · 1400 · (Misty) Team Chat pilot — our own WeChat group inside the app: groups + direct chats, @tag a teacher, Seen / Replied with
@@ -31875,6 +31882,7 @@ nav button[data-v="chat"] .dot.at.chN:not(.hide){background:#5B4B9A!important}
 .ei1411.ei-ok{color:#0B8A7A}.ei1411.ei-warn,.ei1411.ei-wait{color:#B7791F}.ei1411.ei-ask{color:#5B4B9A}.ei1411.ei-stop,.ei1411.ei-heart{color:#C2412D}
 </style>
 <script>
+/* 1461 · no "President" title where Operations or teachers can see it (display only) */
 /* 1411 (Misty 23:27): the automatic "App health" report, the Task status buttons (Done · Carry over · Need help), the one-tap replies
    (Got it · On it · Today · Done · Question · Thank you), their status chips and other system text in Notices & requests show our line
    icons instead of emojis. Display only: stored replies keep their text (the app still reads them the same way). People's own messages
@@ -32073,7 +32081,7 @@ nav button[data-v="chat"] .dot.at.chN:not(.hide){background:#5B4B9A!important}
   const canTouch = p => !p.president && (S.pres || (p.role !== 'ops' && p.role !== 'admin'));
   S.rows = L => L.map(p => { const a = access(p), off = p.status !== 'active';
     return '<div class="as40-row' + (off ? ' off' : '') + '" data-id="' + p.id + '"><div class="as40-av">' + e((p.name || '?')[0]) + '</div><div class="grow" style="min-width:0">' +
-      '<div><span class="as40-nm">' + e(p.name) + '</span><span class="as40-c rl">' + e(p.president ? 'President' : ROLE[p.role] || p.role) + '</span>' + (a ? '<span class="as40-c ' + a[0] + '">' + a[1] + '</span>' : '') + (p.sync_pending ? '<span class="as40-c sy" title="Google copies this within about a minute">Syncing to Google</span>' : '') + '</div>' +
+      '<div><span class="as40-nm">' + e(p.name) + '</span><span class="as40-c rl">' + e(p.president ? 'Management' : ROLE[p.role] || p.role) + '</span>' + (a ? '<span class="as40-c ' + a[0] + '">' + a[1] + '</span>' : '') + (p.sync_pending ? '<span class="as40-c sy" title="Google copies this within about a minute">Syncing to Google</span>' : '') + '</div>' +
       '<div class="as40-sub ell">' + e([p.position, p.email, p.start_date ? 'since ' + p.start_date : ''].filter(Boolean).join(' · ')) + '</div></div>' +
       '<div class="as40-act">' + (canTouch(p) ? (off ? '<button class="as40-b" onclick="AS40.on(' + p.id + ')">' + ic('back') + 'Reactivate</button>'
         : (a && a[0] === 'no' ? '<button class="as40-b pur" onclick="AS40.access(' + p.id + ')">' + ic('key') + 'Give app access</button>' : '') +
@@ -32130,7 +32138,7 @@ nav button[data-v="chat"] .dot.at.chN:not(.hide){background:#5B4B9A!important}
     const pub = cols.filter(i => !sens.includes(i)), priv = cols.filter(i => sens.includes(i));
     const last = p && Array.isArray(p.pay_hist) && p.pay_hist.length ? p.pay_hist[p.pay_hist.length - 1] : null;
     const role = p ? p.role : 'teacher', pt = p ? p.pay_type : 'lesson', mg = r => r === 'ops' || r === 'admin';
-    const ropt = Object.keys(ROLE).map(k => '<option value="' + k + '"' + (k === role ? ' selected' : '') + (mg(k) && !S.pres ? ' disabled' : '') + '>' + ROLE[k] + (mg(k) && !S.pres ? ' (President only)' : '') + '</option>').join('');
+    const ropt = Object.keys(ROLE).map(k => '<option value="' + k + '"' + (k === role ? ' selected' : '') + (mg(k) && !S.pres ? ' disabled' : '') + '>' + ROLE[k] + (mg(k) && !S.pres ? ' (management only)' : '') + '</option>').join('');
     S._p = p;
     openSheet('<div class="as40-f" id="as40F"><h2 style="margin:0">' + (p ? 'Edit ' + e(p.name) : 'Add teacher / staff') + '</h2><div class="as40-note">Saved in the app at once; the MASTERLIST row (same columns), T-DASH, PAYROLL and the name dropdowns follow in Google within about a minute.</div>' +
       '<h3>In the app</h3><div class="as40-g"><label>App name (as shown everywhere)<input id="as40n" value="' + e(p ? p.name : '') + '"' + (p ? ' readonly title="The app name links all records, so it is not changed here"' : ' placeholder="e.g. Rose"') + ' autocomplete="off"></label>' +
@@ -32531,6 +32539,61 @@ nav button[data-v="chat"] .dot.at.chN:not(.hide){background:#5B4B9A!important}
 window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) return z(false); var im = new Image(); im.onload = function(){ try{ var c = document.createElement('canvas'); c.width = 64; c.height = 36; var g = c.getContext('2d'); g.drawImage(im, 0, 0, 64, 36);
     var d = g.getImageData(0, 0, 64, 36).data, n = 0, cov = 0, lt = 0; for(var i = 0; i < d.length; i += 4){ n++; var r = d[i], gg = d[i + 1], bb = d[i + 2]; if(r > 225 && gg > 225 && bb > 225) lt++; if(Math.abs(r - 243) < 10 && Math.abs(gg - 246) < 10 && Math.abs(bb - 247) < 10) cov++; }
     z(lt / n > 0.8 && cov / n > 0.3); }catch(e){ z(false); } }; im.onerror = function(){ z(false); }; im.src = 'data:image/jpeg;base64,' + b64; }); };
+</script>
+<style id="css1464">.busy1464{opacity:.62;cursor:progress!important}</style>
+<script>
+/* 1464 · one tap per Save/Send in sheets and wallet dialogs; unsent drafts kept when a form is closed (memory only) */
+(function(){
+  if(window.__1464) return; window.__1464 = 1;
+  var SUB = /^(Send|Save|Add|Lodge|Record|Submit|Book|Create|File|Mark|Log|Approve|Decline|Confirm|Countersign|Sign|Request|Undo|Delete|Remove|Pay|Refund|Release)\b/i;
+  var CUR = null, LAST = 0, SENT = 0;
+  function isSub(b){ if(!b || b.disabled) return false; var t = (b.textContent || '').replace(/\s+/g, ' ').trim(); if(!t || /^(✕|×|Cancel|Close|Back)$/i.test(t)) return false;
+    return SUB.test(t) || /Go$/.test(b.id || '') || b.id === 'mnB'; }
+  function free(st){ if(!st || st.done) return; st.done = 1; var b = st.b; b.__busy1464 = 0; b.removeAttribute('aria-busy'); b.classList.remove('busy1464'); if(CUR === st) CUR = null; }
+  document.addEventListener('click', function(e){ var b = e.target && e.target.closest && e.target.closest('#sheet button, #wlM button'); if(!b || !isSub(b)) return;
+    if(b.__busy1464){ e.stopImmediatePropagation(); e.preventDefault(); return; }
+    var st = { b: b, n: 0, open: 0, win: 1, done: 0 }; CUR = st; b.__busy1464 = 1; b.setAttribute('aria-busy', 'true'); b.classList.add('busy1464'); LAST = Date.now();
+    setTimeout(function(){ st.win = 0; if(CUR === st) CUR = null; if(!st.open) setTimeout(function(){ free(st); }, st.n ? 250 : 0); }, 900);
+    setTimeout(function(){ free(st); }, 20000); }, true);
+  var f0 = window.fetch; if(typeof f0 === 'function') window.fetch = function(){ var st = CUR, p = f0.apply(this, arguments);
+    if(st && st.win && !st.done){ st.n++; st.open++; SENT = Date.now(); var end = function(){ st.open--; if(!st.open && !st.win) setTimeout(function(){ free(st); }, 250); }; Promise.resolve(p).then(end, end); }
+    return p; };
+  /* drafts */
+  var DR = {}, DIRTY = {};
+  function sh(){ return document.getElementById('sheet'); } function on(){ var s = sh(); return !!(s && s.classList.contains('on')); }
+  function key(){ var b = document.getElementById('sheetBody') || sh(); if(!b) return ''; var c = b.cloneNode(true); c.querySelectorAll('select,option,script,style,textarea,.sbk,svg').forEach(function(x){ x.remove(); });
+    return String(c.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200); }
+  function fields(){ var s = sh(); return s ? Array.prototype.slice.call(s.querySelectorAll('input[id],textarea[id],select[id]')).filter(function(f){ return !/^(password|file|hidden|button|submit)$/i.test(f.type || ''); }) : []; }
+  function mark(e){ var f = e.target; if(!e.isTrusted || !f || !f.id || !f.closest || !f.closest('#sheet') || /^(password|file|hidden)$/i.test(f.type || '')) return; DIRTY[f.id] = 1; SENT = 0; }
+  document.addEventListener('input', mark, true); document.addEventListener('change', mark, true);
+  function keep(){ try{ var ids = Object.keys(DIRTY); DIRTY = {}; if(!on() || !ids.length) return; var k = key(); if(!k) return;
+      if(SENT && Date.now() - SENT < 30000){ delete DR[k]; return; }   /* sent → no draft */
+      var v = {}; fields().forEach(function(f){ if(ids.indexOf(f.id) < 0) return; v[f.id] = (f.type === 'checkbox' || f.type === 'radio') ? { c: f.checked } : { v: f.value }; });
+      if(Object.keys(v).some(function(id){ var x = v[id]; return x.c != null || String(x.v || '').trim(); })) DR[k] = v; else delete DR[k]; }catch(e){} }
+  function back(n){ try{ if(!on()) return; var k = key(), v = k && DR[k]; if(!v) return; var put = 0;
+      fields().forEach(function(f){ var x = v[f.id]; if(!x) return; if(x.c != null){ if(f.checked !== x.c){ f.checked = x.c; put++; } }
+        else if(!f.value || (f.tagName === 'SELECT' && f.selectedIndex <= 0) || (f.type === 'date' && f.defaultValue === f.value)){ if(f.value !== x.v){ f.value = x.v; if(f.value === x.v) put++; } } else return;
+        DIRTY[f.id] = 1; try{ f.dispatchEvent(new Event('input', { bubbles: true })); f.dispatchEvent(new Event('change', { bubbles: true })); }catch(e){} });
+      if(put){ delete DR[k]; try{ toast('Your unsent draft is back'); }catch(e){} } else if(n < 3) setTimeout(function(){ back(n + 1); }, [400, 1200, 2500][n]); }catch(e){} }
+  var o0 = window.openSheet; if(typeof o0 === 'function') window.openSheet = function(){ keep(); SENT = 0; var r = o0.apply(this, arguments); setTimeout(function(){ back(0); }, 0); return r; };
+  var c0 = window.closeSheet; if(typeof c0 === 'function') window.closeSheet = function(){ keep(); var r = c0.apply(this, arguments); setTimeout(function(){ if(on()) back(0); }, 0); return r; };
+  var l0 = window.logout; if(typeof l0 === 'function') window.logout = function(){ DR = {}; DIRTY = {}; return l0.apply(this, arguments); };
+  /* wallet dialogs: Escape closes an untouched one */
+  var WT = 0; document.addEventListener('input', function(e){ if(e.target && e.target.closest && e.target.closest('#wlM')) WT = 1; }, true);
+  document.addEventListener('keydown', function(e){ if(e.key !== 'Escape') return; var m = document.getElementById('wlM'); if(!m) { WT = 0; return; } if(!WT && typeof window.wlClose === 'function'){ wlClose(); WT = 0; } });
+})();
+</script>
+<style id="css1465">.li1465{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.17em;flex:none;margin-right:.3em}</style>
+<script>
+/* 1466 · keyboard focus goes into a panel when it opens */
+(function(){
+  if(window.__1466) return; window.__1466 = 1;
+  function fix(){ var s = document.getElementById('sheet'); if(!s || !s.classList.contains('on') || s.contains(document.activeElement)) return;
+    var x = s.querySelector('button.x') || [].slice.call(s.querySelectorAll('button')).find(function(b){ return /^(✕|×)$/.test((b.textContent || '').trim()); });
+    if(!x){ x = s; if(!s.hasAttribute('tabindex')) s.setAttribute('tabindex', '-1'); }
+    try{ x.focus({ preventScroll: true }); }catch(e){} }
+  var o0 = window.openSheet; if(typeof o0 === 'function') window.openSheet = function(){ var r = o0.apply(this, arguments); setTimeout(fix, 0); return r; };
+})();
 </script>
 </body>
 </html>
