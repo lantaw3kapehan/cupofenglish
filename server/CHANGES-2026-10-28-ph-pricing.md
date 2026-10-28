@@ -194,3 +194,23 @@ Review of 1530 + Misty (22:34): "make the Philippine price list follow the same 
 - China price pictures (16) byte-identical as a set, China sheet + message identical; China policy box picture + text and Class
   notice identical; China class editor unchanged (2 h).
 - PH: class editor 3 h before class → "Cancel · under 4 h"; China learner same time → "Cancel class".
+
+---
+
+# 1539 · PH price list + learning roadmap redesigned for the Philippine audience (29 Oct 2026, Misty 23:53)
+- Same builder and frame (coeCard: CupOfEnglish logo at the top, LEARN WITH THE BEST at the bottom, British Council line just above it on
+  the price lists), a PH visual variant, no forked code. coeCard gains optional `ratio` (4:5 portrait), `font` (Inter) and `foot` (the
+  footer line); China pictures pass none of them and stay byte-identical (16 China pictures + sheet + message compared).
+- Format: 4:5 portrait, 2440 × 3050 px (crisp when saved; Facebook / Messenger feed size). Copy / Save / Share / Copy message unchanged.
+- Price list: kicker "EXPERT … · 1:1 PREMIUM PROGRAM", bold Fredoka headline (Adult English / IELTS + teal "1:1"), tagline;
+  Adult: Work & career · Travel · Everyday conversations · Presentations (from the track goals/outcomes on her flyer); IELTS: the
+  Academic / General Training / UKVI pathway cards from her IELTS flyer; three track columns (navy header, Recommended in teal with a
+  ribbon) with lessons + mock tests / tasks, ≈ hours, big ₱ price, ₱ per lesson (₱450 adult, ₱550 IELTS = price ÷ lessons), CEFR or
+  band target, goal and outcome (full text, never cut); the four skills with check-marks; Good to know (lesson length, method, 4-hour
+  notice, band disclaimer for IELTS); quote dates.
+- Roadmap: a visual path 1 Foundation → 2 Professional → 3 Mastery with lessons (+ mock tests / tasks), the CEFR level / band and the goal
+  at each step (the chosen track filled), then the four skills as cards with a line icon, 3–5 core skills each and the result line.
+- Only facts from sys:pricing_ph / her flyers: no new claims, discounts, payment plans or guarantees. No emoji, no photos.
+- Before / after: scratchpad/phprice/design-before-*.png, design-after-*.png, design-compare-*.png.
+- Tests: check.js OK; regress-saves 17/17; stability enquiry laptop + phone ok; China pictures identical; no page errors; phone 390 no
+  sideways scroll.
