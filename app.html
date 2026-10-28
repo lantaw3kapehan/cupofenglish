@@ -4480,7 +4480,8 @@ const msgIsM = n => !!(MSG && (MSG.mgmtAll || []).some(x => String(x).toLowerCas
 const msgMName = n => { const m = ((MSG && MSG.mgmt) || []).find(x => String(x.name).toLowerCase() === String(n).toLowerCase()); return (m && /pres/i.test(m.role)) || /^cupofenglish$/i.test(String(n)) ? 'President' : String(n); };
 const msgWho = n => msgIsM(n) ? msgMName(n) : 'Teacher ' + n;
 const msgNewM = r => !r.seen && (r.role !== 'mgmt' || (MSG && String(r.to).toLowerCase() === String(MSG.me).toLowerCase()));
-const msgAt = s => { const d = String(s || ''); return d.slice(5, 10).replace('-', '/') + ' ' + d.slice(11, 16); };
+const msgAt = s => { const d = String(s || ''), m = +d.slice(5, 7); if(/^\d{4}-\d{2}-\d{2}/.test(d) && m >= 1 && m <= 12) return (+d.slice(8, 10) + ' ' + 'JanFebMarAprMayJunJulAugSepOctNovDec'.substr(m * 3 - 3, 3) + ' ' + d.slice(11, 16)).trim();   /* 1471: day first, as on every other screen */
+  return d.slice(5, 10).replace('-', '/') + ' ' + d.slice(11, 16); };
 const msgBubble = (r, mineRole) => '<div class="msgb ' + (mineRole === 'mgmt' ? (MSG && String(r.from).toLowerCase() === String(MSG.me).toLowerCase() ? 'me' : '') : (r.role === mineRole ? 'me' : '')) + '"><div class="small mute">' + esc(r.role === 'mgmt' ? msgMName(r.from) : 'Teacher ' + r.from) + ' · ' + esc(msgAt(r.at)) + '</div><div style="white-space:pre-line">' + esc(r.text) + '</div></div>';
 async function loadMsgs(quiet){ if(!D || !D.mgr) return; try{ await swr('msgs', () => api('mgmtMsgs', TOKEN), v => { MSG = v; try{ const sys = (MSG.threads || []).filter(t => t && t.root && /^App health$/i.test(String(t.root.from || ''))); MSG.unread = Math.max(0, (MSG.unread || 0) - sys.reduce((a, t) => a + [t.root].concat(t.replies || []).filter(msgNewM).length, 0)); }catch(e){} }, () => { msgBadge(); msgAckWatch(); if(VIEW === 'msgs') renderMsgs(); if(VIEW === 'home') try{ renderHome(); }catch(e){} }); }catch(e){ if(!quiet && VIEW === 'msgs') $('v-msgs').innerHTML = '<div class="empty">Could not load messages. Try again.</div>'; } }
 function msgBadge(){ const n = MSG ? MSG.unread : 0; ['dMsg', 'dMsgM'].forEach(k => { const d = $(k); if(d){ d.classList.toggle('hide', !n); d.textContent = k === 'dMsg' ? (n || '') : ''; } });
@@ -6380,7 +6381,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1375;
+const COE_V = 1380;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -6610,7 +6611,8 @@ openSheet(`<h1>${esc(name)} · Renewed · paid</h1><div id="rpH" class="mute sma
 <p id="rpFoot" class="small mute" style="margin-top:8px">Same as doing it by hand: a new SALES row · the ACTIVE row keeps going with CARRY OVER = what was left · DATABASE › RENEWAL DATE = paid date, so the deadline moves · RENEWAL STATUS = Renewed. The calendar is not changed. If the time or teacher changes: open the next class › Move · reschedule › Moving forward.</p>`);
 const [r, cl] = await pend;
 if(RPS.code !== code || !$('rpS')) return;
-if(!r || !r.ok){ delete RP_PRE[String(code).toUpperCase()]; const h = $('rpH'); if(h) h.innerHTML = esc(code) + ' · <span style="color:#C0533D">' + esc((r && r.msg) || 'Could not read the package.') + '</span>'; const b = $('rpS'); if(b){ b.textContent = 'Try again'; b.disabled = false; b.onclick = () => renPaidSheet(code, name, teacher, again); } return; }
+const noLeft1473 = !!(r && r.ok) && (r.left == null || r.left === '' || !isFinite(+r.left));   /* 1473: never show a count we do not have */
+if(!r || !r.ok || noLeft1473){ delete RP_PRE[String(code).toUpperCase()]; const h = $('rpH'); if(h) h.innerHTML = esc(code) + ' · <span style="color:#C0533D">' + esc(noLeft1473 ? 'Lessons left are still being checked (核对中), so nothing can be saved yet. Try again in a minute.' : (r && r.msg) || 'Could not read the package.') + '</span>'; if(noLeft1473){ const P = $('rpP'); if(P) P.innerHTML = '<div class="small">Lessons left: <b>checking (核对中)</b></div>'; } const b = $('rpS'); if(b){ b.textContent = 'Try again'; b.disabled = false; b.onclick = () => renPaidSheet(code, name, teacher, again); } return; }
 RPS.info = r; RPS.cls = Array.isArray(cl) ? cl : [];
 { const pd = r.prev && r.prev.date, rs = String((REN || {})[String(code).toUpperCase()] || ''), cd = (/^Renewing · ([A-Z][a-z]{2} \d{1,2}, \d{4})/.exec(rs) || [])[1], pt = pd ? new Date(pd + 'T12:00:00').getTime() : 0;   /* 14 Oct pm: already paid → no second form */
   if(pt && !RPS.again && Date.now() - pt < 7 * 864e5 && (!cd || pt >= new Date(cd + ' 00:00').getTime())){
@@ -11191,7 +11193,7 @@ window.renderPayroll = function(){
     <div class="py-chips">${chip('all', 'All')}${chip('topay', 'To pay')}${RDY ? chip('ready', 'Ready to release') : ''}${chip('paid', 'Paid')}${qs ? chip('q', 'Questions on pay') : ''}</div></div>`;
   if(P.length){
     const notReady = RDY ? P.filter(x => !x.paid && rdyN(x.name)) : [], rest = PCKM ? P.filter(x => !x.paid && (pchkOf(x) || {}).st !== 'Verified').map(x => x.name) : [];
-    h += `<div class="py-cap"><h3>${esc((MO && MO.payMonth) || 'This month')}</h3><span>tap a teacher for the breakdown, payslip and Mark paid</span></div><div class="py-list" id="pyRows"></div>
+    h += `<div class="py-cap"><h3>${esc((MO && MO.payMonth) || 'This month')}</h3><span>tap a teacher for the breakdown${typeof isPres === 'function' && isPres() ? ', payslip and Mark paid' : ' and payslip'}</span></div><div class="py-list" id="pyRows"></div>
       <div class="py-nudge">${RDY ? `<span class="grow">Ready = ${esc(RDY.fbMonth)} feedback sent · peer reviews done · every ${esc(RDY.month)} class video in · checked ${esc(RDY.at)}H</span>` : '<span class="grow"></span>'}
       ${notReady.length ? `<button class="btn sm ghost" onclick="payNudge(${esc(JSON.stringify(notReady.map(x => x.name)))})">Remind ${notReady.length} not ready</button>` : ''}
       ${rest.length ? `<button class="btn sm ghost" onclick='payVerNudge(${JSON.stringify(rest).replace(/'/g, '&#39;')})'>Ask ${rest.length} to check their pay</button>` : ''}</div>`;
@@ -32399,5 +32401,30 @@ nav button[data-v="chat"] .dot.at.chN:not(.hide){background:#5B4B9A!important}
 .onl-it .ch-tag{margin-left:4px}
 @media (max-width:640px){.ch-tag.ch-km i,.ch-tag.ch-kt i,.ch-tag.ch-ks i{display:none}.ch-tag.ch-km,.ch-tag.ch-kt,.ch-tag.ch-ks{max-width:110px}}
 </style>
+<script>
+/* 1470 · last week's summary: wait 5 minutes after a failed load instead of retrying on every Overview repaint */
+(function(){
+  if(window.__1470) return; window.__1470 = 1;
+  var base = window.wsLoad; if(typeof base !== 'function') return; var failAt = 0;
+  window.wsLoad = async function(force){
+    var busy = 0; try{ busy = WS_BUSY; }catch(e){}
+    if(!force && !busy && failAt && Date.now() - failAt < 300000) return;
+    var r = await base.apply(this, arguments);
+    if(!busy) try{ var L = wsWeek(); failAt = (WS && WS.week === L[0]) ? 0 : Date.now(); }catch(e){}
+    return r; };
+})();
+</script>
+<script>
+/* 1474 · one-tap list marks (Mark as sent, Message sent): a quick second tap never marks the next line */
+(function(){
+  if(window.__1474) return; window.__1474 = 1;
+  var RX = /^\s*(renQuick|fuQuick|celMark|rpMark)\(/, last = 0;
+  document.addEventListener('click', function(e){
+    var b = e.target && e.target.closest && e.target.closest('button[onclick]'); if(!b || !RX.test(b.getAttribute('onclick') || '')) return;
+    var now = Date.now();
+    if(e.detail > 1 || now - last < 900){ e.stopImmediatePropagation(); e.preventDefault(); return; }
+    last = now; }, true);
+})();
+</script>
 </body>
 </html>
