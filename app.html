@@ -6349,7 +6349,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1353;
+const COE_V = 1354;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -30985,7 +30985,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
   setInterval(function(){ if(S.on && hasD() && VIEW === 'chat' && document.visibilityState === 'visible' && S.view === 'chat' && !S.busy) poll(true); }, 4000);
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible' && S.on) poll(VIEW === 'chat'); });
   async function poll(open){ try{ var r = await post('poll'); if(!r || !r.ok) return; if(r.off){ setOn(false); return; }
-      var ch = r.last !== S.last; S.last = r.last; try{ ding(r); }catch(e){} if(S.init){ S.init.groups = r.groups; if(r.today !== S.init.today){ S.init.today = r.today; if(S.day && S.view === 'chat') S.day = null; } }
+      var ch = r.last !== S.last || (!!r.rv && r.rv !== S.rv); S.last = r.last; S.rv = r.rv; try{ ding(r); }catch(e){} if(S.init){ S.init.groups = r.groups; if(r.today !== S.init.today){ S.init.today = r.today; if(S.day && S.view === 'chat') S.day = null; } }
       S.inCl = !!r.inClass; if(!isMgr() && (ch || !S.todoAt || Date.now() - S.todoAt > 60000)) fetchTodo(); else if(!S.inCl && S.todoLater) refreshToday();
       paintHdr(); if(open && ch) load(true); else if(open) paintSide(); }catch(e){} }
 
@@ -31047,13 +31047,14 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
       if(m.mine && m.needs_reply && !m.mine.replied) act += (S.init.quick || []).map(function(q){ return '<button type="button" class="ch-b sm' + (q === 'Noted' ? ' pri' : '') + '" onclick="chat1400.quick(' + m.id + ',\'' + q + '\')">' + q + '</button>'; }).join('');
       if(m.mine && m.confirm && !m.mine.confirmed) act += '<button type="button" class="ch-b sm pri" onclick="chat1400.confirm(' + m.id + ')">' + I.ok + ' Confirm</button>';
       if(m.mine && (m.mentions || []).some(function(n){ return n.toLowerCase() === meLc(); }) && !m.needs_reply && !m.mine.replied) act += (S.init.quick || []).map(function(q){ return '<button type="button" class="ch-b sm" onclick="chat1400.quick(' + m.id + ',\'' + q + '\')">' + q + '</button>'; }).join('');
+      if(m.id > 0) tl += '<button type="button" class="ch-tb' + (S.rxFor === m.id ? ' on' : '') + '" aria-label="React" title="React" aria-expanded="' + (S.rxFor === m.id) + '" onclick="chat1400.rxBar(' + m.id + ')"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01\"/></svg></button>';
       if(M || (S.gid !== 'timein' && S.gid !== 'ann')) tl += '<button type="button" class="ch-tb" aria-label="Reply" title="Reply" onclick="chat1400.reply(' + m.id + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-2"/></svg></button>';
       if(m.id > 0) tl += '<button type="button" class="ch-tb" aria-label="Copy link" title="Copy link to this message" onclick="chat1400.link(' + m.id + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></button>';
       if(me && m.kind === 'text') tl += '<button type="button" class="ch-tb" aria-label="Edit" title="Edit" onclick="chat1400.edit(' + m.id + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>';
       if(M) tl += '<button type="button" class="ch-tb' + (m.pinned ? ' on' : '') + '" aria-label="' + (m.pinned ? 'Unpin' : 'Pin') + '" title="' + (m.pinned ? 'Unpin' : 'Pin') + '" onclick="chat1400.pin(' + m.id + ',' + (m.pinned ? 0 : 1) + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 17v5M5 3h14l-2 7 3 4H4l3-4-2-7z"/></svg></button><button type="button" class="ch-tb" aria-label="Hide" title="Hide (kept in the history)" onclick="chat1400.hide(' + m.id + ',1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M17.9 17.9A10 10 0 0 1 12 19c-7 0-11-7-11-7a18 18 0 0 1 5.1-5.9M9.9 4.2A9 9 0 0 1 12 4c7 0 11 7 11 7a18 18 0 0 1-2.2 3.2M1 1l22 22"/></svg></button>';
     } else if(M && m.hidden) act = '<button type="button" class="ch-b sm" onclick="chat1400.hide(' + m.id + ',0)">Show again</button>';
     return '<div class="ch-m' + (cont ? ' cont' : '') + (me ? ' mine' : '') + (nxc ? ' run' : '') + '" id="chm' + m.id + '" data-t="' + esc(full) + '"' + (m.id > 0 && !ro ? ' ontouchstart="chat1400.lp(event,' + m.id + ')" ontouchend="chat1400.lpx()" ontouchmove="chat1400.lpx()" oncontextmenu="chat1400.reply(' + m.id + ');return false"' : '') + '><span class="ch-av' + (m.mgmt ? ' mg' : '') + (cont ? ' ghost' : '') + '" aria-hidden="' + cont + '">' + esc(String(disp(m.author)).replace('Teacher ', '').charAt(0)) + '</span><div class="ch-body">' + (tl ? '<div class="ch-tools">' + tl + '</div>' : '') + (cont ? '' : who) + par
-      + '<div class="ch-bub' + (me ? ' me' : '') + (m.hidden ? ' hid' : '') + '" onclick="chat1400.tt(event,' + m.id + ')">' + inner + '</div>' + '<span class="ch-ht"><span class="s">' + tm(m.at) + '</span><span class="f">' + esc(full) + '</span></span>' + (ft ? '<div class="ch-ft">' + ft + '</div>' : '') + (act ? '<div class="ch-act">' + act + '</div>' : '') + '</div></div>'; }
+      + '<div class="ch-bub' + (me ? ' me' : '') + (m.hidden ? ' hid' : '') + '" onclick="chat1400.tt(event,' + m.id + ')">' + inner + '</div>' + rxHtml(m) + '<span class="ch-ht"><span class="s">' + tm(m.at) + '</span><span class="f">' + esc(full) + '</span></span>' + (ft ? '<div class="ch-ft">' + ft + '</div>' : '') + (act ? '<div class="ch-act">' + act + '</div>' : '') + '</div></div>'; }
   function cmpHtml(){ var M = isMgr(), ro = S.day && S.day !== S.init.today;
     if(ro) return '<div class="ch-cmp"><div class="ch-note">History is read-only · <button type="button" class="ch-b sm" onclick="chat1400.today()">Back to Today</button></div></div>';
     if(S.gid === 'ann') return '<div class="ch-cmp"><div class="ch-note">Earlier announcements · read-only. Formal notices now go in Notices &amp; requests. Use the buttons under a message to answer.</div></div>';
@@ -31066,8 +31067,8 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     var rp = S.replyTo ? '<div class="ch-q" style="margin-bottom:6px">Replying to ' + esc(disp(S.replyTo.author)) + ' · <button type="button" class="ch-chip" onclick="chat1400.reply(0)">Cancel</button></div>' : '';
     var vo = S.voice ? '<div class="ch-q ch-vo"><audio controls src="' + S.voice + '"></audio><button type="button" class="ch-b sm pri" onclick="chat1400.sendVoice()">Send voice</button><button type="button" class="ch-b sm" onclick="chat1400.noVoice()">Cancel</button></div>' : '';
     var IM = S.imgs || [], im = IM.length ? '<div class="ch-thumbs">' + IM.map(function(u, i){ return '<span class="ch-th"><img src="' + u + '" alt="Picture ' + (i + 1) + ' to send"><button type="button" aria-label="Remove picture ' + (i + 1) + '" onclick="chat1400.noimg(' + i + ')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg></button></span>'; }).join('') + '<span class="ch-note" style="padding:0">' + IM.length + ' of 5 · type a caption, then Send</span></div>' : '';
-    return '<div class="ch-cmp">' + opts + rp + im + vo + '<div id="chAc"></div><div class="ch-row"><label for="chTx" style="position:absolute;left:-9999px">Message</label><textarea id="chTx" rows="1" onpaste="chat1400.paste(event)" placeholder="' + PH() + '" oninput="chat1400.typing(this)" onkeydown="chat1400.key(event)"></textarea>'
-      + '<input type="file" id="chFile" accept="image/*" multiple hidden onchange="chat1400.file(this)"><button type="button" class="ch-ib" aria-label="Add picture" onclick="document.getElementById(\'chFile\').click()">' + I.pic + '</button>'
+    return '<div class="ch-cmp">' + emoPanel() + opts + rp + im + vo + '<div id="chAc"></div><div class="ch-row"><label for="chTx" style="position:absolute;left:-9999px">Message</label><textarea id="chTx" rows="1" onpaste="chat1400.paste(event)" placeholder="' + PH() + '" oninput="chat1400.typing(this)" onkeydown="chat1400.key(event)"></textarea>'
+      + '<button type="button" class="ch-ib' + (S.emoOpen && S.emoMode !== 'react' ? ' on' : '') + '" id="chEmoB" aria-label="Emoji" title="Emoji" aria-expanded="' + !!(S.emoOpen && S.emoMode !== 'react') + '" onclick="chat1400.emo()"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01\"/></svg></button><input type="file" id="chFile" accept="image/*" multiple hidden onchange="chat1400.file(this)"><button type="button" class="ch-ib" aria-label="Add picture" onclick="document.getElementById(\'chFile\').click()">' + I.pic + '</button>'
       + '<button type="button" class="ch-ib" id="chMic" aria-label="Hold to record a voice message" title="Hold to record" onpointerdown="chat1400.rec(event,1)" onpointerup="chat1400.rec(event,0)" onpointerleave="chat1400.rec(event,0)" oncontextmenu="return false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/></svg></button>' + '<button type="button" class="ch-ib pri" id="chSend" aria-label="Send" title="Send"' + (S.img ? '' : ' disabled') + ' onclick="chat1400.send()">' + I.send + '</button></div><div class="ch-hint" aria-hidden="true">' + HINT() + '</div></div>'; }
   function lastTxt(t){ if(!t) return ''; var d = new Date(t), k = function(x){ return new Date(x.getTime() + 8 * 3600e3).toISOString().slice(0, 10); }, today = S.init && S.init.today, y = new Date(Date.parse(today + 'T00:00:00Z') - 864e5).toISOString().slice(0, 10), dd = k(d);
     if(dd === today) return tm(t); if(dd === y) return 'Yesterday ' + tm(t); try{ return d.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'Asia/Manila' }) + ' ' + tm(t); }catch(e){ return tm(t); } }
@@ -31097,6 +31098,22 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
   /* 1416: a copied message link (?go=chat&cm=group|day|id) opens that message; the server still checks who may see it */
   (function(){ try{ var q = new URLSearchParams(location.search).get('cm'); if(!q) return; var p = q.split('|'); if(p.length !== 3) return;
     (function w(n){ if(S.init && S.on){ try{ history.replaceState(history.state, '', location.pathname + location.hash); }catch(e){} if(typeof go === 'function') go('chat'); A.jump(p[0], p[1], Number(p[2])); } else if(n < 40) setTimeout(function(){ w(n + 1); }, 500); })(0); }catch(e){} })();
+  /* 1417 (Misty 10:09): emojis like a real chat (people's own content; the app itself keeps line icons) · built in, works offline and in China */
+  var EMO = { Smileys: '😀 😃 😄 😁 😆 😅 🤣 😂 🙂 😉 😊 😇 🥰 😍 🤩 😘 😋 😜 🤪 🤗 🤭 🤔 🤐 😐 😑 😶 😏 😒 🙄 😬 😌 😔 😪 😴 😷 🤒 🥵 🥶 😵 🤯 🥳 😎 🤓 😕 😟 🙁 😮 😯 😲 😳 🥺 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱 😤 😡 😠',
+    Gestures: '👍 👎 👌 ✌️ 🤞 🤟 🤘 👋 🤚 ✋ 🖐️ 👏 🙌 👐 🤲 🙏 🤝 💪 👆 👇 👉 👈 ☝️ ✍️ 🙋 🙆 🙅 🤷 🤦 💁',
+    Hearts: '❤️ 🧡 💛 💚 💙 💜 🤍 🤎 🖤 💖 💗 💓 💞 💕 💯 ✨ ⭐ 🌟 🔥 🎉 🎊 🎈 🎁 🏆 🥇 👑',
+    Work: '✅ ☑️ ✔️ ❌ ⚠️ ❓ ❗ ⏰ ⏳ 📌 📍 📎 📝 📚 📖 ✏️ 📅 📆 🗓️ 📊 📈 💻 🖥️ 🎧 🎤 📷 📹 📞 📱 💬 📢 🔔 🔕 💡 🔑',
+    Food: '☕ 🍵 🧋 🥤 🍰 🎂 🍩 🍪 🍫 🍦 🍕 🍔 🍟 🍜 🍚 🍣 🥟 🍎 🍓 🍉 🍌 🥭',
+    Nature: '🌞 🌤️ ⛅ 🌧️ ⛈️ 🌈 🌙 🌷 🌸 🌹 🌻 🌼 🍀 🌴 🐶 🐱 🐼 🐨 🐯 🦁 🐰 🐻 🐸 🐵' };
+  var RX6 = ['👍', '❤️', '😂', '😮', '🙏', '✅'];
+  function emoRecent(){ try{ return JSON.parse(localStorage.getItem('coe.emoRecent') || '[]').slice(0, 16); }catch(e){ return []; } }
+  function emoUse(e){ try{ var L = emoRecent().filter(function(x){ return x !== e; }); L.unshift(e); localStorage.setItem('coe.emoRecent', JSON.stringify(L.slice(0, 16))); }catch(x){} }
+  function emoPanel(){ if(!S.emoOpen) return ''; var R = emoRecent(), sec = function(t, L){ return '<div class="ch-emo-t">' + t + '</div><div class="ch-emo-g">' + L.map(function(e){ return '<button type="button" data-e="' + e + '" aria-label="' + e + '">' + e + '</button>'; }).join('') + '</div>'; };
+    return '<div class="ch-emo" role="dialog" aria-label="' + (S.emoMode === 'react' ? 'React with an emoji' : 'Emoji') + '" onclick="chat1400.emoPick(event)">' + (R.length ? sec('Recent', R) : '') + Object.keys(EMO).map(function(k){ return sec(k, EMO[k].split(' ')); }).join('') + '</div>'; }
+  function rxHtml(m){ var L = m.rx || [], bar = S.rxFor === m.id ? '<div class="ch-rxbar" role="group" aria-label="React">' + RX6.map(function(e){ return '<button type="button" onclick="chat1400.react(' + m.id + ',\'' + e + '\')" aria-label="React ' + e + '">' + e + '</button>'; }).join('') + '<button type="button" class="more" onclick="chat1400.emo(' + m.id + ')" aria-label="More emojis" title="More emojis"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>' : '';
+    if(!L.length) return bar; return '<div class="ch-rxs">' + L.map(function(g){ return '<button type="button" class="ch-rx' + (g.mine ? ' on' : '') + '" title="' + esc(g.who.join(', ')) + '" aria-label="' + esc(g.e + ' ' + g.n + ' · ' + g.who.join(', ')) + '" onclick="chat1400.rxWho(' + m.id + ',\'' + g.e + '\')">' + g.e + '<b>' + g.n + '</b></button>'; }).join('') + '</div>' + bar; }
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && (S.emoOpen || S.rxFor)){ S.emoOpen = false; S.rxFor = 0; render(true); } });
+  document.addEventListener('click', function(e){ if(!(S.emoOpen || S.rxFor) || !e.target || !e.target.closest) return; if(e.target.closest('.ch-emo, #chEmoB, .ch-rxbar, .ch-tb[aria-label="React"]')) return; S.emoOpen = false; S.rxFor = 0; render(true); }, true);
   function SKEL(n){ var h = '<div class="ch-skel" role="status" aria-label="Loading">'; for(var i = 0; i < n; i++) h += '<div style="width:' + [72, 54, 86, 64, 48][i % 5] + '%"></div>'; return h + '</div>'; }
   function memHtml(){ var L = S.mem || (S.init.members || []).map(function(m){ return { name: m.name, mgmt: m.mgmt }; }); var P = S.data && S.data.members; if(P && S.view === 'chat'){ var ps = P.map(function(x){ return String(x).toLowerCase(); }); L = L.filter(function(m){ return ps.indexOf(String(m.name).toLowerCase()) > -1; }); }
     var cls = L.filter(function(m){ return m.inClass; }), on = L.filter(function(m){ return m.online && !m.inClass; }), off = L.filter(function(m){ return !m.online && !m.inClass; }).sort(function(a, b){ return String(b.last || '').localeCompare(String(a.last || '')); });
@@ -31154,6 +31171,22 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     today: function(){ S.day = null; S.view = 'chat'; S.data = (S.cache || {})[S.gid + '|' + ((S.init && S.init.today) || '')] || null; render(); load(); },
     day: function(d){ S.day = d; S.view = 'chat'; S.data = (S.cache || {})[S.gid + '|' + d] || null; render(); load(); },
     todoGo: function(g, d, id){ if(typeof go === 'function') go('chat'); setTimeout(function(){ A.jump(g, d, id); }, 0); },
+    emo: function(id){ if(id){ S.emoMode = 'react'; S.emoFor = id; S.emoOpen = true; S.rxFor = 0; } else { S.emoMode = 'text'; S.emoOpen = !S.emoOpen; } render(true); },
+    emoPick: function(ev){ var b = ev.target.closest && ev.target.closest('button[data-e]'); if(!b) return; var e = b.getAttribute('data-e'); emoUse(e);
+      if(S.emoMode === 'react'){ S.emoOpen = false; A.react(S.emoFor, e); return; }
+      var t = document.getElementById('chTx'); if(!t) return; var a = t.selectionStart == null ? t.value.length : t.selectionStart, z = t.selectionEnd == null ? a : t.selectionEnd;
+      t.value = t.value.slice(0, a) + e + t.value.slice(z); t.focus(); try{ t.setSelectionRange(a + e.length, a + e.length); }catch(x){} syncSend(); },
+    rxBar: function(id){ S.rxFor = S.rxFor === id ? 0 : id; S.emoOpen = false; render(true); },
+    react: async function(id, e, force){ var m = findM(id); if(!m) return; m.rx = m.rx || []; var g = m.rx.find(function(x){ return x.e === e; }), on = force != null ? !!force : !(g && g.mine), me0 = (AL()[S.init.me] || S.init.me), old = JSON.stringify(m.rx);
+      if(on){ if(!g){ g = { e: e, n: 0, who: [], mine: false }; m.rx.push(g); } if(!g.mine){ g.mine = true; g.n++; g.who.push(me0); } }
+      else if(g && g.mine){ g.mine = false; g.n--; g.who = g.who.filter(function(x){ return x !== me0; }); if(g.n <= 0) m.rx.splice(m.rx.indexOf(g), 1); }
+      S.rxFor = 0; render(true); emoUse(e);
+      var r = await post('react', { id: id, emoji: e, on: on }).catch(function(){ return null; });
+      if(!r || !r.ok){ m.rx = JSON.parse(old); render(true); toast2((r && r.error) || 'Not saved · check the internet and try again'); } else if(r.msg && r.msg.rx){ m.rx = r.msg.rx; render(true); } },
+    rxWho: function(id, e){ var m = findM(id); if(!m || typeof openSheet !== 'function') return; var g = (m.rx || []).find(function(x){ return x.e === e; }); if(!g) return;
+      openSheet('<h2 style="font-family:\'Fredoka One\',sans-serif;font-weight:400;margin:0 0 6px"><span style="font-size:26px">' + e + '</span> ' + g.n + '</h2><div style="color:#5E6272;font-size:13px;margin-bottom:10px">' + esc(String(m.body || 'Picture').slice(0, 100)) + '</div>'
+        + g.who.map(function(n){ return '<div class="ch-rd"><span>' + esc(n) + '</span></div>'; }).join('')
+        + '<button type="button" class="ch-b' + (g.mine ? '' : ' pri') + '" style="margin-top:12px" onclick="closeSheet();chat1400.react(' + id + ',\'' + e + '\',' + (g.mine ? 0 : 1) + ')">' + (g.mine ? 'Remove my ' : 'React ') + e + '</button>'); },
     jump: function(g, d, id){ S.gid = g; S.day = d === (S.init && S.init.today) ? null : d; S.view = 'chat'; S.focus = id; S.data = null; S.ph = 'conv'; render(); load(); },
     hist: async function(){ S.view = S.view === 'hist' ? 'chat' : 'hist'; var g0 = S.gid; S.days = (S.daysC || {})[g0] || null; render(); if(S.view === 'hist'){ var r = await post('days', { gid: g0 }).catch(function(){ return null; }); if(r && r.ok){ (S.daysC || (S.daysC = {}))[g0] = r.days; } if(S.gid === g0 && S.view === 'hist'){ S.days = r && r.ok ? r.days : (S.days || []); render(true); } } },
     search: function(){ S.view = S.view === 'search' ? 'chat' : 'search'; S.res = null; render(); var q = document.getElementById('chQ'); if(q) q.focus(); },
@@ -31507,6 +31540,24 @@ nav button[data-v="chat"] .dot.at.chN:not(.hide){background:#5B4B9A!important}
 .ch-lbt{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;display:flex;gap:8px}
 .ch-lbt button{width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .ch-lbt button:hover,.ch-lbt button:focus-visible{background:rgba(255,255,255,.28);outline:2px solid #fff;outline-offset:1px}
+</style>
+<style id="css1417">
+/* 1417 · emoji picker + reactions */
+#v-chat .ch-cmp{position:relative}
+#v-chat .ch-emo{position:absolute;left:12px;right:12px;bottom:calc(100% + 6px);max-width:420px;max-height:300px;overflow:auto;background:#fff;border:1px solid #DCE1E6;border-radius:14px;box-shadow:0 12px 32px rgba(31,29,58,.16);padding:8px 10px;z-index:9}
+#v-chat .ch-emo-t{font:700 11px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#7A7F8C;margin:8px 2px 4px}
+#v-chat .ch-emo-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:2px}
+#v-chat .ch-emo-g button,#v-chat .ch-rxbar button{font-size:22px;line-height:1;width:38px;height:38px;border:0;background:none;border-radius:10px;cursor:pointer;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+#v-chat .ch-emo-g button:hover,#v-chat .ch-emo-g button:focus-visible,#v-chat .ch-rxbar button:hover,#v-chat .ch-rxbar button:focus-visible{background:#EEF7F6;outline:none}
+#v-chat .ch-rxbar{display:inline-flex;align-items:center;gap:2px;margin-top:4px;background:#fff;border:1px solid #DCE1E6;border-radius:999px;padding:2px 4px;box-shadow:0 6px 18px rgba(20,40,40,.12)}
+#v-chat .ch-rxbar .more{color:#5E6272;display:inline-flex;align-items:center;justify-content:center}
+#v-chat .ch-rxs{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+#v-chat .ch-m.mine .ch-rxs{justify-content:flex-end}
+#v-chat .ch-rx{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 9px;border:1px solid #DCE1E6;border-radius:999px;background:#fff;cursor:pointer;font-size:15px}
+#v-chat .ch-rx b{font:700 12.5px Inter,system-ui,sans-serif;color:#3B3F4C}
+#v-chat .ch-rx.on{background:#E6F3F2;border-color:#9FCFCB}
+#v-chat .ch-rx.on b{color:#0B5F63}
+#v-chat .ch-ib.on{background:#E6F3F2;color:#0B5F63}
 </style>
 </body>
 </html>
