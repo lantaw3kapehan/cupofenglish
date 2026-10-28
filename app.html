@@ -2,6 +2,102 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script id="b1506">
+/* 28 Oct · 1506 · several tabs of the app open together (1505 made opening screens in new tabs easy).
+   · One tab is the "sounding" tab: the one you used last (tapped, typed, brought to the front). Only it plays chat and class sounds and
+     shows phone / desktop alerts and the "Before you start" pop-up, so nothing rings twice. It hands over when it closes; if it vanishes
+     without closing (phone killed it), another tab takes over within 2½ minutes.
+   · Background updates (every 20 s or slower) pause in tabs that are hidden and not the sounding tab; a tab catches up when you open it.
+   · Saves kept on this device (coe.wq, class visits, time-in posts) are sent by one tab at a time. */
+(function(){
+  if(window.tabLead1506) return;
+  var TAB = Math.random().toString(36).slice(2, 10) + Date.now().toString(36), K = 'coe.tabLead', STALE = 150000;
+  var now = function(){ return Date.now(); };
+  var rd = function(){ try{ return JSON.parse(localStorage.getItem(K) || 'null'); }catch(e){ return null; } };
+  var wr = function(){ try{ localStorage.setItem(K, JSON.stringify({ id: TAB, t: now() })); }catch(e){} };
+  function lead(){ var L = rd(); if(!L || !L.id){ wr(); return true; } if(L.id === TAB) return true; if(now() - (+L.t || 0) > STALE){ wr(); return true; } return false; }
+  var last = 0; function claim(){ var t = now(); if(t - last < 2000) return; last = t; wr(); }
+  if(document.visibilityState !== 'hidden') claim();
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') claim(); });
+  addEventListener('focus', claim);
+  ['pointerdown', 'keydown', 'touchstart'].forEach(function(ev){ addEventListener(ev, claim, { capture: true, passive: true }); });
+  addEventListener('pagehide', function(e){ if(e && e.persisted) return; var L = rd(); if(L && L.id === TAB){ try{ localStorage.removeItem(K); }catch(x){} } });
+  addEventListener('storage', function(e){ if(e.key === K && !e.newValue && document.visibilityState === 'visible') wr(); });
+  var oSI = window.setInterval;
+  oSI(function(){ var L = rd(); if(L && L.id === TAB) wr(); else if(!L || now() - (+L.t || 0) > STALE) wr(); }, 15000);   /* heartbeat */
+  window.tabLead1506 = lead; window.tabId1506 = TAB;
+  /* background updates: a hidden tab that is not the sounding tab skips its slow timers (20 s or more) */
+  window.setInterval = function(fn, ms){ if(typeof fn !== 'function' || !(+ms >= 20000)) return oSI.apply(window, arguments); var a = [].slice.call(arguments, 2);
+    return oSI(function(){ if(document.visibilityState === 'hidden' && !lead()){ window.__quiet1506 = (window.__quiet1506 || 0) + 1; return; } return fn.apply(this, a); }, ms); };
+  /* one tab at a time: sends the saves kept on this device (Web Locks; a short lease in localStorage where they are missing) */
+  window.lock1506 = function(name, f){
+    try{ if(navigator.locks && navigator.locks.request) return navigator.locks.request('coe-' + name, { ifAvailable: true }, function(l){ return l ? f() : null; }); }catch(e){}
+    var k = 'coe.lock.' + name, v = null; try{ v = JSON.parse(localStorage.getItem(k) || 'null'); }catch(e){}
+    if(v && v.id !== TAB && now() - (+v.t || 0) < 120000) return Promise.resolve(null);
+    try{ localStorage.setItem(k, JSON.stringify({ id: TAB, t: now() })); }catch(e){}
+    var done = function(){ try{ var c = JSON.parse(localStorage.getItem(k) || 'null'); if(c && c.id === TAB) localStorage.removeItem(k); }catch(e){} };
+    return Promise.resolve().then(f).then(function(r){ done(); return r; }, function(e){ done(); throw e; }); };
+})();
+</script>
+<script id="b1505">
+/* 28 Oct · 1505 · a tab opened on an address (#schedule, #student=ST-…, #teacher=…, #chat=all) opens there, signed in, from the saved copies.
+   Read here, before the app rewrites the address. Each tab also keeps its own screen and scroll place (sessionStorage); a brand-new tab without
+   an address still starts where the app was last used, as before. */
+(function(){
+  if(window.__b1505) return;
+  var nt = ''; try{ var e = performance.getEntriesByType && performance.getEntriesByType('navigation')[0]; nt = e ? e.type : ''; }catch(x){}
+  var raw = ''; try{ raw = decodeURIComponent(String(location.hash || '').slice(1)); }catch(x){ raw = String(location.hash || '').slice(1); }
+  /* a reload or Back/Forward keeps the app's own "return to where you were" rules; a newly opened address wins */
+  var B = window.__b1505 = { raw: raw, nav: nt, on: !!raw && nt !== 'reload' && nt !== 'back_forward' };
+  var m = raw.match(/^(student|teacher|chat)[=\/](.+)$/); if(m){ B.rec = m[1]; B.id = m[2]; B.v = m[1] === 'chat' ? 'chat' : m[1]; }
+  else B.v = raw;
+  var ss = function(op, k, v){ try{ if(op === 'get') return sessionStorage.getItem(k); sessionStorage.setItem(k, v); }catch(x){ return null; } };
+  window.tab1505 = {
+    get: function(k){ var v = ss('get', k); if(v != null) return v; if(B.on && B.v) return null; try{ return localStorage.getItem(k); }catch(x){ return null; } },
+    set: function(k, v){ ss('set', k, v); try{ localStorage.setItem(k, v); }catch(x){} } };
+
+  var O = function(sel){ return Document.prototype.querySelector.call(document, sel); };
+  var isView = function(v){ return typeof VIEWS !== 'undefined' && VIEWS.indexOf(v) > -1; };
+  var hasD = function(){ return typeof D !== 'undefined' && !!D; };
+  var pres = function(){ try{ return typeof isPres === 'function' && isPres(); }catch(x){ return false; } };
+  /* group tabs: the screen opens when its group is in that person's menu (same as the tabs at the top of the group) */
+  var SUB = { reports: 'astudents', db: 'astudents', enquiry: 'trials', perf: 'teachers', train: 'teachers', leave: 'teachers', actions: 'teachers', finov: 'payroll', expenses: 'payroll', money: 'payroll', forecast: 'payroll', wallets: 'payroll', team: 'home' };   /* team: the Overview tile */
+  /* screens the app adds to the menu a moment after it opens: a tab opened on one of them waits for it (≤ 6 s, "Opening…") instead of
+     showing another screen first */
+  var LATE = { m: 'monitor mtoday msgs enquiry finov expenses forecast wallets trials train chat team leave actions perf reports db money contract', t: 'act train contract tinbox books chat growth qa' };
+  var inMenu = function(v){ try{ return !!O('#navIn > [data-v="' + v + '"]'); }catch(x){ return false; } };
+  function view(){ if(!B.v) return ''; if(B.rec === 'student') return D.mgr ? 'astudents' : 'students'; if(B.rec === 'teacher') return D.mgr ? 'teachers' : ''; if(B.rec === 'chat') return 'chat';
+    /* the words in the address first (#students = management Students, #my-students = a teacher's), then the screen's own name */
+    if(B.v === 'active-students' || B.v === 'active') return D.mgr ? 'astudents' : '';   /* the app shows Packages inside Students */
+    var C = []; try{ C = VIEWS.concat((LATE.m + ' ' + LATE.t).split(' ')); }catch(x){}
+    try{ for(var i = 0; i < C.length; i++) if(window.coeH && coeH(C[i]) === '#' + B.v) return C[i]; }catch(x){} return C.indexOf(B.v) > -1 ? B.v : ''; }
+  function allowed(v){ if(!hasD() || !isView(v) || !document.getElementById('v-' + v)) return false;
+    if(v === 'more' || inMenu(v)) return true;
+    if(D.mgr && SUB[v]){ if((v === 'wallets' || v === 'forecast') && !pres()) return false; return inMenu(SUB[v]); }
+    return false; }
+  function openRec(){ var t0 = Date.now();
+    (function w(){ try{
+      if(B.rec === 'student' && typeof openStudent === 'function' && hasD()){ openStudent(B.id); return; }
+      if(B.rec === 'teacher' && typeof openTeacher === 'function' && hasD() && D.mgr){ openTeacher(B.id); return; }
+      if(B.rec === 'chat' && window.chat1400 && VIEW === 'chat' && O('#v-chat .ch')){ var p = B.id.split('|'); if(p.length === 3 && chat1400.jump) chat1400.jump(p[0], p[1], Number(p[2])); else chat1400.open(p[0]); return; }
+    }catch(x){} if(Date.now() - t0 < 15000) setTimeout(w, 250); })(); }
+  try{ var st = document.createElement('style'); st.id = 'b1505s'; st.textContent = 'html.b1505w main.wrap>[id^="v-"]{visibility:hidden!important}html.b1505w main.wrap{position:relative}html.b1505w main.wrap::after{content:"Opening\u2026";position:absolute;left:24px;top:24px;font-size:14px;color:#5E5A76}'; (document.head || document.documentElement).appendChild(st); }catch(x){}
+  var picked = 0;
+  window.coeBoot1505 = {
+    /* called once by the first render with the screen it would open; returns the address's screen when this person may open it */
+    pick: function(def){ if(picked || !B.on || !B.v) return null; picked = 1; if(!hasD()) return null; var v = view();
+      if(v && allowed(v)){ if(B.rec) setTimeout(openRec, 0); return v; }
+      /* the screen is added a moment later: keep the screen area on "Opening…" and open it when it appears (unless you moved on) */
+      var late = v && (' ' + (D.mgr ? LATE.m : LATE.t) + ' ').indexOf(' ' + v + ' ') > -1 && !(D.mgr && (v === 'wallets' || v === 'forecast') && !pres());
+      if(!late) return null;
+      var R = document.documentElement, t0 = Date.now(), off = function(){ R.classList.remove('b1505w'); };
+      R.classList.add('b1505w');
+      var w = function(){ try{ if(VIEW !== def){ off(); return; } var v2 = view(); if(v2 && allowed(v2)){ window.go(v2); off(); if(B.rec) openRec(); return; } }catch(x){} if(Date.now() - t0 < 6000) setTimeout(w, 150); else off(); };
+      setTimeout(w, 0);   /* after render has opened the usual screen */
+      return null; },
+    state: B };
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FFFFFF">
 <title>CupOfEnglish</title>
@@ -1598,7 +1694,7 @@ msgs:    [() => MSG, () => renderMsgs(),    q => loadMsgs(q)],
 chat:    [() => !!(window.chat1400 && chat1400.has()), () => chat1400.render(), q => chat1400.load(q)]
 };
 function go(v){
-VIEW = v; store('set', 'coe.view', v); VIEWS.forEach(x => $('v-'+x).classList.toggle('hide', x!==v));
+VIEW = v; tab1505.set('coe.view', v); VIEWS.forEach(x => $('v-'+x).classList.toggle('hide', x!==v));
 if(v==='astudents'){ if(MS) renderAStudents(); else loadStudents(); }   // list made in the background → draw it now
 if(v==='schedule'){ if(SC) renderSchedule(); if(!SC || !SC._t || Date.now() - SC._t > 60000) loadSchedule(0, !!SC); }   
 const S = SCREENS[v];                                                      
@@ -1623,9 +1719,9 @@ $('hName').textContent = me.name ? (D.mgr ? me.name : tName(me.name)) : 'Teacher
 $('hRank').innerHTML = D.mgr ? `${esc(me.role || 'Management')} <span class="live" id="liveTag"><i></i>Live${PULSE.time?' · '+PULSE.time:''}</span>` : esc([me.rank, me.rate ? peso(me.rate)+'/lesson' : ''].filter(Boolean).join(' · '));
 const nk = D.mgr ? 'm' : 't';
 if(nk !== NAVKEY){ NAVKEY = nk; buildNav(); setTimeout(() => { if(!D) return; if(D.mgr){ if(!MSG) MSG = kept('msgs'); msgBadge(); loadMsgs(true); if(!PCKM) PCKM = kept('paychkm'); loadPayChecks();
-['reports', 'active', 'leave', 'perf', 'actions'].forEach((k, i) => setTimeout(() => { const S = SCREENS[k]; if(!S || document.hidden || VIEW === k) return; if(!S[0]() || Date.now() - (SEEN[k] || 0) > 600000){ SEEN[k] = Date.now(); bg(() => S[2](true)); } }, 6000 + i * 4000)); } else { if(!TMSG) TMSG = kept('tmsgs'); if(!PCK) PCK = kept('paychk'); loadTMsgs(); loadPayCheck(); } }, 2000); const sv = store('get','coe.view'), ok = (D.mgr ? NAV_M : NAV_T).some(x => x[0] === sv) || (D.mgr && sv === 'more');
-let _pl = null; try{ _pl = JSON.parse(store('get','coe.place') || 'null'); }catch(e){} const _fr = _pl && _pl.v === sv && Date.now() - _pl.t < 3 * 3600e3;
-go(ok && (_fr || !D.mgr) ? sv : D.mgr ? 'home' : 'today'); try{ restorePlace(); }catch(e){} if(D.mgr){ try{ MO = JSON.parse(store('get','coe.mo')||'null'); }catch(e){} loadMgmt(); } }
+['reports', 'active', 'leave', 'perf', 'actions'].forEach((k, i) => setTimeout(() => { const S = SCREENS[k]; if(!S || document.hidden || VIEW === k) return; if(!S[0]() || Date.now() - (SEEN[k] || 0) > 600000){ SEEN[k] = Date.now(); bg(() => S[2](true)); } }, 6000 + i * 4000)); } else { if(!TMSG) TMSG = kept('tmsgs'); if(!PCK) PCK = kept('paychk'); loadTMsgs(); loadPayCheck(); } }, 2000); const sv = tab1505.get('coe.view'), ok = (D.mgr ? NAV_M : NAV_T).some(x => x[0] === sv) || (D.mgr && sv === 'more');
+let _pl = null; try{ _pl = JSON.parse(tab1505.get('coe.place') || 'null'); }catch(e){} const _fr = _pl && _pl.v === sv && Date.now() - _pl.t < 3 * 3600e3;
+go((window.coeBoot1505 && coeBoot1505.pick(ok && (_fr || !D.mgr) ? sv : D.mgr ? 'home' : 'today')) || (ok && (_fr || !D.mgr) ? sv : D.mgr ? 'home' : 'today'));   /* 1505: an opened address wins */ try{ restorePlace(); }catch(e){} if(D.mgr){ try{ MO = JSON.parse(store('get','coe.mo')||'null'); }catch(e){} loadMgmt(); } }
 if(D.mgr){ renderTeam(); renderTeachers(); renderPayroll(); return; }
 const due = (D.students||[]).filter(fbDue).length + (D.special||[]).filter(x=>x.reportMissing).length;
 if($('dStu')){ $('dStu').textContent = due; $('dStu').classList.toggle('hide', !due); }
@@ -6387,7 +6483,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1399;
+const COE_V = 1401;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -6447,11 +6543,11 @@ const _ltTI = loadTMsgs;
 loadTMsgs = async function(){ const r = await _ltTI.apply(this, arguments); try{ tInboxBadge(); if(VIEW === 'tinbox') renderTInbox(); }catch(e){} return r; };
 const _tmhTI = tMsgHtml;
 tMsgHtml = function(){ return _tmhTI.apply(this, arguments).replace('<div class="row" style="gap:8px;padding:10px 0">', '<div class="small" style="padding:8px 0 0"><a href="javascript:void(0)" onclick="go(\'tinbox\')">See all messages ›</a></div><div class="row" style="gap:8px;padding:10px 0">'); };
-function keepPlace(){ try{ if(VIEW) store('set', 'coe.place', JSON.stringify({ v: VIEW, y: Math.round(window.scrollY || 0), t: Date.now() })); }catch(e){} }
+function keepPlace(){ try{ if(VIEW) tab1505.set('coe.place', JSON.stringify({ v: VIEW, y: Math.round(window.scrollY || 0), t: Date.now() })); }catch(e){} }
 document.addEventListener('visibilitychange', () => { if(document.hidden) keepPlace(); });
 addEventListener('pagehide', keepPlace); addEventListener('beforeunload', keepPlace);
 let _kpT = 0; addEventListener('scroll', () => { clearTimeout(_kpT); _kpT = setTimeout(keepPlace, 400); }, { passive: true });
-function restorePlace(){ try{ const p = JSON.parse(store('get', 'coe.place') || 'null'); if(!p || Date.now() - p.t > 3 * 3600e3 || p.v !== VIEW || !p.y) return; [400, 1200, 2500].forEach(ms => setTimeout(() => { if(VIEW === p.v && (window.scrollY || 0) < 10) window.scrollTo(0, p.y); }, ms)); }catch(e){} }
+function restorePlace(){ try{ const p = JSON.parse(tab1505.get('coe.place') || 'null'); if(!p || Date.now() - p.t > 3 * 3600e3 || p.v !== VIEW || !p.y) return; [400, 1200, 2500].forEach(ms => setTimeout(() => { if(VIEW === p.v && (window.scrollY || 0) < 10) window.scrollTo(0, p.y); }, ms)); }catch(e){} }
 const tSnap = () => { const m = {}; ((D && D.schedule) || []).forEach(c => { m[c.id] = !!c.cancelled; }); return m; };
 const _rlT = reload;
 reload = async function(force){ const before = D && !D.mgr ? tSnap() : null; const r = await _rlT.apply(this, arguments);
@@ -7795,8 +7891,10 @@ const MVQ = 'coe.mvq';
 async function mvPush(p){ let ok = false;
 for(let a = 0; a < 2 && !ok; a++){ try{ const r = await api('mgmtMonitor', TOKEN, p); if(r && r.ok){ ok = true; const x = (MONM[p.date] || {})[p.eventId]; if(x){ x.by = r.by; x.at = r.at; delete x.pending; } } else if(r && r.msg){ toast(r.msg); return; } }catch(x){} if(!ok) await new Promise(z => setTimeout(z, 2500)); }
 if(!ok){ try{ const q = JSON.parse(store('get', MVQ) || '[]'); q.push(p); store('set', MVQ, JSON.stringify(q.slice(-20))); }catch(x){} toast('Weak signal · the class visit is kept on this device and will send automatically'); } }
-async function mvFlush(){ let q = []; try{ q = JSON.parse(store('get', MVQ) || '[]'); }catch(x){} if(!q.length || !TOKEN) return; const left = [];
-for(const p of q){ try{ const r = await api('mgmtMonitor', TOKEN, p); if(!r || (!r.ok && !r.msg)) left.push(p); }catch(x){ left.push(p); } } store('set', MVQ, JSON.stringify(left)); }
+function mvFlush(){ return (window.lock1506 || function(n, f){ return Promise.resolve().then(f); })('mvq', mvFlush1506); }   /* 1506: one tab at a time */
+async function mvFlush1506(){ let q = []; try{ q = JSON.parse(store('get', MVQ) || '[]'); }catch(x){} if(!q.length || !TOKEN) return; const left = [];
+for(const p of q){ try{ const r = await api('mgmtMonitor', TOKEN, p); if(!r || (!r.ok && !r.msg)) left.push(p); }catch(x){ left.push(p); } }
+const J = x => JSON.stringify(x), sent = new Set(q.map(J)), keep = new Set(left.map(J)); let now = []; try{ now = JSON.parse(store('get', MVQ) || '[]'); }catch(x){} store('set', MVQ, JSON.stringify(now.filter(p => !sent.has(J(p)) || keep.has(J(p))))); }
 setTimeout(mvFlush, 7000); setInterval(mvFlush, 5 * 60000);
 window.mvSend = async function(){
 const e = window._mvE, b = $('mvGo'), er = $('mvErr'); if(!e || !b) return; const t = tOf(e), d = ymdLocal(new Date(e.start)), R = window._mvR || {};
@@ -9160,7 +9258,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
   let busy = 0;
   window.wqFlush = async function(){ if(busy || !navigator.onLine) return; const q = get(); if(!q.length) return; busy = 1; let sent = 0; const left = [];
     for(const it of q){ if((it.n || 0) >= 5 && Date.now() - (it.last || 0) < 10 * 60000){ left.push(it); continue; } it.last = Date.now(); try{ const a = (it.args || []).slice(); if(typeof TOKEN !== 'undefined' && TOKEN && typeof a[0] === 'string') a[0] = TOKEN; const r = await apiOnce(it.fn, a, 45000, it.rid); if(r && r.ok){ sent++; continue; } if(r && r.error === 'AUTH'){ left.push(it); continue; } it.n = (it.n || 0) + 1; it.err = String((r && (r.error || r.msg)) || '').slice(0, 120); left.push(it); }catch(e){ it.n = (it.n || 0); left.push(it); } }
-    put(left); busy = 0; { const bad = left.filter(x => (x.n || 0) >= 5); if(bad.length && !window._wqWarn){ window._wqWarn = 1; try{ toast('⚠ ' + bad.length + ' item' + (bad.length === 1 ? '' : 's') + ' saved on this phone could not be sent yet' + (bad[0].err ? ' (' + bad[0].err + ')' : '') + '. Please tell Ops.'); }catch(e){} } } if(sent){ try{ toast('✓ Sent ' + sent + ' saved item' + (sent === 1 ? '' : 's') + ' from this device'); }catch(e){} try{ if(typeof reload === 'function' && typeof D !== 'undefined' && D && !D.mgr) reload(false); }catch(e){} } };
+    { const sent = {}, keep = {}; q.forEach(x => { sent[x.rid] = 1; }); left.forEach(x => { keep[x.rid] = x; }); put(get().filter(x => !sent[x.rid] || keep[x.rid]).map(x => keep[x.rid] || x)); } busy = 0;   /* 1506 */ { const bad = left.filter(x => (x.n || 0) >= 5); if(bad.length && !window._wqWarn){ window._wqWarn = 1; try{ toast('⚠ ' + bad.length + ' item' + (bad.length === 1 ? '' : 's') + ' saved on this phone could not be sent yet' + (bad[0].err ? ' (' + bad[0].err + ')' : '') + '. Please tell Ops.'); }catch(e){} } } if(sent){ try{ toast('✓ Sent ' + sent + ' saved item' + (sent === 1 ? '' : 's') + ' from this device'); }catch(e){} try{ if(typeof reload === 'function' && typeof D !== 'undefined' && D && !D.mgr) reload(false); }catch(e){} } };
   setInterval(function(){ try{ wqFlush(); }catch(e){} }, 30000); window.addEventListener('online', function(){ setTimeout(function(){ try{ wqFlush(); }catch(e){} }, 2000); }); setTimeout(function(){ try{ wqFlush(); }catch(e){} }, 6000);
 })();
 </script>
@@ -9399,7 +9497,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
         '<div style="margin-top:14px;text-align:center"><a class="link small" onclick="mustLater(window._mustSig)">Remind me in 2 hours</a></div>';
     if($('mustPop') && $('sheet').classList.contains('on')){ POPPED = sig; $('sheetBody').innerHTML = popH(); return; }
     if(POPPED === sig || snoozed(sig) || inClass() || VIEW !== 'today' || $('sheet').classList.contains('on') || (window._mustAt && Date.now() - window._mustAt < 10 * 6e4) || (window.mustGate1180 && !mustGate1180(L))) return;
-    clearTimeout(window._mustT); window._mustT = setTimeout(() => { if(POPPED === sig || window._mustSig !== sig || $('sheet').classList.contains('on') || VIEW !== 'today' || inClass() || (window.mustGate1180 && !mustGate1180(window._MUST || L))) return; POPPED = sig;
+    clearTimeout(window._mustT); window._mustT = setTimeout(() => { if((window.tabLead1506 && !tabLead1506()) || POPPED === sig || window._mustSig !== sig || $('sheet').classList.contains('on') || VIEW !== 'today' || inClass() || (window.mustGate1180 && !mustGate1180(window._MUST || L))) return; POPPED = sig;
       window._mustAt = Date.now(); if(window.mustShown1180) mustShown1180(window._MUST || L); openSheet(popH()); }, 6000);
     // A phone / laptop notification for each new item (once).
     try{ L.forEach(x => { if(!remTold('must:' + x.key)) notify('CupOfEnglish · to do', x.label + ' · ' + x.title, 'coe-must'); }); }catch(e){}
@@ -15285,7 +15383,7 @@ section.sec{border-color:var(--line)}
   const HN = { mtoday: 'todo', astudents: 'students', students: 'my-students', home: 'overview', msgs: 'messages', tinbox: 'inbox', enquiry: 'enquiries', perf: 'performance', db: 'database', money: 'sales', tsched: 'my-schedule', mypay: 'my-pay', active: 'active-students' };
   const HV = {}; Object.keys(HN).forEach(k => { HV[HN[k]] = k; });
   window.coeH = v => '#' + (HN[v] || v);
-  window.coeHV = () => { const h = (location.hash || '').slice(1); return HV[h] || h; };
+  window.coeHV = () => { const h = (location.hash || '').slice(1).split(/[=\/]/)[0]; return HV[h] || h; };   /* 1505: #student=… / #chat=all → their screen */
   /* ── 1. Back / Forward ── */
   let FROMPOP = 0, IGN = 0;
   const isView = v => typeof VIEWS !== 'undefined' && VIEWS.indexOf(v) > -1;
@@ -30794,7 +30892,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     if(posted()) return; var k = key(today(), me()), rec = { day: today(), time: t, ti: (D.timeIn || {}).time || '', sent: 0 }, o = rd(); o[k] = rec; wr(o); POSTED[k] = rec;
     if(b) b.outerHTML = tickHtml(rec); try{ if(typeof renderToday === 'function' && VIEW === 'today') renderToday(); }catch(e){}
     var r = await call('post', { time: t, ti: rec.ti }); if(r && r.ok){ o = rd(); if(o[k]){ o[k].sent = 1; wr(o); } } };
-  setInterval(function(){ try{ var o = rd(); Object.keys(o).forEach(function(k){ if(!o[k].sent && o[k].day === today()) call('post', { time: o[k].time, ti: o[k].ti }).then(function(r){ if(r && r.ok){ var q = rd(); if(q[k]){ q[k].sent = 1; wr(q); } } }); }); }catch(e){} }, 60000);
+  setInterval(function(){ (window.lock1506 || function(n, f){ return Promise.resolve().then(f); })('wct', function(){ var P = []; try{ var o = rd(); Object.keys(o).forEach(function(k){ if(!o[k].sent && o[k].day === today()) P.push(call('post', { time: o[k].time, ti: o[k].ti }).then(function(r){ if(r && r.ok){ var q = rd(); if(q[k]){ q[k].sent = 1; wr(q); } } })); }); }catch(e){} return Promise.all(P); }); }, 60000);   /* 1506: one tab at a time */
 
   /* ── teacher: what the database knows (ticked on another device, a redo request) ── */
   var MINE = null, MINEAT = 0, MINEBUSY = 0;
@@ -31259,7 +31357,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
   var msgOn = function(){ try{ return localStorage.getItem('coe.chatMsgSnd') !== '0'; }catch(e){ return true; } };
   var AUN = null;
   function au(k){ if(k === 'msg'){ if(!AUN){ AUN = new Audio('chat-msg.wav'); AUN.preload = 'auto'; } return AUN; } if(!AU){ AU = new Audio('chat-alert.wav'); AU.preload = 'auto'; } return AU; }
-  function chime(force, kind){ if(!force && !sndOn()) return; try{ var a = au(kind === 'msg' ? 'msg' : 'alert'), n = kind === 'msg' ? 1 : 2; a.volume = VOL(); a.currentTime = 0;
+  function chime(force, kind){ if(!force && !sndOn()) return; if(!force && window.tabLead1506 && !tabLead1506()) return;   /* 1506 */ try{ var a = au(kind === 'msg' ? 'msg' : 'alert'), n = kind === 'msg' ? 1 : 2; a.volume = VOL(); a.currentTime = 0;
       a.onended = function(){ if(--n > 0) setTimeout(function(){ try{ a.currentTime = 0; a.play(); }catch(e){} }, 160); };
       var p = a.play(); if(p && p.catch) p.catch(function(){ showTap(); }); else AUOK = true; window.__chime1402 = (window.__chime1402 || 0) + 1; window.__chimeKind = kind || 'alert'; }catch(e){} }
   function showTap(){ if(AUOK || document.getElementById('chSnd')) return; document.body.insertAdjacentHTML('beforeend', '<button type="button" id="chSnd" onclick="this.remove()">Tap to turn on chat sounds</button>'); }
@@ -31772,7 +31870,8 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     if(r && r.error){ pend(it, 'failed'); return { error: String(r.error) }; }
     var o2 = qRead(); o2[it.k] = { a: it.a, o: it.o, w: it.w || '', net: it.net || '', at: (had && had.at) || Date.now() }; qWrite(o2); pend(it, 'pending'); return 'queued'; }
   window.chatQueued1495 = function(k){ return !!qRead()[k]; };
-  async function qFlush(){ if(!hasD() || qFlush.busy) return; var o = qRead(), ks = Object.keys(o); if(!ks.length) return; qFlush.busy = 1;
+  function qFlush(){ return (window.lock1506 || function(n, f){ return Promise.resolve().then(f); })('chq', qFlush1506); }   /* 1506: one tab at a time */
+  async function qFlush1506(){ if(!hasD() || qFlush.busy) return; var o = qRead(), ks = Object.keys(o); if(!ks.length) return; qFlush.busy = 1;
     try{ for(var i = 0; i < ks.length; i++){ var k = ks[i], it = o[k]; if(!it || /^ci:/.test(k) || Date.now() - it.at > 18 * 36e5){ var q = qRead(); delete q[k]; qWrite(q); if(/^ci:/.test(k)){ try{ post('pend', { k: k, off: 1 }).catch(function(){}); }catch(e){} } continue; }   /* 1497: queued class check-ins are dropped */
       var r = await sendQ1495({ a: it.a, o: it.o, k: k, w: it.w, net: it.net, pn: it.pn }); if(r === 'queued') break; if(r && r.error){ var q2 = qRead(); delete q2[k]; qWrite(q2); }
       try{ window.dispatchEvent(new CustomEvent('chq1495', { detail: { k: k, ok: r === true, error: r && r.error } })); }catch(e){} } }
@@ -32919,5 +33018,203 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
 @media (max-height:620px){#v-chat .ch.srv .ch-main{overflow-y:auto}#v-chat .ch.srv .ch-main>.ch-list{flex:none!important;overflow:visible!important;height:auto!important;max-height:none!important;min-height:0}}   /* short windows: filters and results scroll as one page */
 @media (max-width:640px){#v-chat .ch-hd .ch-bsr span.sv{display:none!important}#v-chat .ch-hd .ch-bsr{width:44px!important;padding:0!important}}
 </style>
+<script id="l1505">
+/* 28 Oct · 1505 · Screens are real links (Misty 19:23: "when we click a SCREEN, we can OPEN LINK IN NEW TAB so we can do other things too").
+   · The side menu, the phone bottom bar, More, the tabs at the top of a group (Finance, Teachers, Students, Trials) and the links inside
+     screens (Overview tiles, To do, "Notices & requests" …) are <a href="#screen"> links: Ctrl/Cmd-click, middle-click and
+     right-click › "Open link in new tab" open that screen in a new tab. A normal click works exactly as before (no reload).
+   · Records have their own address: #student=ST-…, #teacher=Name, #chat=all (also #student/ST-…, #chat/all). The new tab checks access
+     the same way a click does (the screen must be in that person's menu / group tabs; the server still checks every record).
+   · A new tab opens straight on its screen from the copies saved on this device; reloading a tab keeps that tab's own screen and scroll.
+   · Menu items were <button>s; the stylesheet rules and look-ups written for "nav button" also match the new links, so they look and
+     behave the same (same size, colours, hover, selected bar, badges). */
+(function(){
+  if(window.__1505) return; window.__1505 = 1;
+  var EP = Element.prototype, DP = Document.prototype, FP = DocumentFragment.prototype;
+  var O = { eq: EP.querySelector, ea: EP.querySelectorAll, dq: DP.querySelector, da: DP.querySelectorAll, fq: FP.querySelector, fa: FP.querySelectorAll, cl: EP.closest, ma: EP.matches };
+  var $1 = function(id){ return document.getElementById(id); };
+
+  /* ── 1 · selectors written for menu/tab <button>s also match the menu/tab links ── */
+  var CTX_C = /^nav(?![\w-])|#navIn(?![\w-])|\.grp-tabs(?![\w-])|\.mo-tabs(?![\w-])/;
+  var CTX_S = 'nav,.grp-tabs';
+  var split = function(sel, at){ var out = [], d = 0, q = '', cur = '';
+    for(var k = 0; k < sel.length; k++){ var c = sel[k];
+      if(q){ cur += c; if(c === '\\'){ cur += sel[++k] || ''; } else if(c === q) q = ''; continue; }
+      if(c === '"' || c === "'"){ q = c; cur += c; continue; }
+      if(c === '(' || c === '[') d++; else if(c === ')' || c === ']') d--;
+      if(d === 0 && at(c, sel, k)){ out.push(cur); out.push(c); cur = ''; continue; }
+      cur += c; }
+    out.push(cur); return out; };
+  var RWC = new Map();
+  function rw(sel, ctx){ var key = (ctx ? '1' : '0') + sel, hit = RWC.get(key); if(hit !== undefined) return hit;
+    var parts = split(sel, function(c){ return c === ','; }), out = '';
+    for(var p = 0; p < parts.length; p += 2){
+      var cx = ctx, toks = split(parts[p], function(c){ return c === ' ' || c === '>' || c === '+' || c === '~' || c === '\n' || c === '\t'; }), s = '';
+      for(var t = 0; t < toks.length; t += 2){ var cmp = toks[t];
+        if(cmp.indexOf('(') > -1 && cmp.indexOf('button') > -1) cmp = inner(cmp, cx);
+        if(cx && /^button(?=$|[.#:\[])/.test(cmp)) cmp = ':is(button,a)' + cmp.slice(6);
+        else if(!cx && cmp && CTX_C.test(cmp)) cx = true;
+        s += cmp + (t + 1 < toks.length ? toks[t + 1] : ''); }
+      out += s + (p + 1 < parts.length ? parts[p + 1] : ''); }
+    RWC.set(key, out); return out; }
+  /* selectors nested in :is() / :where() / :not() (e.g. the generated ":is(nav button):where(#app …)") */
+  function inner(cmp, cx){ var re = /:(is|where|not|matches|-webkit-any)\(/g, m, out = '', last = 0;
+    while((m = re.exec(cmp))){ var st = m.index + m[0].length, d = 1, k = st;
+      for(; k < cmp.length && d; k++){ var c = cmp[k]; if(c === '(') d++; else if(c === ')') d--; }
+      if(d) break; out += cmp.slice(last, st) + rw(cmp.slice(st, k - 1), cx) + ')'; last = k; re.lastIndex = k; }
+    return out + cmp.slice(last); }
+  window.rw1505 = rw;
+  var inCtx = function(n){ try{ return n && n.nodeType === 1 && !!O.cl.call(n, CTX_S); }catch(e){ return false; } };
+  var shim = function(proto, name, orig, isEl){ proto[name] = function(sel){ if(typeof sel === 'string' && sel.indexOf('button') > -1){ var n = rw(sel, isEl && inCtx(this)); if(n !== sel) arguments[0] = n; } return orig.apply(this, arguments); }; };
+  shim(EP, 'querySelector', O.eq, 1); shim(EP, 'querySelectorAll', O.ea, 1); shim(EP, 'closest', O.cl, 1); shim(EP, 'matches', O.ma, 1);
+  shim(DP, 'querySelector', O.dq, 0); shim(DP, 'querySelectorAll', O.da, 0); shim(FP, 'querySelector', O.fq, 0); shim(FP, 'querySelectorAll', O.fa, 0);
+  if(EP.webkitMatchesSelector) shim(EP, 'webkitMatchesSelector', EP.webkitMatchesSelector, 1);
+
+  var DONE = typeof WeakSet === 'function' ? new WeakSet() : null;
+  function walk(rs){ for(var i = 0; i < rs.length; i++){ var r = rs[i], s = r.selectorText;
+    if(s && s.indexOf('button') > -1){ var n = rw(s, false); if(n !== s){ try{ r.selectorText = n; }catch(e){} } }
+    if(r.cssRules && r.cssRules.length) walk(r.cssRules); } }
+  function sheets(){ if(!DONE) return; var L = document.styleSheets;
+    for(var i = 0; i < L.length; i++){ var sh = L[i]; if(DONE.has(sh)) continue; var rs; try{ rs = sh.cssRules; }catch(e){ DONE.add(sh); continue; } DONE.add(sh); try{ walk(rs); }catch(e){} } }
+  window.sheets1505 = sheets;
+  sheets();
+  try{ new MutationObserver(sheets).observe(document.head, { childList: true, subtree: true, characterData: true }); }catch(e){}
+
+  /* the links look exactly like the buttons and rows they replace */
+  var css = document.createElement('style'); css.id = 's1505';
+  css.textContent = ':where(a[data-nl]){color:inherit;text-decoration:none;-webkit-user-drag:none}'
+    + ':where(#navIn>a[data-v],.grp-tabs>a[data-nl]){box-sizing:border-box;text-align:center;cursor:pointer;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;text-indent:0;text-shadow:none}'
+    + ':where(#app,#login,#sheet,#toast,#ivM,#wlM,#tapRes) .grp-tabs>a[data-nl]{font-weight:var(--fw-ctl)!important}'   /* the typography rule a991 gives every button this weight */
+    + ':where(a[data-nl="d"]){display:block}'
+    + ':where(a[data-nl="r"]){display:block}';
+  document.head.appendChild(css);
+
+  /* ── 2 · where a click goes → the address of that screen or record ── */
+  var isView = function(v){ return typeof VIEWS !== 'undefined' && VIEWS.indexOf(v) > -1; };
+  var H = function(v){ return window.coeH ? coeH(v) : '#' + v; };
+  var enc = encodeURIComponent;
+  function hrefFor(oc){ var m; oc = String(oc || '');
+    if((m = oc.match(/^\s*(?:[A-Za-z_$][\w$.]*\s*=\s*'[^'\\]*'\s*;\s*)*go\('([a-z]+)'\)\s*;?\s*$/))) return isView(m[1]) ? H(m[1]) : null;
+    if((m = oc.match(/^\s*openStudent\('([^'\\]+)'\)\s*;?\s*$/))) return '#student=' + enc(m[1]);
+    if((m = oc.match(/^\s*openTeacher\('([^'\\]+)'\)\s*;?\s*$/))) return '#teacher=' + enc(m[1]);
+    if((m = oc.match(/^\s*chat1400\.open\('([^'\\]+)'\)\s*;?\s*$/))) return '#chat=' + enc(m[1]);
+    if((m = oc.match(/^\s*chat1400\.todoGo\('([^'\\]*)',\s*'([^'\\]*)',\s*(\d+)\)\s*;?\s*$/))) return '#chat=' + enc(m[1]) + '|' + enc(m[2]) + '|' + m[3];
+    return null; }
+  window.href1505 = hrefFor;
+
+  var INTER = 'a[href],button,input,select,textarea,label,summary,[onclick],[tabindex]:not([tabindex="-1"]),[contenteditable="true"]';
+  var DOCS = '#printArea,.docprint,.paper,.memo,.sd,.ivp,.ivq,.tr-page,#rfNote,[data-doc]';
+  function toA(el, href, kind){ var a = document.createElement('a');
+    for(var i = 0; i < el.attributes.length; i++){ var at = el.attributes[i]; if(at.name === 'type' || at.name === 'role' || at.name === 'aria-pressed' || (at.name === 'tabindex' && at.value === '0')) continue; a.setAttribute(at.name, at.value); }
+    a.setAttribute('href', href); a.setAttribute('data-nl', kind || '1');
+    Object.keys(el).forEach(function(k){ if(!/^__(a881|971)/.test(k)) try{ a[k] = el[k]; }catch(e){} });
+    while(el.firstChild) a.appendChild(el.firstChild);
+    el.replaceWith(a); return a; }
+  function mark(a, href){ a.setAttribute('href', href); a.setAttribute('data-nl', '1'); if(a.getAttribute('role') === 'button') a.removeAttribute('role'); if(a.getAttribute('tabindex') === '0') a.removeAttribute('tabindex'); try{ delete a.__a881k; }catch(e){} }
+
+  /* the menu (laptop side menu, phone bottom bar) */
+  function navLinks(){ var n = $1('navIn'); if(!n) return; var L = O.ea.call(n, ':scope > button[data-v]');
+    for(var i = 0; i < L.length; i++){ var b = L[i], v = b.dataset.v; if(!v || !isView(v)) continue; toA(b, H(v)); }
+    cur(); }
+  function cur(){ try{ var L = O.da.call(document, '#navIn > a[data-v], .grp-tabs > a[data-nl]');
+    for(var i = 0; i < L.length; i++){ var a = L[i], on = a.classList.contains('on'); if(on && a.getAttribute('aria-current') !== 'page') a.setAttribute('aria-current', 'page'); else if(!on && a.hasAttribute('aria-current')) a.removeAttribute('aria-current'); } }catch(e){} }
+  window.navLinks1505 = navLinks;
+
+  /* links inside screens: anchors get their address; plain rows / tiles / group tabs become anchors */
+  function linkify(root){ if(!root || root.nodeType !== 1) return; var L = [];
+    if(root.hasAttribute('onclick')) L.push(root); var Q = O.ea.call(root, '[onclick]'); for(var i = 0; i < Q.length; i++) L.push(Q[i]);
+    for(var j = 0; j < L.length; j++){ var el = L[j]; if(!el.isConnected) continue; var t = el.tagName;
+      if(t === 'A'){ if(el.hasAttribute('href')) continue; var h = hrefFor(el.getAttribute('onclick')); if(h) mark(el, h); continue; }
+      if(t !== 'DIV' && t !== 'SPAN' && t !== 'BUTTON') continue;
+      var h2 = hrefFor(el.getAttribute('onclick')); if(!h2) continue;
+      if(t === 'BUTTON'){ var p = el.parentElement; if(p && p.classList.contains('grp-tabs')) toA(el, h2, '1'); continue; }
+      if(O.cl.call(el, 'a,button,' + DOCS + ',#login,[contenteditable="true"]')) continue;
+      if(O.eq.call(el, INTER)) continue;
+      toA(el, h2, t === 'DIV' ? 'd' : '1'); }
+  }
+  window.linkify1505 = linkify;
+
+  var pend = [], qd = 0;
+  var ST = window.__s1505 = { ms: 0, n: 0, links: 0 };
+  function flush(){ qd = 0; var L = pend; pend = []; var t0 = performance.now();
+    for(var i = 0; i < L.length; i++){ try{ linkify(L[i]); }catch(e){} }
+    try{ if(L.length) cur(); }catch(e){} try{ sheets(); }catch(e){} ST.ms += performance.now() - t0; ST.n++; }
+  try{ new MutationObserver(function(ms){
+      for(var k = 0; k < ms.length; k++){ var m = ms[k];
+        if(m.type === 'attributes'){ var el = m.target; if(el.nodeType === 1 && el.hasAttribute('onclick') && !el.hasAttribute('href')) pend.push(el); continue; }
+        for(var j = 0; j < m.addedNodes.length; j++){ var n = m.addedNodes[j]; if(n.nodeType === 1){ if(n.parentNode && n.parentNode.id === 'navIn' && n.tagName === 'BUTTON'){ qd = qd || 2; } pend.push(n); } } }
+      if(qd === 2){ navLinks(); reOn(); } flush();
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['onclick'] }); }catch(e){}
+
+  /* ── 3 · clicks: a plain click stays in this tab exactly as before; Ctrl/Cmd/Shift-click and middle-click open a new tab ── */
+  function linkOf(t){ if(!t || t.nodeType !== 1) t = t && t.parentElement; if(!t) return null; var a = O.cl.call(t, 'a[data-nl]'); if(!a) return null;
+    var x = O.cl.call(t, INTER); return x === a ? a : null; }
+  addEventListener('click', function(e){ var a = linkOf(e.target); if(!a || e.button !== 0) return;
+    if(e.ctrlKey || e.metaKey || e.shiftKey){ e.stopPropagation(); return; }   /* the browser opens it in a new tab / window */
+    e.preventDefault(); }, true);                                             /* the link's own onclick runs as before */
+  addEventListener('auxclick', function(e){ if(e.button === 1 && linkOf(e.target)) e.stopPropagation(); }, true);
+  addEventListener('mousedown', function(e){ if(e.button === 1 && linkOf(e.target)) e.stopPropagation(); }, true);
+  addEventListener('keydown', function(e){ if(e.key !== ' ' && e.key !== 'Spacebar') return; var a = e.target; if(!a || a.tagName !== 'A' || !a.hasAttribute('data-nl') || e.altKey || e.ctrlKey || e.metaKey) return;
+    e.preventDefault(); e.stopPropagation(); a.click(); }, true);           /* Space works like it did on the menu buttons */
+
+  /* the record shown in a panel keeps its own address too (copy / duplicate the tab) */
+  try{ var ot = window.openTeacher; if(typeof ot === 'function') window.openTeacher = function(name){ var r = ot.apply(this, arguments); try{ if(history.state && history.state.sh) history.replaceState(history.state, '', '#teacher=' + enc(name)); }catch(e){} return r; }; }catch(e){}
+  (function hookChat(n){ var C = window.chat1400; if(!C || typeof C.open !== 'function'){ if(n < 40) setTimeout(function(){ hookChat(n + 1); }, 500); return; } if(C.open.__1505) return;
+    var o = C.open; C.open = function(g){ var r = o.apply(this, arguments); try{ if(typeof VIEW !== 'undefined' && VIEW === 'chat' && !(history.state && history.state.sh)) history.replaceState(history.state, '', '#chat=' + enc(g)); }catch(e){} return r; }; C.open.__1505 = 1; })(0);
+
+  /* menu: links after every build; current screen marked for screen readers */
+  /* a rebuilt menu keeps the current screen marked (before, a rebuild a moment after opening left no item marked until the next tap) */
+  var GRP = { reports: 'astudents', db: 'astudents', enquiry: 'trials', perf: 'teachers', train: 'teachers', leave: 'teachers', actions: 'teachers', finov: 'payroll', expenses: 'payroll', money: 'payroll', forecast: 'payroll', wallets: 'payroll', team: 'monitor' };
+  function reOn(){ try{ var n = $1('navIn'); if(!n || typeof VIEW === 'undefined' || typeof D === 'undefined' || !D || O.eq.call(n, ':scope > .on')) return; var v = VIEW;
+    var sec = D.mgr && typeof NAV_M !== 'undefined' && NAV_M.find(function(x){ return x[0] === v && x[3] === 1; }), g = D.mgr ? GRP[v] : '';
+    [].forEach.call(O.ea.call(n, ':scope > a[data-v]'), function(a){ var d = a.dataset.v; if(d === v || (sec && d === 'more') || (g && d === g)) a.classList.add('on'); }); }catch(e){} }
+  var bn = window.buildNav; if(typeof bn === 'function') window.buildNav = function(){ var r = bn.apply(this, arguments); try{ navLinks(); reOn(); cur(); }catch(e){} return r; };
+  var g0 = window.go; if(typeof g0 === 'function') window.go = function(){ var r = g0.apply(this, arguments); try{ cur(); }catch(e){} return r; };
+  try{ navLinks(); linkify(document.body); }catch(e){}
+
+})();
+</script>
+<script id="t1506">
+/* 28 Oct · 1506 · several tabs open together: no double sounds or alerts, signing out signs out every tab, drafts are not overwritten */
+(function(){
+  if(window.__1506) return; window.__1506 = 1;
+  var lead = function(){ try{ return !window.tabLead1506 || tabLead1506(); }catch(e){ return true; } };
+
+  /* ── sounds, phone / desktop alerts and class reminders: only in the sounding tab ── */
+  var wrap = function(name, quiet){ var f = window[name]; if(typeof f !== 'function' || f.__1506) return; var w = function(){ if(!lead()) return quiet; return f.apply(this, arguments); }; w.__1506 = 1; window[name] = w; };
+  wrap('notify', Promise.resolve(false));   /* phone / desktop notification */
+  wrap('ding', undefined);                  /* message sound */
+  wrap('chime', false);                     /* class sound */
+  /* class / pay / to-do reminders are "told" once per device: another tab leaves them for the sounding tab instead of using them up */
+  (function(){ var f = window.remTold; if(typeof f !== 'function' || f.__1506) return; var w = function(){ if(!lead()) return true; return f.apply(this, arguments); }; w.__1506 = 1; window.remTold = w; })();
+
+  /* ── sign out in one tab → every tab signs out; signing in again (or as someone else) → the other tabs follow ── */
+  addEventListener('storage', function(e){ try{
+    if(e.key !== 'coe.token') return; var cur = typeof TOKEN !== 'undefined' ? TOKEN : null;
+    if(!e.newValue){ if(cur && typeof logout === 'function'){ logout(true); try{ toast('Signed out in another tab'); }catch(x){} } return; }
+    if(e.newValue !== cur){ try{ if(typeof busy === 'function' && busy()) return setTimeout(function(){ location.reload(); }, 3000); }catch(x){} location.reload(); }
+  }catch(x){} });
+
+  /* ── saves kept on this device: one tab sends them at a time ── */
+  (function(){ var f = window.wqFlush; if(typeof f !== 'function' || f.__1506) return; var w = function(){ var self = this, a = arguments; return window.lock1506 ? lock1506('wq', function(){ return f.apply(self, a); }) : f.apply(self, a); }; w.__1506 = 1; window.wqFlush = w; })();
+
+  /* ── drafts (class notes, QA evaluations, monthly feedback): a tab never writes over a draft another tab changed since this tab last
+        saved it. It says so once; closing and reopening the form there continues from the newest version. ── */
+  var DK = /^coe\.(nd:|qa\.draft\.|fbx\.(?!d\.))/, MINE = {}, WARN = {};
+  var st = window.store;
+  if(typeof st === 'function' && !st.__1506){ var sw = function(op, k, v){
+      if((op === 'set' || op === 'del') && typeof k === 'string' && DK.test(k)){
+        var cur; try{ cur = localStorage.getItem(k); }catch(e){ return st.apply(this, arguments); }
+        var nv = op === 'set' ? String(v) : null;
+        if(Object.prototype.hasOwnProperty.call(MINE, k) && cur !== MINE[k] && cur !== nv){
+          if(!WARN[k]){ WARN[k] = 1; try{ toast('This draft was changed in another tab · that version is kept. Close and reopen this form to continue from it.'); }catch(e){} }
+          return; }
+        var r = st.apply(this, arguments); MINE[k] = nv; return r; }
+      return st.apply(this, arguments); };
+    sw.__1506 = 1; window.store = sw; }
+  var os = window.openSheet; if(typeof os === 'function') window.openSheet = function(){ MINE = {}; WARN = {}; return os.apply(this, arguments); };
+  window.draft1506 = function(){ return { mine: Object.keys(MINE), warn: Object.keys(WARN) }; };   /* tests */
+})();
+</script>
 </body>
 </html>
