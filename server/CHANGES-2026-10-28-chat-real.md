@@ -41,3 +41,28 @@
   no presence of other teachers).
 - Stability: teacher Team Chat open 0.28 on some runs comes from a sheet that opens by itself in the preview about 9 s after load;
   it happens on the build before 1419 too (2 of 3 runs) — not from these changes.
+
+## 1450 · Team Chat final polish (Misty 12:25) · management and teacher views, laptop first
+English
+- All Teachers: "Chat with teachers and management here. For official notices, leave requests, or pay-related inquiries, go to
+  Notices & requests." Other chats end with the same guidance; Time-in / Substitutes / private chat descriptions reworded.
+- "No messages today" · "View earlier messages" · "Back to conversation" · "Still open from earlier days" · "Last active 12:05" before
+  presence times · "Management" spelled out in the participant panel · time-in note reworded.
+Management composer (behaviour unchanged, verified against the server: reply flag, acknowledge flag, pin flag, Notices form)
+- "Requires reply" · "Requires acknowledgement" · "Pin message" · "Templates" · "Create formal notice"; selected ones turn teal with a
+  check mark and a line says what the message will do ("This message will ask everyone in this chat to reply by 18:00 and stay pinned
+  at the top."). Tooltips explain each; acknowledgement is "read and understood", not task completion.
+- Acknowledgement wording everywhere: "Acknowledge" button, "2 of 4 acknowledged", "You acknowledged", "Please acknowledge", Today line
+  "Acknowledge Celine's message in Team Chat". Reply chip: "Reply requested by 13:06 · 1 of 4 replied".
+- Create formal notice: the Notices & requests form now starts with "This creates a formal notice in Notices & requests, not in Team
+  Chat. Only the people you tick below receive it … Check the recipients before you tap Send."
+Layout
+- Participant panel: ✕ hide button (management; remembered on this device, also via the Members button). Teachers keep the small list.
+- "Find a teacher" above the direct chats (management, when there are more than 5).
+- No boxes scrolling inside the chat: pinned shows 2 lines, "Still open" shows 2 items + Show all; on short laptop screens
+  (≤ 860 px tall, e.g. 1366×768) 1 line / 1 item and the key hint is hidden, so the conversation keeps its space.
+- Option row wraps instead of scrolling: no label is ever cut off (checked 1024, 1366, 1440, 390).
+Audience
+- Search is "Search all my chats", with its scope ("…A direct chat stays private: only that teacher and management can read it.")
+  and each result labelled with its chat ("In All Teachers", "In Teacher Ara · private"); the header no longer shows the previous
+  chat's members while searching.
