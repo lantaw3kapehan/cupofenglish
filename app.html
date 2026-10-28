@@ -5200,6 +5200,7 @@ const epk = svPill(null, '⏳ ' + (action==='cancel' ? 'Cancelling' : action==='
 try{ const r = await api('editClass', TOKEN, e.id, f); if(!r.ok) throw r; svPill(epk, '✓ <b>Saved in Google Calendar</b>' + (r.note ? ' · ' + esc(r.note) : ''), 'ok'); try{ ding('msg'); }catch(y){}
 if(action === 'move'){ e.mv = { start: before.start, end: before.end }; setTimeout(() => cxMoveProof(before, e, r.fwd), 450); }   /* the same parent picture: old time → new time */
 Object.keys(SCC).forEach(k => { SCC[k]._t = 0; });   /* keep what's on screen, refetch quietly */ CLS_HOLD = null; if(src==='sw' && SW) delete CLSM[SW.code];
+if(src==='sw' && SW){ const swc = SW.code; try{ store('set','coe.cls.' + swc, JSON.stringify(SW.events)); }catch(y){} setTimeout(() => api('mgmtStuClasses', TOKEN, swc).then(x => { if(!Array.isArray(x)) return; CLSM[swc] = x; try{ store('set','coe.cls.' + swc, JSON.stringify(x)); }catch(y){} if(SW && SW.code === swc){ SW.events = x.slice(); swPaint(); } }).catch(() => {}), 1500); }   /* 1420 */
 if(code) api('mgmtStuClasses', TOKEN, code).then(x => { CLSM[code] = x; try{ store('set','coe.cls.'+code, JSON.stringify(x)); }catch(y){}
 if(STU && STU.code===code){ STU.cls = x; const el = $('stuSch'); if(el) el.innerHTML = stuSched(x); } }).catch(()=>{});
 else loadSchedule(0, true); }
@@ -5310,7 +5311,7 @@ else $('sheetBody').innerHTML = h;
 async function swOpen(code, name){
 SW = { code, name, events: null };
 openSheet(`<h1>${esc(name || code)}</h1><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>`); $('sheet').classList.add('wide');
-let c = CLSM[code]; if(!c){ try{ c = JSON.parse(store('get','coe.cls.' + code)||'null'); }catch(e){} } if(c){ SW.events = c.slice(); swPaint(); }
+let c = CLSM[code]; if(!c){ try{ c = JSON.parse(store('get','coe.cls.' + code)||'null'); }catch(e){} } if(c && window.clsClean) c = clsClean(c); if(c){ SW.events = c.slice(); swPaint(); }   /* 1420 */
 try{ const L = await api('mgmtStuClasses', TOKEN, code); CLSM[code] = L; try{ store('set','coe.cls.' + code, JSON.stringify(L)); }catch(e){} if(SW && SW.code === code){ SW.events = L.slice(); swPaint(); } }
 catch(e){ if(!SW.events) $('sheetBody').innerHTML = `<h1>${esc(name || code)}</h1><div class="empty">Could not load the calendar. Try again.</div>`; }
 }
@@ -6366,7 +6367,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1357;
+const COE_V = 1358;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -12430,6 +12431,10 @@ function svPill(id, html, kind){
    know the student, or does not answer in 8 s. A move/cancel/add on this device reads fresh for 2 minutes. */
 (function(){
   const base = api, memo = {}; let fresh = 0;
+  /* 1420: a moved class's old copy (same event, start = its "moved from" time) never shows next to the new time */
+  function clsClean(L){ try{ if(!Array.isArray(L)) return L; const gone = {}; L.forEach(e => { if(e && e.mv && e.mv.start && e.start !== e.mv.start) gone[String(e.id) + '|' + new Date(e.mv.start).getTime()] = 1; });
+    if(!Object.keys(gone).length) return L; return L.filter(e => !(e && !e.mv && gone[String(e.id) + '|' + new Date(e.start).getTime()])); }catch(x){ return L; } }
+  window.clsClean = clsClean;
   async function clsDb(code){
     const k = String(code || '').trim().toUpperCase(), m = memo[k]; if(m && Date.now() - m.t < 20000 && Date.now() > fresh) return m.d;
     const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 8000) : 0;
@@ -12438,7 +12443,8 @@ function svPill(id, html, kind){
       memo[k] = { t: Date.now(), d: r.data }; return r.data; }
     finally{ clearTimeout(tid); } }
   api = function(fn, ...args){
-    if((fn === 'mgmtStuClasses' || fn === 'tStuClasses') && TOKEN && args[1] && Date.now() > fresh) return clsDb(args[1]).catch(() => base(fn, ...args));
+    if((fn === 'mgmtStuClasses' || fn === 'tStuClasses') && TOKEN && args[1] && Date.now() > fresh) return clsDb(args[1]).then(clsClean).catch(() => Promise.resolve(base(fn, ...args)).then(clsClean));
+    if(fn === 'mgmtStuClasses' || fn === 'tStuClasses') return Promise.resolve(base(fn, ...args)).then(clsClean);   /* 1420 */
     if(/^(mgmtEditClass|editClass|mgmtAddClass|addClass|mgmtCancelClass|cancelClass|mgmtMoveClass|moveClass|tCancel\w*|mgmtSub\w*)$/.test(fn)){ fresh = Date.now() + 2 * 6e4; for(const k in memo) delete memo[k]; }
     return base(fn, ...args); };
 })();
