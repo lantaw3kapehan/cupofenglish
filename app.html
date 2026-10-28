@@ -1735,6 +1735,7 @@ if(pend > 0 && fbOpen()) todo.push(`<div class="li" onclick="go('students');setF
 <div class="fbbar"><i style="width:${Math.round(FB.done/FB.total*100)}%"></i></div><div class="small mute">${left > 1 ? 'Due ' + esc(FB.dueLabel) + ' · ' + left + ' days left · before pay on the 10th' : left === 1 ? 'Due tomorrow, ' + esc(FB.dueLabel) + ' · before pay on the 10th' : left === 0 ? 'Due today · before pay on the 10th' : 'Overdue since ' + esc(FB.dueLabel) + ' · your pay is released once it is done'}</div></div><span class="mute">›</span></div>`); }
 if(FB && FB.due && window.fbNextItem && !(FB.total && FB.total - FB.done > 0 && fbOpen())) { const nx = fbNextItem(); if(nx) todo.push(nx); }
 if(window.ncTodo) { try { ncTodo().forEach(x => todo.push(x)); } catch(e) {} }
+if(window.chatTodo1415) { try { chatTodo1415().forEach(x => todo.unshift(x)); } catch(e) {} }
 const hwDue = todayList.filter(c => !c.cancelled && c.code && c.type!=='Trial' && now > new Date(c.end) && !(D.hw||{})[c.id]);
 if(hwDue.length) todo.push(`<div class="li" onclick="hwSheet('${esc(hwDue[0].id)}')"><span class="chip coral">Homework</span><div class="grow ell">${hwDue.length} class${hwDue.length>1?'es':''} today not marked · ${esc(hwDue.map(c=>c.student||c.code).join(', '))}</div><span class="mute">›</span></div>`);
 if(live.length && live.some(c => new Date(c.end) > now)) h += `<div class="sndrow small"><span class="mute">${chimeOn() ? '🔔 Class sound on · first class 15 min before · never during a class' : '🔕 Class sound off'}</span><a class="link" onclick="chimeTest()">Test</a><a class="link" onclick="chimeToggle()">${chimeOn() ? 'Turn off' : 'Turn on'}</a></div>`;
@@ -6348,7 +6349,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1351;
+const COE_V = 1352;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -30964,13 +30965,28 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     if(!i){ dn.insertAdjacentHTML('beforeend', '<i class="dot hide" id="dChat"></i>'); i = dn.querySelector('.dot'); } var un = unreadAll(); i.textContent = un > 99 ? '99+' : un ? String(un) : ''; i.classList.toggle('hide', !un); i.classList.add('chN'); }
   async function boot(){ if(!hasD()){ setTimeout(boot, 2000); return; }
     try{ var r = await post('init'); if(!r || !r.ok || r.off){ setOn(false); return; } S.init = r; setOn(true); try{ ATN = -1; ding(r); }catch(e){}
-      if(!S.gid) S.gid = (r.groups[0] || {}).id || 'all'; if(VIEW === 'chat') load(); paintHdr(); }catch(e){} }
+      if(!S.gid) S.gid = (r.groups[0] || {}).id || 'all'; if(VIEW === 'chat') load(); paintHdr(); fetchTodo(); }catch(e){} }
+  /* 1415 (Misty 23:27): open Team Chat items on the teacher's Today · one To do line each ("Reply to CupOfEnglish in Team Chat",
+     "Confirm Celine's message in Team Chat"), tap opens the message in its chat. Cleared as soon as it is answered (the server marks
+     replies and confirmations). No sound and no phone alert of its own (the chat alert already went out); while a class is running the
+     list is not redrawn, it updates when the class ends. */
+  S.todoSig = '[]';
+  async function fetchTodo(){ if(!S.on || !hasD() || isMgr()) return; S.todoAt = Date.now();
+    try{ var r = await post('todo'); if(!r || !r.ok || !Array.isArray(r.items)) return; S.todo = r.items; var sig = JSON.stringify(r.items.map(function(x){ return x.kind + x.id; }));
+      if(sig !== S.todoSig){ S.todoSig = sig; S.todoLater = 1; refreshToday(); } }catch(e){} }
+  function refreshToday(){ if(!S.todoLater) return; if(typeof VIEW === 'undefined' || VIEW !== 'today' || typeof renderToday !== 'function'){ S.todoLater = 0; return; }
+    var sh = document.getElementById('sheet'); if(S.inCl) return; if(sh && sh.classList.contains('on')){ clearTimeout(S.todoT); S.todoT = setTimeout(refreshToday, 3000); return; } S.todoLater = 0; try{ renderToday(); }catch(e){} }
+  window.chatTodo1415 = function(){ if(!S.todo || !S.todo.length || isMgr()) return [];
+    return S.todo.map(function(x){ var who = disp(x.author), where = x.gid.indexOf('dm:') === 0 ? 'Team Chat' : 'Team Chat · ' + x.chat;
+      var t = x.kind === 'confirm' ? 'Confirm ' + who + '\u2019s message in ' + where : 'Reply to ' + who + ' in ' + where;
+      return '<div class="li" onclick="chat1400.todoGo(\'' + esc(x.gid) + '\',\'' + esc(x.day) + '\',' + Number(x.id) + ')"><span class="chip coral">Team Chat</span><div class="grow" style="min-width:0"><div class="ell"><b>' + esc(t) + '</b></div><div class="small mute ell">' + esc(x.body || '') + (x.by ? ' · by ' + esc(tm(x.by)) : '') + '</div></div><span class="mute">\u203a</span></div>'; }); };
   setTimeout(boot, 1500);
   setInterval(function(){ if(!S.on || !hasD() || document.visibilityState !== 'visible') return; if(VIEW === 'chat') return; poll(); }, 30000);
   setInterval(function(){ if(S.on && hasD() && VIEW === 'chat' && document.visibilityState === 'visible' && S.view === 'chat' && !S.busy) poll(true); }, 4000);
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible' && S.on) poll(VIEW === 'chat'); });
   async function poll(open){ try{ var r = await post('poll'); if(!r || !r.ok) return; if(r.off){ setOn(false); return; }
       var ch = r.last !== S.last; S.last = r.last; try{ ding(r); }catch(e){} if(S.init){ S.init.groups = r.groups; if(r.today !== S.init.today){ S.init.today = r.today; if(S.day && S.view === 'chat') S.day = null; } }
+      S.inCl = !!r.inClass; if(!isMgr() && (ch || !S.todoAt || Date.now() - S.todoAt > 60000)) fetchTodo(); else if(!S.inCl && S.todoLater) refreshToday();
       paintHdr(); if(open && ch) load(true); else if(open) paintSide(); }catch(e){} }
 
   /* ---------- data ---------- */
@@ -31110,6 +31126,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     list: function(){ S.ph = 'list'; render(true); },
     today: function(){ S.day = null; S.view = 'chat'; S.data = (S.cache || {})[S.gid + '|' + ((S.init && S.init.today) || '')] || null; render(); load(); },
     day: function(d){ S.day = d; S.view = 'chat'; S.data = (S.cache || {})[S.gid + '|' + d] || null; render(); load(); },
+    todoGo: function(g, d, id){ if(typeof go === 'function') go('chat'); setTimeout(function(){ A.jump(g, d, id); }, 0); },
     jump: function(g, d, id){ S.gid = g; S.day = d === (S.init && S.init.today) ? null : d; S.view = 'chat'; S.focus = id; S.data = null; S.ph = 'conv'; render(); load(); },
     hist: async function(){ S.view = S.view === 'hist' ? 'chat' : 'hist'; var g0 = S.gid; S.days = (S.daysC || {})[g0] || null; render(); if(S.view === 'hist'){ var r = await post('days', { gid: g0 }).catch(function(){ return null; }); if(r && r.ok){ (S.daysC || (S.daysC = {}))[g0] = r.days; } if(S.gid === g0 && S.view === 'hist'){ S.days = r && r.ok ? r.days : (S.days || []); render(true); } } },
     search: function(){ S.view = S.view === 'search' ? 'chat' : 'search'; S.res = null; render(); var q = document.getElementById('chQ'); if(q) q.focus(); },
@@ -31196,7 +31213,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
       if(r && r.ok){ if(tmp && S.data){ var ix = S.data.msgs.indexOf(tmp); if(ix > -1){ if(r.msg) S.data.msgs[ix] = r.msg; else S.data.msgs.splice(ix, 1); } render(true); } load(true); }
       else { if(tmp && S.data){ var i2 = S.data.msgs.indexOf(tmp); if(i2 > -1) S.data.msgs.splice(i2, 1); if(p && p.mine) p.mine.replied = old; render(true); } toast2((r && r.error) || 'Not sent · check the internet and try again'); } },
     confirm: async function(id){ var m = findM(id), was = m && m.mine ? m.mine.confirmed : null; if(m){ m.mine = m.mine || {}; m.mine.confirmed = m.mine.confirmed || new Date().toISOString(); render(true); } toast2('Confirmed');
-      var r = await post('confirm', { id: id }).catch(function(){ return null; }); if(r && r.ok) load(true); else { if(m && m.mine) m.mine.confirmed = was; render(true); toast2((r && r.error) || 'Not saved · check the internet and try again'); } },
+      var r = await post('confirm', { id: id }).catch(function(){ return null; }); if(r && r.ok){ load(true); fetchTodo(); } else { if(m && m.mine) m.mine.confirmed = was; render(true); toast2((r && r.error) || 'Not saved · check the internet and try again'); } },
     pin: async function(id, on){ var m = findM(id), old = m ? m.pinned : null, oldP = S.data ? (S.data.pinned || []).slice() : null;
       if(m && S.data){ m.pinned = !!on; S.data.pinned = (S.data.pinned || []).filter(function(x){ return x.id !== id; }); if(on) S.data.pinned.unshift(m); render(true); }
       var r = await post('pin', { id: id, on: !!on }).catch(function(){ return null; }); if(r && r.ok) load(true); else { if(m) m.pinned = old; if(S.data && oldP) S.data.pinned = oldP; render(true); toast2((r && r.error) || 'Not saved · check the internet and try again'); } },
