@@ -89,3 +89,36 @@ Misty:
 - **Screens:** branch `rollback-pre-1495`.
 - **Server:** redeploy coe-chat v14 from the commit before 1495, or leave v16 (it is backward compatible).
 - **Data:** see the rollback list above.
+
+## 28 Oct evening · fix-forward 1497 (Misty 19:58, 20:05, 20:06)
+- **Only the very first time-in of the day posts to Team Chat › Time-in** (the time-in card).
+  - "I'm in" for later classes is recorded exactly as before, but never offers or posts a picture in Team Chat.
+  - Class check-ins still queued on a device are dropped, and their pending notes are cleared.
+  - Already posted today: **1** (id 62, April 19:56, "In, Cici's class · 19:56 · On time"). Kept, not deleted.
+- **The screen picture showed our own "Taking your screen picture…" cover.**
+  - **Fresh frame:** the app now waits 0.9 s after blanking the cover before taking the picture.
+  - **Cover-only pictures:** a picture that is mostly the app's cover colour is detected and **not sent** to Time-in: "Your screen picture shows this app, not your class · tap Retake screen picture…". Send stays off and **Retake screen picture** appears.
+  - **Time-in is never blocked:** the 6-second wait for VooV and the save are exactly as before. (A stricter "no picture unless VooV is in front" gate was drafted and removed, because it would have changed the time-in rules.)
+- **No WeChat in the teacher time-in channel (Misty 20:06).**
+  - Copy picture for WeChat, Save picture and the WeChat texts are gone from the time-in sheet, the old fallback result and the dead toast. **Send to Time-in** is the single action.
+  - Management's chips are relabelled: "Sent to Time-in ✓ 17:04 / Not sent to Time-in" (Team › time-ins) and "Time-in ✓ / Time-in –" (Monitor).
+  - **Not removed (ambiguous, parent-facing):** the "Ops is off now · send these in each class WeChat group" reminders on Today (copy code, paste in the parents' class group). That is WeChat for parents, not the time-in channel.
+- **"Seen by 0":** a teacher's own post hides it (since 1495). Management still sees "Seen by X of Y".
+
+## Time-in rules checklist (vs `rollback-pre-1495`)
+| Rule | Status |
+|---|---|
+| Time-in window (40 min) · On time / Late · minutes before first class | Unchanged (no edits to timeInSheet, sendTimeIn or tapTimeIn logic). |
+| Internet check (speed, jitter, thresholds) and Redo | Unchanged. The redo picture also goes through Send to Time-in. |
+| Penalties, lateness tagging | Unchanged (no edits). |
+| Auto time-out | Unchanged (no edits). |
+| First-class screenshot requirement (entire screen, VooV, clock, LAN) | Unchanged. The picture is never blocked; only sending a cover-only picture to Team Chat is refused (retake). |
+| Class check-in records for later classes | Unchanged: recorded the same way, no Team Chat post. |
+| Monitor tiles, To do, management views | Unchanged apart from the chip labels (channel name). To do: "Post your time-in picture in the WeChat corner" became "Send your time-in picture to Team Chat". It stays until sent, as before (sending now marks it, instead of the old tick). |
+| Intended changes | Picture channel Team Chat › Time-in (no WeChat) · weak / connection-dropped message · later check-ins not posted. |
+
+**Side effects to know about (not rule changes):**
+- **Picture timing:** taking the screen picture takes about 0.9 s longer. The time-in time is read after the picture, as before.
+- **Time-in alerts:** they now go to management only; teachers are no longer alerted about each other's time-in cards.
+- **Time-in receipts:** for teacher posts they count management only ("Seen by X of 2").
+- **Automatic post removed:** the old automatic post of the card (before any tap) is replaced by the teacher's Send.
