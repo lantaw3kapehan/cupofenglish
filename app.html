@@ -6367,7 +6367,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1360;
+const COE_V = 1361;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -12184,11 +12184,14 @@ body:not(.mgr) #v-books .bl-c{border-radius:18px;overflow:hidden;border:1px soli
     return AG; }
   function agPaint(){ const host = document.querySelector('#v-books .bk-rule'); if(!host || !D || !D.mgr) return; let el = $('bkAgree');
     if(!el){ host.insertAdjacentHTML('afterend', '<div id="bkAgree" style="margin:8px 0 2px"></div>'); el = $('bkAgree'); }
-    if(!AG){ el.innerHTML = '<div class="small mute">Loading who has agreed…</div>'; return; }
+    const line = t => `<summary class="small" style="list-style:none;cursor:pointer;min-height:20px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>Books rule</b> <span class="mute">· ${t} ›</span></summary>`;
+    if(!AG){ if(!el.firstElementChild || el.firstElementChild.tagName !== 'DETAILS') el.innerHTML = '<details>' + line('checking who has agreed…') + '</details>'; return; }
     const yes = AG.filter(x => x.at), no = AG.filter(x => !x.at);
-    el.innerHTML = `<div class="small" style="margin-bottom:6px"><b>Books rule</b> <span class="mute">· ${yes.length} of ${AG.length} teachers agreed (they agree the first time they open a book)</span></div><div style="display:flex;flex-wrap:wrap;gap:6px">`
+    const was = el.querySelector('details'), keep = !!(was && was.open);   /* a refresh keeps it as the manager left it */
+    el.innerHTML = '<details' + (keep ? ' open' : '') + '>' + line(yes.length + ' of ' + AG.length + ' teachers agreed' + (no.length ? ' · ' + no.length + ' not yet' : ''))
+      + `<div class="small mute" style="margin:4px 0 6px">They agree the first time they open a book.</div><div style="display:flex;flex-wrap:wrap;gap:6px">`
       + no.map(x => `<span class="bk-sn" style="--sb:#FDF1EE;--sc:var(--coral)">${esc(cap(x.name))} · not yet</span>`).join('')
-      + yes.map(x => `<span class="bk-sn" style="--sb:#E8F5E9;--sc:#2E7D32">✓ ${esc(cap(x.name))} · ${esc(when(x.at))}</span>`).join('') + '</div>'; }
+      + yes.map(x => `<span class="bk-sn" style="--sb:#E8F5E9;--sc:#2E7D32">✓ ${esc(cap(x.name))} · ${esc(when(x.at))}</span>`).join('') + '</div></details>'; }
   const L0 = window.bkLib2; if(L0) window.bkLib2 = function(){ const r = L0.apply(this, arguments); try{ if(D && D.mgr){ agPaint(); agLoad().then(agPaint); } }catch(e){} return r; };
 })();
 </script>
