@@ -18,3 +18,10 @@
   (like a real chat); management keeps its full read receipts.
 - Live test (v12, hidden test message 38): 👍 saved and returned with the message; "<b>" refused ("Pick an emoji").
 - Emojis are people's own content in chat; the app's own buttons and labels keep line icons.
+
+## 1418 · mark up a picture
+- A picture waiting to be sent has an Edit (pencil) button: Pen · Circle · Arrow · Box · Text · Crop, colours red (first) · yellow ·
+  blue · white, Undo (Ctrl/Cmd+Z), Cancel / Done. Done saves a new flattened picture (shrunk to ≤ 300 KB like every chat picture) in
+  place of the original; tick "Keep the original too" to send both.
+- A received picture: open it → "Mark up and reply": the marked-up copy is attached to the box as a reply to that message.
+- Built into the app (canvas, no outside library); works with mouse, pen and touch.
