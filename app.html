@@ -6367,7 +6367,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1363;
+const COE_V = 1364;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -30322,6 +30322,51 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   window.pkChipDate = function(code, teacher, start){ const p = window.pkPaid(code, teacher, start), sd = typeof tdDate === 'function' ? tdDate(start) : String(start || '');
     if(p && p.paid) return '<span title="Paid ' + esc(p.paid) + ' · classes start ' + esc(String(start || '').slice(0, 10)) + '">' + (typeof tdDate === 'function' ? tdDate(p.paid) : esc(p.paid)) + '</span>';
     return '<span title="' + (M ? 'No payment linked in SALES for this package · showing the class start date' : 'Checking the payment date…') + '">' + sd + (M ? ' <sup style="opacity:.7">?</sup>' : '') + '</span>'; };
+})();
+</script>
+<script>
+/* 1424 · change stamps: what changed in the database → which views refetch */
+(function(){
+  const delKeys = re => { try{ Object.keys(SB_FRESH).forEach(k => { if(re.test(k)) delete SB_FRESH[k]; }); }catch(e){} };
+  const typing = () => { const a = document.activeElement; return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'button' && a.type !== 'checkbox' && a.type !== 'radio') || !!(a && a.isContentEditable); };
+  const sheetOn = () => { const s = document.getElementById('sheet'); return !!(s && s.classList.contains('on')); };
+  function stuRefresh(){ try{ if(typeof STU === 'undefined' || !STU || !STU.code || !sheetOn() || window._stuOpen !== STU.code) return; const code = STU.code;
+    api(D.mgr ? 'mgmtStuClasses' : 'tStuClasses', TOKEN, code).then(L => { if(!Array.isArray(L)) return; CLSM[code] = L; try{ store('set', 'coe.cls.' + code, JSON.stringify(L)); }catch(e){} if(STU && STU.code === code){ STU.cls = L; const el = $('stuSch'); if(el) el.innerHTML = stuSched(L); } }).catch(() => {});
+    api(D.mgr ? 'mgmtStudent' : 'tStudent', TOKEN, code).then(r => { if(!r || r.ok === false || !(STU && STU.code === code)) return; try{ store('set', 'coe.stu.' + code, JSON.stringify(r)); }catch(e){} STU.r = r; try{ stuRender(); }catch(e){} }).catch(() => {}); }catch(e){} }
+  function swRefresh(){ try{ if(typeof SW === 'undefined' || !SW || !SW.code || !sheetOn()) return; const code = SW.code; api('mgmtStuClasses', TOKEN, code).then(L => { if(!Array.isArray(L) || !(SW && SW.code === code)) return; CLSM[code] = L; try{ store('set', 'coe.cls.' + code, JSON.stringify(L)); }catch(e){} SW.events = (window.clsClean ? clsClean(L) : L).slice(); swPaint(); }).catch(() => {}); }catch(e){} }
+  function lsRefresh(){ try{ if(typeof DOCV !== 'undefined' && DOCV && DOCV.key === 'SHPKG' && DOCV.pick && sheetOn() && typeof shSummary === 'function') shSummary(DOCV.pick, true, 1); }catch(e){} }
+  function viewRefresh(views){ try{ if(views.indexOf(VIEW) < 0) return; if(VIEW === 'schedule' && typeof loadSchedule === 'function'){ loadSchedule(0, true); return; } if(VIEW === 'active' && typeof loadActive === 'function'){ loadActive(true); return; } if(VIEW === 'astudents' && typeof loadStudents === 'function'){ loadStudents(); return; } const S = SCREENS[VIEW]; if(S) S[2](true); }catch(e){} }
+  /* the registry: kind of data → what to drop, which screens refetch */
+  const REG = {
+    classes: { fns: /(StuClasses|Schedule|TeacherWeek|MonDay|LeaveClasses|getBootstrap|mgmtOverview)\|/, drop(){ try{ Object.keys(CLSM).forEach(k => delete CLSM[k]); }catch(e){} try{ Object.keys(SCC).forEach(k => { SCC[k]._t = 0; }); }catch(e){} }, views: ['schedule', 'tsched', 'mtoday', 'today', 'monitor', 'todo'], stu: 1, sw: 1 },
+    packages: { fns: /(mgmtActive|mgmtStudents?|tStudent|mgmtRenewals|mgmtOverview|getBootstrap)\|/, drop(){ try{ AT = null; store('del', 'coe.m.active'); }catch(e){} }, views: ['active', 'astudents', 'students', 'mtoday', 'todo', 'renewals'], stu: 1, ls: 1 },
+    lessons: { fns: /(mgmtActive|mgmtStudents?|tStudent|mgmtRenewals|tGrowth|mgmtGrowth)\|/, drop(){ try{ AT = null; store('del', 'coe.m.active'); }catch(e){} }, views: ['active', 'astudents', 'students', 'mtoday', 'todo'], stu: 1, ls: 1 },
+    sales: { fns: /(moneyLists|mgmtActive|mgmtStudent|mgmtRenewals|mgmtOverview)\|/, drop(){ try{ MN = null; store('del', 'coe.m.money'); }catch(e){} }, views: ['money', 'finov', 'expenses', 'active', 'mtoday', 'todo'], ls: 1 },
+    money: { fns: /(moneyLists|mgmtPayroll|mgmtOverview)\|/, drop(){ try{ MN = null; store('del', 'coe.m.money'); }catch(e){} }, views: ['money', 'finov', 'expenses', 'payroll'] },
+    students: { fns: /(mgmtStudents?|mgmtDatabase|dbLists|dbRecord|tStudent|getBootstrap)\|/, drop(){ try{ DB = null; MS = null; store('del', 'coe.m.db'); }catch(e){} }, views: ['db', 'astudents', 'students'], stu: 1 },
+    notes: { fns: /(mgmtStudent|tStudent|tHwHist|tNoteComments|mgmtReports)\|/, drop(){}, views: ['reports'], stu: 1 },
+    reports: { fns: /(mgmtStudent|tStudent|mgmtReports|mgmtReportsWait|tFbStatus|tGrowth|mgmtGrowth|mgmtQaLast)\|/, drop(){}, views: ['reports', 'qa', 'growth'], stu: 1 },
+    timein: { fns: /(mgmtOverview|mgmtHours|tGrowth|getBootstrap)\|/, drop(){}, views: ['mtoday', 'monitor', 'today', 'todo'] },
+    msgs: { fns: /(mgmtMsgs|tMsgs)\|/, drop(){}, views: ['msgs', 'inbox', 'messages'] },
+    agree: { fns: /(mgmtAgree\w*|mgmtActive)\|/, drop(){}, views: ['active', 'contract'] } };
+  let last = null, busy = false, at = 0; const wait = {};
+  function apply(kinds){ const views = [], acts = {}; kinds.forEach(k => { const R = REG[k]; if(!R) return; delKeys(R.fns); try{ R.drop(); }catch(e){} R.views.forEach(v => views.indexOf(v) < 0 && views.push(v)); if(R.stu) acts.stu = 1; if(R.sw) acts.sw = 1; if(R.ls) acts.ls = 1; });
+    if(typing()){ kinds.forEach(k => wait[k] = 1); return; }   /* never interrupt typing: try again on the next check */
+    viewRefresh(views); if(acts.stu) stuRefresh(); if(acts.sw) swRefresh(); if(acts.ls) lsRefresh(); }
+  async function check(){ if(busy || typeof TOKEN === 'undefined' || !TOKEN || typeof D === 'undefined' || !D || document.hidden) return; busy = true; at = Date.now();
+    try{ const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: ['sys:stamps'] }) }).then(x => x.json());
+      const s = r && r.ok && r.docs && r.docs['sys:stamps'] && r.docs['sys:stamps'].data; if(!s || typeof s !== 'object') return;
+      const kinds = Object.keys(wait); Object.keys(wait).forEach(k => delete wait[k]);
+      if(last) Object.keys(s).forEach(k => { if(+s[k] > +(last[k] || 0) && kinds.indexOf(k) < 0) kinds.push(k); });
+      last = s; if(kinds.length) apply(kinds); }catch(e){} finally{ busy = false; } }
+  window.coeStampCheck = check; window.coeStampReg = REG; window.coeStampApply = apply;
+  setInterval(() => { if(!document.hidden && Date.now() - at > 14000) check(); }, 5000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) check(); }); window.addEventListener('focus', () => check());
+  /* a save made here: look again soon (the database-first saves land within seconds, Google's copies within a minute or two) */
+  const W = /^(add|edit|save|mgmt(Renew|Enrol)Paid|mgmtRenewal|mgmtSetBook|mgmtAgreeSave|timeIn|timeOut|classIn|tFbSubmit|tPcSubmit|tCancel|mgmtSub|mgmtMsg|tMsg|saveNote|markHomework|mgmtPkgFix|mgmtRefund|addExpense|addSale)/;
+  const _api = window.api; window.api = function(fn){ const p = _api.apply(this, arguments); try{ if(W.test(String(fn || ''))) Promise.resolve(p).then(() => { [3000, 15000, 45000, 120000].forEach(t => setTimeout(() => { at = 0; check(); }, t)); }).catch(() => {}); }catch(e){} return p; };
+  for(const k in _api) try{ window.api[k] = _api[k]; }catch(e){}
+  setTimeout(check, 4000);
 })();
 </script>
 <style id="st1270">
