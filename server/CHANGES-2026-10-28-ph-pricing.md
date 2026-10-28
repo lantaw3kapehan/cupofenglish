@@ -241,3 +241,36 @@ Review of 1530 + Misty (22:34): "make the Philippine price list follow the same 
 - Before/after: scratchpad/phprice/font-compare-china-*.png.
 - Not in the frame (own fonts, not changed; listed for Misty): weekly open/class times pictures, Payment Confirmation, some document
   pictures (Rockwell / Arvo stacks in their own CSS / canvas code).
+
+---
+
+# Releases 1545–1548 (29 Oct 2026, Misty 03:19)
+
+## 1545 + coe-student v25 · PH Young Learners 1:1 and Teens 1:1
+- docs sys:pricing_ph gets two programmes (`yle`, `teens`): 15 / 30 / 60 lessons at ₱6,750 / ₱13,500 / ₱27,000 (₱450 per 50-minute
+  lesson, no free lessons); 50-minute lessons that can be split into two 25-minute halves (0.5 each), as China; tracks Foundation /
+  Consolidation / Advancement (China's kids stage names; track ids stay foundation / professional / mastery).
+  Young Learners: CEFR Pre-A1 Starters → A1 Movers → A2 Flyers. Teens: A2 → B1 → B2, "ready for KET / PET" on Advancement (as China).
+  Content mirrors China's kids / teens stages (interest, phonics and first speaking habits → vocabulary, grammar, reading and speaking on a
+  solid base → all four skills, confident speaking) in parent-facing Philippine English; no exam-pass promises, no China references.
+- Everywhere: PH price sheet Learner (Adult English · IELTS · Young Learners · Teens, from the doc), PH price list + roadmap pictures (same
+  design, "EXPERT PREMIUM PROGRAM" / "Young Learners 1:1" / "Teens 1:1", chip "Price List" / "Learning Roadmap", 4:5), PH price message
+  ("your child's current level" for Young Learners), New enquiry "Interested in" + track chips, enquiry rows, Student access › Market
+  (coe-student v25 accepts yle / teens), the portal (programme, track path and skills from the doc), the English agreement.
+## 1546 · PH agreement by audience
+- Adult English / IELTS: table "Learner", no Parent row, "Learner signature (parent / guardian if the learner is under 18)", class rule
+  "50 minutes" (no "25 minutes for younger learners"), Place of signing Online, message to the learner.
+- Young Learners / Teens: Learner / Parent / Guardian table with Parent row, "Parent / Guardian signature", "50 minutes, or 25 minutes for
+  younger learners", message to the parent.
+- All PH: 4-hour notice for learner and provider cancellations ("Provider cancellation or lateness under 4 hours … returned").
+## 1547 · Every remaining picture in the brand fonts (font only)
+- Weekly open / class times, class / move / cancel / renewal / lesson balance pictures, leave picture, celebration picture, Payment
+  Confirmation (picture + PDF page), document pictures, memo, refund note, trial report PDF, monthly report picture and PDF score box,
+  Lesson Summary picture: Inter + Fredoka One from the app's own font files, registered at start-up. Wording and layout unchanged.
+- Not pictures, not changed: the app's own screen font variable, e-mail bodies, on-screen tiles in the invoice modal / wallet / expenses.
+## 1548 · Service agreement dialog title on a 390-wide phone clear of the close button (layout only)
+## Tests
+- check.js OK (repo tools); regress-saves 17/17; stability enquiry, astudents, schedule, reports (laptop + phone) ok; China coeCard pictures
+  identical as a set; China agreement HTML + message identical; PH sheet / enquiry / agreement checks at 390; coe-student v25 deployed
+  source = repo copy.
+- Before / after: scratchpad/phprice/fonts-compare-*.png; new pictures design-price-yle/teens, design-roadmap-yle/teens.
