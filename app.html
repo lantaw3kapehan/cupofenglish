@@ -6195,7 +6195,8 @@ go = function(v){ const r = _goT.apply(this, arguments); document.body.classList
 let TDW = innerWidth >= 1100; addEventListener('resize', () => { const w = innerWidth >= 1100; if(w !== TDW){ TDW = w; if(D && !D.mgr && VIEW === 'today') try{ renderToday(); }catch(e){} } });
 const isAdult = code => { code = String(code || '').trim().toUpperCase(); if(!code) return false; const ms = (Array.isArray(MS) ? MS : MS && (MS.students || MS.rows)) || [];
 const s = ms.find(x => String(x.code || '').toUpperCase() === code); if(s && s.adult) return true;
-const r = DB && DB.rows && DB.rows.find(x => String(x[0] || '').toUpperCase() === code); if(r){ const gr = String(r[8] || '').trim(); return /^(WA|UM|U\d|PhD|ADULT)$/i.test(gr) || (+r[6] >= 20 && !/^(G\d+|GK)$/i.test(gr)); } return false; };
+const r = DB && DB.rows && DB.rows.find(x => String(x[0] || '').toUpperCase() === code); if(r){ const gr = String(r[8] || '').trim(); if(/^(WA|UM|U\d|PhD|ADULT)$/i.test(gr) || (+r[6] >= 20 && !/^(G\d+|GK)$/i.test(gr))) return true; }
+  try{ if(window.coeLearner){ const L = coeLearner(code); if(L.adult != null) return L.adult; } }catch(e){} return false; };   /* 1580 */
 function tlMsg(){ const x = TLD; if(isAdult(x.code)) return `Hello ${x.student}! Here is your trial class assessment from Teacher ${x.teacher}: CEFR ${x.cefr} · ${x.total}/36. Thank you for trying CupOfEnglish! — CupOfEnglish\n${x.student}您好！这是您的试听课评估报告（${x.teacher}老师）：CEFR ${x.cefr}，总分 ${x.total}/36。感谢您对CupOfEnglish的信任！— CupOfEnglish`; return `Dear parent, here is ${x.student}'s trial class assessment from Teacher ${x.teacher}: CEFR ${x.cefr} · ${x.total}/36. Thank you for trying CupOfEnglish! — CupOfEnglish\n家长您好！这是${x.student}的试听课评估报告（${x.teacher}老师）：CEFR ${x.cefr}，总分 ${x.total}/36。感谢您对CupOfEnglish的信任！— CupOfEnglish`; }
 const TL_GRPS = [['Young learner (≤10)', 'Young learner'], ['Teen (11–17)', 'Teen'], ['Adult (18+)', 'Adult · daily speaking'], ['Adult · work English', 'Adult · work'], ['Adult · business English', 'Adult · business']];
 function tlGrpBox(x){ return `<div class="small" style="margin-top:10px" id="tlGrp"><b>Learner type</b> <span class="mute">· sets the roadmap and books on the PDF${x.group ? '' : ' · not set yet'}</span><div class="seg" style="flex-wrap:wrap;margin-top:6px">${TL_GRPS.map((g, i) => `<button class="${x.group === g[0] ? 'on' : ''}" onclick="tlGrp(${i})">${g[1]}</button>`).join('')}</div></div>`; }
@@ -6287,7 +6288,7 @@ function enTrFrom(){ const v = String(($('enTf') || {}).value || ''), m = v.toUp
 function enPrev(){ const el = $('enP'); if(!el || !ENS) return; if(ENS.tr){ const n = +($('enTn') || {}).value || 0, fr = String(($('enTf') || {}).value || '').split(' · ')[0];
   el.innerHTML = '<div style="font-size:15px"><b style="font-size:20px;color:#00737B">' + n + ' lessons</b> · transferred' + (fr ? ' from <b>' + esc(fr) + '</b>' : '') + ' · no payment</div><div class="small" style="margin-top:4px">Valid ' + (n < 30 ? 4 : n < 60 ? 8 : 12) + ' months from the first class' + (($('enSx') || {}).checked ? ' (date set later)' : '') + ' · ' + (() => { const L = $('enTxL'), typed = String(($('enTf') || {}).value || '').trim(); if(L) L.classList.toggle('hide', !!enTrFrom() || !typed); return enTrFrom() ? '' : ($('enTx') || {}).checked && typed ? '<b>' + esc(typed) + ' is not in our sheet · recorded on this student only</b> · ' : '<b>choose the student from the list</b>' + (typed ? ' or tick "Not in our sheet"' : '') + ' · '; })() + 'TRANSFER OUT on the giver, CARRY OVER here</div>'; return; }
   const t = (+ENS.pkg || 0) + (+ENS.free || 0);
-el.innerHTML = '<div style="font-size:15px"><b style="font-size:20px;color:#00737B">' + t + ' lessons</b> · ' + (ENS.sale ? 'payment already in SALES (row ' + ENS.sale + ')' : 'new SALES row') + '</div><div class="small" style="margin-top:4px">Valid ' + (t < 30 ? 4 : t < 60 ? 8 : 12) + ' months from the first class' + (() => { const s = ($('enS') || {}).value; if(($('enSx') || {}).checked) return ' · <b>first class date set later</b>'; if(!s) return ''; const d = new Date(s + 'T12:00:00'); d.setMonth(d.getMonth() + (t < 30 ? 4 : t < 60 ? 8 : 12)); return ' · until <b>' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '</b>'; })() + ' · 25-min classes count as half a lesson (' + t + ' lessons = ' + (t * 2) + ' × 25-min classes)</div>'; }
+el.innerHTML = '<div style="font-size:15px"><b style="font-size:20px;color:#00737B">' + t + ' lessons</b> · ' + (ENS.sale ? 'payment already in SALES (row ' + ENS.sale + ')' : 'new SALES row') + '</div><div class="small" style="margin-top:4px">Valid ' + (t < 30 ? 4 : t < 60 ? 8 : 12) + ' months from the first class' + (() => { const s = ($('enS') || {}).value; if(($('enSx') || {}).checked) return ' · <b>first class date set later</b>'; if(!s) return ''; const v = window.coeRenew ? coeRenew.validFrom(s, t) : ''; if(!v) return ''; return ' · until <b>' + new Date(v + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '</b>';   /* 1583 */ })() + ' · 25-min classes count as half a lesson (' + t + ' lessons = ' + (t * 2) + ' × 25-min classes)</div>'; }
 window.enSave = async function(){ const S = ENS; if(!S) return; if(!S.info && !S.tr && !S.sale) return toast('Still reading SALES · try again in a few seconds'); const b = $('enGo');
 const f = { code: S.code, name: S.name, teacher: $('enT').value, start: ($('enSx') || {}).checked ? '' : $('enS').value, noStart: !!($('enSx') || {}).checked, course: $('enC').value.trim(), saleRow: S.sale || 0 };
 if(S.tr){ const fr = enTrFrom(), n = +($('enTn') || {}).value || 0, typed = String(($('enTf') || {}).value || '').trim(), out = !fr && typed && ($('enTx') || {}).checked; if(!fr && !out) return toast(typed ? 'Pick ' + typed + ' from the list, or tick "Not in our sheet"' : 'Type who the lessons come from'); if(!(n > 0)) return toast('Type how many lessons'); f.transfer = out ? { from: '', name: typed, n: n, outside: true } : { from: fr, n: n }; f.saleRow = 0; }
@@ -6511,7 +6512,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1427;
+const COE_V = 1431;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -6710,10 +6711,11 @@ let RPS = null;
 const RP_PK = [[15, 0], [30, 3], [60, 8]];
 function rpTot(){ return (+RPS.pkg || 0) + (+RPS.free || 0); }
 function rpNc(){ const p = ($('rpD') || {}).value; if(!p) return null; const t0 = new Date(p + 'T00:00:00').getTime(), L = ((RPS && RPS.cls) || []).filter(c => !c.cancelled && !/-TC\s*$/i.test(String(c.title || '').replace(/\s+X$/i, '')) && new Date(c.start).getTime() >= t0).sort((a, b) => new Date(a.start) - new Date(b.start)); return L.length ? new Date(L[0].start) : null; }
-function rpDl(){ const n = rpNc(), d = n ? new Date(n.getFullYear(), n.getMonth(), n.getDate(), 12) : new Date(($('rpD') || {}).value + 'T12:00:00'); if(isNaN(d)) return ''; const t = rpTot() + Math.max(0, +((RPS && RPS.info && RPS.info.left) || 0)); d.setMonth(d.getMonth() + (t < 30 ? 4 : t < 60 ? 8 : 12)); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+function rpDl(){ const n = rpNc(), s = n ? ymdLocal(n) : String(($('rpD') || {}).value || ''); if(!/^\d{4}-\d{2}-\d{2}$/.test(s) || !window.coeRenew) return '';   /* 1583: the shared rule · new lessons (paid + free) from the first class, month end kept */
+  const v = coeRenew.validFrom(s, rpTot()); return v ? new Date(v + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }
 function rpPrev(){ const p = $('rpP'); if(!p || !RPS || !RPS.info) return; const I = RPS.info, t = rpTot(), tot = Math.round((I.left + t) * 10) / 10;
 p.innerHTML = `<div style="font-size:15px"><b>${I.left}</b> left + <b>${t}</b> new = <b style="font-size:20px;color:#00737B">${tot} lessons</b></div>
-<div class="small" style="margin-top:4px">Valid until <b>${rpDl()}</b> · ${tot < 30 ? '4' : tot < 60 ? '8' : '12'} months (${tot} lessons incl. carried) from ${(() => { const n = rpNc(); return n ? 'the next class (' + n.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ')' : 'the paid date (no class booked yet)'; })()}</div>
+<div class="small" style="margin-top:4px">Valid until <b>${rpDl()}</b> · ${rpTot() < 30 ? '4' : rpTot() < 60 ? '8' : '12'} months (${rpTot()} new lessons) from ${(() => { const n = rpNc(); return n ? 'the next class (' + n.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ')' : 'the paid date (no class booked yet)'; })()}</div>
 <div class="small" style="margin-top:4px">${RPS.sched ? '📅 ' + RPS.sched : '<span class="mute">Checking the schedule…</span>'}</div>`; }
 function rpPick(p, f){ RPS.pkg = p; RPS.free = f; document.querySelectorAll('.rpk').forEach(b => b.classList.toggle('on', +b.dataset.p === p && +b.dataset.f === f)); const o = $('rpO'); if(o) o.classList.toggle('hide', RP_PK.some(x => x[0] === p && x[1] === f)); rpPrev(); }
 function rpOther(){ RPS.pkg = ''; RPS.free = 0; document.querySelectorAll('.rpk').forEach(b => b.classList.toggle('on', b.dataset.p === 'o')); $('rpO').classList.remove('hide'); rpPrev(); }
@@ -6727,7 +6729,7 @@ function rpWarm(code, teacher){ const k = String(code).toUpperCase(), x = RP_PRE
   RP_PRE[k] = { t: Date.now(), p }; p.then(([r]) => { if(!r || !r.ok) delete RP_PRE[k]; }); return p; }
 async function renPaidSheet(code, name, teacher, again){ RPS = { code, name, teacher, pkg: 30, free: 3, info: null, sched: '', again: !!again, touched: false };
 const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), pend = rpWarm(code, teacher);
-const tch0 = teacher || (typeof STU !== 'undefined' && STU && STU.s && (STU.s.teachers || [])[0]) || '';
+const tch0 = teacher || (typeof STU !== 'undefined' && STU && STU.s && String(STU.code || '').toUpperCase() === String(code || '').toUpperCase() && (STU.s.teachers || [])[0]) || '';   /* 1580 */
 const pk = RP_PK.map(([p, f]) => `<button type="button" class="rno rpk${RPS.pkg === p && RPS.free === f ? ' on' : ''}" data-p="${p}" data-f="${f}" onclick="RPS.touched=true;rpPick(${p},${f})"><b>${p}${f ? ' + ' + f : ''}</b><span>${p + f} lessons · ${p + f < 30 ? 4 : p + f < 60 ? 8 : 12} months</span></button>`).join('');
 const m0 = (() => { try{ return localStorage.getItem('coe.rpM') || ''; }catch(e){ return ''; } })();
 openSheet(`<h1>${esc(name)} · Renewed · paid</h1><div id="rpH" class="mute small">${esc(code)}${tch0 ? ' · Teacher ' + esc(tch0) : ''} · <span style="color:#B4532F">checking the package…</span></div>
@@ -8670,7 +8672,7 @@ const sugg = o => { const t = +o.total || 0, c = String(o.cefr || ''); if(t >= 6
 return /^pre/i.test(c) ? 'OPW2' : /^A1/i.test(c) ? 'OD1' : /^A2/i.test(c) ? 'OD2' : /^B1/i.test(c) ? 'RE-F' : /^(B2|C)/i.test(c) ? 'RE1' : 'OD1'; };
 window.CPB = window.CPB || {};
 let CP = null; const RMC = {};
-window.coursePlan = function(o){ o = o || {}; CP = { o: o, bk: (o.student && CPB[o.student]) || sugg(o), ad: !!o.adult, goal: 'daily', band: bandOf(o.cefr) }; cpSheet(); };
+window.coursePlan = function(o){ o = o || {}; CP = { o: o, bk: (o.student && CPB[o.student]) || sugg(o), ad: !!o.adult, goal: o.goal && AG[o.goal] ? o.goal : 'daily', band: bandOf(o.cefr) }; cpSheet(); };
 function cpSheet(){
 const o = CP.o, seg = (id, items, cur, fn) => '<div class="seg" id="' + id + '" style="flex-wrap:wrap">' + items.map(x => '<button class="' + (cur === x[0] ? 'on' : '') + '" onclick="' + fn + '(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>';
 openSheet('<h1>Course plan</h1><div class="mute small">' + (o.student ? 'For ' + esc(o.student) + (o.cefr ? ' · trial ' + esc(o.cefr) + (o.total ? ' · ' + o.total + '/36' : '') : '') + (CP.ad ? ' · pick the goal and level' : ' · starting book suggested from the score, change if needed') : 'General course roadmap for new enquiries') + '</div>' +
@@ -11525,7 +11527,7 @@ try{ if(VIEW === 'payroll') renderPayroll(); }catch(e){}
 /* 16 Oct · the validity line on the lesson summary picture (parents) */
 function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return ''; const t = new Date(); t.setHours(0, 0, 0, 0); const d = new Date(dl); d.setHours(0, 0, 0, 0); if(!(d < t)) return '';
   const n = Math.round((t - d) / 864e5), en = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }), zh = d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
-  return '<span style="color:#B05A16;font-weight:700">Validity ended ' + en + ' · extended ' + n + ' day' + (n === 1 ? '' : 's') + ' · 有效期已于' + zh + '结束 · 已延长' + n + '天</span><br>'; }catch(e){ return ''; } }
+  return '<span style="color:#B05A16;font-weight:700">Validity ended ' + en + ' · ' + n + ' day' + (n === 1 ? '' : 's') + ' ago, lessons still left · 有效期已于' + zh + '结束（已过' + n + '天），仍有剩余课时</span><br>'; }catch(e){ return ''; } }
 </script>
 <script>
 /* 16 Oct · Misty: on Schedule, tapping a teacher also shows that teacher's open slots for the day shown, so a change or a new
@@ -15293,7 +15295,7 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
     const nxs = nx ? new Date(nx.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + tm(nx.start) : '';
     const html = S.length
       ? '<span class="lb"><svg class="lic" width="14" height="14" style="display:inline-block;width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Every week</span>' + S.map(x => '<span class="sl"><b>' + DS[x.w] + '</b>' + esc(x.s) + (T.length > 1 ? '<span>' + esc(tName ? tName(x.t) : x.t) + '</span>' : '') + '</span>').join('') +
-        '<span class="mt">' + esc(M.map(m => m + ' min').join(' / ')) + (T.length === 1 ? ' · ' + esc(T[0]) : '') + '</span>' + (nxs ? '<span class="nx">Next · ' + esc(nxs) + '</span>' : '')
+        '<span class="mt">' + (() => { const u = Math.round(S.reduce((a, x) => a + (window.coeUnits ? coeUnits({ mins: +x.m }) : 1), 0) * 10) / 10; return esc((S.length > 1 && M.length === 1 ? S.length + ' × ' : '') + M.map(m => m + ' min').join(' / ') + ' = ' + u + ' lesson unit' + (u === 1 ? '' : 's') + ' a week'); })() + (T.length === 1 ? ' · ' + esc(T[0]) : '') + '</span>' + (nxs ? '<span class="nx">Next · ' + esc(nxs) + '</span>' : '')
       : '<span class="lb"><svg class="lic" width="14" height="14" style="display:inline-block;width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Every week</span><span class="mt">No weekly schedule yet' + (nxs ? ' · next class ' + esc(nxs) : '') + '</span>' + (D && D.mgr ? '<button class="btn sm ghost" style="margin-left:auto" onclick="classForm(\'' + esc(STU.code) + '\')">+ Class</button>' : '');
     let el = hero.querySelector('.shwk'); if(!el){ hero.insertAdjacentHTML('beforeend', '<div class="shwk"></div>'); el = hero.querySelector('.shwk'); }
     el.classList.toggle('none', !S.length); if(!__same(el, html)) __put(el, html); }
@@ -16897,14 +16899,17 @@ details.lv28>summary{font-size:12.5px;color:#2F6F77;font-weight:700;cursor:point
     Object.keys(by).forEach(k => by[k].sort((a, b) => new Date(a.start) - new Date(b.start)));
     const live = L.filter(e => !e.cancelled && new Date(e.end) >= now).sort((a, b) => new Date(a.start) - new Date(b.start));
     const ix = { next: live.length ? L.indexOf(live[0]) : -1, last: live.length ? L.indexOf(live[live.length - 1]) : -1 };
-    try{ const lf = Math.floor(+((typeof STU !== 'undefined' && STU && STU.s && STU.s.left) || NaN)); ix.pe = live.length > lf && lf >= 0 ? (lf ? L.indexOf(live[lf - 1]) : -2) : -1; ix.over = new Set(lf >= 0 && live.length > lf ? live.slice(lf).map(e => L.indexOf(e)) : []); ix.lf = lf; ix.live = live; }catch(e){ ix.over = new Set(); }
+    try{ const s0 = typeof STU !== 'undefined' && STU && STU.s ? STU.s : null, lv = s0 ? s0.left : null, lf = lv === '' || lv == null || !isFinite(+lv) ? NaN : +lv, U = window.coeUnits || (() => 1);   /* 1581: units, not sessions */
+      let acc = 0, k = 0; const ok = lf >= 0 && !(s0 && s0.shared); if(ok){ for(; k < live.length; k++){ const u = U(live[k]); if(acc + u > lf + 1e-9) break; acc += u; } }
+      ix.pe = ok && k < live.length ? (k ? L.indexOf(live[k - 1]) : -2) : -1; ix.over = new Set(ix.pe !== -1 ? live.slice(k).map(e => L.indexOf(e)) : []); ix.lf = lf; ix.k = k; ix.live = live;
+      ix.overU = Math.round(live.slice(k).reduce((a, e) => a + U(e), 0) * 10) / 10; ix.allU = Math.round(live.reduce((a, e) => a + U(e), 0) * 10) / 10; ix.shared = !!(s0 && s0.shared); }catch(e){ ix.over = new Set(); }
     const t = new Date(), a = new Date(t.getFullYear(), t.getMonth() + OFF, 1), b = new Date(a.getFullYear(), a.getMonth() + 1, 1);
     const lastE = live[live.length - 1], ld = lastE ? new Date(lastE.start) : null;
     return '<div class="ch8"><b>Calendar</b><span class="sp"></span>' + (OFF ? '<button type="button" onclick="cal28Go(0)">Today</button>' : '') +
       '<button type="button" aria-label="Earlier" onclick="cal28Go(-1)">‹</button><button type="button" aria-label="Later" onclick="cal28Go(1)">›</button></div>' +
       '<div class="ms">' + month(a.getFullYear(), a.getMonth(), by, now, ix) + month(b.getFullYear(), b.getMonth(), by, now, ix) + '</div>' +
       '<div class="lg"><span><i style="background:#2B2253"></i>next class</span><span><i style="background:#9A98A8"></i>coming (book colour)</span><span><i style="background:#9A98A8;opacity:.4"></i>done</span><span><i style="box-shadow:inset 0 0 0 1px #F0C9BF;background:#fff"></i>cancelled</span><span><i style="background:#9A98A8;box-shadow:0 0 0 1.5px #fff,0 0 0 3px #00A3AD"></i>make-up</span><span><i style="background:#E0A030;height:7px;width:16px"></i>last booked</span>' + (ix.over && ix.over.size ? '<span><i style="background:#C0563F;height:7px;width:16px"></i>package ends</span><span><i style="background:#fff;box-shadow:inset 0 0 0 1.5px #C0563F;border-radius:3px"></i>after the package</span>' : '') + '</div>' +
-      (live.length ? '<div class="ft"><b>' + live.length + '</b> class' + (live.length === 1 ? '' : 'es') + ' booked · last on <b>' + ld.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + hm(ld) + '</b>' + (ix.over && ix.over.size ? '<div class="ow">⚠ <b>' + ix.over.size + '</b> booked after the <b>' + ix.lf + '</b> lessons left' + (ix.lf ? ' · the package ends on <b>' + new Date(ix.live[ix.lf - 1].start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + '</b>' : '') + ' · renew before then or cancel the extra classes</div>' : '') + '</div>' : ''); }
+      (live.length ? '<div class="ft"><b>' + live.length + '</b> class' + (live.length === 1 ? '' : 'es') + ' booked' + (ix.allU != null && ix.allU !== live.length ? ' (' + ix.allU + ' lesson unit' + (ix.allU === 1 ? '' : 's') + ')' : '') + ' · last on <b>' + ld.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + hm(ld) + '</b>' + (ix.over && ix.over.size ? '<div class="ow"><b>' + ix.over.size + '</b> class' + (ix.over.size === 1 ? '' : 'es') + ' (' + ix.overU + ' lesson unit' + (ix.overU === 1 ? '' : 's') + ') booked after the <b>' + ix.lf + '</b> lesson unit' + (ix.lf === 1 ? '' : 's') + ' left run out' + (ix.k ? ' · the lessons left cover the classes up to <b>' + new Date(ix.live[ix.k - 1].start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + '</b> (estimate from the calendar)' : '') + ' · renew before then or cancel the extra classes. The valid-until date is separate (see Package).</div>' : ix.shared && ix.live && ix.live.length ? '<div class="small mute" style="margin-top:4px">Shared package · the lessons left are shared with the other student, so there is no estimate here</div>' : '') + '</div>' : ''); }
   window.cal28Go = function(d){ OFF = d === 0 ? 0 : OFF + d; const el = document.getElementById('cal28'); if(el) el.innerHTML = cal(); };
   const _ss = window.stuSched; if(!_ss) return;
   window.stuSched = function(L){ let h = _ss.apply(this, arguments);
@@ -24884,13 +24889,13 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   if(window.__800 || typeof window.tlGrpBox !== 'function') return; window.__800 = 1;
   document.head.insertAdjacentHTML('beforeend', '<style>.tl4 #tlGrp{margin:0 0 14px;padding:12px 14px;border-radius:14px;border:1px solid #E3E1EC;background:#fff}.tl4 #tlGrp.miss{border:2px solid #E4846B;background:#FFF6F2}' +
     '.tl4 .tl4-r .tl4-a>.btn.tl4-main{background:linear-gradient(135deg,#2BB3AA,#1F8F96)!important;color:#fff!important;border:0!important}.tl4 .tl4-r .tl4-a>.btn.tl4-main:disabled{background:#B9B6C9!important}</style>');
-  function fix(){ try{ const t = (typeof TLD !== 'undefined') ? TLD : null, w = document.querySelector('#sheetBody .tl4'); if(!t || !w) return;
+  function fix(){ try{ const t = (typeof TLD !== 'undefined') ? TLD : null, w = document.querySelector('#sheetBody #tlAct.tl4'); if(!t || !w) return;   /* 1580: the trial card only, never the renewal step-by-step */
     if(!w.querySelector('#tlGrp')){ const o = document.getElementById('tlGrp'); if(o){ o.style.display = ''; w.insertBefore(o, w.firstChild); } else w.insertAdjacentHTML('afterbegin', tlGrpBox(t)); }
     const g = w.querySelector('#tlGrp'); if(g) g.classList.toggle('miss', !t.group);
     const b = w.querySelector('.tl4-r.tl4-w .tl4-a>.btn:first-child'); if(b && !/^Mark as sent|^Already sent/.test(b.textContent.trim())) b.classList.add('tl4-main'); }catch(e){} }
   ['tlBtns', 'tlPaint', 'tlGrp'].forEach(n => { const f0 = window[n]; if(typeof f0 !== 'function') return;
     window[n] = function(){ const r = f0.apply(this, arguments); setTimeout(fix, 30); setTimeout(fix, 400); Promise.resolve(r).then(() => setTimeout(fix, 30)).catch(() => {}); return r; }; });
-  new MutationObserver(() => { if(document.querySelector('#sheetBody .tl4') && !document.querySelector('#sheetBody .tl4 #tlGrp')) fix(); }).observe(document.body, { childList: true, subtree: true });
+  new MutationObserver(() => { if(document.querySelector('#sheetBody #tlAct.tl4') && !document.querySelector('#sheetBody #tlAct.tl4 #tlGrp')) fix(); }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
 <script>
@@ -33940,6 +33945,136 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
   try{ window.__cardFonts = window.__cardFonts || Promise.all([['COE Card Fredoka', 'fonts/card-fredoka-one.woff2', '400'], ['COE Card Inter', 'fonts/card-inter-var.woff2', '100 900']].map(function(a){ var have = false; try{ document.fonts.forEach(function(f){ if(String(f.family).replace(/["']/g, '') === a[0]) have = true; }); }catch(e){} if(have) return 0; try{ var f = new FontFace(a[0], 'url(' + a[1] + ') format("woff2")', { weight: a[2] }); document.fonts.add(f); return f.load().catch(function(){ return 0; }); }catch(e){ return 0; } })); }catch(e){}
 })();
 /* 1547 · pictures in Inter / Fredoka One */
+</script>
+<script id="coe-learner">
+/* 1580 · ONE learner profile for every student dialog (course plan, price picture, messages, renewal, payment confirmation).
+   coeLearner(code, hint) → { code, adult: true|false|null (null = not known), kind: 'kid'|'teen'|'adult'|'', group, goal: 'daily'|'work'|'business',
+   exam: 'ielts'|'pet'|'ket'|'', course, age, source, market: 'cn'|'ph', phProg, from }.
+   Order: the trial report's learner type (what management set) → the course on DATABASE → age / grade on DATABASE → the student list.
+   Nothing here is saved; it only decides defaults. Every dialog still lets you change it. */
+(function(){
+  if(window.coeLearner) return;
+  const AD = /business|dk ?english|pathways|market ?leader|daily ?english|adult/i, KID = /^(the ?alphabet|od ?\d|wonders|phonics|short ?vowels|long ?vowels|consonant|letter ?blends|raz|re-?f\b|winter reading|opw)/i;
+  const up = s => String(s || '').trim().toUpperCase();
+  function trialGroup(code){ try{ const T = (typeof TRL !== 'undefined' && TRL && TRL.rows) || []; const t = T.filter(x => up(x.code) === code && (x.group || x._g)).sort((a, b) => String(b.date).localeCompare(String(a.date)))[0]; return t ? (t._g || t.group) : ''; }catch(e){ return ''; } }
+  window.coeLearner = function(code, hint){ hint = hint || {}; code = up(code);
+    const o = { code, adult: null, kind: '', group: '', goal: 'daily', exam: '', course: '', age: null, grade: '', source: '', market: 'cn', phProg: '', from: '' };
+    let r = null; try{ r = code && typeof DB !== 'undefined' && DB && DB.rows ? DB.rows.find(x => up(x[0]) === code) : null; }catch(e){}
+    if(r){ o.course = String(r[12] || '').trim(); o.source = String(r[22] || '').trim(); o.grade = String(r[8] || '').trim();
+      const b = String(r[5] || ''); if(/^\d{4}-\d{2}-\d{2}/.test(b)){ const d = new Date(b.slice(0, 10) + 'T00:00:00'), n = new Date(); let a = n.getFullYear() - d.getFullYear(); if(n.getMonth() < d.getMonth() || (n.getMonth() === d.getMonth() && n.getDate() < d.getDate())) a--; if(a >= 2 && a < 100) o.age = a; }
+      if(o.age == null && +r[6] > 0) o.age = +r[6]; }
+    if(!o.course && hint.course) o.course = String(hint.course);
+    let s = null; try{ s = code && Array.isArray(MS) ? MS.find(x => up(x.code) === code) : null; }catch(e){}
+    if(!o.course && s && s.book) o.course = String(s.book);
+    const c = o.course;
+    o.exam = /ielts/i.test(c) ? 'ielts' : /(^|[^a-z])pet([^a-z]|$)|cambridge ?pet/i.test(c) ? 'pet' : /(^|[^a-z])ket([^a-z]|$)|cambridge ?ket/i.test(c) ? 'ket' : '';
+    const g = hint.group || trialGroup(code);
+    if(g && !/pick/i.test(g)){ o.group = g; o.adult = /^adult/i.test(g); o.kind = o.adult ? 'adult' : /teen/i.test(g) ? 'teen' : 'kid'; o.from = 'trial report'; }
+    else if(AD.test(c)){ o.adult = true; o.kind = 'adult'; o.from = 'course'; }
+    else if(KID.test(c)){ o.adult = false; o.kind = o.age != null && o.age >= 11 ? 'teen' : 'kid'; o.from = 'course'; }
+    else if(/^(WA|UM|U\d|PhD|ADULT)$/i.test(o.grade) || (o.age != null && o.age >= 18 && !/^(G\d+|GK)$/i.test(o.grade))){ o.adult = true; o.kind = 'adult'; o.from = 'age'; }
+    else if(o.age != null || /^(G\d+|GK)$/i.test(o.grade)){ o.adult = false; o.kind = o.age != null && o.age <= 10 ? 'kid' : 'teen'; o.from = 'age'; }
+    else if(s && s.adult != null){ o.adult = !!s.adult; o.kind = s.adult ? 'adult' : ''; o.from = 'student list'; }
+    const gs = (o.group || '') + ' ' + (o.adult ? c : '');
+    o.goal = /business|market ?leader/i.test(gs) ? 'business' : /work/i.test(gs) ? 'work' : 'daily';
+    try{ if(code && window.isPhLearner && isPhLearner(code)){ o.market = 'ph'; const P = (window.phLearners1535 && phLearners1535()) || {}, x = P[code] || {}; o.phProg = /ielts/i.test(String(x.prog || '') + ' ' + c) ? 'ielts' : 'adult'; o.phTrack = x.track || ''; } }catch(e){}
+    o.label = o.kind === 'adult' ? (o.goal === 'business' ? 'Adult · business' : o.goal === 'work' ? 'Adult · work' : 'Adult') : o.kind === 'teen' ? 'Teen (11–17)' : o.kind === 'kid' ? 'Young learner' : 'Not known yet';
+    return o; };
+  /* the trial card's Course plan / Price picture pass only the name: take the learner from that trial (TLD) or the student */
+  const who = o => { let code = o.code || '', hint = o.group || o.learner ? { group: o.group || o.learner } : {};   /* an explicit learner type passed in always wins */ try{ if(typeof TLD !== 'undefined' && TLD && (!o.student || TLD.student === o.student)){ if(!code) code = TLD.code || ''; if(TLD.student === o.student && !hint.group) hint = { group: TLD._g || TLD.group || '' }; } }catch(e){} return coeLearner(code, hint); };
+  const cp0 = window.coursePlan; if(typeof cp0 === 'function') window.coursePlan = function(o){ o = Object.assign({}, o || {});
+    try{ if(o.student && o.adult == null && !o.enq){ const L = who(o); if(L.adult != null){ o.adult = L.adult; if(L.adult && !o.goal) o.goal = L.goal; } } }catch(e){}
+    return cp0.call(this, o); };
+  const pp0 = window.pricePic; if(typeof pp0 === 'function') window.pricePic = function(o){ o = Object.assign({}, o || {});
+    try{ if(o.student && !o.ph && o.adult == null && !o.ielts && !o.pet && !o.ket && !o.enq){ const L = who(o);
+        if(L.market === 'ph') return pp0.call(this, { ph: L.phProg || 'adult', rec: L.phTrack || undefined });
+        if(L.exam === 'ielts') o.ielts = 1; else if(L.exam === 'pet') o.pet = 1; else if(L.exam === 'ket') o.ket = 1; else if(L.adult != null) o.adult = L.adult; } }catch(e){}
+    return pp0.call(this, o); };
+})();
+</script>
+<script id="coe-units">
+/* 1581 · lesson units of one class: 50 minutes = 1 unit, 25 minutes = 0.5 (minutes ÷ 50, to the nearest half: the database's coe_cls_units).
+   A class titled …-TC or …-SC is not counted (same as the database). Accepts a class { start, end, title } or { mins }. */
+window.coeUnits = function(c){ try{ if(!c) return 0; if(c.title && /-(TC|SC)$/i.test(String(c.title).replace(/\s+X$/i, '').trim())) return 0;
+  const m = c.mins != null ? +c.mins : (new Date(c.end) - new Date(c.start)) / 6e4; if(!(m > 0)) return 0; return Math.round(m / 50 * 2) / 2; }catch(e){ return 0; } };
+</script>
+<script id="coe-stu-current">
+/* 1582 · one check before the student page is drawn */
+(function(){
+  if(window.stuCurrent || typeof window.stuRender !== 'function') return;
+  const up = s => String(s || '').trim().toUpperCase();
+  window.stuCurrent = function(code){ try{ code = up(code); const sh = document.getElementById('sheet'), sb = document.getElementById('sheetBody');
+      if(!code || !sh || !sb || !sh.classList.contains('on') || up(window._stuOpen) !== code) return false;
+      if(sb.querySelector('#stuLoad')) return true;                                       // loading this student
+      const hero = sb.querySelector('.shero'); if(hero) return up(hero.textContent).indexOf(code) > -1;   // this student's page
+      return !!sb.querySelector('.paper') && !sb.querySelector('h1');                      // the empty frame openStudent draws into
+    }catch(e){ return true; } };
+  const r0 = window.stuRender;
+  window.stuRender = function(){ try{ if(typeof STU !== 'undefined' && STU && STU.code && !stuCurrent(STU.code)){ window.__stuSkip1582 = (window.__stuSkip1582 || 0) + 1; return; } }catch(e){}
+    return r0.apply(this, arguments); };
+})();
+</script>
+<script id="coe-review1583">
+/* 1583 · check before saving (Enrolled · paid, Renewed · paid) */
+(function(){
+  if(window.__1583) return; window.__1583 = 1;
+  const $q = id => document.getElementById(id), val = id => { const e = $q(id); return e ? String(e.value || '').trim() : ''; }, E = s => esc(String(s == null ? '' : s));
+  const day = s => /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : (s || '—');
+  const src = code => { try{ const L = window.coeLearner ? coeLearner(code) : null; return L ? L.source : ''; }catch(e){ return ''; } };
+  const isCoe = s => !s || /^(coe|cupofenglish|n\/a)\b/i.test(s) || /^coe\s*[–-]/i.test(s) || /^ST-\d/i.test(s);
+  function close(){ const b = $q('rv1583'); if(b) b.remove(); ['rpS', 'enGo'].forEach(id => { const x = $q(id); if(x) x.style.display = ''; }); }
+  function show(btnId, title, rows, warn, go){ const b = $q(btnId); if(!b) return go(); close();
+    b.insertAdjacentHTML('beforebegin', '<div id="rv1583" class="card" role="region" aria-label="Check before saving" style="margin-top:14px;border:1.5px solid #00737B;background:#fff">' +
+      '<h3 style="margin:0 0 8px;font-family:\'Fredoka One\',Inter,sans-serif;font-weight:400;color:#2B2253">Check before saving · ' + E(title) + '</h3>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:14px">' + rows.filter(Boolean).map(r => '<tr><td style="padding:4px 10px 4px 0;color:#6F6B85;white-space:nowrap;vertical-align:top">' + E(r[0]) + '</td><td style="padding:4px 0;color:#2B2253"><b>' + r[1] + '</b></td></tr>').join('') + '</table>' +
+      (warn.length ? '<div style="margin-top:10px;padding:8px 12px;border-radius:10px;background:#FFF5F2;border:1px solid #E9B8AC;color:#9A3B22;font-size:13px">' + warn.map(E).join('<br>') + '</div>' : '') +
+      '<div class="row" style="gap:8px;margin-top:12px"><button type="button" class="btn teal grow" id="rvGo">Confirm and save</button><button type="button" class="btn ghost" id="rvBack">Edit</button></div></div>');
+    b.style.display = 'none'; const box = $q('rv1583');
+    $q('rvGo').onclick = () => { close(); go(); }; $q('rvBack').onclick = () => { close(); try{ b.focus(); }catch(e){} };
+    const sb = $q('sheetBody'), off = () => { close(); sb.removeEventListener('input', off, true); sb.removeEventListener('change', off, true); };
+    if(sb){ sb.addEventListener('input', off, true); sb.addEventListener('change', off, true); }
+    try{ box.scrollIntoView({ block: 'nearest' }); $q('rvGo').focus({ preventScroll: true }); }catch(e){} }
+  /* Renewed · paid */
+  const rp0 = window.renPaidSave;
+  if(typeof rp0 === 'function') window.renPaidSave = function(){ const S = typeof RPS !== 'undefined' ? RPS : null; if(!S || !S.info) return rp0.apply(this, arguments);
+    if(window.__rvOk1583){ window.__rvOk1583 = 0; return rp0.apply(this, arguments); }
+    const t = rpTot(); if(!(t > 0)) return toast('Choose the package');
+    const I = S.info, left = +I.left || 0, after = Math.round((left + t) * 10) / 10, f = $q('rpF'), fl = f && f.files && f.files[0], nc = rpNc(), pa = val('rpPa'), s0 = src(S.code), W = [];
+    if(!val('rpM')) W.push('Payment method is empty.');
+    if(val('rpD') > ymdLocal(new Date())) W.push('Paid on is a future date.');
+    if(s0 && !isCoe(s0) && (!pa || /^cupofenglish$/i.test(pa))) W.push('Partner is "' + (pa || 'empty') + '" but the student came through ' + s0 + ' (DATABASE › SOURCE). Check the partner.');
+    if(!nc) W.push('No class is booked after the paid date: the package starts when the first class is added.');
+    show('rpS', S.name, [['Student', E(S.name) + ' · ' + E(S.code)], ['Teacher', E(I.teacher || S.teacher || '—')], ['Package', t + ' lessons' + (+S.free ? ' (' + (+S.pkg) + ' paid + ' + (+S.free) + ' free)' : '')],
+      ['Carried over', left + ' lesson' + (left === 1 ? '' : 's') + ' (what was left at this renewal)'], ['Lessons after saving', after + ' lessons'], ['Paid on', day(val('rpD'))], ['Payment method', E(val('rpM') || '—')],
+      ['Partner', E(pa || '—') + (s0 ? ' <span class="mute small">· source: ' + E(s0) + '</span>' : '')], ['Invoice', E(val('rpI') || (fl ? fl.name : 'none'))],
+      ['First class of the package', nc ? E(nc.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })) : 'not booked yet'], ['Valid until', E(rpDl() || '—') + ' <span class="mute small">· ' + (t < 30 ? 4 : t < 60 ? 8 : 12) + ' months from the first class</span>']], W,
+      () => { window.__rvOk1583 = 1; window.renPaidSave(); }); };
+  /* Enrolled · paid */
+  const en0 = window.enSave;
+  if(typeof en0 === 'function') window.enSave = function(){ const S = typeof ENS !== 'undefined' ? ENS : null; if(!S || (!S.info && !S.tr && !S.sale)) return en0.apply(this, arguments);
+    if(window.__rvOk1583e){ window.__rvOk1583e = 0; return en0.apply(this, arguments); }
+    const tr = !!S.tr, t = tr ? (+val('enTn') || 0) : (+S.pkg || 0) + (+S.free || 0), nos = !!($q('enSx') || {}).checked, fc = nos ? '' : val('enS'), pa = val('enPa'), s0 = src(S.code), course = val('enC'), W = [];
+    const books = [...new Set((S.cls || []).map(c => String(c.book || '').trim()).filter(Boolean))];
+    if(!tr && !S.sale && !(t > 0)) return toast('Type the number of lessons');
+    if(!tr && !S.sale && !val('enM')) W.push('Payment method is empty.');
+    if(!tr && !S.sale && s0 && !isCoe(s0) && (!pa || /^cupofenglish$/i.test(pa))) W.push('Partner is "' + (pa || 'empty') + '" but the student came through ' + s0 + ' (DATABASE › SOURCE). Check the partner.');
+    if(!course && books.length > 1) W.push('Course is empty: every lesson with this teacher counts. The calendar has ' + books.join(', ') + '.');
+    const v = fc && window.coeRenew ? coeRenew.validFrom(fc, t) : '';
+    show('enGo', S.name, [['Student', E(S.name) + ' · ' + E(S.code)], ['Payment', tr ? 'Transfer · ' + E(val('enTf') || '—') + ' · no payment' : S.sale ? 'Already in SALES (row ' + E(S.sale) + ')' : 'New SALES row'],
+      ['Package', t + ' lessons' + (!tr && +S.free ? ' (' + (+S.pkg) + ' paid + ' + (+S.free) + ' free)' : '')], !tr && !S.sale ? ['Paid on', day(val('enD'))] : null, !tr && !S.sale ? ['Payment method', E(val('enM') || '—')] : null,
+      !tr && !S.sale ? ['Partner', E(pa || '—') + (s0 ? ' <span class="mute small">· source: ' + E(s0) + '</span>' : '')] : null, ['Teacher', E(val('enT') || '—')],
+      ['First class', nos ? 'not set yet' : day(fc)], ['Course', course ? E(window.bkName ? bkName(course) : course) : 'none · counts every lesson with this teacher'],
+      ['Valid until', v ? E(day(v)) + ' <span class="mute small">· ' + (t < 30 ? 4 : t < 60 ? 8 : 12) + ' months from the first class</span>' : 'from the first class, once it is set']], W,
+      () => { window.__rvOk1583e = 1; window.enSave(); }); };
+  /* Enrolled · paid opens with: the one calendar book as Course, the student's SOURCE next to Partner */
+  const es0 = window.enSheet;
+  if(typeof es0 === 'function') window.enSheet = async function(code){ const r = await es0.apply(this, arguments);
+    try{ if(typeof ENS === 'undefined' || !ENS || ENS.code !== code) return r;
+      const books = [...new Set((ENS.cls || []).map(c => String(c.book || '').trim()).filter(Boolean))];
+      if(books.length === 1 && $q('enC') && !$q('enC').value && window.bkSet) bkSet('enC', books[0]);
+      const s0 = src(code), pa = $q('enPa'); if(pa && s0 && !$q('enPaS')) pa.insertAdjacentHTML('afterend', '<div id="enPaS" class="small mute" style="margin-top:4px">Student\'s source (DATABASE): <b>' + E(s0) + '</b>' + (isCoe(s0) ? '' : ' · type the partner this payment goes through') + '</div>'); }catch(e){}
+    return r; };
+})();
 </script>
 </body>
 </html>
