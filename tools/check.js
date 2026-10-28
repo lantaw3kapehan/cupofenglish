@@ -5,6 +5,8 @@ if (s.indexOf('COE_API') < 0 || s.length < 200000) { console.error('app.html loo
 const re = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g; let m, n = 0, bad = 0;
 while ((m = re.exec(s))) { n++; try { new vm.Script(m[1], { filename: 'script-' + n + '.js' }); } catch (e) { bad++; console.error('Script ' + n + ': ' + e.message); } }
 if (bad) process.exit(1);
+// 1540 · the renewal rules (server/RULES-renewals.md) are tested on every release: a change that breaks one fails here
+if (require('./renewal-suite.js')(file)) { console.error('Renewal test suite failed · see above'); process.exit(1); }
 const v = (s.match(/const COE_V = (\d+);/) || [])[1];
 if (!v) { console.error('COE_V not found'); process.exit(1); }
 fs.writeFileSync('version.txt', v + '\n');

@@ -5139,6 +5139,7 @@ rows.push(['Schedule', '课程安排', sl(P.pkg.en, ' · last class', '400 30px 
 if(bl && P.renew){ const Q = P.renew, pd = pD(Q.paid), dl = Q.dl ? pD(Q.dl) : null,   /* 1423: never the old package's end */ tt = String(e.teacher || '').split(/\s*,\s*/).filter(Boolean); rows.length = 0;
 rows.push(['New package', '新课时包', [Q.pkg + (Q.free ? ' + ' + Q.free + ' free' : '') + ' lessons'], [Q.pkg + ' 课时' + (Q.free ? ' + 赠送 ' + Q.free + ' 课时' : '')]]);
 if(+Q.carry) rows.push(['Carried over', '结转课时', [Q.carry + ' lessons from the last package'], [Q.carry + ' 课时（上期剩余）']]);
+if(+Q.used) rows.push(['Used since the renewal', '续费后已上', [Q.used + ' lessons'], [Q.used + ' 课时']]);
 rows.push([tt.length > 1 ? 'Teachers' : 'Teacher', '老师', [tt.map(tName).join(' · ')], [tt.map(tZh).join(' · ')]]);
 if(Q.en) rows.push(['Class time', '上课时间', [Q.en], [Q.zh]]);
 if(pd) rows.push(['Paid on', '付款日期', [dEn(pd)], [dZh(pd)]]);
@@ -5170,7 +5171,7 @@ if(bl){ const b = P.bal, shared = b.left === '' || b.left == null, ns = shared ?
 rr(80, y, W - 160, 176, 24); c.fillStyle = '#E3F6F6'; c.fill();
 c.fillStyle = !shared && !P.renew && +b.left < 0 ? '#C0392B' : '#00737B'; c.font = '400 88px ' + B; c.fillText(ns, 112, y + 104); const nw = c.measureText(ns).width;
 c.fillStyle = '#2B2253'; c.font = '700 28px ' + F; const ov = !shared && !P.renew && +b.left < 0; c.fillText(shared ? 'shared package' : P.renew ? 'lessons now' : ov ? 'over the package' : 'lessons left', 136 + nw, y + 66); const lw = c.measureText(shared ? 'shared package' : P.renew ? 'lessons now' : ov ? 'over the package' : 'lessons left').width; c.fillStyle = '#4C4868'; c.font = '400 24px ' + F; c.fillText(shared ? '共享课时包' : P.renew ? '现有课时' : ov ? '超出课程包课时' : '剩余课时', 136 + nw, y + 100);
-if(P.renew){ const Q = P.renew; c.fillStyle = '#1E7A55'; c.font = '700 22px ' + F; c.fillText((+Q.carry ? Q.carry + ' carried over + ' : '') + Q.tot + ' new · ' + (+Q.carry ? '结转 ' + Q.carry + ' + ' : '') + '新购 ' + Q.tot + ' 课时', 112, y + 150); }
+if(P.renew){ const Q = P.renew; c.fillStyle = '#1E7A55'; c.font = '700 22px ' + F; c.fillText(window.coeRenew ? coeRenew.line(Q) : (+Q.carry ? Q.carry + ' carried over + ' : '') + Q.tot + ' new', 112, y + 150); }
 else if(tot){ const bw = W - 160 - 64, p = Math.max(0, Math.min(1, used / tot)); rr(112, y + 130, bw, 16, 8); c.fillStyle = '#fff'; c.fill(); if(p > 0){ rr(112, y + 130, Math.max(16, bw * p), 16, 8); c.fillStyle = '#00A3AD'; c.fill(); }
 c.textAlign = 'right'; c.fillStyle = '#4C4868'; c.font = '400 20px ' + F; { const ut = 'Used ' + used + ' of ' + tot + ' · 已上 ' + used + ' / ' + tot, uw = c.measureText(ut).width; c.fillText(ut, W - 112, 136 + nw + lw + 24 > W - 112 - uw ? y + 120 : y + 66); } c.textAlign = 'left'; }   /* no overlap with a long label: the Used line moves down above the bar */
 y += 206; }
@@ -6483,7 +6484,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1403;
+const COE_V = 1404;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -6790,8 +6791,8 @@ function rnValid(P){ const Q = P && P.renew, b = P && P.bal; if(!Q || !Q.paid) r
 window.rnValid = rnValid; window.rnAddM = rnAddM;
 cxDraw = async function(){ const P = CXP; if(P && P.kind === 'bal') P.renew = rnFor(P) || null; try{ rnValid(P); }catch(x){}
   try{ const Q = P && P.renew, b = P && P.bal; if(Q && b && b.left !== '' && b.left != null){ const dl = String(b.deadline || '').slice(0, 10), old = !/^\d{4}-\d{2}-\d{2}$/.test(dl) || dl < Q.paid;   /* 341 */
-    if(old){ Q.carry = Math.round(+b.left * 10) / 10; Q.now = Math.round((+b.left + Q.tot) * 10) / 10; }
-    else { const fresh = (Date.now() - new Date(Q.paid + 'T00:00:00+08:00').getTime()) < 2 * 864e5; Q.now = fresh && +b.left < Q.tot ? Math.round(((+b.carry || +Q.carry || 0) + Q.tot) * 10) / 10 : +b.left; } } }catch(x){}   /* 342 */ const r = await _cxdRN.apply(this, arguments);
+    if(old){ Q.now = null; }   /* 1540: no estimate · the guard holds the picture */
+    else { Q.now = +b.left; } } }catch(x){}   /* 1540: lessons now = ACTIVE, never carry + new */   /* 342 */ const r = await _cxdRN.apply(this, arguments);
 try{ if(P === CXP && P.kind === 'bal'){ const im = $('cxImg'), old = $('rnTog'); if(old) old.remove();
 const h = document.querySelector('#sheet h1'); if(h && P.renew) h.textContent = 'Renewal confirmed · 续费成功';
 if(P.renew && !P.renew.en && !P._rnF){ P._rnF = 1; const code = P.renew.code; api('mgmtStuClasses', TOKEN, code).then(cl => { const d = rnDays(cl); if(!d.length) return; RN_DAYS[code] = d; if(CXP === P){ P.url = ''; cxDraw(); } }).catch(() => {}); }
@@ -7007,7 +7008,7 @@ function lsHtml(code){ const S = lsRows(code); if(!S) return ''; const { C, r, G
 const multi = AT.rows.filter(y => up(y[C.code]) === up(code) && y[C.enrolled] !== '').length > 1;
 const rows0 = (G.members && G.members.length ? G.members : [o]).filter(x => up(x[C.code]) === up(code));   /* the whole package: every teacher's lessons (Nico OD2/REF = Julia + Mayi) */ const T = [...new Set(rows0.map(x => String(x[C.teacher] || '')).filter(Boolean))];
 const months = (AT.months || []).map(() => 0); rows0.forEach(x => (x[C.months] || []).forEach((v, i) => { months[i] = n1(months[i] + (+v || 0)); }));
-const done = n1(rows0.reduce((a, x) => a + (+x[C.finished] || 0), 0)), enrolled = +o[C.enrolled] || 0, carry = +o[C.carry] || 0, incRaw = C.incentive != null ? o[C.incentive] : '', inc = +incRaw || 0, incTx = !inc && incRaw !== '' && incRaw != null ? String(incRaw) : '';   /* 14 Oct: ACTIVE › I incentive */
+const done = n1(rows0.reduce((a, x) => a + (+x[C.finished] || 0), 0)), enrolled = +o[C.enrolled] || 0, carry = (x => x == null ? (+o[C.carry] || 0) : x)(window.coeRenewPkg && (coeRenewPkg(code) || {}).carryAll), incRaw = C.incentive != null ? o[C.incentive] : '', inc = +incRaw || 0, incTx = !inc && incRaw !== '' && incRaw != null ? String(incRaw) : '';   /* 14 Oct: ACTIVE › I incentive */
 const left = o[C.available] === '' ? n1(enrolled + carry - done) : n1(+o[C.available] + (G.extra || 0)), over = left < 0 ? n1(-left) : 0, total = over ? n1(done - over) : n1(done + left), pct = total ? Math.min(100, Math.round(done / total * 100)) : 0;   /* over: more lessons taken than the package has (Damon 33 of 31) */
 const name = String(o[C.name] || ''), cn = String(o[C.cn] || '') || cxCnOf(o[C.code]);
 const MZ = ['一','二','三','四','五','六','七','八','九','十','十一','十二'], ML = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -33311,6 +33312,129 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
       + ' Please see the picture for the skills you will work on. You are welcome to book a trial class.\n\nCupOfEnglish';
     try{ await navigator.clipboard.writeText(out); toast('Message copied · paste it with the picture'); }catch(e){ toast(out); } };
   try{ if(typeof VIEW !== 'undefined' && VIEW === 'enquiry') renderEnq(); }catch(x){}
+})();
+</script>
+<script id="coe-renew">
+/* 1540 · ONE renewal calculation for every screen (rules: server/RULES-renewals.md · tests: tools/renewal-suite.js, run by tools/check.js).
+   The numbers come from the database lesson counter (coe_pkg_calc → the ACTIVE copy the app reads), which applies the renewal rule
+   (a class that ended before the renewal belongs to the old package, even on the same day). This module only puts them together,
+   checks they add up and are fresh, and works out valid-until — the same way on the renewal form, the renewal picture, the
+   lesson-balance picture and the Lesson Summary. Pure functions (no screen code) so the release test can run them. */
+(function(g){
+  const n1 = x => Math.round((+x || 0) * 10) / 10;
+  const months = tot => (+tot || 0) < 30 ? 4 : (+tot || 0) < 60 ? 8 : 12;
+  function addM(ymd, k){ const p = String(ymd || '').slice(0, 10).split('-').map(Number); if(p.length < 3 || !p[0]) return '';
+    const last = new Date(Date.UTC(p[0], p[1] - 1 + k + 1, 0)).getUTCDate(); return new Date(Date.UTC(p[0], p[1] - 1 + k, Math.min(p[2], last))).toISOString().slice(0, 10); }
+  /* a package's numbers from its ACTIVE rows: [{ owner, carry, transfer, incentive, enrolled (paid + free), finished, available }] */
+  function fromRows(rows){ let carry = 0, add = 0, used = 0, nw = 0, now = null;
+    (rows || []).forEach(r => { carry += +r.carry || 0; add += (+r.transfer || 0) + (+r.incentive || 0); used += +r.finished || 0;
+      if(r.owner){ nw = +r.enrolled || 0; now = r.available === '' || r.available == null ? null : +r.available; } });
+    return { carry: n1(carry), add: n1(add), new: n1(nw), used: n1(used), now: now == null ? null : n1(now) }; }
+  /* carried + new (+ other) − used = now, exactly. chk = the database check row: only the gifts / returned lessons / adjustments it
+     names (chk.unk, not in the ACTIVE columns the app reads) may explain a difference — never an unexplained one */
+  function split(s, chk){ const o = Object.assign({ other: 0 }, s); if(o.now == null) return Object.assign(o, { ok: false, why: 'Lessons now unknown (核对中)' });
+    let diff = n1(o.carry + o.add + o.new - o.used - o.now);
+    if(Math.abs(diff) > 0.001 && chk && chk.ok && +chk.unk && Math.abs(n1(+chk.unk + diff)) < 0.001 && chk.now != null && Math.abs(n1(chk.now) - o.now) < 0.001){ o.other = n1(-diff); diff = 0; }
+    o.ok = Math.abs(diff) < 0.001;
+    if(!o.ok) o.why = 'Numbers don’t agree yet: ' + o.carry + ' carried + ' + n1(o.new + o.add) + ' new − ' + o.used + ' used ≠ ' + o.now + ' now';
+    return o; }
+  /* valid until: from the first class after the renewal, month end kept (31 Oct + 8 months = 30 Jun) */
+  const validFrom = (start, tot) => start ? addM(start, months(tot)) : '';
+  function hm(t){ try{ const d = new Date(t); return isNaN(d) ? '—' : d.toLocaleString('en-GB', { timeZone: 'Asia/Manila', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }catch(e){ return '—'; } }
+  /* the guard before anything is drawn or sent */
+  function guard(o){ const why = [], c = o.doc, row = o.row, now = o.now || Date.now();
+    if(o.split && !o.split.ok) why.push(o.split.why);
+    if(c){ if(!c.copyOk) why.push('The ACTIVE copy from Google is out of date (last copy ' + hm(c.copyAt) + ')');
+      if(!(now - Date.parse(c.at) < 25 * 6e4)) why.push('The renewal check has not run since ' + hm(c.at)); }
+    else if(o.needDoc) why.push('The renewal check has not loaded yet');
+    if(row && row.pending) why.push('A renewal save is still waiting for Google');
+    if(o.renew){ if(o.oldRow) why.push('ACTIVE still shows the old package');
+      if(o.split && o.tot != null && o.split.ok && Math.abs(n1(o.split.new) - n1(o.tot)) > 0.001) why.push('ACTIVE ENROLLED is ' + o.split.new + ' but the payment was ' + n1(o.tot) + ' lessons');
+      if(row && row.validRule && row.validSheet && row.validRule !== row.validSheet) why.push('Valid until: ACTIVE says ' + row.validSheet + ', the first class after the renewal (' + row.start + ') gives ' + row.validRule); }
+    return { ok: !why.length, why }; }
+  /* the renewal form: what Google would record as CARRY OVER must be what is really left now */
+  function formHold(sheetLeft, liveLeft, early){
+    if(sheetLeft === '' || sheetLeft == null || liveLeft == null) return { hold: true, why: 'Lessons left: checking (核对中)' };
+    if(early != null) return { hold: false };   // Google's renewal takes off the lessons it has not counted yet (SERVER-RENEWRULE28 paste)
+    const d = n1(+sheetLeft - +liveLeft);
+    return Math.abs(d) < 0.001 ? { hold: false } : { hold: true, sheet: n1(sheetLeft), live: n1(liveLeft),
+      why: 'ACTIVE (Google) says ' + n1(sheetLeft) + ' left, the classes held so far say ' + n1(liveLeft) + (d > 0 ? ' (' + d + ' held but not counted yet)' : '') }; }
+  /* teachers on a renewal picture: the current ones only (a previous teacher does not teach the new package) */
+  function teachers(names, prev){ const L = (names || []).map(s => String(s || '').trim()).filter(Boolean), P = {}; (prev || []).forEach(n => P[String(n).trim().toLowerCase()] = 1);
+    const cur = L.filter(n => !P[n.toLowerCase()]); return cur.length ? cur : L; }
+  /* the header line of the renewal picture */
+  function line(Q){ const c = n1(Q.carry), u = n1(Q.used), o = n1(Q.other);
+    return (c ? c + ' carried over + ' : '') + n1(Q.tot) + ' new' + (o ? ' + ' + o + ' other' : '') + (u ? ' − ' + u + ' used' : '') + ' · ' + (c ? '结转 ' + c + ' + ' : '') + '新购 ' + n1(Q.tot) + ' 课时' + (u ? ' − 已上 ' + u : ''); }
+  let DOC = null, DAT = 0, BUSY = null;
+  function doc(force){ if(!force && DOC && Date.now() - DAT < 60e3) return Promise.resolve(DOC); if(BUSY) return BUSY;
+    if(typeof TOKEN === 'undefined' || !TOKEN || typeof FAST_URL === 'undefined') return Promise.resolve(DOC);
+    BUSY = fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: ['sys:renewcheck'] }) }).then(x => x.json())
+      .then(r => { const d = r && r.ok && r.docs && r.docs['sys:renewcheck'] && r.docs['sys:renewcheck'].data; if(d){ DOC = d; DAT = Date.now(); } return DOC; })
+      .catch(() => DOC).then(x => { BUSY = null; return x; });
+    return BUSY; }
+  g.coeRenew = { n1, months, addM, fromRows, split, validFrom, guard, formHold, teachers, line, doc, last: () => DOC, _set: d => { DOC = d; DAT = Date.now(); } };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* 1540 · wiring: renewal picture + lesson-balance picture + Lesson Summary + renewal form + App health all go through coeRenew */
+(function(){
+  if(window.__1540 || !window.coeRenew || typeof D === 'undefined') return; window.__1540 = 1;
+  const R = window.coeRenew, up = s => String(s || '').trim().toUpperCase();
+  /* the ACTIVE rows of a student's current package (row = a given ACTIVE row, else the same pick as the Lesson Summary) */
+  function pkgOf(code, row){ try{ const old = window.LS_PICK; if(row) window.LS_PICK = { code: up(code), row: row };
+      let S; try{ S = lsRows(code); } finally { window.LS_PICK = old; } if(!S) return null;
+      const { C, r, G } = S, o = G.owner || r, M = (G.members && G.members.length ? G.members : [o]);
+      /* the package = the owner row + every row of this code without ENROLLED (as the database counts it); a family package (other codes) is "shared" */
+      const mine = AT.rows.filter(x => up(x[C.code]) === up(code) && (x === o || x[C.enrolled] === '' || x[C.enrolled] == null));
+      const shared = M.some(x => up(x[C.code]) !== up(code)) || (C.shared != null && AT.rows.some(x => up(x[C.shared]) === up(code) && up(x[C.code]) !== up(code))) || (C.shared != null && !!String(o[C.shared] || '').trim());
+      return { C, o, shared, carryAll: Math.round(mine.reduce((a, x) => a + (+x[C.carry] || 0), 0) * 10) / 10, rows: mine.map(x => ({ owner: x === o, carry: x[C.carry], transfer: C.transfer != null ? x[C.transfer] : 0, incentive: C.incentive != null ? x[C.incentive] : 0,
+        enrolled: x[C.enrolled], finished: x[C.finished], available: x === o ? (x[C.available] === '' ? '' : +x[C.available] + (G.extra || 0)) : '' })) }; }catch(e){ return null; } }
+  window.coeRenewPkg = pkgOf;
+  const BTN = '#sheetBody button[onclick^="cxCopy"], #sheetBody button[onclick^="cxSave"], #sheetBody button[onclick^="cxText"]';
+  function hold(P, why){ try{ P.blob = null; if(P.url){ try{ URL.revokeObjectURL(P.url); }catch(e){} } P.url = ''; const im = $('cxImg'); if(!im) return;
+    im.style.display = 'none'; const w = $('cxWait'); if(w) w.remove(); let h = $('rnHold');
+    if(!h){ im.insertAdjacentHTML('afterend', '<div id="rnHold" class="mini" style="margin-top:12px;background:#FFF5F2;border:1px solid #E9B8AC"></div>'); h = $('rnHold'); }
+    h.innerHTML = '<b style="color:#9A3B22">Numbers don’t agree yet · checking (核对中)</b><div class="small" style="margin-top:4px">' + why.map(esc).join('<br>') + '</div>'
+      + '<div class="small mute" style="margin-top:6px">No picture until they agree, so nothing wrong is sent.</div><button class="btn sm ghost" style="margin-top:8px" onclick="coeRenew.doc(true).then(()=>{if(CXP){CXP.url=\'\';cxDraw();}})">Check again</button>';
+    document.querySelectorAll(BTN).forEach(b => { b.disabled = true; }); }catch(e){} }
+  function unhold(){ const h = $('rnHold'); if(h) h.remove(); const im = $('cxImg'); if(im) im.style.display = ''; document.querySelectorAll(BTN).forEach(b => { b.disabled = false; }); }
+  /* renewal + lesson-balance pictures */
+  const _rnFor = window.rnFor; if(typeof _rnFor === 'function') window.rnFor = function(P){ const Q = _rnFor.apply(this, arguments); if(Q && P && P.__rn) Object.assign(Q, P.__rn.q); return Q; };
+  const _rnValid = window.rnValid; if(typeof _rnValid === 'function') window.rnValid = function(P){ const r = _rnValid.apply(this, arguments); try{ const Q = P && P.renew, v = P && P.__rn;
+      if(Q && v && v.dl){ Q.dl = v.dl; Q.start = v.start; } }catch(e){} return r; };
+  const _cxd = cxDraw;
+  cxDraw = async function(){ const P = CXP; if(!P || P.kind !== 'bal' || !D || !D.mgr) return _cxd.apply(this, arguments);
+    const code = up((P.e || {}).code), multi = !!(P.bal && P.bal.members); let d = null; try{ d = await R.doc(); }catch(e){} if(CXP !== P) return;
+    P.__rn = null; const Q0 = !multi && typeof _rnFor === 'function' ? _rnFor(P) : null, row = d && d.rows ? d.rows[code] : null, k = multi ? null : pkgOf(code);
+    const sp = k && !k.shared ? R.split(R.fromRows(k.rows), row || (d && d.unk ? d.unk[code] : null)) : null;   /* d.unk: returned / gift lessons of every package (database) */
+    const oldRow = !!(Q0 && P.bal && (x => !/^\d{4}-\d{2}-\d{2}$/.test(x) || x < Q0.paid)(String(P.bal.deadline || '').slice(0, 10)));
+    const G = R.guard({ split: sp, doc: d, row, renew: !!Q0, oldRow, needDoc: !!Q0, tot: Q0 ? Q0.tot : null });
+    if(!G.ok){ hold(P, G.why); return; }
+    unhold(); if(sp && sp.ok && P.bal && !Q0) P.bal.carry = sp.carry;
+    if(Q0 && sp){ const q = { carry: sp.carry, used: sp.used, now: sp.now, other: sp.other }; P.__rn = { q, dl: row && row.validRule ? row.validRule : '', start: row && row.start ? row.start : '' };
+      try{ const names = String(P.e.teacher || '').split(/\s*,\s*/).filter(Boolean), pv = window.PV43 && PV43.prev ? PV43.prev(code, names) : []; P.e.teacher = R.teachers(names, pv).join(', '); }catch(e){} }
+    return _cxd.apply(this, arguments); };
+  /* Lesson Summary: the same guard */
+  const _ls = window.lsHtml; if(typeof _ls === 'function') window.lsHtml = function(code){ const h = _ls.apply(this, arguments);
+    try{ if(!D || !D.mgr || !h) return h; const k = pkgOf(code); if(!k || k.shared) return h; const d = R.last(), row = d && d.rows ? d.rows[up(code)] : null;
+      const G = R.guard({ split: R.split(R.fromRows(k.rows), row || (d && d.unk ? d.unk[up(code)] : null)), doc: d, row }); if(!d) R.doc();
+      if(G.ok) return h;
+      return '<div class="mini" style="background:#FFF5F2;border:1px solid #E9B8AC;margin:10px 0"><b style="color:#9A3B22">Numbers don’t agree yet · checking (核对中)</b><div class="small" style="margin-top:4px">' + G.why.map(esc).join('<br>') + '</div><div class="small mute" style="margin-top:6px">The Lesson Summary shows again as soon as they agree.</div></div>'; }catch(e){ return h; } };
+  /* renewal form: never record a stale CARRY OVER */
+  const _rps = window.renPaidSheet; if(typeof _rps === 'function') window.renPaidSheet = async function(code){ const pa = typeof loadActive === 'function' ? loadActive(true).catch(() => {}) : null;
+    const r = await _rps.apply(this, arguments); try{ await pa; }catch(e){}
+    try{ const S = typeof RPS !== 'undefined' ? RPS : null, b = $('rpS'); if(!S || up(S.code) !== up(code) || !S.info || !b || /Try again/.test(b.textContent)) return r;
+      const k = pkgOf(code, S.info.row); if(!k || k.shared) return r; const H = R.formHold(S.info.left, R.fromRows(k.rows).now, S.info.early);
+      if(H.hold){ b.disabled = true; b.textContent = '核对中 · numbers don’t agree yet'; b.onclick = null; const P = $('rpP');
+        if(P && !$('rpHold')) P.insertAdjacentHTML('beforebegin', '<div id="rpHold" class="mini" style="margin-top:12px;background:#FFF5F2;border:1px solid #E9B8AC"><b style="color:#9A3B22">Lessons left: checking (核对中)</b><div class="small" style="margin-top:4px">' + esc(H.why) + (H.sheet != null ? '. Saving now would record CARRY OVER ' + H.sheet + ' instead of ' + H.live + '.' : '') + '</div><div class="small mute" style="margin-top:6px">It clears when ACTIVE counts the lesson (Google’s next copy), or at once after the SERVER-RENEWRULE28 paste.</div><button class="btn sm ghost" style="margin-top:8px" onclick="delete RP_PRE[\'' + esc(up(code)) + '\'];renPaidSheet(RPS.code,RPS.name,RPS.teacher,RPS.again)">Check again</button></div>'); } }catch(e){}
+    return r; };
+  /* App health / Overview "App check": renewed packages that do not reconcile */
+  const _lh = window.loadHealth; if(typeof _lh === 'function') window.loadHealth = async function(){ const r = await _lh.apply(this, arguments);
+    try{ const d = await R.doc(true); if(d && typeof HL !== 'undefined' && HL){ const L = (d.issues || []).map(x => 'Renewal · ' + x.name + ' ' + x.code + ' · ' + (x.what || []).join(' · '));
+        if(!d.copyOk) L.unshift('Renewal check · the ACTIVE copy from Google is out of date');
+        HL.issues = L.concat((HL.issues || []).filter(s => !/^Renewal /.test(String(s)))); if(L.length) HL.ok = false; const b = $('hlBox'); if(b) b.innerHTML = hlHtml(); try{ homeSoon(); }catch(e){} } }catch(e){}
+    return r; };
+  setTimeout(() => { try{ if(D && D.mgr) R.doc(); }catch(e){} }, 3000); setInterval(() => { try{ if(D && D.mgr && !document.hidden) R.doc(true); }catch(e){} }, 5 * 6e4);
 })();
 </script>
 </body>
