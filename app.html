@@ -4984,11 +4984,11 @@ const e = evList(src)[i]; if(!e || !e.id) return; src = src || '';
 if(!SL) SL = kept('sl2'); if(!SL){ try{ SL = await api('schedLists', TOKEN); keep('sl2', SL); }catch(x){ SL = {students:[], teachers:[]}; } }
 const st = new Date(e.start), mins = Math.round((new Date(e.end) - st) / 6e4), lens = [...new Set([25,30,40,45,50,60,90,mins])].sort((a,b)=>a-b);
 const T = [...new Set(SL.teachers.concat(e.teacher && e.teacher!=='—' ? [e.teacher] : []))].sort();
-CE = { e, i, src }; const nw0 = Date.now(), ph = e.cancelled ? 'cx' : nw0 < st - 5 * 6e4 ? 'pre' : nw0 <= +new Date(e.end) + 10 * 6e4 ? 'live' : 'post', late2 = !e.cancelled && st - nw0 < 2 * 36e5; window._ceLate = late2;   /* pre = before class · live = class on now · post = finished; late2 = under 2 h before the start (policy) */
+CE = { e, i, src }; const nw0 = Date.now(), ph = e.cancelled ? 'cx' : nw0 < st - 5 * 6e4 ? 'pre' : nw0 <= +new Date(e.end) + 10 * 6e4 ? 'live' : 'post', CXH = window.cxHoursFor ? cxHoursFor([e.code, e.title, e.student, src === 'stu' && typeof STU !== 'undefined' && STU ? STU.code : ''].join(' ')) : 2, late2 = !e.cancelled && st - nw0 < CXH * 36e5; window._ceLate = late2; window._ceLateH = CXH;   /* pre = before class · live = class on now · post = finished; late2 = under 2 h before the start (policy) */
 openSheet(`<h1>${esc(e.student || e.title)}</h1><div class="mute small">${esc(e.title)} · ${esc(svDate(ymdLocal(st),{weekday:'short',day:'numeric',month:'short'}))} ${tm(e.start)}–${tm(e.end)}</div>
 ${e.cancelled?'<div class="mini" style="margin-top:10px;background:var(--coralT);color:#9A4330"><b>Cancelled</b> on the calendar</div>':`<div id="ceMon" class="mon">${monHtml(e, null)}</div>`}
 ${e.cancelled ? '' : ph !== 'live' ? `${ph === 'post' ? '<div id="cePost" class="mini" style="margin-top:12px">' + cePostNote(e) + '</div>' : ''}<button class="btn ${ph === 'post' ? 'ghost' : 'teal'} block" style="margin-top:12px" onclick="cxClassProof(${i},'${src}')">Class details to send (picture)</button>
-<div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost grow" id="ceBMv" onclick="ceOpen('ceMv')">Move · reschedule</button><button class="btn ghost grow" id="ceBCx" onclick="ceOpen('ceCx')">${late2 && ph === 'pre' ? 'Cancel · under 2 h' : 'Cancel class'}</button></div>` : `<div class="small" style="margin-top:14px;text-align:center"><a class="link" onclick="this.parentNode.remove();$('ceMore').classList.remove('hide')">${ph === 'live' ? 'Need to change this class?' : 'Picture · move · cancel'}</a></div><div id="ceMore" class="hide"><button class="btn ghost block" style="margin-top:12px" onclick="cxClassProof(${i},'${src}')">Class details to send (picture)</button><div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost grow" id="ceBMv" onclick="ceOpen('ceMv')">Move · reschedule</button><button class="btn ghost grow" id="ceBCx" onclick="ceOpen('ceCx')">Cancel class</button></div></div>`}
+<div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost grow" id="ceBMv" onclick="ceOpen('ceMv')">Move · reschedule</button><button class="btn ghost grow" id="ceBCx" onclick="ceOpen('ceCx')">${late2 && ph === 'pre' ? 'Cancel · under ' + CXH + ' h' : 'Cancel class'}</button></div>` : `<div class="small" style="margin-top:14px;text-align:center"><a class="link" onclick="this.parentNode.remove();$('ceMore').classList.remove('hide')">${ph === 'live' ? 'Need to change this class?' : 'Picture · move · cancel'}</a></div><div id="ceMore" class="hide"><button class="btn ghost block" style="margin-top:12px" onclick="cxClassProof(${i},'${src}')">Class details to send (picture)</button><div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost grow" id="ceBMv" onclick="ceOpen('ceMv')">Move · reschedule</button><button class="btn ghost grow" id="ceBCx" onclick="ceOpen('ceCx')">Cancel class</button></div></div>`}
 <div id="ceMv" class="${e.cancelled ? '' : 'hide'}"><h2 style="margin-top:18px">${e.cancelled ? 'Change this class' : 'Move · reschedule'}</h2>
 <div class="row" style="gap:10px;align-items:flex-start"><div class="grow"><label>Date</label><input id="eD" class="in-t" type="date" value="${esc(ymdLocal(st))}"></div>
 <div class="grow"><label>Time</label>${timeSel('eH', tm(e.start))}</div>
@@ -4997,7 +4997,7 @@ ${e.cancelled ? '' : ph !== 'live' ? `${ph === 'post' ? '<div id="cePost" class=
 <div id="ePrev" class="mini" style="margin-top:12px">No change yet.</div>
 <label class="check" style="margin-top:10px"><input type="checkbox" id="eFw" onchange="const b=$('eGo');if(b)b.textContent=this.checked?'Save · move this and later classes':'Save changes'"><div><b>Moving forward · also move the later classes</b><div class="small mute">Every later class of this package on the same day and time moves the same way, and the parent picture says so</div></div></label>
 <button class="btn block" id="eGo" style="margin-top:10px" disabled onclick="sendEdit(${i},'move','${src}')">Save changes</button></div>
-<div id="ceCx" class="${e.cancelled ? '' : 'hide'}">${e.cancelled ? '' : '<h2 style="margin-top:18px">Cancel class</h2>'}${late2 ? `<div class="mini" style="margin-top:10px;background:var(--coralT);color:#9A4330"><b>${ph === 'pre' ? 'Less than 2 hours before class.' : 'This class has started.'}</b> By policy, a parent's cancellation now counts as a completed (paid) class, so the class stays on the calendar. Cancel only when the teacher or CupOfEnglish can't hold it · a make-up is added.</div>` : ''}
+<div id="ceCx" class="${e.cancelled ? '' : 'hide'}">${e.cancelled ? '' : '<h2 style="margin-top:18px">Cancel class</h2>'}${late2 ? `<div class="mini" style="margin-top:10px;background:var(--coralT);color:#9A4330"><b>${ph === 'pre' ? 'Less than ' + CXH + ' hours before class.' : 'This class has started.'}</b> By policy, a parent's cancellation now counts as a completed (paid) class, so the class stays on the calendar. Cancel only when the teacher or CupOfEnglish can't hold it · a make-up is added.</div>` : ''}
 ${e.cancelled?'':`<label class="check" style="margin-top:14px"><input type="checkbox" id="eMk" checked><div><b>Add a make-up class at the end</b><div class="small mute">Keeps the package complete: one more class after their last booked one, same day pattern and time</div></div></label>`}
 ${e.cancelled ? (e.why ? `<div class="cxw" style="margin-top:14px">Why cancelled: ${cxWhy(e.why)}</div>` : '') + `<button class="btn teal block" style="margin-top:10px" onclick="cxProof(${i},'${src}')">Proof to send (picture)</button>` : `<label>Reason for cancelling <span class="mute small">(the teacher sees it)</span></label><input id="eR" class="in-t" placeholder="e.g. Parent asked · student sick · school exam">
 <div class="skc">${(late2 ? ['Teacher unavailable','Internet problem','Power outage'] : ['Parent asked','Student sick','School exam','Family trip','Holiday','Moved to another day','Student no-show','Teacher unavailable','Internet problem','Power outage']).map(r => `<button type="button" onclick="$('eR').value='${r}';this.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===this))">${r}</button>`).join('')}</div>
@@ -5321,7 +5321,7 @@ if(action === 'move' && !e.cancelled && Date.now() > +new Date(e.end)){ const h 
 if(action !== 'restore') setTimeout(() => { try{ if(window.moLoad) moLoad(); }catch(x){} try{ if(window.coeStampCheck) coeStampCheck(); }catch(x){} }, 4000);   /* 1500: Monitor / To do drop the old class */
 const f = {action, start:e.start, date:$('eD').value, time:$('eH').value.trim(), mins:$('eM').value, teacher:$('eT').value, makeup: !!($('eMk') && $('eMk').checked), reason: (($('eR')||{}).value||'').trim(), forward: action==='move' ? !!($('eFw') && $('eFw').checked) : action==='cancel' && (!!($('eStop') && $('eStop').checked) || !!window._cxStop), force: action==='move' && ckForce()};
 if(action==='move' && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(f.time)) return toast('Choose a time');
-if(action==='cancel' && !e.cancelled && window._ceLate && !/teacher|internet|power|outage|cupofenglish/i.test(f.reason)) return toast('Under 2 hours: a parent cancellation counts as a completed class. Choose a teacher / CupOfEnglish reason.');
+if(action==='cancel' && !e.cancelled && window._ceLate && !/teacher|internet|power|outage|cupofenglish/i.test(f.reason)) return toast('Under ' + (window._ceLateH || 2) + ' hours: a parent cancellation counts as a completed class. Choose a teacher / CupOfEnglish reason.');
 window._cxStop = 0; if(action==='cancel' && e.cancelled && !f.reason) f.reason = cxSplit(e.why).r;
 const before = Object.assign({}, e), code = src==='stu' && STU ? STU.code : '';
 if(action==='move'){ const [H,M] = f.time.split(':').map(Number), d = new Date(f.date+'T00:00:00'); d.setHours(H, M, 0, 0);
@@ -6501,7 +6501,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1408;
+const COE_V = 1414;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -6853,10 +6853,10 @@ try{ if(AGS.code && typeof AT !== 'undefined' && AT && AT.rows){ const C = {}; A
   if(r0){ AGS.name = AGS.name || String(r0[C.name] || ''); AGS.cn = AGS.cn || String(r0[C.cn] || ''); AGS.pkg = AGS.pkg || (+r0[C.enrolled] || 0); } }
   if(!AGS.name && AGS.code && typeof SL !== 'undefined' && SL && SL.students){ const s = SL.students.find(x => x.code === AGS.code); if(s){ AGS.name = s.name; AGS.cn = AGS.cn || s.cn || ''; } }
   const rec = agrOf(AGS.code, AGS.key, AGS.name); if(rec) AGS.list = [rec]; }catch(e){}
-AGS.nat = 'China 中国'; const first = AGS;
+AGS.nat = 'China 中国'; if(window.agrPh1538 && agrPh1538(AGS)) AGS.nat = 'Philippines'; const first = AGS;
 agrPaint(); agrPic();   /* at once, from what the app knows */
 try{ const r = await api('mgmtAgree', TOKEN, { code: AGS.code, key: AGS.key, name: AGS.name }); if(AGS !== first) return;
-  if(r && r.ok){ const nat = /philippin|manila|cebu|davao|pangasinan|urdaneta|\bPH\b/i.test(r.city || '') ? 'Philippines 菲律宾' : 'China 中国', ch = (r.name && r.name !== AGS.name) || (r.cn && r.cn !== AGS.cn) || (r.pkg && r.pkg !== AGS.pkg) || nat !== AGS.nat;
+  if(r && r.ok){ const nat = window.agrPh1538 && agrPh1538(AGS) ? 'Philippines' : /philippin|manila|cebu|davao|pangasinan|urdaneta|\bPH\b/i.test(r.city || '') ? 'Philippines 菲律宾' : 'China 中国', ch = (r.name && r.name !== AGS.name) || (r.cn && r.cn !== AGS.cn) || (r.pkg && r.pkg !== AGS.pkg) || nat !== AGS.nat;
     Object.assign(AGS, { name: r.name || AGS.name, cn: r.cn || AGS.cn, pkg: r.pkg || AGS.pkg, list: r.list || AGS.list, city: r.city || '', nat });
     if($('sheet').classList.contains('on') && $('agImg')){ const nv = $('agN') ? $('agN').value : '', how = AGS.how; if(ch){ AGPIC = null; } agrPaint(); if($('agN')) $('agN').value = nv; if(how) AGS.how = how; if(ch) agrPic(); } } }catch(e){} }
 function agrPaint(){ const a = AGS; if(!a) return; const last = a.list[0], ok = a.list.find(x => x.how !== 'Sent');
@@ -8513,16 +8513,16 @@ const phL = () => { const P = phPrg(); if(!P) return []; const KS = { foundation
 const phQ = () => { const P = phPrg() || {}, S = P.system || {}, band = P.measure === 'Band';
   return { sub: P.name || '', l3: (S.skills || []).map(k => k.name).join(' · ') + ' · ' + (band ? 'aligned with official IELTS band descriptors' : 'CEFR-aligned · adult learners'),
     l2: p => p.hrs + ' · ' + p.mins + '-minute lessons · 1:1', per: p => '≈ ₱' + Math.round(p.price / (p.n + p.bonus)).toLocaleString('en-US') + ' / lesson',
-    notes: [{ t: P.small || '' }, { t: (P.method || '') + '.' }, { t: (S.footer || []).join(' · ') + '.' }, { t: 'Please tell your teacher at least 2 hours before class if you need to cancel or move a lesson.', red: 1 }]
+    notes: [{ t: P.small || '' }, { t: (P.method || '') + '.' }, { t: (S.footer || []).join(' · ') + '.' }, { t: 'Please tell your teacher at least ' + phCxHours() + ' hours before class if you need to cancel or move a lesson.', red: 1 }]
       .concat(band ? [{ t: 'Target bands are a guide; progress depends on starting level, effort and consistency. Official results come from the IELTS test.', mute: 1 }] : []),
-    bc: 'CupOfEnglish helps eligible learners register for the IELTS test through its partnership with British Council Philippines.' }; };
+    bc: phBcLine() }; };
 let PP = null;
 window.pricePic = function(o){ o = o || {}; if(o.ph){ if(!(window.phPricing1530 && phPricing1530())) return toast('Philippine price list still loading · try again in a moment'); PP = { o: {}, m: 'ph', rec: o.rec ? ({ foundation: 'f', professional: 'c', mastery: 'a' })[o.rec] || 'c' : 'c', ad: o.ph === 'ielts' ? 2 : true }; return ppSheet(); } PP = { o: o, rec: o.cefr ? recOf(o.cefr) : 'c', ad: o.ket ? 4 : o.pet ? 3 : o.ielts ? 2 : !!o.adult }; ppSheet(); };
 function ppSheet(){
 openSheet('<h1>Price picture</h1><div class="mute small">' + (PP.o.student ? 'For ' + esc(PP.o.student) + (PP.o.cefr ? ' · trial ' + esc(PP.o.cefr) + (PP.o.total ? ' · ' + PP.o.total + '/36' : '') : '') : 'General price list for new enquiries') + (PP.m === 'ph' ? ' · English · Philippine market (₱)' : ' · Chinese for parents') + '</div>' +
-'<div class="small" style="margin-top:12px"><b>Learner</b></div><div class="seg" id="ppAd" style="flex-wrap:wrap">' + (PP.m === 'ph' ? [, 'Adult English 1:1', 'IELTS 1:1'] : ['Kids &amp; teens · 4–17', 'Adults · 18+', 'IELTS', 'PET', 'KET']).map((t, i) => '<button class="' + ((+PP.ad || 0) === i ? 'on' : '') + '" onclick="ppAd(' + i + ')">' + t + '</button>').join('') + '</div>' + (PP.m !== 'ph' && (PP.ad === true || !PP.ad) ? '<div class="small" style="margin-top:12px"><b>Price for</b> <span class="mute">· partner = what the partner remits to us</span></div><div class="seg">' + (PP.ad === true ? ['', 'Dr. Spring', 'Xiaolan', 'Xiaolan students'] : ['', 'Dr. Spring', 'Xiaolan']).map(n => '<button class="' + ((PP.partner || '') === n ? 'on' : '') + '" onclick="ppPartner(\'' + n + '\')">' + (n && XLS[n] ? 'Xiaolan\'s Language Center · Adult · ¥' + XLS[n].join(' / ') : n ? n + ' · −¥' + PARTNERS[n][PP.ad ? 'a' : 'k'] + '/lesson' : 'Normal (students)') + '</button>').join('') + '</div>' : '') + '<div class="small" style="margin-top:12px"><b>Recommend</b></div><div class="seg" id="ppRec">' + ppL().map(p => '<button class="' + (PP.rec === p.k ? 'on' : '') + '" onclick="ppRec(\'' + p.k + '\')">' + (p.en || p.zh) + ' · ' + p.n + (p.bonus ? '+' + p.bonus : '') + '</button>').join('') + '<button class="' + (PP.rec === '' ? 'on' : '') + '" onclick="ppRec(\'\')">None</button>' + '</div>' +
-'<div class="row" style="gap:8px;margin-top:12px"><button class="btn teal grow" id="ppC" onclick="ppCopy()">Copy picture</button><button class="btn ghost grow" onclick="ppSave()">' + (navigator.share ? 'Share / save' : 'Save picture') + '</button><button class="btn ghost" onclick="ppText()">Copy message</button></div>' +
-'<div class="card" style="margin-top:10px;padding:10px 12px"><label class="check" for="ppPayOn" style="margin:0"><input type="checkbox" id="ppPayOn" ' + (PP.pay === false ? '' : 'checked') + ' onchange="PP.pay=this.checked"><span>Add the enrolment and payment lines to the message</span></label><div class="row" style="gap:8px;align-items:center;margin-top:6px"><span class="small mute">Payment with</span><input id="ppPayNm" class="in-t grow" style="margin:0" value="' + esc(ppPayNm()) + '" onchange="try{localStorage.setItem(\'coe.ppPay\',this.value.trim())}catch(e){}"></div></div>' +
+'<div class="small" style="margin-top:12px"><b>Learner</b></div><div class="seg' + (PP.m === 'ph' ? ' pp37-w' : '') + '" id="ppAd" style="flex-wrap:wrap">' + (PP.m === 'ph' ? [, 'Adult English 1:1', 'IELTS 1:1'] : ['Kids &amp; teens · 4–17', 'Adults · 18+', 'IELTS', 'PET', 'KET']).map((t, i) => '<button class="' + ((+PP.ad || 0) === i ? 'on' : '') + '" onclick="ppAd(' + i + ')">' + t + '</button>').join('') + '</div>' + (PP.m !== 'ph' && (PP.ad === true || !PP.ad) ? '<div class="small" style="margin-top:12px"><b>Price for</b> <span class="mute">· partner = what the partner remits to us</span></div><div class="seg">' + (PP.ad === true ? ['', 'Dr. Spring', 'Xiaolan', 'Xiaolan students'] : ['', 'Dr. Spring', 'Xiaolan']).map(n => '<button class="' + ((PP.partner || '') === n ? 'on' : '') + '" onclick="ppPartner(\'' + n + '\')">' + (n && XLS[n] ? 'Xiaolan\'s Language Center · Adult · ¥' + XLS[n].join(' / ') : n ? n + ' · −¥' + PARTNERS[n][PP.ad ? 'a' : 'k'] + '/lesson' : 'Normal (students)') + '</button>').join('') + '</div>' : '') + '<div class="small" style="margin-top:12px"><b>Recommend</b></div><div class="seg' + (PP.m === 'ph' ? ' pp37-w' : '') + '" id="ppRec">' + ppL().map(p => '<button class="' + (PP.rec === p.k ? 'on' : '') + '" onclick="ppRec(\'' + p.k + '\')">' + (p.en || p.zh) + ' · ' + p.n + (p.bonus ? '+' + p.bonus : '') + '</button>').join('') + '<button class="' + (PP.rec === '' ? 'on' : '') + '" onclick="ppRec(\'\')">None</button>' + '</div>' +
+'<div class="row' + (PP.m === 'ph' ? ' pp37-b' : '') + '" style="gap:8px;margin-top:12px"><button class="btn teal grow" id="ppC" onclick="ppCopy()">Copy picture</button><button class="btn ghost grow" onclick="ppSave()">' + (navigator.share ? 'Share / save' : 'Save picture') + '</button><button class="btn ghost" onclick="ppText()">Copy message</button></div>' +
+'<div class="card" style="margin-top:10px;padding:10px 12px"><label class="check" for="ppPayOn" style="margin:0"><input type="checkbox" id="ppPayOn" ' + (PP.pay === false ? '' : 'checked') + ' onchange="PP.pay=this.checked"><span>Add the enrolment and payment lines to the message</span></label>' + (PP.m === 'ph' ? phPayRow1533() : '<div class="row" style="gap:8px;align-items:center;margin-top:6px"><span class="small mute">Payment with</span><input id="ppPayNm" class="in-t grow" style="margin:0" value="' + esc(ppPayNm()) + '" onchange="try{localStorage.setItem(\'coe.ppPay\',this.value.trim())}catch(e){}"></div>') + '</div>' +
 '<div id="ppImg" style="margin-top:12px"><div class="sk"></div><div class="sk"></div></div>');
 try{ $('sheet').classList.add('wide'); }catch(e){} ppDraw();
 }
@@ -8552,7 +8552,7 @@ y += h + 18; });
 y = coeNotes(T, 'Good to know', '温馨提示', Q ? Q.notes : IE ? [{ t: PE ? KE ? '每节课50分钟 · 一对一个性化辅导 · 基于剑桥 CEFR A2 标准 · 100% 剑桥对标。' : '每节课50分钟 · 个性化一对一教学 · 符合剑桥 CEFR B1–B1+ 国际标准。' : '每节课50分钟 · 1对1个性化教学 · 对标官方雅思评分标准（Band Descriptors）。' }, { t: KE ? '技能时间分配：40% 口语 · 25% 写作 · 20% 听力 · 15% 阅读。' : PE ? '口语、听力、阅读、写作四项技能全面训练 · 阶段式学习路径：基础 · 进阶 · 冲刺。' : '可选择四项综合课程，或口语、听力、阅读、写作单项强化。' }, { t: KE ? '模拟考试与备考策略：70% 考试模拟 + 30% 应试策略（时间管理、错误分析与改正）。' : '70% 综合技能训练 + 30% 策略思维培养，结合实战模考与策略反馈。' }, { t: '温馨提醒：如需请假或调课，请至少提前 2 小时告知老师或助教。', red: 1 }, { t: '学习进度因基础、投入及持续学习而异；目标分数为参考范围，实际成绩以官方考试为准。', mute: 1 }] : [{ t: '每节课50分钟，也可拆分为两次25分钟的半节课（各计0.5课时），灵活安排上课时间。' }, { t: PP.ad ? '25分钟半节课适合工作繁忙或希望高频练习的学习者；50分钟完整课程适合希望系统提升英语能力的成人学习者。' : '25分钟课程适合低龄儿童（自然拼读、词汇、互动）；50分钟课程适合年龄稍大的学员（口语表达、话题讨论）。' }, { t: PP.ad ? '每节课后提供针对性练习与反馈 · 经验丰富的专业英语教师 · 4C 教学法 · 对标 CEFR 国际标准。' : '每节课后布置作业 · 持证专业教师授课 · 4C 教学法 · 对标 CEFR 国际标准。' }, { t: '温馨提醒：如需请假或调课，请至少提前 2 小时告知老师或助教。', red: 1 }], y + 22);
 const d0 = coeDate(new Date()), d1 = coeDate(new Date(Date.now() + 7 * 864e5));
 [['Quoted on', '报价日期', d0], ['Valid until', '有效期至', d1]].forEach(r => { T.label(r[0], r[1], y); T.text(r[2][0], T.CX, y + 44, '400 32px ' + T.F, T.NAVY); if(!Q) T.text(r[2][1], T.CX, y + 82, '400 26px ' + T.F, T.SUB); y += Q ? 80 : 118; });
-T.wrap(Q ? Q.bc : '一杯英语（CupOfEnglish）通过与菲律宾英国文化教育协会（British Council Philippines）的合作，协助符合条件的学员进行雅思（IELTS）报名。', T.Wc - T.CX * 2, '400 19px ' + T.F).forEach(s => { T.text(s, T.CX, y + 4, '400 19px ' + T.F, T.MUTE); y += 28; });
+if(Q){ y += 6; let fz = 22; while(fz > 15 && T.w(Q.bc, '400 ' + fz + 'px ' + T.F) > T.Wc - 80) fz--; T.wrap(Q.bc, T.Wc - 80, '400 ' + fz + 'px ' + T.F).forEach(s => { T.text(s, T.Wc / 2, y + 4, '400 ' + fz + 'px ' + T.F, T.MUTE, 'center'); y += fz + 10; }); } else T.wrap('一杯英语（CupOfEnglish）通过与菲律宾英国文化教育协会（British Council Philippines）的合作，协助符合条件的学员进行雅思（IELTS）报名。', T.Wc - T.CX * 2, '400 19px ' + T.F).forEach(s => { T.text(s, T.CX, y + 4, '400 19px ' + T.F, T.MUTE); y += 28; });
 return y;
 }, Q ? { en: 1 } : undefined);
 const el = $('ppImg'); if(el) el.innerHTML = '<img src="' + URL.createObjectURL(PP.blob) + '" style="width:100%;border-radius:12px;border:1px solid #E6EEF0">';
@@ -8561,8 +8561,8 @@ const nm = () => 'CupOfEnglish-price' + (PP.m === 'ph' ? '-ph' : '') + (PP.ad ==
 window.ppCopy = async function(){ if(!PP || !PP.blob) return toast('Still making the picture…'); try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': PP.blob })]); toast(PP.m === 'ph' ? 'Picture copied · paste it in Messenger, Viber or e-mail' : 'Picture copied · paste it in WeChat'); }catch(e){ ppSave(); } };
 window.ppSave = async function(){ if(!PP || !PP.blob) return; const f = new File([PP.blob], nm(), { type: 'image/png' }); if(navigator.canShare && navigator.canShare({ files: [f] })){ try{ await navigator.share({ files: [f] }); return; }catch(e){ if(e && e.name === 'AbortError') return; } } const a = document.createElement('a'); a.href = URL.createObjectURL(PP.blob); a.download = nm(); document.body.appendChild(a); a.click(); a.remove(); toast('Picture saved'); };
 window.ppText = async function(){ const p = ppL().find(z => z.k === PP.rec), o = PP.o;
-if(PP.m === 'ph'){ const P = phPrg() || {}, ex = ppExtra().split('\n').filter(l => !/[一-鿿]/.test(l)).join('\n').replace(/\[Joyful\]/g, '');   /* the English lines of the same enrolment / payment text */
-  const out = 'Hello! Thank you for your interest in CupOfEnglish ' + (P.name || '1:1 lessons') + '.' + (p ? ' We recommend starting with the ' + p.zh + ' (' + p.n + ' lessons' + (p.mock ? ' + ' + p.mock + ' mock tests' : p.pe ? ' + ' + p.pe : '') + ', ' + p.pt + ').' : '') + ' Please see the picture for the details of each track. You are welcome to book a trial class: your teacher will check your current level and suggest the right track.' + ex + '\n\nCupOfEnglish';
+if(PP.m === 'ph'){ const P = phPrg() || {}, ex = phPayText1533();   /* the English lines of the same enrolment / payment text */
+  const out = 'Hello! Thank you for your interest in CupOfEnglish ' + (P.name || '1:1 lessons') + '.' + (p ? ' We recommend starting with the ' + p.zh + ' (' + p.n + ' lessons' + (p.mock ? ' + ' + p.mock + ' mock tests' : p.pe ? ' + ' + p.pe : '') + ', ' + p.pt + ').' : '') + ' Please see the picture for the details of each track. You are welcome to book a trial class: your teacher will check your current level and suggest the right track.' + '\n\nNeed to cancel or move a lesson? Please tell your teacher at least ' + phCxHours() + ' hours before class.' + ex + '\n\nCupOfEnglish';
   try{ await navigator.clipboard.writeText(out); toast('Message copied · paste it with the picture'); }catch(e){ toast(out); } return; }
 const t = (o.student ? '家长您好！感谢您带' + (o.cn || o.student) + '参加本次试听课。' + (o.cefr ? '根据老师的评估，孩子目前的英语水平为 CEFR ' + (window.cefrSay ? cefrSay(o.cefr, false, true) : o.cefr) + '。' : '') : '家长您好！感谢您对一杯英语（CupOfEnglish）的关注。欢迎预约试听课，老师会评估孩子目前的英语水平，并推荐合适的课程。') + (p ? '结合评估结果，老师建议从「' + p.zh + '」开始（' + p.n + '节' + (p.bonus ? ' + 赠送' + p.bonus + '节' : '') + '，¥' + p.price + '）。' : '') + '课程详情请参阅图片，如有任何问题，欢迎随时与我们联系。\n\n一杯英语（CupOfEnglish）';
 const tt = PP.ad >= 2 ? '您好！感谢您对一杯英语（CupOfEnglish）EXPERT ' + (PP.ad === 4 ? '剑桥 KET ' : PP.ad === 3 ? '剑桥 PET ' : '雅思') + '课程的关注。' + (p ? '建议从「' + p.zh + '」开始（' + p.n + '节课' + (p.mock ? ' + ' + p.mock + '次模考' : '') + (p.plus ? ' + ' + p.plus : '') + '，' + p.pt + '）。' : '') + '课程详情请参阅图片。欢迎预约试听课，老师会评估目前的英语水平，并制定个性化学习计划。\n\n一杯英语（CupOfEnglish）' : PP.ad ? t.replace('家长您好！', '您好！').replace(/感谢您带.+?参加本次试听课/, '感谢您参加本次试听课').replace(/孩子/g, '您') : t; const ex = ppExtra(), out = ex ? tt.replace(/\n\n一杯英语（CupOfEnglish）$/, '') + ex + '\n\n一杯英语（CupOfEnglish）' : tt;
@@ -9031,13 +9031,13 @@ const days = s => { const t = Date.parse(String(s || '').slice(0, 10)); return i
 const isFollow = e => (e.st || 'New') === 'New' && days(e.up || e.at) >= 2;
 function enqLocal(id, fn){ const e = (ENQ || []).find(x => x.id === id); if(e){ fn(e); e.up = new Date().toISOString().slice(0, 16).replace('T', ' '); keep(); if((typeof VIEW !== 'undefined' && VIEW === 'enquiry')) renderEnq(); } }
 window.enqLoad = async function(){ try{ const r = await api('mgmtEnqList', TOKEN); if(r && r.ok){ const tmp = (ENQ || []).filter(x => /^tmp/.test(x.id)); ENQ = tmp.concat((r.rows || []).filter(Boolean)); keep(); if((typeof VIEW !== 'undefined' && VIEW === 'enquiry')) renderEnq(); if((typeof VIEW !== 'undefined' && VIEW === 'mtoday') && window.renderMToday) renderMToday(); } }catch(e){} };
-const PROGS = ['Kids & teens', 'Adults', 'IELTS', 'PET', 'KET', 'PH Adult English 1:1', 'PH IELTS 1:1'], SRCS = ['WeChat', '小红书', 'Referral', 'Partner', 'Website', 'Other'];
+const PROGS = ['Kids & teens', 'Adults', 'IELTS', 'PET', 'KET', 'PH Adult English 1:1', 'PH IELTS 1:1'], SRCS = ['WeChat', '小红书', 'Facebook', 'Referral', 'Partner', 'Website', 'Other'];
 const pOpt = p => ({ adult: p === 'Adults' ? 1 : 0, ielts: p === 'IELTS' ? 1 : 0, pet: p === 'PET' ? 1 : 0, ket: p === 'KET' ? 1 : 0 });
 window.enqNew = function(){ const seg = (id, a, cur) => '<div class="seg" id="' + id + '" style="flex-wrap:wrap">' + a.map(x => '<button type="button" class="' + (x === cur ? 'on' : '') + '" onclick="this.parentNode.querySelectorAll(\'button\').forEach(b => b.classList.remove(\'on\')); this.classList.add(\'on\'); var pt = document.getElementById(\'eqPt\'); if(pt && this.parentNode.id === \'eqS\') pt.style.display = this.textContent === \'Partner\' ? \'\' : \'none\'">' + esc(x) + '</button>').join('') + '</div>';
 const inp = (id, ph) => '<input id="' + id + '" placeholder="' + ph + '" style="width:100%;margin-top:6px;padding:10px 12px;border:1px solid #DDE6E8;border-radius:12px;font:inherit">';
 openSheet('<h1>New enquiry</h1><div class="mute small">Save it now, send the pictures from the list · follow-ups show in To do after 2 days</div>' +
 '<div class="small" style="margin-top:12px"><b>Name</b> · parent or learner (WeChat name is fine)</div>' + inp('eqN', 'e.g. Lily mum · 王女士') +
-'<div class="row" style="gap:8px"><div class="grow">' + inp('eqW', 'WeChat ID (optional)') + '</div><div style="width:140px">' + inp('eqA', 'Age') + '</div></div>' +
+'<div class="row eq36-r" style="gap:8px"><div class="grow">' + inp('eqW', 'WeChat ID (optional)') + '</div><div class="eq36-age">' + inp('eqA', 'Age') + '</div></div>' +
 '<div class="small" style="margin-top:12px"><b>Interested in</b></div>' + seg('eqP', PROGS, 'Kids & teens') +
 '<div class="small" style="margin-top:12px"><b>Found us through</b></div>' + seg('eqS', SRCS, 'WeChat') + inp('eqPt', 'Partner name · e.g. Dr. Spring').replace('style="width', 'style="display:none;width') +
 inp('eqL', 'Level or goal (optional) · e.g. zero English, wants speaking for work') + inp('eqT', 'Note (optional)') +
@@ -17364,15 +17364,16 @@ const tbNow = L.filter(e => e.st === 'Trial booked').length;
   const G = { k: ['#2F6FD0', '#EAF1FC', 'KIDS & TEENS · 4–17'], a: ['#8A4FB8', '#F4ECFA', 'ADULTS · 18+'], x: ['#C27C0E', '#FCF3E2', 'EXAM COURSE'] };
   function sheet(){ const sb = document.getElementById('sheetBody'); if(!sb) return; const h1 = sb.querySelector('h1'); if(!h1) return;
     let seg = null, k = '', what = '';
-    if(/^Price picture/i.test(h1.textContent) && (seg = document.getElementById('ppAd'))){ const B = [...seg.querySelectorAll('button')], i = B.findIndex(x => x.classList.contains('on')); k = i === 1 ? 'a' : i === 0 || i < 0 ? 'k' : 'x'; what = i >= 2 ? B[i].textContent.trim() + ' price' : 'price';
+    let phl = ''; if(/^Price picture/i.test(h1.textContent) && (seg = document.getElementById('ppAd')) && seg.classList.contains('pp37-w')){ const on = seg.querySelector('button.on'); phl = on ? on.textContent.trim() : 'Philippines'; k = 'p'; what = 'price'; }
+    else if(/^Price picture/i.test(h1.textContent) && (seg = document.getElementById('ppAd'))){ const B = [...seg.querySelectorAll('button')], i = B.findIndex(x => x.classList.contains('on')); k = i === 1 ? 'a' : i === 0 || i < 0 ? 'k' : 'x'; what = i >= 2 ? B[i].textContent.trim() + ' price' : 'price';
       B.forEach((x, j) => { const g = G[j === 1 ? 'a' : j === 0 ? 'k' : 'x']; x.style.boxShadow = 'inset 0 0 0 1.5px ' + g[0]; if(x.classList.contains('on')){ x.style.background = g[0]; x.style.color = '#fff'; } else { x.style.background = '#fff'; x.style.color = g[0]; } }); }
     else if(/^Inquiry form/i.test(h1.textContent) && (seg = sb.querySelector('.seg'))){ const B = [...seg.querySelectorAll('button')], i = B.findIndex(x => x.classList.contains('on')); k = i === 1 ? 'a' : 'k'; what = 'form';
       B.forEach((x, j) => { const g = G[j === 1 ? 'a' : 'k']; x.style.boxShadow = 'inset 0 0 0 1.5px ' + g[0]; x.style.background = x.classList.contains('on') ? g[0] : '#fff'; x.style.color = x.classList.contains('on') ? '#fff' : g[0]; }); }
-    if(!k) return; const g = G[k], sig = k + what;
+    if(!k) return; const g = k === 'p' ? ['#00737B', '#E3F6F6', phl.toUpperCase()] : G[k], sig = k + what + phl;
     let bn = document.getElementById('au34b'); if(bn && bn.dataset.k === sig) return; if(bn) bn.remove();
     h1.insertAdjacentHTML('afterend', '<div id="au34b" data-k="' + sig + '" style="margin:8px 0 4px;padding:9px 14px;border-radius:12px;background:' + g[1] + ';border-left:5px solid ' + g[0] + ';color:' + g[0] + ';font-weight:800;letter-spacing:.04em;font-size:13.5px">' + g[2] + ' · ' + esc(what) + ' <span style="font-weight:600;letter-spacing:0;color:#55526E">· check this matches the learner before you copy</span></div>');
     const cb = document.getElementById('ppC') || [...sb.querySelectorAll('button')].find(x => /^Copy form/i.test(x.textContent));
-    if(cb){ cb.style.background = g[0]; cb.style.borderColor = g[0]; cb.style.color = '#fff'; const lab = k === 'a' ? 'Adults' : k === 'k' ? 'Kids & teens' : 'Exam'; if(cb.dataset.lab !== lab){ cb.dataset.base = cb.dataset.base || cb.textContent; cb.textContent = cb.dataset.base + ' · ' + lab; cb.dataset.lab = lab; } } }
+    if(cb){ cb.style.background = g[0]; cb.style.borderColor = g[0]; cb.style.color = '#fff'; const lab = k === 'p' ? phl.replace(/\s*1:1$/, '') : k === 'a' ? 'Adults' : k === 'k' ? 'Kids & teens' : 'Exam'; if(cb.dataset.lab !== lab){ cb.dataset.base = cb.dataset.base || cb.textContent; cb.textContent = cb.dataset.base + ' · ' + lab; cb.dataset.lab = lab; } } }
   let q = 0; new MutationObserver(() => { if(q) return; q = requestAnimationFrame(() => { q = 0; try{ sheet(); }catch(e){} }); }).observe(document.body, { childList: true, subtree: true });
   const _r = window.renderEnq; if(_r) window.renderEnq = function(){ const r = _r.apply(this, arguments); try{ mark(); }catch(e){ console.warn('au34', e); } return r; };
   try{ if(typeof VIEW !== 'undefined' && VIEW === 'enquiry') mark(); }catch(e){}
@@ -31248,7 +31249,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     var n = L.length; L = L.slice(0, 60);
     return (L.length ? L.map(function(x){ var b = P.busy[x.code];
       return '<div class="card" style="padding:12px 14px;margin-bottom:8px' + (x.access ? '' : ';opacity:.65') + '"><div class="row" style="gap:8px;flex-wrap:wrap"><div class="grow" style="min-width:180px"><b>' + e(x.name || '—') + '</b>' + (x.cn ? ' <span class="small">' + e(x.cn) + '</span>' : '') + ' <span class="mute small">· ' + e(x.code) + ' · ' + (x.adult ? 'Adult' : 'Young learner') + (x.enrolled ? '' : ' · not enrolled') + '</span>' + (x.ph && window.phChip1530 ? phChip1530(x) : '')
-        + '<div class="small mute">' + (x.access ? 'Access on' : 'Access switched off') + ' · last sign-in ' + e(when(x.last)) + (x.logins ? ' · ' + x.logins + ' sign-in' + (x.logins === 1 ? '' : 's') : '') + (x.own ? ' · own password set' : ' · password = English name') + '</div></div>'
+        + '<div class="small mute">' + (x.access ? 'Access on' : 'Access switched off') + ' · last sign-in ' + e(when(x.last)) + (x.logins ? ' · ' + x.logins + ' sign-in' + (x.logins === 1 ? '' : 's') : '') + (x.own ? ' · own password set' : x.ph ? ' · password = first name (' + e(String(x.name || '').trim().split(/\s+/)[0]) + ')' : ' · password = English name') + '</div></div>'
         + '<button class="btn teal sm" onclick="psCopy(\'' + x.code + '\')">' + (x.ph ? 'Copy message (English)' : 'Copy WeChat message') + '</button>' + '<button class="btn ghost sm" onclick="psPh(\'' + x.code + '\')">Market</button>'
         + (x.own ? '<button class="btn ghost sm" ' + (b ? 'disabled ' : '') + 'onclick="psClear(\'' + x.code + '\')">Clear own password</button>' : '')
         + '<button class="btn ghost sm" ' + (b ? 'disabled ' : '') + 'onclick="psActive(\'' + x.code + '\',' + (x.access ? 'false' : 'true') + ')">' + (x.access ? 'Switch off' : 'Switch on') + '</button></div><div class="ph30-slot" id="psPh_' + x.code + '"></div></div>'; }).join('') : '<div class="mute small">No students found.</div>')
@@ -31257,7 +31258,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     var on = P.list.filter(function(x){ return x.last; }).length;
     el.innerHTML = '<h1>Student access 学员专区</h1><div class="mute small">Adult students and young learners’ families sign in at <b>' + e(URLS) + '</b> with the <b>ST code</b> and the <b>student’s English name</b> (not case-sensitive). They see only that student: next class, lessons left, schedule, homework &amp; class notes, level, monthly reports already sent, attendance. The WeChat message greets adults by name and young learners’ families as “家长”. No prices, payments, contact details or other students. Works in mainland China (no Google). 5 wrong tries lock that code for 15 minutes.</div>'
       + '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><input id="psQ" class="in-t grow" style="min-width:200px" placeholder="Search name, Chinese name or ST code" value="' + e(P.q) + '" oninput="PS_Q(this.value)"><label class="check" style="margin:0"><input type="checkbox" ' + (P.all ? 'checked ' : '') + 'onchange="PS_ALL(this.checked)"><span>Show past students</span></label></div>'
-      + '<div class="small mute" style="margin:8px 0 0">Philippine-market learners: tap <b>Market</b> › Philippines and pick the programme and track. They sign in the same way (ST code + English name) and see the portal in English with their learning roadmap.</div><div class="small mute" style="margin:8px 0">' + on + ' student' + (on === 1 ? ' has' : 's have') + ' signed in so far.</div><div id="psL">' + rows() + '</div>'; }
+      + '<div class="small mute" style="margin:8px 0 0">Philippine-market learners: tap <b>Market</b> › Philippines and pick the programme and track. They sign in with the ST code and their first name only (one word, e.g. Maria for Maria Santos) and see the portal in English with their learning roadmap.</div><div class="small mute" style="margin:8px 0">' + on + ' student' + (on === 1 ? ' has' : 's have') + ' signed in so far.</div><div id="psL">' + rows() + '</div>'; }
   window.PS_Q = function(v){ P.q = v; var L = document.getElementById('psL'); if(L) L.innerHTML = rows(); };
   window.PS_ALL = function(v){ P.all = !!v; var L = document.getElementById('psL'); if(L) L.innerHTML = rows(); };
   window.psCopy = function(code){ var x = P.list.find(function(y){ return y.code === code; }); if(!x) return; var t = msg(x);
@@ -33022,10 +33023,10 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
     s.busy = 1; ed(code);
     A.call('sMarket', { code: code, ph: s.m === 'ph', prog: s.prog, track: s.track }).then(function(r){ s.busy = 0; if(r && r.ok){ delete PE[code]; toast(s.m === 'ph' ? 'Saved · ' + code + ' sees the portal in English' : 'Saved · ' + code + ' back to the China portal'); A.load(); } else { toast((r && r.msg) || 'Not saved · try again'); ed(code); } })
       .catch(function(){ s.busy = 0; toast('No connection · try again'); ed(code); }); };
-  window.phMsg1530 = function(x, U){ var n = String(x.name || '').trim() || 'there', P = x.ph && prog(x.ph.prog), T = P && track(P, x.ph.track), L = [];
+  window.phMsg1530 = function(x, U){ var n = String(x.name || '').trim().split(/\s+/)[0] || 'there', P = x.ph && prog(x.ph.prog), T = P && track(P, x.ph.track), L = [];
     L.push('CupOfEnglish · Student Portal');
     L.push('Hello ' + n + '! Your classes, lessons left, class notes, monthly reports' + (P ? ' and your ' + P.short + (T ? ' ' + T.name + ' Track' : '') + ' learning roadmap' : '') + ' are now on your phone.');
-    L.push(''); L.push('Link: ' + U + '?lang=en'); L.push('Student code: ' + x.code); L.push(x.own ? 'Password: the password you set (message us if you need it reset)' : 'Password: ' + n + ' (your first name, not case-sensitive)');
+    L.push(''); L.push('Link: ' + U + '?lang=en'); L.push('Student code: ' + x.code); L.push(x.own ? 'Password: the password you set (message us if you need it reset)' : 'Password: ' + n + ' (your first name only, one word, not case-sensitive)');
     L.push(''); L.push('Add it to your home screen so it opens like an app:'); L.push('iPhone: open the link in Safari › Share › Add to Home Screen.'); L.push('Android: open the link in Chrome › menu (\u22EE) › Add to Home screen.');
     L.push(''); L.push('You stay signed in for 30 days. Message us anytime if you need help!'); return L.join('\n'); };
 
@@ -33327,7 +33328,7 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
   window.rpText = async function(){ var P = prog(RP.pid) || {}, T0 = (P.tracks || []).find(function(t){ return t.id === RP.tid; }), band = P.measure === 'Band';
     var out = 'Hello! Here is the CupOfEnglish ' + (P.name || '') + ' learning roadmap. Each lesson is ' + P.lessonMins + ' minutes, one-to-one, with ' + ((P.system && P.system.skills) || []).map(function(k){ return k.name; }).join(', ') + '.'
       + (T0 ? ' The ' + T0.name + ' Track is ' + T0.lessons + ' lessons' + (T0.extra ? ' + ' + T0.extra : '') + ' (≈' + T0.hours + ' hours), ' + (band ? 'target band ' : 'CEFR target ') + T0.target + (T0.gain ? ', expected band gain ' + T0.gain : '') + ': ' + String(T0.goal || '').replace(/\.$/, '') + '.' : '')
-      + ' Please see the picture for the skills you will work on. You are welcome to book a trial class.\n\nCupOfEnglish';
+      + ' Please see the picture for the skills you will work on. You are welcome to book a trial class. If you need to cancel or move a lesson, please tell your teacher at least ' + phCxHours() + ' hours before class.\n\nCupOfEnglish';
     try{ await navigator.clipboard.writeText(out); toast('Message copied · paste it with the picture'); }catch(e){ toast(out); } };
   try{ if(typeof VIEW !== 'undefined' && VIEW === 'enquiry') renderEnq(); }catch(x){}
 })();
@@ -33487,5 +33488,236 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
    so "105.5 units" was cut off at the right edge. The columns may now shrink and the units column is 120 px (fits 999.5 units, same for every row so columns stay aligned). */
 @media (min-width:760px){body #v-teachers .tc2{grid-template-columns:38px minmax(0,1.3fr) minmax(0,1fr) minmax(0,1.3fr) 120px}}
 </style>
+<script>
+/* 1533 · Philippine payment: UnionBank account / QR (docs sys:pricing_ph.payment, set in Enquiries › Philippines › Payment · UnionBank) */
+(function(){
+  if(window.__1533) return; window.__1533 = 1;
+  var D = function(){ return window.phPricing1530 ? phPricing1530() : null; };
+  var PAY = function(){ var d = D(); return (d && d.payment) || {}; };
+  var ready = function(p){ p = p || PAY(); return !!(p.name && (p.number || p.qr)); };
+  var PEND = 'Payment: UnionBank account or QR · details from CupOfEnglish.';
+  function line(p){ p = p || PAY(); if(!ready(p)) return PEND; var bank = p.bank || 'UnionBank';
+    return 'For payment, kindly send it to our ' + bank + ' account ' + p.name + (p.number ? ' (' + p.number + ')' : '') + (p.qr ? (p.method ? ' by ' + p.method : '') + ': scan the QR code we send you' : '') + '.' + (p.note ? ' ' + p.note : '') + ' After paying, please send us a screenshot so we can confirm your enrolment.'; }
+  window.phPayLine1533 = line;
+  /* the price-picture message: the same checkbox ("Add the enrolment and payment lines") decides */
+  window.phPayText1533 = function(){ var on = $('ppPayOn'); if(on ? !on.checked : (window.PP_PAY_OFF === true)) return ''; return '\n\nFor enrolment, kindly refer to the attached course packages. You are welcome to choose whichever package best suits your preferences and learning goals.\n\n' + line(); };
+  window.phPayRow1533 = function(){ return '<div class="small" style="margin-top:6px;line-height:1.5"><span class="mute">Payment ·</span> ' + esc(ready() ? (PAY().bank || 'UnionBank') + (PAY().name ? ' · ' + PAY().name : '') + (PAY().number ? ' · ' + PAY().number : '') + (PAY().qr ? ' · ' + (PAY().method || 'QR') : '') : 'UnionBank account or QR · details from CupOfEnglish') + ' <a class="lk" onclick="phPayOpen()">Payment details</a></div>'; };
+  function msg(){ var p = PAY(); if(!ready(p)) return PEND; var bank = p.bank || 'UnionBank';
+    return 'For enrolment and payment, you can pay ' + (p.qr ? (p.method ? 'by ' + p.method + ' ' : '') + 'to our ' + bank + ' account: please scan the QR code.' : 'to our ' + bank + ' account.')
+      + '\n\nAccount name: ' + p.name + (p.number ? '\nAccount: ' + p.number : '') + '\nBank: ' + bank + (p.note ? '\n' + p.note : '')
+      + '\n\nAfter paying, kindly send us a screenshot here so we can confirm your enrolment. Thank you!\nCupOfEnglish'; }
+  var QR = null;   // a picture chosen in the form, not saved yet
+  window.phPayOpen = function(){ var d = D(); if(!d) return toast('Philippine price list still loading · try again in a moment'); var p = PAY(); QR = null;
+    openSheet('<h1>Payment QR · ' + esc(p.bank || 'UnionBank') + '</h1><div class="mute small">Philippine enquiries · send the QR picture first, then the message.</div>'
+      + (p.qr ? '<img id="ppqImg" src="' + p.qr + '" alt="CupOfEnglish UnionBank QR" style="display:block;width:100%;max-width:420px;margin:12px auto;border-radius:12px;border:1px solid #E6EEF0"><div class="row" style="gap:8px"><button class="btn teal grow" onclick="phPayQr(0)">Copy QR picture</button><button class="btn ghost grow" onclick="phPayQr(1)">' + (navigator.share ? 'Share / save QR' : 'Save QR') + '</button></div>' : '<div class="card" style="margin-top:12px;padding:12px;color:#8A5300;background:#FFF0D2;border:0">No QR picture yet · add it under Payment details below.</div>')
+      + '<p class="small" style="white-space:pre-line;margin-top:12px;padding:12px;border-radius:12px;background:#F4FAFA;border:1px solid #DCEFEF">' + esc(msg()) + '</p><button class="btn teal" style="width:100%" onclick="phPayCopy()">Copy message</button>'
+      + '<h2 style="margin-top:20px;font-size:16px">Payment details</h2><div class="mute small">Shown to Philippine enquiries in the payment message and the price-picture message. Management only.</div>'
+      + '<label>Bank</label><input id="ppqB" class="in-t" value="' + esc(p.bank || 'UnionBank') + '">'
+      + '<label>Account name</label><input id="ppqN" class="in-t" value="' + esc(p.name || '') + '" placeholder="As shown on the account" autocomplete="off">'
+      + '<label>Account <span class="mute small">· as printed on the QR (masked is fine)</span></label><input id="ppqA" class="in-t" value="' + esc(p.number || '') + '" autocomplete="off">'
+      + '<label>Method</label><input id="ppqM" class="in-t" value="' + esc(p.method || '') + '" placeholder="e.g. InstaPay QR">'
+      + '<label>Note</label><input id="ppqT" class="in-t" value="' + esc(p.note || '') + '" placeholder="e.g. Transfer fees may apply.">'
+      + '<label>QR picture</label><input id="ppqF" type="file" accept="image/png,image/jpeg,image/webp" onchange="phPayPick(this)"><div id="ppqP" class="small mute" style="margin-top:4px">' + (p.qr ? 'A QR picture is saved · choose a new one to replace it (kept full size, lossless)' : 'PNG or JPEG of the UnionBank QR · kept full size, lossless') + '</div>'
+      + (p.qr ? '<label class="check" style="margin-top:6px"><input type="checkbox" id="ppqX"><span>Remove the saved QR picture</span></label>' : '')
+      + '<button class="btn teal" id="ppqS" style="width:100%;margin-top:12px" onclick="phPaySave()">Save payment details</button>'
+      + (p.at ? '<div class="small mute" style="margin-top:6px">Last saved ' + esc(String(p.at).slice(0, 16).replace('T', ' ')) + (p.by ? ' by ' + esc(p.by) : '') + '</div>' : '')); };
+  window.phPayPick = function(inp){ var f = inp.files && inp.files[0], P = $('ppqP'); if(!f) return; var im = new Image(), u = URL.createObjectURL(f);
+    im.onload = function(){ var k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);   /* full size up to 1600 px, PNG (lossless), never JPEG: the QR keeps scanning */
+      var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingEnabled = k < 1; x.drawImage(im, 0, 0, c.width, c.height); var d = c.toDataURL('image/png'); URL.revokeObjectURL(u);
+      if(d.length > 590000){ QR = null; if(P) P.textContent = 'That picture is too large · use a smaller PNG of the QR (a screenshot of the QR card is fine)'; return; }
+      QR = d; if(P) P.textContent = 'New QR picture ready (' + c.width + ' × ' + c.height + ', lossless) · tap Save payment details'; };
+    im.onerror = function(){ if(P) P.textContent = 'That file is not a picture'; }; im.src = u; };
+  window.phPaySave = function(){ var b = $('ppqS'); if(!b || b.disabled) return; var body = { op: 'sPhPay', token: TOKEN, bank: ($('ppqB').value || '').trim() || 'UnionBank', name: ($('ppqN').value || '').trim(), number: ($('ppqA').value || '').trim(), method: ($('ppqM').value || '').trim(), note: ($('ppqT').value || '').trim() };
+    if(QR) body.qr = QR; else if($('ppqX') && $('ppqX').checked) body.qr = '';
+    b.disabled = true; b.textContent = 'Saving…';
+    fetch(FAST_URL + '-student', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }).then(function(r){ return r.json(); }).then(function(r){
+      if(!r || !r.ok){ b.disabled = false; b.textContent = 'Save payment details'; return toast((r && r.msg) || 'Not saved · try again'); }
+      var d = D(), old = (d && d.payment) || {}; if(d){ d.payment = { bank: body.bank, name: body.name, number: body.number, method: body.method, note: body.note, qr: body.qr === undefined ? (old.qr || '') : body.qr, at: (r.payment && r.payment.at) || new Date().toISOString(), by: (r.payment && r.payment.by) || '' }; try{ localStorage.setItem('coe.pricing_ph', JSON.stringify(d)); }catch(x){} }
+      toast('Payment details saved'); phPayOpen(); })
+      .catch(function(){ b.disabled = false; b.textContent = 'Save payment details'; toast('No connection · try again'); }); };
+  window.phPayCopy = function(){ if(!ready()) return toast('Add the UnionBank details under Payment details first'); var t = msg(); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ toast('Message copied · paste it in Messenger, Viber or e-mail'); }, function(){ try{ prompt('Copy this message', t); }catch(x){} }); };
+  window.phPayQr = function(save){ var im = document.getElementById('ppqImg'); if(!im) return;   /* lossless PNG of the picture as shown, full natural size */
+    var go = function(){ var c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext('2d').drawImage(im, 0, 0); return new Promise(function(ok){ c.toBlob(ok, 'image/png'); }); };
+    if(!save){ try{ navigator.clipboard.write([new ClipboardItem({ 'image/png': go() })]).then(function(){ toast('QR picture copied · paste it in Messenger, Viber or e-mail'); }, function(){ toast('Could not copy the picture here · use Save QR'); }); }catch(x){ toast('Could not copy the picture here · use Save QR'); } return; }
+    go().then(function(png){ var f = new File([png], 'CupOfEnglish-UnionBank-QR.png', { type: 'image/png' });
+      if(/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) && navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) return navigator.share({ files: [f] }).catch(function(){});
+      var a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); toast('QR saved'); }).catch(function(){ toast('Could not make the picture · try again'); }); };
+  /* the Philippine toolkit gets stage 2 "Enrolling" with Payment · UnionBank (as China's stage 3) */
+  var _k = window.phKit1532; if(_k) window.phKit1532 = function(){ var h = _k.apply(this, arguments), A = '<div class="small mute" style="margin-top:18px;line-height:1.6"><b>Suggested order:</b>';
+    var C = '<section class="eq2-g s3"><h3><span class="n31">2</span>Enrolling <span>payment</span></h3><div class="eq2-grid"><div style="background:#fff;border:1px solid #E6EEF0;border-radius:18px;padding:16px 18px;margin-top:12px;display:flex;gap:14px;align-items:center" class="eq2-t"><div style="width:36px;height:36px;border-radius:50%;background:#E3F6F6;color:#00737B;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">5</div><div class="grow" style="min-width:0"><b>Payment QR · UnionBank</b><div class="small mute" style="margin-top:3px">When they decide to enrol: our UnionBank InstaPay QR (Copy / Save) + a short English message with the account name · payment details are set here.</div></div><button class="btn teal sm x1101-sec" style="flex:none" onclick="phPayOpen()">Open</button></div></div></section>';
+    return h.indexOf(A) > -1 ? h.replace(A, C + A) : h; };
+  try{ if(typeof VIEW !== 'undefined' && VIEW === 'enquiry') renderEnq(); }catch(x){}
+})();
+</script>
+<script>
+/* 1535 · Philippine learners: cancellation notice from docs sys:pricing_ph.cancel_hours (4); China stays 2 hours */
+(function(){
+  if(window.__1535) return; window.__1535 = 1;
+  var KEY = 'coe.ph_learners', PHL = {}, at = 0, busy = 0;
+  try{ PHL = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }catch(e){ PHL = {}; }
+  var D = function(){ return window.phPricing1530 ? phPricing1530() : null; };
+  window.phCxHours = function(){ var d = D(), h = d && +d.cancel_hours; return h > 0 && h <= 48 ? h : 4; };
+  window.phBcLine = function(){ var d = D(); return (d && String(d.bc_line || '').trim()) || 'CupOfEnglish assists eligible candidates with IELTS registration through its partnership with the British Council Philippines.'; };
+  function load(force){ if(busy || typeof TOKEN === 'undefined' || !TOKEN || typeof FAST_URL === 'undefined') return; if(!force && Date.now() - at < 5 * 6e4) return; busy = 1;
+    fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: ['sys:ph_learners'] }) }).then(function(r){ return r.json(); })
+      .then(function(j){ if(!(j && j.ok && j.docs)) return; var d = j.docs['sys:ph_learners']; PHL = (d && d.data && d.data.codes) || {}; at = Date.now(); try{ localStorage.setItem(KEY, JSON.stringify(PHL)); }catch(x){} })
+      .catch(function(){}).finally(function(){ busy = 0; }); }
+  window.phLearners1535 = function(force){ load(force); return PHL; };
+  var codes = function(t){ return (String(t || '').toUpperCase().match(/ST[\s_-]*\d{4}[\s_-]*\d{3}/g) || []).map(function(x){ var m = x.replace(/[^0-9]/g, ''); return 'ST-' + m.slice(0, 4) + '-' + m.slice(4); }); };
+  window.isPhLearner = function(t){ load(); return codes(t).some(function(k){ return !!PHL[k]; }); };
+  window.cxHoursFor = function(t){ return window.isPhLearner(t) ? phCxHours() : 2; };
+  setTimeout(function(){ load(true); }, 4000);
+  /* a Market change in Student access refreshes the list */
+  var _ps = window.psPhSave; if(_ps) window.psPhSave = function(){ var r = _ps.apply(this, arguments); setTimeout(function(){ load(true); }, 2500); return r; };
+
+  var phOf = function(P, e){ var x = (e && e.code) || (P && P.e && P.e.code) || ''; return x && window.isPhLearner(x); };
+  var _info = window.cxPolInfo;
+  if(_info) window.cxPolInfo = function(P, e){ if(!phOf(P, e)) return _info.apply(this, arguments);
+    var H = phCxHours(), bl = P.kind === 'bal', src = bl ? ((P.renew && P.renew.en) || '') : ((P.pkg && P.pkg.en) || ''), T = [], re = /(\d{1,2}):(\d{2})/g, m;
+    while((m = re.exec(src))){ var pre = src.slice(Math.max(0, m.index - 2), m.index); if(/[-–~至]\s*$/.test(pre)) continue; var t = ('0' + m[1]).slice(-2) + ':' + m[2]; if(T.indexOf(t) < 0) T.push(t); }
+    if(!T.length && !bl && e && e.start) T.push(tm(e.start));
+    if(T.length !== 1) return { one: false };
+    var hm = T[0].split(':').map(Number); if(hm[0] < H) return { one: false };
+    return { one: true, start: T[0], cut: ('0' + (hm[0] - H)).slice(-2) + ':' + ('0' + hm[1]).slice(-2) }; };
+  var _txt = window.cxPolText;
+  if(_txt) window.cxPolText = function(P){ if(!phOf(P)) return _txt.apply(this, arguments);
+    try{ var pol = (P.kind === 'bal' && P.renew) || ((P.kind === 'class' || P.kind === 'move') && !cxTrial(P.e)); if(!pol) return '';
+      var H = phCxHours(), I = cxPolInfo(P, P.e);
+      return '\n\nCancellation policy\nPlease tell us at least ' + H + ' hours before class.' + (I.one ? '\nFor your ' + I.start + ' class (Philippine time): by ' + I.cut + '.' : '')
+        + '\nCancelling less than ' + H + ' hours before class uses the lesson.\nJust send us a message on Messenger, Viber or our group chat.'; }catch(x){ return ''; } };
+  var _pol = window.cxPol;
+  if(_pol) window.cxPol = function(c, rr, F, W, y, P, e){ if(!phOf(P, e)) return _pol.apply(this, arguments);
+    var H = phCxHours(), I = cxPolInfo(P, e), x = 80, w = W - 160, p = 30, ix = x + p, iw = w - 2 * p, h = POL_H - 32;
+    var ico = function(d, cx, cy, s, col, lw){ c.save(); c.translate(cx - 12 * s, cy - 12 * s); c.scale(s, s); c.strokeStyle = col; c.lineWidth = lw; c.lineCap = 'round'; c.lineJoin = 'round'; d.forEach(function(q){ c.stroke(new Path2D(q)); }); c.restore(); };
+    c.save(); rr(x, y, w, h, 26); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#D7ECEA'; c.stroke(); c.restore();
+    var yy = y + p;
+    c.beginPath(); c.arc(ix + 24, yy + 24, 24, 0, Math.PI * 2); c.fillStyle = '#E3F6F6'; c.fill();
+    ico(['M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6', 'M9 17v1a3 3 0 0 0 6 0v-1'], ix + 24, yy + 24, 1.15, '#00737B', 2);
+    c.textAlign = 'left'; c.fillStyle = '#2B2253'; c.font = '700 24px ' + F; c.fillText('Cancellation policy', ix + 64, yy + 20);
+    c.fillStyle = '#6F6B85'; c.font = '400 18px ' + F; c.fillText('Good to know', ix + 64, yy + 44);
+    yy += 96;
+    c.font = '700 32px ' + F; var hx = ix; [['Please tell us at least ', '#2B2253'], [H + ' hours', '#00737B'], [' before class', '#2B2253']].forEach(function(q){ c.fillStyle = q[1]; c.fillText(q[0], hx, yy); hx += c.measureText(q[0]).width; });
+    yy += 36; c.fillStyle = '#4C4868'; c.font = '400 22px ' + F; c.fillText('to cancel or move a lesson', ix, yy);
+    yy += 34;
+    var bw = iw, bt = Math.round(bw * 3 / (H + 2.25));
+    c.save(); rr(ix, yy, bw, 16, 8); c.clip(); c.fillStyle = '#86CFC6'; c.fillRect(ix, yy, bt, 16); c.fillStyle = '#F4B08A'; c.fillRect(ix + bt, yy, bw - bt, 16); c.restore();
+    yy += 46;
+    c.fillStyle = '#00737B'; c.font = '700 22px ' + F; c.fillText(I.one ? 'Before ' + I.cut : H + '+ hours before', ix, yy);
+    c.fillStyle = '#6F6B85'; c.font = '400 18px ' + F; c.fillText('free to cancel or move', ix, yy + 26);
+    c.textAlign = 'right'; c.fillStyle = '#B5592C'; c.font = '700 22px ' + F; c.fillText(I.one ? I.cut + '–' + I.start : 'Less than ' + H + ' hours', ix + iw, yy);
+    c.fillStyle = '#6F6B85'; c.font = '400 18px ' + F; c.fillText('lesson used', ix + iw, yy + 26); c.textAlign = 'left';
+    yy += 46;
+    c.save(); c.strokeStyle = '#E3E9EA'; c.lineWidth = 2; c.setLineDash([6, 6]); c.beginPath(); c.moveTo(ix, yy); c.lineTo(ix + iw, yy); c.stroke(); c.restore();
+    yy += 30; c.fillStyle = '#6F6B85'; c.font = '400 18px ' + F; c.fillText('Class day · Philippine time', ix, yy);
+    c.textAlign = 'right'; c.fillText((I.one ? I.start + ' · ' : '') + 'class starts', ix + iw, yy); c.textAlign = 'left';
+    yy += 24;
+    rr(ix, yy, iw, 78, 18); c.fillStyle = '#F3F9F9'; c.fill();
+    ico(['M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1'], ix + 38, yy + 39, 1.2, '#00737B', 1.8);
+    c.fillStyle = '#2B2253'; c.font = '400 24px ' + F; c.fillText('Just send us a message', ix + 72, yy + 34);
+    c.fillStyle = '#6F6B85'; c.font = '400 18px ' + F; c.fillText('on Messenger, Viber or our group chat', ix + 72, yy + 60);
+    return y + POL_H; };
+  var _cn = window.cnText;
+  if(typeof _cn === 'function') window.cnText = function(){ var t = _cn.apply(this, arguments); try{ if(typeof CN === 'undefined' || !CN || !window.isPhLearner(CN.code)) return t;
+      return t.replace(/\n\n(\S*\s*)Please tell us 2 hours before class if (your child|you) can’t attend; a late cancellation counts as a class\.\n[^\n]*/, function(_, a, who){ return '\n\n' + a + 'Please tell us at least ' + phCxHours() + ' hours before class if ' + who + ' can’t attend; a late cancellation counts as a class.'; }); }catch(x){ return t; } };
+})();
+</script>
+<style id="eq36">
+#sheet #eqP,#sheet #eqS,#sheet #eqPhS{display:flex!important;flex-wrap:wrap;gap:8px;width:auto!important;max-width:100%;overflow:visible!important;background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important;border-radius:0!important;margin:8px 0 4px!important}
+#sheet #eqP button,#sheet #eqS button,#sheet #eqPhS button{flex:0 1 auto;max-width:100%;min-width:0;height:auto!important;min-height:40px;padding:8px 14px!important;border:1px solid #DDE6E8!important;border-radius:14px!important;background:#fff!important;color:#2B2253!important;font-size:14px;font-weight:600;white-space:normal!important;text-align:left;box-shadow:none!important;clip-path:none!important;transform:none!important;line-height:1.25}
+#sheet #eqP button.on,#sheet #eqS button.on,#sheet #eqPhS button.on{background:#E3F6F6!important;border-color:#00737B!important;color:#00585E!important}
+#sheet #eqPhS button{display:inline-flex;flex-direction:column;align-items:flex-start}
+#sheet #eqPhS button small{display:block;font-weight:400;font-size:12px;opacity:.85;white-space:normal}
+#sheet #eqS button.eq36-off{display:none!important}
+#sheet .eq36-r{display:flex;flex-wrap:nowrap}
+#sheet .eq36-r>.grow{flex:1 1 0;min-width:0}
+#sheet .eq36-age{flex:0 0 30%;min-width:0}
+#sheet .eq36-r.eq36-ph{flex-wrap:wrap}
+#sheet #eqW::placeholder,#sheet #eqL::placeholder{font-size:14.5px}
+#sheet .eq36-r.eq36-ph>.grow{flex:1 1 100%}
+#sheet .eq36-r.eq36-ph>.eq36-age{flex:0 0 40%}
+#sheet #eqN,#sheet #eqW,#sheet #eqA,#sheet #eqPt,#sheet #eqL,#sheet #eqT{box-sizing:border-box;max-width:100%;min-width:0;font-size:16px!important}
+</style>
+<script>
+/* 1536 · New enquiry: Philippine mode (sources, contact field) */
+(function(){
+  if(window.__1536) return; window.__1536 = 1;
+  var PH_SRC = ['Facebook', 'Website', 'Referral', 'Other'], CN_SRC = ['WeChat', '小红书', 'Referral', 'Partner', 'Website', 'Other'];
+  var mk = function(){ try{ return localStorage.getItem('coe.enqMarket') === 'ph'; }catch(e){ return false; } };
+  var _n = window.enqNew; if(!_n) return;
+  window.enqNew = function(){ var r = _n.apply(this, arguments);
+    try{ var g = $('eqP'), S = $('eqS'); if(!g || !S) return r;
+      var paint = function(){ var b = g.querySelector('button.on'), ph = !!(b && /^PH /.test(b.textContent)), keep = ph ? PH_SRC : CN_SRC, on = S.querySelector('button.on');
+        S.querySelectorAll('button').forEach(function(x){ x.classList.toggle('eq36-off', keep.indexOf(x.textContent) < 0); });
+        if(ph){ var order = PH_SRC.map(function(t){ return [].find.call(S.querySelectorAll('button'), function(x){ return x.textContent === t; }); }).filter(Boolean); order.forEach(function(x){ S.appendChild(x); }); }
+        else CN_SRC.forEach(function(t){ var x = [].find.call(S.querySelectorAll('button'), function(y){ return y.textContent === t; }); if(x) S.appendChild(x); });
+        S.querySelectorAll('button.eq36-off').forEach(function(x){ S.appendChild(x); });
+        if(!on || on.classList.contains('eq36-off')){ S.querySelectorAll('button').forEach(function(x){ x.classList.remove('on'); }); var d = [].find.call(S.querySelectorAll('button'), function(x){ return x.textContent === (ph ? 'Facebook' : 'WeChat'); }); if(d) d.classList.add('on'); var pt = $('eqPt'); if(pt) pt.style.display = 'none'; }
+        var w = $('eqW'); if(w) w.placeholder = ph ? 'Facebook / Messenger / mobile (optional)' : 'WeChat ID (optional)'; var rw = w && w.closest('.eq36-r'); if(rw) rw.classList.toggle('eq36-ph', ph);
+        var n = $('eqN'); if(n) n.placeholder = ph ? 'e.g. Maria Santos' : 'e.g. Lily mum · 王女士';
+        var hn = n && n.previousElementSibling; if(hn && /name is fine/.test(hn.textContent)) hn.innerHTML = '<b>Name</b> · parent or learner (' + (ph ? 'Facebook' : 'WeChat') + ' name is fine)'; };
+      g.addEventListener('click', function(){ setTimeout(paint, 0); });
+      if(mk()){ var p0 = [].find.call(g.querySelectorAll('button'), function(x){ return x.textContent === 'PH Adult English 1:1'; }); if(p0) p0.click(); }
+      paint(); }catch(x){ console.warn('1536', x); }
+    return r; };
+})();
+</script>
+<style id="pp37">
+#sheet .seg.pp37-w{display:flex!important;flex-wrap:wrap!important;gap:8px;width:auto!important;max-width:100%;overflow:visible!important;background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important;border-radius:0!important;margin:8px 0 4px!important}
+#sheet .seg.pp37-w button{flex:0 1 auto;max-width:100%;min-width:0;height:auto!important;min-height:40px;padding:8px 14px!important;border:1px solid #DDE6E8!important;border-radius:14px!important;background:#fff!important;color:#2B2253!important;white-space:normal!important;text-align:left;box-shadow:none!important;transform:none!important;line-height:1.25}
+#sheet .seg.pp37-w button.on{background:#E3F6F6!important;border-color:#00737B!important;color:#00585E!important}
+#sheet .seg.pp37-w button:empty{display:none!important}
+#sheet .row.pp37-b{flex-wrap:wrap}
+#sheet .row.pp37-b>button{flex:1 1 calc(50% - 4px);min-width:0;height:auto;min-height:44px;white-space:normal;line-height:1.2}
+#sheet .row.pp37-b>#ppC{flex-basis:100%}
+</style>
+<script>
+/* 1538 · Philippine Learner Service Agreement · English only (same flow and layout as the China agreement) */
+(function(){
+  if(window.__1538) return; window.__1538 = 1;
+  var D = function(){ return window.phPricing1530 ? phPricing1530() : null; };
+  var lc = function(x){ return String(x || '').trim().toLowerCase(); };
+  function enqProg(a){ try{ var n = lc(a && a.name); if(!n || typeof ENQ === 'undefined' || !ENQ) return ''; var e = ENQ.find(function(x){ return /^PH /.test(String(x.prog || '')) && lc(x.name) === n; }); return e ? (/IELTS/.test(e.prog) ? 'ielts' : 'adult') : ''; }catch(x){ return ''; } }
+  window.agrPh1538 = function(a){ if(!a) return false; if(a.mk) return a.mk === 'ph'; if(a.code && window.isPhLearner && isPhLearner(a.code)) return true; return !!enqProg(a); };
+  function progOf(a){ var L = window.phLearners1535 ? phLearners1535() : {}, m = a && a.code && L[String(a.code).toUpperCase()]; var id = (m && m.prog) || enqProg(a) || 'adult', d = D(); return (d && (d.programs || []).find(function(p){ return p.id === id; })) || null; }
+  var peso = function(n){ return '₱' + Number(n || 0).toLocaleString('en-US'); };
+  function phHtml(a){ var L = (document.querySelector('#login img') || {}).src || '', d = new Date(), pk = +a.pkg || 0, k = pk >= 60 ? 60 : pk >= 30 ? 30 : pk ? 15 : 0, P = progOf(a), DOC = D() || {}, pay = DOC.payment || {}, H = window.phCxHours ? phCxHours() : 4;
+    var ds = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    var row = function(l, v){ return '<tr><td style="padding:9px 10px;font-weight:700;width:120px">' + l + '</td><td style="padding:9px 10px">' + v + '</td></tr>'; };
+    var sec = function(n, t, body){ return '<div style="margin-top:14px"><div style="font-weight:700;font-size:16px">' + n + '.&nbsp;&nbsp;' + t + '</div><div style="margin:4px 0 0 22px;font-size:13.5px;line-height:1.5">' + body + '</div></div>'; };
+    var T = (P && P.tracks) || [], tr = function(n){ return T.find(function(t){ return +t.lessons === n; }); };
+    var box = function(n){ var t = tr(n); return agBox(k === n) + '<b>' + (t ? esc(t.name) + ' · ' : '') + n + ' lessons</b>' + (t && t.price ? ' <span style="color:#4C4868">' + peso(t.price) + '</span>' : ''); };
+    var bank = pay.bank || 'UnionBank', how = pay.name ? 'our ' + esc(bank) + ' account (' + esc(pay.name) + (pay.number ? ', ' + esc(pay.number) : '') + ') by account transfer or ' + esc(pay.method || 'InstaPay QR') : 'our ' + esc(bank) + ' account by account transfer or QR';
+    var who = a.members && a.members.length > 1 ? a.members.map(function(x){ return esc(x.name) + ' <span style="color:#6F6B85">' + esc(x.code) + '</span>'; }).join('<br>') + '<br><span style="color:#6F6B85">shared package</span>' : esc(a.name || '') + (a.code ? '<br><span style="color:#6F6B85">' + esc(a.code) + '</span>' : '');
+    return '<div style="font-family:Poppins,Inter,Arial,sans-serif;color:#2B2253;width:828px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start"><div>' + (L ? '<img src="' + L + '" style="height:54px">' : '<b>CupOfEnglish</b>') + '<div style="font-family:\'Fredoka One\',Arial;font-size:34px;margin-top:10px">Learner Service Agreement</div></div>'
+      + '<div style="text-align:right;font-size:13px;margin-top:40px">This Learner Service Agreement is made on:<br><b>Date:</b> ' + ds + '<br><b>Place of Signing:</b> Online</div></div>'
+      + '<div style="display:flex;gap:18px;margin-top:16px;font-size:13px">'
+      + '<table style="flex:1;border-collapse:collapse;background:#F1F2F5"><tr><td colspan="2" style="padding:9px 10px;font-weight:700;border-bottom:2px solid #16BCB0">Service Provider</td></tr>' + row('Name', 'CupOfEnglish Online Tutorial Services OPC') + row('Registered in', 'Republic of the Philippines') + row('Address', 'San Vicente East, Urdaneta, Pangasinan, Philippines 2428') + row('Contact', '+63 962 644 9091') + '</table>'
+      + '<table style="flex:1;border-collapse:collapse;background:#F1F2F5"><tr><td colspan="2" style="padding:9px 10px;font-weight:700;border-bottom:2px solid #16BCB0">Learner / Parent / Guardian</td></tr>' + row(a.members && a.members.length > 1 ? 'Learners' : 'Learner', who) + row('Parent', '<span style="color:#9A97AE">(sign below)</span>') + row('Contact', 'Messenger / Viber or our group chat') + row('Nationality', esc(a.nat || 'Philippines') + (a.city ? '<br><span style="color:#6F6B85">' + esc(a.city) + '</span>' : '')) + '</table></div>'
+      + sec(1, 'Services', 'Mode of Learning: ' + agBox(1) + '<b>Online</b> &nbsp; ' + agBox(0) + 'Face-to-Face &nbsp; ' + agBox(0) + 'Blended<br>Class Delivery: <b>Live instructor-led sessions</b><br>Lesson Package: ' + box(15) + ' &nbsp; ' + box(30) + ' &nbsp; ' + box(60) + (pk && pk !== k ? ' <span style="color:#6F6B85">(' + pk + ' lessons incl. free)</span>' : '') + '<br>Learning Focus: <b>' + esc((P && P.name) || 'English Language Instruction Program') + '</b>')
+      + sec(2, 'Enrollment &amp; Payment', 'Full payment is required before classes begin; payment to ' + how + ' confirms enrollment.')
+      + sec(3, 'Lesson Package Validity', '15 lessons – 4 months · 30 lessons – 8 months · 60 lessons – 12 months<br>Validity counts from the first class of the package.<br>Unused lessons beyond validity are forfeited unless prior approval for long holidays or vacations is granted.')
+      + sec(4, 'Scheduling &amp; Attendance', '• Cancellations or rescheduling must be made at least ' + H + ' hours before class.<br>• Learner late arrival or notice under ' + H + ' hours is counted as a completed class and deducted per the scheduled lesson.<br>• Provider cancellation or lateness under ' + H + ' hours results in the lesson being returned to the package.<br>• Force majeure interruptions are adjusted based on responsibility and class duration.<br>• Class times are Philippine time.')
+      + sec(5, 'Refund &amp; Transfer', 'Fees are non-refundable once classes start; lesson transfers require management approval.')
+      + sec(6, 'Conduct, Recording &amp; Privacy', 'Both learners and teachers are expected to maintain respectful conduct; misconduct may result in termination without refund, and classes are recorded for internal use only.')
+      + sec(7, '1-on-1 Class Rules', 'All classes are one-on-one (50 minutes, or 25 minutes for younger learners); lateness does not extend class time, student-side technical issues count as completed lessons, teacher changes or learning pace are not refund grounds, official communication is via Messenger / Viber or our group chat only, and these rules form an integral part of this Agreement.')
+      + sec(8, 'Acceptance', 'Payment and/or signature confirms that the learner/parent has read, understood, and agrees to this Agreement; specific program details, if any, are stated in the official invoice and enrollment record.')
+      + '<div style="display:flex;gap:16px;margin-top:18px;align-items:stretch"><div style="flex:1;padding:14px 16px;border-radius:14px;background:#E3F6F6;font-size:13.5px;line-height:1.55"><b style="font-size:15px">How to sign</b><br><b>1.</b> Long-press this picture › <b>Edit</b> › write your signature, name and date in the box › send it back here.<br><b>2.</b> Or reply: <span style="font-weight:700;color:#00737B">“I have read and agree”</span></div>'
+      + '<div style="flex:1;border:2px solid #2B2253;border-radius:14px;padding:12px 16px;font-size:13px;color:#2B2253"><b>Learner / Parent / Guardian signature</b><div style="height:70px;border-bottom:1.5px solid #9A97AE"></div><div style="margin-top:10px">Name: <span style="display:inline-block;width:76%;border-bottom:1.5px solid #9A97AE">&nbsp;</span></div><div style="margin-top:10px">Date: <span style="display:inline-block;width:78%;border-bottom:1.5px solid #9A97AE">&nbsp;</span></div></div></div>'
+      + '<div style="margin-top:10px;font-size:12px;color:#4C4868">For CupOfEnglish Online Tutorial Services OPC · Ref. ' + esc(a.ref || '') + ' · Agreement version 2026-10 (Philippines)</div>'
+      + '<div style="margin-top:14px;font-size:11px;color:#6F6B85;text-align:center;font-style:italic">Office Address: MS2-102&amp;103 Bayani Hall Centralé, San Vicente East, Urdaneta City, Pangasinan 2428 · Email: works@cupofenglishatph.com</div></div>'; }
+  window.agrHtmlPh1538 = phHtml;
+  var _h = window.agrHtml; if(typeof _h === 'function') window.agrHtml = function(a){ return window.agrPh1538(a) ? phHtml(a) : _h.apply(this, arguments); };
+  var _m = window.agrMsg; if(typeof _m === 'function') window.agrMsg = function(a){ if(!window.agrPh1538(a)) return _m.apply(this, arguments); var n = String((a && a.name) || '').trim().split(/\s+/)[0] || 'there';
+    return 'Hi ' + n + '! Before your classes begin, please read our Learner Service Agreement (picture above). To sign, long-press the picture › Edit, write your signature, name and date in the box and send it back here, or simply reply “I have read and agree”. Thank you!\nCupOfEnglish'; };
+  var _p = window.agrPaint; if(typeof _p === 'function') window.agrPaint = function(){ var r = _p.apply(this, arguments); try{ var a = AGS, sb = document.getElementById('sheetBody'); if(!a || !sb || !document.getElementById('agImg')) return r;
+      var ph = window.agrPh1538(a), c1 = sb.querySelector('.card');
+      if(c1 && !document.getElementById('ag38')) c1.insertAdjacentHTML('afterbegin', '<div id="ag38" class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><span class="small mute">Agreement</span><div class="seg pp37-w" style="margin:0!important"><button type="button" class="' + (ph ? '' : 'on') + '" onclick="agrMk1538(\'cn\')">China · bilingual</button><button type="button" class="' + (ph ? 'on' : '') + '" onclick="agrMk1538(\'ph\')">Philippines · English</button></div></div>');
+      if(ph){ var b = c1 && c1.querySelector('b'); if(b && /WeChat/.test(b.textContent)) b.textContent = '1 · Send it on Messenger / Viber';
+        var m = c1 && c1.querySelector('.small.mute:not(span)'); if(m && /Parents in China/.test(m.textContent)) m.textContent = 'The agreement with ' + (a.name || 'the learner') + '\'s name, today\'s date and the package ticked, in English, as a picture.';
+        sb.querySelectorAll('.rno').forEach(function(x){ var bb = x.querySelector('b'), sp = x.querySelector('span'); if(x.dataset.k === 'WeChat reply'){ if(bb) bb.textContent = 'Replied “I have read and agree”'; if(sp) sp.textContent = 'in Messenger / Viber · most learners'; } }); } }catch(x){ console.warn('1538', x); } return r; };
+  window.agrMk1538 = function(m){ if(!AGS) return; AGS.mk = m; AGS.nat = m === 'ph' ? 'Philippines' : (/Philippines/.test(AGS.nat || '') && !/菲律宾/.test(AGS.nat || '') ? 'China 中国' : AGS.nat); AGPIC = null; agrPaint(); var im = document.getElementById('agImg'); if(im) im.removeAttribute('src'); agrPic(); };
+})();
+</script>
 </body>
 </html>
