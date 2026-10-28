@@ -214,3 +214,12 @@ Review of 1530 + Misty (22:34): "make the Philippine price list follow the same 
 - Before / after: scratchpad/phprice/design-before-*.png, design-after-*.png, design-compare-*.png.
 - Tests: check.js OK; regress-saves 17/17; stability enquiry laptop + phone ok; China pictures identical; no page errors; phone 390 no
   sideways scroll.
+
+# 1539b · PH tidy-up (29 Oct 2026, Misty 02:51–02:54)
+- PH pictures: eyebrow "EXPERT PREMIUM PROGRAM", headline "Adult English 1:1" / "IELTS 1:1" unchanged, chip "Price list" / "Learning
+  roadmap" (no repeated programme name). Logo, footer, British Council line unchanged.
+- PH price picture sheet: payment box removed (checkbox + UnionBank line); the PH price message has no payment lines. Payment = Enquiries
+  › Philippines › 2 Enrolling › Payment QR · UnionBank (QR, message, Payment details editing). China keeps its box.
+- Enquiries › Philippines: "Original flyers" card removed. Portal Programme › Pictures removed (the Programme tab already shows tracks
+  and skills); hosted flyer files kept. Portal version 1536.
+- Tests: China pictures/sheet/message identical; regress-saves 17/17; stability enquiry ok.
