@@ -28,7 +28,9 @@ function run(file) {
     ok('Lucy · "3 + 33 = 35.5" is refused', !bad1.ok && /don’t agree/.test(bad1.why), bad1);
     ok('Lucy · valid until from the first class (30 Oct) → 30 Jun 2027', R.validFrom('2026-10-30', 33) === '2027-06-30', R.validFrom('2026-10-30', 33));
     const g2 = R.guard({ split: sp, doc: fresh, row: Object.assign({}, row, { validSheet: '2027-06-28' }), renew: true, tot: 33, now: T0 });
-    ok('Lucy · ACTIVE valid-until 28 Jun ≠ first-class rule → held', !g2.ok && g2.why.some(w => /Valid until/.test(w)), g2.why);
+    ok('Lucy · ACTIVE valid-until 28 Jun ≠ first-class rule → not a hold (picture uses 30 Jun; App health asks for the sheet fix)', g2.ok, g2.why);
+    const sync = R.split({ carry: 2.5, add: 0, new: 33, used: 0.5, now: 35.5 });
+    ok('Lucy 29 Oct · the sync\'s "+0.5 used" (2.5 + 33 − 0.5 ≠ 35.5) is still refused, never drawn', !sync.ok, sync);
     ok('Lucy · renewal form holds a stale carry (Google 3, held 2.5)', R.formHold(3, 2.5).hold === true && R.formHold(3, 2.5).sheet === 3 && R.formHold(3, 2.5).live === 2.5, R.formHold(3, 2.5));
     ok('Lucy · form saves once Google takes it off itself (early)', R.formHold(2.5, 2.5, 0.5).hold === false && R.formHold(3, 2.5, 0.5).hold === false, 0);
     ok('Lucy · teachers: Daniela (previous) left off the renewal picture', JSON.stringify(R.teachers(['Daniela', 'Dezza'], ['Daniela'])) === '["Dezza"]', R.teachers(['Daniela', 'Dezza'], ['Daniela']));
