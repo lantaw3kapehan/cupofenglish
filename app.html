@@ -6512,7 +6512,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1437;
+const COE_V = 1440;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -9041,7 +9041,7 @@ const trl = () => (typeof TRL !== 'undefined' && TRL) ? TRL : null;
 function trialOf(k){ const T = trl(); k = tkey(k); if(!T || !k) return null; const i = (T.rows || []).findIndex(r => tkey(r.date + '|' + r.student) === k); if(i > -1) return { i: i, r: T.rows[i] }; const w = (T.wait || []).find(r => tkey(r.date + '|' + r.student) === k); if(w) return { i: -1, r: w }; const a = window.trRecon1560 && trRecon1560.alias(k); return a && a !== k ? trialOf(a) : null; }
 try{ ENQ = JSON.parse(localStorage.getItem('coe.enq') || 'null'); if(ENQ) ENQ = ENQ.filter(Boolean); }catch(e){}
 const keep = () => { try{ localStorage.setItem('coe.enq', JSON.stringify(ENQ)); }catch(e){} };
-const days = s => { const t = Date.parse(String(s || '').slice(0, 10)); return isNaN(t) ? 0 : Math.floor((Date.now() - t) / 864e5); };
+const days = s => { const d = String(s || '').slice(0, 10), t = Date.parse(d), n = Date.parse(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)); return isNaN(t) ? 0 : Math.max(0, Math.round((n - t) / 864e5)); };
 const isFollow = e => (e.st || 'New') === 'New' && days(e.up || e.at) >= 2;
 function enqLocal(id, fn){ const e = (ENQ || []).find(x => x.id === id); if(e){ fn(e); e.up = new Date().toISOString().slice(0, 16).replace('T', ' '); keep(); if((typeof VIEW !== 'undefined' && VIEW === 'enquiry')) renderEnq(); } }
 window.enqLoad = async function(){ try{ const r = await api('mgmtEnqList', TOKEN); if(r && r.ok){ const tmp = (ENQ || []).filter(x => /^tmp/.test(x.id)); ENQ = tmp.concat((r.rows || []).filter(Boolean)); keep(); if((typeof VIEW !== 'undefined' && VIEW === 'enquiry')) renderEnq(); if((typeof VIEW !== 'undefined' && VIEW === 'mtoday') && window.renderMToday) renderMToday(); } }catch(e){} };
@@ -9063,12 +9063,12 @@ const now = new Date(), at = now.toISOString().slice(0, 10) + ' ' + now.toTimeSt
 ENQ = [tmp].concat(ENQ || []); keep(); closeSheet(); ENQ_F = 'new'; renderEnq(); toast('Enquiry saved');
 api('mgmtEnqSave', TOKEN, f).then(r => { if(r && r.ok){ tmp.id = r.id; keep(); renderEnq(); } else { toast((r && r.msg) || 'Not saved · try again'); ENQ = ENQ.filter(x => x !== tmp); keep(); renderEnq(); } }).catch(() => { toast('Not saved · check the connection and try again'); ENQ = ENQ.filter(x => x !== tmp); keep(); renderEnq(); }); };
 window.enqSt = function(id, st){ if(/^tmp/.test(id)) return toast('Still saving · try again in a moment'); enqLocal(id, e => { e.st = st; }); api('mgmtEnqSave', TOKEN, { id: id, st: st }).then(r => { if(!(r && r.ok)) toast('Not saved · try again'); }).catch(() => toast('Not saved · try again')); toast(st === 'New' ? 'Back to new' : 'Marked: ' + st); };
-window.enqNote = function(id){ const e = (ENQ || []).find(x => x.id === id); if(!e) return; openSheet('<h1>Note · ' + esc(e.name) + '</h1><textarea id="eqNt" style="width:100%;min-height:110px;margin-top:10px;padding:10px 12px;border:1px solid #DDE6E8;border-radius:12px;font:inherit">' + esc(e.note || '') + '</textarea><button class="btn teal block" style="margin-top:12px" onclick="enqNoteSave(\'' + id + '\')">Save note</button>'); };
+window.enqNote = function(id){ const e = (ENQ || []).find(x => x.id === id); if(!e) return; openSheet('<h1>Note · ' + esc(enqTx1564(e.name)) + '</h1><textarea id="eqNt" style="width:100%;min-height:110px;margin-top:10px;padding:10px 12px;border:1px solid #DDE6E8;border-radius:12px;font:inherit">' + esc(e.note || '') + '</textarea><button class="btn teal block" style="margin-top:12px" onclick="enqNoteSave(\'' + id + '\')">Save note</button>'); };
 window.ENQ_KID = "📝 TRIAL CLASS INQUIRY\n试听课信息\n\nMay we know these details?\n请提供以下信息：\n\nEnglish Name 英文名：\n\nChinese Name 中文名：\n\nBirthdate (Month-Day-Year)\n出生日期（月-日-年）：\n\nSchool Grade 年级：\n\nEnglish Learning Experience\n英语学习经历：";
 window.ENQ_ADULT = "📝 TRIAL CLASS INQUIRY · ADULT\n成人试听课信息\n\nMay we know these details?\n请提供以下信息：\n\nEnglish Name 英文名：\n\nChinese Name 中文名：\n\nOccupation / Industry\n职业／行业：\n\nMain goal for learning English\n学习英语的主要目标：\n(work 工作 · business 商务 · travel 旅行 · daily conversation 日常交流 · exam 考试)\n\nEnglish tests taken, if any (leave blank if none)\n参加过的英语考试（如有，没有可留空）：\ne.g. IELTS, TOEIC, CET-4/6 · score & date 成绩及时间\n\nEnglish Learning Experience\n英语学习经历：\n\nPreferred class days & times\n方便上课的时间：";
 window.enqForm = function(id, kind){ if(/^tmp/.test(id)) return toast('Still saving · try again in a moment'); const e = (ENQ || []).find(x => x.id === id); if(!e) return;
 const ad = kind ? kind === 'a' : /adult|ielts|business|pet|ket/i.test(e.prog || ''), txt = ad ? ENQ_ADULT : ENQ_KID;
-openSheet('<h1>Inquiry form · ' + esc(e.name) + '</h1><div class="seg" style="margin:8px 0"><button class="' + (ad ? '' : 'on') + '" onclick="enqForm(\'' + id + '\',\'k\')">Kids & teens</button><button class="' + (ad ? 'on' : '') + '" onclick="enqForm(\'' + id + '\',\'a\')">Adult</button></div><div class="mini small" style="white-space:pre-line">' + esc(txt) + '</div><button class="btn teal block" style="margin-top:10px" onclick="enqFormCopy(' + (ad ? 1 : 0) + ')">Copy form · paste in WeChat</button><div class="small" style="margin-top:14px"><b>Their answers</b> <span class="mute">· paste the reply here so the trial teacher can see it</span></div><textarea id="eqDt" style="width:100%;min-height:140px;margin-top:6px;padding:10px 12px;border:1px solid #DDE6E8;border-radius:12px;font:inherit">' + esc(e.details || '') + '</textarea><button class="btn block" style="margin-top:10px" onclick="enqDetSave(\'' + id + '\')">Save answers</button>'); };
+openSheet('<h1>Inquiry form · ' + esc(enqTx1564(e.name)) + '</h1><div class="seg" style="margin:8px 0"><button class="' + (ad ? '' : 'on') + '" onclick="enqForm(\'' + id + '\',\'k\')">Kids & teens</button><button class="' + (ad ? 'on' : '') + '" onclick="enqForm(\'' + id + '\',\'a\')">Adult</button></div><div class="mini small" style="white-space:pre-line">' + esc(txt) + '</div><button class="btn teal block" style="margin-top:10px" onclick="enqFormCopy(' + (ad ? 1 : 0) + ')">Copy form · paste in WeChat</button><div class="small" style="margin-top:14px"><b>Their answers</b> <span class="mute">· paste the reply here so the trial teacher can see it</span></div><textarea id="eqDt" style="width:100%;min-height:140px;margin-top:6px;padding:10px 12px;border:1px solid #DDE6E8;border-radius:12px;font:inherit">' + esc(e.details || '') + '</textarea><button class="btn block" style="margin-top:10px" onclick="enqDetSave(\'' + id + '\')">Save answers</button>'); };
 window.enqFormCopy = function(ad){ const t = ad ? ENQ_ADULT : ENQ_KID; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('Form copied · paste it in WeChat'), () => toast('Could not copy · select the text and copy it')); };
 window.enqDetSave = function(id){ const t = ($('eqDt') || {}).value || ''; enqLocal(id, e => { e.details = t; }); closeSheet(); toast('Answers saved'); api('mgmtEnqSave', TOKEN, { id: id, details: t }).then(r => { if(!r || !r.ok) toast('Answers not saved · try again'); }).catch(() => toast('Answers not saved · try again')); try{ renderEnq(); }catch(x){} };
 window.enqNoteSave = function(id){ const t = ($('eqNt') || {}).value || ''; enqLocal(id, e => { e.note = t; }); closeSheet(); api('mgmtEnqSave', TOKEN, { id: id, note: t }).catch(() => toast('Note not saved · try again')); toast('Note saved'); };
@@ -9078,13 +9078,13 @@ window.enqF = function(f){ ENQ_F = f; renderEnq(); };
 window.enqAgrAny = function(){ openSheet('<h1>Service agreement · 服务协议</h1><div class="mute small">For a parent who asks before enrolling · the package boxes stay blank</div><label>Child\'s English name</label><input id="eaN" class="in-t" placeholder="e.g. Ying"><label>Chinese name (optional)</label><input id="eaC" class="in-t" placeholder="e.g. 贺莹"><button class="btn teal block" style="margin-top:14px" onclick="const n=$(\'eaN\').value.trim(); if(!n) return toast(\'Type the child\\\'s name\'); agrOpen({ key: \'enq:any:\' + n.toLowerCase(), name: n, cn: $(\'eaC\').value.trim() })">Make the agreement picture</button>'); setTimeout(() => { const i = $('eaN'); if(i) i.focus(); }, 50); };
 window.enqAgr = function(id){ const e = (ENQ || []).find(x => x && String(x.id) === String(id)); if(!e) return; agrOpen({ key: 'enq:' + e.id, name: String(e.name || '').trim(), cn: String(e.cn || '').trim() }); };
 const _r = window.renderEnq; window.renderEnq = function(){ _r(); const el = $('v-enquiry'); if(!el) return; if(!ENQ) enqLoad();
-const L = ENQ || [], F = { follow: L.filter(isFollow), new: L.filter(e => (e.st || 'New') === 'New'), trial: L.filter(e => e.st === 'Trial booked'), enrolled: L.filter(e => e.st === 'Enrolled'), not: L.filter(e => e.st === 'Not now'), all: L.filter(e => e.st !== 'Enrolled' && e.st !== 'Not now') };
+const L = ENQ || [], F = { every: L, reached: L.filter(e => e.st === 'Trial booked' || e.st === 'Enrolled' || e.trial), follow: L.filter(isFollow), new: L.filter(e => (e.st || 'New') === 'New'), trial: L.filter(e => e.st === 'Trial booked'), enrolled: L.filter(e => e.st === 'Enrolled'), not: L.filter(e => e.st === 'Not now'), all: L.filter(e => e.st !== 'Enrolled' && e.st !== 'Not now') };
 const tabs = [['follow', 'To follow up'], ['new', 'New'], ['trial', 'Trial booked'], ['enrolled', 'Enrolled'], ['not', 'Not now'], ['all', 'Open'], ['results', 'Results']];
 const chip = s => '<span class="chip ' + (s === 'Enrolled' ? 'green' : s === 'Trial booked' ? 'teal' : s === 'Not now' ? '' : 'coral') + '">' + esc(s || 'New') + '</span>';
 const row = e => { const d = days(e.up || e.at), fol = isFollow(e);
-return '<div class="tdr ' + (fol ? 'now' : 'soon') + '"><div class="tdn"><b class="num">' + days(e.at) + '</b><span>days</span></div><div class="grow" style="min-width:0"><div><b>' + esc(e.name) + '</b> <span class="mute small">' + esc([e.wechat, e.age ? e.age + ' yrs' : ''].filter(Boolean).join(' · ')) + '</span></div>' +
+return '<div class="tdr ' + (fol ? 'now' : 'soon') + '"><div class="tdn"><b class="num">' + days(e.at) + '</b><span>' + (days(e.at) === 1 ? 'day' : 'days') + '</span></div><div class="grow" style="min-width:0"><div class="en64"><b>' + enqNm1564(e.name) + '</b> <span class="mute small">' + [e.wechat ? enqNm1564(e.wechat) : '', e.age ? esc(e.age + ' yrs') : ''].filter(Boolean).join(' · ') + '</span></div>' +
 '<div class="small" style="margin-top:2px">' + esc([e.prog, e.level, e.src ? 'via ' + e.src : ''].filter(Boolean).join(' · ')) + '<span class="mute"> · logged ' + esc(String(e.at || '').slice(5, 16)) + (e.by ? ' by ' + esc(e.by) : '') + '</span></div>' +
-'<div class="tags">' + chip(e.st) + trChip(e) + (e.sent ? '<span class="chip">Sent: ' + esc(e.sent) + '</span>' : '<span class="chip">Nothing sent yet</span>') + (fol ? '<span class="chip coral">Follow up · ' + d + ' days quiet</span>' : '') + '</div>' + (e.note ? '<div class="small mute" style="margin-top:4px">' + esc(e.note) + '</div>' : '') + (e.details ? '<div class="small" style="margin-top:4px;white-space:pre-line"><b>Answers</b> · ' + esc(e.details) + '</div>' : '') +
+'<div class="tags">' + chip(e.st) + trChip(e) + (e.sent ? '<span class="chip">Sent: ' + esc(e.sent) + '</span>' : '<span class="chip">Nothing sent yet</span>') + (fol ? '<span class="chip coral">Follow up · ' + d + (d === 1 ? ' day' : ' days') + ' quiet</span>' : '') + '</div>' + (e.note ? '<div class="small mute" style="margin-top:4px">' + esc(e.note) + '</div>' : '') + (e.details ? '<div class="small" style="margin-top:4px;white-space:pre-line"><b>Answers</b> · ' + esc(e.details) + '</div>' : '') +
 '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn teal sm" onclick="enqPic(\'' + e.id + '\',\'p\')">Price</button><button class="btn ghost sm" onclick="enqPic(\'' + e.id + '\',\'c\')">CEFR</button><button class="btn ghost sm" onclick="enqAgr(\'' + e.id + '\')">Agreement</button><button class="btn ghost sm" onclick="enqPic(\'' + e.id + '\',\'r\')">Roadmap</button><button class="btn ghost sm" onclick="enqPic(\'' + e.id + '\',\'i\')">Trial invite</button><button class="btn ghost sm" onclick="enqForm(\'' + e.id + '\')">Inquiry form</button><button class="btn ghost sm" onclick="enqNote(\'' + e.id + '\')">Note</button><button class="btn ghost sm" onclick="enqLink(\'' + e.id + '\')">' + (e.trial ? 'Change trial' : 'Link trial') + '</button></div>' +
 '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">' + ['Trial booked', 'Enrolled', 'Not now'].filter(s => s !== e.st).map(s => '<button class="btn ghost sm" onclick="enqSt(\'' + e.id + '\',\'' + s + '\')">Mark ' + s.toLowerCase() + '</button>').join('') + (e.st && e.st !== 'New' ? '<button class="btn ghost sm" onclick="enqSt(\'' + e.id + '\',\'New\')">Back to new</button>' : '') + '</div></div></div>'; };
 const list = F[ENQ_F] || L;
@@ -9107,7 +9107,7 @@ const since = new Date(Date.now() - 45 * 864e5).toISOString().slice(0, 10);
 ENQ_C = (T.wait || []).map(r => Object.assign({ booked: 1 }, r)).concat(T.rows || []).filter(r => r.date >= since && r.student).map(r => ({ r: r, k: r.date + '|' + r.student, sc: score(e, r) }));
 ENQ_C.sort((a, b) => b.sc - a.sc || (b.r.date + (b.r.time || '')).localeCompare(a.r.date + (a.r.time || '')));
 const it = (c, i) => '<div class="tdr ' + (c.sc ? 'now' : 'soon') + '" style="cursor:pointer" onclick="enqLinkSave(\'' + id + '\',' + i + ')"><div class="tdn"><b class="num">' + esc(c.r.date.slice(8)) + '</b><span>' + esc(new Date(c.r.date + 'T12:00').toLocaleDateString('en-GB', { month: 'short' })) + '</span></div><div class="grow"><b>' + esc(c.r.student) + '</b> <span class="mute small">' + esc(c.r.cn || '') + '</span><div class="small">' + esc([c.r.time, c.r.teacher ? 'Teacher ' + c.r.teacher : '', c.r.booked ? 'booked' : c.r.status === 'Sent' ? 'report sent' : 'report in'].filter(Boolean).join(' · ')) + '</div></div>' + (c.sc ? '<span class="chip teal">Likely</span>' : '') + (e.trial && tkey(e.trial) === tkey(c.k) ? '<span class="chip green">Linked</span>' : '') + '</div>';
-openSheet('<h1>Link a trial · ' + esc(e.name) + '</h1><div class="mute small">Booked and recent trials (last 45 days) · likely matches first. Pictures sent from the trial report will also show on this enquiry.</div>' +
+openSheet('<h1>Link a trial · ' + esc(enqTx1564(e.name)) + '</h1><div class="mute small">Booked and recent trials (last 45 days) · likely matches first. Pictures sent from the trial report will also show on this enquiry.</div>' +
 (ENQ_C.length ? ENQ_C.slice(0, 40).map(it).join('') : '<div class="tdok">No trials in the last 45 days.</div>') + (e.trial ? '<button class="btn ghost block" style="margin-top:12px" onclick="enqLinkSave(\'' + id + '\',-1)">Remove the link</button>' : '')); };
 window.enqLinkSave = function(id, i){ const c = i > -1 ? ENQ_C[i] : null, k = c ? c.k : '', e = (ENQ || []).find(x => x.id === id); if(!e) return; const f = { id: id, trial: k };
 if(c && (!e.st || e.st === 'New')) f.st = 'Trial booked';
@@ -9126,7 +9126,7 @@ return '<div class="seg" style="flex-wrap:wrap">' + per.map(p => '<button class=
 (X.length ? '<div class="stats" style="margin-top:10px"><div class="stat"><b class="num">' + X.length + '</b><span>enquiries</span></div><div class="stat"><b class="num">' + X.filter(tri).length + '</b><span>reached trial · ' + pct(X.filter(tri).length, X.length) + '</span></div><div class="stat"><b class="num">' + X.filter(enr).length + '</b><span>enrolled · ' + pct(X.filter(enr).length, X.length) + '</span></div></div>' +
 tbl('By where they found us', 'src', SRCS) + tbl('By program', 'prog', PROGS) + '<div class="small mute" style="margin-top:8px">Counted by the month the enquiry was logged · Trial = linked to a trial, Trial booked or Enrolled.</div>' : '<div class="tdok">No enquiries logged in this period yet.</div>'); }
 const _tp = window.tlPaint; if(_tp) window.tlPaint = function(){ const r = _tp.apply(this, arguments); try{ const t = tld(), el = $('tlPdf'); if(t && el){ const q = enqOfTrial(t.date + '|' + t.student), bits = [];
-if(q) bits.push('<b>From enquiry</b> · ' + esc(q.name) + esc([q.src ? ' · via ' + q.src : '', ' · logged ' + String(q.at || '').slice(5, 10)].join('')) + (q.sent ? '<div>Sent before the trial: ' + esc(q.sent) + '</div>' : ''));
+if(q) bits.push('<b>From enquiry</b> · ' + esc(enqTx1564(q.name)) + esc([q.src ? ' · via ' + q.src : '', ' · logged ' + String(q.at || '').slice(5, 10)].join('')) + (q.sent ? '<div>Sent before the trial: ' + esc(q.sent) + '</div>' : ''));
 if(t.pics) bits.push('<b>Pictures sent</b> · ' + esc(String(t.pics).replace(/ 20\d\d-/g, ' ')));
 if(bits.length) el.insertAdjacentHTML('beforebegin', '<div class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:#F4FAFA;border:1px solid #DCEFEF">' + bits.join('<div style="height:6px"></div>') + '</div>'); } }catch(e){} return r; };
 })();
@@ -9165,7 +9165,7 @@ if(q) out.push('<span class="chip">From enquiry' + (q.src ? ' · ' + esc(q.src) 
 return out.join(''); }
 function row(t){ const R = (tl() || {}).rows || [], i = R.indexOf(t), wait = !t.label, [c, l] = wait ? (window.trRecon1560 ? trRecon1560.chip(t) : ['red', 'No report yet']) : TL_ST(t.status);
 return '<div class="rp-row" ' + (i > -1 && !wait ? 'onclick="tlOpen(' + i + ')"' : 'style="cursor:default"') + '><div class="av">' + esc(String(t.student || '?')[0]) + '</div><div class="grow" style="min-width:0"><b>' + esc(t.student) + '</b> <span class="small mute">' + esc((t.cn || '') + ' ' + (t.code || '')) + '</span>' +
-'<div class="small mute">' + esc(tName(t.teacher)) + ' · trial ' + esc(t.date) + (t.time ? ' ' + esc(t.time) : '') + (t.sent ? ' · sent ' + esc(t.sent.at) : '') + (window.trRecon1560 ? esc(trRecon1560.note(t)) : '') + '</div><div class="tags" style="margin-top:4px">' + chips(t) + '</div></div>' +
+'<div class="small mute">' + esc(tName(t.teacher)) + ' · trial ' + esc(t.date) + (t.time ? ' ' + esc(t.time) : '') + (t.sent ? ' · sent ' + esc(t.sent.at) : '') + (window.trRecon1560 ? esc(trRecon1560.note(t)) : '') + '</div><div class="tags" style="margin-top:4px">' + chips(t) + '</div>' + (window.trNext1561 ? trNext1561(t) : '') + '</div>' +
 (wait ? '' : '<div style="text-align:right"><b class="num">' + (t.cefr ? esc(t.cefr) : '—') + '</b><div class="small mute num">' + (t.total != null && t.total !== '' ? t.total + '/36' : '') + '</div></div>') + '<span class="chip ' + c + '">' + l + '</span></div>'; }
 function body(){ const L = lists(), q = TPQ.trim().toLowerCase();
 if(q){ const seen = {}, A = L.all.concat(L.wait).filter(t => hay(t).indexOf(q) > -1); A.forEach(t => { if(t.label) seen[t.label] = 1; }); const O = TPO.filter(t => !seen[t.label] && hay(t).indexOf(q) > -1);
@@ -9174,7 +9174,7 @@ const X = L[TPF] || L.all; return X.length ? X.map(row).join('') : '<div class="
 window.renderTP = function(){ const el = $('v-trials'); if(!el) return; const L = lists(), T = tl();
 if(!$('tpQ')){ el.innerHTML = '<div class="lead"><h1>Trials</h1><div class="mute small">Trial class reports · send to the parent, follow up, enrol · search by English or Chinese name, code, teacher or WeChat</div></div>' +
 '<div style="margin-top:14px"><input id="tpQ" class="search" placeholder="Search a trial student · e.g. Paipai, 派派, ST-2026-120" autocomplete="off" oninput="tpSearch(this.value)" style="width:100%;padding:12px 14px 12px 42px;border:1px solid #DDE6E8;border-radius:14px;font:inherit"></div><div id="tpTabs"></div><section class="sec" id="tpList"></section><div class="small mute" id="tpAt" style="margin-top:6px"></div>'; $('tpQ').value = TPQ; }
-const tabs = [['send', 'To send'], ['follow', 'Follow up'], ['enrolled', 'Enrolled'], ['not', 'Not enrolling'], ['making', 'Being made'], ['wait', 'No report yet'], ['all', 'All']];
+const tabs = [['send', 'To send'], ['wait', 'No report yet'], ['follow', 'Follow up'], ['making', 'Being made'], ['enrolled', 'Enrolled'], ['not', 'Not enrolling'], ['all', 'All']];
 $('tpTabs').innerHTML = TPQ.trim() ? '' : '<div class="seg" style="flex-wrap:wrap;margin-top:10px">' + tabs.map(t => '<button class="' + (TPF === t[0] ? 'on' : '') + '" onclick="tpF(\'' + t[0] + '\')">' + t[1] + ' · ' + (L[t[0]] || []).length + '</button>').join('') + '</div>';
 $('tpList').innerHTML = T ? body() : '<div class="sk"></div><div class="sk"></div>';
 $('tpAt').textContent = T ? (T.at ? 'Updated ' + T.at + 'H · ' : '') + 'last 45 days here · older trials appear when you search' : ''; };
@@ -17254,7 +17254,7 @@ const tbNow = L.filter(e => e.st === 'Trial booked').length;
     const mx = Math.max(1, ...M.map(m => m.en + m.tb + m.op + m.no)), px = v => Math.round(v / mx * 50);
     const seg = (v, c) => v ? '<i style="height:' + px(v) + 'px;background:' + c + '"></i>' : '';
     const tot = M.reduce((a, m) => a + m.en + m.tb + m.op + m.no, 0);
-    return '<div class="fn31"><div><div class="fl">' + st('all', 'Logged', n, '#2B2253', 'enquiries · ever', 1, 'Every enquiry ever logged · opens the Open tab (not enrolled and not set to Not now)') + st('trial', 'Reached trial', tb, '#00A3AD', pc(tb) + '% of logged · ' + tbNow + ' at trial now', 1, 'Ever reached a trial: Trial booked, Enrolled or a linked trial · opens the Trial booked tab (status is Trial booked now)') + st('enrolled', 'Enrolled', en, '#2E9E6F', pc(en) + '% of logged', 0, 'Status is Enrolled · opens the Enrolled tab') + st('not', 'Not now', no, '#B0ADC0', pc(no) + '% of logged · status now', 0, 'Status is Not now at the moment · opens the Not now tab') + '</div><div class="small mute" style="margin-top:6px;line-height:1.45">Logged, Reached trial and Enrolled are milestones: everyone who ever got that far (an enrolled student also counts as reached trial). Not now and the tabs below show where each enquiry is now.</div></div>' +
+    return '<div class="fn31"><div><div class="fl">' + st('every', 'Logged', n, '#2B2253', 'enquiries · ever', 1, 'Every enquiry ever logged · opens all of them') + st('reached', 'Reached trial', tb, '#00A3AD', pc(tb) + '% of logged · ' + tbNow + ' at trial now', 1, 'Ever reached a trial: Trial booked, Enrolled or a linked trial · opens all of them') + st('enrolled', 'Enrolled', en, '#2E9E6F', pc(en) + '% of logged', 0, 'Status is Enrolled · opens the Enrolled tab') + st('not', 'Not now', no, '#B0ADC0', pc(no) + '% of logged · status now', 0, 'Status is Not now at the moment · opens the Not now tab') + '</div><div class="small mute" style="margin-top:6px;line-height:1.45">Logged, Reached trial and Enrolled are milestones: everyone who ever got that far (an enrolled student also counts as reached trial). Not now and the tabs below show where each enquiry is now.</div></div>' +
       '<div class="mo"><div class="h"><span>Enquiries per month · by status now</span><span>' + tot + ' in 6 months</span></div><div class="bs">' +
       M.map(m => { const t = m.en + m.tb + m.op + m.no; return '<div onclick="enqF(\'results\')" title="' + m.l + ': ' + t + ' · enrolled ' + m.en + ' · trial ' + m.tb + ' · open ' + m.op + ' · not now ' + m.no + '">' + seg(m.en, '#2E9E6F') + seg(m.tb, '#00A3AD') + seg(m.op, '#E0A030') + seg(m.no, '#D6D3E0') + (t ? '<b style="bottom:' + (px(t) + 4) + 'px">' + t + '</b>' : '') + '</div>'; }).join('') +
       '</div><div class="ax">' + M.map(m => '<span>' + m.l + '</span>').join('') + '</div><div class="lg"><span><i style="background:#2E9E6F"></i>enrolled</span><span><i style="background:#00A3AD"></i>trial</span><span><i style="background:#E0A030"></i>open</span><span><i style="background:#D6D3E0"></i>not now</span></div></div></div>'; }
@@ -21125,7 +21125,7 @@ window.ivVoid = async i => { const x = LIST[i]; if(!x) return; const why = promp
   if(!why || !why.trim()) return; try{ await call('void', { no: x.no, reason: why.trim() }); tst('Payment Confirmation ' + x.no + ' is void'); ivList(); }catch(err){ tst(err.message); } };
 
 /* ---------- the "Make invoice" button beside the invoice file in the three forms ---------- */
-function btnHtml(){ return '<button type="button" class="ivBtn" onclick="ivOpen()"><i>🧾</i><span>Make payment confirmation 付款确认单<small>Next number, price list and 3% tax filled in. The PDF is attached here and emailed to the parent.</small></span></button>'; }
+function btnHtml(){ return '<button type="button" class="ivBtn" onclick="ivOpen()"><i aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M6 2.5h12v19l-3-2-3 2-3-2-3 2z"/><path d="M9 7.5h6M9 11h6M9 14.5h4"/></svg></i><span>Make payment confirmation 付款确认单<small>Next number, price list and 3% tax filled in. Review, issue, then email it separately. The PDF is attached here.</small></span></button>'; }
 function addBtns(){
   const b = document.getElementById('sheetBody'); if(!b || b.querySelector('.ivBtn') || !(b.querySelector('#fDrop, #enF, #rpF'))) return;
   try{ if(!(D && D.mgr)) return; }catch(x){ return; }
@@ -34222,6 +34222,131 @@ window.coeUnits = function(c){ try{ if(!c) return 0; if(c.title && /-(TC|SC)$/i.
     if(o._ph && typeof window.phRoadPic === 'function') return phRoadPic(o._ph.pid, o._ph.tid);
     var r = _cp.apply(this, arguments); try{ if(o._lt && o.adult && o.goal && typeof cpGoal === 'function') cpGoal(o.goal); }catch(e){} return r; };
   var _cf = window.cefrPic; if(typeof _cf === 'function') window.cefrPic = function(o){ if(o && o._ph && typeof window.phRoadPic === 'function') return phRoadPic(o._ph.pid, o._ph.tid); return _cf.apply(this, arguments); };
+})();
+</script>
+<style id="tp61css">
+#v-trials:not(.tp-res) #tp2fun{display:none!important}
+#v-trials.tp-res #tpList,#v-trials.tp-res #tpAt,#v-trials.tp-res #tpBk,#v-trials.tp-res #tp61src{display:none!important}
+#v-trials.tp-res #tp2fun{margin-top:30px!important}
+#v-trials #tpTabs>#tpSrcK.sk2{display:none!important}
+#v-trials #tp61src{margin-left:auto;font:inherit;font-size:13.5px;font-weight:600;color:var(--ink,#2B2253);padding:6px 30px 6px 12px;border:1px solid var(--line,#E3E5EC);border-radius:999px;background:#fff;max-width:200px}
+#v-trials .nx61{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:baseline;margin-top:6px;font-size:13px;color:#4C4868;cursor:pointer;border-radius:8px;padding:2px 6px;margin-left:-6px}
+#v-trials .nx61:hover,#v-trials .nx61:focus-visible{background:#F1F0F6}
+#v-trials .nx61 b{font-weight:600;color:var(--ink,#2B2253)}
+#v-trials .nx61 .w{color:#6F6B85}
+#v-trials .nx61.late .w:last-child{color:#B4442F;font-weight:600}
+#v-trials .nx61.auto b:after{content:''}
+@media(max-width:700px){#v-trials #tp61src{margin-left:0}#v-trials .tpb{flex-wrap:wrap}#v-trials .tpb>.chip{margin-left:56px;max-width:calc(100% - 56px);white-space:normal;height:auto}#v-trials #tpList .rp-row{flex-wrap:wrap}#v-trials #tpList .rp-row>.grow{flex:1 1 calc(100% - 56px)}#v-trials #tpList .rp-row>.grow~*{margin-left:auto}#v-trials #tpList .rp-row>.grow+*{margin-left:52px}}
+</style>
+<script>
+/* 1561 · Trials: one status row · Results · next step */
+(function(){ if(window.__1561) return; window.__1561 = 1;
+  var RES = 0, NX = null, KEY = 'coe.trNext';
+  try{ NX = JSON.parse(localStorage.getItem(KEY) || 'null'); }catch(e){}
+  var nx = function(){ var R = window.trRecon1560 && trRecon1560.data(); if(R && R.next && (!NX || (R.at || 0) > (NX._at || 0))){ NX = Object.assign({}, R.next, { _at: R.at || 0 }); try{ localStorage.setItem(KEY, JSON.stringify(NX)); }catch(e){} } return NX || {}; };
+  var today = function(){ return new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10); };
+  var addD = function(d, n){ var t = Date.parse(String(d).slice(0, 10) + 'T00:00:00Z'); return isNaN(t) ? '' : new Date(t + n * 864e5).toISOString().slice(0, 10); };
+  var first = function(n){ return String(n || '').trim().split(/\s+/)[0].toLowerCase(); };
+  var keyOf = function(t){ return t.label ? 'r:' + t.label : 'w:' + t.date + '|' + first(t.student); };
+  var esc_ = function(x){ return typeof esc === 'function' ? esc(x) : String(x == null ? '' : x).replace(/[&<>"']/g, function(c){ return '&#' + c.charCodeAt(0) + ';'; }); };
+  var tch = function(t){ var n = String(t.teacher || '').replace(/^teacher\s+/i, '').trim(); return n ? n.charAt(0).toUpperCase() + n.slice(1) : 'Teacher'; };
+  function auto(t){ var F = (typeof TFU !== 'undefined' && TFU) || {}, f = F[t.date + '|' + first(t.student)], rc = t._rc;
+    if(!t.label){ if(rc && (rc.k === 'check' || rc.k === 'cancelled')) return { what: 'Check the booking', owner: 'Operations', due: today() };
+      return { what: 'Write the report', owner: tch(t), due: addD(t.date, 1) }; }
+    if((f && f.st === 'Enrolling') || /^(yes|y|enrolled)/i.test(String(t.enrolled || '')) || (f && f.st === 'Not now')) return null;
+    if(t.status === 'Ready') return { what: 'Send the report', owner: 'Operations', due: String(t.sub || t.date || '').slice(0, 10) };
+    if(t.status === 'Redo asked') return { what: 'Redo the report', owner: tch(t), due: addD(String((t.redo && t.redo.at) || t.date), 1) };
+    if(t.status !== 'Sent') return { what: 'Report being made', owner: '', due: '' };
+    if(f && f.st) return { what: 'Follow up again', owner: 'Operations', due: addD(String(f.at || '').slice(0, 10) || t.date, 3) };
+    return { what: 'First follow-up', owner: 'Operations', due: addD(String((t.sent && t.sent.at) || t.date).slice(0, 10), 2) }; }
+  function when(d){ if(!d) return ''; var n = Math.round((Date.parse(d) - Date.parse(today())) / 864e5);
+    if(n === 0) return 'today'; if(n === 1) return 'tomorrow'; if(n < 0) return -n === 1 ? '1 day late' : (-n) + ' days late';
+    var x = new Date(d + 'T12:00:00'); return x.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
+  window.trNext1561 = function(t){ if(!t || RES) return ''; var k = keyOf(t), set = nx()[k], a = set && (set.what || set.owner || set.due) ? set : auto(t); if(!a) return '';
+    var late = a.due && a.due < today(), parts = ['<span class="w">Next</span>', '<b>' + esc_(a.what || 'Next step') + '</b>'];
+    if(a.owner) parts.push('<span class="w">' + esc_(a.owner) + '</span>'); if(a.due) parts.push('<span class="w">' + esc_(when(a.due)) + '</span>');
+    return '<div class="nx61' + (late ? ' late' : '') + (set ? '' : ' auto') + '" role="button" tabindex="0" title="Set the next step" onclick="event.stopPropagation();nxOpen61(this)" onkeydown="if(event.key===\'Enter\'){event.stopPropagation();nxOpen61(this)}" data-k="' + esc_(k) + '" data-s="' + esc_(t.student) + '" data-t="' + esc_(tch(t)) + '">' + parts.join(' · ') + '</div>'; };
+  var ED = null;
+  window.nxOpen61 = function(el){ var k = el.dataset.k, cur = nx()[k] || {}, row = null;
+    var T = (typeof TRL !== 'undefined' && TRL) || {}; (T.rows || []).concat(T.wait || []).some(function(t){ if(keyOf(t) === k){ row = t; return true; } return false; });
+    var a = cur.what || cur.owner || cur.due ? cur : (row ? auto(row) : null) || {}; ED = { k: k, what: a.what || '', owner: a.owner || '', due: a.due || '', note: cur.note || '', set: !!(cur.what || cur.owner || cur.due) };
+    var W = ['Send the report', 'First follow-up', 'Follow up again', 'Write the report', 'Book the first class', 'Check the booking'], O = ['Operations', 'Management', el.dataset.t || 'Teacher'];
+    var chip = function(id, L, v){ return '<div class="skc" id="' + id + '" style="margin:6px 0 2px">' + L.map(function(x){ return '<button type="button" class="' + (x === v ? 'on' : '') + '" onclick="nxSet61(\'' + id + '\',this.textContent)">' + esc_(x) + '</button>'; }).join('') + '</div>'; };
+    openSheet('<h1>Next step · ' + esc_(el.dataset.s || '') + '</h1>'
+      + '<label>What</label>' + chip('nxW', W, ED.what) + '<input id="nxWi" class="in-t" value="' + esc_(ED.what) + '" oninput="ED61().what=this.value">'
+      + '<label>Who</label>' + chip('nxO', O, ED.owner)
+      + '<label>When</label><div class="row" style="gap:8px;align-items:center"><input id="nxD" class="in-t" type="date" value="' + esc_(ED.due) + '" oninput="ED61().due=this.value" style="max-width:200px">'
+      + '<div class="skc">' + [['Today', 0], ['Tomorrow', 1], ['In 3 days', 3]].map(function(x){ return '<button type="button" onclick="nxDay61(' + x[1] + ')">' + x[0] + '</button>'; }).join('') + '</div></div>'
+      + '<button class="btn teal block" id="nxGo" style="margin-top:14px" onclick="nxSave61()">Save</button>'
+      + (ED.set ? '<button class="btn ghost block" style="margin-top:8px" onclick="nxSave61(1)">Back to automatic</button>' : '')); };
+  window.ED61 = function(){ return ED || {}; };
+  window.nxSet61 = function(id, v){ if(!ED) return; if(id === 'nxW'){ ED.what = v; var i = document.getElementById('nxWi'); if(i) i.value = v; } else ED.owner = v;
+    document.querySelectorAll('#' + id + ' button').forEach(function(b){ b.classList.toggle('on', b.textContent === v); }); };
+  window.nxDay61 = function(n){ if(!ED) return; ED.due = addD(today(), n); var d = document.getElementById('nxD'); if(d) d.value = ED.due; };
+  window.nxSave61 = async function(clear){ if(!ED) return; var e = ED, b = document.getElementById('nxGo'); if(b && b.disabled) return; if(b) b.disabled = true;
+    var item = clear ? null : { what: String(e.what || '').trim(), owner: e.owner, due: e.due, note: e.note || '' };
+    if(item && !item.what && !item.owner && !item.due){ if(b) b.disabled = false; return toast('Choose what, who or when'); }
+    var M = nx(), prev = M[e.k]; if(item) M[e.k] = Object.assign({}, item, { by: (D && D.me && D.me.name) || '' }); else delete M[e.k];
+    try{ localStorage.setItem(KEY, JSON.stringify(M)); }catch(x){} closeSheet(); if(VIEW === 'trials') renderTP();
+    try{ var r = await fetch(FAST_URL + '-trials', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, op: 'setNext', k: e.k }, item || { what: '', owner: '', due: '', note: '' })) }).then(function(x){ return x.json(); });
+      if(!(r && r.ok)) throw r; toast(clear ? 'Next step: automatic' : 'Next step saved'); }
+    catch(x){ if(prev) M[e.k] = prev; else delete M[e.k]; try{ localStorage.setItem(KEY, JSON.stringify(M)); }catch(y){} toast((x && x.msg) || 'Not saved · try again'); if(VIEW === 'trials') renderTP(); } };
+  /* Results mode + one status row */
+  var _f = window.tpF; window.tpF = function(f){ if(f === 'results'){ RES = 1; return renderTP(); } RES = 0; return _f.apply(this, arguments); };
+  var _r = window.renderTP; window.renderTP = function(){ var r = _r.apply(this, arguments);
+    try{ var el = document.getElementById('v-trials'), tabs = document.getElementById('tpTabs'); if(!el || !tabs) return r; el.classList.toggle('tp-res', !!RES);
+      var seg = tabs.querySelector(':scope > .seg'); if(!seg) return r;
+      if(RES) seg.querySelectorAll('button.on').forEach(function(b){ b.classList.remove('on'); });
+      if(!seg.querySelector('[data-res]')) seg.insertAdjacentHTML('beforeend', '<button type="button" data-res="1" onclick="tpF(\'results\')">Results</button>');
+      var rb = seg.querySelector('[data-res]'); rb.classList.toggle('on', !!RES);
+      var K = document.getElementById('tpSrcK'), old = document.getElementById('tp61src'); if(old) old.remove();
+      if(K){ var B = [].slice.call(K.querySelectorAll('button')), on = B.find(function(b){ return b.classList.contains('on'); }), cls = function(b){ return (String(b.className).match(/\b(pt|ref|coe|none)\b/) || [])[1]; };
+        seg.insertAdjacentHTML('beforeend', '<select id="tp61src" aria-label="Source" onchange="tpSrc61(this.value)"><option value="">Source · all</option>' + B.map(function(b){ var k = cls(b), m = b.textContent.match(/^(.*?)\s*(\d+)\s*$/); return '<option value="' + k + '"' + (b === on ? ' selected' : '') + '>' + esc_(m ? m[1] + ' · ' + m[2] : b.textContent) + '</option>'; }).join('') + '</select>'); }
+    }catch(e){ console.warn('tp61', e); } return r; };
+  window.tpSrc61 = function(k){ var K = document.getElementById('tpSrcK'), on = K && K.querySelector('button.on'), cur = on ? (String(on.className).match(/\b(pt|ref|coe|none)\b/) || [])[1] : '';
+    if(k === cur) return; tpSrcF(k || cur); };
+  window.addEventListener('coe-trrecon', function(){ nx(); });
+  try{ if(typeof VIEW !== 'undefined' && VIEW === 'trials') renderTP(); }catch(e){}
+})();
+</script>
+<style id="en64css">
+#v-enquiry .en64{overflow-wrap:anywhere}
+#sheetBody h1{overflow-wrap:anywhere}
+#v-enquiry .en64 a.lk{color:inherit;text-decoration:underline;text-decoration-color:#B9B7C6;text-underline-offset:2px}
+#v-enquiry .fn31 .st[data-enq-card]{cursor:pointer}
+#v-enquiry .fn31 .st.on{box-shadow:0 0 0 2px var(--c) inset;border-radius:var(--ui-r,14px)}
+@media(max-width:720px){#v-enquiry #enqBox .tdr .row .btn.sm{width:auto;height:36px;padding:0 12px;font-size:13.5px}}
+</style>
+<script>
+/* 1564 · Enquiries fixes */
+(function(){ if(window.__1564) return; window.__1564 = 1;
+  var E = function(x){ return typeof esc === 'function' ? esc(x) : String(x == null ? '' : x).replace(/[&<>"']/g, function(c){ return '&#' + c.charCodeAt(0) + ';'; }); };
+  var isUrl = function(x){ return /^\s*(https?:\/\/|www\.|m\.me\/)/i.test(String(x || '')); };
+  window.enqTx1564 = function(x){ var v = String(x || '').trim(); if(!isUrl(v)) return v;
+    var u = v.replace(/^\s*/, ''), h = (u.replace(/^https?:\/\//i, '').split(/[/?#]/)[0] || '').replace(/^www\./i, '').toLowerCase(), tail = (u.split('?')[0].match(/[A-Za-z0-9._-]+\/?$/) || [''])[0].replace(/\/$/, '');
+    var site = /messenger\.com|m\.me$|^m\.me/.test(h) ? 'Messenger' : /facebook\.com|fb\.com/.test(h) ? 'Facebook' : /wa\.me|whatsapp/.test(h) ? 'WhatsApp' : /viber/.test(h) ? 'Viber' : h;
+    return site + (tail ? ' · …' + tail.slice(-6) : ''); };
+  window.enqNm1564 = function(x){ var v = String(x || '').trim(); if(!isUrl(v)) return E(v); var href = /^https?:\/\//i.test(v) ? v : 'https://' + v;
+    return '<a class="lk" href="' + E(href) + '" target="_blank" rel="noopener noreferrer" title="' + E(v) + '" onclick="event.stopPropagation()">' + E(enqTx1564(v)) + '</a>'; };
+  var CUR = '';
+  var _f = window.enqF; if(typeof _f === 'function') window.enqF = function(f){ CUR = f; return _f.apply(this, arguments); };
+  var isPh = function(e){ return !!e && /^PH\s/i.test(String(e.prog || '')); };
+  var get = function(id){ var L = (window.__enq1530 && __enq1530()) || []; return L.find(function(x){ return x && String(x.id) === String(id); }); };
+  var _p = window.enqPic; if(typeof _p === 'function') window.enqPic = function(id, k){ var e = get(id);
+    if(k === 'i' && isPh(e) && typeof window.phInv === 'function'){ var o = window.enqInv; window.enqInv = function(){ return phInv(); }; try{ return _p.apply(this, arguments); } finally{ window.enqInv = o; } }   /* same "sent" log, English text */
+    return _p.apply(this, arguments); };
+  var PHF = 'TRIAL CLASS INQUIRY\n\nMay we know these details?\n\nFull name:\n\nOccupation / Industry:\n\nMain goal for learning English:\n(work · business · travel · daily conversation · IELTS)\n\nEnglish tests taken, if any (leave blank if none):\ne.g. IELTS · score & date\n\nEnglish learning experience:\n\nPreferred class days & times:';
+  window.enqFormPh1564 = function(){ (navigator.clipboard ? navigator.clipboard.writeText(PHF) : Promise.reject()).then(function(){ toast('Form copied · paste it in Messenger or Viber'); }, function(){ toast('Could not copy · select the text and copy it'); }); };
+  var _fo = window.enqForm; if(typeof _fo === 'function') window.enqForm = function(id, kind){ var e = get(id); if(!isPh(e)) return _fo.apply(this, arguments);
+    openSheet('<h1>Inquiry form · ' + E(enqTx1564(e.name)) + '</h1><div class="mute small">English · Philippine enquiry</div><div class="mini small" style="white-space:pre-line;margin-top:8px">' + E(PHF) + '</div><button class="btn teal block" style="margin-top:10px" onclick="enqFormPh1564()">Copy form</button><div class="small" style="margin-top:14px"><b>Their answers</b> <span class="mute">· paste the reply here so the trial teacher can see it</span></div><textarea id="eqDt" style="width:100%;min-height:140px;margin-top:6px;padding:10px 12px;border:1px solid #DDE6E8;border-radius:12px;font:inherit">' + E(e.details || '') + '</textarea><button class="btn block" style="margin-top:10px" onclick="enqDetSave(\'' + E(id) + '\')">Save answers</button>'); };
+  function decorate(){ var el = document.getElementById('v-enquiry'); if(!el) return;
+    el.querySelectorAll('.fn31 .st[onclick]').forEach(function(t){ var k = (String(t.getAttribute('onclick')).match(/enqF\('(\w+)'\)/) || [])[1]; if(!k) return; t.dataset.enqCard = k;
+      var b = t.querySelector('b'); t.dataset.n = b ? String(+b.textContent || 0) : '0'; t.classList.toggle('on', CUR === k); t.setAttribute('role', 'button'); t.tabIndex = 0; });
+    var L = (window.__enq1530 && __enq1530()) || [];
+    el.querySelectorAll('#enqBox button[onclick^="enqPic(\'"]').forEach(function(b){ var m = String(b.getAttribute('onclick')).match(/^enqPic\('([^']+)','c'\)/); if(!m) return; var e = L.find(function(x){ return x && String(x.id) === m[1]; }); if(isPh(e)) b.style.display = 'none'; }); }
+  var _r = window.renderEnq; if(typeof _r === 'function') window.renderEnq = function(){ var r = _r.apply(this, arguments); try{ decorate(); }catch(x){ console.warn('en64', x); } return r; };
+  var _l = window.enqLoad; if(typeof _l === 'function') window.enqLoad = function(){ var p = _l.apply(this, arguments); Promise.resolve(p).then(function(){ setTimeout(function(){ try{ decorate(); }catch(x){} }, 0); }); return p; };
+  try{ if(typeof VIEW !== 'undefined' && VIEW === 'enquiry') renderEnq(); }catch(x){}
 })();
 </script>
 </body>
