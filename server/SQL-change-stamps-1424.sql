@@ -1,0 +1,4 @@
+-- Applied 28 Oct 2026 as migration coe_change_stamps_1424 (teacher-app/CHANGES-2026-10-28-paid-validity-stamps.md)
+-- table coe_stamp(entity, at) · coe_stamp_entity(tab) maps sheet tabs → packages / lessons / sales / money / students / notes / timein / msgs / classes / agree / reports
+-- triggers: coe_stamp_classes, coe_stamp_packages, coe_stamp_sheet (sheet_rows), coe_stamp_log (log_rows) → coe_stamp_touch(entity); coe_stamp_doc mirrors into docs 'sys:stamps' (scope all)
+-- ROLLBACK: drop trigger coe_stamp_classes on classes; drop trigger coe_stamp_packages on coe_packages; drop trigger coe_stamp_sheet on sheet_rows; drop trigger coe_stamp_log on log_rows; drop trigger coe_stamp_doc on coe_stamp;
