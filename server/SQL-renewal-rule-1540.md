@@ -36,3 +36,13 @@ delete from coe_renew_at;
 ```
 
 The original view and function texts are kept in `docs 'bak:1540'` in case a full restore is ever needed. `coe_pkg_calc.carry_eff` can't be removed with `CREATE OR REPLACE`; it would need a drop/recreate.
+
+## 1541 / 1542 (29 Oct)
+- **renewal_rule_1541_sync:** `coe_pkg_sync` no longer keeps the sheet's date-based split as a "sheet fix" when the difference is exactly the renewal rule. Lucy's two fixes from 28 Oct were undone. Backup: `docs 'bak:1541'`.
+- **renewal_payat_1542 / _check:** the payment time is now the Payment Confirmation's generated time.
+  - New columns on `coe_renew_at`: `saved_at`, `at_src`, `conf_no`.
+  - New functions: `coe_renew_payat()` and `coe_renew_payat_apply()`.
+  - Trigger `coe_invoice_payat_trg` on `coe_invoices`.
+  - `coe_renew_check` lists app renewals that had no confirmation.
+  - Backfill: Anna 1748, Leo 1749, Luna 1750 and Lucy 1751 now use their confirmation times. Gina (20 Oct) keeps the save time, because she renewed before in-app confirmations existed. No numbers changed.
+- **Rollback 1542:** `drop trigger coe_invoice_payat_trg on coe_invoices; update coe_renew_at set at = coalesce(saved_at, at), at_src = 'renewal save', conf_no = null;`

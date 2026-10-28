@@ -28,7 +28,9 @@ function run(file) {
     ok('Lucy · "3 + 33 = 35.5" is refused', !bad1.ok && /don’t agree/.test(bad1.why), bad1);
     ok('Lucy · valid until from the first class (30 Oct) → 30 Jun 2027', R.validFrom('2026-10-30', 33) === '2027-06-30', R.validFrom('2026-10-30', 33));
     const g2 = R.guard({ split: sp, doc: fresh, row: Object.assign({}, row, { validSheet: '2027-06-28' }), renew: true, tot: 33, now: T0 });
-    ok('Lucy · ACTIVE valid-until 28 Jun ≠ first-class rule → held', !g2.ok && g2.why.some(w => /Valid until/.test(w)), g2.why);
+    ok('Lucy · ACTIVE valid-until 28 Jun ≠ first-class rule → not a hold (picture uses 30 Jun; App health asks for the sheet fix)', g2.ok, g2.why);
+    const sync = R.split({ carry: 2.5, add: 0, new: 33, used: 0.5, now: 35.5 });
+    ok('Lucy 29 Oct · the sync\'s "+0.5 used" (2.5 + 33 − 0.5 ≠ 35.5) is still refused, never drawn', !sync.ok, sync);
     ok('Lucy · renewal form holds a stale carry (Google 3, held 2.5)', R.formHold(3, 2.5).hold === true && R.formHold(3, 2.5).sheet === 3 && R.formHold(3, 2.5).live === 2.5, R.formHold(3, 2.5));
     ok('Lucy · form saves once Google takes it off itself (early)', R.formHold(2.5, 2.5, 0.5).hold === false && R.formHold(3, 2.5, 0.5).hold === false, 0);
     ok('Lucy · teachers: Daniela (previous) left off the renewal picture', JSON.stringify(R.teachers(['Daniela', 'Dezza'], ['Daniela'])) === '["Dezza"]', R.teachers(['Daniela', 'Dezza'], ['Daniela']));
@@ -85,6 +87,9 @@ function run(file) {
   ok('wiring · renewal picture header uses coeRenew.line', s.indexOf("c.fillText(window.coeRenew ? coeRenew.line(Q)") > -1, 0);
   ok('wiring · picture / Lesson Summary / form / App health guard present', /window\.__1540 = 1/.test(s) && s.indexOf('window.lsHtml = function(code){ const h = _ls.apply') > -1 && s.indexOf('R.formHold(S.info.left') > -1 && s.indexOf("'Renewal · ' + x.name") > -1, 0);
   ok('wiring · no "carry + new" estimate of lessons now', s.indexOf("Q.now = fresh && +b.left < Q.tot") < 0 && s.indexOf('Q.carry = Math.round(+b.left * 10) / 10') < 0, 0);
+  // the database cases (server/TEST-renewals-1540.sql) must keep the payment-time cases (1542): the payment time is the Payment Confirmation's generated time
+  { const sq = require('path').join(require('path').dirname(require('path').resolve(file)), 'server', 'TEST-renewals-1540.sql');
+    if (fs.existsSync(sq)) { const t = fs.readFileSync(sq, 'utf8'); ok('database cases · payment time from the Payment Confirmation (S7) and a void one (S8) are kept', /S7 payment time taken from the confirmation/.test(t) && /S8 void confirmation/.test(t), 0); } }
   console.log(out.join('\n')); console.log(bad ? '\n' + bad + ' renewal check(s) FAILED' : '\nAll ' + out.length + ' renewal checks passed');
   return bad ? 1 : 0;
 }

@@ -32,6 +32,19 @@ begin
     if not exists (select 1 from coe_pkg_calc x where x.code = r.code and x.teacher = r.t and abs(coalesce(case r.k when 'carry' then x.carry_eff when 'fin' then x.fin else x.avail end, -999) - r.want) < 0.001) then
       f := f + 1; res := res || ' | FAIL ' || r.name || ' got ' || coalesce((select (case r.k when 'carry' then x.carry_eff when 'fin' then x.fin else x.avail end)::text from coe_pkg_calc x where x.code = r.code and x.teacher = r.t), 'null'); end if;
   end loop;
+  -- 1542 · S7 payment time = the Payment Confirmation's generated time: confirmation 20:00, class 20:30–20:55, renewal saved 22:17
+  --        → the class is AFTER the payment → new package (used 0.5). S8 the confirmation is voided → back to the save time → old package.
+  insert into coe_packages (code, name, teacher, carry, enrolled, active, buy, sheet_r) values ('ST-9999-907', 'T7', 'tA', 3, 33, true, d, 9008), ('ST-9999-908', 'T8', 'tA', 3, 33, true, d, 9009);
+  insert into coe_renew_at (code, buy, at, saved_at, paid, left_rec, early, row_r) values ('ST-9999-907', d, ra, ra, d, 3, 0, 9008), ('ST-9999-908', d, ra, ra, d, 3, 0, 9009);
+  insert into classes (id, day, starts_at, ends_at, code, student, teachers, cancelled, data) values
+    ('t907', d, (d::text || ' 20:30+08')::timestamptz, (d::text || ' 20:55+08')::timestamptz, 'ST-9999-907', 'T', '["ta"]', false, '{"title":"ST-9999-907-T-OD1-tA"}'),
+    ('t908', d, (d::text || ' 20:30+08')::timestamptz, (d::text || ' 20:55+08')::timestamptz, 'ST-9999-908', 'T', '["ta"]', false, '{"title":"ST-9999-908-T-OD1-tA"}');
+  insert into coe_invoices (no, day, code, bill_name, items, total, status, made_by, created_at) values (999907, d, 'ST-9999-907', 'Test', '[]', 1, 'issued', 'test', (d::text || ' 20:00+08')::timestamptz), (999908, d, 'ST-9999-908', 'Test', '[]', 1, 'issued', 'test', (d::text || ' 20:00+08')::timestamptz);
+  update coe_invoices set status = 'void', void_reason = 'test', void_at = now() where no = 999908;
+  n := n + 1; if not exists (select 1 from coe_renew_at where code = 'ST-9999-907' and at = (d::text || ' 20:00+08')::timestamptz and at_src = 'payment confirmation' and conf_no = 999907) then f := f + 1; res := res || ' | FAIL S7 payment time taken from the confirmation'; end if;
+  n := n + 1; if not exists (select 1 from coe_pkg_calc x where x.code = 'ST-9999-907' and abs(x.fin - 0.5) < 0.001 and abs(x.avail - 35.5) < 0.001) then f := f + 1; res := res || ' | FAIL S7 class after the payment is in the new package'; end if;
+  n := n + 1; if not exists (select 1 from coe_renew_at where code = 'ST-9999-908' and at = ra and at_src = 'renewal save') then f := f + 1; res := res || ' | FAIL S8 void confirmation → save time'; end if;
+  n := n + 1; if not exists (select 1 from coe_pkg_calc x where x.code = 'ST-9999-908' and abs(x.fin) < 0.001) then f := f + 1; res := res || ' | FAIL S8 class before the save (no confirmation) is the old package'; end if;
   n := n + 1; if not exists (select 1 from coe_pkg_calc x where x.code = 'ST-9999-906' and x.deadline = (d + interval '1 year')::date) then f := f + 1; res := res || ' | FAIL S6 valid until = start + 12 months'; end if;
   n := n + 1; if not exists (select 1 from coe_pkg_rows() x where x.r = 9001 and (x.data->>5)::numeric = 2.5) then f := f + 1; res := res || ' | FAIL S1 the ACTIVE copy shows CARRY OVER 2.5'; end if;
   raise exception 'RENEWAL DB CASES · % %/% %', case when f = 0 then 'PASS' else 'FAILED' end, n - f, n, res;
