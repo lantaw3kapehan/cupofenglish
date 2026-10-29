@@ -8,7 +8,7 @@ This page is the rulebook for every screen change from now on. **If you add or c
 |---|---|---|
 | 1620 · 1621 | Tokens, aliases for the older token families, focus ring · one meaning per colour | `rollback-pre-1620` |
 | 1622 | Shared components: buttons, fields, chips, headings, dialog close, empty text | `rollback-pre-1622` |
-| 1623 | Course-book colour key on the teacher's Today strip and Schedule | `rollback-pre-1623` |
+| 1623 · 1624 | Course-book colour key on the teacher's Today strip and Schedule · teacher Schedule Trial chip teal · leave "waiting" amber · Finance insight icons teal | `rollback-pre-1623` |
 
 Where the code lives: `<style id="ds1620">`, `ds1621`, `ds1622` in `<head>` of `app.html` (in the first paint, before any screen is drawn), and `css1623` + its script at the end of the page.
 
@@ -51,7 +51,7 @@ Each meaning has a foreground / background / border set. Every pair is AA (≥ 4
 | **neutral** | grey | `--coe-neutral-fg` #4C4868 / `--coe-neutral-bg` #F1F0F6 / `--coe-neutral-bd` #E2E0EA | 7.6:1 | A plain label with no status: Regular, Sub, Ended, Seen, activity type |
 | **muted** | outline | `--coe-muted-fg` #5E5A76 / border `--coe-muted-bd` | 6.6:1 | Unknown / not set yet (e.g. "Type?") |
 
-**Blue is not a meaning.** It is only used inside charts and the course-book colours (Free talk).
+**Blue is not a meaning.** It is only used inside charts (series colours) and the course-book colours (Free talk).
 
 ### Type
 
