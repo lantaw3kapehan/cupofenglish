@@ -8,6 +8,7 @@ This page is the rulebook for every screen change from now on. **If you add or c
 |---|---|---|
 | 1620 · 1621 | Tokens, aliases for the older token families, focus ring · one meaning per colour | `rollback-pre-1620` (COE_V 1462) |
 | 1622 | Shared components: buttons, fields, chips, headings, dialog close, empty text | `rollback-pre-1622` (one release with 1623 · 1624, COE_V 1471) |
+| 1626 | No runtime contrast work: colours the two safety-net passes used to darken after paint are baked into the source CSS / templates; the passes run only with `?audit=1` | `rollback-pre-1626` |
 | 1625 | Misty's colour decisions at the source templates, reaction line icons, course-book key in the templates (observer removed), fewer boxes inside boxes, 16 px between cards | `rollback-pre-1625` |
 | 1623 · 1624 | Course-book colour key on the teacher's Today strip and Schedule · teacher Schedule Trial chip teal · leave "waiting" amber · Finance insight icons teal | `rollback-pre-1622` |
 
@@ -24,7 +25,7 @@ All tokens are CSS custom properties on `html:root:root` (that selector wins ove
 | Token | Value | Use |
 |---|---|---|
 | `--coe-teal` | #01B0BF | Logo teal. Accents, bars, dots. **Never for text** (2.6:1). |
-| `--coe-teal-600` | #00838F | Icons, thin accents, charts |
+| `--coe-teal-600` | #00838F | Icons, thin accents, charts — **not for text** (4.3:1); `--d-teal` / `--ui-teal-d` point at teal-700 since 1626 |
 | `--coe-teal-700` | #00707A | **Primary button**, links, current tab line (5.8:1 on white) |
 | `--coe-teal-800` / `-900` | #005E66 / #004E55 | Primary hover / pressed |
 | `--coe-on-tint` | #00575F | Text on a teal tint (selected filter, current menu item) |
@@ -204,6 +205,20 @@ Title (h1/h2) top left · close button top right, 40 px round (44 phone), the sa
 5. **Fredoka One** only for the brand and page titles; section headings Inter.
 
 Rule for new work: colours are set **in the template or the screen's own CSS**, never by an observer or timer that restyles after paint (see the paint gate, 1650–1659). The course-book key is now drawn by the templates (`k1623()`); 1623's observer was removed in 1625.
+
+
+## 7 · Contrast (1626): fixed at the source, never after paint
+
+Until 1626, two "safety net" passes (1007 `contrast()`, 1101 `fixText()`) scanned every screen after it was painted and darkened text that missed AA (and laid a dark tint behind white text on light colours). They cost 150–450 ms per frame at 4× CPU and made colours change after first paint.
+
+1626 logged everything they changed on all management and teacher screens (laptop 1440, phone 390, plus the first dialog of each screen): **1,226 changes**. They are now fixed where the colour is defined:
+- **Text colours in CSS and templates:** 36 values that miss AA on light backgrounds are replaced in every `color:` declaration (same hue, mixed toward the ink #2B2450 until ≥ 4.6:1 on white and on the app's tints). The teals #00939D, #00A3AD, #00808A and #00838F become `--coe-teal-700` #00707A, and `color:var(--teal)` becomes `var(--coe-teal-700)`. The commonest are #8A86A0 → #716D8B (muted labels) and #6F6B85 → #6C6883.
+- **SVG chart labels:** `<text fill="…">` values get the same treatment.
+- **Colours that come from data** (book colours, rank colours, `--c` / `--bc` / `--sc` / `--t56`): the CSS uses `color-mix(in srgb, var(--x) N%, #2B2450)`, so every value stays its hue and passes. Inline `style="color:#…"` from templates is covered by attribute rules in `ds1626`.
+- **White text on light data colours** (calendar blocks, avatars, step dots): a fixed dark tint (the one the pass used to add), in `ds1626`.
+- **Not touched:** documents and pictures (payment confirmation, memos, agreements, print pages, parent pictures).
+
+With all of that, the passes found **0** changes left on the same tour. They no longer run. Open the app with **`?audit=1`** to run them as before (development audit). New colours must pass AA in the CSS itself: use the tokens.
 
 ## Tests (each release)
 
