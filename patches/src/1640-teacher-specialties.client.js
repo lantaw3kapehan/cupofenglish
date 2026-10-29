@@ -1,7 +1,7 @@
 <script>
 /* 1640 · Teacher specialties (Misty 29 Oct 10:05–10:09 · "management control: edited in one place, the teacher page; partners see confirmed only").
    One source of truth: staff.specialties (database), read and saved through coe-partner-spec. On a teacher's page (Team & access → Open / Edit):
-   age bands (Young learners 2–8 · Kids 8–12 · Teens · Adults/IELTS-TOEFL), Advanced level, books (the COURSE codes: OD1, OD2, ODF, REF, IELTS …),
+   age bands (1642: 幼儿 Early Years 2–6 · 少儿 Young Learners 7–12 · 青少年 Teens 13–17 · 成人 Adults 18+), Advanced level, books (the COURSE codes: OD1, OD2, ODF, REF, IELTS …),
    and a subject chip (e.g. Debate · Public speaking). Status: Confirmed = shown to the PARTNER on the portal screens only (Who's free, Teachers,
    the child filter, "Good match") — never on pictures that go to parents (Misty 10:24) · Draft = management only · Left = not listed for partners.
    "Suggested · confirm" = read-only suggestion from the teacher's active students (ages + COURSE); it is never shown to partners. */
@@ -9,7 +9,7 @@
   const S = window.AS40; if(!S || S.v1640) return; S.v1640 = 1;
   const URL1640 = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-partner-spec';
   const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-  const BANDS = [['yl', 'Young learners 2–8', '幼儿'], ['kids', 'Kids 8–12', '少儿'], ['teens', 'Teens', '青少年'], ['adults', 'Adults · IELTS/TOEFL', '成人']];
+  const BANDS = [['early', '幼儿 Early Years 2–6', '幼儿'], ['young', '少儿 Young Learners 7–12', '少儿'], ['teens', '青少年 Teens 13–17', '青少年'], ['adults', '成人 Adults 18+', '成人']];   // 1642 · Misty 10:34 · the four bands
   const BOOKS = ['PHONICS', 'OD1', 'OD2', 'OD3', 'ODF', 'REF', 'RE1', 'RE2', 'IELTS', 'TOEFL'];   // PHONICS = Oxford Phonics World 1–5 (TheAlphabet … LetterCombinations), one chip
   const ST = [['confirmed', 'Confirmed · partners see it'], ['draft', 'Draft · management only'], ['left', 'Left · not listed for partners']];
   const css = document.createElement('style'); css.id = 'st1640';
