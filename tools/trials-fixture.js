@@ -67,6 +67,12 @@ const enqs = [
 const out = recs.filter(r => !/"fn":"mgmtEnqList"/.test(r.body || ''));
 out.push(scr('mgmtTrials', [], { at: '13:45', rows, wait }), gas('mgmtTrials', [], { at: '13:45', rows, wait }));
 out.push(scr('mgmtTrialFus', [], fus), gas('mgmtTrialFus', [], fus));
+// a one-page sample PDF for Chenia's report (the dialog's inline PDF preview)
+const PDF = '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>>>>>>>endobj 4 0 obj<</Length 52>>stream\nBT /F1 24 Tf 72 760 Td (Sample trial report) Tj ET\nendstream endobj\ntrailer<</Root 1 0 R>>\n%%EOF';
+rows[0].pdf = 'https://example.invalid/sample.pdf';
+out.push(gas('mgmtTrialPdf', [rows[0].label], { ok: true, b64: Buffer.from(PDF).toString('base64'), name: 'sample-trial-report.pdf' }));
+out.find(r => /"fn":"mgmtTrials"/.test(r.body) && /exec/.test(r.url)).t = JSON.stringify({ ok: true, data: { at: '13:45', rows, wait } });
+out.find(r => /"fn":"mgmtTrials"/.test(r.body) && /coe-mgmt/.test(r.url)).t = JSON.stringify({ ok: true, data: { at: '13:45', rows, wait } });
 const old = recs.find(r => /"fn":"mgmtEnqList"/.test(r.body || '')); let base = [];
 try{ base = JSON.parse(old.t).data.rows || []; }catch(e){}
 out.push(scr('mgmtEnqList', [], { ok: true, rows: enqs.concat(base) }));

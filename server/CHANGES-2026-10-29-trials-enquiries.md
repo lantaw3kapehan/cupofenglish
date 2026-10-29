@@ -110,3 +110,29 @@ list (it only looks back about two weeks) — decision for Misty below.
 - 1560 · 1562 · 1563: branch `rollback-pre-1560`. 1561 · 1564 · 1565: branch `rollback-pre-1561`.
 - coe-trials: redeploy `server/coe-trials.ts` from `rollback-pre-1560` (v10). The new branches are unused by older app versions.
 - Data: `delete from docs where key = 'sys:trial_next'` (new row only).
+
+---
+
+# 1566 · Trial dialog layout (Misty 08:56, Will's dialog on a laptop)
+
+- **Cause:** the trial card's action area (`#tlAct`, `.rp-act`) still had `position:sticky; bottom:-1px`, a rule meant for a short button
+  bar. Since the step list moved into it, the area is about 1,000 px tall, so "sticky to the bottom" pinned it upward. It covered the title
+  (its top border was the stray line), it sat over the inline PDF and the "More" row, and the dialog seemed not to scroll.
+- **Shared sheet shell:**
+  - A step list inside a sheet (`.sheet .rp-act.tl4`, or any `.rp-act` holding step rows) is now in normal flow. The short sticky bar on
+    the parent report is unchanged.
+  - Chip rows in sheets (`#sheet .seg`) had a 999 px radius with overflow hidden, which cut the first chip's left edge and the selected
+    chip's border. They are now square, not clipped, and wrap.
+- **Trial dialog:**
+  - The report PDF preview opens on demand ("Show the PDF here" / "Hide the PDF"), inside the flow, with one scroll container.
+  - "After sending" steps continue the numbering (5, 6, …; ✓ when done) instead of a bare "·". That "·" was literal text, not a missing
+    glyph.
+  - Coming back to the same trial within 10 minutes restores the scroll position.
+- **Checked at 1440 × 900, 1366 × 768, 1280 × 720, 1024 × 768 and 390 × 844:**
+  - title fully visible (22 px from the top of the sheet);
+  - the step list is static;
+  - the PDF frame overlaps no other row;
+  - no sideways scroll.
+- **Tests:** regress-trials 20/20 · regress-saves 17/17 · stability trials / astudents / reports, laptop + phone, matches base (one phone
+  reports shift under load did not repeat, 0 on two re-runs).
+- **Rollback:** branch `rollback-pre-1566`.
