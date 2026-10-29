@@ -8,6 +8,7 @@ This page is the rulebook for every screen change from now on. **If you add or c
 |---|---|---|
 | 1620 · 1621 | Tokens, aliases for the older token families, focus ring · one meaning per colour | `rollback-pre-1620` (COE_V 1462) |
 | 1622 | Shared components: buttons, fields, chips, headings, dialog close, empty text | `rollback-pre-1622` (one release with 1623 · 1624, COE_V 1471) |
+| 1625 | Misty's colour decisions at the source templates, reaction line icons, course-book key in the templates (observer removed), fewer boxes inside boxes, 16 px between cards | `rollback-pre-1625` |
 | 1623 · 1624 | Course-book colour key on the teacher's Today strip and Schedule · teacher Schedule Trial chip teal · leave "waiting" amber · Finance insight icons teal | `rollback-pre-1622` |
 
 Where the code lives: `<style id="ds1620">`, `ds1621`, `ds1622` in `<head>` of `app.html` (in the first paint, before any screen is drawn), and `css1623` + its script at the end of the page.
@@ -66,7 +67,7 @@ Roles: page title h1 Fredoka One 28–32 px laptop / 24 px phone · section head
 
 ### Spacing, radii, shadows, sizes
 
-- **Spacing (8 px grid):** `--coe-sp-4` (half step, inside chips only) · `-8` · `-12` (half step) · `-16` · `-24` · `-32` · `-40` · `-48`. Between sections 24 (laptop) / 16 (phone); inside a card 16; between rows 8.
+- **Spacing (8 px grid):** 16 px between the cards of a screen (1625). `--coe-sp-4` (half step, inside chips only) · `-8` · `-12` (half step) · `-16` · `-24` · `-32` · `-40` · `-48`. Inside a card 16; between rows 8.
 - **Radii:** `--coe-r-xs` 6 · `-sm` 10 (fields, small panels) · `-md` 14 (cards) · `-lg` 20 (dialogs) · `-pill` 999 (buttons, chips, filters).
 - **Shadows:** `--coe-sh-1` (resting card) · `-sh-2` (raised card) · `-sh-3` (menus, dialogs). One level per layer, never stacked.
 - **Control sizes:** `--coe-ctl` 40 px laptop / 44 px phone or touch · `--coe-ctl-sm` 36 px laptop / 44 px phone (filter pills, segmented choices) · `--coe-chip-h` 22 px.
@@ -124,8 +125,8 @@ Roles: page title h1 Fredoka One 28–32 px laptop / 24 px phone · section head
 | Cases | Excused green · Unexcused red · category labels neutral | |
 | Leave | waiting for Operations | amber (counts and "approved" are neutral) |
 | Monitor activity | Class video · Homework · Reminder … (activity type) | neutral, sentence case |
-| Learner type (1588) | YLE · Teens · Adults | **open decision**, see below |
-| Student source | Partner · Referral · CupOfEnglish · Not set | **open decision**, see below |
+| Learner type | Early Years · Young Learners · Teens · Adults | teal |
+| Student source | Partner · Referral · CupOfEnglish (grey, icon) · Not set (red) | |
 | Calendar / class bars | Course book colours (W1, RAZ, WK, Phonics, RE, Free talk, OD, Other, Trial) | categorical, **always with a key** (management Schedule; teacher Today and Schedule since 1623) |
 | Rank (Teachers map, avatars) | Master · Senior · Newly Qualified · Newly Hired · Starting · No rank | categorical, always with the rank name and a key |
 
@@ -180,7 +181,7 @@ Title (h1/h2) top left · close button top right, 40 px round (44 phone), the sa
 ## 4 · Layout
 
 - Laptop first; every screen centred, the same width (Misty's rule). Phones: 16 px side gutter, one column, no sideways scroll.
-- Section rhythm: 24 px between sections (16 phone), 16 px inside cards, 8 px between rows.
+- Section rhythm: 16 px between the cards of a screen, 16 px inside cards, 8 px between rows.
 - Headings: page title h1, then sections h2 18 px with the short teal bar where the screen already uses it; secondary info in `--coe-mute`.
 - Fewer boxes: one card per section; rows separated by thin lines; no double borders.
 - Numbers: tabular, right-aligned in tables; key numbers semibold `--coe-ink`.
@@ -194,14 +195,15 @@ Title (h1/h2) top left · close button top right, 40 px round (44 phone), the sa
 5. Do not restyle parent pictures, the payment confirmation or signed agreement text; they are drawn outside `#app` / `#sheet` and keep their approved design.
 6. English only on staff screens; Chinese only on parent-facing content.
 
-## 6 · Open decisions (for Misty)
+## 6 · Misty's decisions (29 Oct) — done in 1625
 
-1. **Learner type chips (1588):** YLE is blue, Teens teal, Adults purple. Blue has no meaning in the map and purple means "management". Proposal: all three neutral grey with the word (YLE / Teens / Adults) — or all teal (information). Left as is until the Students agent and Misty agree.
-2. **Student source chips:** Partner purple, Referral green, CupOfEnglish teal, Not set red. Purple/green reuse "management" and "done". Proposal: neutral chips with their icons; keep "Not set" red (it needs fixing).
-3. **"Needs you" on To do tiles:** kept amber (waiting for you) so the To do screen does not turn red; red stays for overdue. Say if you want every "needs you" red.
-4. **Message reactions** ("👍 On it!", "⏰ Will do it today" …) are saved into the records as text with emoji. The brand rule says no emoji in the interface; changing them would change what is saved. Proposal: show line icons in place of the emoji on screen, keep the saved text.
+1. **Learner type chips** (Early Years / Young Learners / Teens / Adults) and the **Enquiries audience tags** (Kids & teens · Adults · Exam course, card labels, Price picture / Inquiry form banner and Copy button): **teal with the words**.
+2. **Student source chips:** **grey with their icon**; "Not set" stays **red**. Source filter dots grey (Not set red); a chosen filter uses the normal teal selected look.
+3. **"Needs you"** stays **amber**; red only for overdue.
+4. **Reactions** ("✓ Got it", "👍 On it!", "⏰ Will do it today", "✅ Done!", "🙋 I have a question", "❤️ Thank you!", task "⏳ Carry over"): the screen shows a **line icon** (`rxH()`), the **saved text is unchanged**. Team Chat emoji reactions are message content and stay.
+5. **Fredoka One** only for the brand and page titles; section headings Inter.
 
-5. **Enquiries audience tags:** "KIDS & TEENS · 4–17" solid blue and "ADULTS · 18+" solid purple with coloured card edges (Trials/Enquiries screens). Same issue as 1: proposal — one neutral or teal style with the words, no coloured edge. Left for the Trials/Enquiries agent.
+Rule for new work: colours are set **in the template or the screen's own CSS**, never by an observer or timer that restyles after paint (see the paint gate, 1650–1659). The course-book key is now drawn by the templates (`k1623()`); 1623's observer was removed in 1625.
 
 ## Tests (each release)
 
