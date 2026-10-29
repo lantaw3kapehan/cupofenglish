@@ -110,3 +110,10 @@ is CSS grid only. Header stable after first paint (0 changes in the header; CLS 
 Checks: check.js + renewal suite each release; regress-saves 17/17 (1587, 1588, 1589 builds); stability students + astudents laptop/phone ok
 (one phone run timed out under load, re-run ok). Copy group → clipboard "一杯英语 Jeoda (ST-2099-588)"; More actions › Shares a WeChat group →
 "Shared WeChat group" card. Rollback: `rollback-pre-1587`, `rollback-pre-1588`, `rollback-pre-1589`.
+
+## 1590 · learner filter · header polish
+- Students list: "Learner" filter All · YLE · Teens · Adults with counts, under Source; remembered on this device (`coe.ltF`), applied before
+  paint. Uses the 1588 chip on each row (same coeLearner decision); "Type?" rows show under All only. Teen IELTS students stay "Teens · IELTS".
+- Student header: a wrapped meta line no longer starts with "·" (start-of-line separators are clipped); teacher name has no background.
+- Design tokens (`--coe-*`, 1620–1639) used with today's values as fallbacks. Checks: regress-saves 17/17; card open CLS 0.0007 laptop /
+  0.008 phone (as 1589); Students list stability ok (one laptop refresh 0.025 under load, re-runs 0.014 / 0.0009). Rollback `rollback-pre-1590`.
