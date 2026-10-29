@@ -6637,7 +6637,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1479;
+const COE_V = 1480;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31072,7 +31072,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   var _s = window.sendTimeIn; if(typeof _s === 'function') window.sendTimeIn = async function(){
     try{ if(typeof LOC !== 'undefined') Promise.resolve(LOC).then(function(v){ LOCV = v || {}; }); }catch(e){}
     var prev = (typeof D !== 'undefined' && D) ? D.timeIn : null, r = await _s.apply(this, arguments);
-    try{ if(D && !D.shift && D.timeIn && D.timeIn !== prev && !D.timeIn.pending){ D.timeIn.day1270 = today(); here1660(); if(NETF && NETF.speed) netDone(NETF); if(!window.__wcTap1270) setTimeout(function(){ window.wcStep1270(); }, 60); } }catch(e){}
+    try{ if(D && !D.shift && D.timeIn && D.timeIn !== prev && !D.timeIn.pending){ D.timeIn.day1270 = today(); here1660(); save1662(D.timeIn); if(NETF && NETF.speed) netDone(NETF); if(!window.__wcTap1270) setTimeout(function(){ window.wcStep1270(); }, 60); } }catch(e){}
     return r; };
   var _tap = window.tapTimeIn; if(typeof _tap === 'function') window.tapTimeIn = function(){ window.__wcTap1270 = 1; setTimeout(function(){ window.__wcTap1270 = 0; }, 120000); return _tap.apply(this, arguments); };
 
@@ -31129,7 +31129,8 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     var sp = redo ? (n.speed || '') : (ti.speed || (NETF && NETF.speed) || ''), measuring = !redo && !sp && !NETF && !!window.__netRun1273;
     if(!redo && !shot && !SH.b64){ var rs1660 = await race(load1660(), 2500, null); if(rs1660 && rs1660.b64 && !SH.b64) SH = { b64: rs1660.b64, at: rs1660.at || 0 }; }   /* 1660: after a refresh or an app update */
     var place = redo ? '' : (ti.place || ''), b64 = shot || (!redo && SH.b64 && Date.now() - SH.at < 3 * 36e5 ? SH.b64 : null);
-    return { name: me(), day: D.today || today(), time: ti.time || '', status: String(ti.status || ''), mins: ti.mins,
+    if(!redo && ti.time && ti.status && !ti.pending) save1662(ti); var sv1662 = (!ti.time || !ti.status) ? (window.tiSaved1662() || {}) : {};   /* 1662 */
+    return { name: me(), day: D.today || today(), time: ti.time || sv1662.time || '', status: String(ti.status || sv1662.status || ''), mins: ti.time ? ti.mins : sv1662.mins,
       first: fl ? (typeof tm === 'function' ? tm(fl.start) : String(fl.start).slice(11, 16)) + (fl.student ? ' · ' + fl.student : '') : '',
       speed: sp, measuring: measuring, net: (/LAN cable|Wi-Fi|Mobile data/.test(n.net || '') ? n.net : (redo ? n.net : ti.net || n.net)) || '', ip: (redo ? n.ip : ti.ip || n.ip) || '',
       device: redo ? (typeof deviceInfo === 'function' ? deviceInfo() : '') : (ti.device || (typeof deviceInfo === 'function' ? deviceInfo() : '')),
@@ -31162,6 +31163,10 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   function load1660(){ var ok = function(r){ return r && r.b64 && r.day === today() && r.who === me() ? r : null; };
     return db1660().then(function(db){ if(!db) return null; return new Promise(function(z){ try{ var q = db.transaction('p').objectStore('p').get('shot'); q.onsuccess = function(){ z(q.result || null); }; q.onerror = function(){ z(null); }; }catch(e){ z(null); } }); })
       .then(function(r){ if(ok(r)) return r; try{ return ok(JSON.parse(localStorage.getItem(SKL1660) || 'null')); }catch(e){ return null; } }, function(){ return null; }); }
+  /* 1662 · the time-in as it was saved (time, status, minutes), kept for the day: a later reload of older data cannot blank the post */
+  var TIS1662 = null;
+  function save1662(t){ try{ if(!t || !t.time || !t.status || t.pending) return; TIS1662 = { day: today(), who: me(), time: String(t.time), status: String(t.status), mins: t.mins }; localStorage.setItem('coe.tisaved1662', JSON.stringify(TIS1662)); }catch(e){} }
+  window.tiSaved1662 = function(){ var ok = function(r){ return r && r.time && r.status && r.day === today() && r.who === me() ? r : null; }; if(ok(TIS1662)) return TIS1662; try{ return ok(JSON.parse(localStorage.getItem('coe.tisaved1662') || 'null')); }catch(e){ return null; } };
   function here1660(){ HEREM1660 = today() + '|' + me(); try{ localStorage.setItem(HERE1660, HEREM1660); }catch(e){} }
   function canCap1660(){ try{ return /^Laptop/.test(deviceInfo()) && !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia); }catch(e){ return false; } }
   function other1660(){ var k = today() + '|' + me(); if(HEREM1660 === k) return false; try{ if(localStorage.getItem(HERE1660) === k) return false; }catch(e){}
@@ -32194,8 +32199,10 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
   };
   /* time-in card posts itself in the Time-in group (WeChat copy stays as it is) */
   window.chatTimein1400 = async function(blob, x, redo){ if(!hasD() || D.mgr || !blob) return false; var ti = D.timeIn || {}, img; try{ img = await shrink(blob, 300000); }catch(e){ return { error: 'The picture could not be read' }; }
-      var meta = { time: ti.time || '', status: ti.status || '', speed: x && x.speed ? String(x.speed).slice(0, 80) : '' };
-      return sendQ1495({ a: 'timein', w: redo ? 'Redo time-in picture' : 'Time-in picture', net: x && x.speed ? String(x.speed).slice(0, 80) : '', k: 'ti:' + (D.today || '') + (redo ? ':redo' : ''), o: { img: img, meta: meta, redo: !!redo, body: 'Time-in ' + (ti.time || '') + (ti.status ? ' · ' + ti.status : '') + (redo ? ' · Redo' : '') } }); };
+      var sv = (window.tiSaved1662 && tiSaved1662()) || {}, tt = (x && x.time) || ti.time || sv.time || '', ts = String((x && x.status) || (ti.pending ? '' : ti.status) || sv.status || '');   /* 1662: the picture's own time first; never blank */
+      if(!tt || !ts || /^Saving$/i.test(ts)) return { error: 'Your time-in is still saving · tap Try again in a moment' };
+      var meta = { time: tt, status: ts, speed: x && x.speed ? String(x.speed).slice(0, 80) : '' };
+      return sendQ1495({ a: 'timein', w: redo ? 'Redo time-in picture' : 'Time-in picture', net: x && x.speed ? String(x.speed).slice(0, 80) : '', k: 'ti:' + (D.today || '') + (redo ? ':redo' : ''), o: { img: img, meta: meta, redo: !!redo, body: 'Time-in ' + tt + ' · ' + ts + (redo ? ' · Redo' : '') } }); };
   /* 1495 (Misty 18:02): one sender for Time-in posts · true = sent · 'queued' = weak signal, kept on this device and sent by itself · { error } = refused */
   var QK1495 = 'coe.chq1495', QM1495 = {};
   function qRead(){ try{ return JSON.parse(localStorage.getItem(QK1495) || '{}') || {}; }catch(e){ return QM1495; } }
