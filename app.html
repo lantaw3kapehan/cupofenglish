@@ -6637,7 +6637,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1477;
+const COE_V = 1478;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31169,10 +31169,12 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     return !!(td && dv && td !== dv); }
   function noShotMsg1660(){ return other1660() ? 'Your screen picture is kept on the laptop you timed in on · open Today there to send it, or tap Send without screen proof'
     : canCap1660() ? 'Your screen picture didn\'t save · tap Retake screen picture' : 'No screen picture on this device · tap Send without screen proof'; }
-  function ui1660(st, x){ if(!st || !x || st.redo) return; var miss = !x.shot && !x.measuring && !!x.time && !!x.status, cap = canCap1660() && !other1660(), sent = !!posted() || !!st.npSent;
+  function ui1660(st, x){ if(!st || !x || st.redo) return; var self = !!(x.shot && x.self) && !x.measuring && !!x.time && !!x.status, miss = !x.shot && !x.measuring && !!x.time && !!x.status, cap = canCap1660() && !other1660(), sent = !!posted() || !!st.npSent;
+    var lk = document.getElementById('wcRetake'); if(lk) lk.hidden = true;   /* 1661: one Retake button only */
     var s = document.getElementById('wcSend'), rm = document.getElementById('wcRetake1660'), np = document.getElementById('wcNoProof1660');
-    if(rm){ rm.hidden = !(miss && cap); rm.disabled = !!RT1660 || !!st.busy; } if(s) s.hidden = !!(miss && cap); if(np){ np.hidden = !miss || sent; np.disabled = !!st.busy; } }
-  window.wcNoProof1660 = async function(){ var st = STEP; if(!st || st.busy || !PIC || !st.x || st.x.shot) return; st.noProof = 1; await window.wcSend1496();
+    if(rm){ rm.hidden = !((miss && cap) || self); rm.disabled = !!RT1660 || !!st.busy; } if(s) s.hidden = !!((miss && cap) || self);
+    if(np){ var nt = self ? 'Send this picture anyway' : 'Send without screen proof'; if(np.textContent !== nt) np.textContent = nt; np.hidden = !(miss || self) || sent; np.disabled = !!st.busy; } }
+  window.wcNoProof1660 = async function(){ var st = STEP; if(!st || st.busy || !PIC || !st.x || (st.x.shot && !st.x.self)) return; st.noProof = 1; await window.wcSend1496();
     if(STEP === st){ var t = document.getElementById('wcTick'); if(t && /\bok\b/.test(t.className)) st.npSent = 1; ui1660(st, st.x); } };
   function stepsHtml(redo){ var n = 0; try{ n = +localStorage.getItem(SEEN) || 0; }catch(e){}
     var inner = '<ol><li>Check the picture below · it has your time-in, the internet check and your screen proof</li><li>Tap <b>Send to Time-in</b> · it goes straight to Team Chat › Time-in for management</li></ol><div class="wc-note">No speed-test screenshot needed.</div>';
@@ -31185,7 +31187,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
       st.x = x; if(x.shot && st.selfFor !== x.shot){ st.selfFor = x.shot; st.self = await selfShot1497(x.shot); } x.self = !!(x.shot && st.self); var rdy = !x.measuring && !!x.shot && !x.self && !!x.time && !!x.status;
       var rb = document.getElementById('wcRetake'); if(rb) rb.hidden = !x.self; ui1660(st, x);   /* 1496 (Misty 18:02): nothing is sent until every part is there */
       ['wcSend', 'wcCopy', 'wcSave'].forEach(function(id){ var b = document.getElementById(id); if(b) b.disabled = id === 'wcSend' ? (!rdy || !!st.busy) : !!x.measuring; });
-      var nm = document.getElementById('wcNet'); if(nm) nm.textContent = x.self ? 'Your screen picture shows this app, not your class · tap Retake screen picture, Share, then click your VooV window' : x.measuring ? 'Checking internet… a few seconds · Send to Time-in turns on when it is done' : !x.shot ? noShotMsg1660() : !x.time || !x.status ? 'Your time-in is still saving… Send to Time-in turns on when it is saved' : '';
+      var nm = document.getElementById('wcNet'); if(nm) nm.textContent = x.self ? 'Your screen picture may show this app, not your class · tap Retake screen picture, Share, then click your VooV window · or tap Send this picture anyway' : x.measuring ? 'Checking internet… a few seconds · Send to Time-in turns on when it is done' : !x.shot ? noShotMsg1660() : !x.time || !x.status ? 'Your time-in is still saving… Send to Time-in turns on when it is saved' : '';
       if(x.measuring && !st.to){ st.to = setTimeout(function(){ if(STEP === st && st.measuring && !NETF){ window.__netRun1273 = 0; NETF = { speed: '', timeout: 1 }; render(); } }, Math.max(500, 25000 - (Date.now() - (st.at || Date.now())))); }
       st.measuring = x.measuring; if(window.chatQueued1495 && chatQueued1495('ti:' + (D.today || '') + (st.redo ? ':redo' : ''))) weak1496(x); }
     catch(e){ pv.innerHTML = '<div class="wc-wait">The picture could not be made here · take a screenshot of your time-in instead</div>'; } }
@@ -33027,9 +33029,13 @@ nav button[data-v="chat"] .dot.at.chN:not(.hide){background:#5B4B9A!important}
 </style>
 <script>
 /* 1497 (Misty 19:58) · the screen picture must show the class, never this app */
-window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) return z(false); var im = new Image(); im.onload = function(){ try{ var c = document.createElement('canvas'); c.width = 64; c.height = 36; var g = c.getContext('2d'); g.drawImage(im, 0, 0, 64, 36);
-    var d = g.getImageData(0, 0, 64, 36).data, n = 0, cov = 0, lt = 0; for(var i = 0; i < d.length; i += 4){ n++; var r = d[i], gg = d[i + 1], bb = d[i + 2]; if(r > 225 && gg > 225 && bb > 225) lt++; if(Math.abs(r - 243) < 10 && Math.abs(gg - 246) < 10 && Math.abs(bb - 247) < 10) cov++; }
-    z(lt / n > 0.8 && cov / n > 0.3); }catch(e){ z(false); } }; im.onerror = function(){ z(false); }; im.src = 'data:image/jpeg;base64,' + b64; }); };
+window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) return z(false); try{ if(window.AWAY1661 && AWAY1661[b64.length + ':' + b64.slice(-48)]) return z(false); }catch(e){} var im = new Image(); im.onload = function(){ try{ var c = document.createElement('canvas'); c.width = 64; c.height = 36; var g = c.getContext('2d'); g.drawImage(im, 0, 0, 64, 36);
+    var d = g.getImageData(0, 0, 64, 36).data, n = 0, cov = 0, lt = 0; for(var i = 0; i < d.length; i += 4){ n++; var r = d[i], gg = d[i + 1], bb = d[i + 2]; if(r > 225 && gg > 225 && bb > 225) lt++; if(Math.abs(r - 243) <= 3 && Math.abs(gg - 246) <= 3 && Math.abs(bb - 247) <= 3) cov++; }
+    z(cov / n >= 0.7);   /* 1661: only our own blank cover (exact colour over almost all of it) · a light VooV window is accepted */ }catch(e){ z(false); } }; im.onerror = function(){ z(false); }; im.src = 'data:image/jpeg;base64,' + b64; }); };
+/* 1661 · a picture taken while this app was not in front (VooV clicked) cannot be the app's cover */
+(function(){ var g = window.grabScreen; if(typeof g !== 'function' || g.__1661) return; window.AWAY1661 = {};
+  var w = function(){ return Promise.resolve(g.apply(this, arguments)).then(function(r){ try{ if(r && r.b64 && (document.visibilityState === 'hidden' || !document.hasFocus())) AWAY1661[r.b64.length + ':' + r.b64.slice(-48)] = 1; }catch(e){} return r; }); };
+  w.__1661 = 1; window.grabScreen = w; })();
 </script>
 <style id="css1464">.busy1464{opacity:.62;cursor:progress!important}</style>
 <script>
