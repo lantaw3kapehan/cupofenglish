@@ -6512,7 +6512,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1457;
+const COE_V = 1458;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -34055,20 +34055,32 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
     const o = { code, adult: null, kind: '', group: '', goal: 'daily', exam: '', course: '', age: null, grade: '', source: '', market: 'cn', phProg: '', from: '' };
     let r = null; try{ r = code && typeof DB !== 'undefined' && DB && DB.rows ? DB.rows.find(x => up(x[0]) === code) : null; }catch(e){}
     if(r){ o.course = String(r[12] || '').trim(); o.source = String(r[22] || '').trim(); o.grade = String(r[8] || '').trim();
-      const b = String(r[5] || ''); if(/^\d{4}-\d{2}-\d{2}/.test(b)){ const d = new Date(b.slice(0, 10) + 'T00:00:00'), n = new Date(); let a = n.getFullYear() - d.getFullYear(); if(n.getMonth() < d.getMonth() || (n.getMonth() === d.getMonth() && n.getDate() < d.getDate())) a--; if(a >= 2 && a < 100) o.age = a; }
-      if(o.age == null && +r[6] > 0) o.age = +r[6]; }
+      const b = String(r[5] || ''); if(/^\d{4}-\d{2}-\d{2}/.test(b)){ const d = new Date(b.slice(0, 10) + 'T00:00:00'), n = new Date(); let a = n.getFullYear() - d.getFullYear(); if(n.getMonth() < d.getMonth() || (n.getMonth() === d.getMonth() && n.getDate() < d.getDate())) a--; if(a >= 0 && a < 100){ o.age = a; o.ageFrom = 'birthdate'; } }   /* 1591: birthdate first, always current */
+      if(o.age == null && +r[6] > 0){ let a = +r[6]; const t = String(r[10] || ''); if(/^\d{4}-\d{2}-\d{2}/.test(t)){ const yrs = Math.floor((Date.now() - new Date(t.slice(0, 10) + 'T00:00:00').getTime()) / 31557600000); if(yrs > 0 && yrs < 20) a += yrs; } o.age = a; o.ageFrom = 'age'; } }   /* 1591: the AGE column, moved on by the years since the DATABASE trial date */
     if(!o.course && hint.course) o.course = String(hint.course);
     let s = null; try{ s = code && Array.isArray(MS) ? MS.find(x => up(x.code) === code) : null; }catch(e){}
     if(!o.course && s && s.book) o.course = String(s.book);
     const c = o.course;
     o.exam = /ielts/i.test(c) ? 'ielts' : /(^|[^a-z])pet([^a-z]|$)|cambridge ?pet/i.test(c) ? 'pet' : /(^|[^a-z])ket([^a-z]|$)|cambridge ?ket/i.test(c) ? 'ket' : '';
-    const g = hint.group || trialGroup(code);
-    if(g && !/pick/i.test(g)){ o.group = g; o.adult = /^adult/i.test(g); o.kind = o.adult ? 'adult' : /teen/i.test(g) ? 'teen' : 'kid'; o.from = 'trial report'; }
-    else if(AD.test(c)){ o.adult = true; o.kind = 'adult'; o.from = 'course'; }
-    else if(KID.test(c)){ o.adult = false; o.kind = o.age != null && o.age >= 11 ? 'teen' : 'kid'; o.from = 'course'; }
-    else if(/^(WA|UM|U\d|PhD|ADULT)$/i.test(o.grade) || (o.age != null && o.age >= 18 && !/^(G\d+|GK)$/i.test(o.grade))){ o.adult = true; o.kind = 'adult'; o.from = 'age'; }
-    else if(o.age != null || /^(G\d+|GK)$/i.test(o.grade)){ o.adult = false; o.kind = o.age != null && o.age <= 10 ? 'kid' : 'teen'; o.from = 'age'; }
-    else if(s && s.adult != null){ o.adult = !!s.adult; o.kind = s.adult ? 'adult' : ''; o.from = 'student list'; }
+    const g = hint.group || trialGroup(code); if(g && !/pick/i.test(g)) o.group = g;
+    /* 1591 · four bands (same as the partner portal): Early Years 2–6 · Young Learners 7–12 · Teens 13–17 · Adults 18+.
+       Order: a learner type passed in by the caller → age (birthdate, else AGE) → trial report → course → grade → student list. */
+    const byAge = a => a <= 6 ? 'early' : a <= 12 ? 'young' : a <= 17 ? 'teen' : 'adult';
+    const byGrp = x => /^adult/i.test(x) ? 'adult' : /teen/i.test(x) ? 'teen' : 'young';
+    const gr = o.grade, gn = (gr.match(/^G\s*(\d{1,2})$/i) || [])[1];
+    let band = '';
+    if(hint.group && !/pick/i.test(hint.group)){ band = byGrp(hint.group); o.from = 'trial report'; }
+    else if(o.age != null && o.age > 0){ band = byAge(o.age); o.from = o.ageFrom === 'birthdate' ? 'birthdate' : 'age'; }
+    else if(o.group){ band = byGrp(o.group); o.from = 'trial report'; }
+    else if(AD.test(c)){ band = 'adult'; o.from = 'course'; }
+    else if(KID.test(c)){ band = 'young'; o.from = 'course'; }
+    else if(/^(GK|K\d?|KG|PK|Pre-?K|Nursery|Preschool|Kinder(garten)?)$/i.test(gr)){ band = 'early'; o.from = 'grade'; }
+    else if(gn && +gn >= 1 && +gn <= 6){ band = 'young'; o.from = 'grade'; }
+    else if(gn && +gn >= 7 && +gn <= 12){ band = 'teen'; o.from = 'grade'; }
+    else if(/^(WA|UM|U\d|PhD|ADULT|College|University)$/i.test(gr)){ band = 'adult'; o.from = 'grade'; }
+    else if(s && s.adult != null){ band = s.adult ? 'adult' : ''; o.from = 'student list'; }
+    o.band = band; o.adult = band ? band === 'adult' : null; o.kind = band === 'adult' ? 'adult' : band === 'teen' ? 'teen' : band ? 'kid' : '';
+    o.bandLabel = { early: 'Early Years', young: 'Young Learners', teen: 'Teens', adult: 'Adults' }[band] || '';
     const gs = (o.group || '') + ' ' + (o.adult ? c : '');
     o.goal = /business|market ?leader/i.test(gs) ? 'business' : /work/i.test(gs) ? 'work' : 'daily';
     try{ if(code && window.isPhLearner && isPhLearner(code)){ o.market = 'ph'; const P = (window.phLearners1535 && phLearners1535()) || {}, x = P[code] || {}; o.phProg = /ielts/i.test(String(x.prog || '') + ' ' + c) ? 'ielts' : 'adult'; o.phTrack = x.track || ''; } }catch(e){}
@@ -34469,7 +34481,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
 </script>
 <style id="css1588">
 .lt1588{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:999px;font:600 11px/20px Inter,system-ui,sans-serif;letter-spacing:.02em;white-space:nowrap;flex:none;vertical-align:middle;box-sizing:border-box}
-.lt1588.yle{background:#EAF1FC;color:#2B5BA8}.lt1588.teen{background:#E4F4F1;color:#0F6A64}.lt1588.adult{background:#F3ECF9;color:#6A3A92}
+.lt1588.early{background:#FFF0D2;color:#7A4A00}.lt1588.young{background:#E7F5EE;color:#1F7A55}.lt1588.teen{background:#E6EEFB;color:#2456A6}.lt1588.adult{background:var(--coe-mgmt-bg,#EEEAF8);color:var(--coe-mgmt-fg,#5B4B9E)}.lt1588.yle{background:#E7F5EE;color:#1F7A55}
 .lt1588.unk{background:transparent;color:#8A86A0;box-shadow:inset 0 0 0 1px #E2E0EA;font-weight:500}
 .lt1588 .ph{display:inline-block;padding:0 4px;border-radius:4px;background:#fff;color:#00737B;font-size:10px;line-height:14px;box-shadow:inset 0 0 0 1px #BFE6E3}
 #sheetBody .shero h1 .lt1588{margin-left:8px;transform:translateY(-2px)}
@@ -34480,11 +34492,11 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   if(window.__1588 || !window.coeLearner) return; window.__1588 = 1;
   const up = s => String(s || '').trim().toUpperCase(), E = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const dbReady = () => { try{ return !!(typeof DB !== 'undefined' && DB && DB.rows && DB.rows.length); }catch(e){ return false; } };
-  window.learnerTag1588 = function(code){ const L = coeLearner(code), ie = L.exam === 'ielts';
-    const k = L.kind === 'kid' ? 'yle' : L.kind === 'teen' ? 'teen' : L.kind === 'adult' ? 'adult' : 'unk';
-    const t = k === 'yle' ? 'YLE' : k === 'teen' ? 'Teens' : k === 'adult' ? 'Adults' : 'Type?';
+  window.learnerTag1588 = function(code){ const L = coeLearner(code), ie = L.exam === 'ielts';   /* 1591: the four bands */
+    const k = L.band || 'unk', t = L.bandLabel || 'Type?';
     const sub = k === 'adult' && L.goal !== 'daily' ? ' · ' + L.goal : '';
-    const title = k === 'unk' ? 'Learner type not known yet: set it on the trial report, or add the age / course on DATABASE' : t + (ie ? ' · IELTS' : sub) + ' · from the ' + (L.from || 'records');
+    const why = { birthdate: 'age from the birthdate', age: 'the AGE column', 'trial report': 'the trial report', course: 'the course', grade: 'the grade', 'student list': 'the student list' }[L.from] || 'the records';
+    const title = k === 'unk' ? 'Learner type not known yet: add the birthdate or age on DATABASE, or set it on the trial report' : t + (ie ? ' · IELTS' : sub) + (L.age != null && (L.from === 'birthdate' || L.from === 'age') ? ' · ' + L.age + ' yrs' : '') + ' · from ' + why;
     return { k, html: '<span class="lt1588 ' + k + '" data-lt="' + E(up(code)) + '" title="' + E(title) + '">' + t + (ie && k !== 'unk' ? ' · IELTS' : '') + (L.market === 'ph' ? ' <i class="ph">PH</i>' : '') + '</span>' }; };
   function rows(){ if(!dbReady()) return; document.querySelectorAll('#v-astudents a.li.sa[href^="#student="]').forEach(a => { const code = up(a.getAttribute('href').slice(9)), line = a.querySelector('.grow > .row'); if(!line) return;
       const T = learnerTag1588(code), old = line.querySelector('.lt1588'); if(old && old.outerHTML === T.html) return; if(old) old.outerHTML = T.html; else line.insertAdjacentHTML('beforeend', T.html); }); }
@@ -34500,7 +34512,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   const lh = window.loadHealth; if(typeof lh === 'function') window.loadHealth = async function(){ const r = await lh.apply(this, arguments);
     try{ if(dbReady() && Array.isArray(MS) && typeof HL !== 'undefined' && HL){ const U = MS.filter(s => /^ST-/.test(up(s.code)) && coeLearner(s.code).kind === '').map(s => s.name + ' ' + up(s.code));
         HL.issues = (HL.issues || []).filter(s => !/^Learner type /.test(String(s)));
-        if(U.length) HL.issues.push('Learner type not known (YLE / Teens / Adults) · ' + U.length + ' student' + (U.length === 1 ? '' : 's') + ': ' + U.slice(0, 15).join(', ') + (U.length > 15 ? ' +' + (U.length - 15) + ' more' : '') + ' · set it on the trial report or add the age / course on DATABASE');
+        if(U.length) HL.issues.push('Learner type not known (Early Years / Young Learners / Teens / Adults) · ' + U.length + ' student' + (U.length === 1 ? '' : 's') + ': ' + U.slice(0, 15).join(', ') + (U.length > 15 ? ' +' + (U.length - 15) + ' more' : '') + ' · add the birthdate or age on DATABASE, or set it on the trial report');
         const b = document.getElementById('hlBox'); if(b && window.hlHtml) b.innerHTML = hlHtml(); } }catch(e){}
     return r; };
 })();
@@ -34644,7 +34656,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
 #v-astudents .ltf1590 button{height:28px;padding:0 12px;border-radius:999px;border:1px solid var(--coe-line,#E7E5EE);background:#fff;color:var(--coe-text,#3A3556);font:500 13px/26px var(--coe-font,Inter,system-ui,sans-serif);cursor:pointer}
 #v-astudents .ltf1590 button b{font-weight:600;margin-left:4px;color:var(--coe-mute,#5E5A76)}
 #v-astudents .ltf1590 button[aria-pressed="true"]{background:var(--coe-teal-50,#E3F4F5);border-color:var(--coe-teal-200,#8CC5CA);color:var(--coe-teal-700,#00707A);font-weight:600}
-#v-astudents[data-ltf="yle"] a.li.sa:not(:has(.lt1588.yle)),#v-astudents[data-ltf="teen"] a.li.sa:not(:has(.lt1588.teen)),#v-astudents[data-ltf="adult"] a.li.sa:not(:has(.lt1588.adult)){display:none!important}
+#v-astudents[data-ltf="early"] a.li.sa:not(:has(.lt1588.early)),#v-astudents[data-ltf="young"] a.li.sa:not(:has(.lt1588.young)),#v-astudents[data-ltf="teen"] a.li.sa:not(:has(.lt1588.teen)),#v-astudents[data-ltf="adult"] a.li.sa:not(:has(.lt1588.adult)){display:none!important}
 /* 2 · separators: every item but the first carries its dot 11 px to its left; a dot that starts a line falls in the clipped 17 px */
 #sheet #sheetBody.stu2 .shero.h1589 .grow>:is(.h-who,.h-learn):not(#z1590):not(#y1590){margin-left:-17px!important;clip-path:inset(-6px -6px -6px 17px)}
 #sheet #sheetBody.stu2 .shero.h1589 .grow>:is(.h-who,.h-learn):not(#z1590)>*{position:relative;margin-left:17px!important;overflow:visible!important}
@@ -34656,13 +34668,13 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
 /* 1590 · learner filter on the Students list */
 (function(){
   if(window.__1590) return; window.__1590 = 1;
-  const K = 'coe.ltF', OPT = [['', 'All'], ['yle', 'YLE'], ['teen', 'Teens'], ['adult', 'Adults']];
+  const K = 'coe.ltF', OPT = [['', 'All'], ['early', 'Early Years'], ['young', 'Young Learners'], ['teen', 'Teens'], ['adult', 'Adults']];
   let cur = ''; try{ cur = localStorage.getItem(K) || ''; }catch(e){} if(!OPT.some(o => o[0] === cur)) cur = '';
   const v = () => document.getElementById('v-astudents');
   function apply(){ const el = v(); if(!el) return; if(cur) el.setAttribute('data-ltf', cur); else el.removeAttribute('data-ltf'); }
   function bar(){ const el = v(); if(!el) return; apply();
     const rows = el.querySelectorAll('a.li.sa'); if(!rows.length) return;
-    const n = { '': rows.length, yle: 0, teen: 0, adult: 0 }; rows.forEach(r => { const c = r.querySelector('.lt1588'); if(!c) return; ['yle', 'teen', 'adult'].forEach(k => { if(c.classList.contains(k)) n[k]++; }); });
+    const n = { '': rows.length, early: 0, young: 0, teen: 0, adult: 0 }; rows.forEach(r => { const c = r.querySelector('.lt1588'); if(!c) return; ['early', 'young', 'teen', 'adult'].forEach(k => { if(c.classList.contains(k)) n[k]++; }); });
     const html = '<span>Learner</span>' + OPT.map(o => '<button type="button" data-k="' + o[0] + '" aria-pressed="' + (cur === o[0]) + '" onclick="ltF1590(\'' + o[0] + '\')">' + o[1] + '<b>' + n[o[0]] + '</b></button>').join('');
     let b = el.querySelector('.ltf1590');
     if(!b){ const src = [].find.call(el.querySelectorAll('div, section'), d => /^\s*Source/i.test(d.textContent || '') && d.querySelector('button') && d.children.length < 12);
