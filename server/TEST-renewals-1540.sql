@@ -47,5 +47,13 @@ begin
   n := n + 1; if not exists (select 1 from coe_pkg_calc x where x.code = 'ST-9999-908' and abs(x.fin) < 0.001) then f := f + 1; res := res || ' | FAIL S8 class before the save (no confirmation) is the old package'; end if;
   n := n + 1; if not exists (select 1 from coe_pkg_calc x where x.code = 'ST-9999-906' and x.deadline = (d + interval '1 year')::date) then f := f + 1; res := res || ' | FAIL S6 valid until = start + 12 months'; end if;
   n := n + 1; if not exists (select 1 from coe_pkg_rows() x where x.r = 9001 and (x.data->>5)::numeric = 2.5) then f := f + 1; res := res || ' | FAIL S1 the ACTIVE copy shows CARRY OVER 2.5'; end if;
+  -- S9 / S10 (1547) · "ACTIVE copy out of date" = Google stopped checking in, not "nobody edited ACTIVE" (Misty 29 Oct 08:56, Abby)
+  update sheet_tabs set synced_at = now() - interval '5 hours' where tab in ('ACTIVE', 'ACTIVE~');
+  update sheet_tabs set synced_at = now() - interval '1 minute' where tab = 'SALES';
+  perform public.coe_renew_check();
+  n := n + 1; if (select data->>'copyOk' from docs where key = 'sys:renewcheck') is distinct from 'true' then f := f + 1; res := res || ' | FAIL S9 no ACTIVE edits for hours + a recent Google check-in is not stale'; end if;
+  update sheet_tabs set synced_at = now() - interval '2 hours';
+  perform public.coe_renew_check();
+  n := n + 1; if (select data->>'copyOk' from docs where key = 'sys:renewcheck') is distinct from (case when extract(hour from now() at time zone 'Asia/Manila') < 7 or extract(hour from now() at time zone 'Asia/Manila') >= 23 then 'true' else 'false' end) then f := f + 1; res := res || ' | FAIL S10 no Google check-in for 2 hours (daytime) is stale'; end if;
   raise exception 'RENEWAL DB CASES · % %/% %', case when f = 0 then 'PASS' else 'FAILED' end, n - f, n, res;
 end $t$;

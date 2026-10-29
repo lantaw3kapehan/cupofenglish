@@ -1,0 +1,13 @@
+-- 1547 (29 Oct 2026, Misty 08:56 · Abby ST-2026-105 held "The ACTIVE copy from Google is out of date (last copy 29 Oct, 03:16)")
+-- Applied as migration renewcheck_checkin_1547 (backup of the old function: docs 'bak:1547').
+-- Cause: coe_renew_check() took the copy time from sheet_tabs 'ACTIVE~'.synced_at. Google re-sends a tab only when it changed, so that
+-- is the time of the last ACTIVE edit, not of the last check-in. With no ACTIVE edits for 20+ minutes in the daytime, copyOk went false
+-- and the app held EVERY student's "Lessons left" picture and Lesson Summary in management (the guard runs on all of them).
+-- Fix (one line in coe_renew_check): the copy time = Google's last check-in = max(sheet_tabs.synced_at) over all tabs.
+--   "out of date" now means the sync has really stopped (> 20 min, 07:00–23:00 Manila, as before). Nothing else changed.
+-- Tests: server/TEST-renewals-1540.sql S9 (no ACTIVE edits for hours + recent check-in → not stale) and S10 (no check-in for 2 h → stale).
+--   The old function fails S9 (copyOk=false); the new one passes S9 and S10.
+-- The applied change (the function is too long to repeat; this is the only edit):
+--   -  select synced_at into cp from sheet_tabs where tab = 'ACTIVE~';
+--   +  select max(synced_at) into cp from sheet_tabs;   -- 1547: Google's last check-in (any tab) …
+-- Undo: execute (select data->>'coe_renew_check' from docs where key = 'bak:1547');
