@@ -6,9 +6,9 @@ This page is the rulebook for every screen change from now on. **If you add or c
 
 | Release | What | Rollback branch |
 |---|---|---|
-| 1620 · 1621 | Tokens, aliases for the older token families, focus ring · one meaning per colour | `rollback-pre-1620` |
-| 1622 | Shared components: buttons, fields, chips, headings, dialog close, empty text | `rollback-pre-1622` |
-| 1623 · 1624 | Course-book colour key on the teacher's Today strip and Schedule · teacher Schedule Trial chip teal · leave "waiting" amber · Finance insight icons teal | `rollback-pre-1623` |
+| 1620 · 1621 | Tokens, aliases for the older token families, focus ring · one meaning per colour | `rollback-pre-1620` (COE_V 1462) |
+| 1622 | Shared components: buttons, fields, chips, headings, dialog close, empty text | `rollback-pre-1622` (one release with 1623 · 1624, COE_V 1471) |
+| 1623 · 1624 | Course-book colour key on the teacher's Today strip and Schedule · teacher Schedule Trial chip teal · leave "waiting" amber · Finance insight icons teal | `rollback-pre-1622` |
 
 Where the code lives: `<style id="ds1620">`, `ds1621`, `ds1622` in `<head>` of `app.html` (in the first paint, before any screen is drawn), and `css1623` + its script at the end of the page.
 
