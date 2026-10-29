@@ -6637,7 +6637,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1478;
+const COE_V = 1479;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -6647,7 +6647,7 @@ function updBanner(){ try{ if(document.getElementById('updBn')) return; const b 
   b.children[1].onclick = () => location.reload(); b.children[2].onclick = () => b.remove(); document.body.appendChild(b); }catch(e){} }
 function updQuiet(){ try{ if(window._vupBusy || (typeof API_PEND !== 'undefined' && API_PEND > 0)) return true; if(typeof D === 'undefined' || !D || D.mgr || performance.now() < 15000) return false;
   /* 644 · 22 Oct: was quiet from 16:00 to midnight · now only while the teacher is in a class (5 min before start to 5 min after end) */
-  const now = Date.now(); return (D.schedule || []).some(c => c && !c.cancelled && c.day === D.today && now >= new Date(c.start).getTime() - 6e4 && now <= new Date(c.end).getTime()); }catch(e){ return false; } }   /* 738: only while the class is running */
+  const now = Date.now(); return (D.schedule || []).some(c => c && !c.cancelled && c.day === D.today && now >= new Date(c.start).getTime() - 20 * 6e4   /* 1617: from 20 min before */ && now <= new Date(c.end).getTime()); }catch(e){ return false; } }   /* 738: only while the class is running */
 let UPD_AT = 0;
 function fetchUpdate(){ if(!API_URL || GAS || Date.now() - UPD_AT < 10*60000) return; UPD_AT = Date.now();
 fetch('version.txt', {cache:'no-store'}).then(r => r.text()).then(v => { if(+v > COE_V) fetchUpdateFull(); }).catch(()=>{}); }   /* a tiny version check first · the full app only downloads when there is a newer one */
@@ -24398,7 +24398,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     const wait = Math.max(3500 - performance.now(), ui > 0 || tapped() ? 300 : 0, run >= 2 ? 250 : 0, 200 - (Date.now() - last));
     if(wait > 0){ T = setTimeout(pump, Math.max(50, wait)); return; }
     const j = Q.shift(); run++; last = Date.now();
-    let p; try{ p = Promise.resolve(an.apply(null, [j.fn].concat(j.args))); }catch(e){ p = Promise.reject(e); }
+    let p; const u1617 = window._ui; window._ui = 0; try{ p = Promise.resolve(an.apply(null, [j.fn].concat(j.args))); }catch(e){ p = Promise.reject(e); } finally { window._ui = u1617; }   /* 1617: a queued read is not a tap */
     p.then(j.res, j.rej).finally(() => { run--; delete SAME[j.k]; pump(); });
     if(Q.length) T = setTimeout(pump, 200); }
   window.apiNow = apiNow = function(fn){ const args = Array.prototype.slice.call(arguments, 1);
@@ -34956,5 +34956,35 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
 <script>/* 1597 · a card that opens on top of another keeps the height while it loads (no jump to a short loading card) */(function(){ if(window.__1597) return; window.__1597 = 1; const o = window.openSheet; if(typeof o !== 'function') return; let LC = 0, LH = 0; const c0 = window.closeSheet; if(typeof c0 === 'function') window.closeSheet = function(){ try{ const s = document.getElementById('sheet'); if(s && s.classList.contains('on')){ LH = s.offsetHeight; LC = Date.now(); } }catch(e){} return c0.apply(this, arguments); }; window.openSheet = function(html){ const sh = document.getElementById('sheet'), on = !!(sh && sh.classList.contains('on')), was = on || Date.now() - LC < 400, h = on ? sh.offsetHeight : was ? LH : 0; const r = o.apply(this, arguments); try{ if(was && h && /class="sk"/.test(String(html))){ sh.style.minHeight = h + 'px'; sh.dataset.mh1597 = 1; } else if(sh && sh.dataset.mh1597){ sh.style.minHeight = ''; delete sh.dataset.mh1597; } }catch(e){} return r; }; })();</script>
 <style id="css1597">#sheetBody.sfw1597>:not(h1):not(.mute.small):not(.sbk):not(#rnBack){visibility:hidden}
 @media(min-width:621px){#sheet #sheetBody.stu2 .shero.h1589 .grow>:is(.h-who,.h-learn):not(#z1597){flex-wrap:nowrap!important;overflow:hidden}#sheet #sheetBody.stu2 .shero.h1589 .grow>:is(.h-who,.h-learn):not(#z1597)>*{white-space:nowrap;min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}#sheet #sheetBody.stu2 .shero.h1589 .grow>:is(.h-who,.h-learn):not(#z1597)>:first-child{flex:none}}</style>
+<script>
+/* 1617 · teacher Today not drawn twice for one quick double tap · tap-to-paint and long-frame sampler (teachers) */
+(function(){
+  if(window.__1617) return; window.__1617 = 1;
+  const isT = () => { try{ return typeof D !== 'undefined' && D && !D.mgr && !!D.me; }catch(e){ return false; } };
+  const g0 = window.go; let lastV = '', lastT = 0;
+  if(typeof g0 === 'function') window.go = function(v){
+    try{ const el = document.getElementById('v-' + v), now = Date.now();
+      if(isT() && v === lastV && typeof VIEW !== 'undefined' && VIEW === v && now - lastT < 1500 && el && el.childElementCount && !document.querySelector('#sheet.on')){ window.scrollTo(0, 0); return; }
+      lastV = v; lastT = now; }catch(e){}
+    return g0.apply(this, arguments); };
+  if(!('PerformanceObserver' in window)) return;
+  const vw = () => { try{ return String(typeof VIEW !== 'undefined' ? VIEW || '' : '').slice(0, 30); }catch(e){ return ''; } };
+  const tg = t => { try{ if(!t || !t.tagName) return ''; const id = t.id ? '#' + t.id : '', c = !id && t.className && typeof t.className === 'string' ? '.' + t.className.trim().split(/\s+/)[0] : ''; return t.tagName.toLowerCase() + id + c; }catch(e){ return ''; } };
+  let I = null, L = null, n = 0, hr = 0;
+  try{ new PerformanceObserver(l => { if(!isT()) return; for(const e of l.getEntries()){ if(!e.interactionId) continue; if(!I || e.duration > I.ms) I = { ms: e.duration, v: vw(), w: (e.name + ' ' + tg(e.target)).slice(0, 30) }; } }).observe({ type: 'event', durationThreshold: 40, buffered: false }); }catch(e){}
+  let loaf = false; try{ loaf = (PerformanceObserver.supportedEntryTypes || []).indexOf('long-animation-frame') > -1; }catch(e){}
+  try{ new PerformanceObserver(l => { if(!isT()) return; for(const e of l.getEntries()){ if(L && e.duration <= L.ms) continue; let w = '';
+      if(loaf){ const s = (e.scripts || []).slice().sort((a, b) => b.duration - a.duration)[0]; w = s ? ((s.sourceFunctionName || s.invoker || 'script') + '@' + (s.sourceCharPosition >= 0 ? s.sourceCharPosition : '') + ' ' + String(s.invokerType || '')) : 'no script info · block ' + Math.round(e.blockingDuration || 0); }
+      else { const a = (e.attribution || [])[0]; w = 'task ' + ((a && (a.containerType || a.name)) || e.name || ''); }
+      L = { ms: e.duration, v: vw(), w: w.slice(0, 30) }; } }).observe({ type: loaf ? 'long-animation-frame' : 'longtask', buffered: false }); }catch(e){}
+  setInterval(() => { try{ const h = Math.floor(Date.now() / 36e5); if(h !== hr){ hr = h; n = 0; }
+    if(!isT() || typeof TOKEN === 'undefined' || !TOKEN){ I = L = null; return; }
+    const rows = [], dev = (window.innerWidth || 0) < 900 ? 'phone' : 'laptop', at = new Date().toISOString(), v = typeof COE_V !== 'undefined' ? COE_V : 0;
+    if(I && I.ms >= 100 && n < 40){ rows.push({ fn: 'inp:' + I.v, ms: Math.round(I.ms), ui: false, view: I.w, v, dev, at }); n++; }
+    if(L && L.ms >= 150 && n < 40){ rows.push({ fn: 'lt:' + L.v, ms: Math.round(L.ms), ui: false, view: L.w, v, dev, at }); n++; }
+    I = L = null; if(!rows.length) return;
+    fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-notice', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'speed', rows }), keepalive: true }).catch(() => {}); }catch(e){} }, 60000);
+})();
+</script>
 </body>
 </html>
