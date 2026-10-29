@@ -142,3 +142,34 @@ Real data (read-only, 29 Oct 10:5x; same rules in SQL; the app's last fallback, 
 Where the band came from (active / all): birthdate 230 / 471 · AGE column 1 / 1 · trial report 5 / 11 · course 13 / 101 · grade 3 / 38 · unknown 1 / 55.
 Checks: regress-saves 17/17; card open CLS 0.0007 laptop / 0.008 phone; Students list stability ok on re-run (main itself showed load spikes in
 the same session). Rollback `rollback-pre-1591`.
+
+## 1592 · speed (4x CPU, preview)
+The two colour safety passes (1007 contrast, 1101 fixText) ran on every redraw, read each element's computed style and wrote colours in the same
+loop (one style recalculation per write on a 44,000-node page). Now: read all, then write once; Students rows skipped (their colours are AA by CSS —
+the passes changed nothing there but the Type? chip, now darker in CSS); off-screen rows use content-visibility (still in the page: search,
+filters, focus, find unchanged); Learner filter via a row attribute instead of :has().
+| 4x CPU (this machine) | before | after |
+|---|---|---|
+| Students list visible | 8.6 s (style 7.9 s) | 4.0 s (style 3.2 s) |
+| Student card visible | 20.3 s (style 19.3 s) | 3.5 s (style 2.8 s) |
+The speed agent's targets (1.5 s / 1 s) are on their faster machine; the remaining list time is the list's own build + the other passes (1000, 1102).
+
+## 1593 · live student-card shift recorder
+Management only, first 10 s after opening a student: each layout shift inside the card (source label, size × 10 000, ms since open) + one summary
+row "TOTAL k|n (kept copy or not) m<content changes> s<storage ok>|<total>" → coe_speed fn `cls:student` (≤ 9 rows per open).
+Misty's laptop 11:38–11:40 (v1464): TOTAL n m12 s1 | 8 (0.0008) — the only shift "stu-bar>btn" (0.0008 at 1.5 s); then 0 and 0.
+
+## 1594 · reserved space under her conditions (storage full, answers 1–6 s in random order, 4x CPU)
+Shifts reproduced and removed:
+- classes arriving after the page: the Every week row was added late (+45 px laptop, +104 px phone) → toolbar, tabs, Status, Changes, Schedule
+  moved (0.217 in one run); now drawn at once with hidden pills / Next line and "Loading the schedule…" (same height; phone keeps 3 lines).
+- Schedule box 128 px loading → 707 px calendar: keeps the height this student had last time (else 710 laptop / 1260 phone).
+- Course Books button moved into the toolbar on a timer (Edit details jumped 150 px: Misty's live "stu-bar>btn") → same frame.
+- learner chip: invisible placeholder until DATABASE arrives. "No weekly schedule yet" keeps the row height.
+- Storage full: oldest kept student / class copies are freed and the save retried; if still refused, kept in memory for the session.
+| her conditions, 4x CPU | before (main 11:2x) | after |
+|---|---|---|
+| laptop, 3 runs | 0.0007 · 0.218 · 0.0007 (stuPkg 0.068 / whole stack 0.217) | 0 · 0 · 0 (+2 more runs 0) |
+| phone, 4 runs | 0.085 · … | 0 · 0 · 0 · 0 |
+| normal conditions | 0.0007 laptop / 0.0082 phone | 0 / 0 |
+Checks: regress-saves 17/17, stability students + astudents laptop / phone ok. Rollback `rollback-pre-1594`.
