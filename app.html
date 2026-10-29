@@ -1585,9 +1585,9 @@ show('app'); if(!D) skeleton();
 reload(false);
 }
 
-function bootFresh1609(){ try{ const m = window.__boot1609; if(m && m.tk === String(TOKEN).slice(-12) && Date.now() - m.t < 30 * 6e4) return true; }catch(e){}
+function bootFresh1609(){ try{ const m = window.__boot1609 || JSON.parse(sessionStorage.getItem('coe.m.boot1616') || 'null'); if(m && m.tk === String(TOKEN).slice(-12) && Date.now() - m.t < 30 * 6e4) return true; }catch(e){}   /* 1616: this tab, across reloads */
   try{ return Date.now() - +(localStorage.getItem('coe.m.bootAt') || 0) < 30 * 6e4 && localStorage.getItem('coe.m.bootTk') === String(TOKEN).slice(-12); }catch(e){ return false; } }
-function bootMark1609(){ window.__boot1609 = { t: Date.now(), tk: String(TOKEN).slice(-12) }; try{ localStorage.setItem('coe.m.bootAt', String(Date.now())); localStorage.setItem('coe.m.bootTk', String(TOKEN).slice(-12)); }catch(e){} }   /* 1609 */
+function bootMark1609(){ window.__boot1609 = { t: Date.now(), tk: String(TOKEN).slice(-12) }; try{ sessionStorage.setItem('coe.m.boot1616', JSON.stringify(window.__boot1609)); }catch(e){} try{ localStorage.setItem('coe.m.bootAt', String(Date.now())); localStorage.setItem('coe.m.bootTk', String(TOKEN).slice(-12)); }catch(e){} }   /* 1609 · 1616 */
 async function reload(force){
 $('rf').classList.add('spin');
 try{
@@ -3949,7 +3949,7 @@ if(!keep) box.textContent = 'Checking the calendar…';
 try{ const L = await api('mgmtLeaveClasses', TOKEN, t, f, to, a, b); if(($('lvT')||{}).value !== t) return; box.innerHTML = lvClsHtml(L) + (L.length ? '<div>Move them or find a sub in Schedule.</div>' : ''); }
 catch(e){ if(!keep) box.textContent = 'Could not check the calendar · it is checked again when you save.'; } }
 async function lvProof(id, i){ const el = $('lvPv'); if(el) el.innerHTML = '<div class="sk" style="height:120px;margin-top:8px"></div>';
-try{ const r = await api('mgmtLeaveProof', TOKEN, id, i); if(!r.ok) throw r; const bin = atob(r.b64), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+try{ const k1616 = id + '|' + i, r = (window.__lp1616 = window.__lp1616 || {})[k1616] || await api('mgmtLeaveProof', TOKEN, id, i); if(!r.ok) throw r; try{ const ks = Object.keys(window.__lp1616); if(ks.length > 12) delete window.__lp1616[ks[0]]; window.__lp1616[k1616] = r; }catch(e){}   /* 1616: seen again → instant */ const bin = atob(r.b64), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
 const url = URL.createObjectURL(new Blob([u8], { type: r.mime }));
 if(el) el.innerHTML = String(r.mime).indexOf('image') === 0 ? `<a href="${url}" target="_blank"><img src="${url}" style="max-width:100%;border-radius:12px;margin-top:8px"></a>` : `<iframe src="${url}" style="width:100%;height:420px;border:1px solid var(--line);border-radius:12px;margin-top:8px"></iframe><a class="link small" href="${url}" download="${esc(r.name)}">Download</a>`; }
 catch(e){ if(el) el.innerHTML = `<div class="small mute">${esc((e && e.msg) || 'Could not open the file.')}</div>`; } }
@@ -6565,7 +6565,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1465;
+const COE_V = 1468;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24209,7 +24209,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const WANT = {}, TIM = {};
   window.sbDoc = sbDoc = function(key){ return new Promise(res => { const g = (HEAVY.test(key) || (typeof SB_LIVE !== 'undefined' && SB_LIVE.test((key.match(/^[^:]+:(\w+)\|/) || [])[1] || ''))) ? key : '_';   /* 1607: every live answer apart */ const B = WANT[g] || (WANT[g] = {}); (B[key] = B[key] || []).push(res); if(TIM[g]) return;
     TIM[g] = setTimeout(async () => { const W = WANT[g] || {}; delete WANT[g]; TIM[g] = 0;
-      let docs = {}; try{ const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), g === '_' ? 4000 : 9000) : 0;   /* 1607 */
+      let docs = {}; try{ const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), g === '_' ? 8000 : 9000) : 0;   /* 1607 · 1614 */
         const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: Object.keys(W) }), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid));
         if(r && r.ok) docs = r.docs || {}; }catch(e){}
       Object.keys(W).forEach(k => W[k].forEach(f => f(docs[k] || null))); }, 25); }); };
@@ -24252,7 +24252,10 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
         const key = sbKey(fn, args);
         const mc = MEM1613[key]; if(mc && Date.now() - mc.t < m * 6e4) return Promise.resolve(mc.data);   /* 1613: this page's last Google answer */
         const g1613 = () => { const p = Promise.resolve(base.apply(self, [fn].concat(args))); p.then(x => { if(x != null && !(x && x.error) && !(fn !== 'mgmtHealth' && x && x.ok === false)) MEM1613[key] = { t: Date.now(), data: x }; }, () => {}); return p; };
-        return Promise.race([(typeof sbDocV === 'function' ? sbDocV(key, fn) : sbDoc(key)), new Promise(z => setTimeout(() => z(null), 4500))]).then(d => (d && d.data != null && !(d.data && d.data.ok === false && fn !== 'mgmtHealth') && Date.now() - Date.parse(d.at) < m * 6e4) ? d.data : g1613(), () => g1613()); }
+        return Promise.race([(typeof sbDocV === 'function' ? sbDocV(key, fn) : sbDoc(key)), new Promise(z => setTimeout(() => z(null), 8500))]).then(d => { if(d && d.data != null && !(d.data && d.data.ok === false && fn !== 'mgmtHealth')){ const ag = Date.now() - Date.parse(d.at);
+            if(ag < m * 6e4) return d.data;
+            if(ag < 3 * 864e5){ setTimeout(() => { const u = window._ui; window._ui = 0; let p; try{ p = g1613(); }finally{ window._ui = u; } Promise.resolve(p).then(x => { try{ if(x != null && JSON.stringify(x) !== JSON.stringify(d.data) && typeof sbRedraw === 'function') sbRedraw(fn, args, x); }catch(e){} }, () => {}); }, 50); return d.data; } }   /* 1616: old copy at once, Google behind */
+          return g1613(); }, () => g1613()); }
     }catch(e){}
     return base.apply(this, arguments); };
   w.__1602 = 1; for(const k in base) try{ w[k] = base[k]; }catch(e){} window.api = w;
@@ -24306,6 +24309,30 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   function flush(leaving){ try{ if(!Q.length || typeof TOKEN === 'undefined' || !TOKEN || typeof LIVE === 'undefined' || !LIVE) return; const rows = Q.splice(0, 200);
     fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-notice', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'speed', rows: rows }), keepalive: !!leaving }).catch(() => {}); }catch(e){} }
   setInterval(flush, 60000); document.addEventListener('visibilitychange', () => { if(document.hidden) flush(true); });
+})();
+</script>
+<script>
+/* 1614 · Google reads nobody waits for go one or two at a time, after the taps */
+(function(){
+  if(window.__1614 || typeof window.apiNow !== 'function') return; window.__1614 = 1;
+  const an = window.apiNow, Q = [], SAME = {}; let run = 0, ui = 0, last = 0, T = 0;
+  const isRead = fn => (typeof API_READ !== 'undefined' && API_READ.test(fn)) || (typeof API_BG !== 'undefined' && API_BG.test(fn)) || (typeof SB_R !== 'undefined' && SB_R.test(fn));
+  const tapped = () => Date.now() - (window._ui || 0) < 1500;
+  function pump(){ clearTimeout(T); T = 0;
+    if(!Q.length) return;
+    const wait = Math.max(3500 - performance.now(), ui > 0 || tapped() ? 300 : 0, run >= 2 ? 250 : 0, 200 - (Date.now() - last));
+    if(wait > 0){ T = setTimeout(pump, Math.max(50, wait)); return; }
+    const j = Q.shift(); run++; last = Date.now();
+    let p; try{ p = Promise.resolve(an.apply(null, [j.fn].concat(j.args))); }catch(e){ p = Promise.reject(e); }
+    p.then(j.res, j.rej).finally(() => { run--; delete SAME[j.k]; pump(); });
+    if(Q.length) T = setTimeout(pump, 200); }
+  window.apiNow = apiNow = function(fn){ const args = Array.prototype.slice.call(arguments, 1);
+    try{
+      if(!isRead(fn) || tapped()){ ui++; let p; try{ p = Promise.resolve(an.apply(this, arguments)); }catch(e){ ui--; throw e; } p.finally(() => { ui--; }).catch(() => {}); return p; }
+      const k = fn + '|' + JSON.stringify(args.slice(1)); if(SAME[k]) return SAME[k];
+      const pr = new Promise((res, rej) => { Q.push({ fn, args, k, res, rej }); }); SAME[k] = pr; pump(); return pr;
+    }catch(e){ return an.apply(this, arguments); } };
+  for(const k in an) try{ window.apiNow[k] = an[k]; }catch(e){}
 })();
 </script>
 <script>
@@ -30130,9 +30157,13 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   function ready(){ try{ return (typeof newerSaved === 'function' && newerSaved()) || !!window._updNet; }catch(e){ return false; } }
   function calm(){ try{ return !(typeof busy === 'function' && busy()) && !(typeof updQuiet === 'function' && updQuiet()); }catch(e){ return false; } }
   var since = 0;
-  window.applyUpdate = applyUpdate = function(){ if(!ready()) return; if(!since) since = Date.now(); if(document.hidden && calm()) location.reload(); };
-  document.addEventListener('visibilitychange', function(){ if(document.hidden && since && ready() && calm()) location.reload(); });
-  var g = window.go; if(typeof g === 'function') window.go = function(v){ try{ if(since && Date.now() - since > 30 * 6e4 && v && typeof VIEW !== 'undefined' && v !== VIEW && ready() && calm()){ try{ location.hash = (window.coeH ? coeH(v) : '#' + v); }catch(e){} location.reload(); return; } }catch(e){} return g.apply(this, arguments); };
+  /* 1615: hidden for 2 min in a row, or 15 min with no tap / key — never while she is using the app */
+  var hidAt = document.hidden ? Date.now() : 0, act = Date.now(), ht = 0;
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function(ev){ addEventListener(ev, function(){ act = Date.now(); }, { capture: true, passive: true }); });
+  function tryNow(){ try{ if(!since || !ready() || !calm()) return; if((document.hidden && hidAt && Date.now() - hidAt >= 12e4) || (!document.hidden && Date.now() - act >= 15 * 6e4)) location.reload(); }catch(e){} }
+  window.applyUpdate = applyUpdate = function(){ if(!ready()) return; if(!since) since = Date.now(); tryNow(); };
+  document.addEventListener('visibilitychange', function(){ if(document.hidden){ hidAt = Date.now(); clearTimeout(ht); ht = setTimeout(tryNow, 12e4 + 500); } else { hidAt = 0; clearTimeout(ht); act = Date.now(); } });
+  setInterval(tryNow, 60000);
 })();
 </script>
 <style id="d1172">/* 1172 · management phone header keeps its two-line height from the start */ @media(max-width:640px){html.m1172 header[role=banner]{min-height:112px}}</style>
