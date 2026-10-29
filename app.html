@@ -6512,7 +6512,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1454;
+const COE_V = 1455;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24154,9 +24154,9 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   if(window.__1601 || typeof window.sbDoc !== 'function') return; window.__1601 = 1;
   const HEAVY = /^[^:]+:(getBootstrap|mgmtActive|mgmtStudents|tFbStatus|mgmtOverview|mgmtSchedule|mgmtTeacherWeek|mgmtAvailAll|mgmtPayroll|mgmtTeacher|mgmtActions|mgmtDatabase|dbLists)\|/;
   const WANT = {}, TIM = {};
-  window.sbDoc = sbDoc = function(key){ return new Promise(res => { const g = HEAVY.test(key) ? key : '_'; const B = WANT[g] || (WANT[g] = {}); (B[key] = B[key] || []).push(res); if(TIM[g]) return;
+  window.sbDoc = sbDoc = function(key){ return new Promise(res => { const g = (HEAVY.test(key) || (typeof SB_LIVE !== 'undefined' && SB_LIVE.test((key.match(/^[^:]+:(\w+)\|/) || [])[1] || ''))) ? key : '_';   /* 1607: every live answer apart */ const B = WANT[g] || (WANT[g] = {}); (B[key] = B[key] || []).push(res); if(TIM[g]) return;
     TIM[g] = setTimeout(async () => { const W = WANT[g] || {}; delete WANT[g]; TIM[g] = 0;
-      let docs = {}; try{ const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 4000) : 0;
+      let docs = {}; try{ const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), g === '_' ? 4000 : 9000) : 0;   /* 1607 */
         const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: Object.keys(W) }), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid));
         if(r && r.ok) docs = r.docs || {}; }catch(e){}
       Object.keys(W).forEach(k => W[k].forEach(f => f(docs[k] || null))); }, 25); }); };
