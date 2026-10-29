@@ -173,3 +173,17 @@ Shifts reproduced and removed:
 | phone, 4 runs | 0.085 · … | 0 · 0 · 0 · 0 |
 | normal conditions | 0.0007 laptop / 0.0082 phone | 0 / 0 |
 Checks: regress-saves 17/17, stability students + astudents laptop / phone ok. Rollback `rollback-pre-1594`.
+
+## 1595 + 1596 (one release) · from Misty's live telemetry and her 11:57 report (Abby ST-2026-105)
+- 1595 · Status card: live "stuRn+stuStat|65" (0.0065 at 1.8 s, first open): the notes history (up to 3 note cards, full text) arrived after
+  the page and grew the card (preview with delayed notes: 92 → 213 px), pushing Changes and Schedule. Now the latest note on two fixed lines
+  (status · date · by · "N older", then the note on one line, full text on hover); loading and "No notes yet." take the same 44 px. Full history
+  unchanged in Update · add a note. Telemetry rows now also carry the first moved element's dy / dh.
+- 1596 · "Class notice" flashed filled teal then outline: the page template drew it as a primary button (btn sm teal) and the colour system
+  (1101) made it secondary on a timer. The template now draws the final style (x1101-sec) from the first paint; Lessons left is the one primary.
+- 1596 · Header numbers / Overview flickered on every background refresh: each refresh redrew the whole page even with the same data. Now a
+  redraw of the page on screen is skipped when the data (as it arrived from the server) is unchanged: same-data refetch 153 DOM changes → 0;
+  changed data (e.g. lessons left 11.5 → 10.5) redraws as before. Class lists keep updating the Schedule box on their own.
+- Her conditions (storage full, answers 1–6 s random order, 4x CPU): CLS 0 laptop and phone; normal cached open CLS 0. regress-saves 17/17;
+  stability students + astudents ok. Rollback `rollback-pre-1595`.
+- Coordination: the paint-gate agent (1650–1659) was told about the toolbar / stuRender changes.
