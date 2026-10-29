@@ -6597,7 +6597,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1474;
+const COE_V = 1475;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -10746,7 +10746,7 @@ return `<div class="cls ${e.cancelled?'x':''} ${e.type==='Trial'?'trial':e.type=
     if(typeof DB === 'undefined' || !DB){ toast('Opening the student’s DATABASE row…'); try{ await loadDb(true); }catch(e){} }
     const r = ((typeof DB !== 'undefined' && DB && DB.rows) || []).find(x => up(x[0]) === code);
     if(!r) return toast(code + ' is not in DATABASE yet');
-    closeSheet(); setTimeout(() => stuForm(r[r.length - 1], r[0]), 120); };
+    stuForm(r[r.length - 1], r[0]); };   /* 1597: opens over the student page (Back returns to it) instead of closing and reopening */
   const btn = (code, cls) => '<button class="btn ' + (cls || 'ghost') + ' sm s2-edit" onclick="event.stopPropagation();stuEdit(\'' + esc(code) + '\')">' + PEN + 'Edit details</button>';
   // student page: top buttons + Profile header
   const _sr = window.stuRender;
@@ -21298,11 +21298,12 @@ function essentials(){
   const sub = [...b.querySelectorAll('.mute.small')].find(x => /DATABASE/.test(x.textContent)); if(!sub) return;
   const m = /saves into this row|New row for/.test(sub.textContent) ? sub.textContent.match(/ST-\d{4}-\d{3}/) : null; if(!m) return;
   const code = m[0], newRow = /New row for/.test(sub.textContent); b.querySelector('#sEn').dataset.sf = 1;
+  b.classList.add('sfw1597'); setTimeout(() => { b.classList.remove('sfw1597'); }, 2500);   /* 1597: shown once folded */
   if(!document.getElementById('sfCss')) document.head.insertAdjacentHTML('beforeend', '<style id="sfCss">#sheetBody .sf-h{display:none!important}.sf-sum{display:flex;align-items:center;gap:10px;margin:6px 0 4px;padding:12px 14px;border-radius:14px;background:var(--tint,#EEF7F8)}.sf-sum>div{flex:1;min-width:0;font-size:14px;line-height:1.6;color:#2E2650}.sf-sum>div i{font-style:normal;margin:0 6px;color:#9A97AE}.sf-sum>div span:first-child{font-weight:700}.sf-miss{margin:2px 2px 8px;color:#B8553D}</style>');
   const go = () => { if(!document.body.contains(b) || !b.querySelector('#sEn')) return; fold(b);
     const h1 = b.querySelector('h1'), nm = fv(b.querySelector('#sEn')) || fv(b.querySelector('#sCn')); if(newRow && h1 && nm && /^New student/.test(h1.textContent)){ h1.textContent = nm + ' · enrollment'; sub.textContent = code + ' · already in the app · only what is missing is open below'; }
     if(newRow){ const d = b.querySelector('#sEnr'); if(d && !d.open){ d.open = true; try{ stuBtn(0); }catch(x){} } } else foldEnr(b);
-    snap(b); };
+    snap(b); b.classList.remove('sfw1597'); };
   const fill = d => { if(!d) return; Object.values(SF).forEach(F => F.forEach(([id, i, t]) => { if(i == null) return; let v = d[i]; if(v == null || v === '') return; v = String(v);
     if(t === 'd') v = v.slice(0, 10); if(t === 't'){ const mm = v.match(/(\d{1,2}):(\d{2})/); v = mm ? mm[1].padStart(2, '0') + ':' + mm[2] : ''; } setv(b.querySelector('#' + id), v); })); };
   const need = !fv(b.querySelector('#sEn')) && !fv(b.querySelector('#sCn'));
@@ -34623,7 +34624,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       const T = learnerTag1588(code), old = line.querySelector('.lt1588'); if(a.dataset.lb !== T.k) a.dataset.lb = T.k; if(old && old.outerHTML === T.html) return; if(old) old.outerHTML = T.html; else line.insertAdjacentHTML('beforeend', T.html); }); }   /* 1592: the band on the row too (filter without :has) */
   function card(){ if(typeof STU === 'undefined' || !STU || !STU.code) return; if(!dbReady()){ const h0 = document.querySelector('#sheetBody .shero h1'); if(h0 && !h0.querySelector('.lt1588')) h0.insertAdjacentHTML('beforeend', '<span class="lt1588 unk" aria-hidden="true" style="visibility:hidden">Young Learners</span>'); return; }   /* 1594: space kept */ const h = document.querySelector('#sheetBody .shero h1'); if(!h) return;
     const T = learnerTag1588(STU.code), old = h.querySelector('.lt1588'); if(old && old.outerHTML === T.html) return; if(old) old.outerHTML = T.html; else h.insertAdjacentHTML('beforeend', T.html); }
-  let q = 0; const run = () => { if(q) return; q = 1; Promise.resolve().then(() => { q = 0; try{ rows(); }catch(e){} try{ card(); }catch(e){} try{ const s = document.getElementById('sheet'); if(s && s.style.minHeight && !document.getElementById('stuLoad')) s.style.minHeight = ''; }catch(e){} }); };   /* + 1587 follow-up: a failed load does not keep the full-height loading card */   /* microtask: before the frame is painted */
+  let q = 0; const run = () => { if(q) return; q = 1; Promise.resolve().then(() => { q = 0; try{ rows(); }catch(e){} try{ card(); }catch(e){} try{ const s = document.getElementById('sheet'); if(s && s.style.minHeight && !document.getElementById('stuLoad') && !s.dataset.mh1597) s.style.minHeight = ''; }catch(e){} }); };   /* + 1587 follow-up: a failed load does not keep the full-height loading card */   /* microtask: before the frame is painted */
   const ob = id => { const el = document.getElementById(id); if(el) new MutationObserver(run).observe(el, { childList: true, subtree: true }); };
   ob('v-astudents'); ob('sheetBody');
   ['renderAStudents', 'stuRender'].forEach(n => { const f = window[n]; if(typeof f === 'function') window[n] = function(){ const r = f.apply(this, arguments); try{ rows(); card(); }catch(e){} return r; }; });
@@ -34909,5 +34910,8 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     return r0.apply(this, arguments); };
 })();
 </script>
+<script>/* 1597 · a card that opens on top of another keeps the height while it loads (no jump to a short loading card) */(function(){ if(window.__1597) return; window.__1597 = 1; const o = window.openSheet; if(typeof o !== 'function') return; let LC = 0, LH = 0; const c0 = window.closeSheet; if(typeof c0 === 'function') window.closeSheet = function(){ try{ const s = document.getElementById('sheet'); if(s && s.classList.contains('on')){ LH = s.offsetHeight; LC = Date.now(); } }catch(e){} return c0.apply(this, arguments); }; window.openSheet = function(html){ const sh = document.getElementById('sheet'), on = !!(sh && sh.classList.contains('on')), was = on || Date.now() - LC < 400, h = on ? sh.offsetHeight : was ? LH : 0; const r = o.apply(this, arguments); try{ if(was && h && /class="sk"/.test(String(html))){ sh.style.minHeight = h + 'px'; sh.dataset.mh1597 = 1; } else if(sh && sh.dataset.mh1597){ sh.style.minHeight = ''; delete sh.dataset.mh1597; } }catch(e){} return r; }; })();</script>
+<style id="css1597">#sheetBody.sfw1597>:not(h1):not(.mute.small):not(.sbk):not(#rnBack){visibility:hidden}
+@media(min-width:621px){#sheet #sheetBody.stu2 .shero.h1589 .grow>:is(.h-who,.h-learn):not(#z1597){flex-wrap:nowrap!important;overflow:hidden}#sheet #sheetBody.stu2 .shero.h1589 .grow>:is(.h-who,.h-learn):not(#z1597)>*{white-space:nowrap;min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}#sheet #sheetBody.stu2 .shero.h1589 .grow>:is(.h-who,.h-learn):not(#z1597)>:first-child{flex:none}}</style>
 </body>
 </html>
