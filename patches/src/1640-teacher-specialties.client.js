@@ -10,7 +10,7 @@
   const URL1640 = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-partner-spec';
   const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const BANDS = [['yl', 'Young learners 2–8', '幼儿'], ['kids', 'Kids 8–12', '少儿'], ['teens', 'Teens', '青少年'], ['adults', 'Adults · IELTS/TOEFL', '成人']];
-  const BOOKS = ['OD1', 'OD2', 'OD3', 'ODF', 'REF', 'RE1', 'RE2', 'IELTS', 'TOEFL'];
+  const BOOKS = ['PHONICS', 'OD1', 'OD2', 'OD3', 'ODF', 'REF', 'RE1', 'RE2', 'IELTS', 'TOEFL'];   // PHONICS = Oxford Phonics World 1–5 (TheAlphabet … LetterCombinations), one chip
   const ST = [['confirmed', 'Confirmed · partners see it'], ['draft', 'Draft · management only'], ['left', 'Left · not listed for partners']];
   const css = document.createElement('style'); css.id = 'st1640';
   css.textContent = '.sp40{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0 4px;background:#FCFCFE}.sp40 h3{margin:0 0 4px!important;font:400 15px "Fredoka One",var(--f)}' +
@@ -33,7 +33,7 @@
     return '<h3>Specialties <small style="font:500 12px Inter,var(--f);color:var(--mute)">shown on the partner portal when Confirmed</small>' + (t.spec ? '<span class="st ' + stc + '">' + e((ST.find(x => x[0] === s.status) || ['', 'Draft'])[1].split(' · ')[0]) + '</span>' : '<span class="st d">Not set</span>') + '</h3>' +
       '<div class="as40-note" style="margin:0">Partners see one age chip + up to two book chips, and the short line on the copied picture.</div>' +
       '<div class="row2">' + BANDS.map(b => chk('band', b[0], B.includes(b[0]), b[1])).join('') + chk('adv', 'adv', s.level === 'adv', 'Advanced level') + '</div>' +
-      '<div class="row2">' + [...new Set(BOOKS.concat(K))].map(b => chk('book', b, K.includes(b), b)).join('') + '</div>' +
+      '<div class="row2">' + [...new Set(BOOKS.concat(K))].map(b => chk('book', b, K.includes(b), b === 'PHONICS' ? 'Phonics (OPW 1–5)' : b === 'ODF' ? 'ODF (Discover Futures)' : b)).join('') + '</div>' +
       '<div class="as40-g" style="margin-top:10px"><label>Subject chip (optional)<input id="sp40s" maxlength="60" placeholder="辩论 · 演讲 Debate & public speaking" value="' + e(s.subj || '') + '"></label>' +
       '<label>Short line for the parent picture<input id="sp40l" maxlength="80" placeholder="擅长幼儿启蒙 · Young learners 2–8" value="' + e(s.line || '') + '"></label></div>' +
       '<div class="as40-g" style="margin-top:10px"><label>Status<select id="sp40st">' + ST.map(x => '<option value="' + x[0] + '"' + ((s.status || 'draft') === x[0] ? ' selected' : '') + '>' + e(x[1]) + '</option>').join('') + '<option value="">Clear (no specialty)</option></select></label>' +
