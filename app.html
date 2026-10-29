@@ -6512,7 +6512,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1447;
+const COE_V = 1448;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24184,14 +24184,19 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const AGE = { mgmtUrls: 1440, mgmtSlipPeople: 1440, mgmtProfiles: 360, schedLists: 120, moneyLists: 60, mgmtFixIgnored: 60, mgmtTrialFus: 30, mgmtAgreeMap: 120,
     mgmtVisitCoverage: 120, mgmtTeacherCard: 120, mgmtPerformance: 120, mgmtPayChecks: 60, mgmtPayReady: 60, mgmtNight: 120, mgmtHours: 60, mgmtWeekSum: 120,
     mgmtTeacherVisits: 60, mgmtHealth: 30, mgmtTrials: 15, mgmtReports: 15, mgmtReportsWait: 15, mgmtPeer: 30, mgmtMyPay: 60, tPayCheck: 30, tPayReady: 30 };
-  let CFG = null, cfgAt = 0, rf = 0;
+  let CFG = null, cfgAt = 0, rf = 0, LSF = '', LSA = 0;
+  const REL = { mgmtTrials: /Trial|Enrol|Enq/, mgmtTrialFus: /Trial|Enrol|Enq/, mgmtReports: /Report|Fb/, mgmtReportsWait: /Report|Fb/, mgmtPeer: /Peer/, mgmtPayChecks: /Pay|Paid/, mgmtPayReady: /Pay|Paid|Report|Peer|Vid/,
+    mgmtFixIgnored: /Fix/, schedLists: /Class|Sched|Student|Enrol|Renew|Teacher|Staff/, moneyLists: /Sale|Expense|Paid|Refund|Renew|Enrol/, mgmtAgreeMap: /Agree/, mgmtVisitCoverage: /Visit|Monitor/, mgmtTeacherCard: /Teacher|Profile|Staff/,
+    mgmtPerformance: /Report|Fb|Peer|Qa/, mgmtNight: /Note|Homework|Vid|Class/, mgmtHours: /time|Time|Leave/, mgmtWeekSum: /Class|Time/, mgmtTeacherVisits: /Visit|Monitor/, mgmtProfiles: /Profile/, mgmtSlipPeople: /Staff|Teacher/,
+    mgmtMyPay: /Pay|Paid/, tPayCheck: /Pay|time|Time|class|Class/, tPayReady: /Fb|Peer|Vid|Report/ };
   document.addEventListener('click', ev => { try{ if(ev.target && ev.target.closest && ev.target.closest('#rf')) rf = Date.now(); }catch(e){} }, true);
   function cfg(){ if(Date.now() - cfgAt > 5 * 6e4 && typeof sbDoc === 'function'){ cfgAt = Date.now(); sbDoc('sys:dbonly').then(d => { CFG = d && d.data || null; }).catch(() => {}); } return CFG; }
   const w = function(fn){ const args = Array.prototype.slice.call(arguments, 1), self = this;
-    try{ const C = cfg(); if(C && C.off) return base.apply(this, arguments);
+    try{ if(!(typeof API_READ !== 'undefined' && API_READ.test(fn)) && !(typeof API_BG !== 'undefined' && API_BG.test(fn)) && !(typeof SB_R !== 'undefined' && SB_R.test(fn)) && !/Seen|Ack|Pulse|Nudge|Pdf|Check/.test(fn)) { LSF = fn; LSA = Date.now(); }   /* 1605: the last save */
+      const C = cfg(); if(C && C.off) return base.apply(this, arguments);
       const m = C && C.ages && C.ages[fn] != null ? +C.ages[fn] : AGE[fn];
       if(m > 0 && typeof LIVE !== 'undefined' && LIVE && typeof sbOn === 'function' && sbOn() && typeof sbKey === 'function' && args[0] === TOKEN && Date.now() - rf > 5000
-        && !(typeof SB_LASTW !== 'undefined' && SB_LASTW && Date.now() - SB_LASTW < 120000)){
+        && !(Date.now() - LSA < 120000 && REL[fn] && REL[fn].test(LSF))){   /* 1605: only a related save asks Google again */
         const key = sbKey(fn, args);
         return Promise.race([(typeof sbDocV === 'function' ? sbDocV(key, fn) : sbDoc(key)), new Promise(z => setTimeout(() => z(null), 4500))]).then(d => (d && d.data != null && !(d.data && d.data.ok === false) && Date.now() - Date.parse(d.at) < m * 6e4) ? d.data : base.apply(self, [fn].concat(args)), () => base.apply(self, [fn].concat(args))); }
     }catch(e){}
