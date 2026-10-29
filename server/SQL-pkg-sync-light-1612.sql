@@ -1,0 +1,20 @@
+-- 1612 (29 Oct 2026, speed) · coe_pkg_sync made light. Applied as migration pkg_sync_light_1612 (old function in docs 'bak:1612').
+-- Cause: inside the per-package loop the renewal-rule lookup (coe_renew_at + coe_cls_days.hb) ran once per package (318), and each
+--   call grouped every class since 1 Oct through the coe_cls_days view: 2.6 s of the 2.8 s sync, every 5 minutes, with nothing to do.
+-- Fix: the same lookup is computed once per run into temp table rn (same joins, same filters, grouped by package) and read per package.
+--   Only 9 packages have a recorded payment time; every other package gets 0 / 0 / 0 exactly as before.
+-- The two edits (the rest of the function is unchanged):
+--   + before the loop:
+--       create temp table rn on commit drop as
+--         select p2.id, sum(d.hb) filter (where d.t = lower(trim(p2.teacher))) rh, sum(d.hb) rhp, max(ra.early) re
+--         from coe_packages p2 join coe_renew_at ra on ra.code = p2.code and ra.buy = p2.buy left join coe_cls_days d on d.code = p2.code and d.day = p2.buy
+--         where p2.removed_at is null group by p2.id;
+--   - in the loop:  select coalesce(sum(d.hb) filter (…), 0), coalesce(sum(d.hb), 0), coalesce(max(ra.early), 0) into rh, rhp, re from … where p2.id = rec.id;
+--   + in the loop:  select coalesce(z.rh, 0), coalesce(z.rhp, 0), coalesce(z.re, 0) into rh, rhp, re from (select 1) o left join rn z on z.id = rec.id;
+-- Checks (all rolled back): the per-package values are identical for all 318 packages; the old and the new function, run from the same
+--   state, return the same result and leave every package field the sync writes identical (fingerprint over 24 columns).
+-- Measured: sync alone 2.67 s → 0.21 s. Cron job 4 (sync + mirror): 03:15 3.46 s (old) → 03:25 0.70 s (new, same minute type).
+--   App reads during a run (coe_active_screen + coe_pkg_mon_rows, back to back): old 164 ms median (21 samples during the run) vs
+--   157 ms outside; new 191 ms (4 samples, the run is that short) vs 157 ms outside. The sync never blocked reads (row-level
+--   updates of changed rows only; the mirror upserts changed rows only); its cost was CPU.
+-- Undo: execute (select data->>'coe_pkg_sync' from docs where key = 'bak:1612');
