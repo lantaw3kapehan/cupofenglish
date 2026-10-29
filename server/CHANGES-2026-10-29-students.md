@@ -117,3 +117,28 @@ Checks: check.js + renewal suite each release; regress-saves 17/17 (1587, 1588, 
 - Student header: a wrapped meta line no longer starts with "·" (start-of-line separators are clipped); teacher name has no background.
 - Design tokens (`--coe-*`, 1620–1639) used with today's values as fallbacks. Checks: regress-saves 17/17; card open CLS 0.0007 laptop /
   0.008 phone (as 1589); Students list stability ok (one laptop refresh 0.025 under load, re-runs 0.014 / 0.0009). Rollback `rollback-pre-1590`.
+
+## 1591 · learner type = the partner portal's age bands (Misty 10:41)
+- English only in management: **Early Years 2–6 · Young Learners 7–12 · Teens 13–17 · Adults 18+** (same bands and colours as the partner portal).
+- Detection (`coeLearner`): a learner type passed in by a dialog → **age** (birthdate, always current; else the AGE column moved on by the
+  years since the DATABASE trial date) → trial report → course → grade (K / preschool → Early Years, G1–G6 → Young Learners, G7–G12 → Teens,
+  university → Adults) → student list. Unknown → "Type?" + App health. Hover shows the age and where it came from.
+- Chips (list rows, card header) and the Learner filter: All · Early Years · Young Learners · Teens · Adults with counts; "· IELTS" and PH kept.
+  A remembered old "YLE" filter falls back to All.
+- Dialogs unchanged in category: Early Years / Young Learners → the kids path, Teens → teens, Adults → the adult types (checked: adult business
+  trial → Course plan Adults · Business English; a Young Learner → Price picture Kids & teens; an adult → Adults · 18+; isAdult agrees).
+- Behaviour change to note: age now outranks the trial report and the course (e.g. a 20-year-old on a kids' book is Adults).
+
+Real data (read-only, 29 Oct 10:5x; same rules in SQL; the app's last fallback, the student list, is not in SQL):
+
+| Band | Active (253) | All on DATABASE (677) |
+|---|---|---|
+| Early Years | 6 | 18 |
+| Young Learners | 187 | 408 |
+| Teens | 50 | 138 |
+| Adults | 9 | 58 |
+| Type? | 1 | 55 |
+
+Where the band came from (active / all): birthdate 230 / 471 · AGE column 1 / 1 · trial report 5 / 11 · course 13 / 101 · grade 3 / 38 · unknown 1 / 55.
+Checks: regress-saves 17/17; card open CLS 0.0007 laptop / 0.008 phone; Students list stability ok on re-run (main itself showed load spikes in
+the same session). Rollback `rollback-pre-1591`.
