@@ -1535,6 +1535,9 @@ show('app'); if(!D) skeleton();
 reload(false);
 }
 
+function bootFresh1609(){ try{ const m = window.__boot1609; if(m && m.tk === String(TOKEN).slice(-12) && Date.now() - m.t < 30 * 6e4) return true; }catch(e){}
+  try{ return Date.now() - +(localStorage.getItem('coe.m.bootAt') || 0) < 30 * 6e4 && localStorage.getItem('coe.m.bootTk') === String(TOKEN).slice(-12); }catch(e){ return false; } }
+function bootMark1609(){ window.__boot1609 = { t: Date.now(), tk: String(TOKEN).slice(-12) }; try{ localStorage.setItem('coe.m.bootAt', String(Date.now())); localStorage.setItem('coe.m.bootTk', String(TOKEN).slice(-12)); }catch(e){} }   /* 1609 */
 async function reload(force){
 $('rf').classList.add('spin');
 try{
@@ -1542,8 +1545,8 @@ if(force && D && D.mgr){   /* 639: management ↻ — its screens come from the 
   await loadMgmt(); if(MS){ MS = null; if(VIEW==='astudents') loadStudents(); } toast('Up to date'); $('rf').classList.remove('spin');
   const tk = TOKEN; api('refresh', tk).then(v => { if(!v || TOKEN !== tk) return; store('set', KEY_D, JSON.stringify(v)); const a = document.activeElement; if(document.querySelector('#sheet.on') || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return; D = v; render(); }).catch(() => {});
   return; }
-D = (!force && D && D.mgr && (function(){ try{ return Date.now() - +(localStorage.getItem('coe.m.bootAt') || 0) < 30 * 6e4 && localStorage.getItem('coe.m.bootTk') === String(TOKEN).slice(-12); }catch(e){ return false; } })()) ? D : await api('getBootstrap', TOKEN);   /* 1604: management copy on this device (same sign-in, < 30 min) */   /* 638: ↻ shows the database copy first (about 2 s); Google's full re-check ('refresh', about 30 s) runs behind it */
-store('set', KEY_D, JSON.stringify(D)); render(); if(!D.mgr){ prefetchTeacher(force); fastFails(); }
+D = (!force && D && D.mgr && bootFresh1609()) ? (window.__bootSkip1609 = 1, D) : (window.__bootSkip1609 = 0, await api('getBootstrap', TOKEN));   /* 1609 */   /* 1604: management copy on this device (same sign-in, < 30 min) */   /* 638: ↻ shows the database copy first (about 2 s); Google's full re-check ('refresh', about 30 s) runs behind it */
+store('set', KEY_D, JSON.stringify(D)); if(D && D.mgr && !window.__bootSkip1609) bootMark1609(); render(); if(!D.mgr){ prefetchTeacher(force); fastFails(); }
 if(force && D.mgr){ await loadMgmt(); if(MS){ MS = null; if(VIEW==='astudents') loadStudents(); } }
 if(force){ toast('Up to date'); const tk = TOKEN; api('refresh', tk).then(v => { if(!v || TOKEN !== tk) return; store('set', KEY_D, JSON.stringify(v)); const a = document.activeElement; if(document.querySelector('#sheet.on') || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return; D = v; render(); }).catch(() => {}); }
 }catch(e){ if(!D) toast('Could not load. Check your internet.'); }
@@ -6512,7 +6515,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1458;
+const COE_V = 1459;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24169,9 +24172,8 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   document.addEventListener('click', ev => { try{ if(ev.target && ev.target.closest && ev.target.closest('#rf')) rf = Date.now(); }catch(e){} }, true);
   const w = function(fn){ try{
       if(fn === 'getBootstrap' && typeof D !== 'undefined' && D && D.mgr && D.me && arguments[1] === TOKEN && Date.now() - rf > 5000){
-        let at = 0, tk = ''; try{ at = +(localStorage.getItem('coe.m.bootAt') || 0); tk = localStorage.getItem('coe.m.bootTk') || ''; }catch(e){}
-        if(Date.now() - at < 30 * 6e4 && tk === String(TOKEN).slice(-12)) return Promise.resolve(D);   /* same sign-in only */
-        const p = base.apply(this, arguments); Promise.resolve(p).then(x => { try{ if(x && x.me && x.mgr){ localStorage.setItem('coe.m.bootAt', String(Date.now())); localStorage.setItem('coe.m.bootTk', String(TOKEN).slice(-12)); } }catch(e){} }, () => {}); return p; }
+        if(typeof bootFresh1609 === 'function' && bootFresh1609()) return Promise.resolve(D);   /* 1609 */   /* same sign-in only */
+        const p = base.apply(this, arguments); Promise.resolve(p).then(x => { try{ if(x && x.me && x.mgr && typeof bootMark1609 === 'function') bootMark1609(); }catch(e){} }, () => {}); return p; }
     }catch(e){}
     return base.apply(this, arguments); };
   w.__1603 = 1; for(const k in base) try{ w[k] = base[k]; }catch(e){} window.api = w;
