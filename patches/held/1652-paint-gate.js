@@ -1,5 +1,5 @@
-// HELD (29 Oct 16:10): not applied. Tap-to-paint could not be shown within 20 ms on the test machine (see server/CHANGES-2026-10-29-paint-gate.md).
-// To ship later: move back to patches/ with a new number, after an interleaved tap-to-paint test.
+// HELD again (29 Oct 23:40): tap-to-paint passes, but no measured benefit on current main (redraw test already 0 on base; cold/warm traces mixed). Not applied.
+// 1652 = the 1650 paint gate held on 29 Oct (taps were slower while the runtime contrast passes ran; 1626 switched those off).
 // 1650: (Misty 11:57, student Abby ST-2026-105: "Class notice flashes green then turns outline · the Overview numbers flicker on refresh")
 // ROOT CAUSE of "shows old then new / it adjusts" on every screen: ~100 screen "finishers" (MutationObserver passes that restyle buttons,
 // add icons, fold the toolbar, fix colours …) wait 60–700 ms on a timer before they run. The browser paints the plain screen first and
@@ -15,7 +15,10 @@
 //    400 ms of finishing within one second, sends all finishers back to their own timers for 2 s. One row per page load goes to coe_speed as fn 'gate:cap' (view = the observer's name) when a cap is hit after the
 //    first 15 s or by a loop, like 'cls:student'.
 //  · timers started outside observers (saves, the 1614 scheduler, toasts, polling) are untouched; clearTimeout works as before.
-//  · 1111 stands down (window.__1111); window.__flicker1111() and window.__gate1650() return this gate's counters.
+//  · 1652 (re-tested 29 Oct evening, after 1626 switched the runtime contrast passes off): 1111 stays on and keeps doing what it did;
+//    in the second after a tap or key press this gate lets every timer through untouched, so a tapped screen costs exactly what it did
+//    (interleaved tap-to-paint test, 9–15 runs a side: no screen slower by more than 20 ms at the median). It acts on the frames
+//    nobody tapped for: data arriving, background refreshes. window.__gate1650() returns its counters.
 const lib = require('../../tools/lib.js'), file = process.argv[2];
 const GATE = `<script id="g1650">
 /* 1650 · paint gate: screen finishers run before the paint, not 60–700 ms after it (no "plain then finished" flash) */
@@ -23,8 +26,7 @@ const GATE = `<script id="g1650">
   if(window.__gate1650) return;
   var W = window, NMO = W.MutationObserver, nST = W.setTimeout, nCT = W.clearTimeout, nRAF = W.requestAnimationFrame;
   if(!NMO || typeof nRAF !== 'function' || typeof queueMicrotask !== 'function' || typeof Reflect === 'undefined' || !Reflect.construct) return;
-  W.__1111 = 1;   /* the older, partial gate stands down */
-  var secAt = 0, secMs = 0, MAXD = 800, MAXR = 25, BUDGET = 150, TAPB = 16, PERK = 4, PER = new Map(), COST = new Map(), lastIn = -1e9;
+  var secAt = 0, secMs = 0, MAXD = 800, MAXR = 25, BUDGET = 150, PERK = 4, PER = new Map(), COST = new Map(), lastIn = -1e9;
   var DEPTH = 0, CUR = null, P = new Map(), inFrame = false, rafOn = false, mtOn = false, rounds = 0, spent = 0, coolUntil = 0, capStreak = 0, lastCapFrame = -1, frameNo = 0;
   var stats = { fast: 0, fallback: 0, frames: 0, maxRounds: 0, maxMs: 0, caps: 0, capped: {}, ms: {}, seen: {} }, logged = {}, nLogged = 0, nSeen = 0;
   var now = function(){ return W.performance && performance.now ? performance.now() : Date.now(); };
@@ -38,7 +40,7 @@ const GATE = `<script id="g1650">
     if(first && (loop || now() > 15000)) log(first.n); }
   var qt = 0; function quiet(){ var d = document.documentElement; if(!d.classList.contains('n1111')) d.classList.add('n1111'); if(qt) nCT.call(W, qt); qt = nST.call(W, function(){ qt = 0; d.classList.remove('n1111'); }, 350); }
   try{ ['pointerdown', 'keydown', 'touchstart'].forEach(function(ev){ addEventListener(ev, function(){ lastIn = now(); }, { capture: true, passive: true }); }); }catch(e){}
-  function budget(){ return now() - lastIn < 1000 ? TAPB : BUDGET; }   /* right after a tap: at most 20 ms, so the tap's screen is not slower */
+  function budget(){ return BUDGET; }
   function run(){ if(!P.size) return; var B = budget(); if(rounds >= MAXR || spent > B || now() < coolUntil){ cap(rounds >= MAXR); return; }
     rounds++; stats.maxRounds = Math.max(stats.maxRounds, rounds); var items = [], over = []; P.forEach(function(r){ var c = PER.get(r.k) || 0; if(c >= PERK){ over.push(r); return; } PER.set(r.k, c + 1); items.push(r); }); P.clear(); quiet();
     items.sort(function(x, y){ return (COST.get(x.k) || 0) - (COST.get(y.k) || 0); });   /* quick finishers first; a slow one that does not fit waits for its own timer */
@@ -57,7 +59,7 @@ const GATE = `<script id="g1650">
   W.requestAnimationFrame = function(cb){ if(typeof cb !== 'function') return nRAF.apply(W, arguments); return nRAF.call(W, function(t){ if(!inFrame){ inFrame = true; endSoon(); } return cb.call(W, t); }); };
   function plan(){ if(inFrame){ if(!mtOn){ mtOn = true; queueMicrotask(micro); } } else if(!rafOn){ rafOn = true; nRAF.call(W, frame); } }
   W.setTimeout = function(fn, ms){ var d = +ms || 0;
-    if(DEPTH > 0 && typeof fn === 'function' && d <= MAXD && now() >= coolUntil){
+    if(DEPTH > 0 && typeof fn === 'function' && d <= MAXD && now() >= coolUntil && now() - lastIn >= 1000){   /* in the second after a tap: exactly as before (1111 only), so taps are not slower */
       var a = arguments.length > 2 ? Array.prototype.slice.call(arguments, 2) : [];
       var r = { fn: fn, k: CUR || fn, n: nm(CUR || fn), done: false, id: 0 };
       r.go = function(){ if(r.done) return; r.done = true; P.delete(r.id); var t1 = now(); try{ fn.apply(W, a); } finally{ var dt = now() - t1; COST.set(r.k, COST.has(r.k) ? COST.get(r.k) * .7 + dt * .3 : dt); stats.ms[r.n] = Math.round(((stats.ms[r.n] || 0) + dt) * 10) / 10; } };
@@ -70,9 +72,9 @@ const GATE = `<script id="g1650">
     return Reflect.construct(NMO, [w], new.target || MO); }
   MO.prototype = NMO.prototype; try{ Object.setPrototypeOf(MO, NMO); }catch(e){}
   try{ W.MutationObserver = MO; }catch(e){}
-  W.__gate1650 = function(){ return stats; }; W.__flicker1111 = W.__gate1650;
+  W.__gate1650 = function(){ return stats; };
 })();
 </script>`;
 lib(file, [
-  ['<meta charset="utf-8">\n<script id="b1506">', '<meta charset="utf-8">\n' + GATE + '\n<script id="b1506">']
+  ['<meta charset="utf-8">\n<script id="l1651">', '<meta charset="utf-8">\n' + GATE + '\n<script id="l1651">']
 ]);
