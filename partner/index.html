@@ -173,6 +173,10 @@ details.more{margin-top:8px}details.more summary{min-height:44px;display:flex;al
 .wkprev{width:100%;max-width:520px;margin-left:auto;margin-right:auto;border-radius:14px;overflow:hidden;background:#F1F4F6;margin-top:10px;border:1px solid var(--line)}.wkprev img{width:100%;height:100%;display:block;opacity:0;transition:opacity .2s}
 .tchips{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:none;margin:0 -2px}.tchips::-webkit-scrollbar{display:none}
 .tchips button{flex:none;display:flex;align-items:center;gap:8px;min-height:48px;padding:5px 14px 5px 5px;border:1.5px solid var(--line);border-radius:999px;background:#fff;font-weight:700;font-size:15px;color:var(--ink)}.tchips .av{width:36px;height:36px;border-radius:50%;font-size:16px}.tchips em{font-style:normal;font-size:12px;color:var(--teal);font-weight:700}.tchips em.z{color:var(--mute);font-weight:500}
+.spc{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.spb,.spk{display:inline-flex;align-items:baseline;font-size:12.5px;font-weight:700;border-radius:999px;padding:2px 9px;line-height:1.45;white-space:nowrap}.spb em{font-style:normal;font-weight:500;margin-left:4px;opacity:.85}.spk{background:#F0F1F5;color:#4C4868}
+.sp-yl{background:#FFF0D2;color:#7A4A00}.sp-kids{background:#E7F5EE;color:#1F7A55}.sp-teens{background:#E6EEFB;color:#2456A6}.sp-adults{background:#EEEAF8;color:#5B4B9E}.sp-adv{background:#E3F4F5;color:#00707A}
+.mtc{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin-top:6px}.mtc.bk{grid-template-columns:repeat(6,minmax(0,1fr))}.mtc button{min-height:46px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-weight:800;font-size:14px;color:var(--ink);padding:2px 0;line-height:1.2}.mtc.bk button{min-height:40px;font-size:13px}.mtc button em{display:block;font-style:normal;font-size:11px;font-weight:600;color:var(--mute)}.mtc button[aria-pressed=true]{background:var(--teal);color:#fff;border-color:var(--teal)}.mtc button[aria-pressed=true] em{color:#E3F4F5}
+.fit{display:inline-flex;align-items:center;gap:3px;margin-left:6px;font-size:12px;font-weight:800;color:#1F7A55;background:#E7F5EE;border-radius:999px;padding:1px 8px;vertical-align:2px}.li.dim{opacity:.62}.oth{font-size:12.5px;font-weight:700;color:var(--mute);padding:10px 0 2px;border-top:1px solid var(--line)}
 .dchips{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;margin-top:8px}.dchips button{min-height:44px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-weight:700;font-size:14px;color:var(--ink);padding:0}.dchips button[aria-pressed=true]{background:var(--teal);color:#fff;border-color:var(--teal)}
 .brow{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin-top:10px}.brow .btn{padding:0 10px}
 .shc .snm{font-size:21px;font-weight:800;line-height:1.25}.shc .snm small{font-size:14px;color:var(--soft);font-weight:500;margin-left:4px}.shc .m{font-size:13px;color:var(--mute);margin-top:2px}
@@ -307,7 +311,7 @@ async function grab(op, k, fix, x) { try { const r = await call(op, { token: get
 let qBusy = 0, qDirty = 0;
 const qBlock = () => !$('sh').classList.contains('hide') || (document.activeElement && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName));
 async function quiet() { if (qBusy || document.hidden || !get(KEY) || $('app').classList.contains('hide')) return; qBusy = 1;
-  try { const R = await Promise.all([grab('list', 'list'), holdsGet(), grab('week', 'week', tidyWeek), S.pay ? grab('payments', 'pay') : false, S.tea ? grab('teachers', 'tea', tidyTea) : false]);
+  try { const R = await Promise.all([grab('list', 'list'), holdsGet(), specGet(), grab('week', 'week', tidyWeek), S.pay ? grab('payments', 'pay') : false, S.tea ? grab('teachers', 'tea', tidyTea) : false]);
     if (R.some(Boolean)) { save(); qDirty = 1; } if (qDirty && !qBlock()) { qDirty = 0; paint(); } } finally { qBusy = 0; } }
 // 28 Oct (Luna's renewal) · real time: while the page is open and visible, ask the server's tiny change stamp every 15 s; anything management saved
 //   (renewal, enrolment, package edit, payment, class change) changes it → refetch at once. The full quiet refresh stays as a 5-minute fallback.
@@ -320,7 +324,7 @@ setInterval(verCheck, 15e3); setInterval(quiet, 300e3); document.addEventListene
 document.addEventListener('focusout', () => setTimeout(() => { if (qDirty && !qBlock()) { qDirty = 0; paint(); } }, 300));
 async function holdsGet() { try { const r = await fetch(CSU, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'pholds', token: get(KEY) }) }); const j = await r.json();
     S.nopkg = j && j.ok && Array.isArray(j.nopkg) ? new Set(j.nopkg) : S.nopkg; const nh = j && j.ok && Array.isArray(j.codes) ? new Set(j.codes) : null, ch = !S.holds || !nh || [...nh].join() !== [...S.holds].join(); S.holds = nh; return ch; } catch (e) { const ch = S.holds !== null; S.holds = null; return ch; } }
-async function loadAll() { holdsGet().then(() => paint()); await Promise.all([grab('list', 'list'), grab('week', 'week', tidyWeek)]); if (S.list && S.list.partner) { $('pname').textContent = S.list.partner.name; put(NKEY, S.list.partner.name); }
+async function loadAll() { holdsGet().then(() => paint()); specGet().then(ch => { if (ch && !qBlock()) paint(); }); await Promise.all([grab('list', 'list'), grab('week', 'week', tidyWeek)]); if (S.list && S.list.partner) { $('pname').textContent = S.list.partner.name; put(NKEY, S.list.partner.name); }
   save(); paint(); const pre = () => Promise.all([grab('teachers', 'tea', tidyTea), grab('payments', 'pay')]).then(R => { save(); if (R.some(Boolean) && !qBlock() && (S.tab === 't' || S.tab === 'p' || S.tab === 'f')) paint(); });
   (window.requestIdleCallback || (f => setTimeout(f, 800)))(pre); }
 function need() { if ((S.tab === 't' || (S.view && S.view.k === 'tw')) && !S.tea) grab('teachers', 'tea', tidyTea).then(paint); if (S.tab === 'p' && !S.pay) grab('payments', 'pay').then(paint); }
@@ -483,13 +487,51 @@ function todayHtml() { const W = S.week, back = backBtn('首页', 'Home', "S.vie
 // ── 老师 Teachers ──
 function tidyWeek(r) { const nm = {}; (r.teachers || []).forEach(t => { t.name = tidyT(t.name); nm[t.name.toLowerCase()] = t.name; }); (r.mine || []).forEach(x => { x.teacher = nm[String(x.teacher).toLowerCase()] || tidyT(x.teacher); }); return r; }
 const wkOf = (t, w) => t.days.slice(w * 7, w * 7 + 7);
+// ── 1641 · teacher specialties (Misty 29 Oct 10:05–10:09 · "match first, then time"). One age-band chip (colour + text) and at most two
+//    book chips, the SAME on Who's free, Teachers, the copied weekly picture and the Who's-free picture. Data: coe-partner-spec =
+//    management's staff.specialties, CONFIRMED ones only (suggestions never reach partners). Teachers who left are not listed here
+//    (their past lessons and （曾任） tags on students stay). The age/book choice is remembered on this phone.
+const SPU = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-partner-spec', SPKEY = 'coe.partner.spec', MKEY = 'coe.partner.match';
+const BAND = { yl: ['幼儿 2–8岁', 'Young learners', '#7A4A00', '#FFF0D2'], kids: ['少儿 8–12岁', 'Kids', '#1F7A55', '#E7F5EE'], teens: ['青少年', 'Teens', '#2456A6', '#E6EEFB'],
+  adults: ['成人', 'Adults', '#5B4B9E', '#EEEAF8'], adv: ['进阶', 'Advanced', '#00707A', '#E3F4F5'] };
+const BSH = { yl: ['幼儿', 'Young learners'], kids: ['少儿', 'Kids'], teens: ['青少年', 'Teens'], adults: ['成人', 'Adults'], adv: ['进阶', 'Advanced'] };
+function specSet(j) { S.spec = { v: j.v, m: j.spec || {}, off: new Set(j.off || []) }; }
+try { const j = JSON.parse(get(SPKEY) || 'null'); if (j && j.ok) specSet(j); } catch (e) {}
+async function specGet() { try { const r = await fetch(SPU, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'spec', token: get(KEY) }) }); const j = await r.json();
+  if (!j || !j.ok) return false; const ch = !S.spec || S.spec.v !== j.v || JSON.stringify(j.spec) !== JSON.stringify(S.spec.m); specSet(j); put(SPKEY, JSON.stringify(j)); return ch; } catch (e) { return false; } }
+const spOf = n => (S.spec && S.spec.m[String(n || '').toLowerCase()]) || null;
+const offT = n => !!(S.spec && S.spec.off.has(String(n || '').toLowerCase()));
+const liveT = L => (L || []).filter(t => !offT(t.name));
+function spBand(sp) { if (!sp) return null; const K = sp.level === 'adv' ? ['adv'] : (sp.bands || []).filter(k => BAND[k]); if (!K.length) return null;
+  return K.length === 1 ? { k: K[0], zh: BAND[K[0]][0], en: BAND[K[0]][1] } : { k: K[0], zh: K.map(k => BSH[k][0]).join(' · '), en: K.map(k => BSH[k][1]).join(' & ') }; }
+// book codes exactly as in the COURSE column (OD1, OD2, ODF, REF, IELTS, TOEFL), grouped by series: 牛津探索 OD1–OD2 · 阅读探索 REF · 雅思 IELTS · 托福 TOEFL
+function spBooks(sp) { if (!sp) return []; const B = sp.books || [], used = new Set(), out = [];
+  [['牛津探索', /^OD(\d|F)$/], ['阅读探索', /^RE(\d|F)$/]].forEach(([zh, re]) => { const L = B.filter(b => re.test(b)); if (!L.length) return; L.forEach(b => used.add(b));
+    const n = L.map(b => b.slice(2)), run = L.length > 1 && n.every(x => /^\d$/.test(x)) && +n[n.length - 1] - +n[0] === L.length - 1; out.push(zh + ' ' + (run ? L[0] + '–' + L[L.length - 1] : L.join(' · '))); });
+  const ex = B.filter(b => /^(IELTS|TOEFL)$/.test(b)); if (ex.length) { ex.forEach(b => used.add(b)); out.push(ex.map(b => b === 'IELTS' ? '雅思 IELTS' : '托福 TOEFL').join(' · ')); }
+  B.filter(b => !used.has(b)).forEach(b => out.push(b)); if (sp.subj) out.unshift(sp.subj); return out.slice(0, 2); }
+function spChips(name) { const sp = spOf(name); if (!sp) return ''; const b = spBand(sp), bk = spBooks(sp); if (!b && !bk.length) return '';
+  return `<div class="spc">${b ? `<span class="spb sp-${b.k}">${esc(b.zh)}<em>${esc(b.en)}</em></span>` : ''}${bk.map(x => `<span class="spk">${esc(x)}</span>`).join('')}</div>`; }
+// the partner's choice: child's stage (age band) + optional book. A teacher fits when every chosen thing matches what management confirmed
+//   (no age band confirmed = not a mismatch on age, e.g. 进阶 Advanced teachers; a chosen book must be on the teacher's list).
+const MAGE = [['', '全部', 'All'], ['yl', '幼儿', '2–8岁'], ['kids', '少儿', '8–12岁'], ['teens', '青少年', 'Teens'], ['adults', '成人', '雅思托福']], MBOOK = ['', 'OD1', 'OD2', 'ODF', 'REF', 'IELTS'];
+function mState() { if (!S.mt) { let m = null; try { m = JSON.parse(get(MKEY) || 'null'); } catch (e) {} S.mt = { age: m && MAGE.some(x => x[0] === m.age) ? m.age : '', book: m && MBOOK.includes(m.book) ? m.book : '' }; } return S.mt; }
+window.mSet = (k, v) => { const M = mState(); M[k] = v; put(MKEY, JSON.stringify(M)); paint(); };
+function mFit(name) { const M = mState(); if (!M.age && !M.book) return 0; const sp = spOf(name); if (!sp) return -1; const bands = sp.bands || [], books = sp.books || []; let pos = 0;
+  if (M.age) { if (bands.includes(M.age)) pos++; else if (bands.length) return -1; }
+  if (M.book) { if (books.includes(M.book)) pos++; else return -1; }
+  return pos ? 1 : -1; }
+function mHtml() { const M = mState();
+  return `<div class="card" style="margin-top:8px"><div class="small" style="font-weight:800">孩子的情况<span class="en" style="display:inline;margin-left:6px">Match the child · good matches first</span></div>
+  <div class="mtc" role="group" aria-label="年龄段 Age">${MAGE.map(a => `<button aria-pressed="${M.age === a[0]}" onclick="mSet('age','${a[0]}')">${a[1]}<em>${a[2]}</em></button>`).join('')}</div>
+  <div class="mtc bk" role="group" aria-label="教材 Book (optional)">${MBOOK.map(b => `<button aria-pressed="${M.book === b}" onclick="mSet('book','${b}')">${b || '不限'}</button>`).join('')}</div></div>`; }
 // 1357 · find the right teacher fast: photo/name chips, then filters (week · day · time of day · has open slots); every row copies the picture in one tap
 function tfState() { if (!S.tf) S.tf = { wk: wkDef(), day: -1, part: '', has: false }; return S.tf; }
 const tfOpen = (t, F) => wkOf(t, F.wk).filter((d, i) => F.day < 0 || i === F.day).reduce((a, d) => a.concat(d.open.filter(x => inPart(x, F.part))), []);
 function teachersHtml() {
   const W = S.week; if (!W) return S.err.week ? errBox() : null; const F = tfState();
   const P = {}; ((S.tea && S.tea.teachers) || []).forEach(t => { P[t.name.toLowerCase()] = t; });
-  const T0 = (W.teachers || []).filter(t => t.open > 0 || t.mine > 0 || P[t.name.toLowerCase()]);
+  const T0 = liveT(W.teachers).filter(t => t.open > 0 || t.mine > 0 || P[t.name.toLowerCase()]);
   if (!T0.length) return `<div class="card empty" style="margin-top:16px">暂无老师信息${en('No teachers to show')}</div>`;
   const filt = F.day >= 0 || F.part || F.has, T = T0.map(t => ({ t, o: tfOpen(t, F) })).filter(x => !F.has || x.o.length);
   if (filt) T.sort((a, b) => b.o.length - a.o.length);
@@ -501,7 +543,7 @@ function teachersHtml() {
     <div class="seg" role="group" aria-label="时段 Time of day" style="margin-top:8px">${PARTS.map(p => `<button aria-pressed="${F.part === p[0]}" onclick="S.tf.part='${p[0]}';paint()">${p[1]}<span class="en">${p[2]}</span></button>`).join('')}</div>
     <label class="ck"><input type="checkbox" ${F.has ? 'checked' : ''} onchange="S.tf.has=this.checked;paint()"><span>只看有空的老师<span class="en" style="display:block;margin:0">Has open slots ${F.wk ? 'that week' : 'this week'}</span></span></label></div>`;
   return h + h2('老师', 'Teachers · ' + T.length) + `<div class="card">${T.length ? T.map(({ t, o }) => { const p = P[t.name.toLowerCase()] || {}, id = encodeURIComponent(t.name);
-      return `<div class="li" style="align-items:flex-start"><div class="av">${esc(t.name.charAt(0))}</div><div class="grow"><div class="nm">${esc(t.name)} 老师</div><div class="m">${esc(String(t.sub || p.sub || '').replace(/^专业英语教师\s*·\s*/, ''))}</div>
+      return `<div class="li" style="align-items:flex-start"><div class="av">${esc(t.name.charAt(0))}</div><div class="grow"><div class="nm">${esc(t.name)} 老师</div>${spChips(t.name)}<div class="m">${esc(String(t.sub || p.sub || '').replace(/^专业英语教师\s*·\s*/, ''))}</div>
       <div class="tags">${tag(o.length ? '' : 'grey', 'ok', (filt ? '符合 ' : WKN[F.wk][0] + ' ') + o.length + ' 个可约')}${(p.mine || []).length ? tag('purple', 'user', '您的学生 ' + p.mine.length) : ''}</div>
       ${F.day >= 0 && o.length ? `<div class="chips">${ranges(o).map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}
       <div class="brow">${wkBtnsHtml(t.name, F.wk, false)}<button class="btn sm ghost" onclick="${go1(t.name)}">${ic('cal')}课表 · Schedule</button>${p.sub || p.creds ? `<button class="btn sm ghost" onclick="profile(decodeURIComponent('${id}'))">${ic('user')}简介</button>` : ''}</div></div></div>`; }).join('')
@@ -556,17 +598,19 @@ function freeDates(F) { const W = S.week, t = today(); if (F.mode === 'today') r
   return [F.day || t]; }
 function freeState() { if (!S.free) S.free = { mode: 'today', part: '', time: '', day: '', wk: 0 }; return S.free; }
 function freeGo(m) { freeState().mode = m; tab('f'); }
-function freeHtml() { const W = S.week; if (!W) return S.err.week ? errBox() : null; const F = freeState(), T = W.teachers || [];
-  const M = [['today', '今天', 'Today'], ['wkend', '本周末', 'This weekend'], ['pick', '选时间', 'Pick a time']];
-  let h = `<div class="seg" role="group" aria-label="什么时候 When" style="margin-top:8px">${M.map(m => `<button aria-pressed="${F.mode === m[0]}" onclick="S.free.mode='${m[0]}';paint()">${m[1]}<span class="en">${m[2]}</span></button>`).join('')}</div>`;
+function freeHtml() { const W = S.week; if (!W) return S.err.week ? errBox() : null; const F = freeState(), T = liveT(W.teachers), M = mState(), on = !!(M.age || M.book);
+  const WH = [['today', '今天', 'Today'], ['wkend', '本周末', 'This weekend'], ['pick', '选时间', 'Pick a time']];
+  let h = mHtml() + `<div class="seg" role="group" aria-label="什么时候 When" style="margin-top:10px">${WH.map(m => `<button aria-pressed="${F.mode === m[0]}" onclick="S.free.mode='${m[0]}';paint()">${m[1]}<span class="en">${m[2]}</span></button>`).join('')}</div>`;
   if (F.mode === 'pick') { const dates = wkDates(F.wk); if (!dates.includes(F.day)) F.day = dates.find(d => d >= W.today) || dates[0];
     const times = [...new Set(T.flatMap(t => freeOn(t, F.day, F.part, '')))].sort(); if (F.time && !times.includes(F.time)) F.time = '';
     h += `<div class="card" style="margin-top:10px">${wkBar(F.wk, 'frWk')}<div class="dstrip" role="tablist" aria-label="选择日期 Choose a day">${dates.map((d, i) => { const n = T.filter(t => freeOn(t, d, F.part, '').length).length; return `<button role="tab" aria-selected="${d === F.day}" class="${d < W.today ? 'old' : ''}" onclick="S.free.day='${d}';paint()"><b>周${WKZ[i]}</b><span>${+d.slice(5, 7)}/${+d.slice(8, 10)}</span><em class="${n ? '' : 'z'}">${n ? n + '位' : '—'}</em></button>`; }).join('')}</div>
     <div class="small mute" style="margin-top:10px;font-weight:600">时间 · Time</div><div class="tmchips" role="group" aria-label="时间 Time"><button aria-pressed="${!F.time}" onclick="S.free.time='';paint()">任意<em>Any</em></button>${times.map(x => { const n = T.filter(t => freeOn(t, F.day, '', x).length).length; return `<button aria-pressed="${x === F.time}" onclick="S.free.time='${x}';paint()">${x}<em>${n}位</em></button>`; }).join('')}</div></div>`; }
   if (F.mode !== 'pick' || !F.time) h += `<div class="seg" role="group" aria-label="时段 Part of the day" style="margin-top:10px">${PARTS.map(p => `<button aria-pressed="${F.part === p[0]}" onclick="S.free.part='${p[0]}';paint()">${p[1]}<span class="en">${p[2]}</span></button>`).join('')}</div>`;
   const dates = freeDates(F); let any = 0;
-  h += dates.map(d => { const hits = T.map(t => ({ t, s: freeOn(t, d, F.part, F.mode === 'pick' ? F.time : '') })).filter(x => x.s.length).sort((a, b) => b.s.length - a.s.length); any += hits.length;
-    return h2(dCn(d) + (F.mode === 'pick' && F.time ? ' ' + F.time : ''), dEn(d) + ' · ' + hits.length + ' free') + `<div class="card">${hits.length ? hits.map(x => `<div class="li" style="align-items:flex-start"><div class="av">${esc(x.t.name.charAt(0))}</div><div class="grow"><div class="nm">${esc(x.t.name)} 老师</div><div class="chips">${ranges(x.s).map(s => `<span>${esc(s)}</span>`).join('')}</div><div class="brow">${wkBtnsHtml(x.t.name, Math.max(0, Math.floor((W.dates || []).indexOf(d) / 7)), false)}<button class="btn sm ghost" onclick="go({k:'tw',name:decodeURIComponent('${encodeURIComponent(x.t.name)}'),wk:${Math.max(0, Math.floor((W.dates || []).indexOf(d) / 7))},day:'${d}'})">${ic('cal')}课表 · Schedule</button></div></div></div>`).join('') : `<div class="empty">这个时间没有老师有空${en('Nobody is free then')}</div>`}</div>`; }).join('');
+  let nFit = 0;
+  h += dates.map(d => { const hits = T.map(t => ({ t, s: freeOn(t, d, F.part, F.mode === 'pick' ? F.time : ''), f: mFit(t.name) })).filter(x => x.s.length).sort((a, b) => (b.f - a.f) || (b.s.length - a.s.length)); any += hits.length;
+    const nf = hits.filter(x => x.f > 0).length; nFit += nf;
+    return h2(dCn(d) + (F.mode === 'pick' && F.time ? ' ' + F.time : ''), dEn(d) + ' · ' + hits.length + ' free') + `<div class="card">${hits.length ? hits.map((x, i) => `${on && x.f <= 0 && (i === 0 || hits[i - 1].f > 0) ? `<div class="oth">${nf ? '其他有空的老师 · Others free then' : '没有完全适合的老师 · 以下老师有空 · No exact match — others free then'}</div>` : ''}<div class="li${on && x.f <= 0 ? ' dim' : ''}" style="align-items:flex-start"><div class="av">${esc(x.t.name.charAt(0))}</div><div class="grow"><div class="nm">${esc(x.t.name)} 老师${on && x.f > 0 ? `<span class="fit">${ic('ok', 12)}适合 · Good match</span>` : ''}</div>${spChips(x.t.name)}<div class="chips">${ranges(x.s).map(s => `<span>${esc(s)}</span>`).join('')}</div><div class="brow">${wkBtnsHtml(x.t.name, Math.max(0, Math.floor((W.dates || []).indexOf(d) / 7)), false)}<button class="btn sm ghost" onclick="go({k:'tw',name:decodeURIComponent('${encodeURIComponent(x.t.name)}'),wk:${Math.max(0, Math.floor((W.dates || []).indexOf(d) / 7))},day:'${d}'})">${ic('cal')}课表 · Schedule</button></div></div></div>`).join('') : `<div class="empty">这个时间没有老师有空${en('Nobody is free then')}</div>`}</div>`; }).join('');
   if (!dates.length) h += `<div class="card empty" style="margin-top:12px">本周末已过${en('This weekend has passed')}</div>`;
   return h + `<button class="btn block" style="margin-top:14px" onclick="picFree()" ${any ? '' : 'disabled'}>${ic('share')}分享图片 · Share picture</button><div class="note grey">图片只含老师的可约时间，不含任何学生姓名${en('The picture shows open times only — no student names')}</div>` + foot(); }
 window.frWk = w => { S.free.wk = w; S.free.day = ''; paint(); };
@@ -688,8 +732,8 @@ async function picTeacher() {
 async function picFree() {
   const F = freeState(), V = { part: F.mode === 'pick' && F.time ? '' : F.part }, dates = freeDates(F).map(d => ({ d, i: wdOf(d) })).filter(x => x.d >= S.week.today), CX = 44, NW = 128, COLS = 3, GAP = 8, CW = (PW - CX * 2 - NW - GAP * (COLS - 1)) / COLS, LH = 40;
   const part = PARTS.find(p => p[0] === V.part)[1];
-  const sec = dates.map(x => ({ ...x, T: (S.week.teachers || []).map(t => ({ t, R: ranges(freeOn(t, x.d, V.part, F.mode === 'pick' ? F.time : '')) })).filter(y => y.R.length) }));
-  const rowH = y => Math.max(1, Math.ceil(y.R.length / COLS)) * LH + 10, secH = x => 58 + (x.T.length ? x.T.reduce((a, y) => a + rowH(y), 0) : 40) + 16;
+  const sec = dates.map(x => ({ ...x, T: liveT(S.week.teachers).map(t => ({ t, R: ranges(freeOn(t, x.d, V.part, F.mode === 'pick' ? F.time : '')), n: freeOn(t, x.d, V.part, F.mode === 'pick' ? F.time : '').length, f: mFit(t.name), b: spBand(spOf(t.name)) })).filter(y => y.R.length).sort((a, b) => (b.f - a.f) || (b.n - a.n)) }));
+  const rowH = y => Math.max(Math.max(1, Math.ceil(y.R.length / COLS)) * LH + 10, y.b ? 74 : 0), secH = x => 58 + (x.T.length ? x.T.reduce((a, y) => a + rowH(y), 0) : 40) + 16;
   const bodyH = 12 + sec.reduce((a, x) => a + secH(x), 0) + (sec.length ? 0 : 60);
   const cv = await canvasFrame(PW, bodyH, { icon: 'users', pill: '可约时间 · Open times', title: '谁有空 · Who\u2019s free', sub: dates.map(x => dCn(x.d)).join('、') + (F.mode === 'pick' && F.time ? ' ' + F.time : ' · ' + part), sub2: '北京时间 Beijing time · 可开课时段（每节25分钟）· 预约请联系顾问老师' }, (c, rr, CX, top) => {
     let y = top + 12; if (!sec.length) { c.fillStyle = MUTE; c.font = '400 18px ' + PF; c.fillText('这一周已没有可约时间 · No open times left this week', CX, y + 30); }
@@ -697,6 +741,7 @@ async function picFree() {
       if (!x.T.length) { c.fillStyle = MUTE; c.font = '400 16px ' + PF; c.fillText('这一时段没有老师有空 · Nobody free', CX + 6, y + 24); y += 40 + 16; return; }
       x.T.forEach((r, n) => { const h = rowH(r); if (n % 2 === 0) { c.fillStyle = '#F7F9FA'; rr(CX - 4, y, PW - CX * 2 + 8, h, 10); c.fill(); }
         c.fillStyle = NAVY; c.textAlign = 'left'; let f = 22; c.font = '400 ' + f + 'px ' + PB; while (c.measureText(r.t.name).width > NW - 14 && f > 13) { f--; c.font = '400 ' + f + 'px ' + PB; } c.fillText(r.t.name, CX + 6, y + 31);
+        if (r.b) { c.font = '700 13px ' + PF; const lb = fitText(c, r.b.zh, NW - 22, 13, 10, '700'), bw = c.measureText(lb).width + 16; c.fillStyle = BAND[r.b.k][3]; rr(CX + 4, y + 42, bw, 22, 11); c.fill(); c.fillStyle = BAND[r.b.k][2]; c.fillText(lb, CX + 12, y + 58); }
         r.R.forEach((s, k) => { const bx = CX + NW + (k % COLS) * (CW + GAP), by = y + 6 + Math.floor(k / COLS) * LH; c.fillStyle = '#E6F6F5'; c.strokeStyle = '#3FA7A8'; c.lineWidth = 1.2; rr(bx, by, CW, LH - 8, 10); c.fill(); c.stroke();
           c.textAlign = 'center'; c.fillStyle = NAVY; c.fillText(fitText(c, s, CW - 8, 17, 11, '700'), bx + CW / 2, by + 22); c.textAlign = 'left'; });
         y += h; }); y += 16; }); });
@@ -723,11 +768,12 @@ function wkpCol(pastDay, items, hasHours, fullSpec) {
   return (fullSpec || (!open && bk) ? [{ full: 1 }] : !hasHours && !items.length ? [{ off: 1 }] : []).concat(L); }
 function wkCols(t, wk) { const nb = nowBJ(), td = today();
   return wkOf(t, wk).map(d => wkpCol(d.date < td, d.open.map(x => ({ t: x, b: 0 })).concat(d.booked.map(b => ({ t: b.t, b: 1, gone: (d.date + ' ' + b.t) < nb }))).sort((a, b) => a.t.localeCompare(b.t)), !!d.hours, !!d.full)); }
-const wkH = (t, wk) => { const rows = Math.max(1, ...wkCols(t, wk).map(c => c.length)); return 520 + 90 + rows * 58 + 70 + 60 + 120; };
+const wkSo = t => { const sp = spOf(t.name); return sp && (spBand(sp) || spBooks(sp).length) ? (sp.line ? 112 : 70) : 0; };   // 1641 · room for the specialty chips + line
+const wkH = (t, wk) => { const rows = Math.max(1, ...wkCols(t, wk).map(c => c.length)); return 520 + wkSo(t) + 90 + rows * 58 + 70 + 60 + 120; };
 async function wkCanvas(t, wk, S2) {
   try { await avFontsLoad(); } catch (e) {}
   const [logo, tg] = await Promise.all([imgOf('#logoImg'), imgOf('#tagImg')]);
-  const CX = 80, Wc = 1160, F = AVF, B = AVB, NAVY = '#2B2253', MUTE = '#6F6B85', cols = wkCols(t, wk), rows = Math.max(1, ...cols.map(c => c.length)), gridTop = 520, H = wkH(t, wk);
+  const CX = 80, Wc = 1160, F = AVF, B = AVB, NAVY = '#2B2253', MUTE = '#6F6B85', cols = wkCols(t, wk), rows = Math.max(1, ...cols.map(c => c.length)), so = wkSo(t), gridTop = 520 + so, H = wkH(t, wk);
   const cv = document.createElement('canvas'); cv.width = (Wc + 60) * S2; cv.height = (H + 60) * S2; const c = cv.getContext('2d'); c.scale(S2, S2);
   const rr = (x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
   const chipOpen = (x, y, w, txt) => { c.fillStyle = '#F4FAFA'; c.strokeStyle = '#3FA7A8'; c.lineWidth = 1.6; rr(x, y, w, 44, 22); c.fill(); c.stroke(); c.fillStyle = NAVY; c.font = '700 22px ' + F; c.fillText(txt, x + w / 2, y + 30); };
@@ -741,6 +787,11 @@ async function wkCanvas(t, wk, S2) {
   y += 140; c.fillStyle = '#EEF0F4'; c.fillRect(CX, y - 20, Wc - CX * 2, 2);
   const label = (en, zh, yy) => { c.fillStyle = MUTE; c.font = '400 22px ' + F; c.fillText(en + ' · ' + zh, CX, yy); };
   label('Teacher', '老师', y + 20); c.fillStyle = NAVY; c.font = '400 56px ' + B; c.fillText('Teacher ' + t.name, CX, y + 82); c.fillStyle = '#4A4766'; c.font = '400 30px ' + F; c.fillText(zhT(t.name), CX, y + 124);
+  if (so) { const sp = spOf(t.name), b = spBand(sp), bk = spBooks(sp); let x = CX; c.textBaseline = 'middle';
+    const pill = (txt, bg, fg) => { c.font = '700 22px ' + F; const w = c.measureText(txt).width + 36; if (x + w > Wc - CX) return; c.fillStyle = bg; rr(x, y + 146, w, 44, 22); c.fill(); c.fillStyle = fg; c.fillText(txt, x + 18, y + 169); x += w + 12; };
+    if (b) pill(b.zh + ' · ' + b.en, BAND[b.k][3], BAND[b.k][2]); bk.forEach(k => pill(k, '#F0F1F5', '#4C4868')); c.textBaseline = 'alphabetic';
+    if (sp.line) { c.fillStyle = '#4A4766'; c.font = '400 24px ' + F; let ln = sp.line; while (ln.length > 1 && c.measureText(ln).width > Wc - CX * 2) ln = ln.slice(0, -1); c.fillText(ln, CX, y + 228); } }
+  y += so;
   label('Time', '时间', y + 178); c.fillStyle = NAVY; c.font = '700 30px ' + F; c.fillText('25 min per class · 每节25分钟', CX, y + 220); c.fillStyle = '#4A4766'; c.font = '400 24px ' + F; c.fillText('China time · 北京时间 · 24-hour clock', CX, y + 254);
   label('Choose your weekly class times', '请选择每周固定上课时间', gridTop - 4);
   const ao = asOfCn(); if (ao) { c.textAlign = 'right'; c.fillStyle = MUTE; c.font = '400 20px ' + F; c.fillText('截至 As of ' + ao, Wc - CX, gridTop - 4); }
@@ -795,7 +846,7 @@ const wkBtnsHtml = (name, wk, big) => { const id = encodeURIComponent(name), dis
     : `<button class="btn sm" data-wkbtn ${dis} onclick="wkCopy('${id}',${wk},'')">${ic('copy')}复制图片</button>`; };
 // on-screen preview of the exact picture (fixed aspect ratio → no jump when it appears)
 async function wkPreview() { const V = S.view, box = $('wkPrev'); if (!V || V.k !== 'tw' || !box) return; const t = wkTeacher(V.name); if (!t) return;
-  const key = V.name + '|' + V.wk + '|' + S.h_week; if (box.dataset.k === key) return; box.dataset.k = key;
+  const key = V.name + '|' + V.wk + '|' + S.h_week + '|' + JSON.stringify(spOf(V.name)); if (box.dataset.k === key) return; box.dataset.k = key;
   const cv = await wkCanvas(t, V.wk, 1); if (box.dataset.k !== key) return; const im = box.querySelector('img'); im.src = cv.toDataURL('image/png'); im.style.opacity = 1; }
 setInterval(() => { if (document.querySelector('[data-wkbtn]')) wkBusy(S.wkBusy); }, 15e3);
 // ── 1359 · 课时汇总 Lesson summary picture (Misty 21:40) = management's own Lesson summary: made on the server by management's code with every
