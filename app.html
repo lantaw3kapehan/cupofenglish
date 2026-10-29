@@ -6512,7 +6512,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1449;
+const COE_V = 1451;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -33461,7 +33461,7 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
   /* the guard before anything is drawn or sent */
   function guard(o){ const why = [], c = o.doc, row = o.row, now = o.now || Date.now();
     if(o.split && !o.split.ok) why.push(o.split.why);
-    if(c){ if(!c.copyOk) why.push('The ACTIVE copy from Google is out of date (last copy ' + hm(c.copyAt) + ')');
+    if(c && o.renew){ if(!c.copyOk) why.push('The ACTIVE copy from Google is out of date (last copy ' + hm(c.copyAt) + ')');   /* 1610: renewals only */
       if(!(now - Date.parse(c.at) < 25 * 6e4)) why.push('The renewal check has not run since ' + hm(c.at)); }
     else if(o.needDoc) why.push('The renewal check has not loaded yet');
     if(row && row.pending) why.push('A renewal save is still waiting for Google');
@@ -33542,7 +33542,8 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
   const _rps = window.renPaidSheet; if(typeof _rps === 'function') window.renPaidSheet = async function(code){ const pa = typeof loadActive === 'function' ? loadActive(true).catch(() => {}) : null;
     const r = await _rps.apply(this, arguments); try{ await pa; }catch(e){}
     try{ const S = typeof RPS !== 'undefined' ? RPS : null, b = $('rpS'); if(!S || up(S.code) !== up(code) || !S.info || !b || /Try again/.test(b.textContent)) return r;
-      const k = pkgOf(code, S.info.row); if(!k || k.shared) return r; const H = R.formHold(S.info.left, R.fromRows(k.rows).now, S.info.early);
+      const k = pkgOf(code, S.info.row); if(!k || k.shared) return r; let H = R.formHold(S.info.left, R.fromRows(k.rows).now, S.info.early);
+      if(!H.hold){ let d = null; try{ d = await R.doc(); }catch(e){} const G = d ? R.guard({ doc: d, renew: true }) : null; if(G && !G.ok) H = { hold: true, why: G.why.join(' · ') }; }   /* 1611 */
       if(H.hold){ b.disabled = true; b.textContent = '核对中 · numbers don’t agree yet'; b.onclick = null; const P = $('rpP');
         if(P && !$('rpHold')) P.insertAdjacentHTML('beforebegin', '<div id="rpHold" class="mini" style="margin-top:12px;background:#FFF5F2;border:1px solid #E9B8AC"><b style="color:#9A3B22">Lessons left: checking (核对中)</b><div class="small" style="margin-top:4px">' + esc(H.why) + (H.sheet != null ? '. Saving now would record CARRY OVER ' + H.sheet + ' instead of ' + H.live + '.' : '') + '</div><div class="small mute" style="margin-top:6px">It clears when ACTIVE counts the lesson (Google’s next copy), or at once after the SERVER-RENEWRULE28 paste.</div><button class="btn sm ghost" style="margin-top:8px" onclick="delete RP_PRE[\'' + esc(up(code)) + '\'];renPaidSheet(RPS.code,RPS.name,RPS.teacher,RPS.again)">Check again</button></div>'); } }catch(e){}
     return r; };

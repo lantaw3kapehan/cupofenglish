@@ -70,12 +70,19 @@ function run(file) {
     ok('half lessons · 2.5 + 33 − 0.5 = 35', R.split({ carry: 2.5, add: 0, new: 33, used: 0.5, now: 35 }).ok, 0); }
   // 7 · stale inputs: an old ACTIVE copy (like 11:24 today), a check that stopped, a save still waiting, a check not loaded
   { const sp = R.split({ carry: 2.5, add: 0, new: 33, used: 0, now: 35.5 });
-    const g1 = R.guard({ split: sp, doc: { at: '2026-10-28T14:25:00Z', copyAt: '2026-10-28T03:24:00Z', copyOk: false }, now: T0 });
-    ok('stale · ACTIVE copy out of date → held with the time', !g1.ok && /out of date/.test(g1.why.join()), g1.why);
-    const g2 = R.guard({ split: sp, doc: { at: '2026-10-28T13:40:00Z', copyAt: '2026-10-28T14:24:00Z', copyOk: true }, now: T0 });
-    ok('stale · renewal check older than 25 min → held', !g2.ok && /has not run since/.test(g2.why.join()), g2.why);
+    const g1 = R.guard({ split: sp, doc: { at: '2026-10-28T14:25:00Z', copyAt: '2026-10-28T03:24:00Z', copyOk: false }, renew: true, now: T0 });
+    ok('stale · renewal picture · Google sync stopped → held with the time', !g1.ok && /out of date/.test(g1.why.join()), g1.why);
+    const g2 = R.guard({ split: sp, doc: { at: '2026-10-28T13:40:00Z', copyAt: '2026-10-28T14:24:00Z', copyOk: true }, renew: true, now: T0 });
+    ok('stale · renewal picture · renewal check older than 25 min → held', !g2.ok && /has not run since/.test(g2.why.join()), g2.why);
     const g3 = R.guard({ split: sp, doc: fresh, row: { pending: true }, now: T0 }); ok('stale · renewal save waiting for Google → held', !g3.ok, g3.why);
     const g4 = R.guard({ split: sp, doc: null, needDoc: true, renew: true, now: T0 }); ok('stale · renewal check not loaded → held', !g4.ok, g4.why);
+    // 1610 · ordinary "Lessons left" pictures and the Lesson Summary: database numbers + the numbers-agree check only (Abby, 29 Oct 08:56)
+    { const off = { at: '2026-10-28T13:40:00Z', copyAt: '2026-10-28T03:16:00Z', copyOk: false }, abby = R.split(R.fromRows([{ owner: true, carry: '', enrolled: 15, finished: 3.5, available: 11.5 }]), null);
+      const g5 = R.guard({ split: abby, doc: off, row: null, now: T0 }); ok('1610 · Abby · ordinary picture, sync stopped + check old, numbers agree (15 − 3.5 = 11.5) → shown', g5.ok, g5.why);
+      const bad = R.split(R.fromRows([{ owner: true, carry: '', enrolled: 15, finished: 3.5, available: 12 }]), null), g6 = R.guard({ split: bad, doc: off, row: null, now: T0 });
+      ok('1610 · ordinary picture, numbers disagree (15 − 3.5 ≠ 12) → still 核对中, for the numbers only', !g6.ok && g6.why.length === 1 && !/out of date|has not run/.test(g6.why.join()), g6.why);
+      const g7 = R.guard({ split: abby, doc: off, row: null }); ok('1610 · Lesson Summary call (no renewal) with a stopped sync → shown', g7.ok, g7.why);
+      ok('1611 · wiring · the renewal save also waits while Google\'s sync has stopped', s.indexOf("const G = d ? R.guard({ doc: d, renew: true }) : null; if(G && !G.ok) H = { hold: true, why: G.why.join(' · ') };") > -1, 0); }
     ok('stale · lessons left unknown → form holds (核对中)', R.formHold('', 2.5).hold && /核对中/.test(R.formHold('', 2.5).why), R.formHold('', 2.5));
     ok('stale · lessons now unknown → split refused (核对中)', !R.split({ carry: 1, add: 0, new: 33, used: 0, now: null }).ok, 0); }
   // 8 · Anna / Luna validity dates
