@@ -10,7 +10,7 @@
   const URL1640 = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-partner-spec';
   const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const BANDS = [['early', '幼儿 Early Years 2–6', '幼儿'], ['young', '少儿 Young Learners 7–12', '少儿'], ['teens', '青少年 Teens 13–17', '青少年'], ['adults', '成人 Adults 18+', '成人']];   // 1642 · Misty 10:34 · the four bands
-  const BOOKS = ['PHONICS', 'OD1', 'OD2', 'OD3', 'ODF', 'REF', 'RE1', 'RE2', 'IELTS', 'TOEFL'];   // PHONICS = Oxford Phonics World 1–5 (TheAlphabet … LetterCombinations), one chip
+  const BOOKS = ['PHONICS', 'OD1', 'OD2', 'OD3', 'ODF', 'REF', 'RE1', 'RE2', 'IELTS', 'TOEFL', 'KET', 'PET', 'FCE'];   // 1643 · Cambridge KET A2 Key · PET B1 Preliminary · FCE B2 First   // PHONICS = Oxford Phonics World 1–5 (TheAlphabet … LetterCombinations), one chip
   const ST = [['confirmed', 'Confirmed · partners see it'], ['draft', 'Draft · management only'], ['left', 'Left · not listed for partners']];
   const css = document.createElement('style'); css.id = 'st1640';
   css.textContent = '.sp40{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0 4px;background:#FCFCFE}.sp40 h3{margin:0 0 4px!important;font:400 15px "Fredoka One",var(--f)}' +
