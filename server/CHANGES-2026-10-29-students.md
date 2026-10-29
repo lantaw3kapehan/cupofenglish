@@ -187,3 +187,12 @@ Checks: regress-saves 17/17, stability students + astudents laptop / phone ok. R
 - Her conditions (storage full, answers 1–6 s random order, 4x CPU): CLS 0 laptop and phone; normal cached open CLS 0. regress-saves 17/17;
   stability students + astudents ok. Rollback `rollback-pre-1595`.
 - Coordination: the paint-gate agent (1650–1659) was told about the toolbar / stuRender changes.
+
+## 1597 · from live telemetry on v1473 (11 opens: 7 with no shift)
+- Edit details ("sEnr 418,272 | 0.043", "sSrc 49,0"): the form drew, then folded filled sections into summaries ~1.3 s later (after the
+  e-mail / DATABASE wait). The form now stays invisible (space kept) until folded, then shows once; safety 2.5 s. It also opens over the
+  student page (‹ Back returns) instead of closing the card and opening a short loading card 120 ms later; a card opened on top keeps the
+  sheet's height while its loading bars show (1588's phone fix no longer clears that). Preview: fold 0.057 → 0; loading card 0.094 → 0;
+  one width change remains when the wide student page becomes the normal-width form (one step, intended).
+- Student header ("stuStat 24,0 | 0.0057" at 2.9 s): on laptops the two meta lines stay one line each when a late item arrives (… + hover).
+- Her conditions (storage full, slow random answers, 4x CPU): CLS 0 laptop / phone. regress-saves 17/17. Rollback `rollback-pre-1597`.
