@@ -308,6 +308,23 @@ html:root:root{
 #v-train div.rq-rm > div.rq-rp > small:not(#z1626):not(#y1626){color:#2B2450!important}
 #v-train div.rq-rm > button.rq-rn.miss:not(#z1626):not(#y1626){color:rgb(107,72,61)!important}
 </style>
+<script>
+/* 1672 · taps and saves first on a busy line; slow-line check */
+(function(){
+  if(window.__1672 || typeof window.fetch !== 'function') return; window.__1672 = 1;
+  var of = window.fetch, MINE = /supabase\.co\/functions\/|script\.google(usercontent)?\.com/;
+  var SAVE = /"op":"(write|classEdit|classAdd|setBook|staff|timeIn|classIn)"|"fn":"(timeIn|classIn|saveNote|editClass|addClass)"/;
+  window.slow1672 = function(){ try{ var c = navigator.connection; if(!c) return false;
+    return /^(slow-2g|2g|3g)$/.test(String(c.effectiveType || '')) || (c.downlink > 0 && c.downlink < 1); }catch(e){ return false; } };
+  window.fetch = function(u, o){
+    try{ var url = typeof u === 'string' ? u : (u && u.url) || '';
+      if(MINE.test(url) && !(o && o.priority)){
+        var b = o && typeof o.body === 'string' ? o.body : '', tapped = Date.now() - (window._ui || 0) < 1500;
+        o = Object.assign({}, o || {}, { priority: tapped || SAVE.test(b.slice(0, 400)) ? 'high' : 'low' }); }
+    }catch(e){}
+    return of.call(this, u, o); };
+})();
+</script>
 <script>window.__audit1626 = /[?&]audit=1(&|$)/.test(location.search); if(window.__audit1626) console.info("1626 audit: the contrast passes run and report what they would still darken");</script><script>/* 1111 · finish screens before they are painted (no flicker) */
 (function(){
   if(window.__1111) return; window.__1111 = 1;
@@ -6717,7 +6734,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1485;
+const COE_V = 1486;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -12981,7 +12998,7 @@ ${T.length > 1 ? `<label>Whose classes?</label><div id="cbT" class="gx-c" style=
   api = function(fn, ...args){
     const f = args[2];
     if(fn === 'editClass' && TOKEN && D && D.mgr && f && /^(cancel|restore|move)$/.test(f.action) && (!f.forward || f.action === 'cancel' || f.action === 'move') && !(f.action === 'cancel' && f.makeup && f.forward)){   /* 353: Stop this schedule too · 361: move the later classes too · 362: make-ups too */
-      const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 9000) : 0;
+      const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 30000) : 0;   /* 1672: was 9 s */
       const rid = 'ce' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
       return fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'classEdit', id: args[1], f: f, rid: rid, token: TOKEN }), signal: ac ? ac.signal : undefined })
         .then(x => x.json()).then(r => {
@@ -14468,7 +14485,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
   api = function(fn, ...args){
     const f = args[1];
     if(fn === 'addClass' && TOKEN && typeof D !== 'undefined' && D && D.mgr && f){   /* 362: substitutes too */
-      const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 9000) : 0;
+      const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 30000) : 0;   /* 1672: was 9 s */
       const rid = 'ac' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
       return fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'classAdd', f: f, rid: rid, token: TOKEN }), signal: ac ? ac.signal : undefined })
         .then(x => x.json()).then(r => {
@@ -24559,7 +24576,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const tapped = () => Date.now() - (window._ui || 0) < 1500;
   function pump(){ clearTimeout(T); T = 0;
     if(!Q.length) return;
-    const wait = Math.max(3500 - performance.now(), ui > 0 || tapped() ? 300 : 0, run >= 2 ? 250 : 0, 200 - (Date.now() - last));
+    const sl = typeof window.slow1672 === 'function' && window.slow1672(); const wait = Math.max((sl ? 15000 : 3500) - performance.now(), ui > 0 || tapped() ? 300 : 0, run >= (sl ? 1 : 2) ? 250 : 0, (sl ? 1000 : 200) - (Date.now() - last));
     if(wait > 0){ T = setTimeout(pump, Math.max(50, wait)); return; }
     const j = Q.shift(); run++; last = Date.now();
     let p; const u1617 = window._ui; window._ui = 0; try{ p = Promise.resolve(an.apply(null, [j.fn].concat(j.args))); }catch(e){ p = Promise.reject(e); } finally { window._ui = u1617; }   /* 1617: a queued read is not a tap */
