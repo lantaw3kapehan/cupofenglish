@@ -2799,8 +2799,8 @@ h += `<h2>Bonuses &amp; deductions <span class="c">90 days</span></h2>${adj.map(
 }
 let MYP = null;
 async function loadMyPay(quiet){
-try{ const _t1300 = +(store('get', 'coe.mypayT') || 0), _c1300 = kept('mypay') && Date.now() - _t1300 < 30 * 6e4 && (quiet || typeof SB_LASTW === 'undefined' || !SB_LASTW || Date.now() - SB_LASTW > 120000);   /* 1675: not only when quiet */   /* 1300 */
-  await swr('mypay', _c1300 ? () => Promise.resolve(kept('mypay')) : () => api('mgmtMyPay', TOKEN).then(v => { try{ store('set', 'coe.mypayT', String(Date.now())); }catch(e){} return v; }), v => MYP = v, () => { if(VIEW === 'mypay') renderMyPay(); const on = !!document.querySelector('#navIn [data-v="mypay"]'); if(!!(MYP && MYP.has) !== on) buildNav(); }); }
+try{ const _t1300 = +(store('get', 'coe.mypayT') || 0), _c1300 = kept('mypay') && Date.now() - _t1300 < (quiet ? 360 : 30) * 6e4 &&   /* 1677: start-up load uses a copy up to 6 h old */ (quiet || typeof SB_LASTW === 'undefined' || !SB_LASTW || Date.now() - SB_LASTW > 120000);   /* 1675: not only when quiet */   /* 1300 */
+  await swr('mypay', _c1300 ? () => Promise.resolve(kept('mypay')) : () => (quiet && typeof bg === 'function' ? bg(() => api('mgmtMyPay', TOKEN)) : api('mgmtMyPay', TOKEN)).then(v => { try{ store('set', 'coe.mypayT', String(Date.now())); }catch(e){} return v; }), v => MYP = v, () => { if(VIEW === 'mypay') renderMyPay(); const on = !!document.querySelector('#navIn [data-v="mypay"]'); if(!!(MYP && MYP.has) !== on) buildNav(); }); }
 catch(e){ if(!quiet && VIEW === 'mypay') $('v-mypay').innerHTML = '<div class="empty">Could not load your pay. Try again.</div>'; }
 }
 function renderMyPay(){ const p = MYP, el = $('v-mypay'); if(!el) return; if(!p){ el.innerHTML = loading('My pay'); return; }
@@ -6736,7 +6736,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1490;
+const COE_V = 1491;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31131,6 +31131,12 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     api(D.mgr ? 'mgmtStuClasses' : 'tStuClasses', TOKEN, code).then(L => { if(!Array.isArray(L)) return; CLSM[code] = L; try{ store('set', 'coe.cls.' + code, JSON.stringify(L)); }catch(e){} if(STU && STU.code === code){ STU.cls = L; const el = $('stuSch'); if(el) el.innerHTML = stuSched(L); } }).catch(() => {});
     api(D.mgr ? 'mgmtStudent' : 'tStudent', TOKEN, code).then(r => { if(!r || r.ok === false || !(STU && STU.code === code)) return; try{ store('set', 'coe.stu.' + code, JSON.stringify(r)); }catch(e){} STU.r = r; try{ stuRender(); }catch(e){} }).catch(() => {}); }catch(e){} }
   function swRefresh(){ try{ if(typeof SW === 'undefined' || !SW || !SW.code || !sheetOn()) return; const code = SW.code; api('mgmtStuClasses', TOKEN, code).then(L => { if(!Array.isArray(L) || !(SW && SW.code === code)) return; CLSM[code] = L; if(!swMine1676(code)) return; try{ store('set', 'coe.cls.' + code, JSON.stringify(L)); }catch(e){} SW.events = (window.clsClean ? clsClean(L) : L).slice(); swPaint(); }).catch(() => {}); }catch(e){} }
+  /* 1677 · ↻ Google re-check: one at a time, not repeated within 2 minutes, never counted as a wait */
+  try{ const _api1677 = window.api; let run1677 = null, done1677 = 0;
+    if(_api1677) window.api = function(fn){ if(fn !== 'refresh') return _api1677.apply(this, arguments);
+      if(run1677) return run1677; if(Date.now() - done1677 < 120000) return Promise.resolve(null);
+      const args = arguments, self = this; run1677 = Promise.resolve(typeof bg === 'function' ? bg(() => _api1677.apply(self, args)) : _api1677.apply(self, args));
+      return run1677.then(v => { run1677 = null; done1677 = Date.now(); return v; }, e => { run1677 = null; throw e; }); }; }catch(e){}
   window.swMine1676 = code => { try{ const b = document.getElementById('sheetBody'), s = document.getElementById('sheet'); return !!(b && s && s.classList.contains('on') && b.dataset.sw === String(code)); }catch(e){ return false; } };
   try{ const _swp1676 = swPaint; swPaint = function(){ const r = _swp1676.apply(this, arguments); try{ if(SW && SW.code) document.getElementById('sheetBody').dataset.sw = SW.code; }catch(e){} return r; }; }catch(e){}
   function lsRefresh(){ try{ if(typeof DOCV !== 'undefined' && DOCV && DOCV.key === 'SHPKG' && DOCV.pick && sheetOn() && typeof shSummary === 'function') shSummary(DOCV.pick, true, 1); }catch(e){} }
