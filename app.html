@@ -6736,7 +6736,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1494;
+const COE_V = 1495;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31173,7 +31173,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   try{ let ctx1680 = { t: 0 }, last1680 = null;
     const _api1680 = window.api; if(_api1680) window.api = function(fn){ const p = _api1680.apply(this, arguments); if(fn === 'mgmtSetBook') Promise.resolve(p).then(r => { if(r && r.ok && !r.same) ctx1680 = { t: Date.now(), code: arguments[2] }; }).catch(() => {}); return p; };
     const _bb1680 = window.bbOpen; if(_bb1680) window.bbOpen = function(book, en, cn){ last1680 = { book: String(book || ''), en: String(en || ''), code: STU && STU.code || '' }; return _bb1680.apply(this, arguments); };
-    const kind1680 = () => { const code = last1680 && last1680.code; if(Date.now() - ctx1680.t < 60000) return 'book';
+    const kind1680 = () => { const code = last1680 && last1680.code; if(Date.now() - ctx1680.t < 60000) return 'book'; if(window._bbKind1681 && Date.now() - window._bbKind1681.t < 30000) return window._bbKind1681.k;
       try{ const L = (STU && STU.code === code && Array.isArray(STU.cls) ? STU.cls : []).filter(c => c && !c.cancelled && !/-TC\b|trial/i.test(String(c.title || ''))).map(c => +new Date(c.start)).sort((a, b) => a - b);
         if(L.length && L[0] > Date.now() - 30 * 864e5) return 'new'; }catch(e){} return 'cur'; };
     const adult1680 = () => { try{ const c = last1680 && last1680.code; const s = ((typeof MS !== 'undefined' && MS) || []).find(x => x.code === c) || (STU && STU.s) || {}; return s.adult === true || s.band === 'adult'; }catch(e){ return false; } };
@@ -31196,6 +31196,18 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
           '<textarea id="bbM1680" class="in-t" rows="8" style="width:100%;margin-top:8px;font-size:13px;line-height:1.5">' + esc(msg1680(k, T1680)) + '</textarea>' +
           '<button type="button" class="btn teal block" style="margin-top:8px" onclick="bbMsgCopy1680()">Copy message</button><div class="small mute" style="margin-top:4px">You can change the words before copying · send the picture and the message in the class WeChat group.</div>'; } }catch(e){}
       return _os1680.apply(this, arguments.length ? [html].concat([].slice.call(arguments, 1)) : arguments); }; }catch(e){}
+  /* 1681 · Course books from the package sheet */
+  try{ window.bk1681 = row => { try{ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const r = AT.rows.find(x => x[0] === row); if(!r || !window.bbOpen) return;
+      const code = String(r[C.code] || '').toUpperCase(), s = ((typeof MS !== 'undefined' && MS) || []).find(x => String(x.code).toUpperCase() === code) || {};
+      let book = C.course != null ? String(r[C.course] || '').trim() : ''; if(!book) book = String(s.book || '').trim(); if(!book) return toast('No book on this package yet · use Change book');
+      book = window.bbPick ? bbPick(book) : book.split(/\s*,\s*/)[0];
+      const mine = AT.rows.filter(x => String(x[C.code] || '').toUpperCase() === code && x[C.enrolled] !== ''), st = Date.parse(String(r[C.start] || '').slice(0, 10) + 'T12:00:00');
+      window._bbKind1681 = mine.length <= 1 && st && Date.now() - st < 30 * 864e5 ? { k: 'new', t: Date.now() } : null;
+      bbOpen(book, String(r[C.name] || s.name || ''), String(r[C.cn] || s.cn || '')); }catch(e){ toast('Could not open the books'); } };
+    const _ar1681 = window.activeRow; if(_ar1681) window.activeRow = function(row){ const res = _ar1681.apply(this, arguments);
+      try{ if(D && D.mgr && window.bbOpen && !$('bk1681')){ const b = Array.from(document.querySelectorAll('#sheetBody button')).find(x => /Lessons left to send/.test(x.textContent));
+        const h = '<button id="bk1681" class="btn ghost block" style="margin-top:8px" onclick="bk1681(' + (+row) + ')">📚 Course books for the parent · what to buy</button>';
+        if(b) b.insertAdjacentHTML('afterend', h); } }catch(e){} return res; }; }catch(e){}
   window.swMine1676 = code => { try{ const b = document.getElementById('sheetBody'), s = document.getElementById('sheet'); return !!(b && s && s.classList.contains('on') && b.dataset.sw === String(code)); }catch(e){ return false; } };
   try{ const _swp1676 = swPaint; swPaint = function(){ const r = _swp1676.apply(this, arguments); try{ if(SW && SW.code) document.getElementById('sheetBody').dataset.sw = SW.code; }catch(e){} return r; }; }catch(e){}
   function lsRefresh(){ try{ if(typeof DOCV !== 'undefined' && DOCV && DOCV.key === 'SHPKG' && DOCV.pick && sheetOn() && typeof shSummary === 'function') shSummary(DOCV.pick, true, 1); }catch(e){} }
