@@ -6736,7 +6736,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1492;
+const COE_V = 1493;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31146,6 +31146,29 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
       const t0 = Date.parse(c.date + 'T12:00:00'), near = L.filter(x => { const d = (Date.parse(x.day + 'T12:00:00') - t0) / 864e5; return d >= -3 && d <= 30; }).sort((a, b) => (b.tc - a.tc) || Math.abs(Date.parse(a.day) - t0) - Math.abs(Date.parse(b.day) - t0))[0];
       return near ? Object.assign({}, c, { date: near.day, time: near.time || c.time, booked1678: c.date }) : c; }catch(e){ return c; } };
     if(_api1678) window.api = function(fn){ if((fn === 'tTrialSubmit' || fn === 'tTrialForm') && arguments.length > 2){ const a = Array.prototype.slice.call(arguments); a[2] = fix1678(a[2]); return _api1678.apply(this, a); } return _api1678.apply(this, arguments); }; }catch(e){}
+  /* 1679 · Current books on the student page + Course Books picture after Change book */
+  try{ const BK1679 = {};
+    const css1679 = document.createElement('style'); css1679.textContent = '#sheetBody.stu2 .shbk{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}#sheetBody.stu2 .shbk .lb{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6C6786;margin-right:2px}#sheetBody.stu2 .shbk button{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid #BFE3E5;background:#E9F6F7;color:#00666D;font:inherit;font-size:14px;font-weight:600;cursor:pointer}#sheetBody.stu2 .shbk button:hover{background:#D6EFF1}#sheetBody.stu2 .shbk button span{font-weight:400;color:#4C6E72;font-size:12px}#sheetBody.stu2 .shbk .h{font-size:12px;color:#6C6883}'; document.head.appendChild(css1679);
+    const books1679 = () => { const code = STU.code, now = Date.now() - 3 * 36e5, ov = BK1679[code];
+      if(ov && Date.now() - ov.t < 6 * 36e5) return [{ book: ov.book, t: '' }];
+      const ok = (Array.isArray(STU.cls) ? STU.cls : []).filter(c => c && !c.cancelled && c.book && !/-TC\b|trial/i.test(String(c.title || '')));
+      let L = ok.filter(c => +new Date(c.start) >= now); if(!L.length) L = ok.slice().sort((a, b) => +new Date(b.start) - +new Date(a.start)).slice(0, 1);
+      const seen = {}, out = []; L.sort((a, b) => +new Date(a.start) - +new Date(b.start)).forEach(c => { const k = String(c.book).trim().toLowerCase(); if(seen[k]) return; seen[k] = 1; out.push({ book: String(c.book).trim(), t: c.teacher || '' }); });
+      if(!out.length && STU.s && STU.s.book) out.push({ book: window.bbPick ? bbPick(STU.s.book) : String(STU.s.book).split(/\s*,\s*/)[0], t: '' });
+      if(out.length < 2) out.forEach(x => { x.t = ''; }); return out; };
+    window.bk1679Open = i => { try{ const x = (window._bk1679L || [])[i]; if(!x || !window.bbOpen) return; const s = STU && STU.s || {}; bbOpen(x.book, s.name || '', s.cn || s.chinese || ''); }catch(e){} };
+    const paint1679 = () => { try{ const body = $('sheetBody'); if(!body || !body.classList.contains('stu2') || typeof STU === 'undefined' || !STU || !STU.code || !(D && D.mgr) || !window.bbOpen) return;
+      const hero = body.querySelector('.shero'); if(!hero) return; const L = books1679(); window._bk1679L = L;
+      const html = L.length ? '<span class="lb">Current books</span>' + L.map((x, i) => '<button type="button" title="Covers and Taobao search words for the parent" onclick="bk1679Open(' + i + ')">📚 ' + esc(x.book) + (x.t ? ' <span>· ' + esc(typeof tName === 'function' ? tName(x.t) : x.t) + '</span>' : '') + ' <span>· what to buy ›</span></button>').join('') : (STU.cls ? '<span class="lb">Current books</span><span class="h">No book on the classes yet · use Change book</span>' : '');
+      let el = hero.querySelector('.shbk'); if(!html){ if(el) el.remove(); return; } if(!el){ el = document.createElement('div'); el.className = 'shbk'; const wk = hero.querySelector('.shwk'); if(wk) wk.after(el); else hero.appendChild(el); }
+      if(el.dataset.k !== html){ el.dataset.k = html; el.innerHTML = html; } }catch(e){} };
+    const r1679 = window.stuRender; if(r1679) window.stuRender = function(){ const r = r1679.apply(this, arguments); try{ paint1679(); }catch(e){} setTimeout(paint1679, 120); setTimeout(paint1679, 900); return r; };
+    try{ const sb = $('sheetBody'); let t1 = 0; if(sb) new MutationObserver(() => { clearTimeout(t1); t1 = setTimeout(paint1679, 200); }).observe(sb, { childList: true, subtree: true }); }catch(e){}
+    const _api1679 = window.api; if(_api1679) window.api = function(fn){ const p = _api1679.apply(this, arguments);
+      if(fn === 'mgmtSetBook'){ const code = arguments[2], multi = !!window._cbMulti; Promise.resolve(p).then(r => { if(!r || !r.ok || !r.book || r.same) return; if(!multi) BK1679[code] = { book: r.book, t: Date.now() };
+        try{ delete CLSM[code]; }catch(e){} const s = (STU && STU.code === code && STU.s) || ((typeof MS !== 'undefined' && MS) || []).find(x => x.code === code) || {};
+        setTimeout(() => { try{ if(window.bbOpen) bbOpen(window.bbPick ? bbPick(r.book) : r.book, s.name || '', s.cn || s.chinese || ''); }catch(e){} }, 700); }).catch(() => {}); }
+      return p; }; }catch(e){}
   window.swMine1676 = code => { try{ const b = document.getElementById('sheetBody'), s = document.getElementById('sheet'); return !!(b && s && s.classList.contains('on') && b.dataset.sw === String(code)); }catch(e){ return false; } };
   try{ const _swp1676 = swPaint; swPaint = function(){ const r = _swp1676.apply(this, arguments); try{ if(SW && SW.code) document.getElementById('sheetBody').dataset.sw = SW.code; }catch(e){} return r; }; }catch(e){}
   function lsRefresh(){ try{ if(typeof DOCV !== 'undefined' && DOCV && DOCV.key === 'SHPKG' && DOCV.pick && sheetOn() && typeof shSummary === 'function') shSummary(DOCV.pick, true, 1); }catch(e){} }
