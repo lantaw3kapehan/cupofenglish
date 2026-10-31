@@ -5568,7 +5568,7 @@ const epk = svPill(null, '⏳ ' + (action==='cancel' ? 'Cancelling' : action==='
 try{ const r = await api('editClass', TOKEN, e.id, f); if(!r.ok) throw r; svPill(epk, '✓ <b>Saved in Google Calendar</b>' + (r.note ? ' · ' + esc(r.note) : ''), 'ok'); try{ ding('msg'); }catch(y){}
 if(action === 'move'){ e.mv = { start: before.start, end: before.end }; setTimeout(() => cxMoveProof(before, e, r.fwd), 450); }   /* the same parent picture: old time → new time */
 Object.keys(SCC).forEach(k => { SCC[k]._t = 0; });   /* keep what's on screen, refetch quietly */ CLS_HOLD = null; if(src==='sw' && SW) delete CLSM[SW.code];
-if(src==='sw' && SW){ const swc = SW.code; try{ store('set','coe.cls.' + swc, JSON.stringify(SW.events)); }catch(y){} setTimeout(() => api('mgmtStuClasses', TOKEN, swc).then(x => { if(!Array.isArray(x)) return; CLSM[swc] = x; try{ store('set','coe.cls.' + swc, JSON.stringify(x)); }catch(y){} if(SW && SW.code === swc){ SW.events = x.slice(); swPaint(); } }).catch(() => {}), 1500); }   /* 1420 */
+if(src==='sw' && SW){ const swc = SW.code; try{ store('set','coe.cls.' + swc, JSON.stringify(SW.events)); }catch(y){} setTimeout(() => api('mgmtStuClasses', TOKEN, swc).then(x => { if(!Array.isArray(x)) return; CLSM[swc] = x; try{ store('set','coe.cls.' + swc, JSON.stringify(x)); }catch(y){} if(SW && SW.code === swc && swMine1676(swc)){ SW.events = x.slice(); swPaint(); } }).catch(() => {}), 1500); }   /* 1420 */
 if(code) api('mgmtStuClasses', TOKEN, code).then(x => { CLSM[code] = x; try{ store('set','coe.cls.'+code, JSON.stringify(x)); }catch(y){}
 if(STU && STU.code===code){ STU.cls = x; const el = $('stuSch'); if(el) el.innerHTML = stuSched(x); } }).catch(()=>{});
 else loadSchedule(0, true); }
@@ -5678,9 +5678,9 @@ else $('sheetBody').innerHTML = h;
 }
 async function swOpen(code, name){
 SW = { code, name, events: null };
-openSheet(`<h1>${esc(name || code)}</h1><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>`); $('sheet').classList.add('wide');
+openSheet(`<h1>${esc(name || code)}</h1><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>`); $('sheet').classList.add('wide'); try{ $('sheetBody').dataset.sw = code; }catch(e){}   /* 1676 */
 let c = CLSM[code]; if(!c){ try{ c = JSON.parse(store('get','coe.cls.' + code)||'null'); }catch(e){} } if(c && window.clsClean) c = clsClean(c); if(c){ SW.events = c.slice(); swPaint(); }   /* 1420 */
-try{ const L = await api('mgmtStuClasses', TOKEN, code); CLSM[code] = L; try{ store('set','coe.cls.' + code, JSON.stringify(L)); }catch(e){} if(SW && SW.code === code){ SW.events = L.slice(); swPaint(); } }
+try{ const L = await api('mgmtStuClasses', TOKEN, code); CLSM[code] = L; try{ store('set','coe.cls.' + code, JSON.stringify(L)); }catch(e){} if(SW && SW.code === code && window.swMine1676 && swMine1676(code)){ SW.events = L.slice(); swPaint(); } }
 catch(e){ if(!SW.events) $('sheetBody').innerHTML = `<h1>${esc(name || code)}</h1><div class="empty">Could not load the calendar. Try again.</div>`; }
 }
 function swPaint(){
@@ -6725,7 +6725,7 @@ try{ const r = await api('setActiveTick', TOKEN, row, code, v); if(!r.ok) throw 
 catch(e){ if(x){ x[8] = !v; keep('active', AT); } renderActive(); toast((e&&e.msg)||'Not saved. Try again.'); }
 }
 
-function openSheet(html){ if(!/class="paper/.test(html)) $('sheet').classList.remove('wide'); $('sheetBody').innerHTML = html; $('scrim').classList.add('on'); $('sheet').classList.add('on'); try{ if(window.paPick) paPick(); }catch(e){}
+function openSheet(html){ try{ const _b1676 = document.getElementById('sheetBody'); if(_b1676) delete _b1676.dataset.sw; }catch(e){} if(!/class="paper/.test(html)) $('sheet').classList.remove('wide'); $('sheetBody').innerHTML = html; $('scrim').classList.add('on'); $('sheet').classList.add('on'); try{ if(window.paPick) paPick(); }catch(e){}
   try{ const R = window._tlRet; if(R && R.i > -1 && Date.now() - R.at < 30 * 6e4 && !/<h1>Trial report|id="tlPdf"|tl4/.test(html)) $('sheetBody').insertAdjacentHTML('afterbegin', '<button type="button" class="btn ghost sm" style="margin:0 0 10px" onclick="window._tlRet=null;tlOpen(' + R.i + ')">‹ Back to ' + esc(R.name || 'the') + '\'s trial</button>'); }catch(e){} }
 function closeSheet(){ if(NKEEP){ const k = NKEEP; NKEEP = null; if(k.dirty && noteDraft(k.code, k.day)){ toast('Note kept on this phone · open it and tap Save'); setTimeout(() => { try{ render(); }catch(e){} }, 300); } } if(SC_PEND){ SC_PEND = 0; setTimeout(() => loadSchedule(0, true), 50); } $('scrim').classList.remove('on'); $('sheet').classList.remove('on'); if(window._upd) setTimeout(() => { if(typeof applyUpdate==='function') applyUpdate(); }, 400); setTimeout(() => { if(!$('sheet').classList.contains('on')) $('sheet').classList.remove('wide'); }, 250); }
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeSheet(); });
@@ -6736,7 +6736,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1489;
+const COE_V = 1490;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -9478,6 +9478,11 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     const byMS = {}; MS.forEach(s => byMS[up(s.code)] = s);
     const items = MS.map(s => ({ s: s, o: P ? P.by[up(s.code)] : null, on: true }));
     if(P) Object.keys(P.by).forEach(k => { if(!byMS[k]) items.push({ s: { code: P.by[k].code, name: P.by[k].name, cn: P.by[k].cn, teachers: P.by[k].teacher ? String(P.by[k].teacher).split(/[,/&]/).map(t => t.trim()).filter(Boolean) : [], left: P.by[k].left }, o: P.by[k], on: false }); });
+    if(q){ try{ const DX = (typeof DB !== 'undefined' && DB && DB.rows) ? DB : (typeof DBX !== 'undefined' && DBX && DBX.rows ? DBX : null);   /* 1676 */
+      if(DX){ const have = {}; items.forEach(it => { have[up(it.s.code)] = 1; });
+        DX.rows.forEach(r => { const c = up(r[0]); if(!/^ST-\d{4}-\d+$/.test(c) || have[c]) return; have[c] = 1;
+          items.push({ s: { code: c, name: String(r[2] || '').trim() || c, cn: String(r[1] || '').trim(), teachers: r[14] ? String(r[14]).split(/[,/&]/).map(t => t.trim()).filter(Boolean) : [], book: r[12] || '' }, o: null, on: false, db1676: 1 }); }); }
+      else if(!window._asDB1676){ window._asDB1676 = 1; api('mgmtDatabase', TOKEN).then(v => { if(v && v.rows){ DB = v; if(VIEW === 'astudents') renderAStudents(); } }).catch(() => {}).then(() => { setTimeout(() => { window._asDB1676 = 0; }, 60000); }); } }catch(e){} }
     const stale = it => it.on && (!it.s.lastCheck || (now - new Date(it.s.lastCheck)) / 864e5 > 30), low = it => it.on && it.s.left != null && it.s.left <= 5;
     const noAgr = it => { if(!it.on || !it.o || !it.o.active || it.o.shared) return false; const a = agr(it.o.code); return a !== undefined && !(a && a.how !== 'Sent'); };
     const F = { active: items.filter(it => it.on), low: items.filter(low), ren: items.filter(it => it.o && it.o.ren), nw: items.filter(it => it.o && it.o.nw), agr: items.filter(noAgr), stale: items.filter(stale), past: items.filter(it => !it.on) };
@@ -31125,7 +31130,9 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   function stuRefresh(){ try{ if(typeof STU === 'undefined' || !STU || !STU.code || !sheetOn() || window._stuOpen !== STU.code) return; const code = STU.code;
     api(D.mgr ? 'mgmtStuClasses' : 'tStuClasses', TOKEN, code).then(L => { if(!Array.isArray(L)) return; CLSM[code] = L; try{ store('set', 'coe.cls.' + code, JSON.stringify(L)); }catch(e){} if(STU && STU.code === code){ STU.cls = L; const el = $('stuSch'); if(el) el.innerHTML = stuSched(L); } }).catch(() => {});
     api(D.mgr ? 'mgmtStudent' : 'tStudent', TOKEN, code).then(r => { if(!r || r.ok === false || !(STU && STU.code === code)) return; try{ store('set', 'coe.stu.' + code, JSON.stringify(r)); }catch(e){} STU.r = r; try{ stuRender(); }catch(e){} }).catch(() => {}); }catch(e){} }
-  function swRefresh(){ try{ if(typeof SW === 'undefined' || !SW || !SW.code || !sheetOn()) return; const code = SW.code; api('mgmtStuClasses', TOKEN, code).then(L => { if(!Array.isArray(L) || !(SW && SW.code === code)) return; CLSM[code] = L; try{ store('set', 'coe.cls.' + code, JSON.stringify(L)); }catch(e){} SW.events = (window.clsClean ? clsClean(L) : L).slice(); swPaint(); }).catch(() => {}); }catch(e){} }
+  function swRefresh(){ try{ if(typeof SW === 'undefined' || !SW || !SW.code || !sheetOn()) return; const code = SW.code; api('mgmtStuClasses', TOKEN, code).then(L => { if(!Array.isArray(L) || !(SW && SW.code === code)) return; CLSM[code] = L; if(!swMine1676(code)) return; try{ store('set', 'coe.cls.' + code, JSON.stringify(L)); }catch(e){} SW.events = (window.clsClean ? clsClean(L) : L).slice(); swPaint(); }).catch(() => {}); }catch(e){} }
+  window.swMine1676 = code => { try{ const b = document.getElementById('sheetBody'), s = document.getElementById('sheet'); return !!(b && s && s.classList.contains('on') && b.dataset.sw === String(code)); }catch(e){ return false; } };
+  try{ const _swp1676 = swPaint; swPaint = function(){ const r = _swp1676.apply(this, arguments); try{ if(SW && SW.code) document.getElementById('sheetBody').dataset.sw = SW.code; }catch(e){} return r; }; }catch(e){}
   function lsRefresh(){ try{ if(typeof DOCV !== 'undefined' && DOCV && DOCV.key === 'SHPKG' && DOCV.pick && sheetOn() && typeof shSummary === 'function') shSummary(DOCV.pick, true, 1); }catch(e){} }
   function viewRefresh(views){ try{ if(views.indexOf(VIEW) < 0) return; if(VIEW === 'schedule' && typeof loadSchedule === 'function'){ loadSchedule(0, true); return; } if(VIEW === 'active' && typeof loadActive === 'function'){ loadActive(true); return; } if(VIEW === 'astudents' && typeof loadStudents === 'function'){ loadStudents(); return; } const S = SCREENS[VIEW]; if(S) S[2](true); }catch(e){} }
   /* the registry: kind of data → what to drop, which screens refetch */
