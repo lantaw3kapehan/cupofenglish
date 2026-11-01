@@ -24,7 +24,7 @@ coe_active_mirror_keeps_layout_1101):**
 **Google (done, version 450, 1 Nov 13:56):** SRCFIX31 now finds Source and the Active tick by the row-1 headings (SOURCE, SUB CLASS + 3) instead of column BA, so the Source fix after an enrolment keeps working when months are added.
 
 **Source clean-up (1 Nov 13:58–14:04, Misty: "correct them all"):** a one-off run set ACTIVE Source from the student record on 28
-active rows (e.g. Ying → COE, Ella → Jinan – Dr. Spring, Kimi → Daisy, Lewis / Gavin rows → Dr. Spring, Anna / Levin's family → Daniel,
+active rows (e.g. Ying → COE, Ella → Jinan – Dr. Spring, Kimi → Daisy, Lewis ST-2025-067 and ST-2024-130 → Dr. Spring, Anna ST-2025-052 and ST-2025-034 → Daniel,
 dates and "N/A" left by copying cleared). 10 rows were put back because the student record itself looked wrong:
 - self-referral in the record: Lucas ST-2022-040 rows 97 + 307 (kept "Daisy"), Grace ST-2024-050 row 245 (kept "Tiger");
 - blank in the record: Tony ST-2025-035 row 169 (kept "Jinyu"), ST-2022-034 rows 308–309 (kept "Haomei");
