@@ -6742,7 +6742,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1508;
+const COE_V = 1509;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23216,7 +23216,13 @@ go();
       if(/^ST-\d{4}-\d{3}$/.test(c)){ const L = [].concat((typeof STU !== 'undefined' && STU && STU.s && String(STU.code || '').toUpperCase() === c) ? [STU.s] : [], (typeof MS !== 'undefined' && Array.isArray(MS)) ? MS : [], (typeof SL !== 'undefined' && SL && Array.isArray(SL.students)) ? SL.students : []);
         let s = L.find(x => x && String(x.code || '').toUpperCase() === c && x.name && !/^ST-\d{4}-\d{3}$/i.test(String(x.name).trim()));
         if(!s && typeof AT !== 'undefined' && AT && AT.cols){ const C = {}; AT.cols.forEach((k, i) => C[k] = i); const r = (AT.rows || []).find(x => String(x[C.code] || '').toUpperCase() === c && x[C.name] && !/^ST-\d{4}-\d{3}$/i.test(String(x[C.name]).trim())); if(r) s = { name: r[C.name], cn: r[C.cn] }; }
-        if(s){ en = String(s.name).trim(); cn = String(cn || s.cn || s.chinese || '').trim(); } } }catch(e){}
+        if(s){ en = String(s.name).trim(); cn = String(cn || s.cn || s.chinese || '').trim(); } }
+      if(!String(cn || '').trim() && String(en || '').trim()){ const nm = String(en).trim().toLowerCase(), F = {};   /* 1695: a missing Chinese name */
+        const add = (code, n, z) => { if(String(n || '').trim().toLowerCase() === nm && String(z || '').trim()) F[String(code || n).toUpperCase()] = String(z).trim(); };
+        if(typeof STU !== 'undefined' && STU && STU.s) add(STU.code, STU.s.name, STU.s.cn || STU.s.chinese);
+        [].concat((typeof MS !== 'undefined' && Array.isArray(MS)) ? MS : [], (typeof SL !== 'undefined' && SL && Array.isArray(SL.students)) ? SL.students : []).forEach(x => x && add(x.code, x.name, x.cn || x.chinese));
+        if(typeof AT !== 'undefined' && AT && AT.cols){ const C = {}; AT.cols.forEach((k, i) => C[k] = i); (AT.rows || []).forEach(r => add(r[C.code], r[C.name], r[C.cn])); }
+        const V = [...new Set(Object.values(F))]; if(V.length === 1) cn = V[0]; } }catch(e){}
     return _bo1693.call(this, book, en, cn); }; }
   /* 758 · the book at the moment you tap: the student's next class (else the latest), else the saved book */
   window.bbStuOpen = async function(btn){ if(!STU || !STU.code) return; const code = STU.code, s = STU.s || {}; let book = s.book || '';
