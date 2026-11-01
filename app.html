@@ -6736,7 +6736,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1498;
+const COE_V = 1499;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31285,6 +31285,29 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   /* 1684 · class length helpers for the calendar picture */
   window.len1684 = e => { const m = Math.round((new Date(e.end || e.start) - new Date(e.start)) / 6e4); return m > 0 ? m : 25; };
   window.lens1684 = L => { const u = [...new Set(L)].sort((a, b) => a - b); return { one: u.length === 1, t: u.length ? u.join(' / ') : '25' }; };
+  /* 1685 · a student's whole future schedule from the class table + a package check before booking */
+  try{ const SU1685 = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-stucls', FC1685 = {};
+    const full1685 = code => { const k = String(code || '').toUpperCase(), c = FC1685[k]; if(c && Date.now() - c.t < 20000) return c.p;
+      const p = fetch(SU1685, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, code: k }) }).then(r => r.json()).then(j => j && j.ok && Array.isArray(j.classes) ? j.classes : null).catch(() => null);
+      FC1685[k] = { t: Date.now(), p }; return p; };
+    window.full1685 = full1685;
+    const merge1685 = (L, F) => { if(!Array.isArray(F)) return L; const A = Array.isArray(L) ? L : [], d = new Date(Date.now() + 8 * 36e5).toISOString().slice(0, 10), t0 = Date.parse(d + 'T00:00:00+08:00');
+      const old = {}; A.forEach(x => { if(x && x.id) old[x.id + '|' + x.start] = x; });
+      const past = A.filter(x => x && Date.parse(x.start) < t0), fut = F.map(x => { const o = old[x.id + '|' + x.start]; return Object.assign({}, o || {}, x, { makeup: o ? !!o.makeup : false }); });
+      return past.concat(fut).sort((a, b) => String(a.start).localeCompare(String(b.start))); };
+    const _api1685 = window.api; if(_api1685) window.api = function(fn){ const p = _api1685.apply(this, arguments);
+      if(fn !== 'mgmtStuClasses' || typeof D === 'undefined' || !D || !D.mgr) return p; const code = arguments[2];
+      return Promise.all([p, full1685(code)]).then(([L, F]) => Array.isArray(L) ? merge1685(L, F) : L); };
+    const _sc1685 = window.sendClass; if(_sc1685) window.sendClass = async function(){ try{
+      const s = typeof classStu === 'function' ? classStu() : null, rep = $('cR') && $('cR').checked;
+      if(s && rep && !window.CFORCE1685 && (typeof CKIND === 'undefined' || !CKIND) && s.left != null && s.left !== '' && !s.shared){
+        if(!(CLSM && CLSM[s.code])){ const F = await full1685(s.code); if(F) CLSM[s.code] = F; }
+        const R = typeof classRest === 'function' ? classRest() : null, Dt = typeof classDates === 'function' ? classDates() : [], m = +(($('cM') || {}).value) || 50, add = Math.round(Dt.length * (m <= 30 ? 0.5 : 1) * 10) / 10;
+        if(R && add > 0 && R.booked + add > R.left + 0.01){ const over = Math.round((R.booked + add - R.left) * 10) / 10, can = Math.max(0, Math.round((R.left - R.booked) * 50 / m));
+          const msg = (s.name || s.code) + ' has ' + R.left + ' lesson units left' + (R.booked ? ' and ' + R.booked + ' are already booked' : '') + '.\n\nThese ' + Dt.length + ' classes of ' + m + ' min are ' + add + ' units, so the schedule would go ' + over + ' units over the package.\n\nThe package allows ' + can + ' more class' + (can === 1 ? '' : 'es') + ' of ' + m + ' min (tip: "Book the rest").\n\nBook these ' + Dt.length + ' classes anyway?';
+          if(!confirm(msg)) return; } }
+    }catch(e){ console.warn('1685', e); } return _sc1685.apply(this, arguments); };
+  }catch(e){}
   window.swMine1676 = code => { try{ const b = document.getElementById('sheetBody'), s = document.getElementById('sheet'); return !!(b && s && s.classList.contains('on') && b.dataset.sw === String(code)); }catch(e){ return false; } };
   try{ const _swp1676 = swPaint; swPaint = function(){ const r = _swp1676.apply(this, arguments); try{ if(SW && SW.code) document.getElementById('sheetBody').dataset.sw = SW.code; }catch(e){} return r; }; }catch(e){}
   function lsRefresh(){ try{ if(typeof DOCV !== 'undefined' && DOCV && DOCV.key === 'SHPKG' && DOCV.pick && sheetOn() && typeof shSummary === 'function') shSummary(DOCV.pick, true, 1); }catch(e){} }
