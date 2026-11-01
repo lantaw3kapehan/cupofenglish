@@ -21,5 +21,4 @@ coe_active_mirror_keeps_layout_1101):**
   (deadline_set) only where the sheet's deadline differs from it (72). Backup of the wrong values: table `coe_pkg_dl_backup_1101`.
 - Check after: 0 pending, renewal check 2 notes (Lucy, Mia valid-until, as before), Jena ACTIVE: 5.5 finished · 28 left (0.5 returned) · valid until 24 May 2027.
 
-**Still to do (Google):** SRCFIX31 writes Source at ACTIVE column 53 (BA) only if row 1 there says SOURCE. Source is now column 54
-(BB), so the Source fix after an enrolment does nothing until it looks the column up by name.
+**Google (done, version 450, 1 Nov 13:56):** SRCFIX31 now finds Source and the Active tick by the row-1 headings (SOURCE, SUB CLASS + 3) instead of column BA, so the Source fix after an enrolment keeps working when months are added.

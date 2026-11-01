@@ -22,7 +22,9 @@
 // database (coe_students.data[22]; DATABASE sheet column W if the database can't be read), without a leading "Partner – ".
 // The copied template row used to leave another student's partner there (Lucy ST-2026-131, Ying ST-2026-119).
 // Returns exactly what the original returns; the Source write is in try/catch. UNDO: delete this block, save, deploy.
-var SRC31_COL = 53;   // ACTIVE column BA (1-based)
+// 1 Nov: ACTIVE gets a new month column each month, so Source / the Active tick are found by the row-1 headings (SOURCE, SUB CLASS + 3)
+function src31Cols_(sh) { const h = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (x) { return String(x || '').trim().toUpperCase(); });
+  const s = h.indexOf('SOURCE'), u = h.indexOf('SUB CLASS'); return { src: s > -1 ? s + 1 : 0, act: u > -1 ? u + 3 : 47 }; }
 function src31Clean_(v) { return String(v == null ? '' : v).trim().replace(/^Partner\s*[–·\-]\s*/i, ''); }
 function src31Db_(code) {
   code = String(code || '').trim().toUpperCase(); if (!/^ST-\d{4}-\d{3}$/.test(code)) return null;
@@ -35,7 +37,7 @@ function src31Db_(code) {
 }
 function src31Set_(row, code) {
   const sh = sheet_(TAB.ACTIVE); row = Number(row);
-  if (!(row >= 5) || String(sh.getRange(1, SRC31_COL).getValue()).trim().toUpperCase() !== 'SOURCE') return null;
+  const SRC31_COL = src31Cols_(sh).src; if (!(row >= 5) || !SRC31_COL) return null;
   if (String(sh.getRange(row, 1).getValue()).trim().toUpperCase() !== String(code).trim().toUpperCase()) return null;   // only this student's row
   const want = src31Db_(code); if (want === null) return null;
   const cell = sh.getRange(row, SRC31_COL), had = String(cell.getValue() || '');
@@ -55,17 +57,18 @@ function src31Set_(row, code) {
 });
 /** Run once by hand: fix one student's active package rows (change the code for another student). */
 function zzSrcFixOne31() {
-  const code = 'ST-2026-131', sh = sheet_(TAB.ACTIVE), v = sh.getRange(1, 1, sh.getLastRow(), 48).getValues(); let n = 0;
-  for (let i = 4; i < v.length; i++) if (String(v[i][0]).trim().toUpperCase() === code && v[i][47] === true) { const s = src31Set_(i + 1, code); if (s !== null) n++; }
+  const code = 'ST-2026-131', sh = sheet_(TAB.ACTIVE), A = src31Cols_(sh).act, v = sh.getRange(1, 1, sh.getLastRow(), A + 1).getValues(); let n = 0;
+  for (let i = 4; i < v.length; i++) if (String(v[i][0]).trim().toUpperCase() === code && v[i][A] === true) { const s = src31Set_(i + 1, code); if (s !== null) n++; }
   console.log('SRCFIX31 zzSrcFixOne31 ' + code + ' · rows ' + n); return n;
 }
 /** Run by hand: list active ACTIVE rows whose Source differs from the student record (report only, changes nothing). */
 function zzSrcCheck31() {
-  const sh = sheet_(TAB.ACTIVE), v = sh.getRange(1, 1, sh.getLastRow(), SRC31_COL).getValues(), S = {}; let from = 'database';
+  const sh = sheet_(TAB.ACTIVE), K = src31Cols_(sh), SRC31_COL = K.src, A = K.act; if (!SRC31_COL) return [];
+  const v = sh.getRange(1, 1, sh.getLastRow(), SRC31_COL).getValues(), S = {}; let from = 'database';
   try { for (let off = 0; off < 5000; off += 1000) { const L = sbReq_('get', 'coe_students?select=code,data&removed_at=is.null&order=code.asc&limit=1000&offset=' + off) || [];
       L.forEach(function (r) { if (Array.isArray(r.data)) S[String(r.code).toUpperCase()] = src31Clean_(r.data[22]); }); if (L.length < 1000) break; } } catch (e) { from = 'sheet'; }
   if (!Object.keys(S).length) { from = 'sheet'; sheet_(TAB.DB).getDataRange().getValues().forEach(function (r) { const c = String(r[0] || '').trim().toUpperCase(); if (/^ST-/.test(c)) S[c] = src31Clean_(r[22]); }); }
-  const out = []; for (let i = 4; i < v.length; i++) { const c = String(v[i][0] || '').trim().toUpperCase(); if (!/^ST-/.test(c) || v[i][47] !== true || !(c in S)) continue;
+  const out = []; for (let i = 4; i < v.length; i++) { const c = String(v[i][0] || '').trim().toUpperCase(); if (!/^ST-/.test(c) || v[i][A] !== true || !(c in S)) continue;
     const a = String(v[i][SRC31_COL - 1] || '').trim(); if (a !== S[c]) out.push('row ' + (i + 1) + ' · ' + c + ' ' + v[i][1] + ' · ACTIVE "' + a + '" · student record "' + S[c] + '"'); }
   out.forEach(function (x) { console.log('SRCFIX31 ' + x); }); console.log('SRCFIX31 zzSrcCheck31 (' + from + ') · ' + out.length + ' rows differ'); return out;
 }
