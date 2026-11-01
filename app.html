@@ -6736,7 +6736,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1495;
+const COE_V = 1496;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -21214,6 +21214,17 @@ function ctx(){
   if(q('rpF') && typeof RPS !== 'undefined' && RPS) return { kind: 'rp', code: RPS.code, name: RPS.name, pkg: +RPS.pkg, free: +RPS.free, date: v('rpD'), method: v('rpM'), partner: v('rpPa') };
   if(q('fDrop')) return { kind: 'sale', pkg: +v('fP') || 30, free: v('fF') === '' ? null : +v('fF'), date: v('fD'), method: v('fM'), partner: v('fR') };
   return { kind: 'none' }; }
+/* 1682 · the form the confirmation came from takes its lessons + free lessons */
+function syncNums1682(c, inv){ const L = (inv && inv.items) || []; if(!L.length || !c) return;
+  const bonus = L.filter(x => x.pcode === 'BONUS').reduce((a, x) => a + (+x.qty || 0), 0), main = L.find(x => x.pcode !== 'BONUS' && +x.rate > 0) || L.find(x => x.pcode !== 'BONUS'); if(!main) return;
+  const pkg = +main.qty || 0, q = id => document.getElementById(id), set = (id, v) => { const el = q(id); if(el){ el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); } };
+  if(c.kind === 'sale'){ if(q('fP')) set('fP', pkg); if(q('fF')) set('fF', bonus); }
+  else if(c.kind === 'en' && typeof ENS !== 'undefined' && ENS && window.enPk){ const b = [...document.querySelectorAll('.enk')].find(x => +x.dataset.p === pkg && +x.dataset.f === bonus);
+    if(b) enPk(pkg, bonus); else { enPk(-1, -1); if(q('enOp')) set('enOp', pkg); if(q('enOf')) set('enOf', bonus); } }
+  else if(c.kind === 'rp' && typeof RPS !== 'undefined' && RPS && typeof rpPick === 'function'){ RPS.touched = true;
+    if(typeof RP_PK !== 'undefined' && RP_PK.some(x => x[0] === pkg && x[1] === bonus)) rpPick(pkg, bonus); else if(typeof rpOther === 'function'){ rpOther(); const I = document.querySelectorAll('#rpO input'); if(I[0]){ I[0].value = pkg; I[0].dispatchEvent(new Event('input', { bubbles: true })); } if(I[1]){ I[1].value = bonus; I[1].dispatchEvent(new Event('input', { bubbles: true })); } RPS.pkg = pkg; RPS.free = bonus; } }
+  else return;
+  try{ tst('Form set to the confirmation · ' + pkg + (bonus ? ' + ' + bonus + ' free' : '') + ' lessons'); }catch(x){} }
 function attach(c, inv, blob){
   const name = fileName(inv), f = new File([blob], name, { type: 'application/pdf' }), q = id => document.getElementById(id), label = name.replace(/\.pdf$/, '');
   try{
@@ -21299,7 +21310,7 @@ window.ivIssue = async () => {
   catch(x){ b.disabled = false; b.textContent = 'Issue Payment Confirmation ' + S.next; return tst(x.message); }
   S.issued = inv; b.textContent = 'Finishing…';
   let blob; try{ blob = (await both(inv)).pdf; }catch(x){ return done(inv, null, x.message); }
-  S.blob = blob; const att = attach(S.ctx, inv, blob);
+  S.blob = blob; const att = attach(S.ctx, inv, blob); try{ syncNums1682(S.ctx, inv); }catch(x){ console.warn('1682', x); }
   call('file', { no: inv.no, file_name: fileName(inv) }).catch(() => {});
   done(inv, blob, '', att);
   if(inv.email && S.mail === 'now'){ const s = document.getElementById('ivMail'); try{ await mail(inv, blob); if(s) s.innerHTML = '✓ Emailed to <b>' + e(inv.email) + '</b> (copy to works@).'; }
