@@ -6597,7 +6597,7 @@ RPD = null; RPB = null;
 openSheet(`<h1>Parent report</h1><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>`); $('sheet').classList.add('wide');
 try{ RPD = await api('mgmtReport', TOKEN, key); }catch(e){ $('sheetBody').innerHTML = '<h1>Parent report</h1><div class="empty">Could not open this report.</div>'; return; }
 try{ if(window.fbcnApply) await fbcnApply(RPD); }catch(x){}
-rpPaint();
+rpPaint(); try{ if(RPD && RPD.report && RPD.report.teacherWas1689){ const h = document.querySelector('#sheetBody .mute.small, #sheetBody .small.mute'); if(h && !h.querySelector('.tw1689')) h.insertAdjacentHTML('beforeend', '<span class="tw1689" style="color:#8A5300"> · sent by Teacher ' + esc(RPD.report.teacher) + ' · package also lists Teacher ' + esc(RPD.report.teacherWas1689) + '</span>'); } }catch(e){}
 if(false && RPD.report.file){ try{ const r = await api('mgmtReportPdf', TOKEN, key); if(r.ok && RPD && RPD.report.key === key){ const bin = atob(r.b64), u8 = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i] = bin.charCodeAt(i);
 RPB = new File([u8], r.name, { type: 'application/pdf' }); const el = $('rpPdf'); if(el) el.innerHTML = `<iframe class="rp-pdf" src="${URL.createObjectURL(RPB)}#view=FitH"></iframe>`; rpBtns(); } }catch(e){ const el = $('rpPdf'); if(el) el.innerHTML = '<div class="empty small">Could not load the PDF. Check your internet and open it again.</div>'; } }
 }
@@ -6736,7 +6736,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1502;
+const COE_V = 1503;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -30614,7 +30614,16 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   window.fbcnOk = function(c, row){ if(!c) return false; try{ var k = row && row.code ? row.code + '|' + (row.month || (typeof RP !== 'undefined' && RP ? (RP.month || RP.current) : '')) : '', at = Date.parse(c._at || '');
       var lat = LAT[k] || (row && row.submitted ? subAt((String(row.submitted) + (/\d{4}/.test(String(row.submitted)) ? '' : ' ' + new Date().getFullYear())).replace(/^(\d{1,2}) ([A-Za-z]{3}) (\d{1,2}:\d{2}) (\d{4})$/, '$1 $2 $4 $3')) : 0);
       if(lat > Date.now() + 2 * 864e5) lat = lat - 365 * 864e5;
+      try{ if(lat && !LAT[k] && new Date(lat + 8 * 36e5).toISOString().slice(11, 19) === '12:00:00') lat = lat - 12 * 36e5; }catch(e2){}   /* 1689: a date-only feedback time (noon) = the whole day */
       if(at && lat && at < lat - 60000) return false; }catch(e){} return true; };
+  /* 1689 · the exact time and the teacher of the feedback sent in the app */
+  var _fa1689 = window.fbcnApply;
+  if(typeof _fa1689 === 'function') window.fbcnApply = async function(R){ try{ if(R && R.report && R.report.code && R.report.month){ var x = R.report, r = await fbGet(x.code);
+      var mk = String(x.month), y = +mk.slice(0, 4), m = +mk.slice(5, 7), st = Date.parse(new Date(Date.UTC(y, m - 2, 25)).toISOString().slice(0, 10) + 'T00:00:00+08:00'), en = Date.parse(new Date(Date.UTC(y, m - 1, 25)).toISOString().slice(0, 10) + 'T00:00:00+08:00');
+      var S = (r && r.ok && r.sub || []).filter(function(s){ var t = Date.parse(s.at); return t >= st && t < en; }).sort(function(a, b){ return Date.parse(b.at) - Date.parse(a.at); });
+      if(S.length){ LAT[x.code + '|' + x.month] = Date.parse(S[0].at); var who = String(S[0].who || '').trim();
+        if(who && String(x.teacher || '').trim().toLowerCase() !== who.toLowerCase()){ x.teacherWas1689 = x.teacher; x.teacher = who; } } } }catch(e){}
+    return _fa1689.apply(this, arguments); };
   var _fa = window.fbcnApply;
   if(typeof _fa === 'function') window.fbcnApply = async function(R){
     try{ if(R && R.report && R.fb){ var x = R.report, k = x.code + '|' + x.month; try{ if(window.bookFor1161) await bookFor1161(x.code, x.teacher); }catch(e1){} var r = await fbGet(x.code); if(r && !r.__c1160) fbClean1160(r, x.code);
