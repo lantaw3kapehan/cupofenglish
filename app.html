@@ -4494,8 +4494,14 @@ try{ const v = DOCV, r = await docGet(v.key, v.pick, v.pick2, true); docShow(v.k
 catch(e){ toast('Could not refresh. Try again.'); if(b){ b.disabled = false; b.classList.remove('spin'); } }
 }
 let H2C = null;
-function h2c(){ if(window.html2canvas) return Promise.resolve(window.html2canvas); if(H2C) return H2C;
-H2C = new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; s.onload = () => ok(window.html2canvas); s.onerror = () => { H2C = null; no(new Error('load')); }; document.head.appendChild(s); });
+/* 1690 · html2canvas copies only the element being drawn (and the boxes around it), not the whole page: ~5× faster, same picture */
+function h2cFast1690(){ const f = window.html2canvas; if(!f || f.__fast1690) return f;
+  const w = function(el, o){ o = Object.assign({}, o || {}); const own = o.ignoreElements, H = document.head, B = document.body, R = document.documentElement;
+    o.ignoreElements = n => { try{ if(own && own(n)) return true; if(!el || !el.contains || n === B || n === H || n === R || H.contains(n) || el.contains(n) || n.contains(el)) return false; return B.contains(n); }catch(e){ return false; } };
+    return f.call(this, el, o); };
+  w.__fast1690 = 1; window.html2canvas = w; return w; }
+function h2c(){ if(window.html2canvas) return Promise.resolve(h2cFast1690()); if(H2C) return H2C;
+H2C = new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; s.onload = () => ok(h2cFast1690()); s.onerror = () => { H2C = null; no(new Error('load')); }; document.head.appendChild(s); });
 return H2C; }
 let DOCPIC = null;
 async function docPic(save){ if(docRO()) return toast('View only · management sends this to parents');
@@ -6736,7 +6742,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1503;
+const COE_V = 1504;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
