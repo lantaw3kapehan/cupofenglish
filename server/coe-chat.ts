@@ -7,6 +7,8 @@
 // are for management only (teachers are not alerted about each other's check-ins). A post waiting on a weak signal or refused is noted in
 // chat_pending (action pend) so management sees it; teachers never see other teachers' notes.
 // Flag: docs sys:chat { enabled, pilot:[teacher names] | "*", exclude?:[names], gx?:{ groupId:[names left out] }, mgmt?:[names], alias?:{account:name} }.
+// QA 2 Nov 2026: poll's "teacher is in class now" look-up sent cs.{name} to the jsonb teachers column, which Postgres refused (invalid json, ~5,000 a day),
+// so inClass was always false and the chat chime could sound during a class. It now sends cs.["name"].
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const ORIGINS = ["https://app.cupofenglishatph.com"];
@@ -219,7 +221,7 @@ Deno.serve(async (req: Request) => {
       const tg = str(b.gid, 60), tOk = !!tg && canSee(tg);
       const [{ data: L }, C, gr, { data: RV }, TY] = await Promise.all([   // 1406: the look-ups run side by side
         db.from("chat_messages").select("id").order("id", { ascending: false }).limit(1),
-        mgmt ? Promise.resolve(null) : db.from("classes").select("id").eq("day", today).lte("starts_at", now).gt("ends_at", now).eq("cancelled", false).contains("teachers", [lc(me)]).limit(1).then((r: any) => r.data),
+        mgmt ? Promise.resolve(null) : db.from("classes").select("id").eq("day", today).lte("starts_at", now).gt("ends_at", now).eq("cancelled", false).contains("teachers", JSON.stringify([lc(me)])).limit(1).then((r: any) => r.data),
         groups(), db.from("chat_reacts").select("at").order("at", { ascending: false }).limit(1),
         tOk ? db.from("chat_typing").select("name,at").eq("gid", tg).gt("at", new Date(Date.now() - 6000).toISOString()).neq("name", me).then((r: any) => r.data || []) : Promise.resolve([])]);
       // 1419 typing: the open chat only; teachers see only management typing (no presence of other teachers)
