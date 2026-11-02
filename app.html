@@ -6742,7 +6742,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1515;
+const COE_V = 1516;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24393,6 +24393,15 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   window.wxFam = fam;
   const en = n => String(n || '').replace(/[　-鿿＀-￯].*$/, '').trim() || String(n || '').trim();
   const _g = window.wxGroup; window.wxGroup = (name, code) => { const f = fam(code); if(!f) return _g(name, code); return '一杯英语 ' + f.M.map(c => en(up(c) === up(code) ? name : stuNm(c).name)).join(' & ') + ' (' + f.main + ')'; };
+  /* 1702 · 一杯英语Vita-33节课(ST-2026-127): no spaces, the current package's lessons */
+  const lessons1702 = code => { try{ if(typeof AT === 'undefined' || !AT || !AT.cols) return 0; const C = {}; AT.cols.forEach((c, i) => C[c] = i);
+      const R = AT.rows.filter(r => up(r[C.code]) === up(code) && r[C.enrolled] !== '' && r[C.enrolled] != null && +r[C.enrolled] > 0);
+      const pick = R.filter(r => r[C.active]).sort((a, b) => String(b[C.start] || '').localeCompare(String(a[C.start] || '')))[0] || R.sort((a, b) => String(b[C.start] || '').localeCompare(String(a[C.start] || '')))[0];
+      return pick ? Math.round(+pick[C.enrolled] * 10) / 10 : 0; }catch(e){ return 0; } };
+  window.wxLessons1702 = lessons1702;
+  { const _g1702 = window.wxGroup; window.wxGroup = (name, code) => { const g = _g1702(name, code), m = String(g).match(/^一杯英语\s*(.+?)\s*\((ST-\d{4}-\d{3})\)$/i); if(!m) return g;
+      const names = m[1].replace(/\s*&\s*/g, '&').replace(/\s+/g, ' ').trim(), n = lessons1702(m[2]);
+      return '一杯英语' + names + (n ? '-' + n + '节课' : '') + '(' + m[2].toUpperCase() + ')'; }; }
   async function load(){ try{ if(typeof D === 'undefined' || !D || !D.mgr || !TOKEN) return; const r = await call({ action: 'wx_get' }); if(r && r.ok) window.WXF = r.map || {}; }catch(e){} }
   (function w(){ if(typeof D !== 'undefined' && D && TOKEN){ load(); setInterval(load, 10 * 6e4); } else setTimeout(w, 1500); })();
   /* student card: the family link */
