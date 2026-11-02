@@ -6742,7 +6742,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1527;
+const COE_V = 1528;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31399,6 +31399,43 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
         await new Promise(r => setTimeout(r, 200)); } };
     const _en1709 = window.enSheet; if(typeof _en1709 === 'function') window.enSheet = function(code){ const r = _en1709.apply(this, arguments); try{ setPa('enPa', code); }catch(e){} return r; };
     const _rp1709 = window.renPaidSheet; if(typeof _rp1709 === 'function') window.renPaidSheet = function(code){ const r = _rp1709.apply(this, arguments); try{ setPa('rpPa', code); }catch(e){} return r; };
+  }catch(e){}
+  /* 1714 · partner students: Partner picked from DATABASE › SOURCE on the paid forms and Add sale */
+  try{ const P1714 = ['CupOfEnglish', 'Jinan - Ms. Spring', 'Jinan - Ms. Rose', 'Inner Mongolia - Ms. Jane', 'Inner Mongolia - Ms. Jane Adult', 'Chengdu - Mr. Clark', 'Panpacific University', 'IELTS', 'TOEFL', 'Adult English', 'Adult English - Ph', 'IELTS - Ms. Spring', 'Adults - Ms. Spring', 'Reading Program'];
+    const up = x => String(x || '').trim().toUpperCase();
+    const nz = x => String(x || '').toLowerCase().replace(/[\u2013\u2014]/g, '-').replace(/^\s*partner\s*-\s*/, '').replace(/\b(dr|ms|mr|mrs|miss)\.?\s+/g, '').replace(/\s*-\s*/g, ' - ').replace(/\s+/g, ' ').trim();
+    const labels = el => { const L = (typeof ML !== 'undefined' && ML && Array.isArray(ML.partner) && ML.partner.length) ? ML.partner.slice() : P1714.slice();
+      try{ if(el && el.tagName === 'SELECT') [...el.options].forEach(o => { const v = o.value || o.textContent; if(v && v !== '__o' && L.indexOf(v) < 0) L.push(v); }); }catch(e){} return L; };
+    const rowsOf = () => { try{ return (typeof DB !== 'undefined' && DB && Array.isArray(DB.rows)) ? DB.rows : []; }catch(e){ return []; } };
+    const srcOf = code => { const C = up(code), r = rowsOf().filter(r => up(r[0]) === C).pop(); return r ? String(r[22] || '').trim() : ''; };
+    const adultOf = code => { try{ const a = window.coeAge ? coeAge(code) : null; return !!(a && a.age != null && a.age !== '' && +a.age >= 18); }catch(e){ return false; } };
+    const pick = (s, adult, el) => { const n = nz(s); if(!n || !/ - /.test(n) || /^(coe|cupofenglish)\b/.test(n) || /^st-\d/.test(n)) return '';
+      const L = labels(el), base = L.filter(x => nz(x) === n); if(base.length !== 1) return '';
+      if(adult){ const who = n.split(' - ').pop(), ad = L.filter(x => /adult/i.test(x) && nz(x).indexOf(who) > -1 && nz(x).indexOf(n.split(' - ')[0]) > -1 || (/^adults - /i.test(x) && nz(x) === 'adults - ' + who)); if(ad.length === 1) return ad[0]; }
+      return base[0]; };
+    const note = (el, id, s, v) => { const old = document.getElementById(id); if(old) old.remove(); el.insertAdjacentHTML('afterend', '<div id="' + id + '" class="small" style="margin-top:4px;color:#9A5B00">Partner student (source: ' + esc(s) + ') · Partner set to <b>' + esc(v) + '</b> so the partner price is used. Pick another partner if this payment did not go through them.</div>'); };
+    const setOn = (el, v) => { if(el.tagName === 'SELECT' && ![...el.options].some(o => (o.value || o.textContent) === v)){ const o = document.createElement('option'); o.textContent = v; el.insertBefore(o, el.firstChild); }
+      el.value = v; try{ el.dataset.t = 1; el.dispatchEvent(new Event('change', { bubbles: true })); }catch(e){} };
+    const free = el => { const v = String(el.value || '').trim(); return !v || v === 'CupOfEnglish' || el.dataset.auto1714 === v; };
+    const setPa = async (id, code) => { for(let k = 0; k < 20; k++){ const el = document.getElementById(id); if(el && (el.tagName === 'SELECT' || k > 8)){
+          const s = srcOf(code), v = pick(s, adultOf(code), el); if(!v || !free(el)) return; setOn(el, v); el.dataset.auto1714 = v; note(el, id + 'N1714', s, v); return; }
+        await new Promise(r => setTimeout(r, 200)); } };
+    const _en1714 = window.enSheet; if(typeof _en1714 === 'function') window.enSheet = function(code){ const r = _en1714.apply(this, arguments); try{ setPa('enPa', code); }catch(e){} return r; };
+    const _rp1714 = window.renPaidSheet; if(typeof _rp1714 === 'function') window.renPaidSheet = function(code){ const r = _rp1714.apply(this, arguments); try{ setPa('rpPa', code); }catch(e){} return r; };
+    /* Add sale: student from the invoice name (PaymentConfirmation1756_Ruyi.pdf → Ruyi) */
+    let t1714 = 0; const saleGuess = async () => { const fi = document.getElementById('fI'), fr = document.getElementById('fR'); if(!fi || !fr) return;
+      const inv = String(fi.value || '').replace(/\.(pdf|png|jpe?g)$/i, '').trim(), nm = inv.indexOf('_') > -1 ? inv.replace(/^.*_/, '').trim() : '';
+      const clear = () => { if(fr.dataset.auto1714 && fr.value === fr.dataset.auto1714){ setOn(fr, 'CupOfEnglish'); delete fr.dataset.auto1714; } const o = document.getElementById('fRN1714'); if(o) o.remove(); };
+      if(!nm || /[&,+\u3001\u548c]/.test(nm)){ clear(); return; }
+      if(!rowsOf().length){ try{ if(typeof loadDb === 'function') await loadDb(true); }catch(e){} }
+      const k = nm.toLowerCase().replace(/[\s.]+/g, ''), hit = rowsOf().filter(r => /^ST-\d{4}-\d{3}$/i.test(String(r[0] || '').trim()) && [r[2], r[1]].some(x => String(x || '').toLowerCase().replace(/[\s.]+/g, '') === k));
+      const S = [...new Set(hit.map(r => String(r[22] || '').trim()))]; if(!hit.length || S.length !== 1){ clear(); return; }
+      const ad = hit.every(r => adultOf(r[0])), v = pick(S[0], ad, fr); if(!v){ clear(); return; } if(!free(fr)) return;
+      setOn(fr, v); fr.dataset.auto1714 = v; note(fr, 'fRN1714', S[0] + (hit.length === 1 ? ' · ' + String(hit[0][0]).trim() : ''), v); };
+    const later = () => { clearTimeout(t1714); t1714 = setTimeout(() => { saleGuess().catch(() => {}); }, 350); };
+    document.addEventListener('input', ev => { if(ev.target && ev.target.id === 'fI') later(); }, true);
+    document.addEventListener('change', ev => { if(ev.target && (ev.target.id === 'fFile' || ev.target.id === 'fI')) setTimeout(later, 400); if(ev.target && ev.target.id === 'fR' && ev.isTrusted){ delete ev.target.dataset.auto1714; const o = document.getElementById('fRN1714'); if(o) o.remove(); } }, true);
+    document.addEventListener('drop', ev => { if(ev.target && ev.target.closest && ev.target.closest('#fDrop')) setTimeout(later, 600); }, true);
   }catch(e){}
   /* 1706 · adults: occupation and industry on the student page */
   try{ const SX1706 = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-stuext', XC1706 = {};
