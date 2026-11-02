@@ -6742,7 +6742,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1511;
+const COE_V = 1512;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -25428,11 +25428,13 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const ok = () => typeof TRS !== 'undefined' && TRS && typeof TRF !== 'undefined' && TRF && TRF.form;
   const fix = () => { if(!ok()) return; const n = TRF.form.rate.length; if(!Array.isArray(TRS.notes) || TRS.notes.length !== n) TRS.notes = Array.from({ length: n }, (_, k) => (Array.isArray(TRS.notes) && TRS.notes[k]) || ''); };
   window.trNote = (k, v) => { fix(); TRS.notes[k] = v; try{ trSave(); }catch(e){} const el = document.getElementById('trn' + k); if(el) el.classList.toggle('bad', false); };
-  document.head.insertAdjacentHTML('beforeend', '<style>.trn{margin-top:8px;width:100%;font-size:14px}.trn.bad{border-color:#E4846B;background:#FFF6F2}.trn-l{font-size:12px;color:#6C6883;margin-top:8px}</style>');
+  document.head.insertAdjacentHTML('beforeend', '<style>.trn{margin-top:8px;width:100%;font-size:14px}.trn.bad{border-color:#E4846B;background:#FFF6F2}.trn-l{font-size:12px;color:#6C6883;margin-top:8px}textarea.trn{resize:vertical;min-height:44px;line-height:1.45;overflow:hidden;font-family:inherit}.trn-n{font-size:11px;color:#8A86A0;text-align:right;margin-top:2px}.trn-n.near{color:#C2410C;font-weight:600}</style>');
+  window.trGrow1698 = el => { try{ el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; const n = document.getElementById('trnN' + String(el.id).slice(3)); if(n){ const L = el.value.length; n.textContent = L + ' / 600'; n.classList.toggle('near', L >= 540); } }catch(e){} };
   const _tp = window.trPaint;
   window.trPaint = function(){ const r = _tp.apply(this, arguments); try{ fix(); if(!ok()) return r;
+      setTimeout(() => { try{ document.querySelectorAll('textarea.trn').forEach(el => trGrow1698(el)); }catch(e){} }, 60);   /* 1698 */
       TRF.form.rate.forEach((x, k) => { const c = document.getElementById('trc' + k); if(!c || document.getElementById('trn' + k)) return;
-        c.insertAdjacentHTML('afterend', '<div class="trn-l"><b>What did you see?</b> · one line with a real example, it goes on the report</div><input class="in-t trn" id="trn' + k + '" maxlength="220" placeholder="' + esc(EX[k] || 'e.g. what the student said or did') + '" value="' + esc(TRS.notes[k] || '') + '" oninput="trNote(' + k + ',this.value)">'); }); }catch(e){ console.warn('805', e); } return r; };
+        c.insertAdjacentHTML('afterend', '<div class="trn-l"><b>What did you see?</b> · one line with a real example, it goes on the report</div><textarea class="in-t trn" id="trn' + k + '" rows="2" maxlength="600" placeholder="' + esc(EX[k] || 'e.g. what the student said or did') + '" oninput="trNote(' + k + ',this.value);trGrow1698(this)">' + esc(TRS.notes[k] || '') + '</textarea><div class="trn-n" id="trnN' + k + '">' + String(TRS.notes[k] || '').length + ' / 600</div>'); }); }catch(e){ console.warn('805', e); } return r; };
   const _sd = window.trSend;
   window.trSend = function(){ try{ fix(); if(ok()){ const k = TRS.notes.findIndex(v => String(v || '').trim().length < MIN);
       if(k > -1){ const el = document.getElementById('trn' + k); if(el){ el.classList.add('bad'); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
