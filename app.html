@@ -6742,7 +6742,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1519;
+const COE_V = 1520;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31358,6 +31358,25 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
       const now = Date.now(), fut = L.filter(e => !e.cancelled && new Date(e.end || e.start) >= now).sort((a, b) => new Date(a.start) - new Date(b.start)), drop = new Set(); let acc = 0;
       fut.forEach(e => { const u = (window.len1684 ? len1684(e) : 25) / 50; if(acc + u > left + 1e-9) drop.add(e); else acc += u; });
       return L.filter(e => !drop.has(e)); }catch(e){ return L; } };
+  /* 1706 · adults: occupation and industry on the student page */
+  try{ const SX1706 = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-stuext', XC1706 = {};
+    const xget = (code, force) => { const k = String(code || '').toUpperCase(); if(!force && XC1706[k] && Date.now() - XC1706[k].t < 6e4) return XC1706[k].p;
+      const p = fetch(SX1706, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, code: k }) }).then(r => r.json()).then(j => j && j.ok ? (j.x || null) : null).catch(() => null); XC1706[k] = { t: Date.now(), p }; return p; };
+    const adult = code => { try{ const a = window.coeAge ? coeAge(code) : null; return !(a && a.age != null && a.age !== '' && +a.age < 18); }catch(e){ return true; } };
+    const paint = (code, x, edit) => { const b = document.getElementById('sheetBody'); if(!b || !STU || String(STU.code).toUpperCase() !== String(code).toUpperCase()) return; let el = document.getElementById('occ1706');
+      const mg = typeof D !== 'undefined' && D && D.mgr; if(!x && !mg) { if(el) el.remove(); return; }
+      if(!el){ const at = document.getElementById('wxG') || b.querySelector('h1'); if(!at) return; at.insertAdjacentHTML('afterend', '<div id="occ1706" class="small" style="margin:2px 0 8px;color:#5E5A75"></div>'); el = document.getElementById('occ1706'); }
+      const o = (x && x.occ) || '', i = (x && x.ind) || '';
+      el.innerHTML = edit ? '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="color:#2B2253">Work</b><input id="occO" class="in-t" style="flex:1;min-width:150px;padding:6px 10px" placeholder="Occupation · e.g. Sales manager" maxlength="80" value="' + esc(o) + '"><input id="occI" class="in-t" style="flex:1;min-width:150px;padding:6px 10px" placeholder="Industry · e.g. Clothing" maxlength="80" value="' + esc(i) + '"><button type="button" class="btn teal sm" onclick="occSave1706(\'' + esc(code) + '\')">Save</button><button type="button" class="btn ghost sm" onclick="occShow1706(\'' + esc(code) + '\')">Cancel</button></div>'
+        : 'Work: <b style="color:#2B2253">' + (o || i ? esc([o, i ? i + (/industry/i.test(i) ? '' : ' industry') : ''].filter(Boolean).join(' · ')) : '<span style="font-weight:400;color:#8A86A0">occupation and industry not added</span>') + '</b>' + (mg ? ' <button type="button" class="btn ghost sm" style="padding:3px 10px" onclick="occEdit1706(\'' + esc(code) + '\')">' + (o || i ? 'Edit' : 'Add') + '</button>' : ''); };
+    window.occShow1706 = code => xget(code).then(x => paint(code, x, false));
+    window.occEdit1706 = code => xget(code).then(x => { paint(code, x, true); try{ document.getElementById('occO').focus(); }catch(e){} });
+    window.occSave1706 = async code => { const occ = (document.getElementById('occO') || {}).value || '', ind = (document.getElementById('occI') || {}).value || '';
+      try{ const j = await fetch(SX1706, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, code: code, set: { occ, ind } }) }).then(r => r.json());
+        if(!j || !j.ok) throw new Error((j && (j.msg || j.error)) || 'not saved'); XC1706[String(code).toUpperCase()] = { t: Date.now(), p: Promise.resolve(j.x || null) }; paint(code, j.x || null, false); toast('Saved · work details'); }catch(e){ toast('Not saved · ' + e.message); } };
+    const _sr1706 = window.stuRender; if(typeof _sr1706 === 'function') window.stuRender = function(){ const r = _sr1706.apply(this, arguments);
+      try{ if(STU && STU.code && adult(STU.code) && !document.getElementById('occ1706')){ const c = STU.code; xget(c).then(x => paint(c, x, false)); } }catch(e){} return r; };
+  }catch(e){}
   window.swMine1676 = code => { try{ const b = document.getElementById('sheetBody'), s = document.getElementById('sheet'); return !!(b && s && s.classList.contains('on') && b.dataset.sw === String(code)); }catch(e){ return false; } };
   try{ const _swp1676 = swPaint; swPaint = function(){ const r = _swp1676.apply(this, arguments); try{ if(SW && SW.code) document.getElementById('sheetBody').dataset.sw = SW.code; }catch(e){} return r; }; }catch(e){}
   function lsRefresh(){ try{ if(typeof DOCV !== 'undefined' && DOCV && DOCV.key === 'SHPKG' && DOCV.pick && sheetOn() && typeof shSummary === 'function') shSummary(DOCV.pick, true, 1); }catch(e){} }
