@@ -6742,7 +6742,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1514;
+const COE_V = 1515;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -25283,20 +25283,22 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   function find(q){ if(!q) return null; const d = String(q.date || '').slice(0, 10), sl = low(q.student), c = up(q.code);
     const L = ((P && P.list) || []).filter(x => x.d === d && ((sl && x.s === sl) || (c && x.c === c))).sort((a, b) => (a.q ? 1 : 0) - (b.q ? 1 : 0));
     if(L.length) return L[0];
-    const m = mine()[kOf(q)]; if(m) return Object.assign({ q: 1 }, m);
+    const m = mine()[kOf(q)]; if(m){ const mt = m.t || Date.parse(String(m.at || '').replace(' ', 'T') + ':00+08:00') || 0;   /* 1701: memory only until Google's list is read 90 s later */
+      if(!(P && P.at > mt + 9e4)) return Object.assign({ q: 1 }, m);
+      try{ if(!window.__ff1701 && typeof fastFails === 'function'){ window.__ff1701 = 1; fastFails(); setTimeout(() => { window.__ff1701 = 0; }, 6e4); } }catch(e){} }
     return null; }
   window.trSentOf = find;
   // Remember a report the moment Google/the database accepts it (this device).
   const _api = window.api; if(_api) window.api = function(fn, tok, ctx, body){ const p = _api.apply(this, arguments);
     if(fn === 'tTrialSubmit' && ctx && body){ Promise.resolve(p).then(r => { if(r && r.ok){ try{ const M = mine(), T = window.trTot ? trTot() : null;
       const now = new Date(Date.now() + 8 * 3600e3).toISOString().replace('T', ' ').slice(0, 16);
-      M[kOf(ctx)] = { d: String(ctx.date).slice(0, 10), s: low(ctx.student), c: up(ctx.code), at: now, t: r.total || (T && T.all ? T.t : ''), cefr: r.cefr || (T && T.all && typeof trRub === 'function' ? trRub(T.t) : '') };
+      M[kOf(ctx)] = { d: String(ctx.date).slice(0, 10), s: low(ctx.student), c: up(ctx.code), at: now, t: Date.now(), t: r.total || (T && T.all ? T.t : ''), cefr: r.cefr || (T && T.all && typeof trRub === 'function' ? trRub(T.t) : '') };
       Object.keys(M).forEach(k => { if(k.slice(0, 10) < new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10)) delete M[k]; });
-      localStorage.setItem(MK, JSON.stringify(M)); }catch(e){} setTimeout(paint, 50); setTimeout(() => load(true), 4000); } }).catch(() => {}); }
+      localStorage.setItem(MK, JSON.stringify(M)); }catch(e){} setTimeout(paint, 50); setTimeout(() => load(true), 4000); setTimeout(() => { load(true); setTimeout(paint, 3000); }, 1e5); } }).catch(() => {}); }
     return p; };
   // Class cards: "Trial report" → "✓ Report sent".
   function paint(){ try{ document.querySelectorAll('button[onclick^="trialSheet("]').forEach(b => { const n = +(String(b.getAttribute('onclick')).match(/\d+/) || [-1])[0], q = TRQS[n], x = find(q);
-    if(!x) return;
+    if(!x){ if(/^✓ Report sent/.test(b.textContent) && !window.__rt1701){ window.__rt1701 = 1; setTimeout(() => { window.__rt1701 = 0; try{ if(typeof VIEW !== 'undefined' && VIEW === 'today') renderToday(); }catch(e){} }, 0); } return; }   /* 1701: undo a card that said sent */
     b.className = 'btn sm'; b.style.cssText = 'margin:8px 0 0 6px;background:#E6F4EC;color:#1F7A4F;border:1px solid #BFE3D2;box-shadow:none';
     b.textContent = '✓ Report sent' + (x.t ? ' · ' + x.t + '/36' : '') + (x.cefr ? ' · ' + x.cefr : ''); b.title = 'See its progress'; }); }catch(e){} }
   // Progress card.
