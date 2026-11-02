@@ -6742,7 +6742,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1517;
+const COE_V = 1518;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -8902,12 +8902,12 @@ const sugg = o => { const t = +o.total || 0, c = String(o.cefr || ''); if(t >= 6
 return /^pre/i.test(c) ? 'OPW2' : /^A1/i.test(c) ? 'OD1' : /^A2/i.test(c) ? 'OD2' : /^B1/i.test(c) ? 'RE-F' : /^(B2|C)/i.test(c) ? 'RE1' : 'OD1'; };
 window.CPB = window.CPB || {};
 let CP = null; const RMC = {};
-window.coursePlan = function(o){ o = o || {}; CP = { o: o, bk: (o.student && CPB[o.student]) || sugg(o), ad: !!o.adult, goal: o.goal && AG[o.goal] ? o.goal : 'daily', band: bandOf(o.cefr) }; cpSheet(); };
+window.coursePlan = function(o){ o = o || {}; CP = { o: o, bk: (o.student && CPB[o.student]) || sugg(o), ad: !!o.adult, goal: o.goal && AG[o.goal] ? o.goal : 'daily', band: bandOf(o.cefr), pre: /^pre/i.test(String(o.cefr || '')) ? 1 : 0 }; cpSheet(); };
 function cpSheet(){
 const o = CP.o, seg = (id, items, cur, fn) => '<div class="seg" id="' + id + '" style="flex-wrap:wrap">' + items.map(x => '<button class="' + (cur === x[0] ? 'on' : '') + '" onclick="' + fn + '(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div>';
 openSheet('<h1>Course plan</h1><div class="mute small">' + (o.student ? 'For ' + esc(o.student) + (o.cefr ? ' · trial ' + esc(o.cefr) + (o.total ? ' · ' + o.total + '/36' : '') : '') + (CP.ad ? ' · pick the goal and level' : ' · starting book suggested from the score, change if needed') : 'General course roadmap for new enquiries') + '</div>' +
 '<div class="small" style="margin-top:12px"><b>Learner</b></div><div class="seg" id="cpAdS"><button class="' + (CP.ad ? '' : 'on') + '" onclick="cpAd(0)">Kids &amp; teens</button><button class="' + (CP.ad ? 'on' : '') + '" onclick="cpAd(1)">Adults · 18+</button></div>' +
-(CP.ad ? '<div class="small" style="margin-top:12px"><b>Goal</b></div>' + seg('cpGo', Object.keys(AG).map(k => [k, AG[k].en + ' · ' + AG[k].zh]), CP.goal, 'cpGoal') + '<div class="small" style="margin-top:12px"><b>Level now</b></div>' + seg('cpBa', BANDS.map(b => [b, b === 'A1' ? 'Pre-A1 / A1' : b === 'B2' ? 'B2+' : b]), CP.band, 'cpBand')
+(CP.ad ? '<div class="small" style="margin-top:12px"><b>Goal</b></div>' + seg('cpGo', Object.keys(AG).map(k => [k, AG[k].en + ' · ' + AG[k].zh]), CP.goal, 'cpGoal') + '<div class="small" style="margin-top:12px"><b>Level now</b></div>' + seg('cpBa', [['PA1', 'Pre-A1']].concat(BANDS.map(b => [b, b === 'B2' ? 'B2+' : b])), CP.band === 'A1' && CP.pre ? 'PA1' : CP.band, 'cpBand')
 : '<div class="small" style="margin-top:12px"><b>Starting book</b></div><div class="seg" id="cpBk" style="flex-wrap:wrap">' + KEYS.map(k => '<button class="' + (CP.bk === k ? 'on' : '') + '" onclick="cpBk(\'' + k + '\')">' + k + '</button>').join('') + '</div>') +
 '<div class="row" style="gap:8px;margin-top:12px"><button class="btn teal grow" onclick="cpCopy()">Copy plan picture</button><button class="btn ghost grow" onclick="cpSave()">' + (navigator.share ? 'Share / save' : 'Save picture') + '</button><button class="btn ghost" onclick="cpText()">Copy message</button></div><div class="row" style="gap:8px;margin-top:8px"><button class="btn ghost grow" onclick="cpContent()">Copy class content reply · 课程内容</button></div>' +
 '<div id="cpImg" style="margin-top:12px"><div class="sk"></div><div class="sk"></div></div>' +
@@ -8933,13 +8933,13 @@ c: ['积累日常高频词汇，能用于简单句子表达。', '扩展生活�
 const BANDS = ['A1', 'A2', 'B1', 'B2'], bandOf = c => { c = String(c || ''); return /^(B2|C)/i.test(c) ? 'B2' : /^B1/i.test(c) ? 'B1' : /^A2/i.test(c) ? 'A2' : /^(A1|pre)/i.test(c) ? 'A1' : 'A2'; };
 window.cpAd = function(a){ CP.ad = !!a; if(CP.ad){ CP.goal = CP.goal || 'daily'; CP.band = CP.band || bandOf(CP.o.cefr); } cpSheet(); };
 window.cpGoal = function(g){ CP.goal = g; cpSheet(); };
-window.cpBand = function(b){ CP.band = b; cpSheet(); };
+window.cpBand = function(b){ if(b === 'PA1'){ CP.band = 'A1'; CP.pre = 1; } else { CP.band = b; CP.pre = 0; } cpSheet(); };   /* 1704 */
 window.adBooksFor = (goal, cefr) => { const G = AG[goal] || AG.daily, st = G && G.p[bandOf(cefr)]; return (st || []).map(k => { const e = AB[k] ? String(AB[k][1]) : k, m = e.match(/^(.*?) · (?:Level )?(\S[^·,]{0,18})$/); return m ? m[1] + ' ' + m[2] : e.split(' · ')[0]; }); };   /* 793 */
 async function adDraw(){
 const o = CP.o, G = AG[CP.goal], steps = G.p[CP.band], pk = { A1: 'f', A2: 'c', B1: 'c', B2: 'a' }[CP.band], b0 = AB[steps[0]];
 CP.blob = await coeCard('Learning plan · 学习规划', (T, y) => {
 if(o.student) y = coeWho(T, o, y);
-y = coeHero(T, CP.band === 'B2' ? 'B2+' : CP.band, G.en, '学习目标 · ' + G.zh, '建议起始教材：' + b0[0] + ' · CEFR ' + b0[2], y);
+y = coeHero(T, CP.band === 'B2' ? 'B2+' : CP.band === 'A1' && CP.pre ? 'Pre-A1' : CP.band, G.en, '学习目标 · ' + G.zh, '建议起始教材：' + b0[0] + ' · CEFR ' + b0[2], y);
 if(o.cefr){ T.label('Trial result', '试听评估', y); T.text('CEFR ' + (window.cefrZh ? cefrZh(o.cefr) : o.cefr), T.CX, y + 46, '400 34px ' + T.F, T.NAVY); const pl = window.cefrPlain && cefrPlain(o.cefr, true); if(pl){ T.text(pl.en, T.CX, y + 84, '400 22px ' + T.F, T.SUB); T.text(pl.zh, T.CX, y + 114, '400 22px ' + T.F, T.SUB); y += 66; } y += 104; }
 if(o.student) y = coeTeacher(T, o.teacher, y);
 T.label('Learning path', '学习路线 · ' + G.f, y); y += 22;
