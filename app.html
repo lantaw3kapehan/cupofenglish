@@ -6742,7 +6742,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1520;
+const COE_V = 1521;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24400,7 +24400,13 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       return pick ? Math.round(+pick[C.enrolled] * 10) / 10 : 0; }catch(e){ return 0; } };
   window.wxLessons1702 = lessons1702;
   { const _g1702 = window.wxGroup; window.wxGroup = (name, code) => { const g = _g1702(name, code), m = String(g).match(/^一杯英语\s*(.+?)\s*\((ST-\d{4}-\d{3})\)$/i); if(!m) return g;
-      const names = m[1].replace(/\s*&\s*/g, '&').replace(/\s+/g, ' ').trim(), n = lessons1702(m[2]);
+      let names = m[1].replace(/\s*&\s*/g, '&').replace(/\s+/g, ' ').trim(); const n = lessons1702(m[2]);
+      if(/^ST-\d{4}-\d{3}$/i.test(names)){ const c = names.toUpperCase(); let nm = '';   /* 1707: a code given as the name → the student's English name */
+        try{ const L = [].concat((typeof MS !== 'undefined' && Array.isArray(MS)) ? MS : [], (typeof SL !== 'undefined' && SL && Array.isArray(SL.students)) ? SL.students : []); const x = L.find(y => y && up(y.code) === c && y.name && !/^ST-/i.test(String(y.name))); if(x) nm = x.name; }catch(e){}
+        try{ if(!nm && typeof AT !== 'undefined' && AT && AT.cols){ const C = {}; AT.cols.forEach((k, i) => C[k] = i); const r = AT.rows.find(r => up(r[C.code]) === c && r[C.name]); if(r) nm = r[C.name]; } }catch(e){}
+        try{ if(!nm && typeof DB !== 'undefined' && DB && Array.isArray(DB.rows)){ const r = DB.rows.find(r => up(r[0]) === c && r[2]); if(r) nm = r[2]; } }catch(e){}
+        try{ if(!nm){ const h = document.querySelector('#sheetBody h1'); if(h && typeof STU !== 'undefined' && STU && up(STU.code) === c) nm = String(h.childNodes[0] && h.childNodes[0].textContent || '').trim(); } }catch(e){}
+        if(nm) names = en(String(nm)); }
       return '一杯英语' + names + (n ? '-' + n + '节课' : '') + '(' + m[2].toUpperCase() + ')'; }; }
   async function load(){ try{ if(typeof D === 'undefined' || !D || !D.mgr || !TOKEN) return; const r = await call({ action: 'wx_get' }); if(r && r.ok) window.WXF = r.map || {}; }catch(e){} }
   (function w(){ if(typeof D !== 'undefined' && D && TOKEN){ load(); setInterval(load, 10 * 6e4); } else setTimeout(w, 1500); })();
