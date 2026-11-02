@@ -6742,7 +6742,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1518;
+const COE_V = 1519;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -32219,7 +32219,15 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
     try{ var r = await post('list', { gid: gid, day: day }); if(r && r.ok && gid === S.gid){ if(!quiet){ var fu = r.msgs.find(function(m){ return m.mine && !m.mine.seen; }); S.fu = fu && fu !== r.msgs[0] ? fu.id : (fu ? fu.id : 0); } reuse(r); S.data = r; (S.cache || (S.cache = {}))[gid + '|' + day] = r; S.last = Math.max(S.last, (r.msgs.slice(-1)[0] || {}).id || 0); render(quiet); markSeen(); } else if(r && r.off){ setOn(false); } }
     catch(e){} finally{ S.busy = 0; } }
   function markSeen(){ if(!S.data || document.visibilityState !== 'visible' || VIEW !== 'chat') return; var ids = S.data.msgs.filter(function(m){ return m.mine && !m.mine.seen; }).map(function(m){ m.mine.seen = new Date().toISOString(); return m.id; });
-    if(ids.length) post('seen', { ids: ids }).then(function(){ var g = (S.init.groups || []).find(function(x){ return x.id === S.gid; }); if(g){ g.unread = 0; g.tagged = 0; } paintSide(); paintHdr(); }).catch(function(){}); }
+    if(ids.length) post('seen', { ids: ids }).then(function(){ var g = (S.init.groups || []).find(function(x){ return x.id === S.gid; }); if(g){ g.unread = 0; g.tagged = 0; } paintSide(); paintHdr(); }).catch(function(){});
+    try{ var g0 = (S.init.groups || []).find(function(x){ return x.id === S.gid; }); if(g0 && (g0.unread || 0) > ids.length && (S.day || S.init.today) === S.init.today) earlier1705(S.gid); }catch(e){} }
+  /* 1705 · unread messages from earlier days (not on the Today view) are marked seen too when the group is opened */
+  var E1705 = {};
+  async function earlier1705(gid){ if(E1705[gid] && Date.now() - E1705[gid] < 6e4) return; E1705[gid] = Date.now();
+    try{ var d = await post('days', { gid: gid }); var L = ((d && d.days) || []).map(function(x){ return x.day; }).filter(function(x){ return x >= new Date(Date.parse(S.init.today + 'T12:00:00+08:00') - 7 * 864e5).toISOString().slice(0, 10); }).slice(0, 7), ids = [];
+      for(var i = 0; i < L.length; i++){ var r = await post('list', { gid: gid, day: L[i] }); ((r && r.msgs) || []).forEach(function(m){ if(m.mine && !m.mine.seen) ids.push(m.id); }); }
+      if(ids.length) await post('seen', { ids: ids });
+      var g = (S.init.groups || []).find(function(x){ return x.id === gid; }); if(g && S.gid === gid){ g.unread = 0; g.tagged = 0; } paintSide(); paintHdr(); }catch(e){} }
 
   /* ---------- render ---------- */
   function sideHtml(){ var G = (S.init && S.init.groups) || [], g1 = G.filter(function(g){ return g.kind !== 'direct'; }), g2 = G.filter(function(g){ return g.kind === 'direct'; });
