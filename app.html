@@ -6742,7 +6742,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1516;
+const COE_V = 1517;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -14632,7 +14632,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
   function facts(t, r){ const d = r.tr && r.tr.data, f = (r.sub && r.sub.f) || {}, c = (r.sub && r.sub.c) || {};
     let pts, comm, next, commZh = '', nextZh = '', cefr, group = '', teacher = t.teacher || (r.sub && r.sub.who) || '';
     if(d){ pts = d.slice(6, 15).map(Number); comm = d[25]; next = d[26]; commZh = d[27] || ''; nextZh = d[28] || ''; cefr = d[22] || d[23] || d[20] || d[21]; group = d[32] || ''; teacher = d[4] || teacher; }
-    else if(f.picks){ pts = f.picks.map(p => 4 - Number(p)); comm = (f.texts || [])[0]; next = (f.texts || [])[1]; cefr = f.cefr; }
+    else if(f.picks){ pts = f.picks.map(p => 4 - Number(p)); comm = (f.texts || [])[0]; next = (f.texts || [])[1]; cefr = f.cefr; commZh = f.commZh1703 || ''; nextZh = f.nextZh1703 || ''; }
     else return null;
     if(pts.length !== 9 || pts.some(x => !(x >= 1 && x <= 4))) return null;
     const total = pts.reduce((a, b) => a + b, 0); if(LV.indexOf(cefr) < 0) cefr = rub(total);
@@ -25475,7 +25475,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const get = k => idb().then(d => new Promise(ok => { try{ const q = d.transaction('p').objectStore('p').get(k); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); }catch(e){ ok(null); } })).catch(() => null);
   const put = (k, v) => idb().then(d => new Promise(ok => { try{ const t = d.transaction('p', 'readwrite'); t.objectStore('p').put(v, k); t.oncomplete = () => ok(1); t.onerror = () => ok(0); }catch(e){ ok(0); } })).catch(() => 0);
   const grp = t => { try{ const o = JSON.parse(localStorage.getItem('coe.trgrp.' + t.label) || 'null'); if(o && Date.now() - o.at < 6 * 3600e3) return o.g; }catch(e){} return t._g || t.group || ''; };
-  const sig = (t, extra) => 'app:' + (t.label || t.date + '|' + t.student) + '|' + grp(t) + '|' + (t.cefr || '') + '|' + (t.commZh ? 1 : 0) + '|' + (extra || '') + '|v5';
+  const sig = (t, extra) => 'app:' + (t.label || t.date + '|' + t.student) + '|' + grp(t) + '|' + (t.cefr || '') + '|' + (t.commZh ? 1 : 0) + '|' + (extra || '') + '|v6';
   const show = (t, f) => { if(TLD !== t) return; TLB = f; TLB._app = 1; const el = $('tlPdf'); if(el) el.innerHTML = '<iframe class="rp-pdf" src="' + URL.createObjectURL(TLB) + '#view=FitH"></iframe><div class="small mute" style="margin-top:4px">Made in the app · the same report the sheet makes</div>'; try{ tlBtns(); }catch(e){} };
   const N = {};   /* teacher → their sent reports with lines per skill */
   async function notesOf(t){ const tk = String(t.teacher || '').toLowerCase(); if(!N[tk] || Date.now() - N[tk].at > 5 * 6e4){
@@ -25496,6 +25496,9 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     const r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'trialData', token: TOKEN, date: t.date, student: t.student, tables: true }) }).then(x => x.json());
     if(!r || !r.ok) return; const d = r.tr && r.tr.data;
     if(d && d[25] && !d[27]){ try{ const z = await api('mgmtZh', TOKEN, [d[25], d[26] || ''], [t.student, t.cn || '']); if(z && z.ok && z.zh){ d[27] = z.zh[0] || ''; d[28] = z.zh[1] || ''; } }catch(e){} }
+    let noZh1703 = !!(d && d[25] && !d[27]);
+    if(!d && r.sub && r.sub.f && Array.isArray(r.sub.f.texts) && r.sub.f.texts[0]){ const sf = r.sub.f; noZh1703 = true;   /* 1703: the teacher's submission (before Google's row) gets its Chinese too */
+      try{ const z = await api('mgmtZh', TOKEN, [sf.texts[0], sf.texts[1] || ''], [t.student, t.cn || '']); if(z && z.ok && z.zh && z.zh[0]){ sf.commZh1703 = z.zh[0]; sf.nextZh1703 = z.zh[1] || ''; noZh1703 = false; } }catch(e){} }
     const tt = Object.assign({}, t, { group: grp(t), _g: grp(t) });
     if(n){ tt._notes = n; try{ const z = await api('mgmtZh', TOKEN, n, [t.student, t.cn || '']); if(z && z.ok && Array.isArray(z.zh)) tt._notesZh = z.zh; }catch(e){} }
     const html = coeTrialPages(tt, r); if(!html) return;
@@ -25506,7 +25509,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       for(let j = 0; j < P.length; j++){ const cv = await H2(P[j], { scale: 3, backgroundColor: '#ffffff', useCORS: true, logging: false }); if(j) doc.addPage(); const h = W * cv.height / cv.width, kk = h > Hh ? Hh / h : 1; doc.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', (W - W * kk) / 2, 0, W * kk, h * kk);
         await new Promise(z => setTimeout(z, 60)); }
       const name = 'COE_TCR_' + String(t.student).replace(/[\\\/:*?"<>|]/g, '') + '_' + (t.teacher || '') + '_' + t.date + '.pdf';
-      await put(k, { blob: doc.output('blob'), name, at: Date.now() }); }
+      if(!noZh1703) await put(k, { blob: doc.output('blob'), name, at: Date.now() }); }   /* 1703: a report without the Chinese is not kept */
     finally{ host.remove(); } }
   async function ahead(){ if(RUN || typeof D === 'undefined' || !D || !D.mgr || !TOKEN || document.hidden) return; RUN = 1;
     try{ const L = ((typeof TRL !== 'undefined' && TRL && TRL.rows) || []).filter(x => x && x.label && x.status !== 'Sent' && x.total !== '' && x.total != null).slice(0, 6);
