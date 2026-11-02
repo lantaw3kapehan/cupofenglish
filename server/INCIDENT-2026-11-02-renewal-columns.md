@@ -33,6 +33,29 @@ that day, not every piece that used the old layout.
   dates in Shared. (NOTES text on old rows such as "Paused" is Operations' own notes. Evelyn ST-2024-087 shares with herself →
   blank Available, older and unrelated.)
 
+## Same cause, second symptom: partner / parent pages showed 核对中 for almost everyone (21:00)
+Portal safety check (sys:portalholds 21:03): 241 held, 1 shown. Two more readers of ACTIVE still used the old positions:
+- Google `pkgLink27_` (copies ACTIVE to sys:pkglink every 2 min) read "lessons left" from TOTAL FINISHED → 0 for everyone
+  (Jasper 0 instead of 34, Ruyi 0 instead of 68), so the portal's "Google sheet agrees" check failed.
+- Database `coe_pkg_check_run` (hourly sys:pkgcheck) matched ACTIVE~ rows by the old purchase-date column → no row matched → "database
+  and sheet totals differ" for 201 students.
+
+Fixed:
+- Google script Version 454 (21:06): `pkgLink27_` and the other readers (`buildTeacher_`, `mgmtStudents_`, `mgmtActive_`, `slowJobs_`,
+  `untickedTaught_`, `mgmtFillCourses`, `mgmtPkgCheck`, `handovers_`: 34 reads on 15 lines) add `aK_()`. zzColTest1102 8/8 OK.
+  sys:pkglink 21:07: months 2024-02…2026-11, Jasper 34, Ruyi 68.
+- Database `coe_pkg_check_run` now uses `coe_acol()` (header-based, like `coe_pkg_sync`): 324 of 324 rows matched, 250 equal.
+- Portal check 21:13: shown 5 → 137 of 207. Ms. Jane 3 of 5 shown; Dr. Spring 59 of 94.
+- Still 核对中 (by design): students who had a class today that Google's sheet has not counted yet (S-MONTHLY copy 19:43; differences
+  of 0.5–1 lesson, e.g. Jasper 34 vs 33.5 after tonight's class) and 12 older "renewal month" flags. These clear when the sheet catches up.
+
+## Partners (2 Nov 21:15)
+- New partner logins get their SALES labels automatically from their sources (trigger `coe_partner_labels_fill` on partner_accounts;
+  `coe_partner_labels()` gives Spring 3, Jane 2, Clark "Chengdu - Mr. Clark", Rose "Jinan - Ms. Rose"; labels typed by hand are kept).
+- partner_rates added from SALES (confirmed = false, need Misty): Chengdu – Mr. Clark 30 = 1,500 (before 22 Feb 2025), 1,800 (since);
+  Jinan – Dr. Rose 15 = 825.
+- Instant sales (qa_1102_sales_instant.sql): not applied; the database asked for approval and it was not answered.
+
 ## Still to do
 - Hourly validity tools (`validFC12_`, `validApply12_`, `validFix12_`, `cl18Kick18`) have done nothing since 1 Nov (they look for
   the formulas one column to the left). Not harmful; to be moved to `aK_()` and re-checked.
