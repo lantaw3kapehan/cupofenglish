@@ -1,5 +1,6 @@
 // CupOfEnglish · 20 Oct 2026 · a teacher's trial reports already made (TR-DATA copy + reports sent in the app), last 60 days.
 // The app uses it to clear "Write report" for a trial that was moved to another day (the old rule matched only the same date + name).
+// 2 Nov v12 · a report Google refused (writes status error / test) no longer counts as sent (Becky ST-2026-129: AUTH at 09:47, the card said "Report sent").
 // 29 Oct v11 · POST { token, recon: days } (management, read-only) → { sessions: Trial log rows (TC&SUB) grouped by calendar event id + day, each with
 //   cal = where that event is now { day, x: cancelled, mv: moved from }, reports: TR-DATA { d, code, s, label }, next: docs sys:trial_next items }.
 //   POST { token, op: 'setNext', k, what, owner, due, note } (management) → one trial's next step in docs `sys:trial_next` (empty = back to automatic).
@@ -132,7 +133,7 @@ Deno.serve(async (req: Request) => {
   const since = new Date(Date.now() + 8 * 3600e3 - 60 * 864e5).toISOString().slice(0, 10), list: any[] = [];
   const [{ data: T, error: te }, { data: W }] = await Promise.all([
     db.from("sheet_rows").select("data").eq("tab", "TR-DATA").order("r").limit(3000),
-    db.from("writes").select("args,created_at").eq("fn", "tTrialSubmit").ilike("who", who).gte("created_at", new Date(Date.now() - 60 * 864e5).toISOString()).limit(300)]);
+    db.from("writes").select("args,created_at").eq("fn", "tTrialSubmit").ilike("who", who).in("status", ["new", "busy", "done"]).gte("created_at", new Date(Date.now() - 60 * 864e5).toISOString()).limit(300)]);
   if (te) return out({ ok: false, error: "db" }, 500);
   if (b.form) {   // 20 Oct v2 · the trial form's questions (the same for every trial): Google's last answer, so the form opens at once
     const { data: F } = await db.from("docs").select("data").like("key", "%:tTrialForm|%").order("updated_at", { ascending: false }).limit(5);
