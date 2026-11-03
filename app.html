@@ -6061,6 +6061,10 @@ const f = {rid: 'st' + Date.now().toString(36) + Math.random().toString(36).slic
 trialDate:v('sTd'), trialTime:v('sTt'), trialBook:v('sTb'), trialCefr:v('sTc'), trialTeacher:v('sTe'),
 firstClass:v('sFc'), lessons:v('sLs'), cefrBooks:v('sCb'), free:v('sFr'), recommended:v('sRc'), ended:v('sEnd'), source:v('sSrc')};
 if(!row && !($('sEnr')||{}).open) ['firstClass','lessons','cefrBooks','free','recommended','ended'].forEach(k => delete f[k]);
+try{ if(/^ST-\d{4}-\d{3}/i.test(String(f.source || '').trim()) && 'recommended' in f){ let fill = [];   /* 1724: a referral counts for the referrer only with a date */
+  if(!f.recommended){ f.recommended = f.firstClass || ymdLocal(new Date()); fill.push('Date recommended ' + f.recommended); }
+  if('free' in f && String(f.free).trim() === ''){ f.free = '1'; fill.push('free lesson 1 for the referrer'); }
+  if(fill.length) setTimeout(() => { try{ toast('Referral: ' + fill.join(' · ')); }catch(e){} }, 2500); } }catch(e){}
 if(!f.en.trim() && !f.cn.trim()) return toast('Type the English or Chinese name');
 if(f.trialTime && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(f.trialTime.trim())) return toast('Choose the trial time from the list');
 const lk = FIXLINK; FIXLINK = null;
@@ -6744,7 +6748,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1537;
+const COE_V = 1538;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
