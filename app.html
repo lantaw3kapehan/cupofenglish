@@ -5948,6 +5948,8 @@ openSheet(`<h1>New case</h1><div class="mute small">Added at the top of ACTIONS 
 <div class="row" style="gap:10px"><div class="grow"><label>Employee</label><select id="cE" class="in-t"><option></option>${opts(L.employee)}</select></div>
 <div class="grow"><label>Type</label><select id="cT" class="in-t"><option></option>${opts(L.type)}</select></div></div>
 <label>Student (optional)</label><input id="cSt" class="in-t" placeholder="Weiwei ST-2026-118">
+${(function(){ const d = new Date(), ym = x => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0'), lb = x => x.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), p = new Date(d.getFullYear(), d.getMonth() - 1, 15);
+  return '<label>For pay month</label><select id="cPM" class="in-t"><option value="' + ym(d) + '">' + lb(d) + ' (this month)</option>' + (d.getDate() <= 10 ? '<option value="' + ym(p) + '">' + lb(p) + ' · counts in ' + lb(p).split(' ')[0] + ' pay (until the 10th)</option>' : '') + '</select><div class="small mute" style="margin-top:4px">Incentives and deductions are paid in the month of the case date. Last month dates the case on its last day.</div>'; })()}
 <div class="row" style="gap:10px"><div class="grow"><label>Source</label><select id="cSo" class="in-t">${opts(L.source,'Operations').replace('<option>President</option>','<option value="President">Management</option>')}</select></div>
 <div class="grow"><label>Condition</label><select id="cC" class="in-t"><option></option>${opts(L.condition)}</select></div></div>
 <div class="row" style="gap:10px"><div class="grow"><label>Status</label><select id="cSt2" class="in-t"><option></option>${opts(L.status)}</select></div>
@@ -5965,9 +5967,9 @@ function wifiCase(){ caseSheet(); const set = (id, v) => { const el = $(id); if(
 async function sendCase(){
 const v = id => ($(id)||{}).value || '';
 const f = {subject:v('cS'),employee:v('cE'),type:v('cT'),student:v('cSt'),source:v('cSo'),assigned:'Operations',condition:v('cC'),status:v('cSt2'),tier:v('cTi'),
-demerit:v('cD'),incentive:v('cI'),amount:v('cA'),action:v('cX'),done:$('cDone').checked};
+demerit:v('cD'),incentive:v('cI'),amount:v('cA'),action:v('cX'),done:$('cDone').checked,payMonth:v('cPM')};
 if(!f.subject || !f.employee) return toast('Choose a subject and employee');
-const ids = { cS: f.subject, cE: f.employee, cT: f.type, cSt: f.student, cSo: f.source, cC: f.condition, cSt2: f.status, cTi: f.tier, cD: f.demerit, cI: f.incentive, cA: f.amount, cX: f.action };
+const ids = { cS: f.subject, cE: f.employee, cT: f.type, cSt: f.student, cSo: f.source, cC: f.condition, cSt2: f.status, cTi: f.tier, cD: f.demerit, cI: f.incentive, cA: f.amount, cX: f.action, cPM: f.payMonth };
 closeSheet(); toast('Saving case · ' + f.employee + '…');   /* 14 Oct: closes at once, saves in the background */
 api('addCase', TOKEN, f).then(r => { if(!r || !r.ok) throw r; toast('✓ ' + r.caseId + ' added · ' + f.employee); AC = null; loadActions(); })
 .catch(e => { try{ caseSheet(); Object.keys(ids).forEach(k => { const el = $(k); if(el && ids[k] != null) el.value = ids[k]; }); if($('cDone')) $('cDone').checked = !!f.done; }catch(y){} toast((e && e.msg) || 'Case not saved · your details are back in the form. Try again.'); });
@@ -6742,7 +6744,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1532;
+const COE_V = 1533;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
