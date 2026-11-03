@@ -6744,7 +6744,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1535;
+const COE_V = 1536;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -10674,6 +10674,7 @@ ${scDueBox()}${bookKey()}<div class="fl"><span class="lbl">Teacher</span><button
       const kind = li => { const s = li.querySelector('.sa-src'); if(!s) return ''; const k = K.find(x => x[3](s)); return k ? k[0] : ''; };
       const n = {}; rows.forEach(li => { const k = kind(li); n[k] = (n[k] || 0) + 1; if(F && k !== F) li.style.display = 'none'; });
       if(!Object.keys(n).some(k => k)) return r;
+      v.querySelectorAll('.sk2').forEach(x => x.remove());   /* 1722 · one Source row only */
       const at = v.querySelector('.sa-h') || rows[0];
       at.insertAdjacentHTML('beforebegin', `<div class="sk2"><span>Source</span>${K.map(([k, l, c]) => `<button class="${k} ${F === k ? 'on' : ''}" onclick="skF('${k}')" title="${F === k ? 'Show all' : 'Show only ' + l.toLowerCase()}"><i style="background:${c}"></i>${l} <b>${n[k] || 0}</b></button>`).join('')}</div>`);
     }catch(e){ console.warn('source key', e); }
@@ -35607,6 +35608,36 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
 /* 3 · teacher name: no background */
 #sheet #sheetBody.stu2 .shero.h1589 .h-learn>.chip.teal:not(#z1590):not(#y1590){background:transparent!important;outline:0!important;box-shadow:none!important;color:var(--coe-teal-700,#00707A)!important}
 </style>
+<script>
+/* 1722 · Students search safety net: the list on screen always matches the words typed */
+(function(){
+  if(window.__1722) return; window.__1722 = 1;
+  const nz = s => String(s == null ? '' : s).toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
+  function filt(){ try{
+    const v = document.getElementById('v-astudents'), a = document.getElementById('aq'); if(!v || !a) return;
+    const q = nz(a.value).trim(), W = q.split(/\s+/).filter(Boolean), rows = [...v.querySelectorAll('.li[onclick^="openStudent"]')];
+    if(!W.length){ rows.forEach(r => { if(r.dataset.q1722){ r.style.display = ''; delete r.dataset.q1722; } }); return; }
+    let n = 0, first = null;
+    rows.forEach(r => { const code = ((String(r.getAttribute('onclick') || '').match(/openStudent\('([^']+)'/) || [])[1] || '').toLowerCase();
+      const hay = nz(r.textContent) + ' ' + code + ' ' + code.replace(/^st-/, '') + ' ' + code.replace(/^st-\d{4}-/, '');
+      const ok = W.every(w => hay.indexOf(w) > -1);
+      if(!ok){ if(r.style.display !== 'none'){ r.style.display = 'none'; r.dataset.q1722 = 1; } }
+      else { if(r.dataset.q1722){ r.style.display = ''; delete r.dataset.q1722; } if(r.style.display !== 'none'){ n++; if(!first) first = r; } } });
+    const f = [...v.querySelectorAll('div.small.mute')].find(d => / found( · Enter opens .*)?$/.test(d.textContent.trim()));
+    if(f){ const nm = first ? ((first.querySelector('b') || {}).textContent || '').trim() : ''; const t = n + ' found' + (nm ? ' · Enter opens ' + nm : ''); if(f.textContent !== t) f.textContent = t; }
+    if(!n && !v.querySelector('.e1722')) (f || a).insertAdjacentHTML('afterend', '<div class="empty e1722">No student matches “' + (typeof esc === 'function' ? esc(a.value) : a.value) + '”.</div>');
+    if(n){ const e = v.querySelector('.e1722'); if(e) e.remove(); }
+  }catch(e){ console.warn('1722 search', e); } }
+  window.f1722 = filt;
+  const r0 = window.renderAStudents;
+  if(typeof r0 === 'function') window.renderAStudents = function(){ let r; try{ r = r0.apply(this, arguments); } catch(e){ console.warn('Students list draw', e); } filt(); setTimeout(filt, 0); return r; };
+  const k0 = window.asKey; if(typeof k0 === 'function') window.asKey = function(ev){ if(ev && ev.key === 'Enter'){ ev.preventDefault(); try{ clearTimeout(window.AS_T); }catch(x){} try{ renderAStudents(); }catch(x){} filt();
+      const v = document.getElementById('v-astudents'), f = v && [...v.querySelectorAll('.li[onclick^="openStudent"]')].find(r => r.style.display !== 'none'); if(f) f.click(); return; } return k0.apply(this, arguments); };
+  const aq = () => document.getElementById('aq');
+  document.addEventListener('input', ev => { if(ev.target && ev.target.id === 'aq') setTimeout(filt, 200); }, true);
+  const v = document.getElementById('v-astudents'); if(v){ let q = 0; new MutationObserver(() => { if(q || !aq() || !aq().value) return; q = 1; requestAnimationFrame(() => { q = 0; filt(); }); }).observe(v, { childList: true, subtree: true }); }
+})();
+</script>
 <script>
 /* 1590 · learner filter on the Students list */
 (function(){
