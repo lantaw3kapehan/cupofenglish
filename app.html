@@ -6744,7 +6744,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1534;
+const COE_V = 1535;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31162,14 +31162,14 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     const reason = action === 'cancel' ? (($('u20r' + i) || {}).value || REASONS[0]) : '';
     const f = { action, start: c.start, date: day, time: hmM(c.start), mins: String(Math.round((Date.parse(c.end) - Date.parse(c.start)) / 6e4) || 25), teacher: c.teacher || o.teacher, reason, makeup: false, forward: false };
     toast(action === 'cancel' ? 'Saving · not counted…' : 'Saving · counted…');
-    try{ const r = await api('editClass', TOKEN, c.id, f); if(!r || !r.ok) throw r; const n = await resync([day]); toast('✓ ' + (action === 'cancel' ? 'Not counted' : 'Counted') + ' · ' + dd(day) + (n ? ' · ' + n : '')); }
+    try{ const r = await api('editClass', TOKEN, c.id, f); if(!r || !r.ok) throw r; const n = await resync([day]); try{ u17reset(); }catch(x){} toast('✓ ' + (action === 'cancel' ? 'Not counted' : 'Counted') + ' · ' + dd(day) + (n ? ' · ' + n : '')); }
     catch(e){ toast((e && (e.msg || e.message)) || 'Not saved. Try again.'); }
     paintStu(o); };
   window.u20Add = async function(){ const o = CUR; if(!o) return; const d = ($('u20d') || {}).value, t = ($('u20t') || {}).value, m = ($('u20m') || {}).value, w = (($('u20w') || {}).value || '').trim();
     if(!d || !isOpen(d)) return toast('Choose a date in an open month'); if(!/^\d\d:\d\d$/.test(t || '')) return toast('Choose a time'); if(!w) return toast('Write why the class is added');
     const b = $('u20go'); if(b){ b.disabled = true; b.textContent = 'Adding…'; }
     const f = { code: o.code, student: o.name || o.code, kind: '', fresh: false, cn: '', book: String(o.book || '').split(',').pop().trim(), teacher: o.teacher, date: d, time: t, mins: m, days: [], count: 1, force: true, note: 'Added from Lessons counted · ' + w };
-    try{ const r = await api('addClass', TOKEN, f); if(!r || !r.ok) throw r; const n = await resync([d]); toast('✓ Class added · ' + dd(d) + ' ' + t + (n ? ' · ' + n : '')); paintStu(o); }
+    try{ const r = await api('addClass', TOKEN, f); if(!r || !r.ok) throw r; const n = await resync([d]); try{ u17reset(); }catch(x){} toast('✓ Class added · ' + dd(d) + ' ' + t + (n ? ' · ' + n : '')); paintStu(o); }
     catch(e){ toast((e && (e.msg || e.message)) || 'Not added. Try again.'); if(b){ b.disabled = false; b.textContent = 'Add class'; } } };
   async function paintTc(o){ const x = o.x, day = String(x.d || '').slice(0, 10), open = isOpen(day);
     let h = '<h1 style="padding-right:48px">Fix · ' + H(o.kind === 'sub' ? 'sub' : 'trial') + ' class</h1><p class="small mute" style="margin:2px 0 10px"><b>' + H(x.name || x.code) + '</b> ' + H(x.code) + ' · ' + H(dd(day)) + ' ' + H(x.t || '') + ' · Teacher ' + H(o.teacher) + (x.for ? ' · for ' + H(x.for) : '') + '</p>';
@@ -31179,13 +31179,14 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     CUR = o; openSheet(h); }
   window.u20Tc = async function(mode){ const o = CUR; if(!o || !o.x) return; const x = o.x, day = String(x.d || '').slice(0, 10), why = (($('u20tw') || {}).value || '').trim();
     if(mode === 'remove' && !why) return toast('Write why it is not a real class');
-    toast('Saving…');
+    const lbl = H(x.name || x.code) + ' · ' + H(dd(day)) + ' ' + H(x.t || ''), pk = typeof svPill === 'function' ? svPill(null, '⏳ ' + (mode === 'dup' ? 'Removing the duplicate' : 'Removing') + ' <b>' + lbl + '</b> in Google…', 'wait') : null;
+    closeSheet(); if(!pk) toast('Saving…');
     try{
       if(mode === 'remove'){ try{ const L = await classes(x.code), c = L.find(c => ymdM(c.start) === day && hmM(c.start) === String(x.t || '').slice(0, 5) && !c.cancelled);
           if(c){ const r = await api('editClass', TOKEN, c.id, { action: 'cancel', start: c.start, date: day, time: hmM(c.start), mins: String(Math.round((Date.parse(c.end) - Date.parse(c.start)) / 6e4) || 25), teacher: c.teacher || o.teacher, reason: 'CupOfEnglish · ' + why, makeup: false, forward: false }); if(!r || !r.ok) throw r; } }catch(e){ throw e; } }
       const r = await api('mgmtTcSubFix', TOKEN, { eid: x.eid, date: day, mode, reason: why }); if(!r || !r.ok) throw r;
-      toast('✓ ' + (r.note || 'Done') + ' · pay and Lessons counted update in a few minutes'); closeSheet(); }
-    catch(e){ toast((e && (e.msg || e.message)) || 'Not saved. Try again.'); } };
+      try{ u17reset(); }catch(x){} const okH = '✓ <b>' + H(r.note || 'Done') + '</b> · ' + lbl + ' · Lessons counted and pay update in about 2–4 minutes'; if(pk) svPill(pk, okH, 'ok'); else toast('✓ ' + (r.note || 'Done')); }
+    catch(e){ const m = (e && (e.msg || e.message)) || 'Not saved. Try again.'; if(pk) svPill(pk, '✗ <b>Not saved</b> · ' + lbl + ' · ' + H(m), 'bad'); else toast(m); } };
   window.unitsFix = function(i){ const o = R[i]; if(!o) return; if(o.kind === 'stu') paintStu(o); else paintTc(o); };
 })();
 </script>
@@ -31199,7 +31200,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   const n1 = x => { const v = Math.round((+x || 0) * 10) / 10; return String(v); };
   const dd = d => { const t = new Date(d + 'T12:00:00'); return isNaN(t) ? d : t.getDate() + ' ' + MN[t.getMonth()].slice(0, 3); };
   const H = x => (typeof esc === 'function' ? esc(x) : String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
-  let IDX = null, DET = {};
+  let IDX = null, DET = {}, AT17 = 0; window.u17reset = () => { IDX = null; DET = {}; AT17 = 0; };
   async function get(keys){ const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys }) }).then(x => x.json());
     if(!r || !r.ok) throw new Error((r && r.error) || 'Could not load'); return r.docs || {}; }
   const ymOf = v => { const s = String(v || ''); let m = s.match(/(\d{4})-(\d{2})/); if(m) return m[1] + '-' + m[2];
@@ -31240,10 +31241,10 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     name = String(name || '').trim(); if(!name) return;
     if(!ym) ym = (function(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })();
     const paint = () => { try{ if(typeof openSheet === 'function') openSheet(draw(name, ym, view)); }catch(e){} };
-    if(IDX && (view === 'grid' || DET[ym])) return paint();
+    if(IDX && (view === 'grid' || DET[ym]) && Date.now() - AT17 < 60000) return paint(); if(Date.now() - AT17 >= 60000){ IDX = null; DET = {}; }
     openSheet('<h1>Lessons counted · ' + H(name) + '</h1><div class="sk"></div><div class="sk"></div>');
     try{ const keys = []; if(!IDX) keys.push('mgmt:tunits'); if(view !== 'grid' && !DET[ym]) keys.push('mgmt:tunits:' + ym);
-      const d = await get(keys); if(d['mgmt:tunits']) IDX = d['mgmt:tunits'].data; if(d['mgmt:tunits:' + ym]) DET[ym] = d['mgmt:tunits:' + ym].data;
+      const d = await get(keys); if(d['mgmt:tunits']) IDX = d['mgmt:tunits'].data; AT17 = Date.now(); if(d['mgmt:tunits:' + ym]) DET[ym] = d['mgmt:tunits:' + ym].data;
       if(view !== 'grid' && !DET[ym]) DET[ym] = { teachers: {} }; paint();
     }catch(e){ try{ $('sheetBody').innerHTML = '<h1>Lessons counted</h1><div class="empty">Could not load (' + H(e.message) + '). Try again.</div>'; }catch(x){} } };
   window.unitsFromPayslip = function(){ try{ const n = $('psN'), p = $('psP'); const nm = n ? String(n.options[n.selectedIndex].textContent || '').split(' · ')[0].trim() : ''; unitsSheet(nm, ymOf(p ? p.value.split(SL2).join(' ') : '')); }catch(e){} };
