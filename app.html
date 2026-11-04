@@ -6748,7 +6748,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1570;
+const COE_V = 1571;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -35999,13 +35999,37 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     if(!PD){ box.innerHTML = '<div class="sk"></div><div class="sk"></div>'; return; }
     if(!PD.ok){ box.innerHTML = '<div class="empty">' + esc(PD.error || 'Could not load') + ' · <button class="btn ghost sm" onclick="pdb1742Load()">Try again</button></div>'; return; }
     const R = PD.rows || [], tot = R.reduce((a, r) => a + (+r.net || 0), 0), diff = R.filter(r => r.sheet && Math.abs((+r.net || 0) - (+r.sheet.net || 0)) > 0.009);
-    box.innerHTML = '<div class="small mute" style="margin:6px 0 10px">Database total ' + peso(tot) + ' · ' + R.length + ' people · ' + (diff.length ? diff.length + ' differ from the PAY tab' : 'all the same as the PAY tab') + '</div>'
+    box.innerHTML = govList1756(R) + '<div class="small mute" style="margin:6px 0 10px">Database total ' + peso(tot) + ' · ' + R.length + ' people · ' + (diff.length ? diff.length + ' differ from the PAY tab' : 'all the same as the PAY tab') + '</div>'
       + R.map((r, i) => { const s = r.sheet, d = s ? (+r.net || 0) - (+s.net || 0) : null, ed = (r.edited || []).length;
         return '<div class="card" style="margin-top:8px;padding:10px 12px"><div class="row" style="gap:8px;align-items:center"><div class="grow"><b>' + esc(r.teacher) + '</b>'
           + '<div class="small mute">' + (+r.reg || 0) + ' + ' + (+r.sub || 0) + ' sub + ' + (+r.trial || 0) + ' trial units × ' + peso(r.rate) + ((r.courses || []).length ? ' (course rates)' : '') + (+r.base ? ' · base ' + peso(r.base) : '') + (+r.bonus ? ' · + ' + peso(r.bonus) : '') + (+r.deduct ? ' · − ' + peso(r.deduct) : '') + ((+r.sss) + (+r.pagibig) + (+r.philhealth) ? ' · dues ' + peso((+r.sss) + (+r.pagibig) + (+r.philhealth)) : '') + (ed ? ' · ' + ed + ' correction' + (ed > 1 ? 's' : '') : '') + '</div></div>'
           + '<div style="text-align:right"><b>' + peso(r.net) + '</b><div class="small ' + (d == null ? 'mute' : Math.abs(d) < 0.01 ? 'mute' : '') + '" style="' + (d != null && Math.abs(d) >= 0.01 ? 'color:#9A4330' : '') + '">' + (s ? (Math.abs(d) < 0.01 ? 'same as PAY tab' : 'PAY tab ' + peso(s.net) + ' (' + (d > 0 ? '+' : '−') + peso(Math.abs(d)) + ')') : 'not in the PAY tab') + (s && s.paid ? ' · paid' : '') + '</div></div>'
           + (PD.pres ? '<button class="btn ghost sm" onclick="pdb1742Edit(' + i + ')">✎</button>' : '') + '</div></div>'; }).join('');
   }
+  function govList1756(R){ if(String(PM) < '2026-10') return '';   /* 1756 */
+    const P = (PD.people || []).filter(p => (+p.sss || 0) + (+p.pagibig || 0) + (+p.philhealth || 0) + (+p.bir || 0) > 0).sort((a, b) => String(a.teacher).localeCompare(String(b.teacher)));
+    const q = x => esc(String(x)).replace(/'/g, ''), sum = p => (+p.sss || 0) + (+p.pagibig || 0) + (+p.philhealth || 0) + (+p.bir || 0);
+    const others = R.map(r => r.teacher).filter(t => !P.some(p => String(p.teacher).toLowerCase() === String(t).toLowerCase()));
+    return '<div class="card" style="margin:4px 0 12px;padding:12px 14px"><div class="row" style="gap:8px;align-items:center"><b class="grow">Government contributions</b><span class="small mute">every month · total ' + peso(P.reduce((a, p) => a + sum(p), 0)) + '</span></div>'
+      + '<div class="small mute" style="margin:2px 0 6px">Saved in the database · used for every month from October 2026 · a one-month change is a ✎ correction below</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums"><tr class="small mute"><td>Person</td><td style="text-align:right">SSS</td><td style="text-align:right">Pag-IBIG</td><td style="text-align:right">PhilHealth</td><td style="text-align:right">BIR</td><td></td></tr>'
+      + (P.length ? P.map(p => '<tr style="border-top:1px solid var(--line,#eee)"><td style="padding:6px 0"><b>' + esc(p.teacher) + '</b><div class="small mute">' + (p.gov_in_deduct ? 'for the record · not deducted' : 'deducted from pay') + '</div></td>'
+        + ['sss', 'pagibig', 'philhealth', 'bir'].map(k => '<td style="text-align:right">' + (+p[k] ? peso(p[k]) : '—') + '</td>').join('')
+        + '<td style="text-align:right">' + (PD.pres ? '<button class="btn ghost sm" onclick="pdb1756Gov(\'' + q(p.teacher) + '\')">✎</button>' : '') + '</td></tr>').join('') : '<tr><td colspan="6" class="small mute" style="padding:6px 0">None saved yet</td></tr>') + '</table>'
+      + (PD.pres && others.length ? '<div class="row" style="gap:8px;margin-top:8px;align-items:center"><select id="pgAdd1756" class="in-t grow"><option value="">+ Add a person…</option>' + others.map(t => '<option>' + esc(t) + '</option>').join('') + '</select><button class="btn ghost sm" onclick="const v=$(\'pgAdd1756\').value;if(v)pdb1756Gov(v)">Add</button></div>' : '') + '</div>'; }
+  window.pdb1756Gov = function(name){ const p = ((PD && PD.people) || []).find(x => String(x.teacher).toLowerCase() === String(name).toLowerCase()) || {};
+    const f = (k, l) => '<div class="grow" style="min-width:120px"><label>' + l + '</label><input id="pq' + k + '1756" class="in-t" type="number" min="0" step="0.01" inputmode="decimal" value="' + (+p[k] || 0) + '"></div>';
+    openSheet('<h1>Government contributions · ' + esc(name) + '</h1><div class="small mute">Every month from October 2026 · saved in the database · a month with its own ✎ correction keeps that</div>'
+      + '<div class="row" style="gap:10px;flex-wrap:wrap;margin-top:8px">' + f('sss', 'SSS') + f('pagibig', 'Pag-IBIG') + f('philhealth', 'PhilHealth') + f('bir', 'BIR') + '</div>'
+      + '<label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-weight:400"><input type="checkbox" id="pqG1756" style="width:auto;margin:0"' + (p.gov_in_deduct ? ' checked' : '') + '> Shown for the record only · not deducted from pay</label>'
+      + '<button class="btn block" id="pqGo1756" style="margin-top:12px" onclick="pdb1756Save(\'' + esc(String(name)).replace(/'/g, '') + '\')">Save</button>'
+      + '<button class="btn ghost block" style="margin-top:8px" onclick="pdb1742Open()">‹ Back to the list</button>'); };
+  window.pdb1756Save = async function(name){ const v = k => +((($('pq' + k + '1756') || {}).value) || 0), g = $('pqGo1756');
+    const b = { op: 'person', teacher: name, sss: v('sss'), pagibig: v('pagibig'), philhealth: v('philhealth'), bir: v('bir'), gov_in_deduct: !!($('pqG1756') || {}).checked };
+    if(['sss', 'pagibig', 'philhealth', 'bir'].some(k => !isFinite(b[k]) || b[k] < 0)) return toast('Check the amounts');
+    if(g){ g.disabled = true; g.textContent = 'Saving…'; } let x = null; try{ x = await call(b); }catch(e){}
+    if(!x || !x.ok){ if(g){ g.disabled = false; g.textContent = 'Save'; } return toast((x && x.error) || 'Not saved · check your internet'); }
+    toast('✓ Government contributions saved · ' + name); const pm = PM; pdb1742Open(); if(pm !== PM){ PM = pm; const t = $('pdbM1742'); if(t) t.textContent = label(PM); pdb1742Load(); } };
   window.pdb1742Load = async function(){ PD = null; paint(); try{ PD = await call({ op: 'month', month: PM }); }catch(e){ PD = { ok: false, error: 'No connection' }; } paint(); };
   window.pdb1742Month = function(k){ PM = shift(PM, k); const t = $('pdbM1742'); if(t) t.textContent = label(PM); pdb1742Load(); };
   window.pdb1742Open = function(){ PM = monthOfPay(); PD = null;
