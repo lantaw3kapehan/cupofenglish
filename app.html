@@ -6748,7 +6748,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1569;
+const COE_V = 1570;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36109,13 +36109,17 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     const tr = (a, u) => '<tr><td>' + a + '</td><td></td><td style="text-align:right">' + n1(u) + '</td></tr>';
     const st = (L.students || []).slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
     const one = (x, kind) => tr('<b>' + esc(x.name || x.code || '') + '</b> <span class="m">' + esc([x.code, x.book].filter(Boolean).join(' · ')) + '</span><div class="m" style="font-size:12px">' + esc(kind ? kind + ' · ' + days([{ d: x.d, u: x.u }]) + (x.t ? ' · ' + x.t : '') : days(x.days)) + '</div>', kind ? x.u : x.units);
-    const reg = +L.reg || 0, tri = +L.trial || 0, sub = +L.sub || 0, tot = Math.round((reg + tri + sub) * 100) / 100;
+    const grp = (A, key) => { const g = {}, o = []; (A || []).slice().sort((a, b) => String(a.d).localeCompare(String(b.d))).forEach(x => { const k = key(x); if(!g[k]){ g[k] = Object.assign({}, x, { also: [] }); o.push(g[k]); } else { g[k].also.push(x); if(+x.u > +g[k].u) g[k].u = x.u; } }); return o; };   /* 1755: same as payroll */
+    const TG = grp(L.trials, x => String(x.code || x.name)), SG = grp(L.subs, x => String(x.d).slice(0, 10) + '|' + (x.t || '') + '|' + String(x.code || x.name));
+    const one2 = (x, kind, why) => one(x, kind).replace('</div></td>', (x.also.length ? ' · also recorded ' + esc(x.also.map(y => mo(y.d) + ' ' + dn(y.d)).join(', ')) + ' · counted once (' + why + ')' : '') + '</div></td>');
+    const sm = A => A.reduce((a, x) => a + (+x.u || 0), 0);
+    const reg = +L.reg || 0, tri = sm(TG), sub = sm(SG), tot = Math.round((reg + tri + sub) * 100) / 100;
     const pd = Math.round(((+r.reg || 0) + (+r.trial || 0) + (+r.sub || 0)) * 100) / 100;
     return '<h2>Lessons by student</h2><div class="m" style="margin:-4px 0 6px">Classes held in ' + esc(lab(S.month)) + ' · 1 unit = 50 minutes (½ = a 25-minute class) · use this to tally with your own records</div><table>'
       + '<tr><td><b>Student</b></td><td></td><td style="text-align:right"><b>Units</b></td></tr>'
       + st.map(x => one(x)).join('') + (st.length ? '<tr class="tot"><td>Regular lessons · ' + st.length + ' student' + (st.length === 1 ? '' : 's') + '</td><td></td><td style="text-align:right">' + n1(reg) + '</td></tr>' : '')
-      + ((L.trials || []).length ? (L.trials || []).map(x => one(x, 'Trial class')).join('') + '<tr class="tot"><td>Trial classes</td><td></td><td style="text-align:right">' + n1(tri) + '</td></tr>' : '')
-      + ((L.subs || []).length ? (L.subs || []).map(x => one(x, 'Substitute')).join('') + '<tr class="tot"><td>Substitute classes</td><td></td><td style="text-align:right">' + n1(sub) + '</td></tr>' : '')
+      + (TG.length ? TG.map(x => one2(x, 'Trial class', 'one trial per student')).join('') + '<tr class="tot"><td>Trial classes</td><td></td><td style="text-align:right">' + n1(tri) + '</td></tr>' : '')
+      + (SG.length ? SG.map(x => one2(x, 'Substitute', 'same class')).join('') + '<tr class="tot"><td>Substitute classes</td><td></td><td style="text-align:right">' + n1(sub) + '</td></tr>' : '')
       + '<tr class="tot"><td>Total units</td><td></td><td style="text-align:right">' + n1(tot) + '</td></tr></table>'
       + (Math.abs(pd - tot) > 0.009 ? '<div class="m" style="margin-top:4px">The pay above counts ' + n1(pd) + ' units' + (pd > tot ? ' (includes corrections made by Operations)' : ' (after corrections by Operations)') + '.</div>' : ''); }
   function lessCard1752(S){ const h = slipHtml(S), css = h.slice(0, h.indexOf('</style>') + 8), p = S.person || {}, lg = (document.querySelector('#login img') || {}).src || '';   /* 1752 */
