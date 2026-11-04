@@ -1,0 +1,70 @@
+<script>
+/* 1762 · Payroll › Database › ✎ a staff member (base pay) › Staff days: the database's record behind base pay (coe_staff_day, was the
+   TIME-IN tab). Time-in / time-out come from the app's time-ins by themselves; day off, leave, holiday top-up, the daily base and
+   corrections are entered here. Same rule as the sheet: worked hours = time-out − time-in, minus 1 h when over 5 h, rounded down, at most 8;
+   daily pay = hours ÷ 8 × daily base. Every change is logged (coe_staff_day_log). Nobody but the President corrects their own days. */
+(function(){
+  if(window.__1762) return; window.__1762 = 1;
+  const URL = FAST_URL + '-payedit', call = b => fetch(URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, b)) }).then(x => x.json());
+  const MNF = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const P = n => '₱' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const lab = ym => MNF[+ym.slice(5, 7) - 1] + ' ' + ym.slice(0, 4);
+  const shift = (ym, k) => { const d = new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7) - 1 + k, 1)); return d.toISOString().slice(0, 7); };
+  const dlab = d => { const x = new Date(d + 'T12:00:00'); return isNaN(x) ? d : x.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); };
+  const hrs = (a, b) => { if(!/^\d{1,2}:\d{2}$/.test(a || '') || !/^\d{1,2}:\d{2}$/.test(b || '')) return 0; const m = s => +s.split(':')[0] * 60 + +s.split(':')[1]; const d = (m(b) - m(a)) / 60; return Math.floor(Math.min(8, d <= 5 ? d : d - 1)) || 0; };
+  const q = x => esc(String(x)).replace(/'/g, '');
+  const S = { name: '', ym: '', rows: [], base: 0 };
+  async function load(){ const r = await call({ op: 'staffdays', name: S.name, month: S.ym }).catch(() => null); if(!r || !r.ok){ toast((r && r.error) || 'Could not load'); return false; } S.rows = r.rows || []; S.base = +r.base || 0; return true; }
+  window.sd1762Open = async function(name, ym){ S.name = name; S.ym = ym; openSheet('<h1>Staff days · ' + esc(name) + '</h1><div class="sk"></div><div class="sk"></div>'); try{ $('sheet').classList.add('wide'); }catch(e){}
+    if(!(await load())) return; paint(); };
+  window.sd1762M = async function(k){ S.ym = shift(S.ym, k); if(await load()) paint(); };
+  function paint(){ const R = S.rows, wk = R.filter(r => +r.hours > 0), tot = R.reduce((a, r) => a + (+r.pay || 0) + (+r.holiday || 0), 0);
+    openSheet('<h1>Staff days · ' + esc(S.name) + '</h1>'
+      + '<div class="row" style="gap:8px;margin-top:6px;align-items:center"><button class="btn ghost sm" onclick="sd1762M(-1)">‹</button><b class="grow" style="text-align:center">' + esc(lab(S.ym)) + '</b><button class="btn ghost sm" onclick="sd1762M(1)">›</button></div>'
+      + '<div class="small mute" style="margin:8px 0">Base pay ' + P(tot) + ' · ' + wk.length + ' day' + (wk.length === 1 ? '' : 's') + ' worked · ' + wk.reduce((a, r) => a + (+r.hours || 0), 0) + ' h · holiday top-up ' + P(R.reduce((a, r) => a + (+r.holiday || 0), 0)) + ' · daily base ' + P(S.base) + '<br>Time-in and time-out come from the app by themselves · worked hours = out − in, minus 1 h when over 5 h, at most 8 · daily pay = hours ÷ 8 × daily base</div>'
+      + '<button class="btn teal sm" onclick="sd1762Edit(\'\')">+ Add a day</button>'
+      + '<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums"><tr class="small mute"><td>Day</td><td>In</td><td>Out</td><td style="text-align:right">Hours</td><td style="text-align:right">Daily pay</td><td style="text-align:right">Holiday</td><td></td></tr>'
+      + (R.length ? R.map(r => '<tr style="border-top:1px solid var(--line,#eee)"><td style="padding:7px 4px;white-space:nowrap"><b>' + esc(dlab(r.day)) + '</b>' + (r.note ? '<div class="small mute">' + esc(r.note) + '</div>' : '') + '</td>'
+          + (/^(DAYOFF|ON LEAVE)$/.test(r.tin) ? '<td colspan="2"><span class="chip">' + (r.tin === 'DAYOFF' ? 'Day off' : 'On leave') + '</span></td>' : '<td>' + esc(r.tin || '—') + '</td><td>' + esc(r.tout || '—') + '</td>')
+          + '<td style="text-align:right">' + (+r.hours || 0) + '</td><td style="text-align:right">' + P(r.pay) + (r.fixed ? ' <span class="small mute">fixed</span>' : '') + '</td><td style="text-align:right">' + (+r.holiday ? P(r.holiday) : '—') + '</td>'
+          + '<td style="text-align:right"><button class="btn ghost sm" onclick="sd1762Edit(\'' + q(r.day) + '\')">✎</button></td></tr>').join('') : '<tr><td colspan="7" class="small mute" style="padding:8px 0">No days this month yet</td></tr>')
+      + '</table></div><button class="btn ghost block" style="margin-top:14px" onclick="pdb1742Open()">‹ Back to the payroll list</button>');
+    try{ $('sheet').classList.add('wide'); }catch(e){} }
+  window.sd1762Edit = function(day){ const r = S.rows.find(x => x.day === day) || {}, st = /^(DAYOFF|ON LEAVE)$/.test(r.tin || '') ? r.tin : '';
+    const today = new Date(Date.now() + 8 * 36e5).toISOString().slice(0, 10), dflt = today.slice(0, 7) === S.ym ? today : S.ym + '-01';
+    openSheet('<h1>' + (day ? esc(dlab(day)) : 'Add a day') + ' · ' + esc(S.name) + '</h1>'
+      + '<label>Day</label><input id="sdD" class="in-t" type="date" value="' + esc(day || dflt) + '"' + (day ? ' disabled' : '') + '>'
+      + '<label>Status</label><select id="sdS" class="in-t" onchange="sd1762Calc()"><option value="">Worked</option><option value="DAYOFF"' + (st === 'DAYOFF' ? ' selected' : '') + '>Day off</option><option value="ON LEAVE"' + (st === 'ON LEAVE' ? ' selected' : '') + '>On leave</option></select>'
+      + '<div class="row" style="gap:10px;flex-wrap:wrap"><div class="grow"><label>Time-in</label><input id="sdI" class="in-t" type="time" value="' + esc(st ? '' : (r.tin || '')) + '" oninput="sd1762Calc()"></div><div class="grow"><label>Time-out</label><input id="sdO" class="in-t" type="time" value="' + esc(r.tout || '') + '" oninput="sd1762Calc()"></div></div>'
+      + '<div class="row" style="gap:10px;flex-wrap:wrap"><div class="grow"><label>Daily base (8 hours)</label><input id="sdB" class="in-t" type="number" min="0" step="0.01" inputmode="decimal" value="' + (+r.base || S.base || 0) + '" oninput="sd1762Calc()"></div><div class="grow"><label>Holiday pay top-up</label><input id="sdH" class="in-t" type="number" min="0" step="0.01" inputmode="decimal" value="' + (+r.holiday || '') + '" placeholder="0"></div></div>'
+      + '<label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-weight:400"><input type="checkbox" id="sdF" style="width:auto;margin:0"' + (r.fixed ? ' checked' : '') + ' onchange="sd1762Calc()"> Fixed amount for this line (not from hours, e.g. a monthly allowance)</label>'
+      + '<div id="sdFW" style="display:none"><label>Amount</label><input id="sdA" class="in-t" type="number" min="0" step="0.01" inputmode="decimal" value="' + (+r.pay || '') + '"></div>'
+      + '<div class="mini" id="sdC" style="margin-top:10px"></div>'
+      + '<label>Note</label><input id="sdN" class="in-t" maxlength="300" value="' + esc(r.note || '') + '" placeholder="e.g. regular holiday · approved leave">'
+      + '<button class="btn block" id="sdGo" style="margin-top:14px" onclick="sd1762Save(' + (day ? 1 : 0) + ')">Save</button>'
+      + (day ? '<button class="btn ghost block" style="margin-top:8px;color:#B4513B" onclick="sd1762Save(1,1)">Remove this day</button>' : '')
+      + '<button class="btn ghost block" style="margin-top:8px" onclick="sd1762Back()">Cancel</button>');
+    sd1762Calc(); };
+  window.sd1762Back = () => paint();
+  window.sd1762Calc = function(){ const st = ($('sdS') || {}).value, fx = ($('sdF') || {}).checked, c = $('sdC'); const fw = $('sdFW'); if(fw) fw.style.display = fx ? '' : 'none';
+    ['sdI', 'sdO'].forEach(k => { const e = $(k); if(e) e.disabled = !!st; });
+    if(!c) return; if(fx){ c.textContent = 'Fixed amount · hours are not counted'; return; } if(st){ c.textContent = (st === 'DAYOFF' ? 'Day off' : 'On leave') + ' · ₱0.00 (add a holiday top-up if it applies)'; return; }
+    const h = hrs(($('sdI') || {}).value, ($('sdO') || {}).value), b = +(($('sdB') || {}).value || 0); c.textContent = h + ' worked hour' + (h === 1 ? '' : 's') + ' · daily pay ' + P(h ? Math.round(h / 8 * b * 100) / 100 : 0); };
+  window.sd1762Save = async function(existing, remove){ const day = ($('sdD') || {}).value || ''; if(!/^\d{4}-\d{2}-\d{2}$/.test(day)) return toast('Choose the day');
+    if(!existing && S.rows.some(x => x.day === day)) return toast('That day is already in the list · use ✎ on it');
+    if(remove && !confirm('Remove ' + dlab(day) + ' from ' + S.name + '’s staff days?')) return;
+    const fx = !!($('sdF') || {}).checked, b = { op: 'staffday', name: S.name, day, status: ($('sdS') || {}).value || '', tin: ($('sdI') || {}).value || '', tout: ($('sdO') || {}).value || '', base: +(($('sdB') || {}).value || 0), holiday: +(($('sdH') || {}).value || 0), note: (($('sdN') || {}).value || '').trim(), remove: !!remove };
+    if(fx){ b.fixed = true; b.pay = +(($('sdA') || {}).value || 0); }
+    if(!b.status && !fx && !remove && !b.tin) return toast('Write the time-in, or choose day off / on leave');
+    const g = $('sdGo'); if(g){ g.disabled = true; g.textContent = 'Saving…'; } let r = null; try{ r = await call(b); }catch(e){}
+    if(!r || !r.ok){ if(g){ g.disabled = false; g.textContent = 'Save'; } return toast((r && r.error) || 'Not saved · check your internet'); }
+    toast(remove ? '✓ Removed · ' + dlab(day) : '✓ Saved · ' + dlab(day)); if(day.slice(0, 7) !== S.ym) S.ym = day.slice(0, 7); if(await load()) paint(); };
+  // the button in Payroll › Database › ✎ a person, when that person has staff days
+  const e0 = window.pdb1742Edit;
+  if(typeof e0 === 'function') window.pdb1742Edit = function(i){ const out = e0.apply(this, arguments);
+    try{ const h = (document.querySelector('#sheetBody h1') || {}).textContent || '', m = h.match(/^✎\s*(.+?)\s*·\s*([A-Za-z]+)\s+(\d{4})/); if(m){ const name = m[1], mi = MNF.findIndex(x => x.toLowerCase() === m[2].toLowerCase()), ym = m[3] + '-' + ('0' + (mi + 1)).slice(-2);
+      call({ op: 'staffdays', name, month: ym }).then(r => { if(!r || !r.ok || (!(r.rows || []).length && !(+r.base))) return; const b = $('sheetBody'); if(!b || !(b.querySelector('h1') || {}).textContent || b.querySelector('.sd1762')) return;
+        const x = document.createElement('button'); x.className = 'btn ghost block sd1762'; x.style.marginTop = '10px'; x.textContent = 'Staff days · time-in, day off, holiday (' + (r.rows || []).length + ' this month) →'; x.onclick = () => sd1762Open(name, ym);
+        const go = $('pdGo'); if(go) go.before(x); else b.appendChild(x); }).catch(() => {}); } }catch(e){} return out; };
+})();
+</script>
