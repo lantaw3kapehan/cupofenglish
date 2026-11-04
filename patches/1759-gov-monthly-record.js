@@ -5,7 +5,7 @@
 //   the total to Finance › Transactions as one expense line (tick box; it shows what Transactions already has that month, so a
 //   payment is not counted twice). The Transactions lines stay below, folded, for checking.
 const lib = require('../tools/lib.js'), fs = require('fs'), path = require('path'), file = process.argv[2];
-const part = fs.readFileSync(path.join(__dirname, '1759-gov-monthly-record.part.js'), 'utf8');
+const part = fs.readFileSync(path.join(__dirname, '1759-gov-monthly-record.part.txt'), 'utf8');
 lib(file, [
   ["  const X = { rows: null, ppl: null, y: '', busy: 0 };\n  try{ const k = JSON.parse(localStorage.getItem('coe.exp') || 'null'); if(k && k.rows) X.rows = k.rows; }catch(e){}",
    "  const X = { rows: null, ppl: null, y: '', busy: 0, gov: null, gy: null };\n  try{ const k = JSON.parse(localStorage.getItem('coe.exp') || 'null'); if(k && k.rows) X.rows = k.rows; }catch(e){}"],
