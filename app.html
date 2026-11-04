@@ -6748,7 +6748,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1547;
+const COE_V = 1548;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -14266,7 +14266,7 @@ ${fail.length ? `<div class="card" style="margin-top:10px;padding:12px 14px;back
 <div class="card" style="margin-top:10px;padding:12px 14px"><b>One step in the sheet (ACTIVE)</b><div class="small" style="margin-top:4px">Add a row for <b>${esc(o.code)} · ${esc(o.name)} · Teacher ${esc(o.nw)}</b> right under his package row, with <b>Enrolled empty</b> (like Teacher Kat under Teacher Daniela). Then Teacher ${esc(o.nw)}'s lessons come off the same package and the lessons left stay right.</div></div>
 <button class="btn block" style="margin-top:12px" onclick="closeSheet();openStudent('${esc(o.code)}')">Back to ${esc(o.name)}</button>`); };
   const sr1 = window.stuRender; if(sr1) window.stuRender = function(){ const r = sr1.apply(this, arguments);
-    try{ const cb = $('cbBtn'); if(cb && !$('ctBtn') && D && D.mgr && STU && STU.code) cb.insertAdjacentHTML('afterend', `<button class="btn ghost sm" id="ctBtn" onclick="ctOpen('${esc(STU.code)}')">Change teacher</button>`); }catch(e){}
+    try{ const cb = $('cbBtn'); if(cb && !$('ctBtn') && D && D.mgr && STU && STU.code) cb.insertAdjacentHTML('afterend', `<button class="btn ghost sm" id="ctBtn" onclick="ctOpen('${esc(STU.code)}')">Change schedule / teacher</button>`); }catch(e){}
     return r; };
 })();
 </script>
@@ -14305,7 +14305,7 @@ ${fail.length ? `<div class="card" style="margin-top:10px;padding:12px 14px;back
 <label>From</label><input id="csF" class="in-t" type="date" value="${esc(CS.from)}" onchange="csRe()">
 <label>1 · Stop the old weekly classes <span class="mute small">(from that date · later ones get X, not counted, no make-up)</span></label>
 ${S.length ? S.map(x => `<label class="check" style="margin-top:6px"><input type="checkbox" ${CS.stop[x.k] ? 'checked' : ''} onchange="csStop('${esc(x.k)}',this.checked)"><div><b>${DL[x.d]} ${esc(x.time)}</b> · ${x.mins} min · Teacher ${esc(x.teacher)}${x.book ? ' · ' + esc(x.book) : ''}<div class="small mute">next ${esc(ymd(x.first.start))} · every later ${DL[x.d]} ${esc(x.time)} too</div></div></label>`).join('') : '<div class="small mute" style="margin-top:6px">No weekly classes after that date.</div>'}
-<label style="margin-top:16px">2 · New teacher</label><div class="gx-c" style="margin-top:6px">${T.map(t => `<button type="button" style="${cap(t) === cap(nw) ? 'background:#2B2253;color:#fff' : ''}" onclick="csNw('${esc(t)}')">Teacher ${esc(cap(t))}</button>`).join('')}</div>
+<label style="margin-top:16px">2 · Teacher <span class="mute small">(same or new)</span></label><div class="gx-c" style="margin-top:6px">${T.map(t => `<button type="button" style="${cap(t) === cap(nw) ? 'background:#2B2253;color:#fff' : ''}" onclick="csNw('${esc(t)}')">Teacher ${esc(cap(t))}</button>`).join('')}</div>
 <label style="margin-top:16px">3 · New weekly days</label>
 ${rows.map((r, i) => `<div class="row" style="gap:8px;margin-top:8px;align-items:flex-end;flex-wrap:wrap">
 <div style="flex:1.2;min-width:110px"><div class="small mute">Day</div><select id="csD${i}" class="in-t" onchange="csRe()">${[1, 2, 3, 4, 5, 6, 0].map(d => `<option value="${d}"${d === r.d ? ' selected' : ''}>${DL[d]}</option>`).join('')}</select></div>
@@ -14332,7 +14332,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
     const S = series(); S.forEach(x => { CS.stop[x.k] = true; });
     CS.rows = S.map(x => ({ d: x.d, time: x.time, mins: x.mins, n: perDay(x.mins, S.length) }));
     if(!CS.rows.length) CS.rows = [{ d: 1, time: '', mins: 25, n: 20 }];
-    if(!CS.book && S[0]) CS.book = S[0].book; paint(); };
+    if(!CS.book && S[0]) CS.book = S[0].book; if(!CS.nw && S.length && S.every(x => x.teacher === S[0].teacher)) CS.nw = S[0].teacher;   /* 1734 */ paint(); };
   async function addRow(o, r, force){ const date = first(o.from, r.d, r.time), f = { code: o.code, student: o.name, kind: '', fresh: false, cn: '', book: o.book, teacher: o.nw, date, time: okT(r.time), mins: String(r.mins), days: r.n > 1 ? [r.d] : [], count: r.n, force: !!force };
     try{ const x = await api('addClass', TOKEN, f); return x && (x.ok || /already has these classes|already has a class at/i.test(String(x.msg || ''))) ? { ok: true } : { ok: false, conflict: !!(x && x.conflict), msg: (x && x.msg) || 'not added' }; }
     catch(e){ return { ok: false, conflict: !!(e && e.conflict), msg: String((e && (e.msg || e.error)) || 'not added') }; } }
@@ -14342,7 +14342,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
     closeSheet(); const pk = svPill(null, '⏳ <b>' + esc(o.name) + '</b> · saving the new schedule…', 'wait');   /* 353: in the background, the screen is free */
     const prog = t => { try{ svPill(pk, '⏳ <b>' + esc(o.name) + '</b> · ' + t, 'wait'); }catch(e){} }, res = [];
     for(const x of S){ prog('Stopping ' + DL[x.d] + ' ' + esc(x.time) + ' with Teacher ' + esc(x.teacher) + '…');
-      const c = x.first, f = { action: 'cancel', start: c.start, date: ymd(c.start), time: hm(c.start), mins: String(x.mins), teacher: x.teacher, makeup: false, reason: 'Changed to Teacher ' + cap(o.nw), forward: true, force: false };
+      const c = x.first, f = { action: 'cancel', start: c.start, date: ymd(c.start), time: hm(c.start), mins: String(x.mins), teacher: x.teacher, makeup: false, reason: cap(o.nw) === cap(x.teacher) ? 'Schedule changed' : 'Changed to Teacher ' + cap(o.nw), forward: true, force: false };
       try{ const r = await api('editClass', TOKEN, c.id, f); res.push({ t: 'stop', x, ok: !!(r && r.ok), msg: (r && r.msg) || '' }); }
       catch(e){ res.push({ t: 'stop', x, ok: false, msg: String((e && (e.msg || e.error)) || 'not saved') }); } }
     for(const r of R){ prog('Adding ' + DL[r.d] + ' ' + esc(okT(r.time)) + ' with Teacher ' + esc(cap(o.nw)) + '…'); const a = await addRow(o, r, false); res.push(Object.assign({ t: 'add', r }, a)); }
