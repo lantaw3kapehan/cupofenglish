@@ -2772,7 +2772,7 @@ return `<section class="sec"><h2>Peer feedback <span class="c">from fellow teach
 }
 
 function nowPayOf(m){ m = m || {}; return Math.round((+m.nowPay || 0) + (+m.nowTrial || 0) * (+m.rate || 0)); }   /* 14 Oct: trials paid at the same rate, not regular units */
-function renderPay(){
+function renderPay(){ try{ if(window.MYPAY1763 && typeof D !== 'undefined' && D && !D.mgr) D.pay = MYPAY1763.pay; }catch(e){}   /* 1763 */
 const me = D.me||{}, pay = D.pay||[], adj = D.adj||[];
 const est = nowPayOf(me) + (me.monthBonus||0) - (me.monthDeduct||0);
 const units = (me.nowReg||0)+(me.nowTrial||0)+(me.nowSub||0);
@@ -4969,7 +4969,9 @@ setTimeout(() => { if($('tmR')) $('tmR').value = t; if(po){ const p = document.q
 setInterval(() => { if(!D || document.hidden) return; if(D.mgr) loadMsgs(true); else loadTMsgs(); }, 120000);
 
 let PCK = null, PCKM = null;
-async function loadPayCheck(){ if(!TOKEN) return; try{ await swr('paychk', () => api('tPayCheck', TOKEN), v => PCK = (v => { try{ const n = String((v && v.me && v.me.name) || '').trim().toLowerCase(), m = String((typeof D !== 'undefined' && D && D.me && D.me.name) || '').trim().toLowerCase(); return v && v.me && (!m || n !== m) ? Object.assign({}, v, { me: null }) : v; }catch(e){ return v; } })(v), () => { if(VIEW === 'pay') renderPay(); if(VIEW === 'today') renderToday(); }); }catch(e){} }
+async function myPay1763(){ try{ const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'mypay' }) }).then(x => x.json());   /* 1763: database first */
+  if(r && r.ok && r.check){ window.MYPAY1763 = { pay: r.pay || [], at: Date.now() }; try{ if(typeof D !== 'undefined' && D && !D.mgr) D.pay = r.pay || []; }catch(e){} return r.check; } }catch(e){} return api('tPayCheck', TOKEN); }
+async function loadPayCheck(){ if(!TOKEN) return; try{ await swr('paychk', () => myPay1763(), v => PCK = (v => { try{ const n = String((v && v.me && v.me.name) || '').trim().toLowerCase(), m = String((typeof D !== 'undefined' && D && D.me && D.me.name) || '').trim().toLowerCase(); return v && v.me && (!m || n !== m) ? Object.assign({}, v, { me: null }) : v; }catch(e){ return v; } })(v), () => { if(VIEW === 'pay') renderPay(); if(VIEW === 'today') renderToday(); }); }catch(e){} }
 const pckState = p => { if(!p || !p.me) return ''; const c = p.check || {}; if(c.status === 'Verified' && c.net && +c.net !== +p.me.net) return 'Changed'; return c.status || ''; };
 function payPaid(mon){ const k = s => { const t = String(s || '').trim(), m = t.match(/([A-Za-z]{3})[a-z]*\.?\s+(\d{4})/); return m ? m[1].toLowerCase() + m[2] : t.toLowerCase(); }, key = k(mon); if(!key) return false;
   return !!(PCK && PCK.me && PCK.me.paid && k(PCK.month) === key) || ((D && D.pay) || []).some(x => k(x.month) === key && /paid/i.test(String(x.status || ''))); }   /* 14 Oct */
@@ -6083,10 +6085,10 @@ catch(e){ sheetBack(_sn); toast(((e&&e.msg)||'Not saved') + ' · your changes ar
 
 async function loadPayLedger(){ urls(); try{ await swr('payroll', () => api('mgmtPayroll', TOKEN), v => PL = v, renderPayroll); }catch(e){} }
 async function togglePaid(i){
-const x = MO.payroll[i], to = !x.paid; x.paid = to; store('set','coe.mo', JSON.stringify(MO)); renderPayroll(); payRow(i);
+const x = MO.payroll[i], to = !x.paid; x.paid = to; x._pt = Date.now();   /* 1763 */ store('set','coe.mo', JSON.stringify(MO)); renderPayroll(); payRow(i);
 toast(x.name + (to ? ' marked paid' : ' back to pay'));
 const q = (window._payQ = window._payQ || {}); q[x.name] = (q[x.name] || Promise.resolve()).catch(()=>{}).then(() => api('markPaid', TOKEN, x.name, to));
-try{ const r = await q[x.name]; if(!r.ok) throw r; }
+try{ const r = await q[x.name]; if(!r.ok) throw r; try{ setTimeout(() => { if(window.payDbReload1743) payDbReload1743(); }, 1500); }catch(y){} }
 catch(e){ x.paid = !to; store('set','coe.mo', JSON.stringify(MO)); renderPayroll(); if($('pdGo')) payRow(i); toast((e&&e.msg)||'Not saved · ' + x.name + ' is back as before. Try again.'); }
 }
 function periods(){ const o = [], d = new Date(); d.setDate(1); for(let k=0;k<7;k++){ d.setMonth(d.getMonth()-(k?1:0)); o.push(d.toLocaleDateString('en-US',{month:'long'})+SL2+d.getFullYear()); } return o; }
@@ -6752,7 +6754,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1577;
+const COE_V = 1578;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36098,7 +36100,8 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       if(x._sheet == null) x._sheet = { units: x.units, rate: x.rate, lessonPay: x.lessonPay, base: x.base, bonus: x.bonus, deduct: x.deduct, gov: x.gov, net: x.net };
       const gid = (DB.people || []).some(p => String(p.teacher).toLowerCase() === String(r.teacher).toLowerCase() && p.gov_in_deduct);
       Object.assign(x, { units: +r.reg + +r.sub + +r.trial, rate: (r.courses || []).length ? r.courses.map(c => c.rate).join(' / ') : +r.rate, lessonPay: +r.lesson_pay, base: +r.base, bonus: +r.bonus,
-        deduct: +r.deduct, gov: gid ? 0 : +r.sss + +r.pagibig + +r.philhealth, net: +r.net, _db: 1, _edits: (r.edited || []).length }); });
+        deduct: +r.deduct, gov: gid ? 0 : +r.sss + +r.pagibig + +r.philhealth, net: +r.net, _db: 1, _edits: (r.edited || []).length });
+      if(r.paid != null && !(x._pt && Date.now() - x._pt < 120000)) x.paid = !!r.paid; });   /* 1763: ✔ Paid from the database */
     (DB.rows || []).forEach(r => { const k = String(r.teacher).toLowerCase(); if(seen[k] || !(+r.net > 0)) return;
       MO.payroll.push({ name: r.teacher, units: +r.reg + +r.sub + +r.trial, rate: +r.rate, lessonPay: +r.lesson_pay, base: +r.base, bonus: +r.bonus, deduct: +r.deduct, gov: +r.sss + +r.pagibig + +r.philhealth, net: +r.net, paid: false, _db: 1, _sheet: null, _edits: (r.edited || []).length }); });
     return true; }
