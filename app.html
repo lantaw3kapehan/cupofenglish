@@ -6748,7 +6748,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1565;
+const COE_V = 1566;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36087,6 +36087,24 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   const longDay = d => { if(!d) return ''; const x = new Date(String(d).slice(0, 10) + 'T00:00:00'); return isNaN(x) ? String(d) : x.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }); };
   const nextPay = ym => { const [y, m] = String(ym).split('-').map(Number), d = new Date(Date.UTC(y, m, 10)); return d.toISOString().slice(0, 10); };
   let SL = null;
+  function lessHtml1751(S, r){ const L = S.lessons; if(!L) return '';   /* 1751 · lessons by student */
+    const n1 = v => { const x = Math.round((+v || 0) * 100) / 100; return String(x); };
+    const mo = d => { const x = new Date(String(d).slice(0, 10) + 'T00:00:00'); return isNaN(x) ? '' : x.toLocaleDateString('en-US', { month: 'short' }); };
+    const dn = d => String(+String(d).slice(8, 10) || '');
+    const uu = u => (+u === 1 ? '' : +u === 0.5 ? ' (½)' : ' (' + n1(u) + ')');
+    const days = ds => { const by = {}; (ds || []).slice().sort((a, b) => String(a.d).localeCompare(String(b.d))).forEach(x => { const m = mo(x.d); (by[m] = by[m] || []).push(dn(x.d) + uu(x.u)); }); return Object.keys(by).map(m => m + ' ' + by[m].join(', ')).join(' · '); };
+    const tr = (a, u) => '<tr><td>' + a + '</td><td></td><td style="text-align:right">' + n1(u) + '</td></tr>';
+    const st = (L.students || []).slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    const one = (x, kind) => tr('<b>' + esc(x.name || x.code || '') + '</b> <span class="m">' + esc([x.code, x.book].filter(Boolean).join(' · ')) + '</span><div class="m" style="font-size:12px">' + esc(kind ? kind + ' · ' + days([{ d: x.d, u: x.u }]) + (x.t ? ' · ' + x.t : '') : days(x.days)) + '</div>', kind ? x.u : x.units);
+    const reg = +L.reg || 0, tri = +L.trial || 0, sub = +L.sub || 0, tot = Math.round((reg + tri + sub) * 100) / 100;
+    const pd = Math.round(((+r.reg || 0) + (+r.trial || 0) + (+r.sub || 0)) * 100) / 100;
+    return '<h2>Lessons by student</h2><div class="m" style="margin:-4px 0 6px">Classes held in ' + esc(lab(S.month)) + ' · 1 unit = 50 minutes (½ = a 25-minute class) · use this to tally with your own records</div><table>'
+      + '<tr><td><b>Student</b></td><td></td><td style="text-align:right"><b>Units</b></td></tr>'
+      + st.map(x => one(x)).join('') + (st.length ? '<tr class="tot"><td>Regular lessons · ' + st.length + ' student' + (st.length === 1 ? '' : 's') + '</td><td></td><td style="text-align:right">' + n1(reg) + '</td></tr>' : '')
+      + ((L.trials || []).length ? (L.trials || []).map(x => one(x, 'Trial class')).join('') + '<tr class="tot"><td>Trial classes</td><td></td><td style="text-align:right">' + n1(tri) + '</td></tr>' : '')
+      + ((L.subs || []).length ? (L.subs || []).map(x => one(x, 'Substitute')).join('') + '<tr class="tot"><td>Substitute classes</td><td></td><td style="text-align:right">' + n1(sub) + '</td></tr>' : '')
+      + '<tr class="tot"><td>Total units</td><td></td><td style="text-align:right">' + n1(tot) + '</td></tr></table>'
+      + (Math.abs(pd - tot) > 0.009 ? '<div class="m" style="margin-top:4px">The pay above counts ' + n1(pd) + ' units' + (pd > tot ? ' (includes corrections made by Operations)' : ' (after corrections by Operations)') + '.</div>' : ''); }
   function slipHtml(S, forPrint){ const r = S.row, p = S.person, sl = S.slip || {}, cs = S.cases || [], E = r.edited || [];
     const extra = E.filter(e => e.field === 'extra'), less = E.filter(e => e.field === 'less');
     const lessonsPay = +r.lesson_pay || 0, regPay = Math.round(((+r.reg || 0) * (+r.rate || 0)) * 100) / 100;
@@ -36109,7 +36127,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       + ((+r.trial) ? row('Trial classes', +r.trial, pz((+r.trial) * (+r.rate || 0))) : '') + ((+r.sub) ? row('Substitute classes', +r.sub, pz((+r.sub) * (+r.rate || 0))) : '')
       + inc.map(c => row('Incentive · ' + esc(c.type || c.subject) + (c.student ? ' · ' + esc(c.student) : '') + ' <span class="m">' + esc(c.id) + '</span>', '', pz(c.incentive))).join('')
       + extra.map(e => row(esc(e.label || 'Extra') + (e.reason ? ' <span class="m">· ' + esc(e.reason) + '</span>' : ''), '', pz(e.value))).join('')
-      + row('Gross compensation', '', pz(gross), 'tot') + '</table>'
+      + row('Gross compensation', '', pz(gross), 'tot') + '</table>' + lessHtml1751(S, r)
       + '<h2>Deductions</h2><table>' + (ded.length || less.length || (+r.deduct || 0) ? '' : row('None', '', pz(0)))
       + ded.map(c => row(esc(c.subject || c.type) + (c.note ? ' <span class="m">· ' + esc(c.note) + '</span>' : '') + ' <span class="m">' + esc(c.id) + '</span>', '', pz(c.deduction))).join('')
       + less.map(e => row(esc(e.label || 'Deduction') + (e.reason ? ' <span class="m">· ' + esc(e.reason) + '</span>' : ''), '', pz(e.value))).join('')
@@ -36170,7 +36188,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   window.paySheet = function(p){ const r = p0.apply(this, arguments);
     try{ if(typeof D !== 'undefined' && D && !D.mgr && p && typeof ps1744Open === 'function'){ const b = $('sheetBody'); if(b && !b.querySelector('.myps1746')){
       const ym = String(p.m || '').match(/^\d{4}-\d{2}/) ? String(p.m).slice(0, 7) : String(p.month || '');
-      const btn = document.createElement('button'); btn.className = 'btn block myps1746'; btn.style.marginTop = '14px'; btn.textContent = 'My payslip →';
+      const btn = document.createElement('button'); btn.className = 'btn block myps1746'; btn.style.marginTop = '14px'; btn.textContent = 'My payslip · lessons by student →';
       btn.onclick = () => ps1744Open((D.me && D.me.name) || '', ym); b.appendChild(btn); } } }catch(e){}
     return r; };
 })();
@@ -36188,6 +36206,17 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   const n0 = window.payslipNow; if(typeof n0 === 'function') window.payslipNow = function(name){
     if(name && typeof D !== 'undefined' && D && D.mgr && typeof ps1744Open === 'function') return ps1744Open(String(name), (typeof MO !== 'undefined' && MO && MO.payMonth) || '');
     return n0.apply(this, arguments); };
+})();
+</script>
+<script>
+/* 1751 · teacher Pay › the month to check opens the payslip with the lessons by student (Misty: "so they can easily tally") */
+(function(){
+  if(window.__1751) return; window.__1751 = 1;
+  const h0 = window.payChkHtml; if(typeof h0 !== 'function') return;
+  window.payChkHtml = function(){ const h = h0.apply(this, arguments);
+    try{ if(!h || typeof ps1744Open !== 'function' || typeof D === 'undefined' || !D || D.mgr || !PCK) return h;
+      const b = '<button class="btn ghost block" style="margin-top:10px" onclick="ps1744Open((D.me && D.me.name) || \'\', \'' + esc(String(PCK.month || '')).replace(/'/g, '') + '\')">My payslip · lessons by student →</button>';
+      const i = h.lastIndexOf('</div>'); return i > 0 ? h.slice(0, i) + b + h.slice(i) : h + b; }catch(e){ return h; } };
 })();
 </script>
 </body>
