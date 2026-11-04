@@ -3772,7 +3772,7 @@ $('v-payroll').innerHTML = h; if(q) $('plq').value = q; payLedger();
 }
 function payRow(i){ const x = MO.payroll[i];
 openSheet(`<h1>${esc(x.name)}</h1><div class="mute small">${esc(MO.payMonth)} · ${x.paid?'Paid':'To pay'}</div><table style="margin-top:12px">
-<tr><td>Units</td><td class="num">${x.units} × ${peso(x.rate)}</td></tr><tr><td>Lesson pay</td><td class="num">${peso(x.lessonPay)}</td></tr>
+${(x.parts && x.parts.length > 1 ? x.parts : [{ units: x.units, rate: x.rate }]).map(q => `<tr><td>Units${x.parts && x.parts.length > 1 ? ' at ' + peso(q.rate) : ''}</td><td class="num">${q.units} × ${peso(q.rate)}</td></tr>`).join('')}<tr><td>Lesson pay</td><td class="num">${peso(x.lessonPay)}</td></tr>
 ${x.base?`<tr><td>Base</td><td class="num">${peso(x.base)}</td></tr>`:''}<tr><td>Bonus</td><td class="num${+x.bonus ? ' plus' : ''}">${+x.bonus ? '+' : ''}${peso(x.bonus)}</td></tr>
 <tr><td>Deductions</td><td class="num${+x.deduct ? ' minus' : ''}">${+x.deduct ? '−' : ''}${peso(x.deduct)}</td></tr><tr><td>Gov</td><td class="num${+x.gov ? ' minus' : ''}">${+x.gov ? '−' : ''}${peso(x.gov)}</td></tr>
 <tr><td><b>Net</b></td><td class="num"><b>${peso(x.net)}</b></td></tr></table>${pchkSheetHtml(x)}${rdyList(x.name)}
@@ -3818,7 +3818,7 @@ let h = `<div class="card" style="margin-top:10px"><div class="row"><div class="
 <label>App sign-in email (MASTERLIST → APP EMAIL)</label>
 <div class="row" style="gap:8px"><input id="ttE" class="in-t grow" type="email" value="${esc(f.email||'')}" placeholder="teacher@gmail.com"><button class="btn sm" id="ttEGo" onclick="saveEmail()">Save</button></div></div>`;
 h = `<div class="row noprint" style="justify-content:flex-end;margin-top:8px">${printBtn('ttBody', 'Teacher – ' + (f.full||t.name))}</div>` + h;
-h += `<h2>Pay · last 12 months</h2>` + ((t.pay||[]).length ? `<div class="gx"><table><tr><th>Month</th><th>Units</th><th>Rate</th><th>Bonus</th><th>Deduct</th><th>Gov</th><th>Net</th><th>Paid</th></tr>${t.pay.map(x=>`<tr><td>${esc(x.month)}</td><td class="num">${x.units}</td><td class="num">${peso(x.rate)}</td>
+h += `<h2>Pay · last 12 months</h2>` + ((t.pay||[]).length ? `<div class="gx"><table><tr><th>Month</th><th>Units</th><th>Rate</th><th>Bonus</th><th>Deduct</th><th>Gov</th><th>Net</th><th>Paid</th></tr>${t.pay.map(x=>`<tr><td>${esc(x.month)}</td><td class="num">${x.units}</td><td class="num">${x.parts && x.parts.length > 1 ? x.parts.map(q => peso(q.rate)).join(' → ') : peso(x.rate)}</td>
 <td class="num plus">${x.bonus?'+'+peso(x.bonus):''}</td><td class="num minus">${x.deduct?'−'+peso(x.deduct):''}</td><td class="num minus">${x.gov?'−'+peso(x.gov):''}</td><td class="num"><b>${peso(x.net)}</b></td>
 <td>${/paid/i.test(x.status)?`<span class="chip green">${esc(x.paidOn||'Paid')}</span>`:`<span class="chip">${esc(x.status||'Pending')}</span>`}</td></tr>`).join('')}</table></div>` : '<div class="mute small">No payroll rows yet.</div>');
 h += attHtml(t.attend);
@@ -4979,7 +4979,7 @@ function payPaid(mon){ const k = s => { const t = String(s || '').trim(), m = t.
   return !!(PCK && PCK.me && PCK.me.paid && k(PCK.month) === key) || ((D && D.pay) || []).some(x => k(x.month) === key && /paid/i.test(String(x.status || ''))); }   /* 14 Oct */
 function payChkHtml(){ const p = PCK; if(!p || !p.me) return ''; const x = p.me, c = p.check || {}, st = pckState(p);
 if(x.paid) return '';   /* 512: a paid month is not the top of Pay any more · one line under the estimate (pckPaidLine) */   /* 14 Oct: paid → one line */
-const L = [['Units', x.units + ' × ' + peso(x.rate)], ['Lesson pay', peso(x.lessonPay)], x.base ? ['Base', peso(x.base)] : null, ['Bonus', '+' + peso(x.bonus)], ['Deductions', '−' + peso(x.deduct)], x.gov ? ['Gov contributions', '−' + peso(x.gov)] : null].filter(Boolean);
+const L = [['Units', x.parts && x.parts.length > 1 ? x.parts.map(q => q.units + ' × ' + peso(q.rate)).join(' + ') : x.units + ' × ' + peso(x.rate)], ['Lesson pay', peso(x.lessonPay)], x.base ? ['Base', peso(x.base)] : null, ['Bonus', '+' + peso(x.bonus)], ['Deductions', '−' + peso(x.deduct)], x.gov ? ['Gov contributions', '−' + peso(x.gov)] : null].filter(Boolean);
 const chip = st === 'Verified' ? '<span class="chip teal">Verified ✓</span>' : st === 'Disputed' ? '<span class="chip coral">Question sent</span>' : st === 'Answered' ? '<span class="chip amber">Answered · check again</span>' : st === 'Changed' ? '<span class="chip amber">Changed · check again</span>' : '<span class="chip amber">Please check</span>';
 const thread = (c.note ? '<div class="mini" style="margin-top:10px;white-space:pre-line"><b>You wrote</b><br>' + esc(c.note) + '</div>' : '') + (c.reply ? '<div class="mini" style="margin-top:8px;background:var(--tint);white-space:pre-line"><b>' + esc(c.replyBy || 'Management') + '</b> · ' + esc(String(c.replyAt).slice(5)) + '<br>' + esc(c.reply) + '</div>' : '');
 const btns = x.paid ? '<div class="small mute" style="margin-top:10px">✓ Paid</div>' : st === 'Verified' ? '<div class="small mute" style="margin-top:10px">You verified this on ' + esc(String(c.at).slice(5)) + ' · <a class="link" onclick="payDispute()">something wrong?</a></div>'
@@ -6756,7 +6756,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1580;
+const COE_V = 1581;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
