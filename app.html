@@ -6748,7 +6748,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1571;
+const COE_V = 1572;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -25713,7 +25713,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     { nav: 'astudents', label: 'Students', views: [['astudents', 'Students'], ['reports', 'Parent reports'], ['db', 'Database sheet']] },
     { nav: 'trials', label: 'Trials', views: [['trials', 'Trials'], ['enquiry', 'Enquiries']] },
     { nav: 'teachers', label: 'Teachers', views: [['teachers', 'Teachers'], ['perf', 'Performance'], ['train', 'Trainings'], ['leave', 'Leave'], ['actions', 'Cases']] },
-    { nav: 'payroll', label: 'Finance', views: [['finov', 'Overview'], ['payroll', 'Payroll'], ['expenses', 'Transactions'], ['money', 'Sales & costs'], ['forecast', 'Forecast'], ['wallets', 'Wallets']] }];
+    { nav: 'payroll', label: 'Finance', views: [['finov', 'Overview'], ['payroll', 'Payroll'], ['expenses', 'Transactions'], ['gov', 'Government'], ['money', 'Sales & costs'], ['forecast', 'Forecast'], ['wallets', 'Wallets']] }];
   const GOF = {}; G.forEach(g => g.views.forEach(([v]) => GOF[v] = g));
   const KNOWN = {};   /* views we took out of the sidebar, remembered so their tab shows only when the screen exists */
   const isM = () => typeof D !== 'undefined' && D && D.mgr;
@@ -25724,7 +25724,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     // order: Today group first, then Students · Trials · Teachers · Money, then the rest
     const ord = ['home', 'monitor', 'mtoday', 'schedule', 'msgs', 'chat', 'astudents', 'trials', 'teachers', 'payroll'];
     NAV_M.sort((a, b) => { const ia = ord.indexOf(a[0]), ib = ord.indexOf(b[0]); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); }); }
-  const has = v => v === 'expenses' || v === 'finov' || (v === 'wallets' && typeof isPres === 'function' && isPres()) || (v === 'forecast' && typeof isPres === 'function' && isPres()) || KNOWN[v] || NAV_M.some(x => x[0] === v) || (v === 'mypay' && typeof MYP !== 'undefined' && MYP && MYP.has);
+  const has = v => v === 'expenses' || v === 'gov' || v === 'finov' || (v === 'wallets' && typeof isPres === 'function' && isPres()) || (v === 'forecast' && typeof isPres === 'function' && isPres()) || KNOWN[v] || NAV_M.some(x => x[0] === v) || (v === 'mypay' && typeof MYP !== 'undefined' && MYP && MYP.has);
   function tabs(v){ const g = GOF[v]; if(!g) return ''; const L = g.views.filter(([k]) => k === v || has(k)); if(L.length < 2) return '';
     return '<div class="mo-tabs grp-tabs" data-g="' + g.nav + '">' + L.map(([k, l]) => '<button class="' + (k === v ? 'on' : '') + '" onclick="go(\'' + k + '\')">' + l + '</button>').join('') + '</div>'; }
   function strip(v){ const el = $('v-' + v); if(!el || !isM()) return; const h = tabs(v); const cur = el.querySelector(':scope > .grp-tabs');
@@ -36274,5 +36274,64 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
 </script>
 <style>/* 1754 · teacher's payslip / lessons: view only */ body.t1754 #sheetBody .ps1744{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }</style>
 <script>(function(){ try{ const f = () => { try{ document.body.classList.toggle('t1754', !(typeof D !== 'undefined' && D && D.mgr)); }catch(e){} }; f(); setInterval(f, 3000); }catch(e){} })();</script>
+<script>
+/* 1757 · Finance › Government: what CupOfEnglish pays to government (Misty 4 Nov 17:56 "a separate screen for GOVERNMENT that CupOfEnglish pays")
+   From the database (coe-expenses › coe_expenses): every line in the categories Government Contributions and Permits & Clearances, grouped by agency (from the description) and month · plus the staff contributions kept on payroll (coe-payedit). */
+(function(){
+  if(window.__1757) return; window.__1757 = 1;
+  const CATS = ['Government Contributions', 'Permits & Clearances'];   /* Mandatory Benefit (13th month pay) goes to staff, not government */
+  const AG = [['sss', 'SSS', /\bsss\b/i], ['ph', 'PhilHealth', /phil\s*-?\s*health/i], ['hdmf', 'Pag-IBIG', /pag\s*-?\s*ibig|hdmf/i],
+    ['bir', 'BIR & taxes', /\bbir\b|withholding|\bitr\b|\btax|1601|0619|2550|2551|books of account|\batp\b|\b[1-4](st|nd|rd|th)?\s*q/i],
+    ['sec', 'SEC & permits', /\bsec\b|mayor|permit|barangay|clearance|\bdti\b|financial statement|renewal/i]];
+  const agency = r => { const t = String(r.t || ''); for(const a of AG) if(a[2].test(t)) return a[0]; if(r.c === 'Permits & Clearances') return 'sec'; if(r.c === 'Mandatory Benefit') return 'mb'; return 'oth'; };
+  const LBL = { sss: 'SSS', ph: 'PhilHealth', hdmf: 'Pag-IBIG', bir: 'BIR & taxes', sec: 'SEC & permits', mb: 'Mandatory benefit', oth: 'Other' };
+  const COLS = ['sss', 'ph', 'hdmf', 'bir', 'sec', 'mb', 'oth'];
+  const X = { rows: null, ppl: null, y: '', busy: 0 };
+  try{ const k = JSON.parse(localStorage.getItem('coe.exp') || 'null'); if(k && k.rows) X.rows = k.rows; }catch(e){}
+  const P = n => '₱' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const today = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const MS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  document.head.insertAdjacentHTML('beforeend', '<style>#v-gov .gv-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}#v-gov h1{margin:0}#v-gov .gv-k{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0}#v-gov .gv-k div{background:var(--card,#fff);border:1px solid #E7E5EE;border-radius:14px;padding:12px 14px}#v-gov .gv-k span{font-size:12.5px;color:#5E5A76}#v-gov .gv-k b{display:block;font-size:22px;font-weight:700;color:#2B2450;font-variant-numeric:tabular-nums;margin-top:2px}#v-gov .gv-k small{font-size:12.5px;color:#5E5A76}#v-gov .gv-c{background:var(--card,#fff);border:1px solid #E7E5EE;border-radius:14px;padding:12px 14px;margin-top:12px}#v-gov .gv-c h2{margin:0 0 8px;font-size:16px}#v-gov .gv-s{overflow-x:auto}#v-gov table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}#v-gov th{font-size:12px;font-weight:600;color:#5E5A76;text-align:right;padding:6px 8px;white-space:nowrap}#v-gov th:first-child,#v-gov td:first-child{text-align:left}#v-gov td{padding:7px 8px;border-top:1px solid #F0EEF5;text-align:right;white-space:nowrap}#v-gov tr.t td{font-weight:700;border-top:1px solid #CFCBDD}#v-gov td.z{color:#B9B5C9}#v-gov .chip{font-size:12px}#v-gov .gv-l td:nth-child(2){white-space:normal;text-align:left}#v-gov .ex-ch{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}#v-gov .ex-ch button{border:1px solid #E7E5EE;background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}#v-gov .ex-ch button.on{background:#2B2450;color:#fff;border-color:#2B2450}@media(max-width:640px){#v-gov .gv-k{grid-template-columns:1fr}#v-gov .gv-l td:nth-child(3){display:none}}</style>');
+  try{ if(VIEWS.indexOf('gov') < 0) VIEWS.push('gov'); if(!$('v-gov')){ const d = document.createElement('div'); d.id = 'v-gov'; d.className = 'hide'; const ref = $('v-expenses') || $('v-money'); ref.parentNode.insertBefore(d, ref.nextSibling); } }catch(e){}
+  async function load(){ if(X.busy || typeof TOKEN === 'undefined' || !TOKEN) return; X.busy = 1;
+    const ym = today().slice(0, 7);
+    await Promise.all([
+      fetch(FAST_URL + '-expenses', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN }) }).then(x => x.json()).then(r => { if(r && r.ok) X.rows = r.rows; }).catch(() => {}),
+      fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'month', month: ym }) }).then(x => x.json()).then(r => { if(r && r.ok) X.ppl = r.people || []; }).catch(() => {})]);
+    X.busy = 0; if(VIEW === 'gov') paint(); }
+  function paint(){ const v = $('v-gov'); if(!v) return; const tabs = v.querySelector(':scope > .grp-tabs'), th = tabs ? tabs.outerHTML : '';
+    const head = '<div class="gv-h"><h1>Government</h1><span class="small mute">What CupOfEnglish pays to government · SSS, PhilHealth, Pag-IBIG, BIR, SEC and permits · from Finance › Transactions (database)</span><span class="grow"></span>' + (typeof expSheet === 'function' ? '<button class="btn teal sm" onclick="gov1757Add()">+ Payment</button>' : '') + '</div>';
+    if(!X.rows){ v.innerHTML = th + head + '<div class="sk"></div><div class="sk"></div>'; return; }
+    const G = X.rows.filter(r => CATS.indexOf(r.c) > -1 && Number(r.a)).map(r => Object.assign({}, r, { g: agency(r) }));
+    const years = [...new Set(G.map(r => r.d.slice(0, 4)))].sort().reverse(); if(!X.y || years.indexOf(X.y) < 0) X.y = years.indexOf(today().slice(0, 4)) > -1 ? today().slice(0, 4) : (years[0] || today().slice(0, 4));
+    const Y = G.filter(r => r.d.slice(0, 4) === X.y), tot = Y.reduce((a, r) => a + r.a, 0), cm = today().slice(0, 7), thisM = G.filter(r => r.d.slice(0, 7) === cm).reduce((a, r) => a + r.a, 0);
+    const used = COLS.filter(c => Y.some(r => r.g === c));
+    const grid = {}; Y.forEach(r => { const m = +r.d.slice(5, 7); grid[m] = grid[m] || {}; grid[m][r.g] = (grid[m][r.g] || 0) + r.a; });
+    const lastM = X.y === today().slice(0, 4) ? +today().slice(5, 7) : 12;
+    const pp = (X.ppl || []).filter(p => (+p.sss || 0) + (+p.pagibig || 0) + (+p.philhealth || 0) + (+p.bir || 0) > 0), staff = pp.reduce((a, p) => a + (+p.sss || 0) + (+p.pagibig || 0) + (+p.philhealth || 0) + (+p.bir || 0), 0);
+    const last = G[0] && G.slice().sort((a, b) => b.d.localeCompare(a.d))[0];
+    v.innerHTML = th + head
+      + '<div class="ex-ch">' + years.slice(0, 6).map(y => '<button class="' + (X.y === y ? 'on' : '') + '" onclick="gov1757Y(\'' + y + '\')">' + y + '</button>').join('') + '</div>'
+      + '<div class="gv-k"><div><span>Paid in ' + esc(X.y) + '</span><b>' + P(tot) + '</b><small>' + Y.length + ' payment' + (Y.length === 1 ? '' : 's') + '</small></div>'
+      + '<div><span>This month</span><b>' + P(thisM) + '</b><small>' + (last ? 'last: ' + esc(last.t) + ' · ' + esc(last.d) : '—') + '</small></div>'
+      + '<div><span>Staff contributions on payroll</span><b>' + P(staff) + '</b><small>a month · ' + pp.length + ' staff · <a class="link" onclick="go(\'payroll\');setTimeout(()=>{try{pdb1742Open()}catch(e){}},300)">edit in Payroll</a></small></div></div>'
+      + '<div class="gv-c"><h2>By month · ' + esc(X.y) + '</h2><div class="gv-s"><table><tr><th>Month</th>' + used.map(c => '<th>' + LBL[c] + '</th>').join('') + '<th>Total</th></tr>'
+      + Array.from({ length: lastM }, (_, i) => i + 1).reverse().map(m => { const g = grid[m] || {}, s = used.reduce((a, c) => a + (g[c] || 0), 0);
+          return '<tr><td>' + MS[m - 1] + '</td>' + used.map(c => g[c] ? '<td>' + P(g[c]) + '</td>' : '<td class="z">—</td>').join('') + '<td><b>' + (s ? P(s) : '—') + '</b></td></tr>'; }).join('')
+      + '<tr class="t"><td>Total</td>' + used.map(c => '<td>' + P(Y.filter(r => r.g === c).reduce((a, r) => a + r.a, 0)) + '</td>').join('') + '<td>' + P(tot) + '</td></tr></table></div>'
+      + '<div class="small mute" style="margin-top:6px">Agency is read from the description (e.g. "Philhealth October", "BIR 3rd Q") · lines in the categories Government Contributions and Permits &amp; Clearances</div></div>'
+      + (pp.length ? '<div class="gv-c"><h2>Staff contributions on payroll · every month</h2><div class="gv-s"><table><tr><th>Person</th><th>SSS</th><th>PhilHealth</th><th>Pag-IBIG</th><th>BIR</th></tr>'
+        + pp.map(p => '<tr><td><b>' + esc(p.teacher) + '</b> <span class="small mute">' + (p.gov_in_deduct ? 'not deducted' : 'deducted from pay') + '</span></td>' + ['sss', 'philhealth', 'pagibig', 'bir'].map(k => +p[k] ? '<td>' + P(p[k]) + '</td>' : '<td class="z">—</td>').join('') + '</tr>').join('') + '</table></div></div>' : '')
+      + '<div class="gv-c gv-l"><h2>Payments · ' + esc(X.y) + '</h2><div class="gv-s"><table><tr><th>Date</th><th style="text-align:left">Description</th><th style="text-align:left">Agency</th><th>Amount</th></tr>'
+      + (Y.length ? Y.slice().sort((a, b) => b.d.localeCompare(a.d)).map(r => '<tr><td>' + esc(r.d) + '</td><td>' + esc(r.t) + (r.q ? ' <span class="small mute">· saving</span>' : '') + '</td><td style="text-align:left"><span class="chip">' + LBL[r.g] + '</span></td><td>' + P(r.a) + '</td></tr>').join('') : '<tr><td colspan="4" class="small mute">No payments this year</td></tr>') + '</table></div></div>'; }
+  window.gov1757Y = y => { X.y = y; paint(); };
+  window.gov1757Add = async function(){ try{ await expSheet(); }catch(e){} let n = 0; const t = setInterval(() => { const c = $('fC'); if(c && c.tagName === 'SELECT'){ clearInterval(t); if(![...c.options].some(o => o.value === 'Government Contributions')) c.insertAdjacentHTML('beforeend', '<option>Government Contributions</option>'); c.value = 'Government Contributions'; const e = $('fE'); if(e && !e.value) e.placeholder = 'e.g. SSS November · Philhealth November · BIR 0619 October'; } else if(++n > 40) clearInterval(t); }, 100); };
+  const _go = window.go; if(typeof _go === 'function') window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'gov'){ paint(); load(); } }catch(e){} return r; };
+  const _cs = window.closeSheet; if(typeof _cs === 'function') window.closeSheet = function(){ const r = _cs.apply(this, arguments); try{ if(VIEW === 'gov') setTimeout(load, 1500); }catch(e){} return r; };
+  try{ if(typeof VIEW !== 'undefined' && VIEW === 'gov'){ paint(); load(); } }catch(e){}
+  window.gov1757 = { agency, paint, X };
+})();
+</script>
+
 </body>
 </html>
