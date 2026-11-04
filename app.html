@@ -5243,7 +5243,7 @@ ${e.cancelled ? (e.why ? `<div class="cxw" style="margin-top:14px">Why cancelled
 <div class="skc">${(late2 ? ['Parent told us in time · seen late by CupOfEnglish','Teacher unavailable','Internet problem','Power outage'] : ['Parent asked','Student sick','School exam','Family trip','Holiday','Moved to another day','Student no-show','Teacher unavailable','Internet problem','Power outage']).map(r => `<button type="button" onclick="$('eR').value='${r}';this.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===this))">${r}</button>`).join('')}</div>
 ${late2 ? '' : `<label class="check" style="margin-top:10px"><input type="checkbox" id="eStop" onchange="const k=$('eMk');if(k&&this.checked)k.checked=false;const b=$('eCx');if(b)b.textContent=this.checked?'Cancel this and every later ${esc(st.toLocaleDateString('en-GB',{weekday:'long'}))} ${tm(e.start)}':'Cancel class (X + RSVP No)'"><div><b>Stop this schedule · cancel every later ${esc(st.toLocaleDateString('en-GB',{weekday:'long'}))} ${tm(e.start)} too</b><div class="small mute">When the parent stops this day for good. Later classes of this package on the same day and time get X + RSVP No (nothing deleted, no make-up)</div></div></label>`}`}
 <button class="btn ghost block" id="eCx" style="margin-top:8px" onclick="sendEdit(${i},'${e.cancelled?'restore':'cancel'}','${src}')">${e.cancelled?'Restore class (remove X, RSVP Yes)':late2?'Cancel · teacher / CupOfEnglish reason':'Cancel class (X + RSVP No)'}</button>${e.cancelled ? `<button class="btn ghost block" style="margin-top:8px;color:#9A4330" onclick="if(confirm('Cancel every later ${esc(st.toLocaleDateString('en-GB',{weekday:'long'}))} ${tm(e.start)} class of this package too? They stay on the calendar with X + RSVP No.')){window._cxStop=1;sendEdit(${i},'cancel','${src}')}">Stop this schedule · cancel every later ${esc(st.toLocaleDateString('en-GB',{weekday:'long'}))} ${tm(e.start)}</button>` : ''}
-<p class="small mute" style="margin-top:8px">Only this day's class changes, even when it repeats weekly. Nothing is deleted: a cancelled class keeps its event with " X" and RSVP No (struck through), like the team does by hand.</p></div>`);
+<p class="small mute" style="margin-top:8px">Only this day's class changes, even when it repeats weekly. Nothing is deleted: a cancelled class keeps its event with " X" and RSVP No (struck through), like the team does by hand.</p></div>${window.ceDelHtml ? ceDelHtml(e) : ''}`);
 ['eD','eH','eM','eT'].forEach(id => { const x = $(id); if(x){ x.addEventListener('change', () => ePrev(e)); x.addEventListener('input', () => ePrev(e)); } });
 if(!e.cancelled) monLoad();
 }
@@ -6748,7 +6748,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1546;
+const COE_V = 1547;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -35923,5 +35923,36 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
 #sheetBody .shero .grow .hl .sa-src{overflow:hidden;text-overflow:ellipsis}
 #sheetBody.stu2 .shero .grow .hl .teal+.teal{margin-left:0!important}
 </style>
+<script>
+/* 1733 · delete a class added by mistake · Deleted classes with Undo */
+(function(){
+  if(window.__1733) return; window.__1733 = 1;
+  const H = x => (typeof esc === 'function' ? esc(x) : String(x == null ? '' : x));
+  const when = t => { const d = new Date(t); return isNaN(d) ? '' : d.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }); };
+  window.ceDelHtml = function(e){ try{ if(!(typeof D !== 'undefined' && D && D.mgr) || !e || !e.id || Date.parse(e.start) <= Date.now()) return ''; }catch(x){ return ''; }
+    return '<div style="margin-top:22px;padding-top:12px;border-top:1px solid var(--line)"><a class="link small" onclick="this.style.display=\'none\';document.getElementById(\'ceDel\').classList.remove(\'hide\')">Added by mistake? Delete this class</a>' +
+      '<div id="ceDel" class="hide"><h2 style="margin-top:8px">Delete this class</h2><p class="small mute">Only this one class is removed from the calendar. A copy is kept: <b>Deleted classes</b> has Undo. For a class that did not happen, use Cancel instead.</p>' +
+      '<label for="ceDelWhy">Why (one line)</label><input id="ceDelWhy" class="in-t" placeholder="e.g. added twice by mistake">' +
+      '<button class="btn ghost block" style="margin-top:10px;color:#B4513B;border-color:#E8B4A8" id="ceDelGo" onclick="ceDel()">Delete this class</button>' +
+      '<button class="btn ghost block sm" style="margin-top:6px" onclick="ceTrash()">Deleted classes · Undo</button></div></div>'; };
+  window.ceDel = async function(){ const e = (typeof CE !== 'undefined' && CE && CE.e) || null; if(!e) return; const why = ((document.getElementById('ceDelWhy') || {}).value || '').trim();
+    if(!why){ toast('Write why (one line)'); const w = document.getElementById('ceDelWhy'); if(w) w.focus(); return; }
+    if(!confirm('Delete this class?\n\n' + (e.title || '') + '\n' + when(e.start) + '\n\nOnly this one class. Undo is under Deleted classes.')) return;
+    const b = document.getElementById('ceDelGo'); if(b){ b.disabled = true; b.textContent = 'Deleting…'; }
+    let r; try{ r = await apiNow('delClass', TOKEN, e.id, { start: e.start, reason: why }); }catch(x){ r = { ok: false, msg: (x && x.message) || 'No connection · nothing deleted' }; }
+    if(!r || !r.ok){ if(b){ b.disabled = false; b.textContent = 'Delete this class'; } return toast((r && r.msg) || 'Not deleted'); }
+    toast('✓ ' + (r.note || 'Deleted')); try{ SC_PEND = 1; }catch(x){} try{ Object.keys(SCC).forEach(k => { SCC[k]._t = 0; }); }catch(x){} closeSheet();
+    try{ const code = e.code || (typeof STU !== 'undefined' && STU && STU.code); if(code) api('mgmtStuClasses', TOKEN, code).then(x => { if(!Array.isArray(x)) return; CLSM[code] = x; if(STU && STU.code === code){ STU.cls = x; const el = $('stuSch'); if(el) el.innerHTML = stuSched(x); } }).catch(() => {}); }catch(x){} };
+  window.ceTrash = async function(){ openSheet('<h1>Deleted classes</h1><div class="sk"></div><div class="sk" style="width:70%"></div>');
+    let r; try{ r = await apiNow('mgmtClassTrash', TOKEN); }catch(x){ r = { ok: false }; } if(!r || !r.ok) return openSheet('<h1>Deleted classes</h1><div class="empty">Could not load · try again</div>');
+    const L = r.list || []; openSheet('<h1>Deleted classes</h1><p class="small mute">Classes deleted in the app (added by mistake). Undo puts the class back in the calendar.</p>' + (L.length ? L.map(x =>
+      '<div style="padding:10px 0;border-top:1px solid var(--line)"><b>' + H(x.title) + '</b><div class="small">' + when(x.starts_at) + '</div><div class="small mute">Deleted by ' + H(x.made_by) + ' · ' + when(x.made_at) + ' · ' + H(x.reason) + '</div>' +
+      (x.restored_at ? '<div class="small" style="color:#1E7A55">Back in the calendar · ' + H(x.restored_by || '') + ' · ' + when(x.restored_at) + '</div>' : '<button class="btn ghost sm" style="margin-top:6px" onclick="ceUndel(' + Number(x.id) + ',this)">Undo · put back</button>') + '</div>').join('') : '<div class="empty">No deleted classes.</div>')); };
+  window.ceUndel = async function(id, btn){ if(btn){ btn.disabled = true; btn.textContent = 'Putting back…'; }
+    let r; try{ r = await apiNow('undelClass', TOKEN, id); }catch(x){ r = { ok: false, msg: 'No connection' }; }
+    if(!r || !r.ok){ if(btn){ btn.disabled = false; btn.textContent = 'Undo · put back'; } return toast((r && r.msg) || 'Not put back'); }
+    toast('✓ ' + (r.note || 'Back in the calendar')); try{ SC_PEND = 1; Object.keys(SCC).forEach(k => { SCC[k]._t = 0; }); }catch(x){} ceTrash(); };
+})();
+</script>
 </body>
 </html>
