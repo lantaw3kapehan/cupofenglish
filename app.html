@@ -6748,7 +6748,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1566;
+const COE_V = 1567;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36105,6 +36105,18 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       + ((L.subs || []).length ? (L.subs || []).map(x => one(x, 'Substitute')).join('') + '<tr class="tot"><td>Substitute classes</td><td></td><td style="text-align:right">' + n1(sub) + '</td></tr>' : '')
       + '<tr class="tot"><td>Total units</td><td></td><td style="text-align:right">' + n1(tot) + '</td></tr></table>'
       + (Math.abs(pd - tot) > 0.009 ? '<div class="m" style="margin-top:4px">The pay above counts ' + n1(pd) + ' units' + (pd > tot ? ' (includes corrections made by Operations)' : ' (after corrections by Operations)') + '.</div>' : ''); }
+  function lessCard1752(S){ const h = slipHtml(S), css = h.slice(0, h.indexOf('</style>') + 8), p = S.person || {}, lg = (document.querySelector('#login img') || {}).src || '';   /* 1752 */
+    return css + '<div class="ps1744" style="background:#fff;padding:24px;border:1px solid #E7E5EE;border-radius:14px"><div style="text-align:center">' + (lg ? '<img src="' + lg + '" alt="CupOfEnglish" style="height:52px;display:block;margin:0 auto 6px">' : '')
+      + '<div class="m"><b style="color:#2B2450">' + esc(p.full || p.name || '') + '</b>' + (p.code ? ' · ' + esc(p.code) : '') + ' · ' + esc(lab(S.month)) + '</div></div>' + (lessHtml1751(S, S.row) || '<div class="empty">No classes found for this month.</div>') + '</div>'; }
+  window.ps1752Lessons = async function(name, ym){ if(!/^\d{4}-\d{2}$/.test(String(ym || ''))){ const m = String(ym || '').match(/([A-Za-z]+)\s+(\d{4})/); ym = m ? m[2] + '-' + ('0' + (MN.findIndex(x => x.toLowerCase().slice(0, 3) === m[1].toLowerCase().slice(0, 3)) + 1)).slice(-2) : ''; } if(!ym) return toast('Choose the month first');
+    const MG = !!(typeof D !== 'undefined' && D && D.mgr);
+    let S = SL && SL.ok && SL.month === ym && (!MG || String((SL.person && SL.person.name) || '').toLowerCase() === String(name).toLowerCase()) ? SL : null;
+    if(!S){ openSheet('<h1>Lessons by student · ' + esc(name) + '</h1><div class="sk" style="height:300px"></div>'); try{ $('sheet').classList.add('wide'); }catch(e){}
+      try{ S = await call(MG ? { op: 'slip', month: ym, teacher: name } : { op: 'myslip', month: ym }); }catch(e){}
+      if(!S || !S.ok) return void ($('sheetBody').innerHTML = '<h1>Lessons by student · ' + esc(name) + '</h1><div class="empty">' + esc((S && S.error) || 'Could not load') + '</div>'); }
+    SL = S; const q = x => esc(String(x)).replace(/'/g, '');
+    const h = '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><h1 class="grow" style="margin:0">Lessons by student · ' + esc(name) + '</h1><button class="btn sm teal" id="psC1745" onclick="ps1745Pic()">Copy picture</button><button class="btn sm ghost" onclick="ps1745Pic(1)">' + (navigator.share ? 'Share · save' : 'Save picture') + '</button><button class="btn sm ghost" onclick="ps1744Open(\'' + q(name) + '\',\'' + q(ym) + '\')">Payslip →</button></div><div style="margin-top:10px">' + lessCard1752(S) + '</div>';
+    if($('sheetBody') && $('sheet') && $('sheet').classList.contains('open')) $('sheetBody').innerHTML = h; else openSheet(h); try{ $('sheet').classList.add('wide'); }catch(e){} };
   function slipHtml(S, forPrint){ const r = S.row, p = S.person, sl = S.slip || {}, cs = S.cases || [], E = r.edited || [];
     const extra = E.filter(e => e.field === 'extra'), less = E.filter(e => e.field === 'less');
     const lessonsPay = +r.lesson_pay || 0, regPay = Math.round(((+r.reg || 0) * (+r.rate || 0)) * 100) / 100;
@@ -36127,7 +36139,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       + ((+r.trial) ? row('Trial classes', +r.trial, pz((+r.trial) * (+r.rate || 0))) : '') + ((+r.sub) ? row('Substitute classes', +r.sub, pz((+r.sub) * (+r.rate || 0))) : '')
       + inc.map(c => row('Incentive · ' + esc(c.type || c.subject) + (c.student ? ' · ' + esc(c.student) : '') + ' <span class="m">' + esc(c.id) + '</span>', '', pz(c.incentive))).join('')
       + extra.map(e => row(esc(e.label || 'Extra') + (e.reason ? ' <span class="m">· ' + esc(e.reason) + '</span>' : ''), '', pz(e.value))).join('')
-      + row('Gross compensation', '', pz(gross), 'tot') + '</table>' + lessHtml1751(S, r)
+      + row('Gross compensation', '', pz(gross), 'tot') + '</table>'
       + '<h2>Deductions</h2><table>' + (ded.length || less.length || (+r.deduct || 0) ? '' : row('None', '', pz(0)))
       + ded.map(c => row(esc(c.subject || c.type) + (c.note ? ' <span class="m">· ' + esc(c.note) + '</span>' : '') + ' <span class="m">' + esc(c.id) + '</span>', '', pz(c.deduction))).join('')
       + less.map(e => row(esc(e.label || 'Deduction') + (e.reason ? ' <span class="m">· ' + esc(e.reason) + '</span>' : ''), '', pz(e.value))).join('')
@@ -36137,12 +36149,12 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       + (gid && dues ? '<tr><td colspan="3" class="m">Statutory contributions shown for the record · not deducted from this pay.</td></tr>' : '') + row('Total deductions', '', pz(totalDed), 'tot') + '</table>'
       + '<p style="margin-top:14px">' + esc((p.title ? p.title + ' ' : '') + (String(p.full || p.name).split(' ').slice(-1)[0])) + ' accrued gross service compensation of ' + pz(gross) + ' for the ' + esc(lab(S.month)) + ' pay period, less ' + pz(totalDed) + ' in applicable deductions, resulting in net service compensation payable of <b>' + pz(net) + '</b>.</p>'
       + (sl.note ? '<p>' + esc(sl.note) + '</p>' : '') + '<p class="m">For verification or inquiries regarding this payslip, please contact CupOfEnglish at works@cupofenglishatph.com.<br>System-generated payslip · records as of ' + new Date().toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) + '.</p></div>'; }
-  window.ps1744Open = async function(name, ym){ if(!/^\d{4}-\d{2}$/.test(String(ym || ''))){ const m = String(ym || (typeof MO !== 'undefined' && MO && MO.payMonth) || '').match(/([A-Za-z]+)\s+(\d{4})/); ym = m ? m[2] + '-' + ('0' + (MN.findIndex(x => x.toLowerCase() === m[1].toLowerCase()) + 1)).slice(-2) : ''; } if(!ym) return toast('Choose the month first'); openSheet('<h1>Payslip · ' + esc(name) + '</h1><div class="sk"></div><div class="sk" style="height:300px"></div>'); try{ $('sheet').classList.add('wide'); }catch(e){}
+  window.ps1744Open = async function(name, ym){ if(!/^\d{4}-\d{2}$/.test(String(ym || ''))){ const m = String(ym || (typeof MO !== 'undefined' && MO && MO.payMonth) || '').match(/([A-Za-z]+)\s+(\d{4})/); ym = m ? m[2] + '-' + ('0' + (MN.findIndex(x => x.toLowerCase().slice(0, 3) === m[1].toLowerCase().slice(0, 3)) + 1)).slice(-2) : ''; } if(!ym) return toast('Choose the month first'); openSheet('<h1>Payslip · ' + esc(name) + '</h1><div class="sk"></div><div class="sk" style="height:300px"></div>'); try{ $('sheet').classList.add('wide'); }catch(e){}
     const MG = !!(typeof D !== 'undefined' && D && D.mgr);   /* 1746: a teacher sees only her own (myslip) */
     let S = null; try{ S = await call(MG ? { op: 'slip', month: ym, teacher: name } : { op: 'myslip', month: ym }); }catch(e){}
     if(!S || !S.ok) return void ($('sheetBody').innerHTML = '<h1>Payslip · ' + esc(name) + '</h1><div class="empty">' + esc((S && S.error) || 'Could not load') + '</div>');
     SL = S; const sl = S.slip || {};
-    $('sheetBody').innerHTML = '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><h1 class="grow" style="margin:0">Payslip · ' + esc(name) + '</h1><button class="btn sm teal" id="psC1745" onclick="ps1745Pic()">Copy picture</button><button class="btn sm ghost" onclick="ps1745Pic(1)">' + (navigator.share ? 'Share · save' : 'Save picture') + '</button>' + (MG ? '<button class="btn sm ghost" onclick="pdb1742Open()">‹ Payroll list</button>' : '') + '</div>'
+    $('sheetBody').innerHTML = '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><h1 class="grow" style="margin:0">Payslip · ' + esc(name) + '</h1><button class="btn sm teal" id="psC1745" onclick="ps1745Pic()">Copy picture</button><button class="btn sm ghost" onclick="ps1745Pic(1)">' + (navigator.share ? 'Share · save' : 'Save picture') + '</button><button class="btn sm ghost" onclick="ps1752Lessons(\'' + esc(name).replace(/'/g, '') + '\',\'' + esc(S.month) + '\')">Lessons by student →</button>' + (MG ? '<button class="btn sm ghost" onclick="pdb1742Open()">‹ Payroll list</button>' : '') + '</div>'
       + (MG ? '<details class="card" style="margin-top:10px;padding:10px 12px"><summary><b>✎ Edit this payslip</b> <span class="small mute">payout date, payment method, note · amounts and extra lines with ✎ in the list</span></summary>'
       + '<div class="row" style="gap:10px;flex-wrap:wrap"><div class="grow"><label>Payout date</label><input id="psD1744" class="in-t" type="date" value="' + esc(sl.payout_date || nextPay(S.month)) + '"></div><div class="grow"><label>Payment method</label><input id="psM1744" class="in-t" maxlength="80" placeholder="e.g. Bank Transfer (UnionBank)" value="' + esc(sl.method || 'Bank Transfer (UnionBank)') + '"></div></div>'
       + '<label>Note on the payslip</label><input id="psN1744" class="in-t" maxlength="500" value="' + esc(sl.note || '') + '"><button class="btn block" style="margin-top:10px" id="psG1744" onclick="ps1744Save(\'' + esc(name) + '\',\'' + esc(S.month) + '\')">Save payslip details</button></details>' : '')
@@ -36153,8 +36165,8 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   /* 1745: the payslip as a picture (WeChat) */
   window.ps1745Pic = async function(save){ const el = document.querySelector('#sheetBody .ps1744'), b = $('psC1745'); if(!el || !SL) return; if(b){ b.disabled = true; b.textContent = 'Making the picture…'; }
     try{ const H = await h2c(); const cv = await H(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false }); const blob = await new Promise(z => cv.toBlob(z, 'image/png'));
-      const name = 'Payslip-' + SL.person.name + '-' + SL.month + '.png';
-      if(!save && window.ClipboardItem){ try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Payslip picture copied · paste it in WeChat'); return; }catch(x){} }
+      const lz = /^Lessons/.test(((document.querySelector('#sheetBody h1') || {}).textContent || '')), name = (lz ? 'Lessons-' : 'Payslip-') + SL.person.name + '-' + SL.month + '.png';
+      if(!save && window.ClipboardItem){ try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast((lz ? 'Lessons' : 'Payslip') + ' picture copied · paste it in WeChat'); return; }catch(x){} }
       const f = new File([blob], name, { type: 'image/png' }); if(navigator.canShare && navigator.canShare({ files: [f] })){ try{ await navigator.share({ files: [f] }); return; }catch(x){ if(x && x.name === 'AbortError') return; } }
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); toast('Payslip picture saved');
     }catch(e){ toast('Could not make the picture · try again'); } finally { if(b){ b.disabled = false; b.textContent = 'Copy picture'; } } };
@@ -36188,7 +36200,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   window.paySheet = function(p){ const r = p0.apply(this, arguments);
     try{ if(typeof D !== 'undefined' && D && !D.mgr && p && typeof ps1744Open === 'function'){ const b = $('sheetBody'); if(b && !b.querySelector('.myps1746')){
       const ym = String(p.m || '').match(/^\d{4}-\d{2}/) ? String(p.m).slice(0, 7) : String(p.month || '');
-      const btn = document.createElement('button'); btn.className = 'btn block myps1746'; btn.style.marginTop = '14px'; btn.textContent = 'My payslip · lessons by student →';
+      const btn = document.createElement('button'); btn.className = 'btn block myps1746'; btn.style.marginTop = '14px'; btn.textContent = 'My payslip →';
       btn.onclick = () => ps1744Open((D.me && D.me.name) || '', ym); b.appendChild(btn); } } }catch(e){}
     return r; };
 })();
@@ -36215,7 +36227,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   const h0 = window.payChkHtml; if(typeof h0 !== 'function') return;
   window.payChkHtml = function(){ const h = h0.apply(this, arguments);
     try{ if(!h || typeof ps1744Open !== 'function' || typeof D === 'undefined' || !D || D.mgr || !PCK) return h;
-      const b = '<button class="btn ghost block" style="margin-top:10px" onclick="ps1744Open((D.me && D.me.name) || \'\', \'' + esc(String(PCK.month || '')).replace(/'/g, '') + '\')">My payslip · lessons by student →</button>';
+      const b = '<button class="btn ghost block" style="margin-top:10px" onclick="ps1744Open((D.me && D.me.name) || \'\', \'' + esc(String(PCK.month || '')).replace(/'/g, '') + '\')">My payslip →</button>' + '<button class="btn ghost block" style="margin-top:8px" onclick="ps1752Lessons((D.me && D.me.name) || \'\', \'' + esc(String(PCK.month || '')).replace(/'/g, '') + '\')">Lessons by student →</button>';
       const i = h.lastIndexOf('</div>'); return i > 0 ? h.slice(0, i) + b + h.slice(i) : h + b; }catch(e){ return h; } };
 })();
 </script>
