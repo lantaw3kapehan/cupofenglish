@@ -6095,7 +6095,7 @@ const cur = $('psN') ? $('psN').value : (me ? me.code : '');
 openSheet(`<h1>Payslip</h1>
 <div class="row" style="gap:10px"><div class="grow"><label>Teacher</label><select id="psN" class="in-t" onchange="psPre()">${L.map(p=>`<option value="${esc(p.code)}"${cur===p.code?' selected':''}>${esc(p.name)} · ${esc(p.code)}</option>`).join('')}</select></div>
 <div class="grow"><label>Pay period</label><select id="psP" class="in-t" onchange="psPre()">${per.map(o => `<option value="${esc(o)}"${String(o)===String(def)?' selected':''}>${esc(String(o).split(SL2).join(' '))}</option>`).join('')}</select></div></div>
-<button class="btn block" style="margin-top:14px" onclick="tabSheet('PAYSLIP','Payslip',$('psN').value,$('psP').value)">Show payslip</button><button class="btn ghost block" style="margin-top:8px" onclick="unitsFromPayslip()">Lessons counted · which students →</button>`);
+<button class="btn block" style="margin-top:14px" onclick="ps1747Show()">Show payslip</button><button class="btn ghost block" style="margin-top:8px" onclick="tabSheet('PAYSLIP','Payslip',$('psN').value,$('psP').value)">Old Google payslip</button><button class="btn ghost block" style="margin-top:8px" onclick="unitsFromPayslip()">Lessons counted · which students →</button>`);
 psPre(); };
 if(P) draw(); else openSheet(`<h1>Payslip</h1><div class="sk"></div><div class="sk"></div>`);
 try{ const f = await api('mgmtSlipPeople', TOKEN); const ch = JSON.stringify(f) !== JSON.stringify(P); P = window._ppl = f; store('set','coe.ppl', JSON.stringify(f));
@@ -6748,7 +6748,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1561;
+const COE_V = 1562;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36173,6 +36173,21 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       const btn = document.createElement('button'); btn.className = 'btn block myps1746'; btn.style.marginTop = '14px'; btn.textContent = 'My payslip →';
       btn.onclick = () => ps1744Open((D.me && D.me.name) || '', ym); b.appendChild(btn); } } }catch(e){}
     return r; };
+})();
+</script>
+<script>
+/* 1747 · payslips from the database everywhere in management */
+(function(){
+  if(window.__1747) return; window.__1747 = 1;
+  window.ps1747Show = function(){ try{ const n = $('psN'), p = $('psP'); if(!n || !p) return;
+    const nm = String((n.options[n.selectedIndex] || {}).textContent || '').split(' · ')[0].trim(), per = String(p.value || '').split(typeof SL2 !== 'undefined' ? SL2 : '//').join(' ');
+    if(typeof ps1744Open === 'function') ps1744Open(nm, per); }catch(e){ toast('Could not open the payslip'); } };
+  const p0 = window.payslip; if(typeof p0 === 'function') window.payslip = function(name){
+    if(name && typeof D !== 'undefined' && D && D.mgr && typeof ps1744Open === 'function') return ps1744Open(String(name), (typeof MO !== 'undefined' && MO && MO.payMonth) || '');
+    return p0.apply(this, arguments); };
+  const n0 = window.payslipNow; if(typeof n0 === 'function') window.payslipNow = function(name){
+    if(name && typeof D !== 'undefined' && D && D.mgr && typeof ps1744Open === 'function') return ps1744Open(String(name), (typeof MO !== 'undefined' && MO && MO.payMonth) || '');
+    return n0.apply(this, arguments); };
 })();
 </script>
 </body>
