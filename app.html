@@ -2772,7 +2772,9 @@ return `<section class="sec"><h2>Peer feedback <span class="c">from fellow teach
 }
 
 function nowPayOf(m){ m = m || {}; return Math.round((+m.nowPay || 0) + (+m.nowTrial || 0) * (+m.rate || 0)); }   /* 14 Oct: trials paid at the same rate, not regular units */
-function renderPay(){ try{ if(window.MYPAY1763 && typeof D !== 'undefined' && D && !D.mgr) D.pay = MYPAY1763.pay; }catch(e){}   /* 1763 */
+function rank1764(){ try{ const k = window.MYPAY1763 && MYPAY1763.rank; if(!k || !D || !D.me || D.mgr) return; if(!k.fixed && k.rank) Object.assign(D.me, { rank: k.rank, rankDate: k.rankDate || D.me.rankDate });   /* 1764 */
+  Object.assign(D.me, { rate: +k.rate || D.me.rate, lifetime: +k.lifetime, rankWaiting: k.waiting || '' }); }catch(e){} }
+function renderPay(){ try{ if(window.MYPAY1763 && typeof D !== 'undefined' && D && !D.mgr){ D.pay = MYPAY1763.pay; rank1764(); } }catch(e){}   /* 1763 */
 const me = D.me||{}, pay = D.pay||[], adj = D.adj||[];
 const est = nowPayOf(me) + (me.monthBonus||0) - (me.monthDeduct||0);
 const units = (me.nowReg||0)+(me.nowTrial||0)+(me.nowSub||0);
@@ -2785,7 +2787,7 @@ let h = `<div class="lead"><h1>Pay</h1><div class="mute small">${month} so far �
 <div class="small mute" style="margin-top:8px">Regular ${me.nowReg||0} · Trial ${me.nowTrial||0} · Sub ${me.nowSub||0} · ${peso(me.rate)}/lesson</div></div>`;
 if(me.rank){
 h += `<h2>Rank</h2><div class="card"><div class="row"><b class="grow">${esc(me.rank)}</b><span class="num">${peso(me.rate)}/lesson</span></div>
-<div class="small mute">${(m => { const now = (+m.nowReg || 0) + (+m.nowTrial || 0) + (+m.nowSub || 0), l = +m.lifetime || 0; return l < now ? (Math.round((l + now) * 10) / 10).toLocaleString() + ' lifetime units incl. this month' : l.toLocaleString() + ' lifetime units'; })(me)}${me.rankDate?' · since '+esc(me.rankDate):''}</div></div>`;
+<div class="small mute">${(m => { const now = (+m.nowReg || 0) + (+m.nowTrial || 0) + (+m.nowSub || 0), l = +m.lifetime || 0; return l < now ? (Math.round((l + now) * 10) / 10).toLocaleString() + ' lifetime units incl. this month' : l.toLocaleString() + ' lifetime units'; })(me)}${me.rankDate?' · since '+esc(me.rankDate):''}</div>${me.rankWaiting ? '<div class="small" style="margin-top:6px;color:#8A5A00">' + esc(me.rankWaiting) + ' · ask Operations to schedule them</div>' : ''}</div>`;
 }
 h += `<h2>Pay history</h2>`;
 h += pay.length ? `<table><tr><th>Month</th><th>Units</th><th>Net</th><th>Status</th></tr>${pay.map(p=>`<tr onclick='paySheet(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="cursor:pointer"><td>${esc(p.month)}</td><td class="num">${p.units}</td><td class="num"><b>${peso(p.net)}</b></td>
@@ -4970,7 +4972,7 @@ setInterval(() => { if(!D || document.hidden) return; if(D.mgr) loadMsgs(true); 
 
 let PCK = null, PCKM = null;
 async function myPay1763(){ try{ const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'mypay' }) }).then(x => x.json());   /* 1763: database first */
-  if(r && r.ok && r.check){ window.MYPAY1763 = { pay: r.pay || [], at: Date.now() }; try{ if(typeof D !== 'undefined' && D && !D.mgr) D.pay = r.pay || []; }catch(e){} return r.check; } }catch(e){} return api('tPayCheck', TOKEN); }
+  if(r && r.ok && r.check){ window.MYPAY1763 = { pay: r.pay || [], rank: r.rank || null, at: Date.now() }; try{ if(typeof D !== 'undefined' && D && !D.mgr){ D.pay = r.pay || []; rank1764(); } }catch(e){} return r.check; } }catch(e){} return api('tPayCheck', TOKEN); }
 async function loadPayCheck(){ if(!TOKEN) return; try{ await swr('paychk', () => myPay1763(), v => PCK = (v => { try{ const n = String((v && v.me && v.me.name) || '').trim().toLowerCase(), m = String((typeof D !== 'undefined' && D && D.me && D.me.name) || '').trim().toLowerCase(); return v && v.me && (!m || n !== m) ? Object.assign({}, v, { me: null }) : v; }catch(e){ return v; } })(v), () => { if(VIEW === 'pay') renderPay(); if(VIEW === 'today') renderToday(); }); }catch(e){} }
 const pckState = p => { if(!p || !p.me) return ''; const c = p.check || {}; if(c.status === 'Verified' && c.net && +c.net !== +p.me.net) return 'Changed'; return c.status || ''; };
 function payPaid(mon){ const k = s => { const t = String(s || '').trim(), m = t.match(/([A-Za-z]{3})[a-z]*\.?\s+(\d{4})/); return m ? m[1].toLowerCase() + m[2] : t.toLowerCase(); }, key = k(mon); if(!key) return false;
@@ -6754,7 +6756,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1578;
+const COE_V = 1579;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
