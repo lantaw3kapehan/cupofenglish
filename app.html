@@ -2964,7 +2964,13 @@ $('v-teachers').innerHTML = h + '</div>' + `<h2>TEACHERS <span class="c">live fr
 <button class="btn ghost sm" onclick="loadTT($('ttN').value, true)">↻</button></div><div id="ttBody">${TT?ttCard():'<div class="sk"></div><div class="sk"></div>'}</div>`;
 }
 const TCHF = {};
-function tchGet(name){ if(!TCHF[name]) TCHF[name] = api('mgmtTeacher', TOKEN, name).then(p => { store('set', 'coe.m.tch.' + String(name).toLowerCase(), JSON.stringify(p)); return p; })
+async function tch1767(name, p){ try{ if(!p || typeof p !== 'object' || typeof TOKEN === 'undefined' || !TOKEN) return p;   /* 1767 · rank + pay from the database */
+  const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'tpay', teacher: name }) }).then(x => x.json());
+  if(!(r && r.ok)) return p; const k = r.rank || {}; p.me = p.me || {};
+  if(k.rank || k.fixed){ if(!k.fixed) p.me.rank = k.rank; p.me.rate = +k.rate || p.me.rate; p.me.lifetime = +k.lifetime; if(k.rankDate) p.me.rankDate = k.rankDate; p.me.rankWaiting = k.waiting || ''; }
+  if(Array.isArray(r.pay) && r.pay.length) p.pay = r.pay.map(x => Object.assign({}, x, { month: /^\d{4}-\d{2}$/.test(x.m || '') ? new Date(x.m + '-15').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : x.month }));
+  p._db1767 = Date.now(); }catch(e){} return p; }
+function tchGet(name){ if(!TCHF[name]) TCHF[name] = api('mgmtTeacher', TOKEN, name).then(p => tch1767(name, p)).then(p => { store('set', 'coe.m.tch.' + String(name).toLowerCase(), JSON.stringify(p)); return p; })
 .finally(() => setTimeout(() => delete TCHF[name], 30000)); return TCHF[name]; }
 /* ── Teacher profile cards: the same design as the cards sent to parents and students, drawn by the app so every line can be edited ──
 Starting text = the cards in use on 10 Oct 2026. Saved edits live in the T-PROFILE tab; photos and the WeChat QR in Drive. */
@@ -6182,7 +6188,7 @@ const pct = c.next ? Math.min(100, Math.max(0, Math.round((c.lifetime - c.from) 
 let h = `<section class="sec"><h2>Career path <span class="c">${esc(c.rank||'')}${c.rate?' · '+peso(c.rate)+' per class':''}</span></h2>
 <div class="py-wrap"><div class="py">${tiers}</div>
 <div class="py-side"><div class="small mute">Lifetime units</div><div class="gr-score"><b>${fmtU(c.lifetime)}</b></div>${c.liveNote ? `<div class="small mute" style="margin:-2px 0 6px">${esc(c.liveNote)}</div>` : ''}
-${c.next ? `<div class="py-bar"><i style="width:${pct}%"></i></div><div class="small"><b>${pct}%</b> of the way to <b>${esc(c.next.name)}</b> (${peso(c.next.rate)})</div><div class="small mute">${fmtU(c.next.need)} more units · every class counts</div>`
+${c.next ? `<div class="py-bar"><i style="width:${pct}%"></i></div><div class="small"><b>${pct}%</b> of the way to <b>${esc(c.next.name)}</b> (${peso(c.next.rate)})</div><div class="small mute">${c.waiting ? esc(c.waiting) + ' · ask Operations to schedule them' : fmtU(c.next.need) + ' more units · every class counts'}</div>`
 : `<div class="gr-msg">${mgr?'Top rank reached.':'You have reached the top rank. Thank you for leading by example.'}</div>`}
 ${c.years && c.years.length ? `<div class="py-years">${c.years.map(y => { const mx = Math.max(...c.years.map(z=>z.units), 1); return `<div><b>${fmtU(y.units)}</b><i style="height:${Math.max(4, Math.round(y.units/mx*54))}px"></i><span>${y.year}</span></div>`; }).join('')}</div><div class="small mute" style="text-align:center">Units by year</div>` : ''}
 </div></div></section>`;
@@ -6756,7 +6762,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1581;
+const COE_V = 1582;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
