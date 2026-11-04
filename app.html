@@ -6748,7 +6748,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1549;
+const COE_V = 1550;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31291,8 +31291,9 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
 /* 1260 · instant saves through the database (coe-wq) */
 (function(){
   if(window.__1260 || typeof window.api !== 'function') return; window.__1260 = 1;
-  const FNS = { mgmtAgreeSave: 1, mgmtLeaveInformed: 1, tLeaveInformed: 1, mgmtTagClass: 1, decideLate: 1 };
-  const LBL = { mgmtAgreeSave: 'Service agreement', 'mgmtAgreeSave:file': 'Service agreement (signed copy)', mgmtLeaveInformed: 'Leave · informed', tLeaveInformed: 'Leave · informed', mgmtTagClass: 'Class tag', decideLate: 'Late time-in decision' };
+  const FNS = { mgmtAgreeSave: 1, mgmtLeaveInformed: 1, tLeaveInformed: 1, mgmtTagClass: 1, decideLate: 1,
+    addCase: 1, mgmtCaseWaive: 1, mgmtTaskStatus: 1, mgmtTrialGroup: 1, mgmtLeaveSave: 1, setActiveTick: 1, mgmtAvailSave: 1, mgmtShiftClose: 1 };   /* 1736 */
+  const LBL = { mgmtAgreeSave: 'Service agreement', 'mgmtAgreeSave:file': 'Service agreement (signed copy)', mgmtLeaveInformed: 'Leave · informed', tLeaveInformed: 'Leave · informed', mgmtTagClass: 'Class tag', decideLate: 'Late time-in decision', addCase: 'New case', mgmtCaseWaive: 'Waive case', mgmtTaskStatus: 'Task status', mgmtTrialGroup: 'Trial group', mgmtLeaveSave: 'Leave', setActiveTick: 'Active tick', mgmtAvailSave: 'Teacher hours', mgmtShiftClose: 'Shift handover' };
   try{ if(typeof FF_L === 'object' && FF_L) Object.keys(LBL).forEach(k => { if(!FF_L[k]) FF_L[k] = LBL[k]; }); }catch(e){}
   const me = () => (typeof D !== 'undefined' && D && D.me && D.me.name) || '';
   const p2 = n => ('0' + n).slice(-2);
@@ -31310,6 +31311,8 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   function ans(fn, a){ const f = a[1] || {};
     if(fn === 'mgmtAgreeSave'){ const rec = { at: nowAt(), by: me(), how: String(f.how || ''), key: String(f.key || ''), code: String(f.code || ''), file: '', name: String(f.name || ''), note: '', pending: 1 };
       const L = agp().filter(x => x.rid !== f.rid); L.push({ t: Date.now(), rid: f.rid || '', rec }); agpSet(L); return { ok: true, queued: true, rec }; }
+    if(fn === 'addCase') return { ok: true, queued: true, caseId: 'New case', note: 'Saved' };   /* 1736: the case number comes when Google has made it */
+    if(fn === 'mgmtTaskStatus' || fn === 'mgmtLeaveSave' || fn === 'mgmtShiftClose') return { ok: true, queued: true, note: 'Saved' };
     if(fn === 'mgmtTagClass' || fn === 'decideLate'){ const cond = String((fn === 'decideLate' ? a[2] : a[3]) || ''); return { ok: true, queued: true, note: cond, caseId: '' }; }
     return { ok: true, queued: true }; }
   /* Google's answer: case numbers, the agreement's file link; a refusal → the failed-saves notice */
@@ -31317,6 +31320,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     const tick = async () => { let r = null;
       try{ r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'writeStatus', token: TOKEN, id }) }).then(x => x.json()); }catch(e){}
       if(r && r.ok && r.status === 'done'){ const g = r.result || {};
+        if(fn === 'addCase' && g.caseId) try{ toast('Case ' + g.caseId + ' made' + (g.note ? ' · ' + g.note : '')); if(typeof AC !== 'undefined') AC = null; if(typeof loadActions === 'function') loadActions(); }catch(e){}   /* 1736 */
         if((fn === 'decideLate' || fn === 'mgmtTagClass') && g.caseId) try{ toast((g.note || 'Saved') + ' · ' + g.caseId); }catch(e){}
         if(fn === 'mgmtAgreeSave'){ try{ const f = a[1] || {}; agpSet(agp().map(x => x.rid === f.rid && g.rec ? Object.assign(x, { rec: Object.assign({}, g.rec, { at: String(g.rec.at || x.rec.at).replace('T', ' ').slice(0, 16) }) }) : x));
           if(typeof AGS !== 'undefined' && AGS && AGS.list && AGS.list[0] && AGS.list[0].pending && g.rec) Object.assign(AGS.list[0], g.rec, { pending: 0 }); }catch(e){} }
