@@ -4992,7 +4992,9 @@ async function payDisputeSend(){ const t = ($('pdN') || {}).value || '', b = $('
 if(b){ b.disabled = true; b.textContent = 'Sending…'; }
 try{ const r = await api('tPayVerify', TOKEN, PCK.month, false, t); if(!r.ok) throw r; PCK.check = r.check; PCK.nudge = null; keep('paychk', PCK); closeSheet(); toast('✓ ' + r.note); renderPay(); }
 catch(e){ toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); if(b){ b.disabled = false; b.textContent = 'Send to management'; } } }
-async function loadPayChecks(force){ if(!force && window._pckAt && Date.now() - window._pckAt < 3 * 6e4) return; window._pckAt = Date.now(); try{ await swr('paychkm', () => api('mgmtPayChecks', TOKEN), v => PCKM = v, () => { if(VIEW === 'payroll') renderPayroll(); }); }catch(e){} }
+async function pchkDb1761(){ try{ const mo = (typeof MO !== 'undefined' && MO && MO.payMonth) || ''; const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'checks', month: /^[A-Za-z]+ \d{4}$/.test(mo) ? mo : '' }) }).then(x => x.json());   /* 1761: database first */
+  if(r && r.ok && r.checks) return { month: r.month, checks: r.checks || {}, nudged: r.nudged || {}, src: 'database' }; }catch(e){} return api('mgmtPayChecks', TOKEN); }
+async function loadPayChecks(force){ if(!force && window._pckAt && Date.now() - window._pckAt < 2e4) return; window._pckAt = Date.now(); try{ await swr('paychkm', () => pchkDb1761(), v => PCKM = v, () => { if(VIEW === 'payroll') renderPayroll(); }); }catch(e){} }
 const pchkOf = x => { if(!PCKM || !x) return null; const c = (PCKM.checks || {})[String(x.name).toLowerCase()] || null, nd = (PCKM.nudged || {})[String(x.name).toLowerCase()] || null;
 const st = c && c.status === 'Verified' && c.net && +c.net !== +x.net ? 'Changed' : c ? c.status : ''; return { c, st, nd }; };
 function pchkChip(x){ const k = pchkOf(x); if(!k) return ''; const L = { Verified: ['ok', '✓ Pay verified'], Disputed: ['no', '! Question on pay'], Answered: ['', 'Answered · waiting'], Changed: ['no', 'Amount changed'] }[k.st] || ['', k.nd ? 'Asked to check pay' : 'Pay not checked'];
@@ -5007,7 +5009,9 @@ const _sn = sheetSnap(); closeSheet(); toast('Sending reply to Teacher ' + n + '
 try{ const r = await api('mgmtPayReply', TOKEN, n, t); if(!r.ok) throw r; PCKM.checks[n.toLowerCase()] = r.check; keep('paychkm', PCKM); toast('✓ ' + r.note); renderPayroll(); }
 catch(e){ sheetBack(_sn); toast(((e && (e.msg || e.message)) || 'Not sent') + ' · your reply is back. Try again.'); } }
 async function payVerNudge(names){ if(!names || !names.length) return; closeSheet(); toast('Sending…');
-try{ const r = await api('mgmtPayVerNudge', TOKEN, names); if(!r.ok) throw r; toast('✓ ' + r.note + ' · they see it on Pay and Today'); loadPayChecks(1); }catch(e){ toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); } }
+try{ const r = await api('mgmtPayVerNudge', TOKEN, names); if(!r.ok) throw r; toast('✓ ' + r.note + ' · they see it on Pay and Today');
+  try{ await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'pcnudge', month: (typeof MO !== 'undefined' && MO && MO.payMonth) || (PCKM && PCKM.month) || '', names }) }); }catch(x){}   /* 1761 */
+  loadPayChecks(1); }catch(e){ toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); } }
 let MYR = null;
 async function loadMyReady(){ if(!TOKEN) return; if(D && !D.mgr){ loadPayCheck(); loadTMsgs(); } try{ await swr('myready', () => api('tPayReady', TOKEN), v => MYR = v, () => { if(VIEW === 'pay') renderPay(); if(VIEW === 'mypay') renderMyPay(); if(VIEW === 'today') renderToday(); }); }catch(e){} }
 function myReadyHtml(){ if(!MYR || !MYR.me || payPaid(MYR.month)) return '';   /* 14 Oct: nothing left to release */ const r = MYR.me, n = rdyCount(r);
@@ -6748,7 +6752,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1575;
+const COE_V = 1576;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36403,5 +36407,6 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
 })();
 </script>
 
+<script>/* 1761 · while Payroll is open, teachers' checks show within 20 seconds */ setInterval(function(){ try{ if(typeof VIEW !== 'undefined' && VIEW === 'payroll' && !document.hidden && typeof D !== 'undefined' && D && D.mgr && typeof loadPayChecks === 'function') loadPayChecks(); }catch(e){} }, 20000);</script>
 </body>
 </html>
