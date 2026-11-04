@@ -6756,7 +6756,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1579;
+const COE_V = 1580;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36167,6 +36167,18 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     SL = S; const q = x => esc(String(x)).replace(/'/g, '');
     const h = '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><h1 class="grow" style="margin:0">Lessons by student · ' + esc(name) + '</h1>' + (typeof D !== 'undefined' && D && D.mgr ? '<button class="btn sm teal" id="psC1745" onclick="ps1745Pic()">Copy picture</button><button class="btn sm ghost" onclick="ps1745Pic(1)">' + (navigator.share ? 'Share · save' : 'Save picture') + '</button>' : '<span class="chip">View only</span>') + '<button class="btn sm ghost" onclick="ps1744Open(\'' + q(name) + '\',\'' + q(ym) + '\')">Payslip →</button></div><div style="margin-top:10px">' + lessCard1752(S) + '</div>';
     if($('sheetBody') && $('sheet') && $('sheet').classList.contains('open')) $('sheetBody').innerHTML = h; else openSheet(h); try{ $('sheet').classList.add('wide'); }catch(e){} };
+  function rates1765(S, r, row){ try{ const R = (S.rates || []).filter(x => +x.units); if((r.courses || []).length || new Set(R.map(x => +x.rate)).size < 2) return null;   /* 1765 · old rank rate, then the new one */
+    const sum = R.reduce((a, x) => a + (+x.pay || 0), 0); if(Math.abs(sum - (+r.lesson_pay || 0)) > 0.5) return null;
+    const units = k => R.filter(x => x.kind === k).reduce((a, x) => a + (+x.units || 0), 0); if(Math.abs(units('reg') - (+r.reg || 0)) > 0.01 || Math.abs(units('trial') - (+r.trial || 0)) > 0.01 || Math.abs(units('sub') - (+r.sub || 0)) > 0.01) return null;
+    const dd = d => { const x = new Date(String(d).slice(0, 10) + 'T00:00:00'); return isNaN(x) ? '' : x.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+    const span = x => x.from === x.to ? dd(x.from) : dd(x.from) + '–' + dd(x.to);
+    const nm = { reg: 'Regular lessons', trial: 'Trial classes', sub: 'Substitute classes' }, ord = { reg: 0, trial: 1, sub: 2 };
+    const L = R.slice().sort((a, b) => ord[a.kind] - ord[b.kind] || a.rate - b.rate);
+    const rows = L.map(x => row(nm[x.kind] + ' @ ' + pz(x.rate) + (x.rank ? ' · ' + esc(x.rank) : '') + ' <span class="m">(' + esc(span(x)) + ')</span>', +x.units, pz(x.pay))).join('');
+    const rs = [...new Set(R.map(x => +x.rate))].sort((a, b) => a - b), k = S.rankNow || {};
+    const first = R.filter(x => +x.rate === rs[rs.length - 1]).map(x => x.from).sort()[0];
+    const note = '<div class="m" style="margin-top:6px">Rank-up this month' + (k.prev_rank && k.rank ? ': ' + esc(k.prev_rank) + ' → ' + esc(k.rank) : '') + (k.rank_date && /^\d{4}-/.test(k.rank_date) ? ' on ' + esc(dd(k.rank_date)) : '') + '. Classes up to the class that reached the units are paid at ' + rs.slice(0, -1).map(pz).join(', ') + '; classes from ' + esc(dd(first)) + ' are paid at the new rate ' + pz(rs[rs.length - 1]) + '. Trial and substitute classes are paid at the rate on their day; only regular classes count toward rank.</div>';
+    return { rows, note, head: rs.map(pz).join(' → ') }; }catch(e){ return null; } }
   function slipHtml(S, forPrint){ const r = S.row, p = S.person, sl = S.slip || {}, cs = S.cases || [], E = r.edited || [];
     const extra = E.filter(e => e.field === 'extra'), less = E.filter(e => e.field === 'less');
     const lessonsPay = +r.lesson_pay || 0, regPay = Math.round(((+r.reg || 0) * (+r.rate || 0)) * 100) / 100;
@@ -36174,7 +36186,8 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     const gross = +r.gross || 0, dues = (+r.sss || 0) + (+r.pagibig || 0) + (+r.philhealth || 0), gid = S.people && S.people.gov_in_deduct;
     const totalDed = Math.round(((+r.deduct || 0) + (gid ? 0 : dues)) * 100) / 100, net = +r.net || 0;
     const row = (a, u, b, cls) => '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + a + '</td><td style="text-align:right">' + (u == null ? '' : u) + '</td><td style="text-align:right">' + b + '</td></tr>';
-    const rateTxt = (r.courses || []).length ? r.courses.map(c => esc(c.course) + ' ' + pz(c.rate)).join(' · ') : (+r.rate ? pz(r.rate) : '—');
+    const rr1765 = rates1765(S, r, (a, u, b) => '<tr><td>' + a + '</td><td style="text-align:right">' + (u == null ? '' : u) + '</td><td style="text-align:right">' + b + '</td></tr>');   /* 1765 */
+    const rateTxt = rr1765 ? rr1765.head : (r.courses || []).length ? r.courses.map(c => esc(c.course) + ' ' + pz(c.rate)).join(' · ') : (+r.rate ? pz(r.rate) : '—');
     const tenure = p.start ? (() => { const a = new Date(p.start + 'T00:00:00'), b = new Date(); let mo = (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth(); return Math.floor(mo / 12) + ' year' + (Math.floor(mo / 12) === 1 ? '' : 's') + ', ' + (mo % 12) + ' month' + (mo % 12 === 1 ? '' : 's'); })() : '';
     const css = '<style>.ps1744{font:400 14px/1.5 var(--coe-font,Inter,"Noto Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif);color:#2B2450;max-width:760px;margin:0 auto;font-variant-numeric:tabular-nums}.ps1744 .ttl{font-family:var(--coe-font-brand,"Fredoka One","Fredoka",var(--coe-font,Inter),sans-serif);font-size:30px;line-height:1.2;color:#2B2450;letter-spacing:.06em;margin:4px 0 2px}.ps1744 h2{margin:22px 0 8px;padding-left:10px;border-left:3px solid #01B0BF;font-size:16px;line-height:1.2;font-weight:600;color:#2B2450;letter-spacing:0;text-transform:none}.ps1744 table{width:100%;border-collapse:collapse}.ps1744 td{padding:8px 4px;border-bottom:1px solid #F0EEF5;vertical-align:top}.ps1744 td:nth-child(n+2){text-align:right;white-space:nowrap}.ps1744 .tot td{font-weight:600;border-top:1px solid #CFCBDD;border-bottom:none;padding-top:10px}.ps1744 .k{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}.ps1744 .k div{background:#F7F7FA;border-radius:10px;padding:12px 14px}.ps1744 .k b{display:block;font-size:22px;line-height:1.2;font-weight:600;margin-top:4px;color:#2B2450}.ps1744 .k .kd b{color:#B42318}.ps1744 .k .kn b{color:#00707A}.ps1744 .m{color:#5E5A76;font-size:13px}.ps1744 .pr td{border-bottom:none;padding:2px 4px}.ps1744 .pr td:nth-child(n+2){text-align:left}.ps1744 .pr b{font-size:16px;font-weight:600}@media (max-width:560px){.ps1744 .k{grid-template-columns:1fr}.ps1744 .pr td{display:block;text-align:left!important}}</style>';
     const lg = (document.querySelector('#login img') || {}).src || '';   /* 1745: logo + company lines */
@@ -36185,11 +36198,11 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       + '<div class="k"><div class="kg"><span class="m">Gross compensation</span><b>' + pz(gross) + '</b></div><div class="kd"><span class="m">Total deductions</span><b>' + pz(totalDed) + '</b></div><div class="kn"><span class="m">Net compensation</span><b>' + pz(net) + '</b></div></div>'
       + '<h2>Compensation</h2><table>' + row('<b>Item</b>', '<b>Units</b>', '<b>Amount</b>')
       + (+r.base ? row('Base pay (days worked)', '', pz(r.base)) : '')
-      + ((+r.reg || 0) || !(+r.base) ? row('Regular lessons @ ' + rateTxt, +r.reg || 0, pz((r.courses || []).length ? lessonsPay - ((+r.sub || 0) + (+r.trial || 0)) * (+r.rate || 0) : regPay)) : '')
-      + ((+r.trial) ? row('Trial classes', +r.trial, pz((+r.trial) * (+r.rate || 0))) : '') + ((+r.sub) ? row('Substitute classes', +r.sub, pz((+r.sub) * (+r.rate || 0))) : '')
+      + (rr1765 ? rr1765.rows : '') + (rr1765 ? '' : (+r.reg || 0) || !(+r.base) ? row('Regular lessons @ ' + rateTxt, +r.reg || 0, pz((r.courses || []).length ? lessonsPay - ((+r.sub || 0) + (+r.trial || 0)) * (+r.rate || 0) : regPay)) : '')
+      + (rr1765 ? '' : ((+r.trial) ? row('Trial classes', +r.trial, pz((+r.trial) * (+r.rate || 0))) : '') + ((+r.sub) ? row('Substitute classes', +r.sub, pz((+r.sub) * (+r.rate || 0))) : ''))
       + inc.map(c => row('Incentive · ' + esc(c.type || c.subject) + (c.student ? ' · ' + esc(c.student) : '') + ' <span class="m">' + esc(c.id) + '</span>', '', pz(c.incentive))).join('')
       + extra.map(e => row(esc(e.label || 'Extra') + (e.reason ? ' <span class="m">· ' + esc(e.reason) + '</span>' : ''), '', pz(e.value))).join('')
-      + row('Gross compensation', '', pz(gross), 'tot') + '</table>'
+      + row('Gross compensation', '', pz(gross), 'tot') + '</table>' + (rr1765 ? rr1765.note : '')
       + '<h2>Deductions</h2><table>' + (ded.length || less.length || (+r.deduct || 0) ? '' : row('None', '', pz(0)))
       + ded.map(c => row(esc(c.subject || c.type) + (c.note ? ' <span class="m">· ' + esc(c.note) + '</span>' : '') + ' <span class="m">' + esc(c.id) + '</span>', '', pz(c.deduction))).join('')
       + less.map(e => row(esc(e.label || 'Deduction') + (e.reason ? ' <span class="m">· ' + esc(e.reason) + '</span>' : ''), '', pz(e.value))).join('')
@@ -36484,5 +36497,22 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
 })();
 </script>
 
+<script>
+/* 1765 · management Home: rank-ups waiting for trainings (units reached) and new ranks — from the database (coe_rank_cur) */
+(function(){
+  if(window.__1765) return; window.__1765 = 1; let at = 0;
+  async function rw(force){ try{ if(typeof D === 'undefined' || !D || !D.mgr || typeof TOKEN === 'undefined' || !TOKEN) return; if(!force && Date.now() - at < 120000) return; at = Date.now();
+    const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'rankwait' }) }).then(x => x.json());
+    if(r && r.ok){ const k = JSON.stringify([r.waiting, r.ups]), ch = k !== window.__rw1765k; window.RW1765 = r; window.__rw1765k = k; if(ch){ try{ if(typeof VIEW !== 'undefined' && VIEW === 'home') renderHome(); hmBadge(); }catch(e){} } } }catch(e){} }
+  window.rw1765 = rw;
+  const q0 = window.hmQueue; if(typeof q0 === 'function') window.hmQueue = function(){ const o = q0.apply(this, arguments); try{ const R = window.RW1765; if(!R || !o) return o;
+    const w = R.waiting || []; if(w.length){ o.Q.push({ n: w.length, tone: '', t: 'Rank-ups waiting for trainings', s: w.slice(0, 3).map(x => tName(x.teacher) + ' → ' + String(x.blocked || '').replace(' · units reached · waiting for: ', ': ')).join(' · ') + ' · tick the trainings when done and the new rate starts', go: "go('train')" });
+      const rank = { hot: 0, '': 1, low: 2 }; o.Q.sort((a, b) => rank[a.tone] - rank[b.tone] || b.n - a.n); } else if(o.ok) o.ok.push('Rank-ups');
+    const u = R.ups || []; if(u.length) o.W.push({ n: u.length, tone: '', t: 'New ranks (last 30 days)', s: u.slice(0, 4).map(x => tName(x.teacher) + ' → ' + x.rank + ' ₱' + x.rate + (x.on ? ' · ' + x.on.slice(5).replace('-', '/') : '')).join(' · '), go: "go('payroll')" });
+  }catch(e){} return o; };
+  const l0 = window.hmLoad; if(typeof l0 === 'function') window.hmLoad = function(force){ rw(!!force); return l0.apply(this, arguments); };
+  setTimeout(() => rw(true), 4000); setInterval(() => { if(!document.hidden) rw(); }, 300000);
+})();
+</script>
 </body>
 </html>
