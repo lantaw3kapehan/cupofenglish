@@ -6748,7 +6748,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1541;
+const COE_V = 1542;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -35868,7 +35868,20 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       '<h3 style="margin:10px 0 4px">Student record</h3>' + row('Names, city, source, referral, trial, first class', code, 'student', code) +
       '<h3 style="margin:14px 0 4px">Packages</h3>' + (r.packages.length ? r.packages.map(p => row('Teacher ' + p.teacher, (p.enrolled !== '' ? p.enrolled + ' lessons' : '') + (p.left !== '' && p.left != null ? ' · ' + p.left + ' left' : ''), 'package', p.key)).join('') : '<div class="small mute">No package in ACTIVE.</div>') +
       '<h3 style="margin:14px 0 4px">Sales</h3>' + (r.sales.length ? r.sales.map(s => row(s.invoice, s.date + ' · ' + s.pkg + (+s.free ? ' + ' + s.free : '') + ' lessons · ' + s.partner, 'sale', s.key)).join('') : '<div class="small mute">No sale found with this name in the last two years.</div>') +
-      '<h3 style="margin:14px 0 4px">Changes</h3>' + hist(r.history)); };
+      incHtml(r) + '<h3 style="margin:14px 0 4px">Changes</h3>' + hist(r.history)); };
+  const incHtml = r => { const I = r.incentive; if(!I) return ''; const fd = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+    return '<h3 style="margin:14px 0 4px">Referral incentive <span class="chip green" style="font-size:11px">' + (+I.now || 0) + ' counted</span></h3><p class="small mute" style="margin:0 0 6px">One free lesson per referred student who enrolled on or after this package started' + (I.start ? ' (' + fd(I.start) + ')' : '') + '.</p>' +
+      (I.refs.length ? I.refs.map(x => '<div class="row" style="justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line)"><div><b>' + H(x.name || x.code) + (x.cn ? ' ' + H(x.cn) : '') + '</b><div class="small mute">' + H(x.code) + ' · recommended ' + fd(x.recommended) + ' · free lesson ' + (x.free || 0) + '</div>' +
+        '<div class="small" style="color:' + (x.counted ? '#00737B' : '#B4513B') + '">' + (x.counted ? '✓ counts' : !x.free ? 'not counted · free lesson is 0' : !x.recommended ? 'not counted · no Date recommended' : 'not counted · before this package started') + '</div></div><button class="btn sm" onclick="fxRec(\'student\',\'' + encodeURIComponent(x.code) + '\')">Edit</button></div>').join('') : '<div class="small mute">No referred students yet.</div>') +
+      '<div class="row" style="gap:8px;margin-top:8px"><input id="fxRefC" class="in-t" placeholder="Referred student code, e.g. ST-2026-135" style="flex:1"><button class="btn sm teal" onclick="fxAddRef()">+ Add a referral</button></div>'; };
+  window.fxAddRef = async function(){ const L = FX && FX.list; if(!L || !L.incentive) return; const rc = String((document.getElementById('fxRefC') || {}).value || '').trim().toUpperCase();
+    if(!/^ST-\d{4}-\d{3}$/.test(rc)) return toast('Type the referred student\'s code'); if(rc === FX.code) return toast('A student can\'t refer themselves');
+    let R; try{ R = await call('rec', { kind: 'student', key: rc }); }catch(e){} if(!R || !R.ok) return toast((R && R.error) || 'Student not found');
+    const v = f => (R.fields.find(x => x.f === f) || {}).value || '', first = v('firstClass'), d0 = new Date(), today = d0.getFullYear() + '-' + ('0' + (d0.getMonth() + 1)).slice(-2) + '-' + ('0' + d0.getDate()).slice(-2);
+    const ch = { source: L.incentive.me, recommended: v('recommended') || first || today, free: String(+v('free') > 0 ? v('free') : 1) };
+    if(!confirm(R.label + '\nreferred by ' + L.incentive.me + '\nDate recommended ' + ch.recommended + ' · free lesson ' + ch.free + '\n\nSave?')) return;
+    let r; try{ r = await call('save', { kind: 'student', key: rc, changes: ch, reason: 'Referral: referred by ' + FX.code }); }catch(e){ r = { ok: false, error: 'No connection' }; }
+    if(!r || !r.ok) return toast((r && r.error) || 'Not saved'); toast('✓ Referral saved · the incentive shows after the sheet recalculates (1–2 min)'); fresh(); fxOpen(FX.code); };
   window.fxRec = async function(kind, key){ key = decodeURIComponent(key); openSheet('<h1>Edit</h1><div class="sk"></div><div class="sk"></div>');
     let r; try{ r = await call('rec', { kind, key }); }catch(e){ r = { ok: false, error: 'No connection' }; } if(!r || !r.ok) return openSheet('<h1>Edit</h1><div class="empty">' + H((r && r.error) || 'Could not open') + '</div><button class="btn ghost block" onclick="fxOpen()">‹ Back</button>');
     FX = Object.assign(FX || {}, { rec: r });
