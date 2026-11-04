@@ -6748,7 +6748,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1544;
+const COE_V = 1545;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -26076,8 +26076,8 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     try{ const r = await fetch(FAST_URL + '-expenses', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN }) }).then(x => x.json());
       if(r && r.ok){ F.rows = r.rows; F.sales = r.sales || []; F.at = r.at; try{ localStorage.setItem('coe.exp', JSON.stringify({ rows: r.rows, sales: r.sales || [], at: r.at })); }catch(e){} if(VIEW === 'finov') paintOv(); } }catch(e){} F.busy = 0; }
   const pkg = r => { const n = Number(r.pkg) || 0, f = Number(r.free) || 0; if(n < 0 || f < 0) return 'refund · ' + Math.abs(n) + (f ? ' + ' + Math.abs(f) : '') + ' lessons'; return n ? n + (f ? ' + ' + f : '') + ' lessons' : ''; };
-  function txAll(src){ const E = ((src || F).rows || []).map(r => ({ k: 'out', d: r.d, t: r.t || '—', c: r.c || 'Other', a: r.a, q: r.q, ref: '' }));
-    const S = ((src || F).sales || []).map(r => ({ k: 'in', d: r.d, t: r.t || 'Sale', c: r.src || 'Direct', a: r.a, ref: r.inv ? '#' + r.inv : '', pkg: pkg(r), pay: r.pay, rmb: r.rmb }));
+  function txAll(src){ const E = ((src || F).rows || []).map(r => ({ k: 'out', d: r.d, t: r.t || '—', c: r.c || 'Other', a: r.a, q: r.q, ref: '', key: r.key }));
+    const S = ((src || F).sales || []).map(r => ({ k: 'in', d: r.d, t: r.t || 'Sale', c: r.src || 'Direct', a: r.a, ref: r.inv ? '#' + r.inv : '', pkg: pkg(r), pay: r.pay, rmb: r.rmb, key: r.key }));
     return E.concat(S).sort((a, b) => b.d.localeCompare(a.d) || (a.k === 'in' ? -1 : 1)); }
   const syncAt = at => at ? new Date(at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
 
@@ -26146,7 +26146,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   window.fxStep = k => { const X = window.__exX; if(!X) return; ALLM = false; X.m = addM(X.m || ym(today()), k); X.n = 150; rp(); };
   window.fxAll = () => { const X = window.__exX; if(!X) return; ALLM = !ALLM; X.m = ALLM ? '' : ym(today()); X.n = 150; rp(); };
   window.fxCat = v => { CAT = v; const X = window.__exX; if(X) X.n = 150; rp(); };
-  window.fxOpen = k => { OPEN = OPEN === k ? '' : k; rp(); };
+  window.fxRow = k => { OPEN = OPEN === k ? '' : k; rp(); };   /* 1731: was fxOpen (clashed with ✎ Fix) */
   window.exM = m => { const X = window.__exX; if(!X) return; ALLM = !m; X.m = m; X.n = 150; rp(); };
   window.exCsv = () => { const L = window.__fxList || [], q = x => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"';
     const csv = 'Date,Type,Name,Reference,Category or partner,Details,Amount (PHP)\n' + L.map(r => [r.d, r.k === 'in' ? 'Sale' : 'Expense', q(r.t), q(r.ref), q(r.c), q([r.pkg, r.pay, r.rmb ? 'RMB ' + r.rmb : ''].filter(Boolean).join('; ')), (r.k === 'in' ? '' : '-') + r.a].join(',')).join('\n');
@@ -26179,11 +26179,11 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     const vis = L.slice(0, X.n || 150);
     h += '<div class="fx-card" style="padding:4px 6px 8px"><table><thead><tr><th>Date</th><th>Name</th><th class="ref">Reference</th><th class="c">' + (K === 'in' ? 'Partner' : K === 'out' ? 'Category' : 'Category / partner') + '</th><th class="r">Amount</th></tr></thead><tbody>' +
       (vis.length ? vis.map((r, j) => { const key = r.k + '|' + r.d + '|' + r.t + '|' + r.a + '|' + j, op = OPEN === key, fut = r.d > now;
-        const row = '<tr class="rw ' + (r.q ? 'q ' : '') + (op ? 'op' : '') + '" onclick="fxOpen(\'' + esc(key).replace(/'/g, '&#39;') + '\')"><td class="d">' + dL(r.d) + (X.m ? '' : ' ' + r.d.slice(0, 4)) + '</td><td class="n"><b>' + esc(r.t) + '</b>' + (fut ? ' <span class="fx-tag ac">Scheduled</span>' : '') + (r.q ? ' <span class="fx-tag mu sync21" title="Saved · Google copy follows within a minute">Saved · syncing</span>' : '') + '<span class="m">' + esc(r.c) + (r.ref ? ' · ' + esc(r.ref) : '') + '</span></td><td class="ref">' + esc(r.ref || '—') + '</td><td class="c">' + esc(r.c) + '</td><td class="a r ' + r.k + '">' + ((r.k === 'in') === (+r.a >= 0) ? '+' : '−') + P2(Math.abs(+r.a || 0)) + '</td></tr>';
+        const row = '<tr class="rw ' + (r.q ? 'q ' : '') + (op ? 'op' : '') + '" onclick="fxRow(\'' + esc(key).replace(/'/g, '&#39;') + '\')"><td class="d">' + dL(r.d) + (X.m ? '' : ' ' + r.d.slice(0, 4)) + '</td><td class="n"><b>' + esc(r.t) + '</b>' + (fut ? ' <span class="fx-tag ac">Scheduled</span>' : '') + (r.q ? ' <span class="fx-tag mu sync21" title="Saved · Google copy follows within a minute">Saved · syncing</span>' : '') + '<span class="m">' + esc(r.c) + (r.ref ? ' · ' + esc(r.ref) : '') + '</span></td><td class="ref">' + esc(r.ref || '—') + '</td><td class="c">' + esc(r.c) + '</td><td class="a r ' + r.k + '">' + ((r.k === 'in') === (+r.a >= 0) ? '+' : '−') + P2(Math.abs(+r.a || 0)) + '</td></tr>';
         if(!op) return row;
         const it = (l, x) => x ? '<div><span>' + l + '</span>' + esc(x) + '</div>' : '';
         return row + '<tr class="dt"><td colspan="5"><div class="dl">' + (r.k === 'in' ? it('Type', 'Sale (money received)') + it('Student', r.t) + it('Invoice', r.ref) + it('Package', r.pkg) + it('Payment method', r.pay) + it('RMB', r.rmb ? '¥' + Number(r.rmb).toLocaleString('en-US') : '') + it('Partner', r.c) + it('Amount (PHP)', P2(r.a)) + it('Record', 'COE DATABASE › SALES')
-          : it('Type', 'Expense (paid)') + it('Description', r.t) + it('Category', r.c) + it('Date', new Date(r.d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })) + it('Amount (PHP)', P2(r.a)) + it('Record', r.q ? 'Saving to COE DATABASE › EXPENSES' : 'COE DATABASE › EXPENSES')) + '</div></td></tr>'; }).join('') : '<tr><td colspan="5" class="fx-sub" style="text-align:center;padding:22px">Nothing matches.</td></tr>') + '</tbody></table>' +
+          : it('Type', 'Expense (paid)') + it('Description', r.t) + it('Category', r.c) + it('Date', new Date(r.d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })) + it('Amount (PHP)', P2(r.a)) + it('Record', r.q ? 'Saving to COE DATABASE › EXPENSES' : 'COE DATABASE › EXPENSES')) + '</div>' + (r.key && typeof fxTx === 'function' ? '<button class="btn sm" style="margin:8px 0 2px" onclick="event.stopPropagation();fxTx(\'' + (r.k === 'in' ? 'sale' : 'expense') + '\',\'' + encodeURIComponent(r.key).replace(/'/g, '%27') + '\')">✎ Edit</button>' : r.q ? '<div class="small mute" style="margin-top:6px">Can be edited once Google has saved it (about a minute)</div>' : '') + '</td></tr>'; }).join('') : '<tr><td colspan="5" class="fx-sub" style="text-align:center;padding:22px">Nothing matches.</td></tr>') + '</tbody></table>' +
       (L.length > vis.length ? '<button class="btn ghost sm more" onclick="exMore()">Show ' + Math.min(150, L.length - vis.length) + ' more</button>' : '') + '</div>';
     v.innerHTML = '<div class="fx">' + h + '</div>'; };
   try{ if(VIEW === 'expenses' && window.__exX) exPaint2(window.__exX); if(VIEW === 'finov') openOv(); }catch(e){}
@@ -35887,7 +35887,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     FX = Object.assign(FX || {}, { rec: r });
     const inp = f => { const t = f.type === 'date' ? 'date' : f.type === 'time' ? 'time' : f.type === 'num' ? 'number' : 'text';
       return '<label for="fx_' + f.f + '">' + H(f.label) + '</label><input id="fx_' + f.f + '" class="in-t" type="' + t + '"' + (t === 'number' ? ' step="0.5"' : '') + ' value="' + H(f.value) + '" data-old="' + H(f.value) + '" oninput="this.classList.toggle(\'fx-ch\', this.value !== this.dataset.old)">'; };
-    openSheet('<button class="btn ghost sm" onclick="fxOpen()">‹ Back</button><h1 style="margin-top:8px">' + H(r.label) + '</h1>' + r.fields.map(inp).join('') +
+    openSheet('<button class="btn ghost sm" onclick="fxBack()">‹ Back</button><h1 style="margin-top:8px">' + H(r.label) + '</h1>' + (r.same > 1 ? '<div class="small" style="color:#B7791F;margin:4px 0">' + r.same + ' identical lines (same date, description and amount) · a change applies to all of them</div>' : '') + r.fields.map(inp).join('') +
       '<label for="fx_why">Why (one line)</label><input id="fx_why" class="in-t" placeholder="e.g. wrong student on the confirmation">' +
       '<button class="btn teal block" style="margin-top:14px" onclick="fxSave()">Save</button><h3 style="margin:16px 0 4px">Changes to this record</h3>' + hist(r.history) +
       '<style>.fx-ch{outline:2px solid #00A6A6;background:#F1FAF9}</style>'); };
@@ -35897,9 +35897,14 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     let r; try{ r = await call('save', { kind: R.kind, key: R.key, changes: ch, reason: why }); }catch(e){ r = { ok: false, error: 'No connection · not saved' }; }
     if(!r || !r.ok) return toast((r && r.error) || 'Not saved');
     toast('✓ Saved · ' + (r.said || []).join(' · ')); fresh(); const code = FX.code;
-    setTimeout(() => { try{ if(code) openStudent(code); }catch(e){} }, 400); };
+    setTimeout(() => { try{ if(FX && FX.tx){ closeSheet(); txRefresh(); } else if(code) openStudent(code); }catch(e){} }, 400); };
+  /* 1731 · Finance › Transactions */
+  const txRefresh = async () => { try{ const r = await fetch(FAST_URL + '-expenses', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN }) }).then(x => x.json());
+    if(r && r.ok){ try{ localStorage.setItem('coe.exp', JSON.stringify({ rows: r.rows, sales: r.sales || [], at: r.at })); }catch(e){} const X = window.__exX; if(X){ X.rows = r.rows; X.sales = r.sales || []; X.at = r.at; if(VIEW === 'expenses' && window.exPaint2) exPaint2(X); } } }catch(e){} };
+  window.fxTx = function(kind, key){ FX = { code: '', tx: 1 }; return fxRec(kind, key); };
+  window.fxBack = function(){ if(FX && FX.tx) return closeSheet(); return fxOpen(); };
   window.fxUndo = async function(id){ if(!confirm('Undo this change everywhere?')) return; let r; try{ r = await call('undo', { id }); }catch(e){ r = { ok: false, error: 'No connection' }; }
-    if(!r || !r.ok) return toast((r && r.error) || 'Not undone'); toast('✓ Undone'); fresh(); const R = FX && FX.rec; if(R) fxRec(R.kind, encodeURIComponent(R.key)); else fxOpen(); };
+    if(!r || !r.ok) return toast((r && r.error) || 'Not undone'); toast('✓ Undone'); fresh(); if(FX && FX.tx) txRefresh(); const R = FX && FX.rec; if(R) fxRec(R.kind, encodeURIComponent(R.key)); else fxOpen(); };
   // the button on the student card (management), next to "Update · add a note"
   const add = () => { try{ if(!(D && D.mgr)) return; const st = document.getElementById('stuStat'); if(!st) return; const row = st.querySelector('.row'); if(!row || row.querySelector('.fx1726')) return;
       row.insertAdjacentHTML('beforeend', '<button class="btn sm ghost fx1726" onclick="fxOpen()">✎ Fix</button>'); }catch(e){} };
