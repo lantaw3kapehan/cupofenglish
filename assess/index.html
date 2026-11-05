@@ -61,6 +61,7 @@ textarea:focus{outline:2px solid rgba(0,112,122,.45);border-color:var(--teal7)}
   var q = new URLSearchParams(location.search), W = (q.get('w') || '').trim(), R = (q.get('r') || '').trim(), $app = document.getElementById('app');
   var E = function(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var call = function(o){ return fetch(URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(o) }).then(function(r){ return r.json(); }); };
+  var num = function(v){ return v == null ? '<div class="n" style="font-size:32px;margin:14px 0 10px">Pending</div>' : '<div class="n">' + (+v).toFixed(1) + '</div>'; };
   var b1 = function(v){ return v == null || v === '' ? '—' : (+v).toFixed(1); };
   var head = function(pill){ return '<div class="top"><img src="logo.png" alt="CupOfEnglish"><span class="pill">' + E(pill) + '</span></div><hr>'; };
   var foot = '<img class="tag" src="tag.png" alt="Learn with the best to be the best">';
@@ -75,15 +76,15 @@ textarea:focus{outline:2px solid rgba(0,112,122,.45);border-color:var(--teal7)}
     call({ op: 'result', rkey: R }).then(function(r){ if(!r || !r.ok) return fail(r && r.msg || 'This result is not available.'); var a = r.a;
       var bars = function(C, v){ return C.map(function(x){ var n = v && v[x[0]]; return '<div class="bar"><span>' + E(x[1]) + '</span><i><s style="width:' + (n == null ? 0 : Math.max(3, n / 9 * 100)) + '%"></s></i><b>' + (n == null ? '—' : n) + '</b></div>'; }).join(''); };
       var box = function(k, t, bg){ return String(t || '').trim() ? '<div class="box" style="background:' + bg + '"><span class="k">' + E(k) + '</span>' + E(t) + '</div>' : ''; };
-      var c = a.combined;
+      var c = a.combined != null ? a.combined : a.sp_band != null ? a.sp_band : a.wr_band;   // the band shown in the guide: both skills, else the one done
       $app.innerHTML = head('English Assessment') +
         '<div class="lab">Initial English Proficiency Assessment · IELTS-aligned</div><h1>' + E(a.name) + '</h1>' +
         '<div class="sub">' + E(new Date(a.assess_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })) + (a.assessor ? ' · Assessor: ' + E(a.assessor) : '') + '</div>' +
-        '<div class="tiles"><div class="tile"><div class="l">Speaking</div><div class="n">' + b1(a.sp_band) + '</div><div class="c">' + (a.cefr_sp ? 'CEFR ' + E(a.cefr_sp) : '') + '</div></div>' +
-        '<div class="tile w"><div class="l">Academic Writing · Task 2</div><div class="n">' + b1(a.wr_band) + '</div><div class="c">' + (a.cefr_wr ? 'CEFR ' + E(a.cefr_wr) : '') + '</div></div></div>' +
+        '<div class="tiles"><div class="tile"><div class="l">Speaking</div>' + num(a.sp_band) + '<div class="c">' + (a.cefr_sp ? 'CEFR ' + E(a.cefr_sp) : '') + '</div></div>' +
+        '<div class="tile w"><div class="l">Academic Writing · Task 2</div>' + num(a.wr_band) + '<div class="c">' + (a.cefr_wr ? 'CEFR ' + E(a.cefr_wr) : '') + '</div></div></div>' +
         (c != null ? '<div class="comb"><span>Speaking + Writing estimate</span><b>' + b1(c) + (a.cefr ? ' · ' + E(a.cefr) : '') + '</b></div>' : '') +
-        '<h2>Speaking criteria</h2>' + bars(SP, a.sp) + '<div class="note" style="margin-top:4px">The four criteria carry equal weight.</div>' +
-        '<h2>Writing criteria</h2>' + bars(WR, a.wr) + '<div class="note" style="margin-top:4px">Task 2 only' + (a.essay_words ? ' · ' + a.essay_words + ' words written' : '') + '. A full IELTS Writing score also includes Task 1, and Task 2 counts twice as much as Task 1.</div>' +
+        (a.sp_band != null ? '<h2>Speaking criteria</h2>' + bars(SP, a.sp) + '<div class="note" style="margin-top:4px">The four criteria carry equal weight.</div>' : '') +
+        (a.wr_band != null ? '<h2>Writing criteria</h2>' + bars(WR, a.wr) + '<div class="note" style="margin-top:4px">Task 2 only' + (a.essay_words ? ' · ' + a.essay_words + ' words written' : '') + '. A full IELTS Writing score also includes Task 1, and Task 2 counts twice as much as Task 1.</div>' : '<div class="note" style="margin-top:14px">Academic Writing is still to be done or scored. This page updates when it is.</div>') +
         '<h2>Your results</h2>' + box('Observed strengths', a.strengths, 'var(--tint)') + box('Areas for improvement', a.improve, 'var(--warm)') + box('Recommended learning pathway', a.pathway, 'var(--lav)') +
         '<h2>What the bands mean</h2><table><tr><th>IELTS band</th><th>General interpretation</th><th>Approx. CEFR</th></tr>' + GUIDE.map(function(g){ return '<tr class="' + (c != null && +c >= g[0] && +c <= g[1] ? 'on' : '') + '"><td>' + g[2] + '</td><td>' + E(g[3]) + '</td><td>' + E(g[4]) + '</td></tr>'; }).join('') + '</table>' +
         '<div class="note">This is an internal estimate that follows the IELTS band descriptors (whole bands 0–9 for each criterion). It is not an official IELTS result. CEFR comparisons are approximate, not exact conversions; IELTS band 4.0 can also overlap A2/B1 depending on the skill.</div>' +
