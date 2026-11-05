@@ -6764,7 +6764,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1595;
+const COE_V = 1596;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36755,7 +36755,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     catch(e){ toast(String(e.message || e)); if(b){ b.disabled = false; b.textContent = 'Start assessment'; } } }
   async function open(id){ const c = (S.list || []).find(x => x.id === id); S.a = c ? Object.assign({ sp: {}, wr: {}, notes: {} }, c) : null; S.tab = 'speak'; S.typeEssay = false; if(S.a) paint(); else V().innerHTML = '<div class="as-card">Loading…</div>';
     try{ const r = await call('get', { id }); if(r && r.ok){ S.a = r.a; paint(); } else toast('Could not open'); }catch(e){ toast('Could not open · check the connection'); } }
-  function back(){ flush(); S.a = null; clearTimers(); paintList(); loadList(); }
+  function back(){ flush(); try{ const L = (S.list || []).find(x => S.a && x.id === S.a.id); if(L) Object.assign(L, { name: S.a.name, sp_band: S.a.sp_band, wr_band: S.a.wr_band, cefr: S.a.cefr }); }catch(e){} S.a = null; clearTimers(); paintList(); loadList(); }
   // ---------- saving ----------
   function put(path, val){ const a = S.a; if(!a) return; const [k, sub] = path.split('.');
     if(sub){ a[k] = Object.assign({}, a[k] || {}, { [sub]: val }); S.pend[k] = Object.assign({}, S.pend[k] || {}, { [sub]: val }); } else { a[k] = val; S.pend[k] = val; }
@@ -36799,6 +36799,15 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     '<button onclick="as1778.show(\'hi\')">Welcome</button><button onclick="as1778.show(\'\')">Blank</button><button onclick="as1778.show(\'end\')">Thank you</button><span class="as-m" style="flex-basis:100%">Share only that window on the call; she never sees the app.</span></div>';
   function review(){ const L = [['Part 1 · Introduction and interview', Q_A.map((q, i) => ['a' + (i + 1), q])], ['Part 2 · Long turn', [['b', CUE.t]]], ['Part 3 · Discussion', Q_C.map((q, i) => ['c' + (i + 1), q])], ['Writing', [['w', 'Writing notes']]]];
     return L.map(([h, qs]) => '<h3>' + E(h) + '</h3>' + qs.map(([k, q]) => '<div class="as-q"><p style="font-weight:500;font-size:13.5px;color:#5E5A76">' + E(q) + '</p>' + note(k) + '</div>').join('')).join(''); }
+  /* 1781 · edit her name and details */
+  const nameIn = () => '<input class="as-in" data-f="name" placeholder="Full name" value="' + E(S.a.name || '') + '" oninput="as1778.nm(this.value)">';
+  const asrIn = () => '<input class="as-in" style="margin-top:6px" data-f="assessor" placeholder="Assessor" value="' + E(S.a.assessor || '') + '" oninput="as1778.put(\'assessor\',this.value)">';
+  function nm(v){ put('name', v); const h = document.getElementById('as-hn'); if(h) h.textContent = v || '(no name)'; const L = (S.list || []).find(x => x.id === S.a.id); if(L) L.name = v; }
+  function edit(){ const d = document.getElementById('as-ed'); if(!d) return; if(d.innerHTML){ flush(); d.innerHTML = ''; return; }
+    d.innerHTML = '<div class="as-card"><h2>Her details</h2><div class="as-m">Saved as you type; her result link and picture show the change.</div><div style="display:grid;gap:6px;margin-top:8px">' + nameIn() +
+      '<input class="as-in" data-f="contact" placeholder="Phone / email / WeChat" value="' + E(S.a.contact || '') + '" oninput="as1778.put(\'contact\',this.value)"><input class="as-in" data-f="purpose" placeholder="Purpose" value="' + E(S.a.purpose || '') + '" oninput="as1778.put(\'purpose\',this.value)">' + asrIn().replace('margin-top:6px', '') +
+      '</div><div class="as-row"><button class="btn teal sm" onclick="as1778.edit()">Done</button></div></div>';
+    const i = d.querySelector('[data-f="name"]'); if(i) i.focus(); }
   function show(k){ put('notes.show', k); flush(); document.querySelectorAll('#v-assess .as-show').forEach(b => { const on = b.dataset.show === k; b.classList.toggle('on', on); b.textContent = on ? 'On her screen' : 'Show her'; }); const w = document.getElementById('as-shw'); if(w) w.textContent = shLabel(k); }
   function scrOpen(){ const w = window.open(SITE + '?s=' + S.a.wkey, 'coeHerScreen', 'width=1180,height=780'); if(!w) toast('Allow pop-ups, or use Copy link'); }
   function crit(sk, C){ const v = S.a[sk] || {}; return C.map(([k, t, h]) => '<div class="as-cr"><div class="t"><b>' + E(t) + '</b><span class="as-m">' + E(h) + '</span></div><div class="as-bands" data-sk="' + sk + '" data-k="' + k + '">' +
@@ -36820,7 +36829,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       : '<div class="as-m">When the scores and notes are ready, tap Share. She gets a page with the CupOfEnglish logo, her bands, what they mean and the recommended pathway.</div><div class="as-row"><button class="btn teal" onclick="as1778.share()"' + (a.sp_band == null && a.wr_band == null ? ' disabled title="Score at least one skill first"' : '') + '>Share result</button></div>'; }
   function paint(){ const a = S.a; if(!a) return paintList(); clearTimers();
     const tabs = [['speak', '1 · Speaking'], ['write', '2 · Writing'], ['result', '3 · Result']];
-    let h = '<div class="as-h"><button class="btn ghost sm" onclick="as1778.back()">‹ All</button><h1 style="font-size:20px">' + E(a.name) + '</h1>' + chip(a) + '<span class="as-st" id="as-st">' + E(S.saved) + '</span></div>' + scrBar() +
+    let h = '<div class="as-h"><button class="btn ghost sm" onclick="as1778.back()">‹ All</button><h1 style="font-size:20px" id="as-hn">' + E(a.name) + '</h1><button class="btn ghost sm" onclick="as1778.edit()" title="Edit her name and details">✎ Edit</button>' + chip(a) + '<span class="as-st" id="as-st">' + E(S.saved) + '</span></div><div id="as-ed"></div>' + scrBar() +
       '<div class="as-tabs">' + tabs.map(t => '<button class="' + (S.tab === t[0] ? 'on' : '') + '" onclick="as1778.tab(\'' + t[0] + '\')">' + t[1] + '</button>').join('') + '</div>';
     if(S.tab === 'speak'){
       h += '<div class="as-card"><h2>Part 1 — Introduction and interview <span class="as-m">(4–5 min)</span></h2><div class="as-m">Ask naturally; no written answers prepared.</div>' + timerHtml('a', [['5 min', 5]]) + Q_A.map((q, i) => '<div class="as-q"><p>' + (i + 1) + '. ' + E(q) + '</p>' + showB('a' + (i + 1)) + note('a' + (i + 1)) + '</div>').join('') + '</div>' +
@@ -36846,7 +36855,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
         '<div class="as-card"><h2>Final diagnostic record</h2><h3>Observed strengths</h3><textarea class="as-ta" data-f="strengths" rows="3" oninput="as1778.put(\'strengths\',this.value)">' + E(a.strengths || '') + '</textarea>' +
         '<h3>Areas for improvement</h3><textarea class="as-ta" data-f="improve" rows="3" oninput="as1778.put(\'improve\',this.value)">' + E(a.improve || '') + '</textarea>' +
         '<h3>Recommended learning pathway</h3><div class="as-path">' + PATHS.map(p => '<button class="' + (a.pathway === p ? 'on' : '') + '" onclick="as1778.path(this,\'' + E(p) + '\')">' + E(p) + '</button>').join('') + '</div>' +
-        '<h3>Details (optional)</h3><input class="as-in" data-f="contact" placeholder="Phone / email / WeChat" value="' + E(a.contact || '') + '" oninput="as1778.put(\'contact\',this.value)"><input class="as-in" style="margin-top:6px" data-f="purpose" placeholder="Purpose" value="' + E(a.purpose || '') + '" oninput="as1778.put(\'purpose\',this.value)"></div>' +
+        '<h3>Her details</h3>' + nameIn() + '<input class="as-in" style="margin-top:6px" data-f="contact" placeholder="Phone / email / WeChat" value="' + E(a.contact || '') + '" oninput="as1778.put(\'contact\',this.value)"><input class="as-in" style="margin-top:6px" data-f="purpose" placeholder="Purpose" value="' + E(a.purpose || '') + '" oninput="as1778.put(\'purpose\',this.value)">' + asrIn() + '</div>' +
         '<div class="as-card"><h2>Send to her</h2><div id="as-share">' + shareHtml() + '</div><div class="as-row"><button class="btn ghost" id="as-pic" onclick="as1778.pic()">Copy picture</button><button class="btn ghost" onclick="as1778.pic(1)">' + (navigator.share ? 'Share · save picture' : 'Save picture') + '</button></div>' +
         '<div class="as-row" style="margin-top:16px"><button class="btn ghost sm" style="color:#B42318" onclick="as1778.del()">Remove this assessment</button></div></div>';
     }
@@ -36914,7 +36923,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   const l0 = window.hmLoad; if(typeof l0 === 'function') window.hmLoad = function(){ hLoad(); return l0.apply(this, arguments); };
   setTimeout(hLoad, 5000); setInterval(() => { if(!document.hidden) hLoad(); }, 300000);
   setInterval(poll, 4000); setInterval(() => { if(VIEW === 'assess' && S.a && S.tab === 'write'){ const e = document.getElementById('as-ess'); if(e && S.a.essay_started_at && !S.a.essay_submitted_at) e.innerHTML = essayLive(); } }, 1000);
-  window.as1778 = { show, scrOpen, homeMsg, newForm, create, open, back, put, band, tab, path, share, unshare, essayOpen, essayClose, del, copy, msg, pic, tStart, tStop, typeEssay: v => { S.typeEssay = !!v; flush(); paint(); } };
+  window.as1778 = { nm, edit, show, scrOpen, homeMsg, newForm, create, open, back, put, band, tab, path, share, unshare, essayOpen, essayClose, del, copy, msg, pic, tStart, tStop, typeEssay: v => { S.typeEssay = !!v; flush(); paint(); } };
   const _go = window.go; window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'assess'){ if(S.a) paint(); else { paintList(); loadList(); } } else if(S.a) flush(); }catch(e){} return r; };
   const w0 = () => { if(typeof D !== 'undefined' && D && D.mgr){ try{ buildNav(); }catch(e){} if(VIEW === 'assess') go('assess'); } else setTimeout(w0, 1500); }; setTimeout(w0, 1200);
 })();
