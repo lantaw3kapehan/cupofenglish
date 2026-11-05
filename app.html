@@ -1646,7 +1646,7 @@ const SB_UIAGE = { mgmtTeacher: 30 * 864e5, getBootstrap: 1, mgmtStudent: 7 * 86
 const SB_BGAGE = { tGrowth: 180 * 6e4, tPayCheck: 10 * 6e4, tPayReady: 10 * 6e4, tNoteComments: 10 * 6e4, mgmtTeacherVisits: 30 * 6e4, mgmtWeekSum: 60 * 6e4, mgmtPeer: 30 * 6e4, mgmtHours: 15 * 6e4, mgmtPerformance: 30 * 6e4, mgmtNight: 180 * 6e4, mgmtReports: 10 * 6e4, mgmtReportsWait: 10 * 6e4, mgmtTrials: 10 * 6e4, mgmtTab: 10 * 6e4, mgmtStudent: 20 * 6e4, mgmtStuClasses: 20 * 6e4, mgmtMsgs: 0, mgmtPulse: 0, mgmtHealth: 10 * 6e4, tStudent: 20 * 6e4, tStuClasses: 20 * 6e4, tMsgs: 0, schedLists: 15 * 6e4, mgmtMyPay: 30 * 6e4, mgmtPayChecks: 10 * 6e4, mgmtPayReady: 10 * 6e4, mgmtTrialFus: 10 * 6e4, mgmtUrls: 60 * 6e4, mgmtFixIgnored: 15 * 6e4 };   /* 1300 */
 const SB_OKAGE = { tGrowth: 30 * 6e4, tPayCheck: 10 * 6e4, tPayReady: 10 * 6e4, tNoteComments: 10 * 6e4, tMyComments: 10 * 6e4, tFbForm: 15 * 6e4, tPcForm: 15 * 6e4, tTrialForm: 15 * 6e4, tPeerForm: 15 * 6e4, tStuClasses: 10 * 6e4, mgmtTeacherVisits: 30 * 6e4, mgmtWeekSum: 60 * 6e4, mgmtPeer: 30 * 6e4, mgmtHours: 15 * 6e4, mgmtReports: 10 * 6e4, mgmtTrials: 10 * 6e4, mgmtTab: 10 * 6e4, mgmtDatabase: 10 * 6e4, mgmtMyPay: 30 * 6e4, mgmtUrls: 60 * 6e4, mgmtHealth: 10 * 6e4, mgmtNight: 60 * 6e4, mgmtAvailAll: 15 * 6e4, mgmtPerformance: 30 * 6e4, mgmtTeacherCard: 30 * 6e4, mgmtRenewals: 10 * 6e4, mgmtReportsWait: 10 * 6e4, tGrowth: 30 * 6e4, mgmtGrowth: 30 * 6e4 };   /* 15 Oct: slow Google-only screens */
 const SB_LIVE = /^(mgmt(Active|Students|Student|StuClasses|Schedule|TeacherWeek|Teacher|AvailAll|MonDay|Actions|Payroll|Leave|Msgs|Database)|t(Student|Schedule|FbStatus|HwHist|Reminders|Goals|Leave|MyVisits|Msgs|NoteComments|MyComments)|getBootstrap|dbRecord|dbLists)$/;   /* 14 Oct night: the database works these out itself */
-function sbLiveMax(fn){ return /^(mgmtStudent|tStudent|mgmtStudents|mgmtStuClasses|tStuClasses|mgmtActive)$/.test(fn) ? 6 * 3600e3 : 90 * 6e4; }   /* 1360 */
+function sbLiveMax(fn){ return /^(mgmtStudent|tStudent|mgmtStudents|mgmtStuClasses|tStuClasses|mgmtActive|tGoals|tSchedule|tHwHist)$/.test(fn) ? 6 * 3600e3 : 90 * 6e4; }   /* 1360 */
 let SB_LASTW = 0; const SB_FRESH = {}, SB_WANT = {}; let SB_T = 0;
 function sbOn(){ try{ if(localStorage.getItem('coe.fastr') === '0') return false; }catch(e){} return !!(D && TOKEN && (D.mgr || (D.me && D.me.name))); }
 function sbKey(fn, args){ return (/^t[A-Z]|^getBootstrap$/.test(fn) ? String((D.me || {}).name || '').trim().toLowerCase() : SB_SH.test(fn) || !D.pres ? 'mgmt' : 'pres') + ':' + fn + '|' + JSON.stringify(args.slice(1)); }
@@ -6764,7 +6764,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1587;
+const COE_V = 1588;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36574,6 +36574,27 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   const an = window.apiNow; if(typeof an === 'function') window.apiNow = apiNow = function(fn){ const a = Array.prototype.slice.call(arguments, 1);
     if(a[0] && body(fn, a)) return w.apply(this, arguments);
     return an.apply(this, arguments); };
+})();
+</script>
+<script>
+/* 1773 · leave, peer reviews, trials, class details from the database (coe-lists); getBootstrap compared in the background */
+(function(){
+  const base = window.api; if(!base || base.__1773) return;
+  const URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-lists', an0 = window.apiNow;
+  const body = (fn, a) => fn === 'mgmtLeave' ? { token: a[0], op: 'leave' } : fn === 'tLeave' ? { token: a[0], op: 'tleave' }
+    : fn === 'mgmtPeer' ? { token: a[0], op: 'peer' } : fn === 'mgmtTrials' ? { token: a[0], op: 'trials' }
+    : fn === 'mgmtClassInfo' && a[1] && typeof a[1] === 'object' ? { token: a[0], op: 'classinfo', ev: a[1] } : null;
+  const w = function(fn){ const a = Array.prototype.slice.call(arguments, 1), self = this, go = () => base.apply(self, [fn].concat(a)), fb = () => (typeof an0 === 'function' ? an0.apply(self, [fn].concat(a)) : go());
+    const b = a[0] ? body(fn, a) : null; if(!b) return base.apply(this, arguments);
+    return fetch(URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(b) })
+      .then(x => x.json()).then(r => (r && r.ok && r.data != null) ? r.data : fb(), fb); };
+  w.__1773 = 1; window.api = w;
+  let shAt = 0; const an = window.apiNow; if(typeof an === 'function') window.apiNow = apiNow = function(fn){ const a = Array.prototype.slice.call(arguments, 1);
+    if(a[0] && body(fn, a)) return w.apply(this, arguments);
+    const p = an.apply(this, arguments);
+    if(fn === 'getBootstrap' && a[0] && Date.now() - shAt > 10 * 6e4) Promise.resolve(p).then(g => { try{ if(!g || !g.mgr) return; shAt = Date.now();
+      fetch(URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: a[0], op: 'shadow', fn: 'getBootstrap', google: g }) }).catch(() => {}); }catch(e){} }, () => {});
+    return p; };
 })();
 </script>
 </body>
