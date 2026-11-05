@@ -49,6 +49,16 @@ textarea{width:100%;min-height:52vh;border:1px solid #D8D5E3;border-radius:18px;
 textarea:focus{outline:2px solid rgba(0,112,122,.45);border-color:var(--teal7)}
 .center{text-align:center}
 .msg{padding:40px 10px;text-align:center;color:#4A4766;font-size:16px;line-height:1.6}
+.scr{min-height:calc(100vh - 32px);display:flex;flex-direction:column}
+.scr .mid{flex:1;display:flex;flex-direction:column;justify-content:center;padding:10px 0}
+.scr .part{color:var(--teal);font-weight:700;font-size:18px;letter-spacing:.02em;margin-bottom:12px}
+.scr .qq{font-family:var(--b);color:var(--navy);font-size:clamp(28px,4.2vw,50px);line-height:1.22}
+.scr .cue{background:var(--tint);border-radius:24px;padding:26px 30px;font-size:clamp(18px,2.2vw,26px);line-height:1.5;color:var(--ink)}
+.scr .cue b{display:block;font-family:var(--b);font-weight:400;color:var(--navy);font-size:clamp(24px,3.2vw,38px);line-height:1.25;margin-bottom:12px}
+.scr .cue ul{margin:8px 0 8px 26px;padding:0}
+.scr .tmr{display:inline-flex;align-items:center;gap:12px;background:var(--navy);color:#fff;border-radius:999px;padding:10px 22px;margin-top:22px;align-self:flex-start}
+.scr .tmr b{font-family:var(--b);font-weight:400;font-size:34px;font-variant-numeric:tabular-nums}.scr .tmr.end{background:var(--bad)}
+.scr .tmr span{font-size:15px;opacity:.85}
 @media(max-width:560px){.card{padding:22px 18px 20px;border-radius:22px}.top img{height:42px}h1{font-size:30px}.tile .n{font-size:46px}.tiles{gap:8px}.tile{padding:14px}.bar{grid-template-columns:1fr 1.2fr 24px;font-size:13.5px}}
 @media print{body{background:#fff}.wrap{padding:0}.card{box-shadow:none}.noprint{display:none!important}}
 </style>
@@ -137,7 +147,28 @@ textarea:focus{outline:2px solid rgba(0,112,122,.45);border-color:var(--teal7)}
     }, function(){ S.saving = 0; S.dirty = 1; stat('Offline — your writing is kept on this device and will be sent'); if(b) b.disabled = false; if(submit) setTimeout(function(){ save(1); }, 3000); });
   }
 
-  if(/^[0-9a-f]{32}$/.test(R)) result(); else if(/^[0-9a-f]{32}$/.test(W)) essay(); else fail('This link is not valid.');
+  // ---------------- her screen (shared on a call) ----------------
+  var SK = (q.get('s') || '').trim();
+  var QA = ['Could you introduce yourself and tell me a little about your educational background?', 'In what situations do you usually communicate in English?', 'What do you find most challenging about expressing yourself in English?', 'Do you prefer communicating through speaking or writing? Why?', 'How important do you think effective communication is in academic or professional life?'];
+  var QC = ['Why do some educated individuals still struggle to communicate their ideas clearly?', 'Do you think effective communication is more important than grammatical accuracy?', 'How can schools help students develop stronger communication skills?', 'What are the advantages and disadvantages of using artificial intelligence to improve academic writing?', 'Should universities place greater emphasis on students\u2019 communication skills?'];
+  var SC = { key: null, off: 0, tend: 0, tlab: '', name: '' };
+  function scrPaint(r){ var k = r.show || '', mid = '';
+    if(k === 'hi') mid = '<div class="part">English Proficiency Assessment</div><div class="qq">Welcome' + (r.name ? ', ' + E(r.name) : '') + '!</div><div class="sub" style="margin-top:14px;font-size:20px">Speaking · about 15 minutes, in three parts.</div>';
+    else if(/^a\d$/.test(k)) mid = '<div class="part">Part 1 · Introduction and interview</div><div class="qq">' + E(QA[+k.slice(1) - 1] || '') + '</div>';
+    else if(/^c\d$/.test(k)) mid = '<div class="part">Part 3 · Discussion</div><div class="qq">' + E(QC[+k.slice(1) - 1] || '') + '</div>';
+    else if(k === 'b') mid = '<div class="part">Part 2 · Individual long turn</div><div class="cue"><b>Describe a situation when you had difficulty expressing your ideas clearly.</b>You should say:<ul><li>what the situation was</li><li>who you were communicating with</li><li>why you found it difficult</li><li>how you handled the situation</li></ul>and explain what you learned from the experience.<div style="margin-top:12px;font-size:.8em;color:var(--mute)">1 minute to prepare (you may make notes) · then speak for 1–2 minutes</div></div>';
+    else if(k === 'w') mid = '<div class="part">Academic Writing · Task 2 · 40 minutes</div><div class="cue" style="white-space:pre-wrap">' + E(ESSAY) + '</div>';
+    else if(k === 'end') mid = '<div class="qq">Thank you' + (r.name ? ', ' + E(r.name) : '') + '!</div><div class="sub" style="margin-top:14px;font-size:20px">Your assessor will go through your results with you.</div>';
+    mid += '<div class="tmr" id="tmr" style="display:none"><span id="tml"></span><b id="tmc"></b></div>';
+    $app.innerHTML = '<div class="scr">' + head('English Assessment') + '<div class="mid">' + mid + '</div>' + foot + '</div>'; scrTick(); }
+  function scrTick(){ var el = document.getElementById('tmr'); if(!el) return; var left = SC.tend ? (SC.tend - (Date.now() + SC.off)) / 1000 : -1;
+    if(!SC.tend || left < -8){ el.style.display = 'none'; return; } el.style.display = ''; el.className = 'tmr' + (left <= 0 ? ' end' : '');
+    left = Math.max(0, left); document.getElementById('tmc').textContent = Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0'); document.getElementById('tml').textContent = left <= 0 ? 'Time' : SC.tlab; }
+  function scr(){ call({ op: 'sget', wkey: SK }).then(function(r){ if(!r || !r.ok){ if(SC.key === null) fail(r && r.msg || 'This link is not valid.'); return; }
+      SC.off = (+r.now || Date.now()) - Date.now(); SC.tend = +r.tend || 0; SC.tlab = r.tlab || ''; SC.name = r.name || '';
+      var key = (r.show || '') + '|' + r.name; if(key !== SC.key){ SC.key = key; scrPaint(r); } }, function(){}); }
+  if(/^[0-9a-f]{32}$/.test(SK)){ $app.parentNode.style.maxWidth = '1100px'; document.title = 'CupOfEnglish · English Assessment'; scr(); setInterval(scr, 1500); setInterval(scrTick, 250); }
+  else if(/^[0-9a-f]{32}$/.test(R)) result(); else if(/^[0-9a-f]{32}$/.test(W)) essay(); else fail('This link is not valid.');
 })();
 </script>
 </body>
