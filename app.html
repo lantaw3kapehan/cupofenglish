@@ -6764,7 +6764,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1597;
+const COE_V = 1598;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -32307,7 +32307,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   var e = function(x){ return typeof esc === 'function' ? esc(x) : String(x == null ? '' : x).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   function call(op, b){ return fetch(FAST_URL + '-student', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ op: op, token: TOKEN }, b || {})) }).then(function(r){ return r.json(); }); }
   function when(t){ if(!t) return 'never'; var d = new Date(t); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); }
-  function msg(x){ if(x && x.ph && window.phMsg1530) return phMsg1530(x, URLS); var n = String(x.name || '').trim() || '学员', ad = !!x.adult, L = [];   /* 1354 · the full welcome message (Misty 15:14): parent / adult by learner type, Add to Home Screen steps */
+  function msg(x){ if(x && x.ph && window.phMsg1530) return phMsg1530(x, URLS); if(x && x.locale === 'en-ph') return msgEn(x); var n = String(x.name || '').trim() || '学员', ad = !!x.adult, L = [];   /* 1354 · the full welcome message (Misty 15:14): parent / adult by learner type, Add to Home Screen steps */
     L.push('【一杯英语 · 学员专区】');
     L.push(ad ? n + '您好！现在可以在手机上随时查看您的课表、剩余课时、课堂记录和学习报告。' : n + '家长您好！现在可以在手机上随时查看' + n + '的课表、剩余课时、课堂记录和学习报告。');
     L.push('链接：' + URLS);
@@ -32321,7 +32321,28 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     L.push(ad ? 'Hello ' + n + '! Your classes, lessons left, class notes and reports are now on your phone: open the link and sign in with your student code and ' + (x.own ? 'the password you set.' : 'your English name.')
       : 'Hello, ' + n + '’s family! ' + n + '’s classes, lessons left, class notes and reports are now on your phone: open the link and sign in with the student code and ' + (x.own ? 'the password you set.' : n + '’s English name.'));
     return L.join('\n'); }
-  window.psMsg1354 = msg; window.__ps1350 = { P: P, call: call, load: load, paint: paint, URLS: URLS };   /* 1530 · the Market setting below */
+  /* 1783 · English (Philippines): English only, no WeChat; sign-in unchanged (ST code + English name, or the password they set) */
+  function msgEn(x){ var n = String(x.name || '').trim(), L = [];
+    L.push('CupOfEnglish · Student Portal');
+    L.push(x.adult || !n ? 'Hello' + (n ? ' ' + n : '') + '! Your classes, lessons left, class notes, reports and English assessment are now on your phone.' : 'Hello, ' + n + '’s family! ' + n + '’s classes, lessons left, class notes, reports and English assessment are now on your phone.');
+    L.push(''); L.push('Link: ' + URLS + '?lang=en-ph'); L.push('Student code: ' + x.code);
+    L.push(x.own ? 'Password: the password you set (message us if you need it reset)' : 'Password: ' + (n ? n + ' (' + (x.adult ? 'your' : 'the student’s') + ' English name, not case-sensitive)' : (x.adult ? 'your' : 'the student’s') + ' English name (not case-sensitive)'));
+    L.push(''); L.push('Add it to your home screen so it opens like an app:'); L.push('iPhone: open the link in Safari › Share › Add to Home Screen.'); L.push('Android: open the link in Chrome › menu (⋮) › Add to Home screen.');
+    L.push(''); L.push('You stay signed in for 30 days. Message us anytime if you need help!'); return L.join('\n'); }
+  /* 1783 · Portal language: one tap saves (sLocale), the list updates in place; no reload */
+  function langSeg(x){ var en = x.locale === 'en-ph', b = P.busy['L' + x.code];
+    return '<div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"><span class="small mute">Portal language</span><div class="seg" role="group" aria-label="Portal language" style="margin:0">'
+      + '<button type="button" class="' + (en ? '' : 'on') + '" ' + (b ? 'disabled ' : '') + 'aria-pressed="' + !en + '" onclick="psLoc(\'' + x.code + '\',\'zh\')">中文 + English</button>'
+      + '<button type="button" class="' + (en ? 'on' : '') + '" ' + (b ? 'disabled ' : '') + 'aria-pressed="' + en + '" onclick="psLoc(\'' + x.code + '\',\'en-ph\')">English (Philippines)</button></div>'
+      + (x.ph ? '<span class="small mute">· Philippine market: always English</span>' : '') + (b ? '<span class="small mute">Saving…</span>' : '') + '</div>'; }
+  function setLoc(code, loc){ var x = (P.list || []).find(function(y){ return y.code === code; }); if(!x || x.locale === loc || P.busy['L' + code]) return Promise.resolve(x && x.locale === loc);
+    var was = x.locale || 'zh'; x.locale = loc; P.busy['L' + code] = 1; repaint();
+    return call('sLocale', { code: code, locale: loc }).then(function(r){ delete P.busy['L' + code]; if(r && r.ok){ toast(loc === 'en-ph' ? code + ' · portal in English (Philippines)' : code + ' · portal back to 中文 + English'); repaint(); return true; }
+        x.locale = was; toast((r && r.msg) || 'Not saved · try again'); repaint(); return false; })
+      .catch(function(){ delete P.busy['L' + code]; x.locale = was; toast('No connection · try again'); repaint(); return false; }); }
+  function repaint(){ var L = document.getElementById('psL'); if(L) L.innerHTML = rows(); try{ if(window.as1783) as1783.refresh(); }catch(e){} }
+  window.psLoc = setLoc;
+  window.psMsg1354 = msg; window.__ps1350 = { P: P, call: call, load: load, paint: paint, URLS: URLS, setLoc: setLoc };   /* 1530 · the Market setting below */
   /* the same message from a student's own page: the access list is loaded once if needed (own password, adult flag) */
   window.portalMsg = function(code){ code = String(code || '').trim().toUpperCase(); var go = function(){ var x = (P.list || []).find(function(y){ return y.code === code; }); if(!x){ toast('Not found in Student access · open Students › Student access'); return; } var t = msg(x);
       try{ navigator.clipboard.writeText(t).then(function(){ toast('Copied · ' + (x.adult ? 'adult' : 'parent') + ' version for ' + (x.name || code)); }, function(){ prompt('Copy this message', t); }); }catch(z){ prompt('Copy this message', t); } };
@@ -32332,19 +32353,19 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     return (L.length ? L.map(function(x){ var b = P.busy[x.code];
       return '<div class="card" style="padding:12px 14px;margin-bottom:8px' + (x.access ? '' : ';opacity:.65') + '"><div class="row" style="gap:8px;flex-wrap:wrap"><div class="grow" style="min-width:180px"><b>' + e(x.name || '—') + '</b>' + (x.cn ? ' <span class="small">' + e(x.cn) + '</span>' : '') + ' <span class="mute small">· ' + e(x.code) + ' · ' + (x.adult ? 'Adult' : 'Young learner') + (x.enrolled ? '' : ' · not enrolled') + '</span>' + (x.ph && window.phChip1530 ? phChip1530(x) : '')
         + '<div class="small mute">' + (x.access ? 'Access on' : 'Access switched off') + ' · last sign-in ' + e(when(x.last)) + (x.logins ? ' · ' + x.logins + ' sign-in' + (x.logins === 1 ? '' : 's') : '') + (x.own ? ' · own password set' : x.ph ? ' · password = first name (' + e(String(x.name || '').trim().split(/\s+/)[0]) + ')' : ' · password = English name') + '</div></div>'
-        + '<button class="btn teal sm" onclick="psCopy(\'' + x.code + '\')">' + (x.ph ? 'Copy message (English)' : 'Copy WeChat message') + '</button>' + '<button class="btn ghost sm" onclick="psPh(\'' + x.code + '\')">Market</button>'
+        + '<button class="btn teal sm" onclick="psCopy(\'' + x.code + '\')">' + (x.ph || x.locale === 'en-ph' ? 'Copy message (English)' : 'Copy WeChat message') + '</button>' + '<button class="btn ghost sm" onclick="psPh(\'' + x.code + '\')">Market</button>'
         + (x.own ? '<button class="btn ghost sm" ' + (b ? 'disabled ' : '') + 'onclick="psClear(\'' + x.code + '\')">Clear own password</button>' : '')
-        + '<button class="btn ghost sm" ' + (b ? 'disabled ' : '') + 'onclick="psActive(\'' + x.code + '\',' + (x.access ? 'false' : 'true') + ')">' + (x.access ? 'Switch off' : 'Switch on') + '</button></div><div class="ph30-slot" id="psPh_' + x.code + '"></div></div>'; }).join('') : '<div class="mute small">No students found.</div>')
+        + '<button class="btn ghost sm" ' + (b ? 'disabled ' : '') + 'onclick="psActive(\'' + x.code + '\',' + (x.access ? 'false' : 'true') + ')">' + (x.access ? 'Switch off' : 'Switch on') + '</button></div>' + langSeg(x) + '<div class="ph30-slot" id="psPh_' + x.code + '"></div></div>'; }).join('') : '<div class="mute small">No students found.</div>')
       + (n > 60 ? '<div class="mute small" style="margin-top:6px">Showing 60 of ' + n + ' · search to find a student.</div>' : ''); }
   function paint(){ var sb = document.getElementById('sheetBody'), el = sb && sb.querySelector('#ps1350'); if(!el) return;
     var on = P.list.filter(function(x){ return x.last; }).length;
     el.innerHTML = '<h1>Student access 学员专区</h1><div class="mute small">Adult students and young learners’ families sign in at <b>' + e(URLS) + '</b> with the <b>ST code</b> and the <b>student’s English name</b> (not case-sensitive). They see only that student: next class, lessons left, schedule, homework &amp; class notes, level, monthly reports already sent, attendance. The WeChat message greets adults by name and young learners’ families as “家长”. No prices, payments, contact details or other students. Works in mainland China (no Google). 5 wrong tries lock that code for 15 minutes.</div>'
       + '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><input id="psQ" class="in-t grow" style="min-width:200px" placeholder="Search name, Chinese name or ST code" value="' + e(P.q) + '" oninput="PS_Q(this.value)"><label class="check" style="margin:0"><input type="checkbox" ' + (P.all ? 'checked ' : '') + 'onchange="PS_ALL(this.checked)"><span>Show past students</span></label></div>'
-      + '<div class="small mute" style="margin:8px 0 0">Philippine-market learners: tap <b>Market</b> › Philippines and pick the programme and track. They sign in with the ST code and their first name only (one word, e.g. Maria for Maria Santos) and see the portal in English with their learning roadmap.</div><div class="small mute" style="margin:8px 0">' + on + ' student' + (on === 1 ? ' has' : 's have') + ' signed in so far.</div><div id="psL">' + rows() + '</div>'; }
+      + '<div class="small mute" style="margin:8px 0 0">Philippine-market learners: tap <b>Market</b> › Philippines and pick the programme and track. They sign in with the ST code and their first name only (one word, e.g. Maria for Maria Santos) and see the portal in English with their learning roadmap.</div><div class="small mute" style="margin:8px 0 0"><b>Portal language</b> (each student): <b>中文 + English</b> is the default; <b>English (Philippines)</b> shows the portal in English only, Philippine time, no WeChat wording. One tap saves; tap the other to switch back. Sign-in stays the ST code + English name.</div><div class="small mute" style="margin:8px 0">' + on + ' student' + (on === 1 ? ' has' : 's have') + ' signed in so far.</div><div id="psL">' + rows() + '</div>'; }
   window.PS_Q = function(v){ P.q = v; var L = document.getElementById('psL'); if(L) L.innerHTML = rows(); };
   window.PS_ALL = function(v){ P.all = !!v; var L = document.getElementById('psL'); if(L) L.innerHTML = rows(); };
   window.psCopy = function(code){ var x = P.list.find(function(y){ return y.code === code; }); if(!x) return; var t = msg(x);
-    try{ navigator.clipboard.writeText(t).then(function(){ toast('Copied · paste it to ' + (x.adult ? (x.name || code) : (x.name || code) + '’s family') + ' on WeChat'); }, function(){ prompt('Copy this message', t); }); }catch(z){ prompt('Copy this message', t); } };
+    try{ navigator.clipboard.writeText(t).then(function(){ toast('Copied · ' + (x.ph || x.locale === 'en-ph' ? 'send it to ' : 'paste it to ') + (x.adult ? (x.name || code) : (x.name || code) + '’s family') + (x.ph || x.locale === 'en-ph' ? '' : ' on WeChat')); }, function(){ prompt('Copy this message', t); }); }catch(z){ prompt('Copy this message', t); } };
   window.psActive = function(code, on){ P.busy[code] = 1; paint(); call('sActive', { code: code, active: on }).then(function(r){ delete P.busy[code]; if(!r || !r.ok) toast('Not saved · try again'); load(); }).catch(function(){ delete P.busy[code]; toast('No connection · try again'); paint(); }); };
   window.psClear = function(code){ P.busy[code] = 1; paint(); call('sClearPw', { code: code }).then(function(r){ delete P.busy[code]; toast(r && r.ok ? 'Cleared · the English name works again (signed out on all phones)' : 'Not saved · try again'); load(); }).catch(function(){ delete P.busy[code]; toast('No connection · try again'); paint(); }); };
   function load(){ return call('sList').then(function(r){ if(r && r.ok) P.list = r.students || []; paint(); }).catch(function(){ paint(); }); }
@@ -36762,7 +36783,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     try{ const r = await call('new', { name: nm.trim(), contact: (document.getElementById('as-nc') || {}).value || '', purpose: (document.getElementById('as-np') || {}).value || '' });
       if(!r || !r.ok) throw new Error(r && (r.msg || r.error) || 'Not saved'); S.a = r.a; S.tab = 'speak'; (S.list = S.list || []).unshift(r.a); paint(); }
     catch(e){ toast(String(e.message || e)); if(b){ b.disabled = false; b.textContent = 'Start assessment'; } } }
-  async function open(id){ const c = (S.list || []).find(x => x.id === id); S.a = c ? Object.assign({ sp: {}, wr: {}, notes: {} }, c) : null; S.tab = 'speak'; S.typeEssay = false; if(S.a) paint(); else V().innerHTML = '<div class="as-card">Loading…</div>';
+  async function open(id){ try{ LK.q = null; LK.err = ''; }catch(e){} const c = (S.list || []).find(x => x.id === id); S.a = c ? Object.assign({ sp: {}, wr: {}, notes: {} }, c) : null; S.tab = 'speak'; S.typeEssay = false; if(S.a) paint(); else V().innerHTML = '<div class="as-card">Loading…</div>';
     try{ const r = await call('get', { id }); if(r && r.ok){ S.a = r.a; paint(); } else toast('Could not open'); }catch(e){ toast('Could not open · check the connection'); } }
   function back(){ flush(); try{ const L = (S.list || []).find(x => S.a && x.id === S.a.id); if(L) Object.assign(L, { name: S.a.name, sp_band: S.a.sp_band, wr_band: S.a.wr_band, cefr: S.a.cefr }); }catch(e){} S.a = null; clearTimers(); paintList(); loadList(); }
   // ---------- saving ----------
@@ -36879,7 +36900,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
         '<div class="as-card"><h2>Final diagnostic record</h2><h3>Observed strengths</h3><textarea class="as-ta" data-f="strengths" rows="3" oninput="as1778.put(\'strengths\',this.value)">' + E(a.strengths || '') + '</textarea>' +
         '<h3>Areas for improvement</h3><textarea class="as-ta" data-f="improve" rows="3" oninput="as1778.put(\'improve\',this.value)">' + E(a.improve || '') + '</textarea>' +
         '<h3>Recommended learning pathway</h3><div class="as-path">' + PATHS.map(p => '<button class="' + (a.pathway === p ? 'on' : '') + '" onclick="as1778.path(this,\'' + E(p) + '\')">' + E(p) + '</button>').join('') + '</div>' +
-        '<h3>Her details</h3>' + nameIn() + '<input class="as-in" style="margin-top:6px" data-f="contact" placeholder="Phone / email / WeChat" value="' + E(a.contact || '') + '" oninput="as1778.put(\'contact\',this.value)"><input class="as-in" style="margin-top:6px" data-f="purpose" placeholder="Purpose" value="' + E(a.purpose || '') + '" oninput="as1778.put(\'purpose\',this.value)">' + asrIn() + '</div>' +
+        '<h3>Her details</h3>' + nameIn() + '<input class="as-in" style="margin-top:6px" data-f="contact" placeholder="Phone / email / WeChat" value="' + E(a.contact || '') + '" oninput="as1778.put(\'contact\',this.value)"><input class="as-in" style="margin-top:6px" data-f="purpose" placeholder="Purpose" value="' + E(a.purpose || '') + '" oninput="as1778.put(\'purpose\',this.value)">' + asrIn() + '<div id="as-lk">' + lkHtml() + '</div></div>' +
         '<div class="as-card"><h2>Send to her</h2><div id="as-share">' + shareHtml() + '</div><div class="as-row"><button class="btn ghost" id="as-pic" onclick="as1778.pic()">Copy picture</button><button class="btn ghost" onclick="as1778.pic(1)">' + (navigator.share ? 'Share · save picture' : 'Save picture') + '</button></div>' +
         '<div class="as-row" style="margin-top:16px"><button class="btn ghost sm" style="color:#B42318" onclick="as1778.del()">Remove this assessment</button></div></div>';
     }
@@ -36949,6 +36970,41 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   const l0 = window.hmLoad; if(typeof l0 === 'function') window.hmLoad = function(){ hLoad(); return l0.apply(this, arguments); };
   setTimeout(hLoad, 5000); setInterval(() => { if(!document.hidden) hLoad(); }, 300000);
   setInterval(poll, 4000); setInterval(() => { if(VIEW === 'assess' && S.a && S.tab === 'write'){ const e = document.getElementById('as-ess'); if(e && S.a.essay_started_at && !S.a.essay_submitted_at) e.innerHTML = essayLive(); } }, 1000);
+  /* 1783 · Linked student: the assessment shows in that student's portal (read live from coe_assessments) */
+  const LK = { q: null, list: null, busy: 0, err: '' };
+  const lkUp = s => String(s || '').trim().toUpperCase();
+  const lkCode = s => { const t = lkUp(s).replace(/[\s_–—-]+/g, ''), m = t.match(/^ST(\d{4})(\d{3})$/); return m ? 'ST-' + m[1] + '-' + m[2] : ''; };
+  function lkStudents(){ const m = {}, add = (c, n, cn, extra) => { const k = lkCode(c); if(!k) return; const o = m[k] = m[k] || { code: k, name: '', cn: '' }; if(!o.name && n) o.name = String(n).trim(); if(!o.cn && cn) o.cn = String(cn).trim(); if(extra) Object.assign(o, extra); };
+    try{ const ms = (typeof MS !== 'undefined' && MS) ? (Array.isArray(MS) ? MS : (MS.students || MS.rows || [])) : []; ms.forEach(s => add(s.code, s.name || s.en, s.cn)); }catch(e){}
+    try{ const A = window.__ps1350; ((A && A.P.list) || []).forEach(s => add(s.code, s.name, s.cn, { locale: s.locale || 'zh', ph: !!s.ph, access: 1 })); }catch(e){}
+    return Object.values(m); }
+  function lkLoad(){ const A = window.__ps1350; if(!A || LK.list) return; LK.list = 1;
+    A.call('sList').then(r => { if(r && r.ok){ A.P.list = r.students || []; lkRefresh(); } }).catch(() => { LK.list = null; }); }
+  function lkSug(){ const q = (LK.q == null ? '' : LK.q).trim().toLowerCase(), L = lkStudents(), nameW = String((S.a && S.a.name) || '').toLowerCase().split(/\s+/).filter(w => w.length > 1);
+    const sc = s => { const t = (s.code + ' ' + s.name + ' ' + s.cn).toLowerCase(); if(q) return t.indexOf(q) > -1 ? (s.code.toLowerCase() === q ? 3 : 2) : 0; return nameW.filter(w => t.indexOf(w) > -1).length; };
+    return L.map(s => [sc(s), s]).filter(x => x[0] > 0).sort((a, b) => b[0] - a[0] || b[1].code.localeCompare(a[1].code)).slice(0, 6).map(x => x[1]); }
+  function lkHtml(){ const a = S.a; if(!a) return ''; lkLoad(); const cur = a.student_code || '', st = cur ? lkStudents().find(s => s.code === cur) : null;
+    let h = '<h3 style="margin-top:14px">Linked student</h3><div class="as-m">Shows in her student portal once linked. Later changes here show there on its next refresh.</div>';
+    if(cur) h += '<div class="as-row" style="align-items:center"><span style="font-weight:700;background:#E3F4F5;color:#00575F;border-radius:999px;padding:6px 12px;font-size:13.5px">' + E(cur) + (st && st.name ? ' · ' + E(st.name) : '') + '</span><button class="btn ghost sm" ' + (LK.busy ? 'disabled ' : '') + 'onclick="as1783.link(\'\')">Un-link</button><button class="btn ghost sm" onclick="as1783.change()">Change</button></div>'
+      + (st && st.access ? '<div class="as-row" style="align-items:center"><span class="as-m" style="margin:0">Her portal language</span><button class="btn sm ' + (st.locale === 'en-ph' ? 'ghost' : 'teal') + '" onclick="as1783.loc(\'' + cur + '\',\'zh\')">中文 + English</button><button class="btn sm ' + (st.locale === 'en-ph' ? 'teal' : 'ghost') + '" onclick="as1783.loc(\'' + cur + '\',\'en-ph\')">English (Philippines)</button>' + (st.ph ? '<span class="as-m" style="margin:0">Philippine market: always English</span>' : '') + '</div>' : '');
+    if(!cur || LK.q != null){ const sug = lkSug();
+      h += '<div class="as-row"><input class="as-in" id="as-lkq" style="flex:1;min-width:180px" placeholder="Type her name or ST code" value="' + E(LK.q || '') + '" oninput="as1783.q(this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();as1783.link(this.value)}"><button class="btn teal sm" ' + (LK.busy ? 'disabled ' : '') + 'onclick="as1783.link(document.getElementById(\'as-lkq\').value)">Link</button>' + (cur ? '<button class="btn ghost sm" onclick="as1783.change(1)">Cancel</button>' : '') + '</div>'
+        + '<div id="as-lks">' + (sug.length ? '<div class="as-m" style="margin-top:6px">' + (LK.q ? 'Matches' : 'Students with her name') + ' · tap to link</div><div class="as-row" style="margin-top:4px">' + sug.map(s => '<button class="btn ghost sm" ' + (LK.busy ? 'disabled ' : '') + 'onclick="as1783.link(\'' + s.code + '\')">' + E(s.code) + (s.name ? ' · ' + E(s.name) : '') + (s.cn ? ' ' + E(s.cn) : '') + '</button>').join('') + '</div>' : (LK.q ? '<div class="as-m" style="margin-top:6px">No student matches · type the full ST code (e.g. ST-2026-001) and tap Link</div>' : '')) + '</div>'; }
+    if(LK.err) h += '<div class="as-m" style="color:#B42318;margin-top:6px">' + E(LK.err) + '</div>';
+    return h; }
+  function lkRefresh(keepFocus){ const d = document.getElementById('as-lk'); if(!d) return; const f = document.activeElement && document.activeElement.id === 'as-lkq', pos = f ? document.activeElement.selectionStart : 0;
+    d.innerHTML = lkHtml(); if(f || keepFocus){ const i = document.getElementById('as-lkq'); if(i){ i.focus(); try{ i.setSelectionRange(pos || i.value.length, pos || i.value.length); }catch(e){} } } }
+  async function lkLink(v){ const a = S.a; if(!a || LK.busy) return; v = String(v || '').trim(); let code = '';
+    if(v){ code = lkCode(v); if(!code){ const m = lkSug(); if(m.length === 1) code = m[0].code; } if(!code){ LK.err = 'Pick a student from the list, or type the full ST code (e.g. ST-2026-001).'; lkRefresh(1); return; } }
+    LK.busy = 1; LK.err = ''; lkRefresh(); status('Saving…'); await flush();
+    try{ const r = await call('save', { id: a.id, patch: { student_code: code } }); if(!r || !r.ok) throw new Error(r && r.msg || 'Not saved');
+      if(S.a && S.a.id === r.a.id){ S.a.student_code = r.a.student_code || null; merge(r.a); } LK.q = null; const L = (S.list || []).find(x => x.id === a.id); if(L) L.student_code = r.a.student_code || null;
+      status('Saved · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })); toast(code ? 'Linked to ' + code + ' · shows in her student portal' : 'Un-linked · no longer in a student portal'); }
+    catch(e){ LK.err = String(e.message || e) + ' · try again'; status('Not saved'); }
+    LK.busy = 0; lkRefresh(); }
+  window.as1783 = { q: v => { LK.q = v; LK.err = ''; const s = document.getElementById('as-lks'); if(s){ const t = document.createElement('div'); t.innerHTML = lkHtml(); const n = t.querySelector('#as-lks'); s.innerHTML = n ? n.innerHTML : ''; } },
+    link: lkLink, change: off => { LK.q = off ? null : ''; LK.err = ''; lkRefresh(!off); }, refresh: () => lkRefresh(),
+    loc: (code, l) => { const A = window.__ps1350; if(A && A.setLoc) A.setLoc(code, l).then(() => lkRefresh()); } };
   window.as1778 = { ck, nm, edit, show, scrOpen, homeMsg, newForm, create, open, back, put, band, tab, path, share, unshare, essayOpen, essayClose, del, copy, msg, pic, tStart, tStop, typeEssay: v => { S.typeEssay = !!v; flush(); paint(); } };
   const _go = window.go; window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'assess'){ if(S.a) paint(); else { paintList(); loadList(); } } else if(S.a) flush(); }catch(e){} return r; };
   const w0 = () => { if(typeof D !== 'undefined' && D && D.mgr){ try{ buildNav(); }catch(e){} if(VIEW === 'assess') go('assess'); } else setTimeout(w0, 1500); }; setTimeout(w0, 1200);
