@@ -6764,7 +6764,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1593;
+const COE_V = 1594;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36726,7 +36726,8 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   const V = () => document.getElementById('v-assess');
   // ---------- list ----------
   async function loadList(){ try{ const r = await call('list'); if(r && r.ok){ S.list = r.list; if(VIEW === 'assess' && !S.a) paintList(); } }catch(e){} }
-  function chip(a){ return a.shared_at ? '<span class="as-k ok">Result sent</span>' : a.status === 'final' ? '<span class="as-k t">Final</span>' : '<span class="as-k w">In progress</span>'; }
+  function chip(a){ if(a.essay_submitted_at && a.wr_band == null) return '<span class="as-k t">Essay in \u00b7 score it</span>';   /* 1779 */
+    return a.shared_at ? '<span class="as-k ok">Result sent</span>' : a.status === 'final' ? '<span class="as-k t">Final</span>' : '<span class="as-k w">In progress</span>'; }
   function paintList(){ const L = S.list;
     V().innerHTML = '<div class="as-h"><h1>Walk-in assessment</h1><span class="grow"></span><button class="btn teal" onclick="as1778.newForm()">+ New walk-in</button></div>' +
       '<div class="as-m" style="margin:-4px 0 12px">IELTS-aligned diagnostic · Speaking (15 min, 3 parts) and Academic Writing Task 2 (40 min) · scored by the IELTS criteria · saved to the database as you go.</div>' +
@@ -36789,7 +36790,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     const w = a.essay_words || 0;
     return '<div class="as-row" style="margin:0 0 8px;align-items:center"><span class="as-k ' + (w >= 250 ? 'ok' : 'w') + '">' + w + ' words' + (w < 250 ? ' · under 250' : '') + '</span><span class="as-m">' + E(state) + '</span></div>' +
       (S.typeEssay ? '' : '<div class="as-ess">' + (a.essay ? E(a.essay) : '<span class="as-m">Her essay appears here as she types.</span>') + '</div>'); }
-  function guideHtml(){ const c = S.a.combined; return '<table class="as-tbl"><tr><th>IELTS band</th><th>General interpretation</th><th>Approx. CEFR</th></tr>' + GUIDE.map(g => '<tr class="' + (c != null && +c >= g[0] && +c <= g[1] ? 'on' : '') + '"><td>' + g[2] + '</td><td>' + E(g[3]) + '</td><td>' + E(g[4]) + '</td></tr>').join('') + '</table><div class="as-m" style="margin-top:6px">CEFR comparisons are approximate and are not exact conversions. IELTS band 4.0 can also overlap A2/B1 depending on the skill.</div>'; }
+  function guideHtml(){ const c = S.a.combined != null ? S.a.combined : S.a.sp_band != null ? S.a.sp_band : S.a.wr_band;   /* 1779 */ return '<table class="as-tbl"><tr><th>IELTS band</th><th>General interpretation</th><th>Approx. CEFR</th></tr>' + GUIDE.map(g => '<tr class="' + (c != null && +c >= g[0] && +c <= g[1] ? 'on' : '') + '"><td>' + g[2] + '</td><td>' + E(g[3]) + '</td><td>' + E(g[4]) + '</td></tr>').join('') + '</table><div class="as-m" style="margin-top:6px">CEFR comparisons are approximate and are not exact conversions. IELTS band 4.0 can also overlap A2/B1 depending on the skill.</div>'; }
   function shareHtml(){ const a = S.a, link = SITE + '?r=' + a.rkey;
     return a.shared_at ? '<div class="as-m"><b style="color:#1E6E4C">Result link is on.</b> She sees the latest scores and notes whenever she opens it.</div><div class="as-link">' + E(link) + '</div><div class="as-row"><button class="btn teal" onclick="as1778.copy(\'' + link + '\',\'Result link copied\')">Copy result link</button><button class="btn ghost" onclick="as1778.copy(as1778.msg(),\'Message copied\')">Copy message</button><button class="btn ghost" onclick="window.open(\'' + link + '\',\'_blank\')">Open</button><button class="btn ghost" onclick="as1778.unshare()">Turn link off</button></div>'
       : '<div class="as-m">When the scores and notes are ready, tap Share. She gets a page with the CupOfEnglish logo, her bands, what they mean and the recommended pathway.</div><div class="as-row"><button class="btn teal" onclick="as1778.share()"' + (a.sp_band == null && a.wr_band == null ? ' disabled title="Score at least one skill first"' : '') + '>Share result</button></div>'; }
@@ -36806,8 +36807,8 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     } else if(S.tab === 'write'){
       const wl = SITE + '?w=' + a.wkey;
       h += '<div class="as-card"><h2>Academic Writing · Task 2 <span class="as-m">(40 min · at least 250 words)</span></h2><div class="as-cue" style="white-space:pre-wrap">' + E(ESSAY) + '</div>' +
-        '<h3>Her writing link</h3><div class="as-m">Open it on her phone or a laptop. The 40 minutes start when she taps Start; it saves as she types and you see it below live.</div><div class="as-link">' + E(wl) + '</div>' +
-        '<div class="as-row"><button class="btn teal" onclick="as1778.copy(\'' + wl + '\',\'Writing link copied\')">Copy writing link</button><button class="btn ghost" onclick="window.open(\'' + wl + '\',\'_blank\')">Open here</button>' +
+        '<h3>Her writing link</h3><div class="as-m">Here or at home: the link works any time. The 40 minutes start only when she taps Start; it saves as she types, is sent by itself at 40:00, and you see it below live.</div><div class="as-link">' + E(wl) + '</div>' +
+        '<div class="as-row"><button class="btn teal" onclick="as1778.copy(as1778.homeMsg(),\'Message copied \u00b7 send it to her\')">Copy message for home</button><button class="btn ghost" onclick="as1778.copy(\'' + wl + '\',\'Writing link copied\')">Copy writing link</button><button class="btn ghost" onclick="window.open(\'' + wl + '\',\'_blank\')">Open here</button>' +
         (a.essay_submitted_at ? '<button class="btn ghost" onclick="as1778.essayOpen()">Let her write again</button>' : a.essay_started_at ? '<button class="btn ghost" onclick="as1778.essayClose()">End writing now</button>' : '') + '</div></div>' +
         '<div class="as-card"><h2>Her essay</h2><div id="as-ess">' + essayLive() + '</div>' +
         (S.typeEssay ? '<textarea class="as-ta" data-f="essay" rows="14" placeholder="Type or paste her essay here" oninput="as1778.put(\'essay\',this.value)">' + E(a.essay || '') + '</textarea><div class="as-row"><button class="btn ghost sm" onclick="as1778.typeEssay(0)">Done typing</button></div>'
@@ -36835,7 +36836,8 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   async function del(){ if(!window.confirm || !confirm('Remove ' + S.a.name + '’s assessment? Her links stop working.')) return; if(await act('del')){ S.list = (S.list || []).filter(x => x.id !== S.a.id); S.a = null; paintList(); toast('Removed'); } }
   function copy(t, msg){ const ok = () => toast(msg || 'Copied'); const fb = () => { const x = document.createElement('textarea'); x.value = t; document.body.appendChild(x); x.select(); try{ document.execCommand('copy'); ok(); }catch(e){} x.remove(); };
     if(navigator.clipboard) navigator.clipboard.writeText(t).then(ok, fb); else fb(); }
-  function msg(){ const a = S.a, f = String(a.name || '').split(' ')[0]; return 'Hi ' + f + ', thank you for taking the CupOfEnglish English Proficiency Assessment today.\n\nSpeaking: ' + b1(a.sp_band) + (a.cefr_sp ? ' (' + a.cefr_sp + ')' : '') + '\nAcademic Writing Task 2: ' + b1(a.wr_band) + (a.cefr_wr ? ' (' + a.cefr_wr + ')' : '') + (a.pathway ? '\nRecommended pathway: ' + a.pathway : '') + '\n\nYour full result, with what each band means: ' + SITE + '?r=' + a.rkey; }
+  function homeMsg(){ const a = S.a, f = String(a.name || '').split(' ')[0]; return 'Hi ' + f + ', here is your CupOfEnglish Academic Writing task (IELTS Task 2):\n' + SITE + '?w=' + a.wkey + '\n\nPlease do it when you have 40 quiet minutes. The time starts only when you tap Start, your writing is saved as you type, and it is sent to us automatically when the 40 minutes end (or when you tap Submit). Write at least 250 words. Please type your own answer; pasting and spell-check are off, as in the IELTS test.\n\nThank you!'; }   /* 1779 */
+  function msg(){ const a = S.a, f = String(a.name || '').split(' ')[0]; return 'Hi ' + f + ', thank you for taking the CupOfEnglish English Proficiency Assessment.\n\nSpeaking: ' + (a.sp_band == null ? 'pending' : b1(a.sp_band) + (a.cefr_sp ? ' (' + a.cefr_sp + ')' : '')) + '\nAcademic Writing Task 2: ' + (a.wr_band == null ? 'pending' : b1(a.wr_band) + (a.cefr_wr ? ' (' + a.cefr_wr + ')' : '')) + (a.pathway ? '\nRecommended pathway: ' + a.pathway : '') + '\n\nYour full result, with what each band means: ' + SITE + '?r=' + a.rkey; }
   // ---------- picture (same design as the calendar / payslip pictures) ----------
   const img = u => new Promise(ok => { if(!u) return ok(null); const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = u; });
   async function fonts(){ try{ await Promise.race([Promise.all([['COE Card Fredoka', 'fonts/card-fredoka-one.woff2', '400'], ['COE Card Inter', 'fonts/card-inter-var.woff2', '100 900']].map(x => { const f = new FontFace(x[0], 'url(' + x[1] + ') format("woff2")', { weight: x[2] }); document.fonts.add(f); return f.load(); })), new Promise(z => setTimeout(z, 5000))]); }catch(e){} }
@@ -36854,14 +36856,14 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     c.fillStyle = '#4A4766'; c.font = '400 28px ' + F; c.fillText([new Date(a.assess_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), a.assessor ? 'Assessor: ' + a.assessor : ''].filter(Boolean).join('  ·  '), PAD, 372);
     let y = 420; const tw = (WD - PAD * 2 - 24) / 2;
     [['Speaking', a.sp_band, a.cefr_sp, '#EEF7F7'], ['Academic Writing · Task 2', a.wr_band, a.cefr_wr, '#F2F0FA']].forEach((t, i) => { const x = PAD + i * (tw + 24); c.fillStyle = t[3]; rr(x, y, tw, 220, 28); c.fill();
-      c.fillStyle = MUTE; c.font = '600 24px ' + F; c.fillText(t[0], x + 32, y + 50); c.fillStyle = NAVY; c.font = '400 104px ' + BR; c.fillText(b1(t[1]), x + 30, y + 160);
+      c.fillStyle = MUTE; c.font = '600 24px ' + F; c.fillText(t[0], x + 32, y + 50); c.fillStyle = NAVY; if(t[1] == null){ c.font = '400 56px ' + BR; c.fillText('Pending', x + 30, y + 140); } else { c.font = '400 104px ' + BR; c.fillText(b1(t[1]), x + 30, y + 160); }
       if(t[2]){ c.fillStyle = TEAL; c.font = '700 26px ' + F; c.fillText('CEFR ' + t[2], x + 32, y + 198); } });
     y += 250;
     if(a.combined != null){ c.fillStyle = NAVY; rr(PAD, y, WD - PAD * 2, 92, 24); c.fill(); c.fillStyle = '#fff'; c.font = '600 28px ' + F; c.textBaseline = 'middle'; c.fillText('Speaking + Writing estimate', PAD + 32, y + 46); c.textAlign = 'right'; c.font = '400 44px ' + BR; c.fillText(b1(a.combined) + (a.cefr ? '  ·  ' + a.cefr : ''), WD - PAD - 32, y + 48); c.textAlign = 'left'; c.textBaseline = 'alphabetic'; y += 124; }
     const bars = (title, C, v, top) => { c.fillStyle = NAVY; c.font = '700 28px ' + F; c.fillText(title, PAD, top); top += 22;
       C.forEach(([k, t]) => { c.fillStyle = '#4A4766'; c.font = '400 24px ' + F; c.fillText(t, PAD, top + 32); const bx = PAD + 470, bw = WD - PAD - bx - 70; c.fillStyle = '#EEEDF3'; rr(bx, top + 12, bw, 24, 12); c.fill();
         if(v[k] != null){ c.fillStyle = TEAL; rr(bx, top + 12, Math.max(24, bw * v[k] / 9), 24, 12); c.fill(); } c.fillStyle = NAVY; c.font = '700 26px ' + F; c.textAlign = 'right'; c.fillText(v[k] != null ? String(v[k]) : '—', WD - PAD, top + 34); c.textAlign = 'left'; top += 52; }); return top + 18; };
-    y = bars('Speaking criteria', SP, a.sp || {}, y + 20); y = bars('Writing criteria', WR, a.wr || {}, y + 20);
+    if(a.sp_band != null) y = bars('Speaking criteria', SP, a.sp || {}, y + 20); if(a.wr_band != null) y = bars('Writing criteria', WR, a.wr || {}, y + 20);   /* 1779 */
     const block = (label, text, bg) => { if(!String(text || '').trim()) return; c.font = '400 26px ' + F; const lines = []; const test = document.createElement('canvas').getContext('2d'); test.font = c.font;
       let hh = 0; String(text).split(/\n/).forEach(par => { let line = ''; par.split(' ').forEach(wd => { const tt = line ? line + ' ' + wd : wd; if(test.measureText(tt).width > WD - PAD * 2 - 64 && line){ hh++; line = wd; } else line = tt; }); hh++; });
       const h = 76 + hh * 38; c.fillStyle = bg; rr(PAD, y, WD - PAD * 2, h, 24); c.fill(); c.fillStyle = MUTE; c.font = '700 22px ' + F; c.fillText(label.toUpperCase(), PAD + 32, y + 44); c.fillStyle = NAVY; c.font = '400 26px ' + F; wrap(text, PAD + 32, y + 88, WD - PAD * 2 - 64, 38); y += h + 20; };
@@ -36880,8 +36882,14 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   const URL_ = window.URL;
   // ---------- live: the essay and the other person's changes come in every few seconds ----------
   async function poll(){ if(VIEW !== 'assess' || !S.a || document.hidden || S.busy || Object.keys(S.pend).length) return; try{ const r = await call('get', { id: S.a.id }); if(r && r.ok && S.a && r.a.id === S.a.id && !Object.keys(S.pend).length){ const ch = r.a.updated_at !== S.a.updated_at; merge(r.a); if(ch && S.tab === 'result'){ const p = document.querySelectorAll('#v-assess .as-path button'); p.forEach(b => b.classList.toggle('on', b.textContent === S.a.pathway)); } } }catch(e){} }
+  /* 1779 · Management Home: essays sent in (e.g. from home) and not scored yet */
+  let hAt = 0; const hLoad = () => { if(typeof D === 'undefined' || !D || !D.mgr || typeof TOKEN === 'undefined' || !TOKEN || Date.now() - hAt < 120000) return; hAt = Date.now(); loadList().then(() => { try{ if(VIEW === 'home') renderHome(); hmBadge(); }catch(e){} }); };
+  const q0 = window.hmQueue; if(typeof q0 === 'function') window.hmQueue = function(){ const o = q0.apply(this, arguments); try{ const w = (S.list || []).filter(a => a.essay_submitted_at && a.wr_band == null);
+    if(o && w.length){ o.Q.push({ n: w.length, tone: '', t: 'Walk-in essays to score', s: w.slice(0, 3).map(a => a.name).join(' \u00b7 ') + ' \u00b7 open Walk-in assessment \u203a Writing', go: "go('assess')" }); } }catch(e){} return o; };
+  const l0 = window.hmLoad; if(typeof l0 === 'function') window.hmLoad = function(){ hLoad(); return l0.apply(this, arguments); };
+  setTimeout(hLoad, 5000); setInterval(() => { if(!document.hidden) hLoad(); }, 300000);
   setInterval(poll, 4000); setInterval(() => { if(VIEW === 'assess' && S.a && S.tab === 'write'){ const e = document.getElementById('as-ess'); if(e && S.a.essay_started_at && !S.a.essay_submitted_at) e.innerHTML = essayLive(); } }, 1000);
-  window.as1778 = { newForm, create, open, back, put, band, tab, path, share, unshare, essayOpen, essayClose, del, copy, msg, pic, tStart, tStop, typeEssay: v => { S.typeEssay = !!v; flush(); paint(); } };
+  window.as1778 = { homeMsg, newForm, create, open, back, put, band, tab, path, share, unshare, essayOpen, essayClose, del, copy, msg, pic, tStart, tStop, typeEssay: v => { S.typeEssay = !!v; flush(); paint(); } };
   const _go = window.go; window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'assess'){ if(S.a) paint(); else { paintList(); loadList(); } } else if(S.a) flush(); }catch(e){} return r; };
   const w0 = () => { if(typeof D !== 'undefined' && D && D.mgr){ try{ buildNav(); }catch(e){} if(VIEW === 'assess') go('assess'); } else setTimeout(w0, 1500); }; setTimeout(w0, 1200);
 })();
