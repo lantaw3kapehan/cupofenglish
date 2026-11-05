@@ -4240,9 +4240,10 @@ openSheet(head + `<label>Student code</label><input id="fxV" class="in-t" list="
 <p class="small mute" style="margin-top:8px">Writes the code into TR-DATA › Student code for this trial. The code must already be in DATABASE · not there yet? Use Add student.</p>`);
 if(!DB) loadDb(); }
 else if(mode === 'cn') openSheet(head + `<label>Chinese name</label><input id="fxV" class="in-t" placeholder="e.g. 聂笑笑"><button class="btn block" style="margin-top:14px" onclick="fixGo(${i},'cn')">Save to DATABASE</button><p class="small mute" style="margin-top:8px">Fills DATABASE › Chinese name (col B) on this student's rows.</p>`);
-else if(mode === 'birth') openSheet(head + `<label>Birthdate</label><input id="fxV" class="in-t" type="date"><button class="btn block" style="margin-top:14px" onclick="fixGo(${i},'birth')">Save to DATABASE</button><p class="small mute" style="margin-top:8px">Fills DATABASE › Birthdate (col F) · the age and learner group follow from it.</p>`);
+else if(mode === 'birth') openSheet(head + `<label>Birthdate</label><input id="fxV" class="in-t" type="date"><label class="small" style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" onchange="bd1771('fxV', this.checked)"> Only month and year (parent did not give the day)</label><button class="btn block" style="margin-top:14px" onclick="fixGo(${i},'birth')">Save to DATABASE</button><p class="small mute" style="margin-top:8px">Fills DATABASE › Birthdate (col F) · the age and learner group follow from it.</p>`);
 else if(mode === 'group') openSheet(head + `<label>Learner group</label><div class="rnl" style="grid-template-columns:1fr">${['Young learner (≤10)','Teen (11–17)','Adult (18+)'].map(g => `<button type="button" class="rno" onclick="fixDo(${i},'group','${g}')"><b>${g}</b></button>`).join('')}</div><p class="small mute" style="margin-top:8px">Sets TR-DATA › Learner group for this trial (use it when the birthdate is not known).</p>`);
 setTimeout(() => { const v = $('fxV'); if(v) v.focus(); }, 250); }
+function bd1771(id, monthOnly){ const el = $(id); if(!el) return; const v = String(el.value || ''); el.type = monthOnly ? 'month' : 'date'; el.value = monthOnly ? v.slice(0, 7) : (/^\d{4}-\d{2}$/.test(v) ? '' : v); }   /* 1771 */
 function fixGo(i, mode){ const v = (($('fxV')||{}).value || '').trim(); if(!v) return toast(mode === 'birth' ? 'Pick the birthdate' : 'Type it first');
 if(mode === 'code' && !/^ST-\d{4}-\d{3}$/i.test(v)) return toast('Type a code like ST-2025-043');
 fixDo(i, mode, mode === 'code' ? v.toUpperCase() : v); }
@@ -6047,7 +6048,7 @@ openSheet(`<h1>${row?'Edit '+esc(v.en||v.cn||code):'New student'}</h1>
 <div class="mute small">${row?esc(code)+' · saves into this row of DATABASE':code?'New row for '+esc(code)+' at the top of DATABASE (e.g. trial → enrolled)':'Student code <b>'+esc(DBL.nextCode||'')+'</b> · the next number after the last one in DATABASE'}</div>
 <h2>Student</h2>
 ${two(`<label>English name</label>${inp('sEn',v.en)}`, `<label>Chinese name</label>${inp('sCn',v.cn)}`)}
-${two(`<label>Birthdate</label>${inp('sBirth',v.birth,'date')}`, `<label>Gender</label>${sel('sGender',(L.gender||[]).map(x=>x.trim()),(v.gender||'').trim())}`)}
+${two(`<label>Birthdate</label>${/^\d{4}-\d{2}$/.test(String(v.birth||'')) ? inp('sBirth',v.birth,'month') : inp('sBirth',v.birth,'date')}<label class="small" style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" ${/^\d{4}-\d{2}$/.test(String(v.birth||'')) ? 'checked' : ''} onchange="bd1771('sBirth', this.checked)"> Only month and year</label>`, `<label>Gender</label>${sel('sGender',(L.gender||[]).map(x=>x.trim()),(v.gender||'').trim())}`)}
 ${two(`<label>School grade</label>${sel('sGrade',L.grade,v.grade)}`, `<label>City</label>${inp('sCity',v.city,'text','Dongguan')}`)}
 <label>Source <span class="mute small">· partner, referring student or CupOfEnglish</span></label><input id="sSrc" class="in-t" list="sSrcL" value="${esc(v.source||'')}" placeholder="Pick or type · e.g. Jinan – Dr. Rose · ST-2024-068 – Dudu · COE – Misty" autocomplete="off"><datalist id="sSrcL">${(() => { const S = {}; ((typeof DB !== 'undefined' && DB && DB.rows) || []).forEach(r => { const x = String(r[22] || '').trim(); if(x && !/^n\/?a$/i.test(x)) S[x] = (S[x] || 0) + 1; }); return Object.keys(S).sort((a, b) => S[b] - S[a]).slice(0, 80).map(x => '<option value="' + esc(x) + '">').join(''); })()}</datalist>
 <h2>Trial class</h2>
@@ -6762,7 +6763,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1585;
+const COE_V = 1586;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
