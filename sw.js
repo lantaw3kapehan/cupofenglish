@@ -7,7 +7,7 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || u.origin !== location.origin) return;   // everything else goes live
   if (/\/app\.html$/.test(u.pathname)) return;                              // the screens: always fetched fresh (the frame keeps its own copy)
   if (/\/verify\//.test(u.pathname)) return;   // 21 Oct · the public verify page is never cached as the app frame
-  if (/\/(partner|student)\//.test(u.pathname)) return;  // 27 Oct · partner and parent pages are separate, never cached as the app frame
+  if (/\/(partner|student|assess)\//.test(u.pathname)) return;  // 27 Oct · partner and parent pages are separate, never cached as the app frame (5 Nov: + assess)
   if (/\/portal-update\.js$/.test(u.pathname)) return;  // 1354 · the portals' shared updater is always fetched live
   const page = e.request.mode === 'navigate' || /\/(index\.html)?$/.test(u.pathname);
   e.respondWith(caches.open(V).then(c => {
