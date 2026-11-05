@@ -6764,7 +6764,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1600;
+const COE_V = 1601;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -6868,8 +6868,8 @@ function shListHtml(q){ const A = shAll(); if(!A) return '<div class="empty">Get
   return h; }
 function shHtml(code){ const S = shGroup(code); if(!S) return ''; const { C, G } = S, o = G.owner, n1 = x => Math.round(x * 10) / 10, td = x => (C.today != null && +x[C.today]) || 0, up = s => String(s || '').trim().toUpperCase();
 const others = G.members.filter(x => x !== o).reduce((a, x) => a + td(x), 0) + G.unlinked.reduce((a, x) => a + ((+x[C.finished] || 0) - td(x)), 0);
-const byC = {}; G.members.forEach(x => { const k = up(x[C.code]), m = byC[k] || (byC[k] = { code: String(x[C.code]), name: String(x[C.name] || ''), cn: String(x[C.cn] || '') || cxCnOf(x[C.code]), finished: 0, teachers: [], months: (AT.months || []).map(() => 0) });
-m.finished = n1(m.finished + (+x[C.finished] || 0)); const t = String(x[C.teacher] || ''); if(t && m.teachers.indexOf(t) < 0) m.teachers.push(t); (x[C.months] || []).forEach((v, i) => { m.months[i] = n1((m.months[i] || 0) + (+v || 0)); }); });
+const byC = {}; G.members.forEach(x => { const k = up(x[C.code]), m = byC[k] || (byC[k] = { code: String(x[C.code]), name: String(x[C.name] || ''), cn: String(x[C.cn] || '') || cxCnOf(x[C.code]), finished: 0, sub: 0, teachers: [], months: (AT.months || []).map(() => 0) });
+m.finished = n1(m.finished + (+x[C.finished] || 0)); m.sub = n1(m.sub + ((C.sub != null && +x[C.sub]) || 0)); const t = String(x[C.teacher] || ''); if(t && m.teachers.indexOf(t) < 0) m.teachers.push(t); (x[C.months] || []).forEach((v, i) => { m.months[i] = n1((m.months[i] || 0) + (+v || 0)); }); });
 const kids = Object.values(byC), enrolled = +o[C.enrolled] || 0, carry = +o[C.carry] || 0, trf = C.transfer != null ? +o[C.transfer] || 0 : 0, inc = C.incentive != null ? (m => Object.values(m).reduce((a, v) => a + v, 0))([o].concat(G.members).reduce((m, x) => { const k = up(x[C.code]); m[k] = Math.max(m[k] || 0, +x[C.incentive] || 0); return m; }, {})) : 0, /* 1730: every child's free lessons */ tot = n1(enrolled + carry + trf + inc), done = n1(kids.reduce((a, k) => a + k.finished, 0)), left = shLeft(G, C);   /* 14 Oct: total includes carried / transferred / free */
 const totX = (carry || trf || inc) ? ' (' + enrolled + (carry ? ' + ' + carry + ' carried' : '') + (trf ? ' ' + (trf > 0 ? '+ ' : '− ') + Math.abs(trf) + ' transferred' : '') + (inc ? ' + ' + inc + ' free' : '') + ')' : '';
 const pct = tot ? Math.min(100, Math.round(done / tot * 100)) : 0, T = [...new Set(kids.flatMap(k => k.teachers))];
@@ -6895,7 +6895,15 @@ return `<table class="sd" data-w="760" style="width:100%;border-collapse:collaps
 <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:13px">${kids.map(k => `<tr style="border-bottom:1px solid #EEF0F4"><td style="padding:6px 0"><b>${esc(k.name)}</b> ${esc(k.cn)}</td><td>${esc(k.code)}</td><td>${esc(k.teachers.join(', '))}</td><td style="text-align:right"><b>${k.finished}</b> lesson${k.finished === 1 ? '' : 's'} · ${k.finished} 课时</td></tr>`).join('')}</table>
 <div style="border-top:1px solid #3FA7A8;margin-top:12px;padding-top:8px;${H};font-size:13px">LESSON COMPLETION HISTORY <span style="font-weight:400">课时完成记录</span></div>
 <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:13px"><tr style="${L}"><td style="padding:4px 0">Month 月份</td>${kids.map(k => `<td style="text-align:center">${esc(k.name)}</td>`).join('')}<td style="text-align:right">Total 合计</td></tr>
-${rows.map(x => { const tot = n1(kids.reduce((a, k) => a + (k.months[x.i] || 0), 0)); return `<tr style="border-top:1px solid #F1F2F6"><td style="padding:4px 0">${ML[x.d.getMonth()]} ${MZ[x.d.getMonth()]}月 ${x.d.getFullYear()}</td>${kids.map(k => `<td style="text-align:center">${k.months[x.i] || 0}</td>`).join('')}<td style="text-align:right;font-weight:700">${tot}</td></tr>`; }).join('')}</table>
+${(() => { /* 1786: months never below 0 · substitute lessons and earlier records as their own rows · the total equals Lessons Completed */
+  const mv = (k, i) => Math.max(0, +k.months[i] || 0), sg = v => v < 0 ? '−' + (-v) : String(v);
+  let out = rows.map(x => { const tot = n1(kids.reduce((a, k) => a + mv(k, x.i), 0)); return `<tr style="border-top:1px solid #F1F2F6"><td style="padding:4px 0">${ML[x.d.getMonth()]} ${MZ[x.d.getMonth()]}月 ${x.d.getFullYear()}</td>${kids.map(k => `<td style="text-align:center">${mv(k, x.i)}</td>`).join('')}<td style="text-align:right;font-weight:700">${tot}</td></tr>`; }).join('');
+  const sb = kids.map(k => n1(+k.sub || 0)), ea = kids.map((k, j) => n1(k.finished - rows.reduce((a, x) => a + mv(k, x.i), 0) - sb[j]));
+  const xr = (en, zh, vals) => `<tr style="border-top:1px dashed #BFDCDC"><td style="padding:4px 0">${en}<div style="font-size:11px">${zh}</div></td>${vals.map(v => `<td style="text-align:center">${sg(v)}</td>`).join('')}<td style="text-align:right;font-weight:700">${sg(n1(vals.reduce((a, v) => a + v, 0)))}</td></tr>`;
+  if(sb.some(v => v)) out += xr('Substitute lessons', '代课课时', sb);
+  if(ea.some(v => Math.abs(v) >= 0.05)){ const neg = ea.every(v => v <= 0), pos = ea.every(v => v >= 0);
+    out += xr(neg ? 'Before package start (previous package)' : pos ? 'Earlier records' : 'Earlier records / before package start', neg ? '课程包开始前（计入上一课程包）' : pos ? '早期记录' : '早期记录／课程包开始前', ea); }
+  return out + `<tr style="border-top:1px solid #3FA7A8"><td style="padding:6px 0;font-weight:700">Total 合计</td>${kids.map(k => `<td style="text-align:center;font-weight:700">${k.finished}</td>`).join('')}<td style="text-align:right;font-weight:700">${done}</td></tr>`; })()}</table>
 <div style="margin-top:14px;font-size:13px;line-height:1.5">${esc(names)} have completed <b>${done}</b> of <b>${tot}</b> lessons in their shared package, with <b>${left}</b> lessons remaining.<br>${esc(cns)} 共享课程包已完成 ${done} / ${tot} 课时，剩余 ${left} 课时。</div>
 <div style="margin-top:10px;font-size:12px;line-height:1.5;color:#4A4766">${st ? `Package Starts: ${fD(st)} · 课程包开始：${zD(st)}<br>` : ''}${(() => { try{ const p = window.pkPaid ? pkPaid(o[C.code], o[C.teacher], o[C.start]) : null; if(!p || !p.paid) return ''; const pd = new Date(p.paid + 'T00:00:00'); return `Paid: ${fD(pd)} · 付款日期：${zD(pd)}<br>`; }catch(e){ return ''; } })()}${dl ? `Package Ends: ${fD(dl)} · 课程包结束：${zD(dl)}<br>` : ''}${vnLine(dl, left)}Renewals welcome anytime. 欢迎随时续费。</div>
 <div style="margin-top:8px;font-size:11px;color:#6F6B85">Records current as of the date above. 记录更新至上述日期。</div></td></tr></table>`; }
@@ -7312,7 +7320,10 @@ return `<table class="sd" data-w="760" style="width:100%;border-collapse:collaps
 <div style="display:flex;align-items:center;gap:10px;margin:8px 0 12px"><div style="flex:1;height:12px;border-radius:6px;background:#E6F4F4;overflow:hidden"><div style="width:${pct}%;height:100%;background:#3FA7A8"></div></div><div style="font-size:12px;color:#E0533D;font-weight:700">${over ? 'Over by ' + over + ' · 超出 ' + over + ' 课时' : 'Remaining · 剩余 ' + (100 - pct) + '%'}</div></div>
 <div style="border-top:1px solid #3FA7A8;padding-top:8px;${H};font-size:13px">LESSON COMPLETION HISTORY <span style="font-weight:400">课时完成记录</span></div>
 <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:13px"><tr style="${L}"><td style="padding:4px 0;width:34%">Month 月份</td><td style="width:10%">Completed 已完成课时</td><td></td></tr>
-${hist.map(x => { const v = months[x.i] || 0; return `<tr><td style="padding:4px 0">${ML[x.d.getMonth()]} ${MZ[x.d.getMonth()]}月 ${x.d.getFullYear()}</td><td style="text-align:right;padding-right:10px">${v}</td><td><div style="height:8px;border-radius:4px;background:#E6F4F4"><div style="width:${Math.round(v / mx * 100)}%;height:100%;border-radius:4px;background:#3FA7A8"></div></div></td></tr>`; }).join('')}${(() => { const sb = C.sub != null ? n1(rows0.reduce((a, x) => a + (+x[C.sub] || 0), 0)) : 0; return `<tr style="border-top:1px dashed #BFDCDC"><td style="padding:6px 0 4px">Other-teacher lessons (substitute classes)<div style="font-size:11px">其他教师授课课时（代课）</div></td><td style="text-align:right;padding-right:10px">${sb}</td><td><div style="height:8px;border-radius:4px;background:#E6F4F4"><div style="width:${Math.round(Math.min(sb, mx) / mx * 100)}%;height:100%;border-radius:4px;background:#8FCFCF"></div></div></td></tr>`; })()}</table>
+${hist.map(x => { const v = Math.max(0, months[x.i] || 0);   /* 1786: never below 0 */ return `<tr><td style="padding:4px 0">${ML[x.d.getMonth()]} ${MZ[x.d.getMonth()]}月 ${x.d.getFullYear()}</td><td style="text-align:right;padding-right:10px">${v}</td><td><div style="height:8px;border-radius:4px;background:#E6F4F4"><div style="width:${Math.round(v / mx * 100)}%;height:100%;border-radius:4px;background:#3FA7A8"></div></div></td></tr>`; }).join('')}${(() => { const sb = C.sub != null ? n1(rows0.reduce((a, x) => a + (+x[C.sub] || 0), 0)) : 0; return `<tr style="border-top:1px dashed #BFDCDC"><td style="padding:6px 0 4px">Other-teacher lessons (substitute classes)<div style="font-size:11px">其他教师授课课时（代课）</div></td><td style="text-align:right;padding-right:10px">${sb}</td><td><div style="height:8px;border-radius:4px;background:#E6F4F4"><div style="width:${Math.round(Math.min(sb, mx) / mx * 100)}%;height:100%;border-radius:4px;background:#8FCFCF"></div></div></td></tr>`; })()}${(() => { /* 1786: earlier records as their own row · the total equals Lessons Completed */
+  const sb = C.sub != null ? n1(rows0.reduce((a, x) => a + (+x[C.sub] || 0), 0)) : 0, shown = n1(hist.reduce((a, x) => a + Math.max(0, months[x.i] || 0), 0)), ea = n1(done - shown - sb), sg = v => v < 0 ? '−' + (-v) : String(v);
+  const er = Math.abs(ea) >= 0.05 ? `<tr style="border-top:1px dashed #BFDCDC"><td style="padding:6px 0 4px">${ea < 0 ? 'Before package start (previous package)' : 'Earlier records'}<div style="font-size:11px">${ea < 0 ? '课程包开始前（计入上一课程包）' : '早期记录'}</div></td><td style="text-align:right;padding-right:10px">${sg(ea)}</td><td></td></tr>` : '';
+  return er + `<tr style="border-top:1px solid #3FA7A8"><td style="padding:6px 0;font-weight:700">Total 合计</td><td style="text-align:right;padding-right:10px;font-weight:700">${done}</td><td></td></tr>`; })()}</table>
 <div style="margin-top:14px;font-size:13px;line-height:1.5">${over ? `${esc(name)} has completed <b>${done}</b> lessons on a <b>${total}</b>-lesson package: <b>${over}</b> lesson${over === 1 ? '' : 's'} over. Please renew to continue.<br>${esc(cn || name)} 课程包共 ${total} 课时，已上 ${done} 课时，超出 ${over} 课时，请续费以继续上课。` : `${esc(name)} has completed <b>${done}</b> of <b>${total}</b> lessons in the current package, with <b>${left}</b> lessons remaining.<br>${esc(cn || name)} 当前课程包已完成 ${done} / ${total} 课时，剩余 ${left} 课时。`}</div>
 <div style="margin-top:10px;font-size:12px;line-height:1.5;color:#4A4766">${st ? `Package Starts: ${fD(st)} · 课程包开始：${zD(st)}<br>` : ''}${(() => { try{ const p = window.pkPaid ? pkPaid(o[C.code], o[C.teacher], o[C.start]) : null; if(!p || !p.paid) return ''; const pd = new Date(p.paid + 'T00:00:00'); return `Paid: ${fD(pd)} · 付款日期：${zD(pd)}<br>`; }catch(e){ return ''; } })()}${dl ? `Package Ends: ${fD(dl)} · 课程包结束：${zD(dl)}<br>` : ''}${vnLine(dl, left)}Renewals welcome anytime. 欢迎随时续费。</div>
 <div style="margin-top:8px;font-size:11px;color:#6F6B85">Records current as of the date above. 记录更新至上述日期。</div></td></tr></table>`; }
@@ -37035,6 +37046,66 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   w.__1785 = 1; window.api = w;
   const an = window.apiNow; if(typeof an === 'function') window.apiNow = apiNow = function(fn){ const a = Array.prototype.slice.call(arguments, 1);
     if(a[0] && body(fn, a)) return w.apply(this, arguments); return an.apply(this, arguments); };
+})();
+</script>
+<script>
+/* 1786 · Lessons to confirm (Misty 5 Nov: "have a row for Celine to confirm … before we send to parents and they confirm").
+   Lessons taught before a package's recorded purchase date that the package does not count. The database finds them (coe_pkg_checks,
+   every 10 min) and edge coe-pkgcheck lists them; management decides on To do: "Count in this package" (lessons left go down, shown
+   before → after, asked "Confirm?") or "Older balance · keep as is" (no change). Both are logged in coe_pkg_log with who and when.
+   While a check is open, the student's Lesson summary / Shared lesson summary shows an amber note above the picture (not in the picture). */
+(function(){
+  if(window.__1786) return; window.__1786 = 1;
+  const URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-pkgcheck';
+  let L = null, at = 0, busy = null;
+  const n1 = x => Math.round(x * 10) / 10, up = s => String(s || '').trim().toUpperCase(), E = s => (typeof esc === 'function' ? esc(s) : String(s == null ? '' : s));
+  const isM = () => typeof D !== 'undefined' && D && D.mgr && typeof TOKEN !== 'undefined' && !!TOKEN;
+  const post = b => fetch(URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, b)) }).then(r => r.json());
+  function load(force){ if(!isM()) return Promise.resolve(L); if(!force && L && Date.now() - at < 60000) return Promise.resolve(L); if(busy) return busy;
+    busy = post({ op: 'list' }).then(r => { if(r && r.ok && Array.isArray(r.rows)){ L = r.rows; at = Date.now(); } return L; }).catch(() => L).finally(() => { busy = null; }); return busy; }
+  const fD = s => { const d = new Date(String(s || '').slice(0, 10) + 'T00:00:00'); return isNaN(d) ? String(s || '') : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+  const codes = x => [x.code, x.pkg, x.owner && x.owner.code].concat((x.kids || []).map(k => k.code)).filter(Boolean).map(up);
+  const forCode = code => (L || []).filter(x => codes(x).includes(up(code)));
+  const lft = v => v == null || v === '' ? '—' : n1(+v);
+  const who = x => (x.kids || []).length > 1 ? x.kids.map(k => k.name).join(' & ') : x.name;
+  function card(x){ const nc = (x.classes || []).length;
+    return `<div class="tdr now" data-pc="${x.id}"><div class="tdn"><b class="num">${n1(+x.units)}</b><span>lesson${+x.units === 1 ? '' : 's'}</span></div>
+<div class="grow" style="min-width:0"><div><a class="nm" onclick="openStudent('${E(x.code)}')">${E(who(x))}</a> <span class="mute small">${E(x.code)}${x.pkg && up(x.pkg) !== up(x.code) ? ' · package ' + E(x.pkg) : ''} · ${E(x.teacher || '')}</span></div>
+<div class="small" style="margin-top:2px">Purchase date <b>${E(fD(x.buy))}</b> · ${nc} class${nc === 1 ? '' : 'es'} before it, not counted in this package:</div>
+<div class="small" style="margin:4px 0 0 10px;line-height:1.6">${(x.classes || []).map(c => `${E(fD(c.d))} · ${E(c.t)} · ${n1(+c.v)}`).join('<br>')}</div>
+<div class="small" style="margin-top:4px">${+x.carry ? `Previous package: <b>${n1(+x.carry)}</b> carried over at the renewal` : 'No balance carried over from an earlier package'}${x.why ? ` <span class="mute">· ${E(x.why)}</span>` : ''}</div>
+<div class="tags"><span class="chip t-warn">Count in this package: ${lft(x.left)} → ${lft(x.left_after)} left</span><span class="chip t-info">Older balance: stays ${lft(x.left)} left</span></div></div>
+<div class="tdb"><button class="btn teal sm" onclick="pkChkDo(${x.id},'count',this)">Count in this package</button><button class="btn ghost sm" onclick="pkChkDo(${x.id},'older_balance',this)">Older balance · keep as is</button></div></div>`; }
+  function section(){ if(!L || !L.length) return '';
+    return `<section class="sec" id="td-pkgchk" data-k="${E(L.map(x => x.id).join(','))}"><h2>Lessons to confirm <span class="c">${L.length}</span></h2><div class="small mute" style="margin:-4px 0 8px">Classes taught before the package's recorded purchase date. Check with the records before the lesson summary goes to parents.</div>${L.map(card).join('')}</section>`; }
+  function paint(){ const v = document.getElementById('v-mtoday'); if(!v || !isM()) return; const s = document.getElementById('td-pkgchk'), h = section();
+    if(!h){ if(s) s.remove(); return; }
+    if(s){ if(s.dataset.k !== L.map(x => x.id).join(',')) s.outerHTML = h; return; }
+    const lead = v.querySelector('.lead'); if(lead) lead.insertAdjacentHTML('afterend', h); else v.insertAdjacentHTML('afterbegin', h); }
+  function banner(code){ const sb = document.getElementById('sheetBody'); if(!sb) return; sb.querySelectorAll('.pc1786').forEach(b => b.remove());
+    if(!isM() || !code || !(typeof DOCV !== 'undefined' && DOCV && DOCV.key === 'SHPKG')) return; const C = forCode(code); if(!C.length) return;
+    const n = C.reduce((a, x) => a + (x.classes || []).length, 0);
+    sb.insertAdjacentHTML('afterbegin', `<div class="pc1786 noprint" style="background:#FFF4DC;border:1px solid #F0C36A;color:#7A4B00;border-radius:12px;padding:10px 12px;margin:0 0 10px;font-weight:600;line-height:1.4">⚠ Check before sending to parents: ${n} class${n === 1 ? '' : 'es'} before the package start — confirm in To do <a style="cursor:pointer;text-decoration:underline;font-weight:700;margin-left:6px" onclick="try{closeSheet()}catch(e){};go('mtoday')">Open To do ›</a></div>`); }
+  window.pkChkLoad = load; window.pkChkFor = forCode;
+  window.pkChkDo = async function(id, choice, btn){ const x = (L || []).find(y => y.id === id); if(!x) return; const nc = (x.classes || []).length;
+    const msg = choice === 'count'
+      ? `Count ${n1(+x.units)} lesson${+x.units === 1 ? '' : 's'} (${nc} class${nc === 1 ? '' : 'es'} before ${fD(x.buy)}) in ${who(x)}'s package?\n\nLessons left: ${lft(x.left)} → ${lft(x.left_after)}\nLessons used by ${x.name}: ${lft(x.fin)} → ${lft(x.fin_after)}\n\nConfirm?`
+      : `Keep as is: the ${nc === 1 ? 'class' : nc + ' classes'} before ${fD(x.buy)} ${nc === 1 ? 'was' : 'were'} from the older package.\nLessons left stay ${lft(x.left)}.\n\nConfirm?`;
+    if(!window.confirm(msg)) return;
+    const row = btn && btn.closest ? btn.closest('.tdr') : null, bs = row ? [...row.querySelectorAll('button')] : []; bs.forEach(b => b.disabled = true); if(btn){ btn.dataset.t = btn.textContent; btn.textContent = 'Saving…'; }
+    try{ const r = await post({ op: 'decide', id: id, choice: choice });
+      if(!r || !r.ok) throw new Error((r && (r.msg || r.error)) || 'not saved');
+      L = (L || []).filter(y => y.id !== id); at = Date.now(); paint();
+      try{ if(typeof DOCV !== 'undefined' && DOCV && DOCV.key === 'SHPKG') banner(DOCV.pick); }catch(e){}
+      try{ toast(choice === 'count' ? `Saved · ${who(x)}: ${lft(r.left_before)} → ${lft(r.left_after)} lessons left` : `Saved · ${who(x)}: kept as is`); }catch(e){}
+      if(choice === 'count'){ try{ if(typeof SB_FRESH !== 'undefined') Object.keys(SB_FRESH).forEach(k => { if(/(mgmtActive|mgmtStudents?)\|/.test(k)) delete SB_FRESH[k]; }); }catch(e){} try{ if(typeof loadActive === 'function') loadActive(true); }catch(e){} }
+    }catch(e){ bs.forEach(b => b.disabled = false); if(btn && btn.dataset.t) btn.textContent = btn.dataset.t; try{ toast('Not saved · ' + (e && e.message || e)); }catch(x2){} } };
+  const rt = window.renderMToday; if(typeof rt === 'function') window.renderMToday = function(){ try{ return rt.apply(this, arguments); }
+    finally{ try{ paint(); }catch(e){} setTimeout(() => { try{ paint(); }catch(e){} }, 400); load().then(() => { try{ paint(); }catch(e){} }); } };
+  const ss = window.shSummary; if(typeof ss === 'function') window.shSummary = async function(code){ const r = await ss.apply(this, arguments);
+    try{ banner(code); await Promise.race([load(), new Promise(z => setTimeout(z, 3000))]); banner(code); }catch(e){} return r; };
+  setInterval(() => { try{ if(isM() && !document.hidden && typeof VIEW !== 'undefined' && VIEW === 'mtoday') load(true).then(paint); }catch(e){} }, 180000);
+  setTimeout(() => { try{ if(isM()) load().then(() => { try{ if(typeof VIEW !== 'undefined' && VIEW === 'mtoday') paint(); }catch(e){} }); }catch(e){} }, 3000);
 })();
 </script>
 </body>
