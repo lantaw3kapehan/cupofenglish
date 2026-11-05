@@ -6764,7 +6764,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1591;
+const COE_V = 1592;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36642,6 +36642,18 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       if(!(r && r.ok && r.data && r.data.mgr)) return an.apply(self, [fn].concat(a));
       if(Date.now() - bgAt > 10 * 6e4){ bgAt = Date.now(); setTimeout(() => { try{ Promise.resolve(an.apply(self, [fn].concat(a))).catch(() => {}); }catch(e){} }, 20000); }   /* background compare (1773 sends it) */
       return r.data; }, () => an.apply(self, [fn].concat(a))); };
+})();
+</script>
+<script>
+/* 1777 · password save: database first (coe-pw), Google as fallback */
+(function(){
+  if(window.__1777) return; window.__1777 = 1;
+  const URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-pw', an = window.apiNow; if(typeof an !== 'function') return;
+  window.apiNow = apiNow = function(fn){ const a = Array.prototype.slice.call(arguments, 1), self = this;
+    if(fn !== 'mgmtPwSave' || !a[0]) return an.apply(this, arguments);
+    const g = () => an.apply(self, [fn].concat(a));
+    return fetch(URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'set', token: a[0], name: a[1], password: a[2], change: !!a[3] }) })
+      .then(x => x.json().catch(() => null)).then(r => { if(r && r.ok && r.email) return r; if(r && r.ok === false && r.msg && !r.fallback) return r; return g(); }, g); };
 })();
 </script>
 </body>
