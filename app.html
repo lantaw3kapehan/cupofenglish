@@ -4093,7 +4093,7 @@ const x = id && LV ? LV.rows.find(r => r.id === id) : null, T = (LV && LV.teache
 const t0 = ymdLocal(new Date()), P = isPres(), part0 = x ? (/some/i.test(x.part) ? 'Some classes' : 'Whole day') : 'Whole day', w = x ? lvWin(x) : [];
 LVF = { id: id || '', type: x ? x.type : '', part: part0, notice: x ? x.notice : '', status: x ? x.status : 'Approved' }; LVFILES = [];
 const pill = (k, v, cur, extra) => `<button type="button" class="${v === cur ? 'on' : ''}" onclick="LVF.${k}='${esc(v)}';this.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===this));${extra || ''}">${esc(v)}</button>`;
-const stOpts = P ? ['Approved','Pending','Declined','Cancelled'] : ['Pending','Cancelled'].concat(x && stOpts0(x) ? [x.status] : []);
+const stOpts = P ? ['Approved','Pending','Declined','Cancelled'] : ['Pending','Declined','Cancelled'].concat(x && stOpts0(x) ? [x.status] : []);   /* 1796: Operations may decline, with a comment */
 const pend = x && x.status === 'Pending', canAsk = pend && (P || !x.ops);
 let act;
 if(!x) act = `<button class="btn block" id="lvGo" style="margin-top:14px" onclick="lvSave()">${P ? 'Lodge leave' : 'File & send to management'}</button>`;
@@ -4117,7 +4117,7 @@ ${lvTimeRow('lv', part0 === 'Some classes' ? (w[0] || '') : null, w[1] || '')}
 <label>Lessons affected</label><div id="lvC" class="small mute">${x ? esc(x.classes || '—') : 'Pick the person and dates'}</div>${x && x.status !== 'Declined' && x.status !== 'Cancelled' ? lvInfHtml(x, 'm') : ''}
 ${lvDrop('lvFile', 'lvFiles', x ? 'Add proof' : 'Attach proof (if the teacher sent it)')}
 ${x ? `<label>Status</label><div class="qa-ch">${[...new Set(stOpts)].map(v => pill('status', v, LVF.status)).join('')}</div>${P ? '' : '<div class="small mute">Only management approves or declines.</div>'}` : ''}
-<label>Cover plan / note${P ? ' (the teacher sees it)' : ''}</label><input id="lvN" class="in-t" value="${esc(x ? x.note : '')}" placeholder="e.g. sub: Teacher Pam · classes moved to Saturday">
+<label>Comment / cover plan (the teacher sees it · needed to decline)</label><input id="lvN" class="in-t" value="${esc(x ? x.note : '')}" placeholder="e.g. sub: Teacher Pam · classes moved to Saturday">
 ${act}
 ${x && (P || x.status !== 'Approved') ? `<button class="btn ghost block" style="margin-top:8px" onclick="if(confirm('Remove this leave from T-LEAVE?'))lvSave(true)">Remove</button>` : ''}
 <p class="small mute" style="margin-top:8px">Saved in T-LEAVE · proof files go to the private Drive folder "CupOfEnglish Leave proofs" · the teacher sees the status on Today and Pay.</p>`);
@@ -4140,6 +4140,7 @@ async function lvSave(remove, endorse){
 const some = LVF.part === 'Some classes';
 const f = { endorse: !!endorse, clearAsk: !!LVF.clearAsk, id: LVF.id, teacher: ($('lvT')||{}).value, type: LVF.type, from: ($('lvF')||{}).value, to: ($('lvTo')||{}).value, part: LVF.part, tFrom: some ? ($('lvA')||{}).value : '', tTo: some ? ($('lvB')||{}).value : '', notice: LVF.notice, reason: ($('lvR')||{}).value, note: ($('lvN')||{}).value, status: LVF.status, remove: !!remove, files: LVFILES };
 LVF.clearAsk = 0;
+if(!remove && f.status === 'Declined' && String(f.note || '').trim().length < 5) return toast('Write why it is declined in the comment · the teacher sees it');
 if(!remove){ if(!f.id && !f.teacher) return toast('Choose the teacher'); if(!f.type) return toast('Choose the type of leave'); if(!f.from) return toast('Choose the dates'); if(some && (!f.tFrom || !f.tTo)) return toast('Pick from what time to what time'); }
 if(endorse){ const x = LV.rows.find(r => r.id === f.id); if(x && !(x.proof || []).length && !LVFILES.length && !confirm('There is no proof attached. Raise it to management anyway?')) return; }
 const b = $('lvGo'); if(b){ b.disabled = true; b.textContent = 'Saving…'; }
@@ -6831,7 +6832,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1609;
+const COE_V = 1610;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
