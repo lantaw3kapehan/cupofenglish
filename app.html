@@ -4256,8 +4256,11 @@ function tlv1795(L){ const box = $('tlN'); if(!box) return; if(L) TLV1795.L = L;
   }
   { const s = lv1802stats((TLV && TLV.rows) || [], null, ($('tlT') || {}).value || ymdLocal(new Date())); if(n){ s.all++; s.year++; if(h0 < 4){ s.late++; s.month++; } } if(s.all) out += lv1802line(s, !!n); }   /* 1802 */
   out += lv1804clauses();   /* 1804 */
-  TLV1795.needAck = n > 0 && h0 < 4;   /* 1802: only when a lesson is under 4 h (Clause 2.9) */
-  if(TLV1795.needAck) out += '<label class="row" style="gap:8px;margin-top:8px;font-weight:600"><input type="checkbox" id="tlAck"> I understand lessons with less than 4 h notice carry a service credit (Clause 4.1), after review (Clause 5.1).</label>';
+  TLV1795.needAck = true;   /* 1805: always */
+  TLV1795.ackText = n && h0 < 4 ? 'I understand that ' + (n === 1 ? 'this lesson has' : 'lessons here have') + ' less than 4 hours’ notice (Clause 2.9) and carry a service credit (Clause 4.1) after review (Clause 5.1), and that a third late cancellation in one calendar month may pause my lesson offers (Clause 5.2).'
+    : 'I understand that a notice given less than 4 hours before a lesson carries a service credit (Clause 4.1) after review (Clause 5.1), and that a third late cancellation in one calendar month may pause my lesson offers (Clause 5.2).';
+  if(TLV1795.ackSeen !== TLV1795.ackText){ TLV1795.ack = false; TLV1795.ackSeen = TLV1795.ackText; }
+  if(TLV1795.needAck) out += '<label class="row" style="gap:8px;margin-top:10px;font-weight:600;align-items:flex-start"><input type="checkbox" id="tlAck" style="margin-top:3px" onchange="TLV1795.ack=this.checked"' + (TLV1795.ack ? ' checked' : '') + '> <span>' + esc(TLV1795.ackText) + '</span></label>';
   box.innerHTML = out; }
 function lv1795plan(x){   /* 1798: each booked lesson gets its own notice and its own outcome */
   const cls = lv1795cls(x), at = lv1795at(x.at), planned = LV1795_PLANNED.test(x.type || ''), proof = (x.proof || []).length, age = (Date.now() - at) / 36e5;
@@ -4311,7 +4314,9 @@ async function tlvSend(){ const some = LVF.part === 'Some classes';
 const f = { type: LVF.type, from: $('tlF').value, to: $('tlT').value, part: LVF.part, tFrom: some ? $('tlA').value : '', tTo: some ? $('tlB').value : '', reason: $('tlR').value, files: LVFILES, later: !!LVF.later };
 if(!f.type) return toast('Choose the type of leave'); if(some && (!f.tFrom || !f.tTo)) return toast('Pick from what time to what time'); if(String(f.reason).trim().length < 5) return toast('Write a short reason');
 if(!LVFILES.length && !f.later) return toast('Attach your proof, or tick "I\'ll send it later"');
-if(TLV1795.needAck && !($('tlAck') || {}).checked) return toast('Tick the box: less than 4 h notice');
+if(!$('tlAck')){ try{ tlv1795(); }catch(e){} TLV1795.needAck = true; if(!TLV1795.ackText) TLV1795.ackText = 'I understand that a notice given less than 4 hours before a lesson carries a service credit (Clause 4.1) after review (Clause 5.1), and that a third late cancellation in one calendar month may pause my lesson offers (Clause 5.2).'; if(!$('tlAck')) return toast('Wait for the booked lessons to load, then tick the box'); }
+if(TLV1795.needAck && !($('tlAck') || {}).checked) return toast('Tick the box to confirm you understand the service credit');
+if(TLV1795.needAck) f.reason = String(f.reason).trim() + '\n[Acknowledged in the App ' + new Date().toLocaleString('en-GB', { timeZone: 'Asia/Manila', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' PH: ' + TLV1795.ackText + ']';   /* 1805 */
 const b = $('tlGo'); b.disabled = true; b.textContent = 'Sending…';
 try{ const r = await api('tLeaveRequest', TOKEN, f); if(!r.ok) throw r; LVFILES = []; closeSheet(); toast('✓ ' + r.note + (r.classes ? ' · ' + r.classes + ' classes in those dates' : '')); if(r.queued) setTimeout(loadTLeave, 75000); else loadTLeave(); }
 catch(e){ b.disabled = false; b.textContent = 'Send request'; toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); } }
@@ -6881,7 +6886,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1618;
+const COE_V = 1619;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
