@@ -4204,6 +4204,15 @@ function lv1795cls(x){ const t = String((x && x.classes) || ''), k = t.indexOf('
   return t.slice(k + 1).split(', ').map(s => { const m = s.trim().match(/^(\d\d-\d\d) (\d\d:\d\d)(?:[–-]\d\d:\d\d)? ?(.*)$/); if(!m) return null;
     let yy = y; if(String(x.from || '').slice(5, 7) === '12' && m[1].slice(0, 2) === '01') yy = y + 1;
     return { md: m[1], hm: m[2], name: (m[3] || '').trim(), t: Date.parse(yy + '-' + m[1] + 'T' + m[2] + ':00+08:00') }; }).filter(Boolean); }
+function lv1802stats(rows, teacher, upto){   /* 1802: every notice (not withdrawn by the teacher) · late = under 4 h before the first lesson (Clause 2.9) */
+  const d = String(upto).slice(0, 10), lo = new Date(Date.parse(d + 'T12:00:00+08:00') - 60 * 864e5).toISOString().slice(0, 10);
+  const mine = (rows || []).filter(r => (!teacher || String(r.teacher || '').toLowerCase() === String(teacher).toLowerCase()) && !(/Cancelled/i.test(r.status || '') && String(r.decidedBy || '').trim().toLowerCase() === String(r.teacher || '').trim().toLowerCase()) && String(r.from || '') <= d);
+  const late = r => { const c = lv1795cls(r); return c.length > 0 && (Math.min.apply(null, c.map(x => x.t)) - lv1795at(r.at)) < 4 * 36e5; };
+  const in60 = mine.filter(r => String(r.from || '') >= lo);
+  return { all: in60.length, late: in60.filter(late).length, month: mine.filter(r => String(r.from || '').slice(0, 7) === d.slice(0, 7)).filter(late).length, year: mine.filter(r => String(r.from || '').slice(0, 4) === d.slice(0, 4)).length }; }
+function lv1802line(s, incl){ const k = s.month >= 3 ? 'bad' : s.month >= 2 || s.late >= 2 ? 'warn' : 'ok';
+  return lv1795line(k, 'Notices in the last 60 days: <b>' + s.all + '</b>' + (incl ? ' (this one included)' : '') + ' · with less than 4 h notice: <b>' + s.late + '</b> · this year: <b>' + s.year + '</b>'
+    + (s.month >= 3 ? ' · <b>' + s.month + ' late cancellations this month: lesson offers may be paused (Clause 5.2)</b>' : s.month === 2 ? ' · 2 late cancellations this month · a 3rd may pause lesson offers (Clause 5.2)' : '')); }
 function lv1795count(rows, teacher, upto){   /* releases of booked lessons with less than 7 days' notice, in the 60 days up to 'upto' */
   const lo = new Date(Date.parse(String(upto).slice(0, 10) + 'T12:00:00+08:00') - 60 * 864e5).toISOString().slice(0, 10);
   return (rows || []).filter(r => (!teacher || String(r.teacher || '').toLowerCase() === String(teacher).toLowerCase()) && !(/Cancelled/i.test(r.status || '') && String(r.decidedBy || '').trim().toLowerCase() === String(r.teacher || '').trim().toLowerCase())
@@ -4220,43 +4229,39 @@ function tlv1795(L){ const box = $('tlN'); if(!box) return; if(L) TLV1795.L = L;
   if(!n) out += lv1795line('ok', '✓ No booked lessons in these dates · to keep these hours free, also close them in <b>My open times</b> (Clause 2.10).');
   else {
     const rows = L.map(c => { const h = (tms(c) - Date.now()) / 36e5; let k, t;
-      if(h < 4){ k = 'bad'; t = 'under 4 h (Clause 2.9) · ₱100 / ₱300 with proof · ₱300 / ₱500 without'; }
-      else if(planned){ k = h < 168 ? 'warn' : 'ok'; t = h < 168 ? 'under 7 days · ₱100 / ₱300 (Clause 4.1)' : 'no charge'; }
-      else if(emerg){ k = 'ok'; t = 'no charge with proof · ₱300 / ₱500 without'; }
+      if(h < 4){ k = 'bad'; t = 'less than 4 h (Clause 2.9) · excused (valid reason) ₱100 new / ₱300 regular · unexcused ₱300 / ₱500'; }
+      else if(LVF.type){ k = 'ok'; t = '4 h or more · no charge (Clause 2.9)'; }
       else { k = 'warn'; t = 'pick the type'; }
       return '<div class="lv95r ' + k + '"><span>' + esc(lvNice(c.date) + ' ' + c.time + ' · ' + (c.student || c.code || '')) + '</span><span>' + lv1795h(h) + '</span><b>' + t + '</b></div>'; }).join('');
-    out += lv1795line(h0 < 4 ? 'bad' : (planned && h0 < 168) ? 'warn' : 'ok', '<b>' + n + ' booked lesson' + (n === 1 ? '' : 's') + '</b> · the first in <b>' + lv1795h(h0) + '</b> · each lesson is charged by its own notice <span class="small">(new teacher / regular teacher)</span>') + '<div class="lv95t">' + rows + '</div>';
-    if(emerg) out += lv1795line('warn', 'Emergency, sick or bereavement: upload your proof now or within 48 hours.');
+    out += lv1795line(h0 < 4 ? 'bad' : (planned && h0 < 168) ? 'warn' : 'ok', '<b>' + n + ' booked lesson' + (n === 1 ? '' : 's') + '</b> · the first in <b>' + lv1795h(h0) + '</b> · each lesson goes by its own notice <span class="small">(new = first 60 days of service · regular = from day 61 · Clause 4.1)</span>') + '<div class="lv95t">' + rows + '</div>';
+    if(emerg) out += lv1795line('warn', 'Attach your proof where available (Clause 2.9) · it helps Operations accept the reason.');
   }
-  if(cnt) out += lv1795line(cnt >= 3 ? 'bad' : cnt >= 2 ? 'warn' : 'ok', 'Short-notice requests in the last 60 days: <b>' + cnt + '</b>' + (n && h0 < 168 ? ' (this one included)' : '') + ' <span class="mute">· short notice = less than 7 days before the lessons</span>' + (cnt >= 3 ? ' · a third time brings a notice of breach (Clause 5.1)' : cnt >= 2 ? ' · Operations may move these students to another teacher' : ''));
-  TLV1795.needAck = planned && n > 0 && h0 < 168;
-  if(TLV1795.needAck) out += '<label class="row" style="gap:8px;margin-top:8px;font-weight:600"><input type="checkbox" id="tlAck"> I understand I am releasing booked lessons and the service credit above applies.</label>';
+  { const s = lv1802stats((TLV && TLV.rows) || [], null, ($('tlT') || {}).value || ymdLocal(new Date())); if(n){ s.all++; s.year++; if(h0 < 4){ s.late++; s.month++; } } if(s.all) out += lv1802line(s, !!n); }   /* 1802 */
+  TLV1795.needAck = n > 0 && h0 < 4;   /* 1802: only when a lesson is under 4 h (Clause 2.9) */
+  if(TLV1795.needAck) out += '<label class="row" style="gap:8px;margin-top:8px;font-weight:600"><input type="checkbox" id="tlAck"> I understand lessons with less than 4 h notice carry a service credit (Clause 4.1), after review (Clause 5.1).</label>';
   box.innerHTML = out; }
 function lv1795plan(x){   /* 1798: each booked lesson gets its own notice and its own outcome */
   const cls = lv1795cls(x), at = lv1795at(x.at), planned = LV1795_PLANNED.test(x.type || ''), proof = (x.proof || []).length, age = (Date.now() - at) / 36e5;
   return cls.map(c => { const h = (c.t - at) / 36e5; let k = 'none', why = '';
-    if(h < 4){ if(proof){ k = 'Excused'; why = 'less than 4 h · with proof'; } else if(!planned && age < 48){ k = 'wait'; why = 'less than 4 h · proof due'; } else { k = 'Unexcused'; why = 'less than 4 h · no proof'; } }
-    else if(planned){ if(h < 168){ k = 'Excused'; why = 'planned · less than 7 days'; } else why = 'planned · 7 days or more'; }
-    else if(proof){ why = '4 h or more · with proof'; }
-    else if(age < 48){ k = 'wait'; why = '4 h or more · proof due'; }
-    else { k = 'Unexcused'; why = 'no proof after 48 h'; }
+    if(h < 4){ if(h <= 0){ k = 'Unexcused'; why = 'not notified before the lesson'; } else if(proof){ k = 'Excused'; why = 'less than 4 h · reason with proof'; } else { k = 'wait'; why = 'less than 4 h · Operations judges the reason'; } }
+    else why = '4 h or more · Clause 2.9 met';   /* 1802: contract 2.9 / 4.1 · notice 4 h or more = requirement met, no service credit */
     return Object.assign({}, c, { h: h, k: k, why: why }); }); }
 function lvc1795(x){ const cls = lv1795cls(x); if(!cls.length) return '';
   const at = lv1795at(x.at), h = (Math.min.apply(null, cls.map(c => c.t)) - at) / 36e5, planned = LV1795_PLANNED.test(x.type || ''), proof = (x.proof || []).length, age = (Date.now() - at) / 36e5;
   const cnt = lv1795count((LV && LV.rows) || [], x.teacher, x.from), done = (() => { try{ return JSON.parse(localStorage.getItem('lv1795:' + x.id) || 'null'); }catch(e){ return null; } })();
   const tier = lv1800tier(x) || 'Regular', rk = lv1800rank(x.teacher), n = cls.length, plan = lv1795plan(x), rate = k => (LV1795_RATE[k] || {})[tier] || 0;
   const charged = plan.filter(p => p.k === 'Excused' || p.k === 'Unexcused'), total = charged.reduce((a, p) => a + rate(p.k), 0), waiting = plan.filter(p => p.k === 'wait').length;
-  const rows = plan.map(p => '<div class="lv95r ' + (p.k === 'Unexcused' ? 'bad' : p.k === 'Excused' || p.k === 'wait' ? 'warn' : 'ok') + '"><span>' + esc(p.md + ' ' + p.hm + ' · ' + p.name) + '</span><span>' + lv1795h(p.h) + '</span><b>' + (p.k === 'none' ? 'No charge' : p.k === 'wait' ? 'Proof due' : p.k + ' ₱' + rate(p.k)) + '</b></div>').join('');
+  const rows = plan.map(p => '<div class="lv95r ' + (p.k === 'Unexcused' ? 'bad' : p.k === 'Excused' || p.k === 'wait' ? 'warn' : 'ok') + '"><span>' + esc(p.md + ' ' + p.hm + ' · ' + p.name) + '</span><span>' + lv1795h(p.h) + '</span><b>' + (p.k === 'none' ? 'No charge' : p.k === 'wait' ? 'Excused ₱' + rate('Excused') + ' or Unexcused ₱' + rate('Unexcused') : p.k + ' ₱' + rate(p.k)) + '</b></div>').join('');
   const btn = (k, lbl, cls2) => '<button class="btn sm ' + cls2 + '" onclick="lvCredit1795(\'' + esc(x.id) + '\',\'' + k + '\')">' + lbl + '</button>';
   return '<div class="lv95box"><b>Notice &amp; service credit</b>'
-    + lv1795line(h < 4 ? 'bad' : (planned && h < 168) ? 'warn' : 'ok', 'Notice: <b>' + lv1795h(h) + '</b> before the first of <b>' + n + ' booked lesson' + (n === 1 ? '' : 's') + '</b>')
-    + lv1795line(proof ? 'ok' : planned ? 'ok' : age < 48 ? 'warn' : 'bad', proof ? '✓ Proof attached (' + proof + ')' : planned ? 'Planned time off · proof optional' : 'No proof yet · due within 48 h (' + (age < 48 ? lv1795h(48 - age) + ' left' : 'overdue') + ')')
-    + lv1795line(cnt >= 3 ? 'bad' : cnt >= 2 ? 'warn' : 'ok', 'Short-notice requests in the last 60 days: <b>' + cnt + '</b> (this one included) <span class="mute">· short notice = less than 7 days before the lessons</span>' + (cnt >= 3 ? ' · <b>notice of breach</b> (Clause 5.1)' : cnt >= 2 ? ' · a 3rd brings a notice of breach' : ''))   /* 1800 wording */
+    + lv1795line(h < 4 ? 'bad' : 'ok', 'Notice: <b>' + lv1795h(h) + '</b> before the first of <b>' + n + ' booked lesson' + (n === 1 ? '' : 's') + '</b>')
+    + lv1795line(proof ? 'ok' : 'warn', proof ? '✓ Proof attached (' + proof + ')' : 'No proof attached · Clause 2.9: proof where available · Operations judges the reason')
+    + lv1802line(lv1802stats((LV && LV.rows) || [], x.teacher, x.from), true)   /* 1802 */
     + '<div class="lv95t">' + rows + '</div>'
-    + '<div class="small" style="margin-top:6px">Suggested: <b>' + (charged.length ? charged.length + ' lesson' + (charged.length === 1 ? '' : 's') + ' · ₱' + total.toLocaleString() : waiting ? 'wait for the proof' : 'No charge') + '</b>' + (charged.length && charged.length < n ? ' · the other ' + (n - charged.length) + ' no charge' : '') + ' · each lesson by its own notice: under 4 h (Clause 2.9) is charged</div>'
+    + '<div class="small" style="margin-top:6px">Suggested: <b>' + (charged.length ? charged.length + ' lesson' + (charged.length === 1 ? '' : 's') + ' · ₱' + total.toLocaleString() : waiting ? 'Operations decides' : 'No charge') + '</b>' + (charged.length && charged.length < n ? ' · the other ' + (n - charged.length) + ' no charge' : '') + (waiting ? ' · ' + waiting + ' lesson' + (waiting === 1 ? '' : 's') + ' under 4 h: excused if the reason is valid, unexcused if not' : '') + ' · Clause 2.9: 4 h or more is no charge · Clause 5.1: send the notice of breach before the credit is taken</div>'
     + (done ? '<div class="lv95 ok" style="margin-top:6px">✓ Recorded on this device: <b>' + esc(done.k) + '</b> · ' + esc(done.at) + (done.ids ? ' · ' + esc(done.ids) : '') + '</div>'
-      : '<div class="small mute" style="margin-top:6px">Rate: <b style="color:#2B2840">' + (rk ? tier : 'checking rank…') + '</b>' + (rk ? ' · ' + esc(rk.fixed ? 'fixed-rate teacher' : (rk.rank || 'no rank') + (rk.start ? ' · with us since ' + rk.start.slice(0, 10) + (lv1801young(rk, x) ? ' (first 6 months, until ' + lv1801six(rk) + ')' : '') : '')) + (window.LV95T && LV95T[x.id] ? ' · changed by hand' : '') : '') + ' <span>· New = first 6 months with us, or Newly Hired / Starting Teacher · Regular = everyone else</span>' + (rk && isPres() ? ' · <a class="link" onclick="(window.LV95T=window.LV95T||{})[\'' + esc(x.id) + '\']=\'' + (tier === 'Regular' ? 'New' : 'Regular') + '\';lvSheet(\'' + esc(x.id) + '\')">change</a>' : '') + '</div>'
-        + (!rk ? '' : '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">' + (charged.length ? btn('plan', 'Apply suggested · ₱' + total.toLocaleString(), 'teal') : '') + btn('none', 'No charge', charged.length ? 'ghost' : 'teal') + btn('Unexcused', 'All unexcused · ₱' + (rate('Unexcused') * n).toLocaleString(), 'ghost') + '</div>'))
+      : '<div class="small mute" style="margin-top:6px">Rate: <b style="color:#2B2840">' + (rk ? tier : 'checking…') + '</b>' + (rk ? ' · ' + (rk.fixed ? 'fixed-rate teacher' : rk.start ? 'with us since ' + esc(rk.start.slice(0, 10)) + ' · day ' + lv1802day(rk, x) + ' of service' : 'start date missing in Team') + (window.LV95T && LV95T[x.id] ? ' · changed by hand' : '') : '') + ' <span>· Clause 4.1: New = first 60 days of service · Regular = from day 61</span>' + (rk && isPres() ? ' · <a class="link" onclick="(window.LV95T=window.LV95T||{})[\'' + esc(x.id) + '\']=\'' + (tier === 'Regular' ? 'New' : 'Regular') + '\';lvSheet(\'' + esc(x.id) + '\')">change</a>' : '') + '</div>'
+        + (!rk ? '' : '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">' + (charged.length ? btn('plan', 'Apply suggested · ₱' + total.toLocaleString(), 'teal') : '') + (waiting ? btn('Excused', 'Under 4 h all excused · ₱' + (rate('Excused') * plan.filter(p => p.h < 4).length).toLocaleString(), charged.length ? 'ghost' : 'teal') + btn('Unexcused', 'Under 4 h all unexcused · ₱' + (rate('Unexcused') * plan.filter(p => p.h < 4).length).toLocaleString(), 'ghost') : '') + btn('none', 'No charge', charged.length || waiting ? 'ghost' : 'teal') + '</div>'))
     + '</div>'; }
 const LVRK1800 = {};
 function lv1800rank(t){ const k = String(t || '').toLowerCase(); if(!k) return null; const v = LVRK1800[k]; if(v && v !== 'wait') return v; if(v === 'wait') return null; LVRK1800[k] = 'wait';   /* 1800: rank from the database, the same one pay uses */
@@ -4265,27 +4270,28 @@ function lv1800rank(t){ const k = String(t || '').toLowerCase(); if(!k) return n
     .then(([r, s]) => { const k2 = (r && r.rank) || {}, p = ((s && s.people) || []).find(q => String(q.name || '').toLowerCase() === k); LVRK1800[k] = { rank: k2.rank || '', fixed: !!k2.fixed, ok: !!(r && r.ok), start: (p && p.start_date) || '' }; }).catch(() => { LVRK1800[k] = { rank: '', fixed: false, ok: false, start: '' }; })
     .finally(() => { try{ const b = document.querySelector('.lv95box'), x = b && LVF && LVF.id && LV && LV.rows.find(r => r.id === LVF.id); if(x){ const h = lvc1795(x); if(h) b.outerHTML = h; } }catch(e){} });
   return null; }
-function lv1800tier(x){ const o = window.LV95T && LV95T[x.id]; if(o) return o; const rk = lv1800rank(x.teacher); if(!rk) return null; return rk.fixed ? 'Regular' : (/newly hired|starting/i.test(rk.rank || '') || lv1801young(rk, x)) ? 'New' : 'Regular'; }
+function lv1800tier(x){ const o = window.LV95T && LV95T[x.id]; if(o) return o; const rk = lv1800rank(x.teacher); if(!rk) return null; if(rk.fixed) return 'Regular'; const d = lv1802day(rk, x); return d && d <= 60 ? 'New' : 'Regular'; }   /* 1802: Clause 4.1 */
+function lv1802day(rk, x){ if(!rk || !/^\d{4}-\d{2}-\d{2}/.test(rk.start || '')) return 0; return Math.floor((Date.parse(String((x && x.from) || ymdLocal(new Date())).slice(0, 10)) - Date.parse(rk.start.slice(0, 10))) / 864e5) + 1; }
 function lv1801six(rk){ if(!rk || !/^\d{4}-\d{2}-\d{2}/.test(rk.start || '')) return ''; const [y, m, dd] = rk.start.slice(0, 10).split('-').map(Number), d = new Date(Date.UTC(y, m - 1 + 6, dd)); return d.toISOString().slice(0, 10); }
 function lv1801young(rk, x){ const e = lv1801six(rk); return !!e && String((x && x.from) || new Date().toISOString()).slice(0, 10) < e; }
 async function lvCredit1795(id, k){ const x = LV && LV.rows.find(r => r.id === id); if(!x) return; const tier = lv1800tier(x); if(!tier) return toast('Checking the teacher’s rank · try again in a moment');
   const stamp = new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   if(k === 'none'){ try{ localStorage.setItem('lv1795:' + id, JSON.stringify({ k: 'No charge', at: stamp })); }catch(e){} toast('✓ No charge recorded for ' + tName(x.teacher)); lvSheet(id); return; }
-  const plan = lv1795plan(x).map(p => k === 'plan' ? p : Object.assign({}, p, { k: 'Unexcused' })).filter(p => p.k === 'Excused' || p.k === 'Unexcused');
+  const plan = lv1795plan(x).map(p => k === 'plan' || p.h >= 4 ? p : Object.assign({}, p, { k: k })).filter(p => p.h < 4 && (p.k === 'Excused' || p.k === 'Unexcused'));   /* 1802: only lessons under 4 h */
   if(!plan.length) return toast('Nothing to charge');
   const total = plan.reduce((a, p) => a + LV1795_RATE[p.k][tier], 0);
-  if(!confirm(plan.map(p => p.md + ' ' + p.hm + ' ' + p.name + ' · ' + p.k + ' ₱' + LV1795_RATE[p.k][tier]).join('\n') + '\n\nTotal ₱' + total.toLocaleString() + ' for ' + tName(x.teacher) + ' · one Teacher Class Cancellation case per lesson?')) return;
+  if(!confirm(plan.map(p => p.md + ' ' + p.hm + ' ' + p.name + ' · ' + p.k + ' ₱' + LV1795_RATE[p.k][tier]).join('\n') + '\n\nTotal ₱' + total.toLocaleString() + ' for ' + tName(x.teacher) + ' · one Teacher Class Cancellation case per lesson?\n\nClause 5.1: then send the notice of breach for each case (Cases › the case) before the credit is taken.')) return;
   toast('Saving ' + plan.length + ' case' + (plan.length === 1 ? '' : 's') + '…'); const ids = [];
   for(const c of plan){ const amt = LV1795_RATE[c.k][tier]; try{ const r = await api('addCase', TOKEN, { subject: 'Teacher Class Cancellation', source: 'Teacher', assigned: 'Operations', type: 'Attendance', employee: x.teacher, student: c.name, condition: c.k, status: tier, amount: amt, done: true,
       action: 'Notice of unavailability ' + id + ' · ' + lv1795h(c.h) + ' notice · lesson ' + c.md + ' ' + c.hm + ' · Clause ' + (c.h < 4 ? '2.9' : '2.10 / 4.1') }); if(r && r.ok) ids.push(r.caseId); }catch(e){} }
-  try{ localStorage.setItem('lv1795:' + id, JSON.stringify({ k: (k === 'plan' ? 'Suggested' : 'All unexcused') + ' · ₱' + total.toLocaleString(), at: stamp, ids: ids.join(', ') })); }catch(e){}
+  try{ localStorage.setItem('lv1795:' + id, JSON.stringify({ k: (k === 'plan' ? 'Suggested' : 'Under 4 h all ' + String(k).toLowerCase()) + ' · ₱' + total.toLocaleString(), at: stamp, ids: ids.join(', ') })); }catch(e){}
   toast(ids.length === plan.length ? '✓ ' + ids.length + ' case' + (ids.length === 1 ? '' : 's') + ' saved · ' + ids.join(', ') : ids.length + ' of ' + plan.length + ' saved · check Actions'); lvSheet(id); try{ AC = null; }catch(e){} }
-(function(){ const st = document.createElement('style'); st.textContent = '.lv95t{margin-top:8px;border:1px solid #ECEAF1;border-radius:10px;overflow:hidden}.lv95r{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:5px 10px;font-size:12.5px;border-top:1px solid #F2F1F6}.lv95r:first-child{border-top:0}.lv95r.ok b{color:#1C6B4C}.lv95r.warn b{color:#8A5A0F}.lv95r.bad b{color:#A3321E}.lv95r span:nth-child(2){color:#6E6B84}.lv95{font-size:13px;padding:6px 10px;border-radius:10px;margin-top:6px;border-left:4px solid}.lv95.ok{background:#E3F4EC;color:#1C6B4C;border-color:#2E9E6B}.lv95.warn{background:#FFF6E5;color:#8A5A0F;border-color:#E2A93B}.lv95.bad{background:#FDE8E4;color:#A3321E;border-color:#D2553B}.lv95box{margin-top:12px;padding:12px;border:1px solid #ECEAF1;border-radius:14px;background:#fff}'; document.head.appendChild(st); })();
+(function(){ const st = document.createElement('style'); st.textContent = '#tlN .lv95r{grid-template-columns:1fr auto}#tlN .lv95r b{grid-column:1/-1;font-weight:600}.lv95t{margin-top:8px;border:1px solid #ECEAF1;border-radius:10px;overflow:hidden}.lv95r{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:5px 10px;font-size:12.5px;border-top:1px solid #F2F1F6}.lv95r:first-child{border-top:0}.lv95r.ok b{color:#1C6B4C}.lv95r.warn b{color:#8A5A0F}.lv95r.bad b{color:#A3321E}.lv95r span:nth-child(2){color:#6E6B84}.lv95{font-size:13px;padding:6px 10px;border-radius:10px;margin-top:6px;border-left:4px solid}.lv95.ok{background:#E3F4EC;color:#1C6B4C;border-color:#2E9E6B}.lv95.warn{background:#FFF6E5;color:#8A5A0F;border-color:#E2A93B}.lv95.bad{background:#FDE8E4;color:#A3321E;border-color:#D2553B}.lv95box{margin-top:12px;padding:12px;border:1px solid #ECEAF1;border-radius:14px;background:#fff}'; document.head.appendChild(st); })();
 async function tlvSend(){ const some = LVF.part === 'Some classes';
 const f = { type: LVF.type, from: $('tlF').value, to: $('tlT').value, part: LVF.part, tFrom: some ? $('tlA').value : '', tTo: some ? $('tlB').value : '', reason: $('tlR').value, files: LVFILES, later: !!LVF.later };
 if(!f.type) return toast('Choose the type of leave'); if(some && (!f.tFrom || !f.tTo)) return toast('Pick from what time to what time'); if(String(f.reason).trim().length < 5) return toast('Write a short reason');
 if(!LVFILES.length && !f.later) return toast('Attach your proof, or tick "I\'ll send it later"');
-if(TLV1795.needAck && !($('tlAck') || {}).checked) return toast('Tick the box: you are releasing booked lessons');
+if(TLV1795.needAck && !($('tlAck') || {}).checked) return toast('Tick the box: less than 4 h notice');
 const b = $('tlGo'); b.disabled = true; b.textContent = 'Sending…';
 try{ const r = await api('tLeaveRequest', TOKEN, f); if(!r.ok) throw r; LVFILES = []; closeSheet(); toast('✓ ' + r.note + (r.classes ? ' · ' + r.classes + ' classes in those dates' : '')); if(r.queued) setTimeout(loadTLeave, 75000); else loadTLeave(); }
 catch(e){ b.disabled = false; b.textContent = 'Send request'; toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); } }
@@ -6855,7 +6861,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1615;
+const COE_V = 1616;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
