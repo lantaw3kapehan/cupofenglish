@@ -3800,7 +3800,7 @@ ${!x.paid && rdyN(x.name) ? `<div class="row" style="gap:8px;margin-top:10px"><b
 <button class="btn ${isPres() ? 'ghost' : 'teal'} grow" onclick="payslip('${esc(x.name)}')">Payslip</button></div><p class="small mute" style="margin-top:8px">${isPres() ? 'Mark paid ticks ✔ PAID on the PAY tab.' : 'Management marks pay as paid. Send the payslip from here.'}</p>`); }
 
 let TT = null, URLS = null;
-const sheetLink = tab => URLS && URLS[tab] ? ` <a class="link small" style="margin-left:auto;letter-spacing:0;text-transform:none;font-weight:400" href="${esc(URLS[tab])}" target="_blank">Open in sheet ↗</a>` : '';
+const sheetLink = tab => '';   /* 1816: the sheet is a backup · no "Open in sheet" */
 const TTC = {};
 async function loadTT(name, force){
 if(!name && !TT){ const k = kept('tt'); if(k){ TT = k; renderTeachers(); } }
@@ -6903,7 +6903,7 @@ if(AT_F==='ren') L = L.filter(isRen).sort((a, b) => String(b[C.start]).localeCom
 if(AT_F==='new') L = L.filter(isNew).sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])));
 if(q) L = R.filter(r => [r[C.code],r[C.name],r[C.cn],r[C.teacher],r[C.shared],r[C.source]].join(' ').toLowerCase().includes(q)).sort((a, b) => (b[C.active] === true) - (a[C.active] === true));
 const nA = R.filter(r=>r[C.active]).length;
-const h = `<div class="lead"><h1>Packages</h1><div class="mute small">${R.length} packages · ${nA} ticked active · live from ACTIVE${sheetLink('ACTIVE')}</div></div>
+const h = `<div class="lead"><h1>Packages</h1><div class="mute small">${R.length} packages · ${nA} ticked active · live from the database${sheetLink('ACTIVE')}</div></div>
 <div style="margin-top:12px"><input id="atq" class="search" placeholder="Search student, code, teacher…" value="${esc(q)}" oninput="renderActive()"></div>
 <div class="seg">${[['active','Active · '+nA],['low','5 or fewer · '+R.filter(r=>r[C.active]&&low(r)).length],['ren','Renewed · 30 days · '+R.filter(isRen).length],['new','New · 30 days · '+R.filter(isNew).length],['agr','No agreement'+(AGM ? ' · '+R.filter(noAgr).length : '')],['done','Finished'],['off','Not active'],['all','All']].map(([k,l])=>`<button class="${AT_F===k?'on':''}" onclick="AT_F='${k}';renderActive()">${l}</button>`).join('')}</div>
 <div class="gx pk" style="margin-top:6px"><table><tr><th>Student</th><th>Teacher</th><th>Enrolled</th><th>Done</th><th>Left</th><th>Deadline</th></tr>
@@ -6959,7 +6959,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1629;
+const COE_V = 1630;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -9723,7 +9723,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     F.ren.sort((a, b) => String(b.o.start).localeCompare(String(a.o.start))); F.nw.sort((a, b) => String(b.o.start).localeCompare(String(a.o.start)));
     let L = q ? asFind(items, q) : (F[STF] || F.active);
     const tabs = [['active', 'Active'], ['low', '5 or fewer left'], ['ren', 'Renewed · 30 days'], ['nw', 'New · 30 days'], ['agr', 'No agreement'], ['stale', 'No check in 30+ days'], ['past', 'Finished / not active'], ['shared', 'Shared packages']]; { const SA = shAll(); F.shared = SA ? SA.P : []; }   /* 14 Oct */
-    let h = '<div class="lead"><h1>Students</h1><div class="mute small">' + F.active.length + ' active · packages live from ACTIVE · tap a name for profile, package, schedule and agreement' + ((!P || !(typeof AGM !== 'undefined' && AGM)) ? ' · <span style="color:#00737B;font-weight:600">loading packages and agreements…</span>' : '') + '</div><div id="dbLk" class="small" style="margin-top:4px"><a class="lk" onclick="pkgCheck()">Package check · renewals, over, deadlines</a></div></div>' +
+    let h = '<div class="lead"><h1>Students</h1><div class="mute small">' + F.active.length + ' active · packages live from the database · tap a name for profile, package, schedule and agreement' + ((!P || !(typeof AGM !== 'undefined' && AGM)) ? ' · <span style="color:#00737B;font-weight:600">loading packages and agreements…</span>' : '') + '</div><div id="dbLk" class="small" style="margin-top:4px"><a class="lk" onclick="pkgCheck()">Package check · renewals, over, deadlines</a></div></div>' +
       '<div class="as-q"><input id="aq" class="search" placeholder="Search name, 中文, code or number, teacher, book · past students too" value="' + esc(q) + '" oninput="asQ()" onkeydown="asKey(event)" autocomplete="off">' + (q ? '<button type="button" class="as-x" title="Clear" onclick="asClear()">×</button>' : '') + '</div>' + (q ? '<div class="small mute" style="margin:6px 2px 0">' + L.length + ' found' + (L.length ? ' · Enter opens ' + esc((L[0].s || {}).name || '') : '') + '</div>' : '') +
       (q ? '' : '<div class="seg" style="flex-wrap:wrap">' + tabs.map(t => '<button class="' + (STF === t[0] ? 'on' : '') + '" onclick="stF(\'' + t[0] + '\')">' + t[1] + (t[0] === 'agr' && !(typeof AGM !== 'undefined' && AGM) ? '' : ' · ' + F[t[0]].length) + '</button>').join('') + '</div>') + '<div>';
     if(STF === 'shared' && !q){ el.innerHTML = h + shListHtml('') + '</div>'; return; }   /* 14 Oct: one list of all shared packages */
@@ -26669,8 +26669,8 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       else if(l === 'On time') tip(a, 'Time-ins on time / time-ins due so far (on time + late + missing) · "teaching" = teachers on today’s time-in board'); }); }
 
   function students(){ const v = document.getElementById('v-astudents'), sub = v && v.querySelector('.lead .mute.small'); if(!sub) return;
-    const m = sub.innerHTML.match(/^(\d+) active · packages live from ACTIVE/);
-    if(m) sub.innerHTML = sub.innerHTML.replace(m[0], m[1] + ' active students · packages live from ACTIVE');
+    const m = sub.innerHTML.match(/^(\d+) active · packages live from the database/);
+    if(m) sub.innerHTML = sub.innerHTML.replace(m[0], m[1] + ' active students · packages live from the database');
     tip(sub, 'Active students = student codes in ACTIVE with lessons left (or a shared package), that are ticked active or are on a teacher’s class list. Each student is counted once. Packages counts package rows; Overview counts every ticked student, including those who ran out.');
     const a = asofTxt('stu'); let x = sub.querySelector('.asof844'); if(a){ if(!x){ x = document.createElement('span'); x.className = 'asof844'; sub.appendChild(x); } if(x.textContent !== ' · ' + a) x.textContent = ' · ' + a; } }
 
