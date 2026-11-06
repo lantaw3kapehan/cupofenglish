@@ -4228,36 +4228,45 @@ function tlv1795(L){ const box = $('tlN'); if(!box) return; if(L) TLV1795.L = L;
   TLV1795.needAck = planned && n > 0 && h < 168;
   if(TLV1795.needAck) out += '<label class="row" style="gap:8px;margin-top:8px;font-weight:600"><input type="checkbox" id="tlAck"> I understand I am releasing booked lessons and the service credit above applies.</label>';
   box.innerHTML = out; }
+function lv1795plan(x){   /* 1798: each booked lesson gets its own notice and its own outcome */
+  const cls = lv1795cls(x), at = lv1795at(x.at), planned = LV1795_PLANNED.test(x.type || ''), proof = (x.proof || []).length, age = (Date.now() - at) / 36e5;
+  return cls.map(c => { const h = (c.t - at) / 36e5; let k = 'none', why = '';
+    if(h < 4){ if(proof){ k = 'Excused'; why = 'less than 4 h · with proof'; } else if(!planned && age < 48){ k = 'wait'; why = 'less than 4 h · proof due'; } else { k = 'Unexcused'; why = 'less than 4 h · no proof'; } }
+    else if(planned){ if(h < 168){ k = 'Excused'; why = 'planned · less than 7 days'; } else why = 'planned · 7 days or more'; }
+    else if(proof){ why = '4 h or more · with proof'; }
+    else if(age < 48){ k = 'wait'; why = '4 h or more · proof due'; }
+    else { k = 'Unexcused'; why = 'no proof after 48 h'; }
+    return Object.assign({}, c, { h: h, k: k, why: why }); }); }
 function lvc1795(x){ const cls = lv1795cls(x); if(!cls.length) return '';
   const at = lv1795at(x.at), h = (Math.min.apply(null, cls.map(c => c.t)) - at) / 36e5, planned = LV1795_PLANNED.test(x.type || ''), proof = (x.proof || []).length, age = (Date.now() - at) / 36e5;
   const cnt = lv1795count((LV && LV.rows) || [], x.teacher, x.from), done = (() => { try{ return JSON.parse(localStorage.getItem('lv1795:' + x.id) || 'null'); }catch(e){ return null; } })();
-  let sug = 'none', why = '';
-  if(planned){ if(h < 4){ sug = 'Unexcused'; why = 'planned · less than 4 hours (Clause 2.9)'; } else if(h < 168){ sug = 'Excused'; why = 'planned · less than 7 days ahead (Clauses 2.10, 4.1)'; } else why = 'planned · 7 days or more ahead'; }
-  else if(proof){ why = 'emergency with proof · check the proof'; }
-  else if(age < 48){ sug = 'wait'; why = 'proof due within 48 h (' + lv1795h(48 - age) + ' left)'; }
-  else { sug = 'Unexcused'; why = 'no proof after 48 h · no valid reason'; }
-  const tier = (window.LV95T && LV95T[x.id]) || 'Regular', n = cls.length, amt = k => LV1795_RATE[k][tier];
+  const tier = (window.LV95T && LV95T[x.id]) || 'Regular', n = cls.length, plan = lv1795plan(x), rate = k => (LV1795_RATE[k] || {})[tier] || 0;
+  const charged = plan.filter(p => p.k === 'Excused' || p.k === 'Unexcused'), total = charged.reduce((a, p) => a + rate(p.k), 0), waiting = plan.filter(p => p.k === 'wait').length;
+  const rows = plan.map(p => '<div class="lv95r ' + (p.k === 'Unexcused' ? 'bad' : p.k === 'Excused' || p.k === 'wait' ? 'warn' : 'ok') + '"><span>' + esc(p.md + ' ' + p.hm + ' · ' + p.name) + '</span><span>' + lv1795h(p.h) + '</span><b>' + (p.k === 'none' ? 'No charge' : p.k === 'wait' ? 'Proof due' : p.k + ' ₱' + rate(p.k)) + '</b></div>').join('');
   const btn = (k, lbl, cls2) => '<button class="btn sm ' + cls2 + '" onclick="lvCredit1795(\'' + esc(x.id) + '\',\'' + k + '\')">' + lbl + '</button>';
   return '<div class="lv95box"><b>Notice &amp; service credit</b>'
     + lv1795line(h < 4 ? 'bad' : (planned && h < 168) ? 'warn' : 'ok', 'Notice: <b>' + lv1795h(h) + '</b> before the first of <b>' + n + ' booked lesson' + (n === 1 ? '' : 's') + '</b>')
-    + lv1795line(proof ? 'ok' : planned ? 'ok' : age < 48 ? 'warn' : 'bad', proof ? '✓ Proof attached (' + proof + ')' : planned ? 'Planned time off · proof optional' : 'No proof yet')
-    + lv1795line(cnt >= 3 ? 'bad' : cnt >= 2 ? 'warn' : 'ok', 'Releases with less than 7 days\' notice in 60 days: <b>' + cnt + '</b>' + (cnt >= 3 ? ' · notice of breach (Clause 5.1)' : ''))
-    + '<div class="small" style="margin-top:6px">Suggested: <b>' + (sug === 'none' ? 'No charge' : sug === 'wait' ? 'Wait for the proof' : sug + ' · ₱' + amt(sug) + ' × ' + n + ' = ₱' + (amt(sug) * n).toLocaleString()) + '</b> · ' + esc(why) + '</div>'
+    + lv1795line(proof ? 'ok' : planned ? 'ok' : age < 48 ? 'warn' : 'bad', proof ? '✓ Proof attached (' + proof + ')' : planned ? 'Planned time off · proof optional' : 'No proof yet · due within 48 h (' + (age < 48 ? lv1795h(48 - age) + ' left' : 'overdue') + ')')
+    + lv1795line(cnt >= 3 ? 'bad' : cnt >= 2 ? 'warn' : 'ok', 'Releases with less than 7 days\' notice in 60 days: <b>' + cnt + '</b>' + (cnt >= 3 ? ' · notice of breach (Clause 5.1)' : cnt >= 2 ? ' · Operations may move these students to another teacher' : ''))
+    + '<div class="lv95t">' + rows + '</div>'
+    + '<div class="small" style="margin-top:6px">Suggested: <b>' + (charged.length ? charged.length + ' lesson' + (charged.length === 1 ? '' : 's') + ' · ₱' + total.toLocaleString() : waiting ? 'wait for the proof' : 'No charge') + '</b>' + (charged.length && charged.length < n ? ' · the other ' + (n - charged.length) + ' no charge' : '') + ' · each lesson by its own notice: under 4 h (Clause 2.9) is charged</div>'
     + (done ? '<div class="lv95 ok" style="margin-top:6px">✓ Recorded on this device: <b>' + esc(done.k) + '</b> · ' + esc(done.at) + (done.ids ? ' · ' + esc(done.ids) : '') + '</div>'
       : '<div class="small mute" style="margin-top:6px">Employment status for the rate: <a class="link" onclick="(window.LV95T=window.LV95T||{})[\'' + esc(x.id) + '\']=\'' + (tier === 'Regular' ? 'New' : 'Regular') + '\';lvSheet(\'' + esc(x.id) + '\')">' + tier + ' (tap to change)</a></div>'
-        + '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">' + btn('none', 'No charge', sug === 'none' ? 'teal' : 'ghost') + btn('Excused', 'Excused · ₱' + (amt('Excused') * n).toLocaleString(), sug === 'Excused' ? 'teal' : 'ghost') + btn('Unexcused', 'Unexcused · ₱' + (amt('Unexcused') * n).toLocaleString(), sug === 'Unexcused' ? 'teal' : 'ghost') + '</div>')
+        + '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">' + (charged.length ? btn('plan', 'Apply suggested · ₱' + total.toLocaleString(), 'teal') : '') + btn('none', 'No charge', charged.length ? 'ghost' : 'teal') + btn('Unexcused', 'All unexcused · ₱' + (rate('Unexcused') * n).toLocaleString(), 'ghost') + '</div>')
     + '</div>'; }
-async function lvCredit1795(id, k){ const x = LV && LV.rows.find(r => r.id === id); if(!x) return; const cls = lv1795cls(x), tier = (window.LV95T && LV95T[id]) || 'Regular';
-  const at = lv1795at(x.at), h = (Math.min.apply(null, cls.map(c => c.t)) - at) / 36e5, stamp = new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+async function lvCredit1795(id, k){ const x = LV && LV.rows.find(r => r.id === id); if(!x) return; const tier = (window.LV95T && LV95T[id]) || 'Regular';
+  const stamp = new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   if(k === 'none'){ try{ localStorage.setItem('lv1795:' + id, JSON.stringify({ k: 'No charge', at: stamp })); }catch(e){} toast('✓ No charge recorded for ' + tName(x.teacher)); lvSheet(id); return; }
-  const amt = LV1795_RATE[k][tier];
-  if(!confirm(k + ' · ' + cls.length + ' lesson' + (cls.length === 1 ? '' : 's') + ' × ₱' + amt + ' = ₱' + (amt * cls.length).toLocaleString() + ' for ' + tName(x.teacher) + '?\nOne Teacher Class Cancellation case per lesson.')) return;
-  toast('Saving ' + cls.length + ' case' + (cls.length === 1 ? '' : 's') + '…'); const ids = [];
-  for(const c of cls){ try{ const r = await api('addCase', TOKEN, { subject: 'Teacher Class Cancellation', source: 'Teacher', assigned: 'Operations', type: 'Attendance', employee: x.teacher, student: c.name, condition: k, status: tier, amount: amt, done: true,
-      action: 'Notice of unavailability ' + id + ' · ' + lv1795h(h) + ' notice · lesson ' + c.md + ' ' + c.hm + ' · Clause ' + (h < 4 ? '2.9' : '2.10 / 4.1') }); if(r && r.ok) ids.push(r.caseId); }catch(e){} }
-  try{ localStorage.setItem('lv1795:' + id, JSON.stringify({ k: k + ' · ₱' + (amt * ids.length).toLocaleString(), at: stamp, ids: ids.join(', ') })); }catch(e){}
-  toast(ids.length === cls.length ? '✓ ' + ids.length + ' case' + (ids.length === 1 ? '' : 's') + ' saved · ' + ids.join(', ') : ids.length + ' of ' + cls.length + ' saved · check Actions'); lvSheet(id); try{ AC = null; }catch(e){} }
-(function(){ const st = document.createElement('style'); st.textContent = '.lv95{font-size:13px;padding:6px 10px;border-radius:10px;margin-top:6px;border-left:4px solid}.lv95.ok{background:#E3F4EC;color:#1C6B4C;border-color:#2E9E6B}.lv95.warn{background:#FFF6E5;color:#8A5A0F;border-color:#E2A93B}.lv95.bad{background:#FDE8E4;color:#A3321E;border-color:#D2553B}.lv95box{margin-top:12px;padding:12px;border:1px solid #ECEAF1;border-radius:14px;background:#fff}'; document.head.appendChild(st); })();
+  const plan = lv1795plan(x).map(p => k === 'plan' ? p : Object.assign({}, p, { k: 'Unexcused' })).filter(p => p.k === 'Excused' || p.k === 'Unexcused');
+  if(!plan.length) return toast('Nothing to charge');
+  const total = plan.reduce((a, p) => a + LV1795_RATE[p.k][tier], 0);
+  if(!confirm(plan.map(p => p.md + ' ' + p.hm + ' ' + p.name + ' · ' + p.k + ' ₱' + LV1795_RATE[p.k][tier]).join('\n') + '\n\nTotal ₱' + total.toLocaleString() + ' for ' + tName(x.teacher) + ' · one Teacher Class Cancellation case per lesson?')) return;
+  toast('Saving ' + plan.length + ' case' + (plan.length === 1 ? '' : 's') + '…'); const ids = [];
+  for(const c of plan){ const amt = LV1795_RATE[c.k][tier]; try{ const r = await api('addCase', TOKEN, { subject: 'Teacher Class Cancellation', source: 'Teacher', assigned: 'Operations', type: 'Attendance', employee: x.teacher, student: c.name, condition: c.k, status: tier, amount: amt, done: true,
+      action: 'Notice of unavailability ' + id + ' · ' + lv1795h(c.h) + ' notice · lesson ' + c.md + ' ' + c.hm + ' · Clause ' + (c.h < 4 ? '2.9' : '2.10 / 4.1') }); if(r && r.ok) ids.push(r.caseId); }catch(e){} }
+  try{ localStorage.setItem('lv1795:' + id, JSON.stringify({ k: (k === 'plan' ? 'Suggested' : 'All unexcused') + ' · ₱' + total.toLocaleString(), at: stamp, ids: ids.join(', ') })); }catch(e){}
+  toast(ids.length === plan.length ? '✓ ' + ids.length + ' case' + (ids.length === 1 ? '' : 's') + ' saved · ' + ids.join(', ') : ids.length + ' of ' + plan.length + ' saved · check Actions'); lvSheet(id); try{ AC = null; }catch(e){} }
+(function(){ const st = document.createElement('style'); st.textContent = '.lv95t{margin-top:8px;border:1px solid #ECEAF1;border-radius:10px;overflow:hidden}.lv95r{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:5px 10px;font-size:12.5px;border-top:1px solid #F2F1F6}.lv95r:first-child{border-top:0}.lv95r.ok b{color:#1C6B4C}.lv95r.warn b{color:#8A5A0F}.lv95r.bad b{color:#A3321E}.lv95r span:nth-child(2){color:#6E6B84}.lv95{font-size:13px;padding:6px 10px;border-radius:10px;margin-top:6px;border-left:4px solid}.lv95.ok{background:#E3F4EC;color:#1C6B4C;border-color:#2E9E6B}.lv95.warn{background:#FFF6E5;color:#8A5A0F;border-color:#E2A93B}.lv95.bad{background:#FDE8E4;color:#A3321E;border-color:#D2553B}.lv95box{margin-top:12px;padding:12px;border:1px solid #ECEAF1;border-radius:14px;background:#fff}'; document.head.appendChild(st); })();
 async function tlvSend(){ const some = LVF.part === 'Some classes';
 const f = { type: LVF.type, from: $('tlF').value, to: $('tlT').value, part: LVF.part, tFrom: some ? $('tlA').value : '', tTo: some ? $('tlB').value : '', reason: $('tlR').value, files: LVFILES, later: !!LVF.later };
 if(!f.type) return toast('Choose the type of leave'); if(some && (!f.tFrom || !f.tTo)) return toast('Pick from what time to what time'); if(String(f.reason).trim().length < 5) return toast('Write a short reason');
@@ -6832,7 +6841,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1611;
+const COE_V = 1612;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
