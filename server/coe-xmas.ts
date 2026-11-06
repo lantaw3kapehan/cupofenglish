@@ -1,4 +1,4 @@
-// coe-xmas v4 · 6 Nov 2026 (v2: "about me" clues · v3: drop-outs — "drop" op, re-spin when the match changed · v4: answered flag for "I will not join") · Christmas 2026 dinner + gift exchange (Secret Santa). Config in docs sys:xmas2026.
+// coe-xmas v5 · 6 Nov 2026 (v2: "about me" clues · v3: drop-outs — "drop" op, re-spin when the match changed · v4: answered flag for "I will not join" · v5: Misty 20:07 — no names to teachers: the giver gets only the clues + wishlist; the name only after Reveal at the dinner) · Christmas 2026 dinner + gift exchange (Secret Santa). Config in docs sys:xmas2026.
 // POST { token, op } — anyone invited (active teachers + Celine, minus sys:xmas2026.exclude):
 //   me    → { ok, cfg, me: {joining, avail, wish}, drawn, picked, recv?: {name, wish}, wheel?: [names] , counts }
 //   save  { joining, avail, wish[] } (until the deadline and before the draw)
@@ -47,8 +47,7 @@ Deno.serve(async (req: Request) => {
     if (d && (op === "spin" || d.picked_at)) {
       if (op === "spin" && !d.picked_at) await db.from("coe_xmas_draw").update({ picked_at: new Date().toISOString(), changed: false }).eq("giver", lc);
       const { data: r } = await db.from("coe_xmas").select("display,wish,about").eq("person", d.receiver).maybeSingle();
-      recv = r ? { name: r.display, wish: r.wish, about: r.about || "" } : null;
-      const { data: all } = await db.from("coe_xmas").select("display,person").eq("joining", true); wheel = (all || []).filter((x: any) => x.person !== lc).map((x: any) => x.display);
+      recv = r ? { name: cfg.reveal ? r.display : "", wish: r.wish, about: r.about || "" } : null;
     }
     const { count: nj } = await db.from("coe_xmas").select("person", { count: "exact", head: true }).eq("joining", true);
     return out({ ok: true, invited: true, answered: !!mine, cfg: pub, me: mine || { joining: false, avail: "", wish: [], about: "" }, inDraw: !!d, changed: !!(d && d.changed && !d.picked_at && op !== "spin"), dropped: !!(mine && mine.dropped_at), picked: !!(d && (d.picked_at || op === "spin")), recv, wheel, joined: nj || 0 });
