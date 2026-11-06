@@ -4784,7 +4784,7 @@ const R = S.sec.renew, F = S.sec.follow, P = S.sec.reports, X = S.sec.fix;
 const closed = c => /^(Not renewing|Paused|Renewing)/.test((REN||{})[String(c||'').toUpperCase()] || '') || renDone((REN||{})[String(c||'').toUpperCase()]);
 const ren = (R ? R.rows : []).filter(r => !closed(r[1])).map(r => { const left = parseFloat(r[tdCol(R,/LESSON|LEFT/,3)]), end = tdDays(r[tdCol(R,/EXPECTED|END/,5)]);
 return { name: r[0], now: !(left > 0) || left <= 1 || (end != null && end <= 7) }; });
-const fol = (F ? F.rows : []).filter(r => { const fu = r[tdCol(F,/FOLLOW/,7)]; return (!fu || /not set/i.test(fu)) && !TFU[tfuKey(r[0], r[1])]; });
+const fol = (F ? F.rows : []).filter(r => { const fu = r[tdCol(F,/FOLLOW/,7)]; return (!fu || /not set/i.test(fu)) && !TFU[tfuKey(r[0], r[1])] && !(window.tdExisting1813 && tdExisting1813(r[2], r[0])); });   /* 1813 */
 return { renNow: ren.filter(x => x.now), ren, fol, rep: P ? (P.rows || []).filter(r => { const t = trlFor(r[0], r[1], r[2]); return !(t && t.status === 'Sent'); }) : [], fix: X ? X.rows : [] }; }
 function hmQueue(){                                            // what needs management, most urgent first
 const Q = [], W = [], ok = [], add = (list, n, x) => { if(n > 0) list.push(Object.assign({ n }, x)); else if(x.okLabel) ok.push(x.okLabel); };
@@ -6948,7 +6948,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1626;
+const COE_V = 1627;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -19913,6 +19913,9 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
   document.head.appendChild(css);
   const up = s => String(s || '').trim().toUpperCase();
   let asked = false;
+  window.tdExisting1813 = function(code, trial){ try{ if(!(typeof AT !== 'undefined' && AT && AT.cols && AT.rows)) return false; const C = {}; AT.cols.forEach((c, i) => C[c] = i);   /* 1813 */
+    let t0 = String(trial || ''); if(!/^\d{4}-\d{2}-\d{2}/.test(t0)){ const d = new Date(t0); t0 = isNaN(d) ? '' : ymdLocal(d); } t0 = t0.slice(0, 10); if(!t0) return false;
+    return AT.rows.some(r => up(r[C.code]) === up(code) && +r[C.enrolled] > 0 && (C.active == null || r[C.active] === true || r[C.active] === 'TRUE') && C.start != null && /^\d{4}-\d{2}-\d{2}/.test(String(r[C.start] || '')) && String(r[C.start]).slice(0, 10) < t0); }catch(e){ return false; } };
   function pkg(code, trial){ try{ if(!(typeof AT !== 'undefined' && AT && AT.cols && AT.rows)) return null; const C = {}; AT.cols.forEach((c, i) => C[c] = i);
     const t0 = String(trial || '').slice(0, 10);
     const R = AT.rows.filter(r => up(r[C.code]) === up(code) && +r[C.enrolled] > 0 && (C.active == null || r[C.active] === true || r[C.active] === 'TRUE'));
@@ -19926,6 +19929,7 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
       const key = (code || nm) + '|' + trial; if(seen[key]){ row.remove(); return; } seen[key] = 1;
       const chip = [...row.querySelectorAll('.tags .chip')].find(c => /^Enrolling\b/.test(c.textContent.trim())); if(!chip && !code) return;
       const ymd = (() => { const m = trial.match(/([A-Z][a-z]{2}) (\d{1,2})/); if(!m) return ''; const mi = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(m[1]), now = new Date(); let y = now.getFullYear(); if(mi > now.getMonth()) y--; return y + '-' + String(mi + 1).padStart(2, '0') + '-' + String(m[2]).padStart(2, '0'); })();
+      if(code && ymd && window.tdExisting1813(code, ymd)){ row.remove(); return; }   /* 1813: already a student before the trial */
       const P = code ? pkg(code, ymd) : null;
       if(P){ const PK = { 33: '30 + 3', 68: '60 + 8' }, txt = '✓ Enrolled · ' + (PK[+P.n] || P.n) + ' lessons';   /* 488: no sheet row on the chip; it is in the tooltip */
         if(chip){ chip.textContent = txt; chip.className = 'chip green'; chip.title = P.row ? 'ACTIVE row ' + P.row : ''; }
