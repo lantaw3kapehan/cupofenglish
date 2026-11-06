@@ -9,8 +9,8 @@ const SHORT = "'Short-notice requests in the last 60 days: <b>' + cnt + '</b> (t
 lib(file, [
   ["lv1795line(cnt >= 3 ? 'bad' : cnt >= 2 ? 'warn' : 'ok', 'Releases with less than 7 days\\' notice in 60 days: <b>' + cnt + '</b>' + (cnt >= 3 ? ' · notice of breach (Clause 5.1)' : cnt >= 2 ? ' · Operations may move these students to another teacher' : ''))",
    "lv1795line(cnt >= 3 ? 'bad' : cnt >= 2 ? 'warn' : 'ok', " + SHORT + " + (cnt >= 3 ? ' · <b>notice of breach</b> (Clause 5.1)' : cnt >= 2 ? ' · a 3rd brings a notice of breach' : ''))   /* 1800 wording */"],
-  ["'Booked lessons released with less than 7 days\\' notice in the last 60 days: <b>' + cnt + '</b>' + (n && h < 168 ? ' (with this one)' : '')",
-   "'Short-notice requests in the last 60 days: <b>' + cnt + '</b>' + (n && h < 168 ? ' (this one included)' : '') + ' <span class=\"mute\">· short notice = less than 7 days before the lessons</span>'"],
+  ["'Booked lessons released with less than 7 days\\' notice in the last 60 days: <b>' + cnt + '</b>' + (n && h0 < 168 ? ' (with this one)' : '')",
+   "'Short-notice requests in the last 60 days: <b>' + cnt + '</b>' + (n && h0 < 168 ? ' (this one included)' : '') + ' <span class=\"mute\">· short notice = less than 7 days before the lessons</span>'"],
   ["const tier = (window.LV95T && LV95T[x.id]) || 'Regular', n = cls.length,",
    "const tier = lv1800tier(x) || 'Regular', rk = lv1800rank(x.teacher), n = cls.length,"],
   ["'<div class=\"small mute\" style=\"margin-top:6px\">Employment status for the rate: <a class=\"link\" onclick=\"(window.LV95T=window.LV95T||{})[\\'' + esc(x.id) + '\\']=\\'' + (tier === 'Regular' ? 'New' : 'Regular') + '\\';lvSheet(\\'' + esc(x.id) + '\\')\">' + tier + ' (tap to change)</a></div>'",
