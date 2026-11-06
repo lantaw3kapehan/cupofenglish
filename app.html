@@ -4206,7 +4206,7 @@ function lv1795cls(x){ const t = String((x && x.classes) || ''), k = t.indexOf('
     return { md: m[1], hm: m[2], name: (m[3] || '').trim(), t: Date.parse(yy + '-' + m[1] + 'T' + m[2] + ':00+08:00') }; }).filter(Boolean); }
 function lv1795count(rows, teacher, upto){   /* releases of booked lessons with less than 7 days' notice, in the 60 days up to 'upto' */
   const lo = new Date(Date.parse(String(upto).slice(0, 10) + 'T12:00:00+08:00') - 60 * 864e5).toISOString().slice(0, 10);
-  return (rows || []).filter(r => (!teacher || String(r.teacher || '').toLowerCase() === String(teacher).toLowerCase()) && !/Declined|Cancelled/i.test(r.status || '')
+  return (rows || []).filter(r => (!teacher || String(r.teacher || '').toLowerCase() === String(teacher).toLowerCase()) && !(/Cancelled/i.test(r.status || '') && String(r.decidedBy || '').trim().toLowerCase() === String(r.teacher || '').trim().toLowerCase())
     && String(r.from || '') >= lo && String(r.from || '') <= String(upto).slice(0, 10) && lv1795cls(r).length
     && (Math.min.apply(null, lv1795cls(r).map(c => c.t)) - lv1795at(r.at)) < 7 * 864e5).length; }
 function lv1795h(h){ if(h < 0) return 'after the lesson started'; if(h >= 48) return Math.floor(h / 24) + ' days'; const H = Math.floor(h), M = Math.round((h - H) * 60); return H + ' h ' + M + ' min'; }
@@ -6832,7 +6832,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1610;
+const COE_V = 1611;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
