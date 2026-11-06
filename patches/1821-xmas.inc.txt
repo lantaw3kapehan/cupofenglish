@@ -1,0 +1,75 @@
+<script>
+/* 1821 · Christmas 2026 · dinner & gift exchange (Secret Santa) — Misty 6 Nov 19:43. Server: coe-xmas (docs sys:xmas2026).
+   Teachers (and Celine): join the dinner, type availability and a wishlist (up to 3) until Sun 23 Nov 23:59 · after the President's
+   draw each person spins the wheel on their own phone and sees who they give to, with that person's wishlist. Nobody else sees it.
+   Management: who joined, availability, wishlists in (yes/no), who has spun · never the pairs · the President draws, and presses
+   Reveal at the dinner. */
+(function(){
+  if(window.__x1821) return; window.__x1821 = 1;
+  const URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-xmas', END = '2026-12-31';
+  const X = { me: null, adm: null, busy: 0 };
+  const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const call = (op, b) => fetch(URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, op }, b || {})) }).then(r => r.json());
+  const live = () => new Date().toISOString().slice(0, 10) <= END && typeof TOKEN !== 'undefined' && TOKEN;
+  const dl = c => { try{ return new Date(c.deadline).toLocaleString('en-GB', { timeZone: 'Asia/Manila', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }catch(x){ return ''; } };
+  const css = document.createElement('style');
+  css.textContent = '.x21c{display:flex;gap:12px;align-items:center;padding:12px 14px;margin:0 0 14px;border-radius:16px;background:linear-gradient(135deg,#FDF1F0,#EEF8F3);border:1px solid #F1D9D5;cursor:pointer}'
+    + '.x21c .i{width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}.x21c b{display:block;font-size:14.5px;color:#2B2840}.x21c span{font-size:12.5px;color:#5E5A76}'
+    + '.x21 h1{margin:0 0 4px}.x21 .sub{color:#5E5A76;font-size:13.5px;line-height:1.5;margin-bottom:12px}.x21 .box{border:1px solid #ECEAF1;border-radius:14px;padding:12px 14px;margin-top:10px;background:#fff}'
+    + '.x21 label.t{display:flex;gap:8px;align-items:center;font-weight:600;font-size:14.5px}.x21 .lab{font-size:12.5px;font-weight:600;color:#5E5A76;margin:10px 0 4px}.x21 .in{width:100%}'
+    + '.x21 .wheel{height:84px;overflow:hidden;border-radius:14px;background:#1F2A44;color:#fff;display:flex;align-items:center;justify-content:center;font:700 26px/1.1 var(--f,inherit);letter-spacing:.3px;margin:12px 0;box-shadow:inset 0 0 0 3px #E2A93B}'
+    + '.x21 .wish li{margin:4px 0;font-size:14.5px}.x21 .ok{color:#1C6B4C;font-weight:600}.x21 table{width:100%;border-collapse:collapse;font-size:13px}.x21 td{padding:6px 4px;border-top:1px solid #F1EFF6;vertical-align:top}';
+  document.head.appendChild(css);
+  async function load(){ if(X.busy) return; X.busy = 1; try{ const r = await call('me'); if(r && r.ok) X.me = r; }catch(x){} X.busy = 0; paintCard(); }
+  function cardHtml(){ const m = X.me; if(!m) return '';
+    if(!m.invited) return (typeof D !== 'undefined' && D && D.mgr) ? '<div class="x21c" id="x21c" onclick="xmas1821()"><div class="i">🎄</div><div><b>Christmas 2026 · dinner &amp; gift exchange</b><span>Who is joining, their free dates, the draw' + (m.cfg && m.cfg.drawn ? ' · reveal at the dinner' : '') + '</span></div></div>' : '';
+    const c = m.cfg, j = m.me || {}; let t;
+    if(m.recv) t = 'You give to <b style="display:inline">' + e(m.recv.name) + '</b> · see the wishlist';
+    else if(m.inDraw) t = 'The names are drawn · tap to spin the wheel';
+    else if(c.drawn) t = 'The names are drawn · you were not in the draw';
+    else if(!c.open) t = 'Sign-up closed · the draw is coming';
+    else if(j.joining) t = (j.wish && j.wish.length ? '✓ You are in · wishlist sent' : 'You are in · add your wishlist') + ' · until ' + dl(c);
+    else t = 'Join the dinner and send your wishlist · until ' + dl(c);
+    return '<div class="x21c" id="x21c" onclick="xmas1821()"><div class="i">🎄</div><div><b>Christmas 2026 · dinner &amp; gift exchange</b><span>' + t + '</span></div></div>'; }
+  function paintCard(){ const h = cardHtml(), old = document.getElementById('x21c');
+    const host = (typeof D !== 'undefined' && D && D.mgr) ? document.getElementById('v-home') : document.getElementById('v-today');
+    if(!h){ if(old) old.remove(); return; } if(old){ if(old.outerHTML !== h) old.outerHTML = h; return; }
+    if(!host) return; const fd = host.querySelector('#fd1806'); if(fd) fd.insertAdjacentHTML('afterend', h); else { const ov = host.querySelector('.ov') || host; ov.insertAdjacentHTML('afterbegin', h); } }
+  function form(){ const m = X.me, c = m.cfg, j = m.me || {}, w = (j.wish || []).concat(['', '', '']).slice(0, 3);
+    return '<div class="x21"><h1>🎄 Christmas 2026</h1><div class="sub">An intimate dinner in Urdaneta and a gift exchange · minimum gift ₱' + (c.budget || 500) + ' (more is up to you) · sign-up until <b>' + e(dl(c)) + '</b>. After that the names are drawn and you spin the wheel here to see who you give to · nobody else sees it, not even management.</div>'
+      + '<div class="box"><label class="t"><input type="checkbox" id="x21j"' + (j.joining ? ' checked' : '') + '> I will join the dinner and the gift exchange</label>'
+      + '<div class="lab">When are you free? (dates and times)</div><textarea class="in" id="x21a" rows="2" placeholder="e.g. Dec 13 or 14 evening · any Saturday after Dec 6">' + e(j.avail || '') + '</textarea>'
+      + '<div class="lab">My wishlist (up to 3 ideas · ₱' + (c.budget || 500) + ' and up)</div>' + w.map((x, i) => '<input class="in" id="x21w' + i + '" style="margin-bottom:6px" maxlength="160" placeholder="' + ['e.g. a planner or notebook', 'e.g. a coffee tumbler', 'e.g. a book I like'][i] + '" value="' + e(x) + '">').join('')
+      + '<button class="btn teal block" style="margin-top:10px" onclick="xmasSave1821()">Save</button></div>' + (m.joined ? '<div class="small mute" style="margin-top:8px">' + m.joined + ' joined so far</div>' : '') + '</div>'; }
+  function spinBox(){ const m = X.me;
+    if(m.recv) return '<div class="x21"><h1>🎄 Your Secret Santa match</h1><div class="sub">Keep it a secret until the dinner 🤫</div><div class="wheel">' + e(m.recv.name) + '</div>'
+      + '<div class="box"><b>' + e(m.recv.name) + '’s wishlist</b><ul class="wish">' + ((m.recv.wish || []).map(x => '<li>🎁 ' + e(x) + '</li>').join('') || '<li class="mute">No wishlist</li>') + '</ul><div class="small mute">Minimum ₱' + (m.cfg.budget || 500) + ' · wrap it and bring it to the dinner</div></div></div>';
+    return '<div class="x21"><h1>🎄 Spin the wheel</h1><div class="sub">The names are drawn. Spin to see who you will give a gift to · only you will see it.</div><div class="wheel" id="x21wh">?</div><button class="btn teal block" id="x21go" onclick="xmasSpin1821()">Spin</button></div>'; }
+  async function admin(){ try{ const r = await call('admin'); if(r && r.ok) X.adm = r; }catch(x){} const a = X.adm; if(!a) return '';
+    const L = a.list || [], j = L.filter(x => x.joining), wl = j.filter(x => x.hasWish), sp = L.filter(x => x.picked);
+    return '<div class="x21" style="margin-top:16px"><h2 style="margin:0">Management · Christmas 2026</h2><div class="sub">' + j.length + ' joining · ' + wl.length + ' wishlists · ' + (a.cfg.drawn ? sp.length + ' of ' + L.filter(x => x.inDraw).length + ' have spun' : 'not drawn yet') + ' · the pairs are never shown here</div>'
+      + '<table>' + L.map(x => '<tr><td><b>' + e(x.name) + '</b></td><td>' + (x.joining ? '<span class="ok">✓ joining</span>' : x.answered ? 'not joining' : '<span class="mute">no answer</span>') + (x.joining ? (x.hasWish ? ' · wishlist ✓' : ' · <span style="color:#A3321E">no wishlist</span>') : '') + (x.inDraw ? (x.picked ? ' · spun ✓' : ' · not spun') : '') + '</td><td class="small">' + e(x.avail || '') + '</td></tr>').join('') + '</table>'
+      + (a.pres ? (!a.cfg.drawn ? '<button class="btn teal block" style="margin-top:12px" onclick="xmasDraw1821()">Draw names (' + wl.length + ' with a wishlist)</button><div class="small mute" style="margin-top:4px">Do this after the deadline · only people who joined and sent a wishlist are drawn · it cannot be undone</div>'
+        : '<button class="btn ' + (a.cfg.reveal ? 'ghost' : 'teal') + ' block" style="margin-top:12px" onclick="xmasReveal1821(' + (!a.cfg.reveal) + ')">' + (a.cfg.reveal ? 'Hide the pairs again' : 'Reveal at the dinner 🎉') + '</button><div id="x21p"></div>') : '') + '</div>'; }
+  window.xmas1821 = async function(){ if(!X.me) await load(); const m = X.me; let h = '';
+    if(m && m.invited) h = (m.inDraw ? spinBox() : m.cfg.open ? form() : '<div class="x21"><h1>🎄 Christmas 2026</h1><div class="sub">' + (m.cfg.drawn ? 'The names are drawn. You were not in the draw (no wishlist by the deadline) · tell Operations if this is a mistake.' : 'Sign-up is closed · the names will be drawn soon, then you spin the wheel here.') + '</div></div>');
+    openSheet(h || '<div class="x21"><h1>🎄 Christmas 2026</h1></div>');
+    if(typeof D !== 'undefined' && D && D.mgr){ const a = await admin(); const b = document.getElementById('sheetBody'); if(b && a) b.insertAdjacentHTML('beforeend', a); if(X.adm && X.adm.cfg.reveal) pairs(); } };
+  window.xmasSave1821 = async function(){ const v = id => (document.getElementById(id) || {}).value || '';
+    const b = { joining: !!(document.getElementById('x21j') || {}).checked, avail: v('x21a').trim(), wish: [v('x21w0'), v('x21w1'), v('x21w2')].map(s => s.trim()).filter(Boolean) };
+    if(b.joining && !b.wish.length) return toast('Add at least one wishlist idea');
+    toast('Saving…'); try{ const r = await call('save', b); if(!r || !r.ok) throw new Error((r && r.error) || 'not saved'); X.me = r; closeSheet(); paintCard(); toast(b.joining ? '✓ Saved · see you at the dinner 🎄' : '✓ Saved'); }catch(x){ toast('Not saved · ' + x.message); } };
+  window.xmasSpin1821 = async function(){ const go = document.getElementById('x21go'), wh = document.getElementById('x21wh'); if(go) go.disabled = true;
+    let r; try{ r = await call('spin'); }catch(x){} if(!r || !r.ok || !r.recv){ if(go) go.disabled = false; return toast('Could not spin · try again'); }
+    const names = (r.wheel && r.wheel.length ? r.wheel : [r.recv.name]); let k = 0, d = 60;
+    const step = () => { if(!wh) return; wh.textContent = names[k++ % names.length]; d *= 1.12; if(d < 420) setTimeout(step, d); else { wh.textContent = r.recv.name; setTimeout(() => { X.me = r; const b = document.getElementById('sheetBody'); if(b) b.innerHTML = spinBox(); paintCard(); }, 900); } };
+    step(); };
+  window.xmasDraw1821 = async function(){ if(!confirm('Draw the names now? Everyone who joined and sent a wishlist is paired at random. This cannot be undone.')) return;
+    const r = await call('draw').catch(() => null); toast(r && r.ok ? '✓ Drawn · ' + r.n + ' people · they can spin now' : ((r && (r.msg || r.error)) || 'Not drawn')); X.me = null; await load(); xmas1821(); };
+  window.xmasReveal1821 = async function(on){ if(on && !confirm('Show who gives to whom? Do this at the dinner.')) return; await call('reveal', { on }).catch(() => null); xmas1821(); };
+  async function pairs(){ const r = await call('pairs').catch(() => null); const p = document.getElementById('x21p'); if(p && r && r.ok) p.innerHTML = '<table style="margin-top:10px">' + r.pairs.map(x => '<tr><td><b>' + e(x.from) + '</b></td><td>🎁 gives to</td><td><b>' + e(x.to) + '</b></td></tr>').join('') + '</table>'; }
+  window.addEventListener('load', () => { if(!live()) return;
+    ['renderToday', 'renderHome'].forEach(fn => { const b0 = window[fn]; if(typeof b0 !== 'function' || b0.__x1821) return; const w = function(){ const r = b0.apply(this, arguments); try{ paintCard(); }catch(x){} return r; }; w.__x1821 = 1; window[fn] = w; try{ if(fn === 'renderToday') renderToday = w; else renderHome = w; }catch(x){} });
+    setTimeout(load, 2500); setInterval(() => { if(!document.hidden) load(); }, 5 * 60000); });
+})();
+</script>
