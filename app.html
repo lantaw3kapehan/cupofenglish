@@ -415,6 +415,24 @@ html:root:root{
     setTimeout(load, 2500); setInterval(() => { if(!document.hidden) load(); }, 5 * 60000); });
 })();
 </script>
+<script>
+/* 1825 · leave proof ready before the tap (App health 6 Nov: "mgmtLeaveProof" made management wait 3–9 s).
+   The proof file lives in Google Drive, so Google still fetches it, but now it starts the moment a leave request is opened
+   (and for the 3 newest pending requests with proof when the Leave list loads), so "View proof" is usually instant. Uses apiNow: a read, so it does not mark "just saved" (which would force fresh Google reads). */
+(function(){
+  if(window.__1825) return; window.__1825 = 1;
+  const Q = window.__lpq1825 = window.__lpq1825 || {};
+  function pre(x){ try{ if(!x || !x.id || !(x.proof || []).length || typeof TOKEN === 'undefined' || !TOKEN) return; const C = window.__lp1616 = window.__lp1616 || {};
+    x.proof.slice(0, 3).forEach((p, i) => { const k = x.id + '|' + i; if(C[k] || Q[k]) return;
+      Q[k] = Promise.resolve((typeof apiNow === 'function' ? apiNow : api)('mgmtLeaveProof', TOKEN, x.id, i)).then(r => { if(r && r.ok){ C[k] = r; const ks = Object.keys(C); if(ks.length > 12) delete C[ks[0]]; } delete Q[k]; return r; }, e => { delete Q[k]; throw e; }); }); }catch(e){} }
+  window.addEventListener('load', () => {
+    const s0 = window.lvSheet; if(typeof s0 === 'function' && !s0.__1825){ const w = function(id){ try{ if(id && typeof LV !== 'undefined' && LV && LV.rows) pre(LV.rows.find(r => r.id === id)); }catch(e){} return s0.apply(this, arguments); }; w.__1825 = 1; window.lvSheet = w; try{ lvSheet = w; }catch(e){} }
+    const l0 = window.loadLeave; if(typeof l0 === 'function' && !l0.__1825){ const w = async function(){ const r = await l0.apply(this, arguments);
+        try{ if(typeof D !== 'undefined' && D && D.mgr && typeof LV !== 'undefined' && LV && LV.rows) LV.rows.filter(x => x.status === 'Pending' && (x.proof || []).length).slice(0, 3).forEach(pre); }catch(e){} return r; };
+      w.__1825 = 1; window.loadLeave = w; try{ loadLeave = w; }catch(e){} }
+  });
+})();
+</script>
 <script>/* 1814 · same-HTML guard (no flicker from identical redraws) */
 (function(){ if(window.__g1814) return; window.__g1814 = 1;
   var d = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML'); if(!d || !d.set || !d.get) return;
@@ -4231,7 +4249,7 @@ if(!keep) box.textContent = 'Checking the calendar…';
 try{ const L = await api('mgmtLeaveClasses', TOKEN, t, f, to, a, b); if(($('lvT')||{}).value !== t) return; box.innerHTML = lvClsHtml(L) + (L.length ? '<div>Move them or find a sub in Schedule.</div>' : ''); }
 catch(e){ if(!keep) box.textContent = 'Could not check the calendar · it is checked again when you save.'; } }
 async function lvProof(id, i){ const el = $('lvPv'); if(el) el.innerHTML = '<div class="sk" style="height:120px;margin-top:8px"></div>';
-try{ const k1616 = id + '|' + i, r = (window.__lp1616 = window.__lp1616 || {})[k1616] || await api('mgmtLeaveProof', TOKEN, id, i); if(!r.ok) throw r; try{ const ks = Object.keys(window.__lp1616); if(ks.length > 12) delete window.__lp1616[ks[0]]; window.__lp1616[k1616] = r; }catch(e){}   /* 1616: seen again → instant */ const bin = atob(r.b64), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+try{ const k1616 = id + '|' + i, r = (window.__lp1616 = window.__lp1616 || {})[k1616] || await ((window.__lpq1825 || {})[k1616] || api('mgmtLeaveProof', TOKEN, id, i))   /* 1825 */; if(!r.ok) throw r; try{ const ks = Object.keys(window.__lp1616); if(ks.length > 12) delete window.__lp1616[ks[0]]; window.__lp1616[k1616] = r; }catch(e){}   /* 1616: seen again → instant */ const bin = atob(r.b64), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
 const url = URL.createObjectURL(new Blob([u8], { type: r.mime }));
 if(el) el.innerHTML = String(r.mime).indexOf('image') === 0 ? `<a href="${url}" target="_blank"><img src="${url}" style="max-width:100%;border-radius:12px;margin-top:8px"></a>` : `<iframe src="${url}" style="width:100%;height:420px;border:1px solid var(--line);border-radius:12px;margin-top:8px"></iframe><a class="link small" href="${url}" download="${esc(r.name)}">Download</a>`; }
 catch(e){ if(el) el.innerHTML = `<div class="small mute">${esc((e && e.msg) || 'Could not open the file.')}</div>`; } }
@@ -7049,7 +7067,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1638;
+const COE_V = 1639;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
