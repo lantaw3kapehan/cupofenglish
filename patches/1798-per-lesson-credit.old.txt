@@ -1,0 +1,29 @@
+function lvc1795(x){ const cls = lv1795cls(x); if(!cls.length) return '';
+  const at = lv1795at(x.at), h = (Math.min.apply(null, cls.map(c => c.t)) - at) / 36e5, planned = LV1795_PLANNED.test(x.type || ''), proof = (x.proof || []).length, age = (Date.now() - at) / 36e5;
+  const cnt = lv1795count((LV && LV.rows) || [], x.teacher, x.from), done = (() => { try{ return JSON.parse(localStorage.getItem('lv1795:' + x.id) || 'null'); }catch(e){ return null; } })();
+  let sug = 'none', why = '';
+  if(planned){ if(h < 4){ sug = 'Unexcused'; why = 'planned · less than 4 hours (Clause 2.9)'; } else if(h < 168){ sug = 'Excused'; why = 'planned · less than 7 days ahead (Clauses 2.10, 4.1)'; } else why = 'planned · 7 days or more ahead'; }
+  else if(proof){ why = 'emergency with proof · check the proof'; }
+  else if(age < 48){ sug = 'wait'; why = 'proof due within 48 h (' + lv1795h(48 - age) + ' left)'; }
+  else { sug = 'Unexcused'; why = 'no proof after 48 h · no valid reason'; }
+  const tier = (window.LV95T && LV95T[x.id]) || 'Regular', n = cls.length, amt = k => LV1795_RATE[k][tier];
+  const btn = (k, lbl, cls2) => '<button class="btn sm ' + cls2 + '" onclick="lvCredit1795(\'' + esc(x.id) + '\',\'' + k + '\')">' + lbl + '</button>';
+  return '<div class="lv95box"><b>Notice &amp; service credit</b>'
+    + lv1795line(h < 4 ? 'bad' : (planned && h < 168) ? 'warn' : 'ok', 'Notice: <b>' + lv1795h(h) + '</b> before the first of <b>' + n + ' booked lesson' + (n === 1 ? '' : 's') + '</b>')
+    + lv1795line(proof ? 'ok' : planned ? 'ok' : age < 48 ? 'warn' : 'bad', proof ? '✓ Proof attached (' + proof + ')' : planned ? 'Planned time off · proof optional' : 'No proof yet')
+    + lv1795line(cnt >= 3 ? 'bad' : cnt >= 2 ? 'warn' : 'ok', 'Releases with less than 7 days\' notice in 60 days: <b>' + cnt + '</b>' + (cnt >= 3 ? ' · notice of breach (Clause 5.1)' : ''))
+    + '<div class="small" style="margin-top:6px">Suggested: <b>' + (sug === 'none' ? 'No charge' : sug === 'wait' ? 'Wait for the proof' : sug + ' · ₱' + amt(sug) + ' × ' + n + ' = ₱' + (amt(sug) * n).toLocaleString()) + '</b> · ' + esc(why) + '</div>'
+    + (done ? '<div class="lv95 ok" style="margin-top:6px">✓ Recorded on this device: <b>' + esc(done.k) + '</b> · ' + esc(done.at) + (done.ids ? ' · ' + esc(done.ids) : '') + '</div>'
+      : '<div class="small mute" style="margin-top:6px">Employment status for the rate: <a class="link" onclick="(window.LV95T=window.LV95T||{})[\'' + esc(x.id) + '\']=\'' + (tier === 'Regular' ? 'New' : 'Regular') + '\';lvSheet(\'' + esc(x.id) + '\')">' + tier + ' (tap to change)</a></div>'
+        + '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">' + btn('none', 'No charge', sug === 'none' ? 'teal' : 'ghost') + btn('Excused', 'Excused · ₱' + (amt('Excused') * n).toLocaleString(), sug === 'Excused' ? 'teal' : 'ghost') + btn('Unexcused', 'Unexcused · ₱' + (amt('Unexcused') * n).toLocaleString(), sug === 'Unexcused' ? 'teal' : 'ghost') + '</div>')
+    + '</div>'; }
+async function lvCredit1795(id, k){ const x = LV && LV.rows.find(r => r.id === id); if(!x) return; const cls = lv1795cls(x), tier = (window.LV95T && LV95T[id]) || 'Regular';
+  const at = lv1795at(x.at), h = (Math.min.apply(null, cls.map(c => c.t)) - at) / 36e5, stamp = new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  if(k === 'none'){ try{ localStorage.setItem('lv1795:' + id, JSON.stringify({ k: 'No charge', at: stamp })); }catch(e){} toast('✓ No charge recorded for ' + tName(x.teacher)); lvSheet(id); return; }
+  const amt = LV1795_RATE[k][tier];
+  if(!confirm(k + ' · ' + cls.length + ' lesson' + (cls.length === 1 ? '' : 's') + ' × ₱' + amt + ' = ₱' + (amt * cls.length).toLocaleString() + ' for ' + tName(x.teacher) + '?\nOne Teacher Class Cancellation case per lesson.')) return;
+  toast('Saving ' + cls.length + ' case' + (cls.length === 1 ? '' : 's') + '…'); const ids = [];
+  for(const c of cls){ try{ const r = await api('addCase', TOKEN, { subject: 'Teacher Class Cancellation', source: 'Teacher', assigned: 'Operations', type: 'Attendance', employee: x.teacher, student: c.name, condition: k, status: tier, amount: amt, done: true,
+      action: 'Notice of unavailability ' + id + ' · ' + lv1795h(h) + ' notice · lesson ' + c.md + ' ' + c.hm + ' · Clause ' + (h < 4 ? '2.9' : '2.10 / 4.1') }); if(r && r.ok) ids.push(r.caseId); }catch(e){} }
+  try{ localStorage.setItem('lv1795:' + id, JSON.stringify({ k: k + ' · ₱' + (amt * ids.length).toLocaleString(), at: stamp, ids: ids.join(', ') })); }catch(e){}
+  toast(ids.length === cls.length ? '✓ ' + ids.length + ' case' + (ids.length === 1 ? '' : 's') + ' saved · ' + ids.join(', ') : ids.length + ' of ' + cls.length + ' saved · check Actions'); lvSheet(id); try{ AC = null; }catch(e){} }

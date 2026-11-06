@@ -1,0 +1,38 @@
+function lv1795plan(x){   /* 1798: each booked lesson gets its own notice and its own outcome */
+  const cls = lv1795cls(x), at = lv1795at(x.at), planned = LV1795_PLANNED.test(x.type || ''), proof = (x.proof || []).length, age = (Date.now() - at) / 36e5;
+  return cls.map(c => { const h = (c.t - at) / 36e5; let k = 'none', why = '';
+    if(h < 4){ if(proof){ k = 'Excused'; why = 'less than 4 h · with proof'; } else if(!planned && age < 48){ k = 'wait'; why = 'less than 4 h · proof due'; } else { k = 'Unexcused'; why = 'less than 4 h · no proof'; } }
+    else if(planned){ if(h < 168){ k = 'Excused'; why = 'planned · less than 7 days'; } else why = 'planned · 7 days or more'; }
+    else if(proof){ why = '4 h or more · with proof'; }
+    else if(age < 48){ k = 'wait'; why = '4 h or more · proof due'; }
+    else { k = 'Unexcused'; why = 'no proof after 48 h'; }
+    return Object.assign({}, c, { h: h, k: k, why: why }); }); }
+function lvc1795(x){ const cls = lv1795cls(x); if(!cls.length) return '';
+  const at = lv1795at(x.at), h = (Math.min.apply(null, cls.map(c => c.t)) - at) / 36e5, planned = LV1795_PLANNED.test(x.type || ''), proof = (x.proof || []).length, age = (Date.now() - at) / 36e5;
+  const cnt = lv1795count((LV && LV.rows) || [], x.teacher, x.from), done = (() => { try{ return JSON.parse(localStorage.getItem('lv1795:' + x.id) || 'null'); }catch(e){ return null; } })();
+  const tier = (window.LV95T && LV95T[x.id]) || 'Regular', n = cls.length, plan = lv1795plan(x), rate = k => (LV1795_RATE[k] || {})[tier] || 0;
+  const charged = plan.filter(p => p.k === 'Excused' || p.k === 'Unexcused'), total = charged.reduce((a, p) => a + rate(p.k), 0), waiting = plan.filter(p => p.k === 'wait').length;
+  const rows = plan.map(p => '<div class="lv95r ' + (p.k === 'Unexcused' ? 'bad' : p.k === 'Excused' || p.k === 'wait' ? 'warn' : 'ok') + '"><span>' + esc(p.md + ' ' + p.hm + ' · ' + p.name) + '</span><span>' + lv1795h(p.h) + '</span><b>' + (p.k === 'none' ? 'No charge' : p.k === 'wait' ? 'Proof due' : p.k + ' ₱' + rate(p.k)) + '</b></div>').join('');
+  const btn = (k, lbl, cls2) => '<button class="btn sm ' + cls2 + '" onclick="lvCredit1795(\'' + esc(x.id) + '\',\'' + k + '\')">' + lbl + '</button>';
+  return '<div class="lv95box"><b>Notice &amp; service credit</b>'
+    + lv1795line(h < 4 ? 'bad' : (planned && h < 168) ? 'warn' : 'ok', 'Notice: <b>' + lv1795h(h) + '</b> before the first of <b>' + n + ' booked lesson' + (n === 1 ? '' : 's') + '</b>')
+    + lv1795line(proof ? 'ok' : planned ? 'ok' : age < 48 ? 'warn' : 'bad', proof ? '✓ Proof attached (' + proof + ')' : planned ? 'Planned time off · proof optional' : 'No proof yet · due within 48 h (' + (age < 48 ? lv1795h(48 - age) + ' left' : 'overdue') + ')')
+    + lv1795line(cnt >= 3 ? 'bad' : cnt >= 2 ? 'warn' : 'ok', 'Releases with less than 7 days\' notice in 60 days: <b>' + cnt + '</b>' + (cnt >= 3 ? ' · notice of breach (Clause 5.1)' : cnt >= 2 ? ' · Operations may move these students to another teacher' : ''))
+    + '<div class="lv95t">' + rows + '</div>'
+    + '<div class="small" style="margin-top:6px">Suggested: <b>' + (charged.length ? charged.length + ' lesson' + (charged.length === 1 ? '' : 's') + ' · ₱' + total.toLocaleString() : waiting ? 'wait for the proof' : 'No charge') + '</b>' + (charged.length && charged.length < n ? ' · the other ' + (n - charged.length) + ' no charge' : '') + ' · each lesson by its own notice: under 4 h (Clause 2.9) is charged</div>'
+    + (done ? '<div class="lv95 ok" style="margin-top:6px">✓ Recorded on this device: <b>' + esc(done.k) + '</b> · ' + esc(done.at) + (done.ids ? ' · ' + esc(done.ids) : '') + '</div>'
+      : '<div class="small mute" style="margin-top:6px">Employment status for the rate: <a class="link" onclick="(window.LV95T=window.LV95T||{})[\'' + esc(x.id) + '\']=\'' + (tier === 'Regular' ? 'New' : 'Regular') + '\';lvSheet(\'' + esc(x.id) + '\')">' + tier + ' (tap to change)</a></div>'
+        + '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">' + (charged.length ? btn('plan', 'Apply suggested · ₱' + total.toLocaleString(), 'teal') : '') + btn('none', 'No charge', charged.length ? 'ghost' : 'teal') + btn('Unexcused', 'All unexcused · ₱' + (rate('Unexcused') * n).toLocaleString(), 'ghost') + '</div>')
+    + '</div>'; }
+async function lvCredit1795(id, k){ const x = LV && LV.rows.find(r => r.id === id); if(!x) return; const tier = (window.LV95T && LV95T[id]) || 'Regular';
+  const stamp = new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  if(k === 'none'){ try{ localStorage.setItem('lv1795:' + id, JSON.stringify({ k: 'No charge', at: stamp })); }catch(e){} toast('✓ No charge recorded for ' + tName(x.teacher)); lvSheet(id); return; }
+  const plan = lv1795plan(x).map(p => k === 'plan' ? p : Object.assign({}, p, { k: 'Unexcused' })).filter(p => p.k === 'Excused' || p.k === 'Unexcused');
+  if(!plan.length) return toast('Nothing to charge');
+  const total = plan.reduce((a, p) => a + LV1795_RATE[p.k][tier], 0);
+  if(!confirm(plan.map(p => p.md + ' ' + p.hm + ' ' + p.name + ' · ' + p.k + ' ₱' + LV1795_RATE[p.k][tier]).join('\n') + '\n\nTotal ₱' + total.toLocaleString() + ' for ' + tName(x.teacher) + ' · one Teacher Class Cancellation case per lesson?')) return;
+  toast('Saving ' + plan.length + ' case' + (plan.length === 1 ? '' : 's') + '…'); const ids = [];
+  for(const c of plan){ const amt = LV1795_RATE[c.k][tier]; try{ const r = await api('addCase', TOKEN, { subject: 'Teacher Class Cancellation', source: 'Teacher', assigned: 'Operations', type: 'Attendance', employee: x.teacher, student: c.name, condition: c.k, status: tier, amount: amt, done: true,
+      action: 'Notice of unavailability ' + id + ' · ' + lv1795h(c.h) + ' notice · lesson ' + c.md + ' ' + c.hm + ' · Clause ' + (c.h < 4 ? '2.9' : '2.10 / 4.1') }); if(r && r.ok) ids.push(r.caseId); }catch(e){} }
+  try{ localStorage.setItem('lv1795:' + id, JSON.stringify({ k: (k === 'plan' ? 'Suggested' : 'All unexcused') + ' · ₱' + total.toLocaleString(), at: stamp, ids: ids.join(', ') })); }catch(e){}
+  toast(ids.length === plan.length ? '✓ ' + ids.length + ' case' + (ids.length === 1 ? '' : 's') + ' saved · ' + ids.join(', ') : ids.length + ' of ' + plan.length + ' saved · check Actions'); lvSheet(id); try{ AC = null; }catch(e){} }
