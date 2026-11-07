@@ -3891,7 +3891,7 @@ ${!D.mgr && code ? `<button class="btn sm" onclick="noteSheet('${esc(code)}','',
 ${D.mgr ? `<button class="btn sm teal" onclick="printProfile()">Print / Save PDF</button>` : ''}
 ${D.mgr && code ? `<button class="btn sm teal" onclick="cxBalance(null,'${esc(code)}')">Lessons left · picture to send</button>` : ''}
 ${D.mgr && code ? `<button class="btn sm teal x1101-sec" onclick="cnOpen('${esc(code)}')">Class notice</button>` : ''}
-${code ? `<button class="btn ghost sm" onclick="lvOpen1878('${esc(code)}')">▶ Lessons &amp; videos</button>` : ''}${D.mgr ? `<button class="btn ghost sm" onclick="tabSheet('INDPKG','Lesson summary','${esc(code)}')">Lesson summary</button><button class="btn ghost sm" onclick="agrOpen({code:'${esc(code)}'})">Agreement</button><button class="btn ghost sm" onclick="portalMsg('${esc(code)}')">复制学员专区消息 Copy portal message</button>` : ''}
+${code ? (setTimeout(() => { try{ lvPre1879(code); }catch(e){} }, 400), `<button class="btn ghost sm" onpointerdown="lvPre1879('${esc(code)}')" onclick="lvOpen1878('${esc(code)}')">▶ Lessons &amp; videos</button>`) : ''}${D.mgr ? `<button class="btn ghost sm" onclick="tabSheet('INDPKG','Lesson summary','${esc(code)}')">Lesson summary</button><button class="btn ghost sm" onclick="agrOpen({code:'${esc(code)}'})">Agreement</button><button class="btn ghost sm" onclick="portalMsg('${esc(code)}')">复制学员专区消息 Copy portal message</button>` : ''}
 ${last?`<button class="btn ghost sm" onclick="docSheet('PRREP','Progress report','${esc(last.pr)}')">Progress report</button>`:''}</div>`;
 h += cjHtml(STU);
 h += `<div id="stuSch">${STU.cls ? stuSched(STU.cls) : '<section class="sec" style="min-height:' + (((window.__schH1594 || {})[code]) || (innerWidth < 620 ? 1260 : 710)) + 'px"><h2>Schedule <span class="c">Google Calendar</span></h2><div class="sk"></div><div class="sk"></div></section>'}</div>`;
@@ -7194,7 +7194,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1677;
+const COE_V = 1678;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7723,9 +7723,16 @@ const mine = AT.rows.filter(x => up(x[C.code]) === up(code)); if(!mine.length) r
 const pick = (window.LS_PICK && window.LS_PICK.code === up(code)) ? mine.find(x => x[C.row] === window.LS_PICK.row) : null;
 const r = pick || pk.filter(x => x[C.active]).sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])))[0] || pk.sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])))[0] || mine[0];
 return { C, r, G: pkgGroup(r, C) }; }
+const LV1879 = {};
+function lvPre1879(code){   /* 1879: load once, keep 3 minutes */
+  const c = LV1879[code]; if(c && Date.now() - c.t < 180000) return c.p;
+  const p = fetch(FAST_URL + '-stuvid', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, code }) }).then(x => x.json());
+  p.then(r => { if(!r || !r.ok) delete LV1879[code]; }, () => { delete LV1879[code]; });
+  LV1879[code] = { t: Date.now(), p }; return p; }
 async function lvOpen1878(code){   /* 1878: lessons with their class videos */
   openSheet('<h1>Lessons &amp; videos</h1><div class="mute small">' + esc(code) + '</div><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>'); try{ $('sheet').classList.add('wide'); }catch(e){}
-  let r = null; try{ r = await fetch(FAST_URL + '-stuvid', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, code }) }).then(x => x.json()); }catch(e){}
+  let r = null; try{ r = await lvPre1879(code); }catch(e){}
+  if(!r || !r.ok){ delete LV1879[code]; try{ r = await lvPre1879(code); }catch(e){} }
   if(!r || !r.ok){ $('sheetBody').innerHTML = '<h1>Lessons &amp; videos</h1><div class="empty">Could not load. Try again.</div>'; return; }
   const n1 = x => Math.round(x * 10) / 10, rows = r.rows || [], M = {}, ord = [];
   rows.forEach(x => { const k = String(x.start).slice(0, 7); if(!M[k]){ M[k] = []; ord.push(k); } M[k].push(x); });
