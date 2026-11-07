@@ -2500,10 +2500,15 @@ ${laptop && canShare ? `<div class="mini" style="margin-top:12px"><b>Proof you'r
 }
 let CI_PRE = null;
 function macPerm(){ const mac = /Mac/i.test(navigator.platform || navigator.userAgent || ''); openSheet('<h1>Allow screen sharing on this laptop</h1><div class="fbfix" style="margin-top:12px"><b>Your ' + (mac ? 'Mac' : 'computer') + ' blocked the screen picture</b><div>The browser can open the share window, but the computer has not given it permission to see the screen. That is why the Entire Screen preview shows only your wallpaper.</div></div>' + (mac ? '<ol style="margin:12px 0 0 18px;line-height:1.7"><li>Open <b>System Settings</b> → <b>Privacy &amp; Security</b> → <b>Screen &amp; System Audio Recording</b> (older Macs: <b>Screen Recording</b>).</li><li>Turn it <b>on</b> for the browser you use for the app (Chrome, Edge…). If it is not in the list, tap <b>+</b> and add it from Applications.</li><li>Choose <b>Quit &amp; Reopen</b> when the Mac asks, or quit the browser fully (Cmd + Q) and open it again.</li><li>While there: <b>Privacy &amp; Security</b> → <b>Location Services</b> → turn it on for the same browser.</li><li>Open the app and tap <b>Time in</b> again. The preview should now show your windows, not only the wallpaper.</li></ol>' : '<div class="small" style="margin-top:10px">Check the computer\'s privacy settings for screen recording, allow it for this browser, restart the browser and tap Time in again.</div>') + '<div class="small mute" style="margin-top:10px">Still stuck? Message Ops right away so your class time is noted.</div>'); }
+function shHint(on){ let b = document.getElementById('shHint'); if(!on){ if(b) b.remove(); return; } if(b) return; b = document.createElement('div'); b.id = 'shHint'; b.setAttribute('role', 'status');
+b.style.cssText = 'position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:99999;background:#2B2253;color:#fff;border-radius:16px;padding:14px 20px;font-size:16px;line-height:1.45;max-width:560px;width:calc(100% - 32px);box-sizing:border-box;box-shadow:0 10px 30px rgba(0,0,0,.25)';
+b.innerHTML = '<b>Waiting for your screen share.</b><br>In the sharing window, choose <b>Entire screen</b>, then tap <b>Share</b>. If you cannot see the window, it may be behind your class window.'; document.body.appendChild(b); }
 async function grabScreen(){
+const hintT = setTimeout(() => shHint(1), 5000);
 let st; try{ st = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: 'monitor', frameRate: { ideal: 10 } }, audio: false,
 monitorTypeSurfaces: 'include', selfBrowserSurface: 'exclude', surfaceSwitching: 'exclude', systemAudio: 'exclude', preferCurrentTab: false }); }
-catch(e){ return { err: e && e.name === 'NotAllowedError' ? (/system/i.test(String(e.message || '')) ? 'blocked' : 'not shared') : 'share failed' }; }
+catch(e){ clearTimeout(hintT); shHint(0); return { err: e && e.name === 'NotAllowedError' ? (/system/i.test(String(e.message || '')) ? 'blocked' : 'not shared') : 'share failed' }; }
+clearTimeout(hintT); shHint(0);
 const tr = st.getVideoTracks()[0], surf = (tr && tr.getSettings && tr.getSettings().displaySurface) || '', label = (tr && tr.label) || '';
 if(surf && surf !== 'monitor'){ st.getTracks().forEach(t => t.stop()); return { surface: surf, label }; }    
 const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.autoplay = true;
@@ -7169,7 +7174,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1667;
+const COE_V = 1668;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
