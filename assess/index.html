@@ -79,11 +79,27 @@ textarea:focus{outline:2px solid rgba(0,112,122,.45);border-color:var(--teal7)}
   var SP = [['fc', 'Fluency and Coherence'], ['lr', 'Lexical Resource'], ['gra', 'Grammatical Range and Accuracy'], ['p', 'Pronunciation']];
   var WR = [['tr', 'Task Response'], ['cc', 'Coherence and Cohesion'], ['lr', 'Lexical Resource'], ['gra', 'Grammatical Range and Accuracy']];
   var GUIDE = [[4, 4.5, '4.0–4.5', 'Limited communication; frequent language difficulties', 'B1 range'], [5, 5.5, '5.0–5.5', 'Developing communication; noticeable limitations in accuracy and complexity', 'B1–B2'], [6, 6.5, '6.0–6.5', 'Generally effective communication; some inconsistencies', 'B2'], [7, 7.5, '7.0–7.5', 'Good command; can communicate complex ideas effectively', 'C1 range'], [8, 9, '8.0–9.0', 'Very good to expert command', 'C1–C2']];
+  // 1859 · KET (A2 Key) / PET (B1 Preliminary): Cambridge criteria 0–5, two writing parts
+  var CAM = {
+    ket: { name: 'KET', long: 'A2 Key', level: 'A2', min: 30,
+      SP: [['gv', 'Grammar and Vocabulary'], ['p', 'Pronunciation'], ['ic', 'Interactive Communication'], ['ga', 'Global Achievement']],
+      WR: [['c1', 'Email · Content'], ['o1', 'Email · Organisation'], ['l1', 'Email · Language'], ['c2', 'Story · Content'], ['o2', 'Story · Organisation'], ['l2', 'Story · Language']],
+      GUIDE: [[4.5, 5, '4.5–5', 'Strong — above A2 Key level; ready to work towards B1 Preliminary', 'B1'], [2.5, 4.4, '2.5–4.4', 'At A2 Key level — ready for KET preparation', 'A2'], [0.5, 2.4, '0.5–2.4', 'Working towards A2', 'A1'], [0, 0.4, '0–0.4', 'Not yet at A1', 'Pre-A1']],
+      wr: [{ k: 1, h: 'Part 6 · Email', words: 25, task: 'You want to go to the park with your English friend, Sam, on Saturday.\n\nWrite an email to Sam.\nIn your email:\n•  say which park you want to go to\n•  tell Sam what time to meet\n•  say what you can do there.\n\nWrite 25 words or more.' },
+        { k: 2, h: 'Part 7 · Story', words: 35, task: 'Look at the three pictures. Write the story shown in the pictures.\n\n1.  A boy finds a small dog alone in the street.\n2.  He reads the phone number on the dog’s collar and calls it.\n3.  A happy family comes to take their dog home.\n\nWrite 35 words or more.' }] },
+    pet: { name: 'PET', long: 'B1 Preliminary', level: 'B1', min: 45,
+      SP: [['gv', 'Grammar and Vocabulary'], ['dm', 'Discourse Management'], ['p', 'Pronunciation'], ['ic', 'Interactive Communication'], ['ga', 'Global Achievement']],
+      WR: [['c1', 'Email · Content'], ['ca1', 'Email · Communicative Achievement'], ['o1', 'Email · Organisation'], ['l1', 'Email · Language'], ['c2', 'Article / story · Content'], ['ca2', 'Article / story · Communicative Achievement'], ['o2', 'Article / story · Organisation'], ['l2', 'Article / story · Language']],
+      GUIDE: [[4.5, 5, '4.5–5', 'Strong — above B1 Preliminary level; ready to work towards B2 First', 'B2'], [2.5, 4.4, '2.5–4.4', 'At B1 Preliminary level — ready for PET preparation', 'B1'], [0.5, 2.4, '0.5–2.4', 'Working towards B1 (A2 level)', 'A2'], [0, 0.4, '0–0.4', 'Not yet at A2', 'Below A2']],
+      wr: [{ k: 1, h: 'Part 1 · Email', words: 100, task: 'Read this email from your English-speaking friend, Alex, and the notes you have made.\n\nHi!\nI’m so happy you’re coming to visit me next month! While you’re here, would you like to go to the beach or visit the city museum?   [Tell Alex]\nWhich day is best for you to arrive?   [Say which and why]\nShall I invite some of my friends to meet you?   [Yes! Explain]\nSee you soon,\nAlex\n\nWrite your email to Alex using all the notes. Write about 100 words.' },
+        { k: 2, h: 'Part 2 · Article or story', words: 100, task: 'Choose ONE of these questions.\n\nA)  ARTICLE\nYou see this notice in an English-language magazine:\nArticles wanted! My favourite day of the week\nWhich day of the week do you like best? Why? What do you usually do on that day?\nWrite an article answering these questions.\n\nB)  STORY\nYour English teacher has asked you to write a story.\nYour story must begin with this sentence:\nWhen Jo opened the door, she couldn’t believe what she saw.\n\nWrite about 100 words.' }] } };
+  var parts = function(t){ var s = String(t || ''), m = s.split(/^\[Part ([12])\][^\n]*\n?/m), o = { 1: '', 2: '' }; if(m.length < 3){ o[1] = s.trim(); return o; } for(var i = 1; i < m.length; i += 2) o[m[i]] = (m[i + 1] || '').trim(); return o; };
+  var s5 = function(v){ return v == null ? '<div class="n" style="font-size:32px;margin:14px 0 10px">Pending</div>' : '<div class="n">' + (+v).toFixed(1) + '<span style="font-size:.4em;opacity:.6"> /5</span></div>'; };
   function fail(m){ $app.innerHTML = head('English Assessment') + '<div class="msg">' + E(m) + '</div>' + foot; }
 
   // ---------------- result ----------------
   function result(){
-    call({ op: 'result', rkey: R }).then(function(r){ if(!r || !r.ok) return fail(r && r.msg || 'This result is not available.'); var a = r.a;
+    call({ op: 'result', rkey: R }).then(function(r){ if(!r || !r.ok) return fail(r && r.msg || 'This result is not available.'); var a = r.a; if(CAM[a.exam]) return camResult(a);
       var bars = function(C, v){ return C.map(function(x){ var n = v && v[x[0]]; return '<div class="bar"><span>' + E(x[1]) + '</span><i><s style="width:' + (n == null ? 0 : Math.max(3, n / 9 * 100)) + '%"></s></i><b>' + (n == null ? '—' : n) + '</b></div>'; }).join(''); };
       var box = function(k, t, bg){ return String(t || '').trim() ? '<div class="box" style="background:' + bg + '"><span class="k">' + E(k) + '</span>' + E(t) + '</div>' : ''; };
       var c = a.combined != null ? a.combined : a.sp_band != null ? a.sp_band : a.wr_band;   // the band shown in the guide: both skills, else the one done
@@ -103,24 +119,48 @@ textarea:focus{outline:2px solid rgba(0,112,122,.45);border-color:var(--teal7)}
     }, function(){ fail('Could not load. Check the connection and open the link again.'); });
   }
 
+  function camResult(a){ var X = CAM[a.exam];
+    var bars = function(C, v){ return C.map(function(x){ var n = v && v[x[0]]; return '<div class="bar"><span>' + E(x[1]) + '</span><i><s style="width:' + (n == null ? 0 : Math.max(3, n / 5 * 100)) + '%"></s></i><b>' + (n == null ? '—' : n) + '</b></div>'; }).join(''); };
+    var box = function(k, t, bg){ return String(t || '').trim() ? '<div class="box" style="background:' + bg + '"><span class="k">' + E(k) + '</span>' + E(t) + '</div>' : ''; };
+    var c = a.combined != null ? a.combined : a.sp_band != null ? a.sp_band : a.wr_band, wDone = X.WR.filter(function(x){ return a.wr && a.wr[x[0]] != null; });
+    $app.innerHTML = head(X.name + ' Assessment') +
+      '<div class="lab">Cambridge ' + E(X.long) + ' (' + X.name + ') · assessment</div><h1>' + E(a.name) + '</h1>' +
+      '<div class="sub">' + E(new Date(a.assess_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })) + (a.assessor ? ' · Assessor: ' + E(a.assessor) : '') + '</div>' +
+      '<div class="tiles"><div class="tile"><div class="l">Speaking</div>' + s5(a.sp_band) + '<div class="c">' + (a.cefr_sp ? 'CEFR ' + E(a.cefr_sp) : '') + '</div></div>' +
+      '<div class="tile w"><div class="l">Writing</div>' + s5(a.wr_band) + '<div class="c">' + (a.cefr_wr ? 'CEFR ' + E(a.cefr_wr) : '') + '</div></div></div>' +
+      (c != null ? '<div class="comb"><span>' + (a.combined != null ? 'Speaking + Writing' : 'Overall') + '</span><b>' + (+c).toFixed(1) + ' / 5' + (a.cefr || a.cefr_sp ? ' · ' + E(a.cefr || a.cefr_sp) : '') + '</b></div>' : '') +
+      (a.sp_band != null ? '<h2>Speaking criteria</h2>' + bars(X.SP, a.sp) + '<div class="note" style="margin-top:4px">Each criterion is marked from 0 to 5 on the Cambridge ' + E(X.long) + ' speaking scales.</div>' : '') +
+      (wDone.length ? '<h2>Writing criteria</h2>' + bars(wDone, a.wr) + '<div class="note" style="margin-top:4px">Each part is marked on its own: ' + (X.name === 'KET' ? 'Content, Organisation and Language' : 'Content, Communicative Achievement, Organisation and Language') + ', each from 0 to 5.</div>' : '<div class="note" style="margin-top:14px">Writing is still to be done or scored. This page updates when it is.</div>') +
+      '<h2>Your results</h2>' + box('Observed strengths', a.strengths, 'var(--tint)') + box('Areas for improvement', a.improve, 'var(--warm)') + box('Recommended learning pathway', a.pathway, 'var(--lav)') +
+      '<h2>What the scores mean</h2><table><tr><th>Average (0–5)</th><th>What it means</th><th>Indicative CEFR</th></tr>' + X.GUIDE.map(function(g){ return '<tr class="' + (c != null && +c >= g[0] && +c <= g[1] ? 'on' : '') + '"><td>' + g[2] + '</td><td>' + E(g[3]) + '</td><td>' + E(g[4]) + '</td></tr>'; }).join('') + '</table>' +
+      '<div class="note">Marked with the criteria of the Cambridge ' + E(X.long) + ' assessment scales: a band 3 or above generally shows ' + X.level + ' level. This is an indicative level from our assessment, not an official Cambridge English result or Cambridge English Scale score.</div>' +
+      '<div class="center noprint" style="margin-top:16px"><button class="btn ghost" onclick="print()">Print / save as PDF</button></div>' + foot;
+    document.title = a.name + ' · CupOfEnglish ' + X.name + ' Assessment'; }
+
   // ---------------- essay ----------------
-  var S = { st: null, sub: null, off: 0, t: 0, saving: 0, dirty: 0, done: 0, name: '' };
+  var S = { st: null, sub: null, off: 0, t: 0, saving: 0, dirty: 0, done: 0, name: '', X: null, MIN: 40 };
   var LK = 'coe.essay.' + W;
   var words = function(t){ t = String(t || '').trim(); return t ? t.split(/\s+/).length : 0; };
   function essay(){
     call({ op: 'cget', wkey: W }).then(function(r){ if(!r || !r.ok) return fail(r && r.msg || 'This link is not valid.'); S.name = r.name || ''; S.off = Date.parse(r.now) - Date.now();
       if(r.closed) return closed(r.submitted_at ? 'Your essay has been submitted. Thank you!' : 'The writing time has ended. Thank you!');
+      S.X = CAM[r.exam] || null; if(S.X) S.MIN = S.X.min;
       if(r.started_at){ S.st = Date.parse(r.started_at); return write(r.essay); }
+      if(S.X){ $app.innerHTML = head(S.X.long + ' · Writing') + '<div class="lab">Hello' + (S.name ? ' ' + E(S.name) : '') + ',</div><h1>Writing assessment</h1>' +
+        '<div class="sub" style="line-height:1.6">There are <b>two short parts</b>. You have <b>' + S.X.min + ' minutes</b> for both. Your writing is saved as you type. When the time ends, it is sent automatically. Pasting is not allowed.</div>' +
+        '<div class="center" style="margin:24px 0 4px"><button class="btn" id="go">Start · ' + S.X.min + ' minutes</button></div>' + foot; }
+      else
       $app.innerHTML = head('Academic Writing · Task 2') + '<div class="lab">Hello' + (S.name ? ' ' + E(S.name) : '') + ',</div><h1>Writing assessment</h1>' +
         '<div class="sub" style="line-height:1.6">You have <b>40 minutes</b>. Write at least <b>250 words</b>. Your writing is saved as you type. When the time ends, your essay is sent automatically. Spell-check is off, as in the IELTS test, and pasting is not allowed.</div>' +
         '<div class="center" style="margin:24px 0 4px"><button class="btn" id="go">Start · 40 minutes</button></div>' + foot;
       document.getElementById('go').onclick = function(){ this.disabled = true; this.textContent = 'Starting…'; call({ op: 'cget', wkey: W, start: 1 }).then(function(x){ if(!x || !x.ok || !x.started_at) return fail(x && x.msg || 'Could not start. Open the link again.'); S.off = Date.parse(x.now) - Date.now(); S.st = Date.parse(x.started_at); write(x.essay); }, function(){ fail('Could not start. Check the connection.'); }); };
     }, function(){ fail('Could not load. Check the connection and open the link again.'); });
   }
-  function closed(m){ try{ localStorage.removeItem(LK); }catch(e){} $app.innerHTML = head('Academic Writing · Task 2') + '<div class="msg"><h1 style="font-size:30px">Thank you' + (S.name ? ', ' + E(S.name) : '') + '!</h1>' + E(m) + '<br>Your assessor will go through the results with you.</div>' + foot; }
+  function closed(m){ try{ localStorage.removeItem(LK); }catch(e){} $app.innerHTML = head(S.X ? S.X.long + ' · Writing' : 'Academic Writing · Task 2') + '<div class="msg"><h1 style="font-size:30px">Thank you' + (S.name ? ', ' + E(S.name) : '') + '!</h1>' + E(m) + '<br>Your assessor will go through the results with you.</div>' + foot; }
   function write(server){
     var draft = ''; try{ draft = localStorage.getItem(LK) || ''; }catch(e){}
     var text = draft.length > (server || '').length ? draft : (server || '');
+    if(S.X) return write2(text, server);
     $app.innerHTML = head('Academic Writing · Task 2') + '<div class="prompt">' + E(ESSAY) + '</div>' +
       '<div class="bar2"><span class="clk" id="clk">40:00</span><span class="wc" id="wc">0 words</span><span class="st" id="st"></span></div>' +
       '<textarea id="ta" spellcheck="false" autocorrect="off" autocapitalize="sentences" autocomplete="off" placeholder="Start writing your essay here…"></textarea>' +
@@ -133,15 +173,31 @@ textarea:focus{outline:2px solid rgba(0,112,122,.45);border-color:var(--teal7)}
     tick(); S.iv = setInterval(tick, 500); setInterval(function(){ if(S.dirty && !S.saving) save(); }, 8000);
     window.addEventListener('beforeunload', function(e){ if(S.dirty && !S.done){ e.preventDefault(); e.returnValue = ''; } });
   }
-  function count(){ var n = words(document.getElementById('ta').value), w = document.getElementById('wc'); w.textContent = n + ' words'; w.className = 'wc' + (n >= 250 ? ' ok' : ''); }
+  // two parts (KET / PET): two boxes, kept together as "[Part 1] … [Part 2] …"
+  function write2(text, server){ var X = S.X, P = parts(text);
+    $app.innerHTML = head(X.long + ' · Writing') + '<div class="bar2"><span class="clk" id="clk">' + X.min + ':00</span><span class="st" id="st"></span></div>' +
+      X.wr.map(function(w){ return '<h2 style="margin:18px 0 8px">' + E(w.h) + '</h2><div class="prompt">' + E(w.task) + '</div><div class="bar2" style="position:static"><span class="wc" id="wc' + w.k + '">0 words</span></div><textarea id="ta' + w.k + '" style="min-height:' + (w.words >= 100 ? 34 : 22) + 'vh" spellcheck="false" autocorrect="off" autocapitalize="sentences" autocomplete="off" placeholder="Write your answer here…"></textarea>'; }).join('') +
+      '<textarea id="ta" style="display:none"></textarea><div class="center" style="margin-top:14px"><button class="btn" id="send">Submit my writing</button></div>' + foot;
+    var join = function(){ return X.wr.map(function(w){ return '[Part ' + w.k + ']\n' + document.getElementById('ta' + w.k).value; }).join('\n\n'); };
+    var ta = document.getElementById('ta');
+    X.wr.forEach(function(w){ var t = document.getElementById('ta' + w.k); t.value = P[w.k] || '';
+      ['paste', 'drop'].forEach(function(ev){ t.addEventListener(ev, function(e){ e.preventDefault(); stat('Pasting is not allowed — please type your answer'); }); });
+      t.addEventListener('input', function(){ ta.value = join(); S.dirty = 1; try{ localStorage.setItem(LK, ta.value); }catch(e){} count(); clearTimeout(S.t); S.t = setTimeout(save, 1200); }); });
+    ta.value = join(); count();
+    document.getElementById('send').onclick = function(){ var short = X.wr.filter(function(w){ return words(document.getElementById('ta' + w.k).value) < w.words * (w.words >= 100 ? .8 : 1); });
+      if(!confirm(short.length ? 'Some parts are shorter than expected (' + short.map(function(w){ return w.h; }).join(', ') + '). Submit anyway?' : 'Submit your writing now? You cannot change it after this.')) return; save(1); };
+    if(text !== (server || '')) { S.dirty = 1; save(); }
+    tick(); S.iv = setInterval(tick, 500); setInterval(function(){ if(S.dirty && !S.saving) save(); }, 8000);
+    window.addEventListener('beforeunload', function(e){ if(S.dirty && !S.done){ e.preventDefault(); e.returnValue = ''; } }); }
+  function count(){ if(S.X){ S.X.wr.forEach(function(w){ var n = words(document.getElementById('ta' + w.k).value), el = document.getElementById('wc' + w.k); el.textContent = n + ' words' + (w.words >= 100 ? ' · about ' + w.words : ' · ' + w.words + ' or more'); el.className = 'wc' + (n >= w.words * (w.words >= 100 ? .8 : 1) ? ' ok' : ''); }); return; } var n = words(document.getElementById('ta').value), w = document.getElementById('wc'); w.textContent = n + ' words'; w.className = 'wc' + (n >= 250 ? ' ok' : ''); }
   function stat(t){ var s = document.getElementById('st'); if(s) s.textContent = t; }
-  function tick(){ if(S.done) return; var left = Math.max(0, S.st + 40 * 60000 - (Date.now() + S.off)) / 1000, c = document.getElementById('clk'); if(!c) return;
+  function tick(){ if(S.done) return; var left = Math.max(0, S.st + S.MIN * 60000 - (Date.now() + S.off)) / 1000, c = document.getElementById('clk'); if(!c) return;
     c.textContent = Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0'); c.className = 'clk' + (left < 300 ? ' low' : '');
-    if(left <= 0){ clearInterval(S.iv); var ta = document.getElementById('ta'); ta.readOnly = true; stat('Time is up — sending your essay…'); save(1); } }
+    if(left <= 0){ clearInterval(S.iv); var ta = document.getElementById('ta'); ta.readOnly = true; if(S.X) S.X.wr.forEach(function(w){ document.getElementById('ta' + w.k).readOnly = true; }); stat('Time is up — sending your essay…'); save(1); } }
   function save(submit){ var ta = document.getElementById('ta'); if(!ta || S.done) return; if(S.saving){ if(submit) setTimeout(function(){ save(1); }, 600); return; }
     S.saving = 1; S.dirty = 0; stat(submit ? 'Sending…' : 'Saving…'); var b = document.getElementById('send'); if(submit && b) b.disabled = true;
     call({ op: 'csave', wkey: W, essay: ta.value, submit: submit ? 1 : 0 }).then(function(r){ S.saving = 0;
-      if(r && r.ok){ if(submit || r.submitted_at){ S.done = 1; clearInterval(S.iv); return closed('Your essay has been submitted (' + (r.words || 0) + ' words).'); } stat('Saved'); return; }
+      if(r && r.ok){ if(submit || r.submitted_at){ S.done = 1; clearInterval(S.iv); return closed((S.X ? 'Your writing has been submitted (' : 'Your essay has been submitted (') + (r.words || 0) + ' words).'); } stat('Saved'); return; }
       if(r && r.closed){ S.done = 1; return closed(r.msg || 'The writing time has ended.'); }
       S.dirty = 1; stat('Not saved yet — check the connection'); if(b) b.disabled = false; if(submit) setTimeout(function(){ save(1); }, 3000);
     }, function(){ S.saving = 0; S.dirty = 1; stat('Offline — your writing is kept on this device and will be sent'); if(b) b.disabled = false; if(submit) setTimeout(function(){ save(1); }, 3000); });
@@ -152,8 +208,12 @@ textarea:focus{outline:2px solid rgba(0,112,122,.45);border-color:var(--teal7)}
   var QA = ['Could you introduce yourself and tell me a little about your educational background?', 'In what situations do you usually communicate in English?', 'What do you find most challenging about expressing yourself in English?', 'Do you prefer communicating through speaking or writing? Why?', 'How important do you think effective communication is in academic or professional life?'];
   var QC = ['Why do some educated individuals still struggle to communicate their ideas clearly?', 'Do you think effective communication is more important than grammatical accuracy?', 'How can schools help students develop stronger communication skills?', 'What are the advantages and disadvantages of using artificial intelligence to improve academic writing?', 'Should universities place greater emphasis on students\u2019 communication skills?'];
   var SC = { key: null, off: 0, tend: 0, tlab: '', name: '' };
-  function scrPaint(r){ var k = r.show || '', mid = '';
-    if(k === 'hi') mid = '<div class="part">English Proficiency Assessment</div><div class="qq">Welcome' + (r.name ? ', ' + E(r.name) : '') + '!</div><div class="sub" style="margin-top:14px;font-size:20px">Speaking · about 15 minutes, in three parts.</div>';
+  function scrPaint(r){ var k = r.show || '', mid = '', X = CAM[r.exam];
+    if(X && k === 'hi') mid = '<div class="part">Cambridge ' + E(X.long) + ' · Speaking</div><div class="qq">Welcome' + (r.name ? ', ' + E(r.name) : '') + '!</div><div class="sub" style="margin-top:14px;font-size:20px">We will talk together for about ' + (X.name === 'KET' ? '10' : '15') + ' minutes.</div>';
+    else if(X && r.sx && k !== 'end'){ var L = String(r.sx).split('\n'), hd = L.shift(), body = L.join('\n').trim(), bl = body.split('\n\n');
+      mid = '<div class="part">' + E(hd) + '</div>' + (k === 'w' ? '<div class="cue" style="white-space:pre-wrap;font-size:clamp(15px,1.6vw,20px)">' + E(body) + '</div>'
+        : bl.length > 1 && /^•/.test(bl[1]) ? '<div class="cue"><b>' + E(bl[0]) + '</b><ul>' + bl[1].split('\n').map(function(o){ return '<li>' + E(o.replace(/^•\s*/, '')) + '</li>'; }).join('') + '</ul></div>' : '<div class="qq">' + E(body) + '</div>'); }
+    else if(k === 'hi') mid = '<div class="part">English Proficiency Assessment</div><div class="qq">Welcome' + (r.name ? ', ' + E(r.name) : '') + '!</div><div class="sub" style="margin-top:14px;font-size:20px">Speaking · about 15 minutes, in three parts.</div>';
     else if(/^a\d$/.test(k)) mid = '<div class="part">Part 1 · Introduction and interview</div><div class="qq">' + E(QA[+k.slice(1) - 1] || '') + '</div>';
     else if(/^c\d$/.test(k)) mid = '<div class="part">Part 3 · Discussion</div><div class="qq">' + E(QC[+k.slice(1) - 1] || '') + '</div>';
     else if(k === 'b') mid = '<div class="part">Part 2 · Individual long turn</div><div class="cue"><b>Describe a situation when you had difficulty expressing your ideas clearly.</b>You should say:<ul><li>what the situation was</li><li>who you were communicating with</li><li>why you found it difficult</li><li>how you handled the situation</li></ul>and explain what you learned from the experience.<div style="margin-top:12px;font-size:.8em;color:var(--mute)">1 minute to prepare (you may make notes) · then speak for 1–2 minutes</div></div>';
@@ -166,7 +226,7 @@ textarea:focus{outline:2px solid rgba(0,112,122,.45);border-color:var(--teal7)}
     left = Math.max(0, left); document.getElementById('tmc').textContent = Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0'); document.getElementById('tml').textContent = left <= 0 ? 'Time' : SC.tlab; }
   function scr(){ call({ op: 'sget', wkey: SK }).then(function(r){ if(!r || !r.ok){ if(SC.key === null) fail(r && r.msg || 'This link is not valid.'); return; }
       SC.off = (+r.now || Date.now()) - Date.now(); SC.tend = +r.tend || 0; SC.tlab = r.tlab || ''; SC.name = r.name || '';
-      var key = (r.show || '') + '|' + r.name; if(key !== SC.key){ SC.key = key; scrPaint(r); } }, function(){}); }
+      var key = (r.show || '') + '|' + r.name + '|' + (r.sx || ''); if(key !== SC.key){ SC.key = key; scrPaint(r); } }, function(){}); }
   if(/^[0-9a-f]{32}$/.test(SK)){ $app.parentNode.style.maxWidth = '1100px'; document.title = 'CupOfEnglish · English Assessment'; scr(); setInterval(scr, 1500); setInterval(scrTick, 250); }
   else if(/^[0-9a-f]{32}$/.test(R)) result(); else if(/^[0-9a-f]{32}$/.test(W)) essay(); else fail('This link is not valid.');
 })();
