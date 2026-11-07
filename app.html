@@ -3034,7 +3034,8 @@ catch(e){ if(!quiet && VIEW === 'mypay') $('v-mypay').innerHTML = '<div class="e
 }
 function renderMyPay(){ const p = MYP, el = $('v-mypay'); if(!el) return; if(!p){ el.innerHTML = loading('My pay'); return; }
 const cur = (p.pay||[]).find(x => x.m === p.month), month = new Date().toLocaleDateString('en-US',{month:'long'}), hist = (p.pay||[]).filter(x => x !== cur);
-let h = `<div class="lead"><h1>My pay</h1><div class="mute small">${esc(p.name||'')} · from PAYROLL · ${month} is an estimate, final after review</div></div>` + myReadyHtml();
+if(!renderMyPay._c1877){ renderMyPay._c1877 = 1; myChk1877(); }   /* 1877 */
+let h = `<div class="lead"><h1>My pay</h1><div class="mute small">${esc(p.name||'')} · from PAYROLL · ${month} is an estimate, final after review</div></div>` + myReadyHtml() + myChkHtml1877();
 if(!p.has){ el.innerHTML = h + '<div class="empty">No pay records for ' + esc(p.name||'you') + ' in PAYROLL.</div>'; return; }
 if(cur) h += `<div class="card" style="margin-top:14px"><div class="mute small">${month} so far</div><div style="font-size:30px;font-weight:700" class="num">${peso(cur.net)}</div>
 <div class="stats" style="margin-top:12px"><div class="stat"><b class="num">${peso(cur.base + cur.lessonPay)}</b><span>${cur.lessonPay ? 'base + lessons' : 'base · from time-ins'}</span></div>
@@ -3047,6 +3048,18 @@ if((p.adj||[]).length) h += `<h2>Bonuses &amp; deductions <span class="c">90 day
 <div class="small mute">${esc(a.date)}${a.detail?' · '+esc(a.detail):''}</div></div><b class="num ${a.plus?'plus':'minus'}">${a.plus?'+'+peso(a.plus):'−'+peso(a.minus)}</b></div>`).join('')}`;
 el.innerHTML = h;
 }
+let MPCK1877 = null;   /* 1877: management's own pay check (same card as a teacher's Pay) */
+async function myChk1877(){ try{ const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'mypay' }) }).then(x => x.json());
+  if(r && r.ok && r.check && r.check.me){ MPCK1877 = r.check; if(VIEW === 'mypay') renderMyPay(); } }catch(e){} }
+function myChkHtml1877(){ const p = MPCK1877; if(!p || !p.me || p.me.paid) return ''; let h = '';
+  const k0 = PCK; try{ PCK = p; h = payChkHtml(); } catch(e){ h = ''; } finally{ PCK = k0; }
+  if(!(+p.me.lessonPay) && !(+p.me.units)) h = h.replace(/<tr><td class="mute">Units<\/td>.*?<\/tr>/, '').replace(/<tr><td class="mute">Lesson pay<\/td>.*?<\/tr>/, '').replace('<td class="mute">Base</td>', '<td class="mute">Base pay (office days)</td>');
+  return h.replace('onclick="payVerify()"', 'onclick="myPayVerify1877(true)"').replace(/onclick="payDispute\(\)"/g, 'onclick="myPayDispute1877()"'); }
+async function myPayVerify1877(ok, note){ const p = MPCK1877; if(!p) return; const b = $(ok ? 'pvB' : 'pdB'); if(b){ b.disabled = true; b.textContent = ok ? 'Saving…' : 'Sending…'; }
+  try{ const r = await fastWrite('tPayVerify', [TOKEN, p.month, !!ok, note || '']); if(r && r.ok === false) throw r;
+    if(!ok) closeSheet(); toast(ok ? '✓ Thank you · your pay is verified' : '✓ Sent · the President sees your note on Payroll'); setTimeout(myChk1877, 1500); setTimeout(myChk1877, 6000); }
+  catch(e){ toast((e && (e.msg || e.message || e.error)) || 'Not saved. Try again.'); if(b){ b.disabled = false; b.textContent = ok ? '✓ This is correct' : 'Send'; } } }
+function myPayDispute1877(){ openSheet('<h1>Something’s wrong with my pay</h1><div class="mute small">' + esc((MPCK1877 && MPCK1877.month) || '') + ' · the President sees this on Payroll and answers you here</div><label>What looks wrong?</label><textarea id="pdN" class="in-t" rows="4" placeholder="e.g. 14 Oct is missing from my days"></textarea><button class="btn teal block" style="margin-top:12px" id="pdB" onclick="(function(){ const t = ($(\'pdN\') || {}).value || \'\'; if(!t.trim()) return toast(\'Write what looks wrong\'); myPayVerify1877(false, t); })()">Send</button>'); }
 function paySheet(p){
 openSheet(`<h1>${esc(p.month)}</h1><div class="mute small">${p.paidOn?'Paid on ' + esc(payDay(p.paidOn)):esc(p.status||'Pending')}</div>
 <table style="margin-top:12px">${p.units || p.lessonPay ? (p.parts || [{ units: p.units, rate: p.rate }]).map(x => `<tr><td>Units${p.parts ? ' at ' + peso(x.rate) : ''}</td><td class="num">${x.units} × ${peso(x.rate)}</td></tr>`).join('') + `
@@ -5424,7 +5437,8 @@ const pchkOf = x => { if(!PCKM || !x) return null; const c = (PCKM.checks || {})
 const st = c && c.status === 'Verified' && c.net && +c.net !== +x.net ? 'Changed' : c ? c.status : ''; return { c, st, nd }; };
 function pchkChip(x){ const k = pchkOf(x); if(!k) return ''; const L = { Verified: ['ok', '✓ Pay verified'], Disputed: ['no', '! Question on pay'], Answered: ['wait', 'Answered · waiting'], Changed: ['no', '! Amount changed'] }[k.st] || ['wait', k.nd ? '… Asked to check pay' : '… Pay not checked'];   /* 1794 colours */
 return '<span class="pr-c ' + L[0] + '">' + L[1] + '</span>'; }
-function pchkSheetHtml(x){ const k = pchkOf(x); if(!k) return ''; const c = k.c || {};
+function pchkSheetHtml(x){ const h = pchkSheetHtml1877(x); return (+x.base > 0 && !(+x.units || +x.reg || +x.lessonPay || +x.lesson_pay)) ? h.replace('Teacher’s check', 'Staff check').replace(/Teacher (?=\S)/g, '') : h; }   /* 1877: office staff are not "Teacher" */
+function pchkSheetHtml1877(x){ const k = pchkOf(x); if(!k) return ''; const c = k.c || {};
 return '<h2 style="margin-top:16px">Teacher’s check</h2><div class="mini pck ' + (k.st === 'Verified' ? 'ok' : (k.st === 'Disputed' || k.st === 'Changed') ? 'bad' : 'wait') + '">' + (k.st === 'Verified' ? '✓ <b>Verified</b> by Teacher ' + esc(x.name) + ' · ' + esc(String(c.at).slice(5)) : k.st === 'Disputed' ? '<b style="color:#9A4330">Question on this pay</b>' : k.st === 'Answered' ? '<b>You answered</b> · waiting for the teacher to check again' : k.st === 'Changed' ? '<b style="color:#9A4330">Verified ' + peso(c.net) + ', but the PAY tab now says ' + peso(x.net) + '</b>' : '<b>Not checked yet</b>' + (k.nd ? ' · asked ' + esc(String(k.nd.at).slice(5)) : ''))
 + (c.note ? '<div style="white-space:pre-line;margin-top:6px">' + esc(c.note) + '</div>' : '') + (c.reply ? '<div style="white-space:pre-line;margin-top:6px;color:#00737B"><b>' + esc(c.replyBy) + ':</b> ' + esc(c.reply) + '</div>' : '') + '</div>'
 + (k.st === 'Disputed' || k.st === 'Answered' ? '<label>Reply to Teacher ' + esc(x.name) + '</label><textarea id="prR" class="in-t" rows="3" placeholder="e.g. Fixed · the 2 trial classes are added, please check again"></textarea><button class="btn block" style="margin-top:8px" id="prRB" onclick="payReply(\'' + esc(x.name) + '\')">Send reply</button>' : '')
@@ -7180,7 +7194,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1675;
+const COE_V = 1676;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
