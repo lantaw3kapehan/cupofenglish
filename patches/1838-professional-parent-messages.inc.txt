@@ -1,0 +1,33 @@
+<script>
+/* 1838 · (Misty 7 Nov "be made professional like the rest of the app") no casual emojis in messages for parents.
+   The message texts themselves were cleaned (patch 1838). This is the safety net: every text the app copies for WeChat
+   (Copy message, reminders, follow-ups, welcome and payment messages, texts that come from the database) leaves without
+   emojis, with the sentence punctuation put back ("in class 😊 Shall we" → "in class. Shall we"; "啦😊 这周" → "啦，这周").
+   Professional symbols stay: ✓ ✔ ★ ☆ ✕ ①②③ arrows. Pictures are not changed. */
+(function(){
+  if(window.__1838) return; window.__1838 = 1;
+  const RX = /[ \t]*(?:[\u{1F000}-\u{1FAFF}\u{2600}-\u{2604}\u{2607}-\u{2712}\u{2716}-\u{27BF}\u{2B00}-\u{2BFF}\u{2139}\u{231A}-\u{23FF}\u{3030}\u{303D}\u{3297}\u{3299}][\u{FE0F}\u{1F3FB}-\u{1F3FF}\u{200D}]*[ \t]*)+/gu;
+  const CJK = /[一-鿿]/, CJKP = '。！？，：；、）」』…';
+  function proText(s){ s = String(s == null ? '' : s); if(!RX.test(s)) return s; RX.lastIndex = 0;
+    return s.replace(RX, (m, a) => { const b = a + m.length, p = a > 0 ? s[a - 1] : '', n = b < s.length ? s[b] : '';
+      const ls = s.lastIndexOf('\n', a - 1) + 1, line = s.slice(ls, a);
+      if(!line.trim()) return '';                                   // emoji at the start of a line
+      if(!n || n === '\n'){                                         // emoji at the end of a line
+        if(CJKP.indexOf(p) > -1 || '.!?:'.indexOf(p) > -1) return '';
+        if(CJK.test(p) && line.length > 12) return '。';
+        if(!CJK.test(line) && line.length > 25 && /[A-Za-z0-9)]/.test(p)) return '.';
+        return ''; }
+      if(CJK.test(p) || CJK.test(n) || CJKP.indexOf(p) > -1){ if(CJKP.indexOf(p) > -1) return ''; if(CJK.test(p) && CJK.test(n)) return '，'; return ' '; }
+      if('.!?:,;'.indexOf(p) > -1) return ' ';
+      if(/[A-Za-z0-9)}]/.test(p) && /[A-Z]/.test(n)) return '. ';
+      if('.,!?:;'.indexOf(n) > -1) return '';
+      return ' '; }); }
+  window.coeProText = proText;
+  try{ const c = navigator.clipboard; if(c && c.writeText && !c.writeText.__1838){ const w0 = c.writeText.bind(c); const w = t => w0(proText(t)); w.__1838 = 1; c.writeText = w; } }catch(e){}
+  /* copies made by selecting a text box (the fallback when the clipboard is blocked, or a manual copy) */
+  document.addEventListener('copy', e => { try{ const el = document.activeElement; let t = '';
+      if(el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && /^(text|search)$/i.test(el.type || 'text'))) && el.selectionEnd > el.selectionStart) t = el.value.slice(el.selectionStart, el.selectionEnd);
+      else t = String(window.getSelection ? window.getSelection() : '');
+      const c = proText(t); if(t && c !== t && e.clipboardData){ e.clipboardData.setData('text/plain', c); e.preventDefault(); } }catch(x){} }, true);
+})();
+</script>
