@@ -1,4 +1,4 @@
-// coe-xmas v5 · 6 Nov 2026 (v2: "about me" clues · v3: drop-outs — "drop" op, re-spin when the match changed · v4: answered flag for "I will not join" · v5: Misty 20:07 — no names to teachers: the giver gets only the clues + wishlist; the name only after Reveal at the dinner) · Christmas 2026 dinner + gift exchange (Secret Santa). Config in docs sys:xmas2026.
+// coe-xmas v6 · 7 Nov 2026 (v6: Misty 10:31 — a sent wishlist and About me are sealed: never sent back to their own account, so nobody can read them by signing in as the teacher; "keep" keeps them when only the answer or dates change · v2: "about me" clues · v3: drop-outs — "drop" op, re-spin when the match changed · v4: answered flag for "I will not join" · v5: Misty 20:07 — no names to teachers: the giver gets only the clues + wishlist; the name only after Reveal at the dinner) · Christmas 2026 dinner + gift exchange (Secret Santa). Config in docs sys:xmas2026.
 // POST { token, op } — anyone invited (active teachers + Celine, minus sys:xmas2026.exclude):
 //   me    → { ok, cfg, me: {joining, avail, wish}, drawn, picked, recv?: {name, wish}, wheel?: [names] , counts }
 //   save  { joining, avail, wish[] } (until the deadline and before the draw)
@@ -38,7 +38,9 @@ Deno.serve(async (req: Request) => {
     if (op === "save") {
       if (!open) return out({ ok: false, error: "Sign-up is closed" });
       const wish = (Array.isArray(b.wish) ? b.wish : []).map((x: unknown) => str(x, 160)).filter(Boolean).slice(0, 3);
-      const row = { person: lc, display: me, joining: !!b.joining, avail: str(b.avail, 400), wish, about: str(b.about, 400), ...(b.joining ? { dropped_at: null } : {}), updated_at: new Date().toISOString() };
+      let about = str(b.about, 400), w = wish;
+      if (b.keep) { const { data: old } = await db.from("coe_xmas").select("wish,about").eq("person", lc).maybeSingle(); w = (old && old.wish) || []; about = (old && old.about) || ""; }   // v6: sealed — keep what was sent
+      const row = { person: lc, display: me, joining: !!b.joining, avail: str(b.avail, 400), wish: w, about, ...(b.joining ? { dropped_at: null } : {}), updated_at: new Date().toISOString() };
       const { error } = await db.from("coe_xmas").upsert(row); if (error) return out({ ok: false, error: "not saved" }, 500);
     }
     if (op === "drop") { const { data, error } = await db.rpc("coe_xmas_drop", { p_person: lc, p_by: me }); if (error) return out({ ok: false, error: "not saved" }, 500); if (!data.ok) return out({ ok: false, error: data.msg }); }
@@ -50,7 +52,7 @@ Deno.serve(async (req: Request) => {
       recv = r ? { name: cfg.reveal ? r.display : "", wish: r.wish, about: r.about || "" } : null;
     }
     const { count: nj } = await db.from("coe_xmas").select("person", { count: "exact", head: true }).eq("joining", true);
-    return out({ ok: true, invited: true, answered: !!mine, cfg: pub, me: mine || { joining: false, avail: "", wish: [], about: "" }, inDraw: !!d, changed: !!(d && d.changed && !d.picked_at && op !== "spin"), dropped: !!(mine && mine.dropped_at), picked: !!(d && (d.picked_at || op === "spin")), recv, wheel, joined: nj || 0 });
+    return out({ ok: true, invited: true, answered: !!mine, cfg: pub, me: mine ? { joining: mine.joining, avail: mine.avail, wish: [], about: "", wishN: (mine.wish || []).length, hasAbout: !!mine.about, sealed: (mine.wish || []).length > 0 } : { joining: false, avail: "", wish: [], about: "", wishN: 0, hasAbout: false, sealed: false }, inDraw: !!d, changed: !!(d && d.changed && !d.picked_at && op !== "spin"), dropped: !!(mine && mine.dropped_at), picked: !!(d && (d.picked_at || op === "spin")), recv, wheel, joined: nj || 0 });
   }
   if (!ops) return out({ ok: false, error: "Management only" }, 403);
   if (op === "admin") {
