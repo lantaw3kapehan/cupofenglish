@@ -2532,12 +2532,13 @@ catch(e){ return { err: 'capture failed', surface: surf, label }; }
 finally { st.getTracks().forEach(t => t.stop()); v.srcObject = null; v.remove(); }
 }
 async function classInGo(id, share){
+const T0 = Date.now();   /* 1864: the tap */
 const c = (D.schedule||[]).find(x=>x.id===id); if(!c) return; const b = $('ciGo');
 const shot = share ? await grabScreen() : null;
 if(share && shot && shot.err === 'blocked'){ macPerm(); return; }
 if(share && shot && shot.err === 'not shared'){ toast('Choose Entire screen to prove you are in class'); return; }
 if(share && shot && shot.surface && shot.surface !== 'monitor'){ toast('That was one window · tap again and pick the “Entire screen” tab'); return; }
-const now = Date.now(), mins = Math.round((new Date(c.start).getTime() - now) / 60000), prev = (D.classIns||{})[id];
+const now = T0, mins = Math.round((new Date(c.start).getTime() - now) / 60000), prev = (D.classIns||{})[id];
 const status = c.end && now > new Date(c.end).getTime() ? 'After class' : mins >= 0 ? 'On time' : 'Late to class';
 D.classIns = D.classIns || {}; D.classIns[id] = { time: new Date(now).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false}), status, mins, pending: true };
 closeSheet(); renderToday(); toast('In · ' + D.classIns[id].time + (shot && shot.b64 ? ' · saving screen proof' : ''));
@@ -2548,7 +2549,7 @@ if(shot && shot.b64){ n.shot = shot.b64; n.shotLabel = shot.label; n.shotSurf = 
 const cc = { id: c.id, code: c.code, student: c.student, start: c.start, end: c.end }, dv = Object.assign({ device: deviceInfo() }, n);
 let r; for(let i = 0; i < 3; i++){                                   
 if(i === 2 && dv.shot){ delete dv.shot; dv.shotErr = 'picture did not upload'; }
-try{ r = await api('classIn', TOKEN, cc, dv); if(r && r.ok) break; }catch(e){ r = e; }
+try{ dv.tapAgo = Date.now() - T0; r = await api('classIn', TOKEN, cc, dv); if(r && r.ok) break; }catch(e){ r = e; }
 await new Promise(z => setTimeout(z, 800)); }
 if(!r || !r.ok) throw r;
 D.classIns[id] = r.classIn; store('set', KEY_D, JSON.stringify(D)); if(VIEW==='today') renderToday();
@@ -7174,7 +7175,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1668;
+const COE_V = 1669;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
