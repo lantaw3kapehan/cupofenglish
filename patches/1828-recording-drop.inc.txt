@@ -1,0 +1,27 @@
+<script>/* 1828 · recording drop box (coaching and training recordings): drag the video file onto the box, or tap to choose.
+   The drop is handled here before the class-video drop handler (780), which would otherwise say "drop it on the class's box". */
+(function(){
+  if(window.vdz1828) return;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const IC = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="m16 10 6-3v10l-6-3z"/></svg>';
+  const st = document.createElement('style');
+  st.textContent = '.vdz1828 .ic{background:linear-gradient(135deg,#00A3AD,#00737B)!important}.vdz1828.ok .ic{background:linear-gradient(135deg,#3FA37A,#2E7D5B)!important}';
+  document.head.appendChild(st);
+  window.vdz1828 = (id, pid, who) => '<label class="small mute">Recording (MP4 · private: ' + esc(who) + ' and management)</label>'
+    + '<label class="drop vdz1828" for="' + id + '" style="margin-top:4px"><input type="file" id="' + id + '" accept="video/mp4,video/webm,video/quicktime" hidden>'
+    + '<span class="ic">' + IC + '</span><span class="grow"><b class="vdzT">Drag the video here</b><span class="small mute vdzS">or tap to choose · one file</span></span></label>'
+    + '<div id="' + pid + '" class="small mute" style="margin-top:4px"></div>';
+  const show = (z, f) => { const t = z.querySelector('.vdzT'), s = z.querySelector('.vdzS'); if(!f) return;
+    if(t) t.textContent = f.name; if(s) s.textContent = Math.max(1, Math.round(f.size / 1048576)) + ' MB · ready · tap to change'; z.classList.add('ok'); };
+  const zone = e => e.target && e.target.closest && e.target.closest('.vdz1828');
+  const files = e => e.dataTransfer && [...(e.dataTransfer.types || [])].indexOf('Files') > -1;
+  ['dragenter', 'dragover'].forEach(n => window.addEventListener(n, e => { const z = zone(e); if(!z || !files(e)) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; z.classList.add('on'); }, true));
+  window.addEventListener('dragleave', e => { const z = zone(e); if(z && !z.contains(e.relatedTarget)) z.classList.remove('on'); }, true);
+  window.addEventListener('drop', e => { const z = zone(e); if(!z || !files(e)) return; e.preventDefault(); e.stopPropagation(); z.classList.remove('on');
+    const L = e.dataTransfer.files, f = L && L[0]; if(!f) return;
+    if(!/^video\//.test(f.type) && !/\.(mp4|webm|mov|m4v)$/i.test(f.name)) return toast('That is not a video file · MP4 please');
+    const inp = z.querySelector('input[type=file]'); try{ const dt = new DataTransfer(); dt.items.add(f); inp.files = dt.files; }catch(x){ return toast('Tap the box to choose the file'); }
+    if(L.length > 1) toast('One video only · using ' + f.name); show(z, f); }, true);
+  document.addEventListener('change', e => { const i = e.target; if(i && i.type === 'file' && i.closest && i.closest('.vdz1828')) show(i.closest('.vdz1828'), (i.files || [])[0]); });
+})();
+</script>
