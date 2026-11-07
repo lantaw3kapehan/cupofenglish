@@ -1811,7 +1811,7 @@ function fastAns(fn, args){ if(/Msg/.test(fn)) try{ Object.keys(SB_FRESH).forEac
   if(fn === 'mgmtRenewal'){ const st = String(args[2] || ''), nt = String(args[3] || '').replace(/\s+/g, ' ').trim().slice(0, 200), un = String(args[4] || '');
     try{ Object.keys(SB_FRESH).forEach(k => { if(/mgmtRenewals\|/.test(k)) delete SB_FRESH[k]; }); }catch(e){}
     const txt = !st ? '' : st + (st === 'Paused' && un ? ' until ' + un : '') + ' · ' + now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' + who + (nt ? ' · ' + nt : '');
-    return { ok: true, queued: true, status: txt, note: (txt ? st : 'Status cleared') + (st === 'Not renewing' ? ' · unticked in ACTIVE within a minute' : '') }; }
+    return { ok: true, queued: true, status: txt, note: (txt ? st : 'Status cleared') + (st === 'Not renewing' ? ' · unticked in Packages within a minute' : '') }; }
   if(fn === 'mgmtRenewPaid' || fn === 'mgmtEnrolPaid'){ const f = args[1] || {}, tot = (+f.pkg || 0) + (+f.free || 0), mo = x => x < 30 ? 4 : x < 60 ? 8 : 12;
     const addM = (s, k) => { const d = new Date(String(s).slice(0, 10) + 'T12:00:00'); if(isNaN(d)) return ''; const last = new Date(d.getFullYear(), d.getMonth() + k + 1, 0).getDate(); const x = new Date(d.getFullYear(), d.getMonth() + k, Math.min(d.getDate(), last), 12); return ymdLocal(x); };   /* 1423: 31 Oct + 8 months = 30 Jun */
     const paid = f.date ? new Date(f.date + 'T12:00:00') : now, pd = paid.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -3971,7 +3971,7 @@ const tot = P.reduce((a,x)=>a+x.net,0), paid = P.filter(x=>x.paid).length;
 const UP = P.filter(x=>!x.paid), owed = UP.reduce((a,x)=>a+x.net,0), out = tot - owed;
 const RD = RDY ? UP.filter(x=>rdyN(x.name)===0) : [], rdyAmt = RD.reduce((a,x)=>a+x.net,0);
 let h = `<div class="lead row"><div class="grow"><h1>Payroll</h1><div class="mute small">${esc((MO&&MO.payMonth)||'')} pay · from the PAY tab</div></div>
-<button class="btn sm ghost" onclick="tabSheet('PAY','PAY tab')">PAY tab</button><button class="btn sm teal" onclick="payslip('')">Payslip</button></div>
+<button class="btn sm ghost" onclick="tabSheet('PAY','PAY tab')" style="display:none">PAY tab</button><button class="btn sm teal" onclick="payslip('')">Payslip</button></div>
 <div class="stats s4" style="margin-top:14px"><div class="stat"><b class="num">${peso(tot)}</b><span>total net · ${P.reduce((a,x)=>a+x.units,0)} units</span></div>
 <div class="stat st-ok"><b class="num">${peso(out)}</b><span>released · ${paid}/${P.length} paid</span></div>
 <div class="stat st-due"><b class="num">${peso(owed)}</b><span>unreleased · ${UP.length} teacher${UP.length===1?'':'s'}</span></div>
@@ -3994,7 +3994,7 @@ ${x.base?`<tr><td>Base</td><td class="num">${peso(x.base)}</td></tr>`:''}<tr><td
 <tr><td><b>Net</b></td><td class="num"><b>${peso(x.net)}</b></td></tr></table>${pchkSheetHtml(x)}${rdyList(x.name)}
 ${!x.paid && rdyN(x.name) ? `<div class="row" style="gap:8px;margin-top:10px"><button class="btn teal grow" onclick="payNudge(['${esc(x.name)}'])">Remind Teacher ${esc(x.name)} in the app</button><button class="btn ghost" onclick="payNudgeCopy('${esc(x.name)}')">Copy for WeChat</button></div>` : ''}
 <div class="row" style="gap:8px;margin-top:14px">${isPres() ? `<button class="btn grow ${x.paid?'ghost':'teal'}" id="pdGo" onclick="togglePaid(${i})">${x.paid?'Undo paid':'✔ Mark paid'}</button>` : ''}
-<button class="btn ${isPres() ? 'ghost' : 'teal'} grow" onclick="payslip('${esc(x.name)}')">Payslip</button></div><p class="small mute" style="margin-top:8px">${isPres() ? 'Mark paid ticks ✔ PAID on the PAY tab.' : 'Management marks pay as paid. Send the payslip from here.'}</p>`); }
+<button class="btn ${isPres() ? 'ghost' : 'teal'} grow" onclick="payslip('${esc(x.name)}')">Payslip</button></div><p class="small mute" style="margin-top:8px">${isPres() ? 'Mark paid records the payment.' : 'Management marks pay as paid. Send the payslip from here.'}</p>`); }
 
 let TT = null, URLS = null;
 const sheetLink = tab => '';   /* 1816: the sheet is a backup · no "Open in sheet" */
@@ -4690,7 +4690,7 @@ ${opt('Paused','Paused','taking a break · comes back later')}${opt('Not renewin
 <label>Reason or note (optional)</label><input id="rnN" class="in-t" placeholder="e.g. school exams · moving · budget">
 <button class="btn block" style="margin-top:14px" onclick="renSave()">Save</button>
 ${cur.k ? `<button class="btn ghost block" style="margin-top:8px" onclick="RNS.st='';renSave()">Clear status</button>` : ''}
-<p class="small mute" style="margin-top:8px">Saved in ACTIVE › RENEWAL STATUS. Changing a "Not renewing" back puts the ACTIVE tick and DATABASE as they were.</p>`); }
+<p class="small mute" style="margin-top:8px">Saved as the package renewal status. Changing a "Not renewing" back puts the ACTIVE tick and DATABASE as they were.</p>`); }
 async function renSave(){ const s = RNS; if(!s) return; if(s.st === null) return toast('Choose what the parent said');
 const k = String(s.code).toUpperCase(), prev = REN[k], note = ($('rnN')||{}).value || '', until = s.st === 'Paused' ? (($('rnD')||{}).value || '') : '';
 const today = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
@@ -4740,7 +4740,7 @@ return `<div class="tdr ${x.lv}"${needs ? ` data-focus="Renewal|${esc(String(r[0
 ren.forEach(x => { const s = renSt(x.r[1]); x.st = s; if(s.k === 'no' || s.k === 'pause') x.lv = 'closed'; else if(s.k === 'yes') x.lv = 'yes'; else if(s.k === 'done') x.lv = 'done'; });
 const grp = (lv, label, sub) => { const L = ren.filter(x => x.lv === lv); return L.length ? `<div class="tdg ${lv}"><i></i>${label} <span class="c">${L.length} · ${sub}</span></div>` + L.map(renRow).join('') : ''; };
 const renH = `<section class="sec" id="td-renew"><h2>Renewals due <span class="c">5 or fewer lessons left · copy the reminder, send it in WeChat</span></h2>
-${ren.length ? grp('now','Act now','finished, 1 lesson left, or ending within a week') + grp('soon','This month','3 or fewer left, or ending within 3 weeks') + grp('later','Coming up','up to 5 left') + grp('yes','Renewing','parent confirmed · waiting for the new package') + grp('closed','Paused or not renewing','no reminder needed · also marked in ACTIVE') + grp('done','Renewed ✓','paid · leaves this list when the TODAY sheet next updates') : '<div class="tdok">No renewals due.</div>'}</section>`;
+${ren.length ? grp('now','Act now','finished, 1 lesson left, or ending within a week') + grp('soon','This month','3 or fewer left, or ending within 3 weeks') + grp('later','Coming up','up to 5 left') + grp('yes','Renewing','parent confirmed · waiting for the new package') + grp('closed','Paused or not renewing','no reminder needed · also marked in Packages') + grp('done','Renewed ✓','paid · leaves this list when the TODAY sheet next updates') : '<div class="tdok">No renewals due.</div>'}</section>`;
 const folH = `<section class="sec" id="td-follow"><h2>Trial follow-ups <span class="c">trials in the last 30 days, not enrolled yet · Day 3 check-in → Day 7 open times → Day 14 last note → close · copy the message, send it in WeChat, tap Mark as sent</span></h2>
 ${fol.length ? fol.map(x => { const no = x.open, d = Math.abs(x.days), a = x.app, fi = TDF.push(x) - 1, stp = fuNext(x), fdue = stp && (stp.k === 'report' || stp.due >= 0);
 const chip = a ? `<span class="chip ${x.closed ? (/^Enrolling/.test(a.st) ? 'green' : '') : 'teal'}">${esc(a.st)} · ${esc(tfuDay(a.at))} · ${esc(a.by)}</span>${a.note ? `<span class="chip">${esc(a.note)}</span>` : ''}` : no ? '<span class="chip coral">Not followed up yet</span>' : `<span class="chip green">${esc(x.fu)}</span>`;
@@ -5134,7 +5134,7 @@ return `<section class="ov-card" style="border:1.5px solid #00A3AD"><div class="
 `<div style="text-align:right"><a class="lk small" onclick="try{localStorage.setItem('coe.wsHide','${L[0]}')}catch(e){};renderHome()">Hide for this week</a></div></section>`;
 }
 /* Follow-ups from the Monday summary: copy a short bilingual message for the parent group, and keep the parent's answer
-   in ACTIVE › RENEWAL STATUS (same place as renewals). Copying marks "Reminder sent" (who + date); Renewing / Paused /
+   in Packages › RENEWAL STATUS (same place as renewals). Copying marks "Reminder sent" (who + date); Renewing / Paused /
    Not renewing moves the student to "Handled". */
 let WS_RT = 0;
 function wsHandled(code){ const k = renSt(code).k; return k === 'yes' || k === 'pause' || k === 'no'; }
@@ -5172,7 +5172,7 @@ return '<h2 style="margin-top:18px">' + t + ' <span class="c">' + open.length + 
 const left = r => r[C.available] === '' ? 'shared package' : r[C.available] + ' left';
 const dt = e => new Date(e.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + tm(e.start);
 const T = Object.keys(S.byT).filter(t => t && t !== '—').sort((a, b) => S.byT[b].held - S.byT[a].held);
-const html = '<h1>Last week · ' + esc(wsLbl(L)) + '</h1><div class="mute small">Copy → paste in the parent WeChat group (marks “Asked”). When the parent answers, tap Answer: Renewing, Paused or Not renewing moves them to Handled. Saved in ACTIVE › RENEWAL STATUS · <a class="lk" onclick="wsLoad(1)">refresh</a></div><div id="wsBody"></div>' +
+const html = '<h1>Last week · ' + esc(wsLbl(L)) + '</h1><div class="mute small">Copy → paste in the parent WeChat group (marks “Asked”). When the parent answers, tap Answer: Renewing, Paused or Not renewing moves them to Handled. Saved as the package renewal status · <a class="lk" onclick="wsLoad(1)">refresh</a></div><div id="wsBody"></div>' +
 '<h2 style="margin-top:16px">Classes <span class="c">' + S.live.length + '</span></h2><div class="small mute">' + S.cx.length + ' cancelled · ' + S.live.filter(e => e.type === 'Trial').length + ' trials</div>' +
 '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">' + T.map(t => '<span class="chip teal">' + esc(tName(t)) + ' · ' + S.byT[t].held + (S.byT[t].cx ? ' <span style="opacity:.7">(' + S.byT[t].cx + ' cx)</span>' : '') + '</span>').join('') + '</div>' +
 (S.hasRem ? '<h2 style="margin-top:18px">Classes not reminded <span class="c">' + S.miss.length + '</span></h2><div class="small mute">No early or 10-minute reminder logged' + (Object.keys(S.byWho).length ? ' · sent by ' + Object.entries(S.byWho).sort((a, b) => b[1] - a[1]).map(([w, n]) => esc(w) + ' ' + n).join(', ') : '') + '</div>' +
@@ -5718,7 +5718,7 @@ if(!AT || !AT.cols){ toast('Could not load the packages. Try again.'); return fa
 const C = {}; AT.cols.forEach((c, i) => C[c] = i);
 const R = AT.rows || [], up = s => String(s || '').trim().toUpperCase();
 const r = row != null ? R.find(x => x[0] === row) : (R.find(x => up(x[C.code]) === up(code) && x[C.active]) || R.find(x => up(x[C.code]) === up(code)));
-if(!r){ toast('No package found in ACTIVE for this student'); return false; }
+if(!r){ toast('No package found in Packages for this student'); return false; }
 const open = () => { if(keepSheet && $('cxImg')){ const k = CXP; k.url = ''; return true; } cxSheet(); if(quick && $('cxImg')){ const p = $('cxImg'); p.insertAdjacentHTML('beforebegin', '<div id="cxCheck" class="small mute" style="margin-top:8px">Checking the sheet for today’s classes…</div>'); } return true; };
 const G = pkgGroup(r, C);
 if(G.members.length > 1){   /* shared package: one picture for the whole family, each child's lessons listed */
@@ -6913,7 +6913,7 @@ window.enTfS = function(){ const box = $('enTS'), i = $('enTf'); if(!box || !i) 
     const hay = [r[C.name], r[C.cn], code].join(' ').toLowerCase(); if(hay.indexOf(q) < 0) return; const k = code + '|' + r[C.teacher]; if(seen[k]) return; seen[k] = 1; L.push(r); });
   L.sort((a, b) => (+b[C.available] || 0) - (+a[C.available] || 0));
   box.innerHTML = L.length ? L.slice(0, 8).map(r => '<button type="button" class="rno" data-v="' + esc(String(r[C.name] || '').trim() + ' · ' + String(r[C.code]).toUpperCase()) + '" onclick="$(\'enTf\').value=this.dataset.v;enTfS();enPrev()"><b>' + esc(String(r[C.name] || '').trim()) + ' ' + esc(r[C.cn] || '') + '</b><span>' + esc(String(r[C.code]).toUpperCase()) + ' · ' + esc(r[C.teacher] || '') + ' · ' + (r[C.available] === '' ? 'shared' : esc(r[C.available]) + ' left') + (r[C.active] === true ? '' : ' · not active') + '</span></button>').join('') + (L.length > 8 ? '<div class="small mute">' + (L.length - 8) + ' more · type more letters</div>' : '')
-    : '<div class="small mute">No student with a package in ACTIVE matches · if the giver is an old student not in our sheet, tick the box below</div>'; };
+    : '<div class="small mute">No student with a package in Packages matches · if the giver is an old student not in our sheet, tick the box below</div>'; };
 window.ENPRE = window.ENPRE || {};
 window.enPre = function(code){ const k = String(code || '').toUpperCase(), x = ENPRE[k]; if(x && Date.now() - x.t < 300000) return x.p;
   const g = api('mgmtEnrolPaid', TOKEN, { code: k, dry: true }).catch(e => ({ ok: false, msg: String((e && (e.msg || e.message)) || e), gerr: 1 })), d = window.pkcDb ? pkcDb('enrol', { code: k }) : Promise.resolve(null), p = d.then(x => x || g); if(window.pkcVerify) pkcVerify('enrol', k, d, g); ENPRE[k] = { t: Date.now(), p: p };   /* 1290 */
@@ -6942,7 +6942,7 @@ const bk = 'e:' + S.code; if(BUSY[bk]) return toast('Still saving ' + S.name + '
 const body = $('sheetBody'), snap = body.innerHTML, vals = {}; body.querySelectorAll('input,select,textarea').forEach(el => { if(el.id && el.type !== 'file') vals[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value; });
 openSheet('<h1 id="enSaving">Saving ' + esc(S.name) + '\'s enrolment…</h1><div class="card" style="margin-top:10px;background:#FFF8E6;border-color:#F3D48B"><b>⏳ Writing it into ACTIVE' + (f.transfer || f.saleRow ? '' : ' and SALES') + '</b><div class="small" style="margin-top:4px">About 30 seconds. You can close this card and keep working · the save carries on and the result opens here when it is done.</div></div>');   /* 14 Oct: closes at once, saves in the background */
 try{ const r = await api('mgmtEnrolPaid', TOKEN, f); if(!r || !r.ok) throw r; AT = null; MS = null; try{ enDoneFu(S.code, S.name, r); }catch(e){} try{ ding('msg'); }catch(e){} toast('✓ ' + S.name + ' enrolled');
-(($('enSaving') && $('sheet').classList.contains('on')) ? (fn => fn()) : whenFree)(() => openSheet('<h1>✓ ' + esc(S.name) + ' enrolled</h1><div class="card" style="margin-top:10px;background:#F1FAF9;border-color:#BFE6E3"><div style="font-size:20px"><b style="color:#00737B">' + r.available + ' lessons</b> left</div><div class="small" style="margin-top:4px">' + (r.transfer ? r.carried + ' transferred · no payment' : r.pkg + (r.free ? ' + ' + r.free : '') + ' paid') + (r.deadline ? ' · valid until <b>' + new Date(r.deadline + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '</b>' : '') + (r.noStart ? ' · valid ' + (r.months || '') + ' months from the first class' : f.noStart ? ' · <b style="color:#B54708">the start date was saved as today · the server part for "Not set yet" is not installed yet</b>' : '') + '</div>' + (r.noStart ? '<div class="small" style="margin-top:6px">When the first class is agreed, type its date in ACTIVE' + (r.row ? ' row ' + r.row : '') + ' › <b>Purchase Date/1st Class</b> · the deadline fills itself.</div>' : '') + '<div class="small mute" style="margin-top:4px">' + (r.transfer ? esc(r.carried + ' lessons transferred from ' + r.fromName + (r.outside ? ' (not in our sheet)' : ' · ' + r.fromName + ' has ' + r.fromLeft + ' left') + ' · ACTIVE row ' + r.row) : r.queued ? 'Saved · Google writes it into ' + (f.saleRow ? 'ACTIVE' : 'SALES and ACTIVE') + ' within a minute' : 'ACTIVE row ' + r.row + ' · SALES row ' + r.saleRow + (r.link ? ' · invoice saved' : '')) + '</div></div>' +
+(($('enSaving') && $('sheet').classList.contains('on')) ? (fn => fn()) : whenFree)(() => openSheet('<h1>✓ ' + esc(S.name) + ' enrolled</h1><div class="card" style="margin-top:10px;background:#F1FAF9;border-color:#BFE6E3"><div style="font-size:20px"><b style="color:#00737B">' + r.available + ' lessons</b> left</div><div class="small" style="margin-top:4px">' + (r.transfer ? r.carried + ' transferred · no payment' : r.pkg + (r.free ? ' + ' + r.free : '') + ' paid') + (r.deadline ? ' · valid until <b>' + new Date(r.deadline + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '</b>' : '') + (r.noStart ? ' · valid ' + (r.months || '') + ' months from the first class' : f.noStart ? ' · <b style="color:#B54708">the start date was saved as today · the server part for "Not set yet" is not installed yet</b>' : '') + '</div>' + (r.noStart ? '<div class="small" style="margin-top:6px">When the first class is agreed, type its date in Packages' + (r.row ? ' row ' + r.row : '') + ' › <b>Purchase Date/1st Class</b> · the deadline fills itself.</div>' : '') + '<div class="small mute" style="margin-top:4px">' + (r.transfer ? esc(r.carried + ' lessons transferred from ' + r.fromName + (r.outside ? ' (not in our sheet)' : ' · ' + r.fromName + ' has ' + r.fromLeft + ' left') + ' · ACTIVE row ' + r.row) : r.queued ? 'Saved · Google writes it into ' + (f.saleRow ? 'ACTIVE' : 'SALES and ACTIVE') + ' within a minute' : 'ACTIVE row ' + r.row + ' · SALES row ' + r.saleRow + (r.link ? ' · invoice saved' : '')) + '</div></div>' +
 '<button class="btn teal block" style="margin-top:14px" onclick="cnOpen(\'' + esc(S.code) + '\')">Class notice</button><button class="btn ghost block" style="margin-top:8px" onclick="openStudent(\'' + esc(S.code) + '\')">Open student</button>')); }
 catch(e){ try{ if(!($('enGo') && $('sheetBody').innerHTML === snap)){ openSheet(snap); Object.keys(vals).forEach(k => { const el = $(k); if(!el) return; if(el.type === 'checkbox' || el.type === 'radio') el.checked = vals[k]; else el.value = vals[k]; }); } else { $('scrim').classList.add('on'); $('sheet').classList.add('on'); } ENS = S; const b2 = $('enGo'); if(b2){ b2.disabled = false; b2.textContent = 'Save enrolment'; } }catch(y){}
   toast(((e && e.msg) || 'Not saved') + ' · check SALES and ACTIVE before trying again' + (f.file ? ' · choose the invoice file again' : ''));
@@ -7104,7 +7104,7 @@ const h = `<div class="lead"><h1>Packages</h1><div class="mute small">${R.length
 <div style="margin-top:12px"><input id="atq" class="search" placeholder="Search student, code, teacher…" value="${esc(q)}" oninput="renderActive()"></div>
 <div class="seg">${[['active','Active · '+nA],['low','5 or fewer · '+R.filter(r=>r[C.active]&&low(r)).length],['ren','Renewed · 30 days · '+R.filter(isRen).length],['new','New · 30 days · '+R.filter(isNew).length],['agr','No agreement'+(AGM ? ' · '+R.filter(noAgr).length : '')],['done','Finished'],['off','Not active'],['all','All']].map(([k,l])=>`<button class="${AT_F===k?'on':''}" onclick="AT_F='${k}';renderActive()">${l}</button>`).join('')}</div>
 <div class="gx pk" style="margin-top:6px"><table><tr><th>Student</th><th>Teacher</th><th>Enrolled</th><th>Done</th><th>Left</th><th>Deadline</th></tr>
-${L.slice(0,250).map(r => `<tr onclick="activeRow(${r[C.row]})" style="cursor:pointer"><td><b>${esc(r[C.name])}</b> <span class="mute small">${esc(r[C.cn])}</span>${!r[C.active] ? ' <span class="chip" style="font-size:11px;opacity:.8" title="Unticked in ACTIVE · open the row to tick it again">Not ticked active</span>' : ''}${isRen(r) ? ` <span class="chip green" style="font-size:11px">Renewed ${pkChipDate(r[C.code], r[C.teacher], r[C.start])}${+r[C.carry] ? ' · +' + r[C.carry] + ' carried' : ''}</span>` : isNew(r) ? ` <span class="chip teal" style="font-size:11px">New ${pkChipDate(r[C.code], r[C.teacher], r[C.start])}</span>` : /^(Renewing|Reminder sent|Paused)/.test(rnS(r)) ? ` <span class="chip" style="font-size:11px">${esc(rnS(r).split(' · ')[0])}</span>` : ''}<div class="small mute">${esc(r[C.code])}${r[C.shared]&&r[C.shared]!==r[C.code]?' · shares '+esc(r[C.shared]):''}${AGM && r[C.active] ? (a => a && a.how !== 'Sent' ? ' · <span style="color:#1E7A55">agreement ✓</span>' : a ? ` · <a href="javascript:void(0)" onclick="event.stopPropagation();agrOpen({code:'${esc(r[C.code])}'})" style="color:#B7791F">agreement sent ${esc(tfuDay(agR(r).at))} · remind</a>` : ` · <a href="javascript:void(0)" onclick="event.stopPropagation();agrOpen({code:'${esc(r[C.code])}'})" style="color:#C0533D">no agreement · send</a>`)(agR(r)) : ''}</div></td>
+${L.slice(0,250).map(r => `<tr onclick="activeRow(${r[C.row]})" style="cursor:pointer"><td><b>${esc(r[C.name])}</b> <span class="mute small">${esc(r[C.cn])}</span>${!r[C.active] ? ' <span class="chip" style="font-size:11px;opacity:.8" title="Unticked in Packages · open the row to tick it again">Not ticked active</span>' : ''}${isRen(r) ? ` <span class="chip green" style="font-size:11px">Renewed ${pkChipDate(r[C.code], r[C.teacher], r[C.start])}${+r[C.carry] ? ' · +' + r[C.carry] + ' carried' : ''}</span>` : isNew(r) ? ` <span class="chip teal" style="font-size:11px">New ${pkChipDate(r[C.code], r[C.teacher], r[C.start])}</span>` : /^(Renewing|Reminder sent|Paused)/.test(rnS(r)) ? ` <span class="chip" style="font-size:11px">${esc(rnS(r).split(' · ')[0])}</span>` : ''}<div class="small mute">${esc(r[C.code])}${r[C.shared]&&r[C.shared]!==r[C.code]?' · shares '+esc(r[C.shared]):''}${AGM && r[C.active] ? (a => a && a.how !== 'Sent' ? ' · <span style="color:#1E7A55">agreement ✓</span>' : a ? ` · <a href="javascript:void(0)" onclick="event.stopPropagation();agrOpen({code:'${esc(r[C.code])}'})" style="color:#B7791F">agreement sent ${esc(tfuDay(agR(r).at))} · remind</a>` : ` · <a href="javascript:void(0)" onclick="event.stopPropagation();agrOpen({code:'${esc(r[C.code])}'})" style="color:#C0533D">no agreement · send</a>`)(agR(r)) : ''}</div></td>
 <td>${esc(r[C.teacher])}</td><td class="num">${r[C.enrolled]}</td><td class="num">${r[C.finished]}</td>
 <td class="num"><b class="${low(r)?'minus':''}">${r[C.available]===''?(L.some(x => x !== r && x[C.code] === r[C.code] && x[C.available] !== '') || AT.rows.some(x => x !== r && x[C.code] === r[C.code] && x[C.available] !== '') ? '<span class="small mute" style="font-weight:400">same package</span>' : 'shared'):r[C.available]}</b></td><td class="num small ${r[C.deadline]&&r[C.deadline]<new Date().toISOString().slice(0,10)?'minus':'mute'}">${esc(r[C.deadline])}</td></tr>`).join('')}</table></div>
 ${L.length>250?`<div class="empty small">Showing 250 of ${L.length} · search to narrow</div>`:''}${L.length?'':'<div class="empty">No packages here.</div>'}`;
@@ -7156,7 +7156,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1647;
+const COE_V = 1649;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7255,7 +7255,7 @@ function shListHtml(q){ const A = shAll(); if(!A) return '<div class="empty">Get
   let h = '<div class="small mute" style="margin:6px 0 8px">' + A.P.length + ' shared packages · siblings on one package · tap for the shared lesson summary</div>';
   h += L.map(p => '<div class="li" onclick="shSummary(\'' + esc(p.code) + '\')"><div class="av">' + esc((p.names[0] || '?')[0]) + '</div><div class="grow"><b class="ell">' + esc(p.names.join(' & ')) + '</b><div class="small mute ell">' + esc(p.codes.join(' · ')) + ' · ' + esc(p.T.join(', ')) + '</div></div>' +
     '<div style="text-align:right"><div class="num ' + (p.left <= 5 ? 'minus' : '') + '"><b>' + p.left + '</b> left</div><div class="small mute">' + (p.end ? 'ends ' + esc(fD(p.end)) : '') + '</div></div></div>').join('') || '<div class="empty">No shared packages match.</div>';
-  if(A.half.length) h += '<div style="margin-top:16px"><b>Check in ACTIVE · ' + A.half.length + '</b><div class="small mute">These rows point to a sibling (AY) but are not on one package, so their summary shows one child only. On the sibling\'s row, AY = the owner\'s code and leave Enrolled empty.</div></div>' +
+  if(A.half.length) h += '<div style="margin-top:16px"><b>Check in Packages · ' + A.half.length + '</b><div class="small mute">These rows point to a sibling (AY) but are not on one package, so their summary shows one child only. On the sibling\'s row, AY = the owner\'s code and leave Enrolled empty.</div></div>' +
     A.half.map(x => '<div class="li" onclick="shSummary(\'' + esc(x.a) + '\')"><div class="av">!</div><div class="grow"><b class="ell">' + esc(x.an) + ' → ' + esc(x.bn) + '</b><div class="small mute ell">' + esc(x.a) + ' (row ' + esc(x.row) + ') · AY ' + esc(x.b) + (x.own ? ' · has its own Enrolled' : '') + '</div></div></div>').join('');
   return h; }
 function shHtml(code){ const S = shGroup(code); if(!S) return ''; const { C, G } = S, o = G.owner, n1 = x => Math.round(x * 10) / 10, td = x => (C.today != null && +x[C.today]) || 0, up = s => String(s || '').trim().toUpperCase();
@@ -9604,7 +9604,7 @@ if(!AT) AT = A;
 const C = {}; A.cols.forEach((c, i) => C[c] = i);
 const rows = A.rows.filter(r => String(r[C.code]).toUpperCase() === code);
 const pk = rows.filter(r => r[C.enrolled] !== '').sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])))[0] || rows[0];
-if(!pk) return openSheet('<h1>Class notice</h1><div class="empty">' + esc(code) + ' is not in ACTIVE yet · add the package first, then try again.</div>');
+if(!pk) return openSheet('<h1>Class notice</h1><div class="empty">' + esc(code) + ' is not in Packages yet · add the package first, then try again.</div>');
 const ok = (Array.isArray(L) ? L : []).filter(x => !x.cancelled), now = Date.now(), up = ok.find(x => new Date(x.start).getTime() >= now) || ok[ok.length - 1] || {};
 const carry = +pk[C.carry] || 0; let rn = ''; try{ rn = String((typeof REN === 'object' && REN && REN[code]) || ''); }catch(e){}
 const pks = rows.filter(r => r[C.enrolled] !== '').sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])));
@@ -9792,7 +9792,7 @@ try{ const st = document.createElement('style'); st.textContent = '#navIn button
 const _q = window.hmQueue; if(_q) window.hmQueue = function(){ const r = _q.apply(this, arguments); try{ const td = r.Q.filter(x => /mtoday|RP_K='trial'/.test(String(x.go || ''))); if(td.length > 1){ const n = td.reduce((a, x) => a + (+x.n || 0), 0), hot = td.some(x => x.tone === 'hot');
 r.Q = r.Q.filter(x => td.indexOf(x) < 0); r.Q.push({ n: n, tone: hot ? 'hot' : '', t: 'Waiting in To do', s: td.map(x => x.t + ' ' + x.n).join(' · '), go: "go('mtoday')" });
 const rank = { hot: 0, '': 1, low: 2 }; r.Q.sort((a, b) => rank[a.tone] - rank[b.tone] || b.n - a.n); } }catch(e){} return r; };
-const _as = window.renderAStudents; if(_as) window.renderAStudents = function(){ const r = _as.apply(this, arguments); try{ const ld = document.querySelector('#v-astudents .lead'); if(ld && !document.getElementById('dbLk')) ld.insertAdjacentHTML('beforeend', '<div id="dbLk" class="small" style="margin-top:4px"><a class="lk" onclick="go(\'db\')">Database sheet · the raw rows, to check or fix</a></div>'); }catch(e){} return r; };
+const _as = window.renderAStudents; if(_as) window.renderAStudents = function(){ const r = _as.apply(this, arguments); try{ const ld = document.querySelector('#v-astudents .lead'); if(ld && !document.getElementById('dbLk')) ld.insertAdjacentHTML('beforeend', '<div id="dbLk" class="small" style="display:none"><a class="lk" onclick="go(\'db\')">Database sheet · the raw rows, to check or fix</a></div>'); }catch(e){} return r; };
 })();
 </script>
 <script>
@@ -9949,7 +9949,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
   window.pkLines = (o, P) => { if(!o || !P || P.C.course == null) return ''; const C = P.C, R = o.rows.filter(r => r[C.enrolled] !== ''); if(R.length < 2) return '';
     return '<div class="small" style="margin-top:2px">' + R.map(r => esc(pkCourse(r[C.course]) || r[C.teacher]) + ' <b class="num ' + (r[C.available] !== '' && +r[C.available] <= 5 ? 'minus' : '') + '">' + (r[C.available] === '' ? 'shared' : esc(r[C.available]) + ' left') + '</b>').join(' · ') + '</div>'; };
   function pkgBox(){ const box = $('stuPkg'); if(!box || typeof STU === 'undefined' || !STU) return; const P = pk(); if(!P){ box.innerHTML = '<h2>Package</h2><div class="sk"></div>'; return; }
-    const o = P.by[up(STU.code)], C = P.C; if(!o){ box.innerHTML = '<h2>Package</h2><div class="mute small">No row in ACTIVE for this student.</div>'; return; }
+    const o = P.by[up(STU.code)], C = P.C; if(!o){ box.innerHTML = '<h2>Package</h2><div class="mute small">No row in Packages for this student.</div>'; return; }
     const h1587 = '<h2>Package <span class="c">ACTIVE</span></h2>' + o.rows.map(r => '<div class="mini" style="cursor:pointer" onclick="activeRow(' + r[C.row] + ')"><div class="row" style="gap:8px;flex-wrap:wrap"><b>' + esc(r[C.teacher] || '') + '</b>' + (C.course != null && r[C.course] ? '<span class="chip teal" style="font-size:11px">' + esc(pkCourse(r[C.course])) + '</span>' : '') + (r[C.active] ? '<span class="chip green" style="font-size:11px">Active</span>' : '<span class="chip" style="font-size:11px">Not active</span>') + (r[C.shared] && up(r[C.shared]) !== up(STU.code) ? '<span class="chip" style="font-size:11px">Shares ' + esc(r[C.shared]) + '</span>' : '') + '<span class="grow"></span><span class="lk small">Edit package</span></div>' +
       '<div class="small mute" style="margin-top:4px">Lessons ' + esc(r[C.enrolled]) + ' · done ' + esc(r[C.finished]) + ' · <b>' + (r[C.available] === '' ? 'shared' : esc(r[C.available]) + ' left') + '</b>' + (r[C.deadline] ? ' · deadline ' + esc(r[C.deadline]) : '') + (r[C.start] ? ' · started ' + esc(r[C.start]) : '') + '</div>' + pkCourseRow(r, C, o.rows.filter(x => x[C.enrolled] !== '').length) + '</div>').join('') + (o.active && !o.shared ? '<div style="margin-top:8px">' + agrBit(o) + '</div>' : ''); if(box.dataset.h1587 === h1587 && box.querySelector('.pb29')) return; box.innerHTML = h1587; box.dataset.h1587 = h1587; try{ if(window.pkgDeco1587) pkgDeco1587(); }catch(e){} }   /* 1587: same package → no redraw; the bar in the same frame */
   const _sr = window.stuRender; if(_sr) window.stuRender = function(){ const r = _sr.apply(this, arguments); try{ if(D && D.mgr && STU){ const sch = $('stuSch'); if(sch && !$('stuPkg')){ sch.insertAdjacentHTML('afterend', '<section class="sec" id="stuPkg"></section>'); pkgBox(); if(!pk() && typeof loadActive === 'function') loadActive(true).then(pkgBox).catch(() => 0); } } }catch(e){} return r; };
@@ -10052,7 +10052,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
       el.insertAdjacentHTML('beforeend', sec(3, 'Follow up', enr ? ' · enrolled' : f && f.st ? ' · now: ' + esc(f.st) + (f.note ? ' · ' + esc(f.note) : '') : ' · not followed up yet', '', enr));
       const enrBody = enr ? '<div class="card" style="margin-top:8px;padding:10px 12px;background:#F1FAF9;border-color:#BFE6E3"><b style="color:#00737B">✓ Enrolled</b>' +
           (P ? ' · ' + (P.left === '' ? 'shared package' : esc(P.left) + ' lessons left') + ' · ' + esc(P.teacher || '') + ' · ACTIVE row ' + esc(P.row) : f && f.note ? ' · ' + esc(f.note) : '') +
-          '<div class="small mute" style="margin-top:2px">Recorded in ACTIVE' + (P ? '' : ' (the app shows the row within a few minutes)') + '. A later package is "Renewed · paid" on the student page.</div>' +
+          '<div class="small mute" style="margin-top:2px">Recorded in Packages' + (P ? '' : ' (the app shows the row within a few minutes)') + '. A later package is "Renewed · paid" on the student page.</div>' +
           (t.code ? '<button class="btn ghost sm" style="margin-top:8px" onclick="closeSheet();openStudent(\'' + esc(t.code) + '\')">Open ' + esc(t.student) + '\'s page</button>' : '') + '</div>' : '';
       el.insertAdjacentHTML('beforeend', sec(4, 'Enrol', enr ? '' : ' · when the ' + whoW(t.code, t.group) + ' has paid (or lessons are transferred)', enrBody, enr));
       el.insertAdjacentHTML('beforeend', sec(5, 'Get started', ' · after enrolling', '', false));
@@ -11030,7 +11030,7 @@ ${scDueBox()}${bookKey()}<div class="fl"><span class="lbl">Teacher</span><button
     (AT.rows || []).forEach(r => { const k = up(r[C.code]); if(!/^ST-/.test(k)) return; const v = String(r[C.source] || '').trim(); if(v && (!out[k] || r[C.active])) out[k] = v; else if(!(k in out)) out[k] = ''; }); }catch(e){}
     try{ if(typeof DB !== 'undefined' && DB && DB.rows){ const seen = {}; DB.rows.forEach(r => { const k = up(r[0]); if(!/^ST-/.test(k) || seen[k]) return; seen[k] = 1; const v = String(r[22] || '').trim(); if(v && !/^n\/?a$/i.test(v)) out[k] = v; }); } }catch(e){}   /* 166: DATABASE first */
     return out; }
-  function srcTag(v){ v = String(v || '').trim(); if(!v || /^n\/?a$/i.test(v)) return '<span class="sa-src none" title="Add the source in ACTIVE › SOURCE"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.5h.01"/></svg>Source not set</span>';
+  function srcTag(v){ v = String(v || '').trim(); if(!v || /^n\/?a$/i.test(v)) return '<span class="sa-src none" title="Add the source in the package source"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.5h.01"/></svg>Source not set</span>';
     const m = v.match(/^(ST-\d{4}-\d{3})\s*[–-]\s*(.+)$/i); if(m) return '<span class="sa-src ref" title="Student referral"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18.5 14.3A6.5 6.5 0 0 1 21.5 20"/></svg>Referred by ' + esc(m[2]) + ' (' + esc(m[1].toUpperCase()) + ')</span>';
     if(/^(COE|CupOfEnglish)\b/i.test(v)) return '<span class="sa-src coe" title="Came to CupOfEnglish directly"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h13v4a7 7 0 0 1-7 7h1a7 7 0 0 1-7-7z"/><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H16.5"/><path d="M8 3.5v2.5M12 3.5v2.5"/></svg>' + esc(v.replace(/^COE\b/i, 'CupOfEnglish')) + '</span>';
     return '<span class="sa-src" title="Partner / agent"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>' + esc(v) + '</span>'; }
@@ -11109,7 +11109,7 @@ ${scDueBox()}${bookKey()}<div class="fl"><span class="lbl">Teacher</span><button
 (function(){
   // 15 Oct · Trials show the student's source too, same colour labels as Students (Misty: "the source that we do in
   // students screen"): indigo partner · green referral · teal CupOfEnglish (incl. WeChat, 小红书, website) · coral not set.
-  // Source = ACTIVE › SOURCE when the student is enrolled, otherwise DATABASE › SOURCE (filled when the trial is booked).
+  // Source = the package source when the student is enrolled, otherwise DATABASE › SOURCE (filled when the trial is booked).
   // A colour key with counts above the list filters by source.
   const ic = p => '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
   const I = { pt: ic('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/>'),
@@ -12010,7 +12010,7 @@ window.renderPayroll = function(){
   const RD = RDY ? UP.filter(x => rdyN(x.name) === 0) : [], rdyAmt = RD.reduce((a, x) => a + x.net, 0), wait = UP.length - RD.length;
   const S = PCKM ? P.map(x => (pchkOf(x) || {}).st) : [], ver = S.filter(s => s === 'Verified').length, qs = P.filter(x => ['Disputed', 'Changed'].includes((pchkOf(x) || {}).st)).length;
   let h = `<div class="py-top"><div><h1>Payroll</h1><div class="sub">${esc((MO && MO.payMonth) || '')} pay · from the PAY tab</div></div>
-    <div class="py-act"><button class="btn ghost" onclick="tabSheet('PAY','PAY tab')">PAY tab</button><button class="btn teal" onclick="payslip('')">Payslip</button></div></div>`;
+    <div class="py-act"><button class="btn ghost" onclick="tabSheet('PAY','PAY tab')" style="display:none">PAY tab</button><button class="btn teal" onclick="payslip('')">Payslip</button></div></div>`;
   if(P.length){
     h += `<section class="py-hero"><img class="py-cup" src="${esc(ovCup())}" alt=""><div class="r1"><span>${esc((MO && MO.payMonth) || '')} · total net</span></div>
       <div class="big">${peso(tot)}</div><div class="bs">${P.length} teacher${P.length === 1 ? '' : 's'} · ${P.reduce((a, x) => a + x.units, 0)} units${PCKM ? ' · pay checked by ' + ver + ' of ' + P.length : ''}</div>
@@ -12031,7 +12031,7 @@ window.renderPayroll = function(){
       ${notReady.length ? `<button class="btn sm ghost" onclick="payNudge(${esc(JSON.stringify(notReady.map(x => x.name)))})">Remind ${notReady.length} not ready</button>` : ''}
       ${rest.length ? `<button class="btn sm ghost" onclick='payVerNudge(${JSON.stringify(rest).replace(/'/g, '&#39;')})'>Ask ${rest.length} to check their pay</button>` : ''}</div>`;
   } else h += '<div class="empty">Loading…</div>';
-  h += `<div class="py-cap"><h3>Payroll history</h3><span>PAYROLL tab</span><span class="grow"></span>${sheetLink('PAYROLL')}</div><div id="plList">${PL ? '' : '<div class="sk"></div>'}</div>`;
+  h += `<div class="py-cap"><h3>Payroll history</h3><span>before October 2026</span><span class="grow"></span>${sheetLink('PAYROLL')}</div><div id="plList">${PL ? '' : '<div class="sk"></div>'}</div>`;
   $('v-payroll').innerHTML = h;
   if(q0){ $('prq').value = q0; } if(focus){ const i = $('prq'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
   paintRows(); payLedger();
@@ -12062,7 +12062,7 @@ try{ if(VIEW === 'payroll') renderPayroll(); }catch(e){}
 (function(){ const s = document.createElement('style'); s.textContent = ".mx-cup,.py-cup{right:22px!important;top:50%!important;bottom:auto!important;transform:translateY(-50%);height:calc(100% - 40px)!important;width:auto!important;max-width:38%;max-height:220px;object-fit:contain;opacity:.12!important}\n@media(max-width:640px){.mx-cup,.py-cup{right:14px!important;height:calc(100% - 28px)!important;max-height:150px;opacity:.09!important}}"; document.head.appendChild(s); })();
 </script>
 <script>
-/* 15 Oct night · Payroll: once last month's pay is all paid, it folds down and the month now running (from the PAYROLL tab,
+/* 15 Oct night · Payroll: once last month's pay is all paid, it folds down and the month now running (from the database,
    e.g. October so far) comes to the top — in the dark card and as its own list. Last month stays one tap away. */
 (function(){
   const css = `
@@ -12102,7 +12102,7 @@ try{ if(VIEW === 'payroll') renderPayroll(); }catch(e){}
     try{
       const P = (MO && MO.payroll) || [], C = curRows(), v = $('v-payroll'); if(!v || !P.length || !C || P.some(x => !x.paid)) return r;
       const tot = C.rows.reduce((a, x) => a + x.net, 0), last = P.reduce((a, x) => a + x.net, 0), pm = esc((MO && MO.payMonth) || 'Last month');
-      const hero = v.querySelector('.py-hero'); v.classList.add('py-now'); const sub = v.querySelector('.py-top .sub'); if(sub) sub.textContent = C.label + ' so far · from the PAYROLL tab · ' + ((MO && MO.payMonth) || 'last month') + ' all paid';
+      const hero = v.querySelector('.py-hero'); v.classList.add('py-now'); const sub = v.querySelector('.py-top .sub'); if(sub) sub.textContent = C.label + ' so far · from the database · ' + ((MO && MO.payMonth) || 'last month') + ' all paid';
       if(hero) hero.innerHTML = `<img class="py-cup" src="${esc(ovCup())}" alt=""><div class="r1"><span>${esc(C.label)} · so far</span></div><div class="big">${peso(tot)}</div>
         <div class="bs">${C.rows.length} teacher${C.rows.length === 1 ? '' : 's'} · the month is still running · paid out after month end</div>
         <div class="py-3"><div><span>${pm}</span><b>${peso(last)}</b><small>all ${P.length} paid ✓</small></div>
@@ -14633,7 +14633,7 @@ ${off.length ? `<div class="small" style="padding:8px 0 0;border-top:1px solid v
    Keeps the student, his code, payments, lessons left and history. From the chosen date:
    1. every class of the old teacher moves to the new teacher (same day and time · database first, Google Calendar follows · a double booking is listed, never forced)
    2. the new book, if given, is set for the new teacher from that date (after Google has the moves, so the calendar titles stay right)
-   3. reminds the one sheet step: a row for the new teacher right under the package row in ACTIVE (Enrolled empty), so her lessons come off the same package */
+   3. reminds the one sheet step: a row for the new teacher right under the package row in Packages (Enrolled empty), so her lessons come off the same package */
 (function(){
   const SUG = ['REF', 'RE1', 'RE2', 'RE3', 'OD1', 'OD2', 'OD3', 'OD4', 'OD5', 'OD6', 'ODF1', 'Pathways1', 'Pathways2', 'TheAlphabet', 'ShortVowels', 'LongVowels', 'ConsonantBlends', 'LetterBlends', 'RazAa', 'RazA', 'RazB', 'RazC', 'WondersGK', 'WondersG1', 'WondersG2', 'Freetalk'];
   const cap = s => { s = String(s || '').trim(); return s ? s[0].toUpperCase() + s.slice(1) : s; };
@@ -15755,7 +15755,7 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
   window.api = async function(fn){ const r = await baseApi.apply(this, arguments); try{ if(Object.keys(NAMEFIX).length && /^(schedLists|mgmtStudents|mgmtActive|mgmtStudent|mgmtDatabase|dbLists)$/.test(fn)) fixAny(r); }catch(e){} if(D && D.mgr) load(); return r; };
   /* red card at the top of To do until the sheet is fixed */
   function card(){ const v = $('v-mtoday'); if(!v) return; let el = $('nmBad'); if(!BAD.length){ if(el) el.remove(); return; }
-    const html = '<div class="card" id="nmBad" style="margin:0 0 14px;background:#FFF5F2;border:1px solid #E9B8AC"><b style="color:#9A3B22">⚠️ Wrong name in ACTIVE (copied from another student)</b>' +
+    const html = '<div class="card" id="nmBad" style="margin:0 0 14px;background:#FFF5F2;border:1px solid #E9B8AC"><b style="color:#9A3B22">⚠️ Wrong name in Packages (copied from another student)</b>' +
       '<div class="small" style="margin-top:6px;line-height:1.6">' + BAD.map(b => 'Row ' + b.row + ' · ' + esc(b.code) + ' shows <b>' + esc(b.active.en) + (b.active.cn ? ' / ' + esc(b.active.cn) : '') + '</b> (that is ' + esc(b.from) + ') · should be <b>' + esc(b.db.en) + (b.db.cn ? ' / ' + esc(b.db.cn) : '') + '</b>').join('<br>') +
       '</div><div class="small mute" style="margin-top:6px">The app already shows the right name. Fix columns B and C of these rows in Excel Daily, and type over any formula there with plain text, so the next enrolment does not copy it again.</div></div>';
     if(el) el.outerHTML = html; else v.insertAdjacentHTML('afterbegin', html); }
@@ -19232,7 +19232,7 @@ section.sec .gr-kpi{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!imp
 </script>
 <script>
 /* 20 Oct · 460 · Misty: "now let us do and fix the PAYROLL screen".
-   · "Payroll · last 12 months" under the dark card: one column per month (total net from the PAYROLL tab), paid months green,
+   · "Payroll · last 12 months" under the dark card: one column per month (total net from the database), paid months green,
      the month now running teal; the change vs the month before on each; hover for teachers and total.
    · This month's list: sorted by pay (largest first); each row gets a bar (share of the largest) and "Sep ₱20,710 ▲/▼" so a big jump or drop stands out. */
 (function(){
@@ -19269,7 +19269,7 @@ section.sec .gr-kpi{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!imp
   function chart(v){ if(v.querySelector('.pm60')) return; const by = ledger(); if(!by) return; const now = new Date(), K = []; for(let i = 11; i >= 0; i--){ const d = new Date(now.getFullYear(), now.getMonth() - i, 1); K.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')); }
     const M = K.map(k => by[k] || { k, net: 0, n: 0, paid: 0 }), first = M.findIndex(m => m.net > 0); if(first < 0) return; const S = M.slice(first), mx = Math.max(1, ...S.map(m => m.net)), cur = K[11];
     const short = n => n >= 1000 ? '₱' + (n / 1000).toFixed(n >= 100000 ? 0 : 1) + 'k' : '₱' + Math.round(n);
-    const h = '<section class="pm60"><div class="h"><span>Payroll · last ' + S.length + ' months</span><span>total net · PAYROLL tab</span></div><div class="cs">' +
+    const h = '<section class="pm60"><div class="h"><span>Payroll · last ' + S.length + ' months</span><span>total net</span></div><div class="cs">' +
       S.map(m => '<div class="' + (m.k === cur ? 'cur' : '') + '" title="' + MN[+m.k.slice(5) - 1] + ' ' + m.k.slice(0, 4) + ': ' + peso(m.net) + ' · ' + m.n + ' teachers' + (m.k === cur ? ' · so far' : m.paid === m.n ? ' · all paid' : ' · ' + m.paid + ' paid') + '"><i style="height:' + Math.max(2, m.net / mx * 100) + 'px"></i><b style="bottom:' + (m.net / mx * 100 + 3) + 'px">' + short(m.net) + '</b></div>').join('') + '</div>' +
       '<div class="ax">' + S.map((m, i) => { const p = S[i - 1], d = p && p.net && m.k !== cur ? Math.round((m.net - p.net) / p.net * 100) : null; return '<span>' + MN[+m.k.slice(5) - 1] + (d != null ? '<em class="' + (d >= 0 ? 'up' : 'dn') + '" style="color:' + (d >= 0 ? '#1E8A5E' : '#C0563F') + '">' + (d > 0 ? '+' : '') + d + '%</em>' : '<em style="color:#00707A">' + (m.k === cur ? 'so far' : '') + '</em>') + '</span>'; }).join('') + '</div>' +
       '<div class="lg"><span><i style="background:#2E9E6F"></i>paid month</span><span><i style="background:#00A3AD"></i>this month so far</span></div></section>';
@@ -19853,7 +19853,7 @@ window.renderMoney = function(){
     add('#E0A43A', '!', `${esc(e.n)} this month is already ${P(e.t)}`, `About ${Math.round(e.t / e.a * 10) / 10}× its usual ${P(e.a)} — paid ahead, or a one-off?`, 'x73x'));
   /* 877: folded into the Break-even · monthly sales target tile */ if(false && loss.length && be != null){ const under = loss.map(m => mon(m)); add('#C4553D', '↓', `Keep monthly sales above ${P(Math.ceil(be / 1000) * 1000)}`, `${loss.length} of the last ${full.length} months lost money (${esc(under.join(', '))}) ${loss.every(m => (m.sales || 0) < be) ? ' — each had sales under the break-even line.' : '.'}`, 'x73c'); }
   if(prs.length >= 3 && top2 >= 60) info('#00707A', '◐', `${Math.round(top2)}% of ${esc((Pt.title.match(/\d{4}/) || [''])[0])} sales come from two sources`, `${esc(prs[0].n)} and ${esc(prs[1].n)}. Growing the others makes income steadier.`, 'x73p');
-  const nl = cks.filter(c => c.k === 'Not linked to a student').length; if(nl) add('#E0A43A', '⇄', `Link ${nl} payment${nl === 1 ? '' : 's'} to ${nl === 1 ? 'its student' : 'their students'} in ACTIVE`, `Paid lessons not linked yet don't count toward the students' packages.`, 'x73k');
+  const nl = cks.filter(c => c.k === 'Not linked to a student').length; if(nl) add('#E0A43A', '⇄', `Link ${nl} payment${nl === 1 ? '' : 's'} to ${nl === 1 ? 'its student' : 'their students'} in Packages`, `Paid lessons not linked yet don't count toward the students' packages.`, 'x73k');
   if(A.length) h += `<div class="cap"><h3>Checks to do</h3><span>someone needs to act · worked out from the numbers · tap one to see why</span></div><div class="todo">${A.slice(0, 8).join('')}</div>`;
   if(I877.length) h += `<div class="cap"><h3>Insights</h3><span>for information · nothing to fix</span></div><div class="todo">${I877.join('')}</div>`;
 
@@ -20224,7 +20224,7 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
    · name · teacher · where the package stands ("Package finished" / "Last lesson ~Nov 20") · the status ("Not renewing · Oct 9");
      the parent's message is in the tooltip (tap the status to read it). Progress check, report picture, PDF and validity chips are
      left out here — they are about renewing.
-   · If ACTIVE still has the student ticked (the untick did not go through), a coral "Still ticked in ACTIVE · Untick" button
+   · If ACTIVE still has the student ticked (the untick did not go through), a coral "Still ticked in Packages · Untick" button
      saves "Not renewing" again, which unticks ACTIVE and ends the student in DATABASE, as the Change sheet says.
    · The group reads "Paused or not renewing · 3 · nothing to send" and stays folded. */
 (function(){
@@ -20246,7 +20246,7 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
   window.nr91Untick = async function(code, name, b){ const t = String((REN || {})[up(code)] || ''), note = t.split(' · ').slice(3).join(' · ');
     if(b){ b.disabled = true; b.textContent = 'Unticking…'; }
     try{ const r = await api('mgmtRenewal', TOKEN, code, 'Not renewing', note, ''); if(!r || !r.ok) throw r; if(r.status) REN[up(code)] = r.status; try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){}
-      AT = null; toast('✓ ' + name + ' · ' + (r.note || 'unticked in ACTIVE')); renderMToday(); }
+      AT = null; toast('✓ ' + name + ' · ' + (r.note || 'unticked in Packages')); renderMToday(); }
     catch(e){ toast((e && e.msg) || 'Not saved. Try again.'); if(b){ b.disabled = false; b.textContent = 'Untick'; } } };
   function tidy(){ const R = document.querySelector('#v-mtoday #td-renew'); if(!R) return; const g = R.querySelector('.tdg.closed'); if(!g) return;
     const box = g.closest('details') || R; if(box.dataset.nr91) return; box.dataset.nr91 = 1;
@@ -20263,7 +20263,7 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
       const d = document.createElement('div'); d.className = 'nr91';
       d.innerHTML = '<div class="a"><b onclick="openStudent(\'' + esc(code) + '\')">' + esc(name) + '</b> <span class="mute">' + esc(code) + '</span> · ' + esc(sub.replace(/\s*·\s*[\d.]+ lessons a month/, '')) + (left && +left > 0 ? ' · ' + esc(left) + ' left' : '') +
         '<br><span class="s ' + (st.k === 'pause' ? 'p' : '') + '" title="' + esc(full) + '" onclick="this.classList.toggle(\'open\')">' + esc(label) + (msg ? ' · ' + esc(msg) : '') + '</span></div>' +
-        '<div class="k">' + (still ? '<button class="u" title="ACTIVE still has ' + esc(name) + ' ticked" onclick="nr91Untick(\'' + esc(code) + '\',\'' + esc(name).replace(/'/g, '') + '\',this)">Still ticked in ACTIVE · Untick</button>' : '') +
+        '<div class="k">' + (still ? '<button class="u" title="ACTIVE still has ' + esc(name) + ' ticked" onclick="nr91Untick(\'' + esc(code) + '\',\'' + esc(name).replace(/'/g, '') + '\',this)">Still ticked in Packages · Untick</button>' : '') +
         (chOn ? '<button class="btn ghost sm" onclick="' + chOn.replace(/"/g, '&quot;') + '">Change</button>' : '') + '</div>';
       row.replaceWith(d); }); }
   const base = window.renderMToday; if(base) window.renderMToday = function(){ const r = base.apply(this, arguments); try{ tidy(); }catch(e){ console.warn('nr91', e); } setTimeout(() => { try{ tidy(); }catch(e){} }, 400); return r; };
@@ -26160,7 +26160,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
 (function(){
   if(window.__812 || typeof NAV_M === 'undefined' || typeof buildNav !== 'function') return; window.__812 = 1;
   const G = [
-    { nav: 'astudents', label: 'Students', views: [['astudents', 'Students'], ['reports', 'Parent reports'], ['db', 'Database sheet']] },
+    { nav: 'astudents', label: 'Students', views: [['astudents', 'Students'], ['reports', 'Parent reports']] },
     { nav: 'trials', label: 'Trials', views: [['trials', 'Trials'], ['enquiry', 'Enquiries']] },
     { nav: 'teachers', label: 'Teachers', views: [['teachers', 'Teachers'], ['perf', 'Performance'], ['train', 'Trainings'], ['leave', 'Leave'], ['actions', 'Cases']] },
     { nav: 'payroll', label: 'Finance', views: [['finov', 'Overview'], ['payroll', 'Payroll'], ['expenses', 'Transactions'], ['gov', 'Government'], ['money', 'Sales & costs'], ['forecast', 'Forecast'], ['wallets', 'Wallets']] }];
@@ -26746,8 +26746,8 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     if(!P.length) return '<span>Loading pay from the PAY tab…</span>';
     const now = v.classList.contains('py-now') && document.getElementById('pyCur'), paid = P.filter(x => x.paid).length, cl = curLabel();
     let per;
-    if(now) per = 'Showing <b>' + esc(cl) + ' so far</b> (PAYROLL tab) · month still running, paid after month end · ' + esc(pm) + ' pay: all ' + P.length + ' paid';
-    else { per = 'Showing <b>' + esc(pm) + ' pay</b> (PAY tab) · ' + paid + ' of ' + P.length + ' paid';
+    if(now) per = 'Showing <b>' + esc(cl) + ' so far</b> · month still running, paid after month end · ' + esc(pm) + ' pay: all ' + P.length + ' paid';
+    else { per = 'Showing <b>' + esc(pm) + ' pay</b> · ' + paid + ' of ' + P.length + ' paid';
       if(paid === P.length) per += PLx ? ' · no ' + esc(cl) + ' rows in PAYROLL yet' : ' · checking PAYROLL for ' + esc(cl) + ' so far…'; }
     return '<span>' + per + '</span>' + fresh(PLx || now ? ['mo', 'payroll'] : ['mo']); }
   function payFix(){ const v = document.getElementById('v-payroll'); if(!v || !v.firstElementChild) return;
@@ -26881,9 +26881,9 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   function home(){ const g = document.querySelector('#v-home .x-grid'); if(!g) return;
     g.querySelectorAll('.x-c').forEach(c => { const h = c.querySelector('.x-h'), b = h && h.querySelector('b'), sp = h && h.querySelector('span'); if(!b) return; const t = b.textContent.trim();
       if(/^Where students come from/.test(t)){ if(sp && sp.textContent === 'active') sp.textContent = 'active students';
-        tip(c, 'Students counted once each: every student code with at least one row ticked active in ACTIVE (shared packages: each student once). Includes students whose lessons ran out. The Students screen counts students with lessons left; the Packages screen counts package rows.'); }
+        tip(c, 'Students counted once each: every student code with at least one row ticked active in Packages (shared packages: each student once). Includes students whose lessons ran out. The Students screen counts students with lessons left; the Packages screen counts package rows.'); }
       else if(/^Packages$/.test(t)){ if(sp && sp.textContent === 'lessons left') sp.textContent = 'per student · lessons left';
-        tip(c, 'Counts students, not package rows: one per student code ticked active in ACTIVE, using the lessons left on that student’s first ticked row (a shared package with no number of its own counts as healthy). The Packages screen lists every package row.'); }
+        tip(c, 'Counts students, not package rows: one per student code ticked active in Packages, using the lessons left on that student’s first ticked row (a shared package with no number of its own counts as healthy). The Packages screen lists every package row.'); }
       else if(/^Students per teacher/.test(t)){ if(sp && /^\d+ teachers$/.test(sp.textContent)) sp.textContent = sp.textContent + ' on ACTIVE';
         tip(c, 'The teacher written on each student’s first ticked ACTIVE row. A co-taught package shows as one combined name. The Teachers screen lists the teachers in this month’s pay.'); }
       else if(/^Levels$/.test(t)) tip(c, 'Students on the Students list with a CEFR level (latest progress check, else enrolment or trial level).'); });
@@ -26895,13 +26895,13 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   function students(){ const v = document.getElementById('v-astudents'), sub = v && v.querySelector('.lead .mute.small'); if(!sub) return;
     const m = sub.innerHTML.match(/^(\d+) active · packages live from the database/);
     if(m) sub.innerHTML = sub.innerHTML.replace(m[0], m[1] + ' active students · packages live from the database');
-    tip(sub, 'Active students = student codes in ACTIVE with lessons left (or a shared package), that are ticked active or are on a teacher’s class list. Each student is counted once. Packages counts package rows; Overview counts every ticked student, including those who ran out.');
+    tip(sub, 'Active students = student codes in Packages with lessons left (or a shared package), that are ticked active or are on a teacher’s class list. Each student is counted once. Packages counts package rows; Overview counts every ticked student, including those who ran out.');
     const a = asofTxt('stu'); let x = sub.querySelector('.asof844'); if(a){ if(!x){ x = document.createElement('span'); x.className = 'asof844'; sub.appendChild(x); } if(x.textContent !== ' · ' + a) x.textContent = ' · ' + a; } }
 
   function packages(){ const v = document.getElementById('v-active'), sub = v && v.querySelector('.lead .mute.small'); if(!sub) return;
     const m = sub.innerHTML.match(/^(\d+) packages · (\d+) ticked active/);
     if(m) sub.innerHTML = sub.innerHTML.replace(m[0], m[1] + ' package rows · ' + m[2] + ' ticked active');
-    tip(sub, 'One row per package in ACTIVE. A student can have several rows (renewals, more than one teacher, shared packages), so this is more than the number of students.');
+    tip(sub, 'One row per package in Packages. A student can have several rows (renewals, more than one teacher, shared packages), so this is more than the number of students.');
     const a = asofTxt('active'); let x = sub.querySelector('.asof844'); if(a){ if(!x){ x = document.createElement('span'); x.className = 'asof844'; sub.appendChild(x); } if(x.textContent !== ' · ' + a) x.textContent = ' · ' + a; } }
 
   function schedule(){ document.querySelectorAll('#v-schedule .s2-sum > span').forEach(sp => { const l = sp.textContent.replace(/^[\d\s]+/, '').trim();
@@ -36384,7 +36384,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     const row = (t, s, k, key) => '<div class="row" style="justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line)"><div><b>' + H(t) + '</b>' + (s ? '<div class="small mute">' + H(s) + '</div>' : '') + '</div><button class="btn sm" onclick="fxRec(\'' + k + '\',\'' + encodeURIComponent(key) + '\')">Edit</button></div>';
     openSheet('<h1>Fix · ' + H(r.name || code) + (r.cn ? ' ' + H(r.cn) : '') + '</h1><p class="small mute" style="margin:2px 0 10px">Changes save straight to the database and show everywhere at once. The Google sheet follows within a minute.</p>' +
       '<h3 style="margin:10px 0 4px">Student record</h3>' + row('Names, city, source, referral, trial, first class', code, 'student', code) +
-      '<h3 style="margin:14px 0 4px">Packages</h3>' + (r.packages.length ? r.packages.map(p => row('Teacher ' + p.teacher, (p.enrolled !== '' ? p.enrolled + ' lessons' : '') + (p.left !== '' && p.left != null ? ' · ' + p.left + ' left' : ''), 'package', p.key)).join('') : '<div class="small mute">No package in ACTIVE.</div>') +
+      '<h3 style="margin:14px 0 4px">Packages</h3>' + (r.packages.length ? r.packages.map(p => row('Teacher ' + p.teacher, (p.enrolled !== '' ? p.enrolled + ' lessons' : '') + (p.left !== '' && p.left != null ? ' · ' + p.left + ' left' : ''), 'package', p.key)).join('') : '<div class="small mute">No package in Packages.</div>') +
       '<h3 style="margin:14px 0 4px">Sales</h3>' + (r.sales.length ? r.sales.map(s => row(s.invoice, s.date + ' · ' + s.pkg + (+s.free ? ' + ' + s.free : '') + ' lessons · ' + s.partner, 'sale', s.key)).join('') : '<div class="small mute">No sale found with this name in the last two years.</div>') +
       incHtml(r) + '<h3 style="margin:14px 0 4px">Changes</h3>' + hist(r.history)); };
   const incHtml = r => { const I = r.incentive; if(!I) return ''; const fd = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
@@ -37609,5 +37609,23 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
 </script>
 <script>/* 1789 · 1790 */function rpKey1789(code, teacher, month){ code = String(code || '').trim().toUpperCase(); teacher = String(teacher || '').trim().toUpperCase(); month = String(month || '').trim();
 return (/^ST-\d{4}-\d{3}$/.test(code) && teacher && /^\d{4}-\d{2}$/.test(month)) ? code + '||' + teacher + '||' + month : ''; }</script>
+<script>/* 1834 · (Misty 7 Nov) Cases from the database: mgmtActions is answered by coe-cases (coe_actions_screen over the database's case
+   records) instead of Google's saved answer, so a case made in the app shows at once. Google only if the database cannot answer. */
+(function(){
+  const URL1834 = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-cases';
+  let last = null, at = 0;
+  function wrap(){ const base = window.api; if(typeof base !== 'function' || base.__1834) return !!(base && base.__1834);
+    const w = function(fn){ const a = Array.prototype.slice.call(arguments, 1), self = this;
+      if(fn === 'mgmtActions' && typeof D !== 'undefined' && D && D.mgr && a[0]){
+        if(last && Date.now() - at < 4000) return Promise.resolve(last);
+        return fetch(URL1834, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: a[0] }) }).then(x => x.json())
+          .then(r => { if(r && r.ok && r.data && Array.isArray(r.data.rows)){ last = r.data; at = Date.now(); return r.data; } return base.apply(self, arguments); }, () => base.apply(self, [fn].concat(a))); }
+      if(/^(addCase|setCaseDone|mgmtCaseWaive|decideLate|mgmtTagClass)$/.test(String(fn))) at = 0;
+      return base.apply(self, arguments); };
+    for(const k in base) try{ w[k] = base[k]; }catch(e){}
+    w.__1834 = 1; window.api = w; return true; }
+  if(!wrap()){ let n = 0; const t = setInterval(() => { if(wrap() || ++n > 40) clearInterval(t); }, 250); }
+})();
+</script>
 </body>
 </html>
