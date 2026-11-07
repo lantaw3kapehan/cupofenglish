@@ -3025,9 +3025,11 @@ h += `<h2>Bonuses &amp; deductions <span class="c">90 days</span></h2>${adj.map(
 { const _v = $('v-pay'); if(!(_v._h0 === h && _v.firstElementChild && _v.firstElementChild === _v._f0 && _v.isConnected)){ _v.innerHTML = h; _v._h0 = h; _v._f0 = _v.firstElementChild; } }   /* 514: same drawing → keep the screen as it is */
 }
 let MYP = null;
+async function myPay1870(){ try{ const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'mgmtmypay' }) }).then(x => x.json());
+  if(r && r.ok && r.data && Array.isArray(r.data.pay)) return r.data; }catch(e){} return api('mgmtMyPay', TOKEN); }   /* 1870: management's own pay from the database; Google only if it does not answer */
 async function loadMyPay(quiet){
 try{ const _t1300 = +(store('get', 'coe.mypayT') || 0), _c1300 = kept('mypay') && Date.now() - _t1300 < (quiet ? 360 : 30) * 6e4 &&   /* 1677: start-up load uses a copy up to 6 h old */ (quiet || typeof SB_LASTW === 'undefined' || !SB_LASTW || Date.now() - SB_LASTW > 120000);   /* 1675: not only when quiet */   /* 1300 */
-  await swr('mypay', _c1300 ? () => Promise.resolve(kept('mypay')) : () => (quiet && typeof bg === 'function' ? bg(() => api('mgmtMyPay', TOKEN)) : api('mgmtMyPay', TOKEN)).then(v => { try{ store('set', 'coe.mypayT', String(Date.now())); }catch(e){} return v; }), v => MYP = v, () => { if(VIEW === 'mypay') renderMyPay(); const on = !!document.querySelector('#navIn [data-v="mypay"]'); if(!!(MYP && MYP.has) !== on) buildNav(); }); }
+  await swr('mypay', _c1300 ? () => Promise.resolve(kept('mypay')) : () => (quiet && typeof bg === 'function' ? bg(() => myPay1870()) : myPay1870()).then(v => { try{ store('set', 'coe.mypayT', String(Date.now())); }catch(e){} return v; }), v => MYP = v, () => { if(VIEW === 'mypay') renderMyPay(); const on = !!document.querySelector('#navIn [data-v="mypay"]'); if(!!(MYP && MYP.has) !== on) buildNav(); }); }
 catch(e){ if(!quiet && VIEW === 'mypay') $('v-mypay').innerHTML = '<div class="empty">Could not load your pay. Try again.</div>'; }
 }
 function renderMyPay(){ const p = MYP, el = $('v-mypay'); if(!el) return; if(!p){ el.innerHTML = loading('My pay'); return; }
@@ -5388,8 +5390,9 @@ setTimeout(() => { if($('tmR')) $('tmR').value = t; if(po){ const p = document.q
 setInterval(() => { if(!D || document.hidden) return; if(D.mgr) loadMsgs(true); else loadTMsgs(); }, 120000);
 
 let PCK = null, PCKM = null;
-async function myPay1763(){ try{ const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'mypay' }) }).then(x => x.json());   /* 1763: database first */
-  if(r && r.ok && r.check){ window.MYPAY1763 = { pay: r.pay || [], rank: r.rank || null, at: Date.now() }; try{ if(typeof D !== 'undefined' && D && !D.mgr){ D.pay = r.pay || []; rank1764(); } }catch(e){} return r.check; } }catch(e){} return api('tPayCheck', TOKEN); }
+async function myPay1763(){ for(let i = 0; i < 2; i++){ const v = await myPay1870a(); if(v) return v; if(!i) await new Promise(z => setTimeout(z, 1500)); } throw new Error('Could not load your pay. Try again.'); }   /* 1870: the database only, asked twice */
+async function myPay1870a(){ try{ const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'mypay' }) }).then(x => x.json());   /* 1763: database first */
+  if(r && r.ok && r.check){ window.MYPAY1763 = { pay: r.pay || [], rank: r.rank || null, at: Date.now() }; try{ if(typeof D !== 'undefined' && D && !D.mgr){ D.pay = r.pay || []; rank1764(); } }catch(e){} return r.check; } }catch(e){} return null; }   /* 1870: no Google backup (tPayCheck) */
 async function loadPayCheck(){ if(!TOKEN) return; try{ await swr('paychk', () => myPay1763(), v => PCK = (v => { try{ const n = String((v && v.me && v.me.name) || '').trim().toLowerCase(), m = String((typeof D !== 'undefined' && D && D.me && D.me.name) || '').trim().toLowerCase(); return v && v.me && (!m || n !== m) ? Object.assign({}, v, { me: null }) : v; }catch(e){ return v; } })(v), () => { if(VIEW === 'pay') renderPay(); if(VIEW === 'today') renderToday(); }); }catch(e){} }
 const pckState = p => { if(!p || !p.me) return ''; const c = p.check || {}; if(c.status === 'Verified' && c.net && +c.net !== +p.me.net) return 'Changed'; return c.status || ''; };
 function payPaid(mon){ const k = s => { const t = String(s || '').trim(), m = t.match(/([A-Za-z]{3})[a-z]*\.?\s+(\d{4})/); return m ? m[1].toLowerCase() + m[2] : t.toLowerCase(); }, key = k(mon); if(!key) return false;
@@ -5413,8 +5416,9 @@ async function payDisputeSend(){ const t = ($('pdN') || {}).value || '', b = $('
 if(b){ b.disabled = true; b.textContent = 'Sending…'; }
 try{ const r = await api('tPayVerify', TOKEN, PCK.month, false, t); if(!r.ok) throw r; PCK.check = r.check; PCK.nudge = null; keep('paychk', PCK); closeSheet(); toast('✓ ' + r.note); renderPay(); }
 catch(e){ toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); if(b){ b.disabled = false; b.textContent = 'Send to management'; } } }
-async function pchkDb1761(){ try{ const mo = (typeof MO !== 'undefined' && MO && MO.payMonth) || ''; const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'checks', month: /^[A-Za-z]+ \d{4}$/.test(mo) ? mo : '' }) }).then(x => x.json());   /* 1761: database first */
-  if(r && r.ok && r.checks) return { month: r.month, checks: r.checks || {}, nudged: r.nudged || {}, src: 'database' }; }catch(e){} return api('mgmtPayChecks', TOKEN); }
+async function pchkDb1761(){ for(let i = 0; i < 2; i++){ const v = await pchkDb1870a(); if(v) return v; if(!i) await new Promise(z => setTimeout(z, 1500)); } throw new Error('Could not load the pay checks. Try again.'); }   /* 1870: the database only, asked twice */
+async function pchkDb1870a(){ try{ const mo = (typeof MO !== 'undefined' && MO && MO.payMonth) || ''; const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'checks', month: /^[A-Za-z]+ \d{4}$/.test(mo) ? mo : '' }) }).then(x => x.json());   /* 1761: database first */
+  if(r && r.ok && r.checks) return { month: r.month, checks: r.checks || {}, nudged: r.nudged || {}, src: 'database' }; }catch(e){} return null; }   /* 1870: no Google backup (mgmtPayChecks) */
 async function loadPayChecks(force){ if(!force && window._pckAt && Date.now() - window._pckAt < 2e4) return; window._pckAt = Date.now(); try{ await swr('paychkm', () => pchkDb1761(), v => PCKM = v, () => { if(VIEW === 'payroll') renderPayroll(); }); }catch(e){} }
 const pchkOf = x => { if(!PCKM || !x) return null; const c = (PCKM.checks || {})[String(x.name).toLowerCase()] || null, nd = (PCKM.nudged || {})[String(x.name).toLowerCase()] || null;
 const st = c && c.status === 'Verified' && c.net && +c.net !== +x.net ? 'Changed' : c ? c.status : ''; return { c, st, nd }; };
@@ -5430,8 +5434,9 @@ const _sn = sheetSnap(); closeSheet(); toast('Sending reply to Teacher ' + n + '
 try{ const r = await api('mgmtPayReply', TOKEN, n, t); if(!r.ok) throw r; PCKM.checks[n.toLowerCase()] = r.check; keep('paychkm', PCKM); toast('✓ ' + r.note); renderPayroll(); }
 catch(e){ sheetBack(_sn); toast(((e && (e.msg || e.message)) || 'Not sent') + ' · your reply is back. Try again.'); } }
 async function payVerNudge(names){ if(!names || !names.length) return; closeSheet(); toast('Sending…');
-try{ const r = await api('mgmtPayVerNudge', TOKEN, names); if(!r.ok) throw r; toast('✓ ' + r.note + ' · they see it on Pay and Today');
-  try{ await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'pcnudge', month: (typeof MO !== 'undefined' && MO && MO.payMonth) || (PCKM && PCKM.month) || '', names }) }); }catch(x){}   /* 1761 */
+try{ let r = null; try{ r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'pcnudge', names }) }).then(x => x.json()); }catch(x){}   /* 1870: the database saves it */
+  if(!r || !r.ok || r.n == null) r = await api('mgmtPayVerNudge', TOKEN, names);   /* the database did not answer: Google as before */
+  if(!r.ok) throw r; toast('✓ ' + r.note + ' · they see it on Pay and Today');
   loadPayChecks(1); }catch(e){ toast((e && (e.msg || e.message)) || 'Not sent. Try again.'); } }
 let MYR = null;
 async function loadMyReady(){ if(!TOKEN) return; if(D && !D.mgr){ loadPayCheck(); loadTMsgs(); } try{ await swr('myready', () => api('tPayReady', TOKEN), v => MYR = v, () => { if(VIEW === 'pay') renderPay(); if(VIEW === 'mypay') renderMyPay(); if(VIEW === 'today') renderToday(); }); }catch(e){} }
@@ -6523,10 +6528,10 @@ openSheet(`<h1>Payslip</h1>
 <button class="btn block" style="margin-top:14px" onclick="ps1747Show()">Show payslip</button><button class="btn ghost block" style="margin-top:8px" onclick="tabSheet('PAYSLIP','Payslip',$('psN').value,$('psP').value)">Old Google payslip</button><button class="btn ghost block" style="margin-top:8px" onclick="unitsFromPayslip()">Lessons counted · which students →</button>`);
 psPre(); };
 if(P) draw(); else openSheet(`<h1>Payslip</h1><div class="sk"></div><div class="sk"></div>`);
-try{ const f = await api('mgmtSlipPeople', TOKEN); const ch = JSON.stringify(f) !== JSON.stringify(P); P = window._ppl = f; store('set','coe.ppl', JSON.stringify(f));
+try{ const f = await (async () => { try{ const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'people' }) }).then(x => x.json()); if(r && r.ok && Array.isArray(r.data) && r.data.length) return r.data; }catch(x){} return api('mgmtSlipPeople', TOKEN); })();   /* 1870: database first */ const ch = JSON.stringify(f) !== JSON.stringify(P); P = window._ppl = f; store('set','coe.ppl', JSON.stringify(f));
 if(ch && $('sheet').classList.contains('on') && !$('docP')) draw(); }catch(e){ if(!P) $('sheetBody').innerHTML = '<div class="empty">Could not load. Try again.</div>'; }
 }
-function psPre(){ const n = $('psN'), p = $('psP'); if(n && p && n.value && !docHave('PAYSLIP', n.value, p.value)) docGet('PAYSLIP', n.value, p.value).catch(()=>{}); }   // start while you choose
+function psPre(){}   /* 1870: the payslip comes from the database; the old Google payslip loads only when its button is tapped */   // start while you choose
 const plMonth = v => { const m = String(v||'').match(/(\d{4})-(\d{2})/); return m ? new Date(+m[1], +m[2]-1, 1).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : String(v||'').replace(SL2,' '); };
 const plNet = v => { const n = parseFloat(String(v||'').replace(/[^\d.\-]/g,'')); return isNaN(n) ? esc(v) : peso(n); };
 const plDay = v => { const m = String(v||'').match(/(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2]-1, +m[3]).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : String(v||'').slice(0,10); };
@@ -7175,7 +7180,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1671;
+const COE_V = 1672;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -37647,7 +37652,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     : fn === 'mgmtPayNudge' ? { op: 'paynudge', names: a[1] } : null;
   let vidAt = 0;
   const behind = (fn, a) => { try{ if(typeof apiOnce !== 'function') return;
-      if(fn === 'mgmtPayNudge') apiOnce('mgmtPayNudge', a, 45000, '').catch(() => {});   /* Google keeps its own copy of the reminder */
+      if(fn === 'mgmtPayNudge'){}   /* 1870: the database keeps the reminder (sys:pnudge); Google is no longer told */
       else if(fn === 'mgmtPayReady' && Date.now() - vidAt > 30 * 6e4){ vidAt = Date.now(); setTimeout(() => { try{ apiOnce('mgmtPayReady', a, 120000, '').catch(() => {}); }catch(e){} }, 60000); }   /* the class-video list (DAILY links) */
     }catch(e){} };
   const w = function(fn){ const a = Array.prototype.slice.call(arguments, 1), self = this, go = () => base.apply(self, [fn].concat(a)), fb = () => (typeof an0 === 'function' ? an0.apply(self, [fn].concat(a)) : go());
