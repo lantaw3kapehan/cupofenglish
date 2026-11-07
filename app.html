@@ -7160,7 +7160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1652;
+const COE_V = 1653;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -37827,6 +37827,29 @@ body:not(.role-t) #v-home > .ovc{display:contents}
       if(el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && /^(text|search)$/i.test(el.type || 'text'))) && el.selectionEnd > el.selectionStart) t = el.value.slice(el.selectionStart, el.selectionEnd);
       else t = String(window.getSelection ? window.getSelection() : '');
       const c = proText(t); if(t && c !== t && e.clipboardData){ e.clipboardData.setData('text/plain', c); e.preventDefault(); } }catch(x){} }, true);
+})();
+</script>
+<script>
+/* 1839 · (Misty 7 Nov "clicking screens and buttons slowed down and feels lagging") a screen you have already opened shows at once
+   when you come back to it; it then refreshes itself a moment later. Before, the heavy screens rebuilt everything before showing
+   (Students about half a second, Performance, Schedule, Parent reports, Sales & costs, Payroll, Overview 50–300 ms). Filters,
+   searches and saves still redraw straight away; only the switch between screens is made instant. */
+(function(){
+  if(window.__1839) return; window.__1839 = 1;
+  const R = { renderAStudents: 'astudents', renderPerf: 'perf', renderSchedule: 'schedule', renderReports: 'reports', renderMoney: 'money', renderPayroll: 'payroll', renderHome: 'home' };
+  let inGo = '', thru = ''; const P = {};
+  const ready = el => !!(el && el.__r1839 && el.children.length && !el.querySelector(':scope > .sk, :scope > .ovc > .sk'));
+  function wrapR(name){ const f = window[name]; if(typeof f !== 'function' || f.__1839) return; const v = R[name];
+    const w = function(){ const el = document.getElementById('v-' + v), self = this, args = arguments;
+      if(inGo === v && thru !== v && ready(el)){ const had = !!P[name]; P[name] = { self, args }; if(had) return;   /* several calls while switching → one refresh */
+        let done = 0; const run = () => { if(done) return; done = 1; const q = P[name]; delete P[name]; if(!q) return; thru = v; try{ window[name].apply(q.self, q.args); }catch(e){} finally { thru = ''; } };
+        try{ requestAnimationFrame(() => setTimeout(run, 0)); }catch(e){} setTimeout(run, 120); return; }
+      const r = f.apply(this, arguments); if(el) el.__r1839 = 1; return r; };
+    w.__1839 = 1; window[name] = w; try{ (0, eval)(name + ' = window.' + name); }catch(e){} }
+  function start(){ if(typeof D === 'undefined' || !D || !D.mgr){ setTimeout(start, 800); return; }
+    Object.keys(R).forEach(wrapR);
+    const g0 = window.go; if(typeof g0 === 'function' && !g0.__1839){ const g = function(v){ const prev = inGo; inGo = String(v || ''); try{ return g0.apply(this, arguments); } finally { inGo = prev; } }; g.__1839 = 1; Object.keys(g0).forEach(k => { try{ g[k] = g0[k]; }catch(e){} }); window.go = g; try{ go = g; }catch(e){} } }
+  if(document.readyState === 'complete') setTimeout(start, 900); else window.addEventListener('load', () => setTimeout(start, 900));
 })();
 </script>
 </body>
