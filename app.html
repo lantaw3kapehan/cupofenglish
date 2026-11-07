@@ -2342,7 +2342,7 @@ const contPrev = isToday && c.code ? (D.schedule||[]).find(x => x.day === D.toda
 const ciOpen = (() => { const prev = (D.schedule||[]).filter(x => x.day === D.today && !x.cancelled && x.id !== c.id && new Date(x.end) <= +st).sort((a,b) => String(b.end).localeCompare(String(a.end)))[0]; let o = new Date(+st - 5*60000); if(prev && new Date(prev.end) > o) o = new Date(prev.end); return o; })();    
 if(isToday && !c.cancelled){
 const lateBy = ci && ci.mins < 0 ? ' · ' + Math.abs(ci.mins) + ' min late' : '';
-if(ci) inBtn = (ci.time ? `<span class="chip ${ci.status==='On time'?'green':'red'}" style="margin:8px 0 0 6px">${ci.status==='On time'?'In':esc(ci.status)} ${esc(ci.time)}${ci.status==='On time'?'':esc(lateBy)}</span>` : '') + (ci.speed ? `<span style="margin:8px 0 0 6px;display:inline-block">${netBadge(ci.speed)}</span>` : '')
+if(ci) inBtn = (ci.time ? `<button type="button" class="chip ${ci.status==='On time'?'green':'red'}" style="margin:8px 0 0 6px;cursor:pointer;border:0;font:inherit" title="See the timeline" onclick="ciLine('${esc(c.id)}','${esc(c.day)}')">${ci.status==='On time'?'In':esc(ci.status)} ${esc(ci.time)}${ci.status==='On time'?'':esc(lateBy)} ›</button>` : '') + (ci.speed ? `<span style="margin:8px 0 0 6px;display:inline-block">${netBadge(ci.speed)}</span>` : '')
 + (ci.decision ? `<div class="hw due"><span class="ic">!</span><div class="grow"><b>Tagged late to class</b><div class="small">${esc(ci.decision)}</div></div></div>` : ci.flag ? `<span class="chip coral" style="margin:8px 0 0 6px">${esc(ci.flag)}</span>` : '');
 else if(contPrev) inBtn = `<span class="chip" style="margin:8px 0 0 6px">Same class as ${tm(contPrev.start)} · no I'm in needed</span>`;
 else if(isFirst) inBtn = D.timeIn ? `<span class="chip ${D.timeIn.status==='On time'?'green':'red'}" style="margin:8px 0 0 6px">${D.timeIn.status==='On time'?'Timed in':esc(D.timeIn.status)} ${esc(D.timeIn.time)}</span>`
@@ -5905,7 +5905,7 @@ let CE = null;
 function monChips(e, now){
 const st = new Date(e.start), en = new Date(e.end), ci = e.ci, v = e.vid, out = [], today = ymdLocal(new Date()) === ymdLocal(st);
 if(ci && ci.decision) out.push(`<span class="chip red">Tagged · ${esc(String(ci.decision).split(' · ').slice(0,2).join(' · '))}</span>`);
-if(ci && ci.time) out.push(`<span class="chip ${ci.status==='On time'?'green':'red'}">${ci.first?'Timed in':'In'} ${esc(ci.time)}${ci.status!=='On time'?' · '+esc(/^Late/.test(ci.status)?Math.abs(+ci.mins||0)+' min late':ci.status):''}</span>`);
+if(ci && ci.time) out.push(`<span class="chip ${ci.status==='On time'?'green':'red'}" style="cursor:pointer" role="button" tabindex="0" title="See the timeline" onclick="event.stopPropagation();ciLine('${esc(e.id)}','${esc(ymdLocal(st))}','${esc(String(e.teacher || '').split(',')[0].trim())}',${ci.first ? 1 : 0})">${ci.first?'Timed in':'In'} ${esc(ci.time)}${ci.status!=='On time'?' · '+esc(/^Late/.test(ci.status)?Math.abs(+ci.mins||0)+' min late':ci.status):''}</span>`);
 else if(!(ci && ci.decision) && today && now >= st.getTime() + 2*60000) out.push(`<span class="chip red">${e.first?'No time-in':'No “I\'m in”'}</span>`);
 else if(!ci && today && now < st) out.push(`<span class="chip">Not yet</span>`);
 if(ci && /not the class laptop/.test(ci.flag||'')) out.push(`<span class="chip coral">${esc((ci.flag.match(/(Phone|Tablet|Unknown device)/)||['Phone'])[0])}</span>`);
@@ -7175,7 +7175,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1669;
+const COE_V = 1670;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -38119,6 +38119,38 @@ body:not(.role-t) #v-home > .ovc{display:contents}
   function mAll(){ if(typeof D === 'undefined' || !D || !D.mgr || !window.as1778 || typeof TOKEN === 'undefined' || !TOKEN) return; as1778.call('list').then(r => { if(r && r.ok) window.__ie1855all = (r.list || []).filter(a => a.kind === 'trial'); }).catch(() => {}); }
   setTimeout(mAll, 7000); setInterval(() => { if(!document.hidden) mAll(); }, 300000);
   const _go = window.go; if(typeof _go === 'function') window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'trials') mAll(); }catch(e){} return r; };
+})();
+</script>
+<script>
+/* 1865 · the "I'm in" timeline (teacher: her own · management: any teacher) */
+(function(){
+  if(window.__1865) return; window.__1865 = 1;
+  const T = iso => { try{ return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Manila' }); }catch(e){ return ''; } };
+  const DUR = ms => { const s = Math.max(0, Math.round(ms / 1000)), m = Math.floor(s / 60); return (m ? m + ' min ' : '') + (s % 60) + ' s'; };
+  window.ciLine = async function(id, day, who, first){ const mgr = typeof D !== 'undefined' && D && D.mgr;
+    openSheet('<h1>\u201cI\u2019m in\u201d timeline</h1><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>');
+    let r = null; try{ r = await fetch(FAST_URL + '-cin', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, day: day, detail: 1 }) }).then(y => y.json()); }catch(e){}
+    if(!r || !r.ok){ openSheet('<h1>\u201cI\u2019m in\u201d timeline</h1><p class="small mute">Could not load the timeline. Check the internet and try again.</p>'); return; }
+    const L = r.list || [], wl = String(who || '').toLowerCase();
+    let x = first ? L.filter(z => z.kind === 'ti' && (!wl || String(z.who).toLowerCase() === wl)).pop() : L.filter(z => z.kind === 'ci' && z.id === id).pop();
+    if(!x){ openSheet('<h1>\u201cI\u2019m in\u201d timeline</h1><p class="small mute">No \u201cI\u2019m in\u201d is saved for this class yet.</p>'); return; }
+    const ev = [], you = mgr ? 'Teacher ' + esc(x.who || '') : 'You';
+    if(x.start) ev.push({ t: x.start, l: (x.kind === 'ti' ? 'First class starts' : 'Class starts'), d: '', k: 'c' });
+    if(x.tapAt) ev.push({ t: x.tapAt, l: you + ' tapped \u201cI\u2019m in\u201d', d: 'The time that counts.', k: 'a' });
+    const wait = x.tapAt && x.sentAt ? Date.parse(x.sentAt) - Date.parse(x.tapAt) : 0;
+    if(x.sentAt) ev.push({ t: x.sentAt, l: x.kind === 'ti' ? 'Time-in sent' : 'Screen shared and \u201cI\u2019m in\u201d sent', d: wait > 20000 ? 'Waited ' + DUR(wait) + ' for the screen share (choose Entire screen, then Share).' : '', k: 'b' });
+    if(x.doneAt) ev.push({ t: x.doneAt, l: 'Saved' + (x.proof ? ' with the screen proof' : ''), d: x.proof ? '<a class="link" href="' + esc(x.proof) + '" target="_blank" rel="noopener">View the screen proof</a>' : (x.shotNote ? esc(x.shotNote) : ''), k: 'b', html: 1 });
+    ev.sort((a, b) => Date.parse(a.t) - Date.parse(b.t));
+    const ok = x.status === 'On time', m = x.mins == null ? null : +x.mins;
+    const res = esc(x.status || 'Saved') + (m == null ? '' : m >= 0 ? ' \u00b7 ' + m + ' min before class' : ' \u00b7 ' + Math.abs(m) + ' min late');
+    const basis = x.tapAt ? 'Counted from the tap.' : 'Counted from when it was saved (taps are recorded from 7 November 2026).';
+    const row = e => '<div style="display:flex;gap:12px;padding:10px 0;border-top:1px dashed #E3E8EC"><span style="flex:none;width:12px;height:12px;margin-top:5px;border-radius:50%;background:' + (e.k === 'a' ? '#0E7C7B' : e.k === 'c' ? '#2B2253' : '#9AA5AE') + '"></span>'
+      + '<b class="num" style="flex:none;width:76px">' + esc(T(e.t)) + '</b><div class="grow"><div>' + e.l + '</div>' + (e.d ? '<div class="small mute">' + (e.html ? e.d : esc(e.d)) + '</div>' : '') + '</div></div>';
+    const facts = [['Device', x.device], ['Internet', x.speed], ['Location', x.place || (x.locNote ? 'Not shared (' + x.locNote + ')' : '')]].filter(f => f[1]);
+    openSheet('<h1>\u201cI\u2019m in\u201d timeline</h1><div class="small mute">' + (mgr ? 'Teacher ' + esc(x.who || '') + ' \u00b7 ' : '') + esc(x.student || (x.kind === 'ti' ? 'Time-in' : '')) + (x.start ? ' \u00b7 class ' + esc(T(x.start).slice(0, 5)) + (x.end ? '\u2013' + esc(T(x.end).slice(0, 5)) : '') : '') + ' \u00b7 ' + esc(day) + '</div>'
+      + '<div style="margin:14px 0 6px;padding:12px 14px;border-radius:14px;background:' + (ok ? '#F3FAF6;border:1px solid #BFE3D2' : '#FFF4F1;border:1px solid #F3C7BC') + '"><b style="color:' + (ok ? '#1F7A4F' : '#AE4D41') + '">' + res + '</b><div class="small">' + basis + (x.flag ? ' ' + esc(x.flag) : '') + '</div></div>'
+      + ev.map(row).join('') + (facts.length ? '<div style="margin-top:12px;border-top:1px solid #E3E8EC;padding-top:10px">' + facts.map(f => '<div class="small"><span class="mute">' + f[0] + ':</span> ' + esc(f[1]) + '</div>').join('') + '</div>' : '')
+      + '<div class="small mute" style="margin-top:12px">Recorded automatically by the app and the database. Times are Philippine time.</div>'); };
 })();
 </script>
 </body>
