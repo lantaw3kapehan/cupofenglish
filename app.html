@@ -2343,7 +2343,7 @@ const ciOpen = (() => { const prev = (D.schedule||[]).filter(x => x.day === D.to
 if(isToday && !c.cancelled){
 const lateBy = ci && ci.mins < 0 ? ' · ' + Math.abs(ci.mins) + ' min late' : '';
 if(ci) inBtn = (ci.time ? `<button type="button" class="chip ${ci.status==='On time'?'green':'red'}" style="margin:8px 0 0 6px;cursor:pointer;border:0;font:inherit" title="See the timeline" onclick="ciLine('${esc(c.id)}','${esc(c.day)}')">${ci.status==='On time'?'In':esc(ci.status)} ${esc(ci.time)}${ci.status==='On time'?'':esc(lateBy)} ›</button>` : '') + (ci.speed ? `<span style="margin:8px 0 0 6px;display:inline-block">${netBadge(ci.speed)}</span>` : '')
-+ (ci.decision ? `<div class="hw due"><span class="ic">!</span><div class="grow"><b>Tagged late to class</b><div class="small">${esc(ci.decision)}</div></div></div>` : ci.flag ? `<span class="chip coral" style="margin:8px 0 0 6px">${esc(ci.flag)}</span>` : '');
++ (ci.decision ? `<div class="hw due"><span class="ic">!</span><div class="grow"><b>Tagged late to class</b><div class="small">${esc(ci.decision)}</div></div></div>` : (ci.flag && D.mgr) ? `<span class="chip coral" style="margin:8px 0 0 6px">${esc(ci.flag)}</span>` : '');
 else if(contPrev) inBtn = `<span class="chip" style="margin:8px 0 0 6px">Same class as ${tm(contPrev.start)} · no I'm in needed</span>`;
 else if(isFirst) inBtn = D.timeIn ? `<span class="chip ${D.timeIn.status==='On time'?'green':'red'}" style="margin:8px 0 0 6px">${D.timeIn.status==='On time'?'Timed in':esc(D.timeIn.status)} ${esc(D.timeIn.time)}</span>`
 : `<button class="btn teal sm" style="margin:8px 0 0 6px" onclick="timeInSheet()">Time in (first class)</button>`;
@@ -2480,7 +2480,7 @@ const dv = Object.assign({ device: deviceInfo(), shotSurf: shot && shot.surface 
 let r; for(let i = 0; i < 2; i++){ try{ r = await api('timeIn', TOKEN, shot ? shot.b64 : '', shot ? 'image/jpeg' : '', dv); if(r && r.ok) break; }catch(e){ r = e; } await new Promise(z => setTimeout(z, 800)); }
 if(!r || !r.ok) throw r;
 D.timeIn = r.timeIn; store('set', KEY_D, JSON.stringify(D)); if(D.mgr){ renderTeam(); loadMgmt(true); } else if(VIEW==='today') renderToday();
-toast((r.dup ? 'Already timed in · ' : 'Time-in saved · ') + r.timeIn.time + (r.timeIn.status && r.timeIn.status!=='On time' ? ' · ' + r.timeIn.status : '') + (r.timeIn.flag ? ' · ' + r.timeIn.flag : ''));
+toast((r.dup ? 'Already timed in · ' : 'Time-in saved · ') + r.timeIn.time + (r.timeIn.status && r.timeIn.status!=='On time' ? ' · ' + r.timeIn.status : '') + (r.timeIn.flag && D.mgr ? ' · ' + r.timeIn.flag : ''));
 }catch(e){ D.timeIn = prev; if(D.mgr) renderTeam(); else if(VIEW==='today') renderToday(); toast(e && e.msg ? e.msg : 'Time-in not saved. Tap Time in again.'); }
 }
 /* "I'm in": on the class laptop the teacher shares the VooV window once → one picture is saved as proof (sharing stops at once).
@@ -2553,7 +2553,7 @@ try{ dv.tapAgo = Date.now() - T0; r = await api('classIn', TOKEN, cc, dv); if(r 
 await new Promise(z => setTimeout(z, 800)); }
 if(!r || !r.ok) throw r;
 D.classIns[id] = r.classIn; store('set', KEY_D, JSON.stringify(D)); if(VIEW==='today') renderToday();
-toast((r.classIn.proof ? 'Screen proof saved' : 'In · saved') + (r.classIn.speed ? ' · ' + netQ(r.classIn.speed).label : '') + (r.classIn.flag ? ' · ' + r.classIn.flag : ''));
+toast((r.classIn.proof ? 'Screen proof saved' : 'In · saved') + (r.classIn.speed ? ' · ' + netQ(r.classIn.speed).label : '') + (r.classIn.flag && D.mgr ? ' · ' + r.classIn.flag : ''));
 }catch(e){ if(prev) D.classIns[id] = prev; else delete D.classIns[id]; if(VIEW==='today') renderToday(); toast('“I\'m in” not saved. Tap I\'m in again.'); }
 }
 
@@ -7175,7 +7175,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1670;
+const COE_V = 1671;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23841,7 +23841,7 @@ go();
     Promise.resolve(p).then(() => {}, () => {}).then(() => { BUSY = 0; try{ tinNag(); }catch(e){}
       const ti = D.timeIn; if(MACP) return;
       if(ti && !ti.pending && !mgr && window.wcStep1270){ window.wcStep1270(SHOT); return; }
-      if(ti && !ti.pending){         res('ok', 'Time-in saved · ' + (ti.time || hmNow()), (ti.status ? ti.status : '') + (ti.flag ? ' · ' + ti.flag : '') + (mgr ? '' : '<br>Send your time-in picture to Team Chat › Time-in from Today.'),
+      if(ti && !ti.pending){         res('ok', 'Time-in saved · ' + (ti.time || hmNow()), (ti.status ? ti.status : '') + (ti.flag && mgr ? ' · ' + ti.flag : '') + (mgr ? '' : '<br>Send your time-in picture to Team Chat › Time-in from Today.'),
           ''); return; }
       try{ closeSheet(); }catch(e){}
       res('no', 'Not timed in yet', (why() || 'It did not save.') + '<br>Tap Try again · pick <b>Entire screen</b>.', '<button class="btn teal block" onclick="tapResClose();tapTimeIn()">Try again</button>'); }); };
@@ -23852,7 +23852,7 @@ go();
     Promise.resolve(p).then(() => {}, () => {}).then(() => { BUSY = 0; try{ tinNag(); }catch(e){}
       if(MACP) return; const x = (D.classIns || {})[id];
       if(x && !x.pending){ const cap = ('In, ' + nm + "'s class · " + (x.time || hmNow()) + (x.status ? ' · ' + x.status : '')).slice(0, 140), can = false;   /* 1497 (Misty 19:58): only the first time-in of the day posts to Time-in · later classes are recorded as before, never posted */   /* 1496: the class check-in goes to Time-in in one tap */
-        res('ok', "I'm in · " + esc(nm), (x.time || hmNow()) + ' · ' + (x.status || 'saved') + (x.flag ? ' · ' + esc(x.flag) : '') + (x.proof || SHOT ? ' · screen proof saved' : '')
+        res('ok', "I'm in · " + esc(nm), (x.time || hmNow()) + ' · ' + (x.status || 'saved') + (x.flag && D.mgr ? ' · ' + esc(x.flag) : '') + (x.proof || SHOT ? ' · screen proof saved' : '')
           + (can ? '<div class="ci-pv"><img alt="Screen proof that will be sent" src="data:image/jpeg;base64,' + SHOT + '"><div><span>Will be sent to Team Chat › Time-in</span>' + esc(cap) + '</div></div>' : ''),
           can ? '<button class="btn teal block" id="ciSend" onclick="ciSend1496(\'' + esc(id) + '\')">Send to Time-in</button><div class="ci-st" id="ciSt" role="status" aria-live="polite"></div>' : '');
         if(can){ clearTimeout(RES_T); CI_CAP = { id: id, cap: cap, shot: SHOT, day: D.today || '', time: x.time || '', net: x.speed || (x.net && x.net.speed) || '' }; } return; }
@@ -32429,7 +32429,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     try{ var n = +localStorage.getItem(SEEN) || 0; localStorage.setItem(SEEN, String(n + 1)); }catch(e){}
     var ti = D.timeIn; STEP = { shot: shot || null, redo: redo || null, at: Date.now() }; PIC = null;
     var p = redo ? (redo.posted ? { time: redo.posted } : null) : posted();
-    openSheet('<div class="wc70"><h1>' + (redo ? 'Internet re-checked · ' + E(redo.time) : 'Time-in saved · ' + E(ti.time || '')) + '</h1><div class="wc-ok">' + (redo ? 'Your time-in stays ' + E(ti.time || '') + ' · ' + E(ti.status || '') : E(ti.status || 'Saved') + (ti.flag ? ' · ' + E(ti.flag) : '')) + '</div>' + stepsHtml(!!redo)
+    openSheet('<div class="wc70"><h1>' + (redo ? 'Internet re-checked · ' + E(redo.time) : 'Time-in saved · ' + E(ti.time || '')) + '</h1><div class="wc-ok">' + (redo ? 'Your time-in stays ' + E(ti.time || '') + ' · ' + E(ti.status || '') : E(ti.status || 'Saved') + (ti.flag && D.mgr ? ' · ' + E(ti.flag) : '')) + '</div>' + stepsHtml(!!redo)
       + '<div class="wc-prev" id="wcPrev"><div class="wc-wait">Making the picture…</div></div><div class="wc-net" id="wcNet" aria-live="polite">' + (!redo && !ti.speed && window.__netRun1273 ? 'Checking internet… a few seconds · Send to Time-in turns on when it is done' : '') + '</div>'
       + tickHtml(p) + '<div class="wc-btns"><button class="btn teal" id="wcRetake1660" onclick="wcRetake1497()" hidden>Retake screen picture</button><button class="btn teal" id="wcSend" onclick="wcSend1496()" disabled>' + (p ? 'Send again' : 'Send to Time-in') + '</button></div><div class="wc-alt"><button type="button" id="wcRetake" onclick="wcRetake1497()" hidden>Retake screen picture</button><button type="button" id="wcNoProof1660" onclick="wcNoProof1660()" hidden>Send without screen proof</button></div>'
       + '<div class="wc-copied" id="wcMsg" aria-live="polite"></div></div>');
@@ -38148,7 +38148,7 @@ body:not(.role-t) #v-home > .ovc{display:contents}
       + '<b class="num" style="flex:none;width:76px">' + esc(T(e.t)) + '</b><div class="grow"><div>' + e.l + '</div>' + (e.d ? '<div class="small mute">' + (e.html ? e.d : esc(e.d)) + '</div>' : '') + '</div></div>';
     const facts = [['Device', x.device], ['Internet', x.speed], ['Location', x.place || (x.locNote ? 'Not shared (' + x.locNote + ')' : '')]].filter(f => f[1]);
     openSheet('<h1>\u201cI\u2019m in\u201d timeline</h1><div class="small mute">' + (mgr ? 'Teacher ' + esc(x.who || '') + ' \u00b7 ' : '') + esc(x.student || (x.kind === 'ti' ? 'Time-in' : '')) + (x.start ? ' \u00b7 class ' + esc(T(x.start).slice(0, 5)) + (x.end ? '\u2013' + esc(T(x.end).slice(0, 5)) : '') : '') + ' \u00b7 ' + esc(day) + '</div>'
-      + '<div style="margin:14px 0 6px;padding:12px 14px;border-radius:14px;background:' + (ok ? '#F3FAF6;border:1px solid #BFE3D2' : '#FFF4F1;border:1px solid #F3C7BC') + '"><b style="color:' + (ok ? '#1F7A4F' : '#AE4D41') + '">' + res + '</b><div class="small">' + basis + (x.flag ? ' ' + esc(x.flag) : '') + '</div></div>'
+      + '<div style="margin:14px 0 6px;padding:12px 14px;border-radius:14px;background:' + (ok ? '#F3FAF6;border:1px solid #BFE3D2' : '#FFF4F1;border:1px solid #F3C7BC') + '"><b style="color:' + (ok ? '#1F7A4F' : '#AE4D41') + '">' + res + '</b><div class="small">' + basis + (x.flag && mgr ? ' ' + esc(x.flag) : '') + '</div></div>'
       + ev.map(row).join('') + (facts.length ? '<div style="margin-top:12px;border-top:1px solid #E3E8EC;padding-top:10px">' + facts.map(f => '<div class="small"><span class="mute">' + f[0] + ':</span> ' + esc(f[1]) + '</div>').join('') + '</div>' : '')
       + '<div class="small mute" style="margin-top:12px">Recorded automatically by the app and the database. Times are Philippine time.</div>'); };
 })();
