@@ -2278,9 +2278,9 @@ TLV.rows.filter(r => (r.status === 'Approved' && r.to >= t0 && r.from <= soon) |
 if(TLV && TLV.rows){ const t0 = ymdLocal(new Date()); TLV.rows.filter(r => (r.status === 'Approved' || r.status === 'Pending') && r.to >= t0).forEach(r => { const L = lvCls(r), n = L.filter(c => !lvInf(r, c.key)).length;
 if(n) todo.push(`<div class="li" onclick="go('pay')"><span class="chip amber">Inform ${n}</span><div class="grow ell">Students to tell about your leave · ${esc(L.filter(c => !lvInf(r, c.key)).map(c => c.student).slice(0, 4).join(', '))}</div><span class="mute">›</span></div>`); }); }
 { const g = GR || kept('growth'), e = g && g.evals && g.evals[0];
-if(e && e.ts && Date.now() - e.ts < 21*864e5 && store('get','coe.qaseen') !== String(e.ts)) todo.push(`<div class="li" onclick="store('set','coe.qaseen','${e.ts}');go('qa')"><span class="chip teal">QA evaluation</span><div class="grow ell">New · ${esc(e.period)} · ${esc(e.decision || '')}${e.avg ? ' · ' + e.avg + '/5' : ''}</div><span class="mute">›</span></div>`); }
+if(e && e.ts && Date.now() - e.ts < 21*864e5 && store('get','coe.qaseen') !== String(e.ts)) todo.push(`<div class="li" onclick="store('set','coe.qaseen','${e.ts}');try{window.qaSeen1850&&qaSeen1850(${+e.ts||0})}catch(x){};go('qa')"><span class="chip teal">QA evaluation</span><div class="grow ell">New · ${esc(e.period)} · ${esc(e.decision || '')}${e.avg ? ' · ' + e.avg + '/5' : ''}</div><span class="mute">›</span></div>`); }
 (D.special||[]).filter(x=>x.reportMissing).forEach(x => todo.push(`<div class="li" onclick="trialSheet(${trQ({code:x.code,student:x.student,date:x.date,time:x.time})})"><span class="chip coral">Trial report</span><div class="grow ell">${esc(x.student)} · ${esc((window.d1481 ? d1481(x.date) : x.date))}</div><span class="mute">›</span></div>`));
-(D.peer||[]).forEach(x => todo.push(`<div class="li" onclick="peerSheet('${esc(x.id)}')"><span class="chip teal">${x.month ? esc(pmYmName(x.month).split(' ')[0]) + ' ' : ''}Peer review</span><div class="grow ell">${esc(tName(x.teacher))}'s class${x.student?' with '+esc(x.student):''} · ${esc((window.d1481 ? d1481(x.date) : x.date))}</div><span class="mute">›</span></div>`));
+(D.peer||[]).forEach(x => todo.push(`<div class="li" onclick="peerSheet('${esc(x.id)}')"><span class="chip teal">${x.month ? esc(pmYmName(x.month).split(' ')[0]) + ' ' : ''}Peer review</span><div class="grow ell">${String(x.teacher||'').toLowerCase() === String((D.me && D.me.name) || D.name || '').toLowerCase() ? 'Your own class' : esc(tName(x.teacher)) + '\'s class'}${x.student?' with '+esc(x.student):''}${String(x.teacher||'').toLowerCase() === String((D.me && D.me.name) || D.name || '').toLowerCase() ? ' · self-review' : ''} · ${esc((window.d1481 ? d1481(x.date) : x.date))}</div><span class="mute">›</span></div>`));
 const fd = (D.students||[]).filter(fbDue);
 if(false && fd.length && !(FB && FB.total)) todo.push(`<div class="li" onclick="go('students');setFilter('due')"><span class="chip">Progress check</span><div class="grow ell">${fd.length} student${fd.length>1?'s':''} due for a progress check</div><span class="mute">›</span></div>`);
 const yd = new Date(Date.now() - 864e5).toISOString().slice(0,10);
@@ -6725,10 +6725,10 @@ function pmYmOpts(sel){ const d = new Date(Date.now()+8*3600e3), L = []; for(let
 if(sel && !L.includes(sel)) L.unshift(sel); return L.map(x => `<option value="${x}"${x===sel?' selected':''}>${pmYmName(x)}</option>`).join(''); }
 async function pmMonth(id, ym){ try{ const r = await api('mgmtPeerMonth', TOKEN, id, ym); if(!r.ok) throw r; toast('Counts for ' + pmYmName(ym) + ' now'); store('del','coe.m.peer'); loadPeerM(); }catch(e){ toast((e && e.msg) || 'Not changed'); } }
 function pmEvs(){ const T = (PM && PM.teachers) || [], t = ($('pmT')||{}).value || '', el = $('pmEv'); if(!el) return;
-const L = T.filter(x => x !== t), n = L.filter(x => PME[x] !== false).length;
-el.innerHTML = `<label>Who reviews <span class="mute small">· ${n} of ${L.length} · tap to leave someone out</span></label><div class="skc">${L.map(x => `<button type="button" class="${PME[x]!==false?'on':''}" onclick="PME['${esc(x)}']=PME['${esc(x)}']===false;pmEvs()">${esc(tName(x))}</button>`).join('')}</div>
+const L = t ? [t].concat(T.filter(x => x !== t)) : T.slice(), n = L.filter(x => PME[x] !== false).length;   /* 1850: self-review first */
+el.innerHTML = `<label>Who reviews <span class="mute small">· ${n} of ${L.length} · tap to leave someone out</span></label><div class="skc">${L.map(x => `<button type="button" class="${PME[x]!==false?'on':''}" onclick="PME['${esc(x)}']=PME['${esc(x)}']===false;pmEvs()">${x === t ? 'Self-review · ' + esc(tName(x)) : esc(tName(x))}</button>`).join('')}</div>
 <div class="small mute" style="margin-top:4px"><a class="link" onclick="(PM.teachers||[]).forEach(x=>PME[x]=true);pmEvs()">All</a> · <a class="link" onclick="(PM.teachers||[]).forEach(x=>PME[x]=false);pmEvs()">None</a></div>`; pmReady(); }
-function pmMiss(){ const t = ($('pmT')||{}).value || '', n = ((PM && PM.teachers) || []).filter(x => x !== t && PME[x] !== false).length;
+function pmMiss(){ const t = ($('pmT')||{}).value || '', n = ((PM && PM.teachers) || []).filter(x => PME[x] !== false).length;   /* 1850: self-review counts */
 return !t ? ['pmT','Choose the teacher to review first'] : !n ? ['pmEv','Choose who reviews'] : !(($('pmV')||{}).value||'').trim() ? ['pmV','Paste the class video link'] : null; }
 function pmReady(){ const b = $('pmGo'), e = $('pmErr'); if(!b || PM_BUSY) return; const m = pmMiss(), t = ($('pmT')||{}).value;
 b.textContent = m ? m[1] : 'Send to ' + tName(t) + "'s reviewers"; b.style.opacity = m ? '.55' : ''; if(e && !m) e.textContent = ''; if($('pmEv') && (!m || m[0] !== 'pmEv')) $('pmEv').classList.remove('bad'); }
@@ -6756,7 +6756,7 @@ if(PMC.sel === i){ if(c.video) $('pmV').value = c.video; $('pmD').value = c.date
 let PM_BUSY = false;
 async function pmSend(){
 if(PM_BUSY) return; 
-const t = $('pmT').value, c = PMC && PMC.sel != null ? PMC[PMC.sel] : null, evs = ((PM && PM.teachers) || []).filter(x => x !== t && PME[x] !== false);
+const t = $('pmT').value, c = PMC && PMC.sel != null ? PMC[PMC.sel] : null, evs = ((PM && PM.teachers) || []).filter(x => PME[x] !== false);   /* 1850: the teacher herself too (self-review) */
 const miss = pmMiss(); if(miss) return pmFlag(miss[0], miss[1]); if($('pmErr')) $('pmErr').textContent = '';
 const c0 = c || { date: ($('pmD') && $('pmD').value) || new Date(Date.now()+8*3600e3).toISOString().slice(0,10), time: '', mins: '', code: '', student: ($('pmS') && $('pmS').value.trim()) || '' };
 const b = $('pmGo'); b.disabled = true; b.textContent = 'Sending…'; PM_BUSY = true;
@@ -7169,7 +7169,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1655;
+const COE_V = 1656;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -37862,5 +37862,23 @@ body:not(.role-t) #v-home > .ovc{display:contents}
 })();
 </script>
 <style id="s1840">#kxTotm{display:none!important}</style>
+<script>
+/* 1850 · peer review form from the database first · QA evaluation "opened" kept in the database */
+(function(){
+  const URL = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-peer';
+  const call = b => fetch(URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: (typeof TOKEN !== 'undefined' && TOKEN) || '' }, b)) }).then(r => r.json());
+  const base = window.api; if(typeof base === 'function' && !base.__1850){
+    const w = function(fn){ const a = Array.prototype.slice.call(arguments, 1), self = this, go = () => base.apply(self, [fn].concat(a));
+      if(fn === 'tPeerForm' && a[1]) return call({ action: 'form', id: String(a[1]) }).then(r => (r && (r.ok || (r.msg && !r.fallback))) ? r : go(), go);
+      return base.apply(this, arguments); };
+    w.__1850 = 1; Object.keys(base).forEach(k => { try{ w[k] = base[k]; }catch(e){} }); window.api = w; try{ api = w; }catch(e){}
+  }
+  window.qaSeen1850 = function(ts){ if(!ts) return; call({ action: 'qaseen', ts: ts }).catch(() => {}); };
+  let done = 0; function pull(){ if(done || typeof TOKEN === 'undefined' || !TOKEN || typeof D === 'undefined' || !D || D.mgr) return; done = 1;
+    call({ action: 'qaseen' }).then(r => { if(!(r && r.ok && r.ts)) return; let cur = 0; try{ cur = +(store('get', 'coe.qaseen') || 0); }catch(e){}
+      if(+r.ts > cur){ try{ store('set', 'coe.qaseen', String(r.ts)); }catch(e){} try{ if(typeof renderToday === 'function') renderToday(); }catch(e){} } }).catch(() => { done = 0; }); }
+  setTimeout(pull, 2500); setInterval(pull, 60000);
+})();
+</script>
 </body>
 </html>
