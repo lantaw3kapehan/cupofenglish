@@ -6238,7 +6238,7 @@ h += `<section class="hm-c"><div class="hm-h"><h2>Last ${C.length} months</h2><d
 ${L.map(m => `<tr${m === cur ? ' class="mn-cur"' : ''}><td><b>${esc(m.m)}</b>${m === cur ? ' <span class="chip teal">so far</span>' : ''}</td><td class="num">${hmPeso(m.sales)}</td><td class="num">${hmPeso(m.costs)}</td><td class="num"><b class="${m.net < 0 ? 'minus' : ''}">${hmPeso(m.net)}</b></td><td class="num mute">${mg(m) == null ? '—' : mg(m) + '%'}</td></tr>`).join('')}</table></div></section>`;
 const iM = R.findIndex(r => /^MONTH$/i.test(r[0])); let end = iM + 1; while(end < R.length && R[end][0] && /\d{4}/.test(R[end][0])) end++;
 const rest = MN.rows.slice(end).filter(r => r.some(x => String(x == null ? '' : x).trim()));
-if(rest.length) h += `<details class="hm-c mn-more"><summary><b>More from the MONEY tab</b><span class="chev">›</span></summary>${grid(rest)}</details>`;
+if(rest.length) h += `<details class="hm-c mn-more"><summary><b>More detail</b><span class="chev">›</span></summary>${grid(rest)}</details>`;
 $('v-money').innerHTML = h;
 }
 async function lists(){ if(!ML) ML = await api('moneyLists', TOKEN); return ML; }
@@ -7156,7 +7156,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1649;
+const COE_V = 1650;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -11642,7 +11642,7 @@ async function pkfSave(row, code){
 </script>
 <script>
 /* 15 Oct night · Sales & costs, redesigned: this month first (with the month-end pace), last full month, a cleaner
-   12-month chart, and the rest of the MONEY tab (years, partners, expenses, government dues, checks) as designed cards
+   12-month chart, and the rest of the money summary (years, partners, expenses, government dues, checks) as designed cards
    instead of a raw sheet grid. Same numbers, read from the same MONEY data; anything not recognised falls back to the grid. */
 (function(){
 const css = `
@@ -11751,7 +11751,7 @@ const css = `
 const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
 const T = s => String(s == null ? '' : s).trim();
-// the MONEY tab's own sections (title row, header row, rows) → { rows, notes, head }
+// the money summary's own sections (title row, header row, rows) → { rows, notes, head }
 function mxSec(R, re){
   const i = R.findIndex(r => re.test(r[0] || '')); if(i < 0) return null;
   const isTitle = r => r && /^[A-Z][A-Z0-9 &·\-()]{3,}(\s{2}·|$)/.test(r[0] || '') && r.slice(1).every(x => !x) && !/\d{4}/.test(r[0]);
@@ -11768,7 +11768,7 @@ window.renderMoney = function(){
   if(!MN) return;
   const R = (MN.rows || []).map(r => r.map(T)), L = hmMoney();
   const upd = ((R.find(r => /^Updated/i.test(r[0])) || [''])[0].match(/^Updated\s+(.*?\d{1,2}:\d{2}H?)/) || [])[1] || '';
-  const top = `<div class="mx-top"><div><h1>Sales &amp; costs</h1><div class="sub">${upd ? 'Updated ' + esc(upd) + ' · ' : ''}PHP · from the MONEY tab${sheetLink('MONEY')}</div></div>
+  const top = `<div class="mx-top"><div><h1>Sales &amp; costs</h1><div class="sub">${upd ? 'Updated ' + esc(upd) + ' · ' : ''}PHP · from the money summary${sheetLink('MONEY')}</div></div>
     <div class="mx-act"><button class="btn teal" onclick="saleSheet()">+ Sale</button><button class="btn ghost" onclick="expSheet()">+ Expense</button></div></div>`;
   if(!L){ $('v-money').innerHTML = top + grid(MN.rows.slice(1)); return; }
   const now = new Date(), ym = now.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), cur = L.find(m => m.m === ym), full = L.filter(m => m !== cur);
@@ -11843,10 +11843,10 @@ window.renderMoney = function(){
     <table class="mx-ex" style="margin-top:12px"><tr><th>Month</th><th>Sales</th><th>Costs</th><th>Net</th><th class="hide-s">Margin</th></tr>
     ${L.map(m => `<tr${m === cur ? ' class="mx-cur"' : ''}><td>${esc(m.m)}${m === cur ? ' <span class="chip teal">so far</span>' : ''}</td><td>${hmPeso(m.sales)}</td><td>${hmPeso(m.costs)}</td><td style="font-weight:700;color:${m.net < 0 ? 'var(--red)' : '#2F6F77'}">${hmPeso(m.net)}</td><td class="hide-s mu">${mg(m) == null ? '—' : mg(m) + '%'}</td></tr>`).join('')}</table></details>`;
 
-  // anything in the MONEY tab not shown above stays reachable as it is in the sheet
+  // anything in the money summary not shown above stays reachable as it is in the sheet
   const iM = R.findIndex(r => /^MONTH$/i.test(r[0])); let end = iM + 1; while(end < R.length && R[end][0] && /\d{4}/.test(R[end][0])) end++;
   const unknown = [Y, P, X, G, K].some(s => !s) ? MN.rows.slice(end).filter(r => r.some(x => T(x))) : [];
-  if(unknown.length) h += `<details class="mx-c" style="margin-top:14px"><summary><h3 style="margin:0;font-family:var(--brand);font-weight:400;font-size:18px">More from the MONEY tab</h3><span class="chev">›</span></summary><div style="margin-top:12px">${grid(unknown)}</div></details>`;
+  if(unknown.length) h += `<details class="mx-c" style="margin-top:14px"><summary><h3 style="margin:0;font-family:var(--brand);font-weight:400;font-size:18px">More detail</h3><span class="chev">›</span></summary><div style="margin-top:12px">${grid(unknown)}</div></details>`;
   $('v-money').innerHTML = h;
 };
 if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e){}
@@ -19775,7 +19775,7 @@ window.renderMoney = function(){
   if(!MN) return;
   const v = $('v-money'), R = (MN.rows || []).map(r => r.map(T));
   const upd = ((R.find(r => /^Updated/i.test(r[0])) || [''])[0].match(/^Updated\s+(.*?\d{1,2}:\d{2}H?)/) || [])[1] || '';
-  const top = `<div class="mx-top"><div><h1>Sales &amp; costs</h1><div class="sub">${upd ? 'Updated ' + esc(upd) + ' · ' : ''}PHP · from the MONEY tab${sheetLink('MONEY')}</div></div>
+  const top = `<div class="mx-top"><div><h1>Sales &amp; costs</h1><div class="sub">${upd ? 'Updated ' + esc(upd) + ' · ' : ''}PHP · from the money summary${sheetLink('MONEY')}</div></div>
     <div class="mx-act"><button class="btn teal" onclick="saleSheet()">+ Sale</button><button class="btn ghost" onclick="expSheet()">+ Expense</button></div></div>`;
   // the 12 months, with the cost split
   const M = sec(R, /^LAST 12 MONTHS/i); let L = [];
@@ -19835,7 +19835,7 @@ window.renderMoney = function(){
     return `<div class="sc"><i style="width:${(u / W * 100).toFixed(1)}%"></i>${oneAmt ? `<i class="o" style="width:${(oneAmt / W * 100).toFixed(1)}%"></i>` : ''}<em style="left:${(be / W * 100).toFixed(1)}%"></em></div><div class="sl2">sales so far${oneAmt ? ' · light = one-off' : ''} · line = break-even</div>`; })() : '';
   const skYr = yNow && yPrev ? (() => { const W = Math.max(Math.abs(yNow.net || 0), Math.abs(yPrev.net || 0), 1);
     return `<div class="sy"><span>${esc(yNow.y)}</span><i style="width:${(Math.max(0, yNow.net) / W * 100).toFixed(0)}%"></i></div><div class="sy p"><span>${esc(yPrev.y)}</span><i style="width:${(Math.max(0, yPrev.net) / W * 100).toFixed(0)}%"></i></div>`; })() : '';
-  h += `<div class="cap" style="margin-top:2px"><h3>The picture</h3><span>Actual = recorded in the MONEY tab · Estimate = worked out from averages · tap a tile for the detail</span></div><div class="kp">`;
+  h += `<div class="cap" style="margin-top:2px"><h3>The picture</h3><span>Actual = recorded in the money summary · Estimate = worked out from averages · tap a tile for the detail</span></div><div class="kp">`;
   if(cur) h += t(estNet != null && estNet < 0 ? 't-bad' : ofP != null && ofP >= Math.round(day / dim * 100) ? 't-ok' : 't-g', mon(cur) + (still ? ' · expected net · estimate' : ' · net so far · actual'), (still ? '≈ ' : '') + P(estNet != null ? estNet : cur.net), still ? `Net so far ${P(cur.net)} (actual, ${esc(rng877)}) − about ${P(still)} in salaries${stillG ? ' and dues' : ''} still to pay (estimate, from the ${full.length}-month average) · set that aside` : `${esc(mon(cur))}'s profit so far (actual, ${esc(rng877)})`, 'x73m', skCur);
   h += t(net12 >= 0 ? 't-ok' : 't-bad', `Net · last ${full.length} full months · actual`, P(net12), `${full.length ? esc(full[full.length - 1].m) + ' – ' + esc(full[0].m) + ' · ' : ''}profit after the losing months · ${prof.length} up, ${loss.length} down`, 'x73pf', skNet);
   if(be != null) h += t('t-w', 'Break-even · monthly sales target', P(be) + '<small style="display:inline;font-size:13px;color:#6F6C85"> / month</small>', `average monthly costs over ${full.length} full months · keep sales above ${P(Math.ceil(be / 1000) * 1000)}${loss.length ? ` · ${loss.length} of the last ${full.length} months lost money (${esc(loss.map(m => mon(m)).join(', '))})${loss.every(m => (m.sales || 0) < be) ? ', each under this line' : ''}` : ''}`, 'x73c', skBe);
@@ -19961,7 +19961,7 @@ window.renderMoney = function(){
   h += '</div>';
   const iM = R.findIndex(r => /^MONTH$/i.test(r[0])); let end = iM + 1; while(end < R.length && R[end][0] && /\d{4}/.test(R[end][0])) end++;
   const unknown = [Y, Pt, X, G, K].some(s => !s) ? MN.rows.slice(end).filter(r => r.some(x => T(x))) : [];
-  if(unknown.length) h += `<details class="cd" style="margin-top:14px"><summary><h3 style="margin:0;font-family:var(--brand);font-weight:400;font-size:18px">More from the MONEY tab</h3><span class="chev">›</span></summary><div style="margin-top:12px">${grid(unknown)}</div></details>`;
+  if(unknown.length) h += `<details class="cd" style="margin-top:14px"><summary><h3 style="margin:0;font-family:var(--brand);font-weight:400;font-size:18px">More detail</h3><span class="chev">›</span></summary><div style="margin-top:12px">${grid(unknown)}</div></details>`;
   const tabs = [['o', 'Overview', ''], ['m', 'Months & years', ''], ['i', 'Income & spending', ''], ['d', 'Dues & checks', cks.length ? String(cks.length) : '']];
   h = h.replace('%%TABS%%', `<div class="tabs">${tabs.map(([k, l, n]) => `<button data-t="${k}" class="${TAB === k ? 'on' : ''}" onclick="x73Tab('${k}')">${l}${n ? `<b>${n}</b>` : ''}</button>`).join('')}</div>`);
   v.innerHTML = h + '</div>';
@@ -26535,7 +26535,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     return E.concat(S).sort((a, b) => b.d.localeCompare(a.d) || (a.k === 'in' ? -1 : 1)); }
   const syncAt = at => at ? new Date(at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
 
-  // ── MONEY tab (validated monthly figures) ──
+  // ── money summary (validated monthly figures) ──
   function money(){ if(typeof MN === 'undefined' || !MN || !MN.rows) return null; const R = MN.rows.map(r => (r || []).map(x => String(x == null ? '' : x).trim()));
     const h = R.findIndex(r => /^MONTH$/i.test(r[0]) && /SALES/i.test(r[1]) && /EXPENSES/i.test(r[2])); if(h < 0) return null;
     const H = R[h].map(x => x.toUpperCase()), c = k => H.indexOf(k), L = [];
@@ -26583,7 +26583,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       '</div></div></div>';
     const T = F.rows ? txAll().filter(r => r.d <= today()).slice(0, 6) : null;
     h += '<div class="fx-card"><div class="fx-ch"><h2>Recent transactions</h2><span class="grow"></span><a onclick="go(\'expenses\')">View all ›</a></div>' + (T ? '<table><tbody>' + T.map(r => '<tr class="rw" onclick="go(\'expenses\')"><td class="d">' + dL(r.d) + '</td><td class="n"><b>' + esc(r.t) + '</b><span class="m">' + esc(r.c) + '</span></td><td class="ref">' + esc(r.ref) + '</td><td class="c">' + esc(r.c) + '</td><td class="a r ' + r.k + '">' + ((r.k === 'in') === (+r.a >= 0) ? '+' : '−') + P2(Math.abs(+r.a || 0)) + '</td></tr>').join('') + '</tbody></table>' : '<div class="sk"></div>') + '</div>';
-    h += '<div class="fx-sync"><span>Sales, costs, net: MONEY tab' + (M.upd ? ', updated ' + esc(M.upd) : '') + '</span><span>Transactions: database copy ' + syncAt(F.at) + '</span><span>Payroll: PAY tab</span></div>';
+    h += '<div class="fx-sync"><span>Sales, costs, net: money summary' + (M.upd ? ', updated ' + esc(M.upd) : '') + '</span><span>Transactions: database copy ' + syncAt(F.at) + '</span><span>Payroll: PAY tab</span></div>';
     v.innerHTML = '<div class="fx">' + h + '</div>'; }
   async function openOv(){ paintOv(); loadF(); try{ if(SC() && typeof loadMoney === 'function'){ const p = loadMoney(true); if(p && p.then) p.then(() => { if(VIEW === 'finov') paintOv(); }, () => {}); } }catch(e){} setTimeout(() => { if(VIEW === 'finov') paintOv(); }, 2500); }
   const _go = window.go; window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'finov') openOv(); }catch(e){} return r; };
@@ -26629,7 +26629,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       (K === 'all' ? '<div><span>Difference</span><b class="' + (tin - tout >= 0 ? 'in' : 'out') + '">' + P0(tin - tout) + '</b><small>sales − the expense lines listed · not Net: salaries and gov dues are left out</small></div>' : '') +
       '<div><span>Lines shown</span><b>' + L.length + '</b><small>' + (sch ? sch + ' scheduled (future date, not in totals)' : (X.m ? mL(X.m) : 'all months')) + '</small></div></div>';
     const gov = K !== 'in' && !CAT ? done.filter(r => r.k === 'out' && /government contrib/i.test(r.c)).reduce((a, r) => a + r.a, 0) : 0;
-    if(gov) h += '<div class="fx-note">Expenses here include ' + P0(gov) + ' Government Contributions; Overview (MONEY tab) counts these under Gov dues, so its Expenses figure is ' + P0(tout - gov) + '.</div>';
+    if(gov) h += '<div class="fx-note">Expenses here include ' + P0(gov) + ' Government Contributions; Overview (money summary) counts these under Gov dues, so its Expenses figure is ' + P0(tout - gov) + '.</div>';
     const vis = L.slice(0, X.n || 150);
     h += '<div class="fx-card" style="padding:4px 6px 8px"><table><thead><tr><th>Date</th><th>Name</th><th class="ref">Reference</th><th class="c">' + (K === 'in' ? 'Partner' : K === 'out' ? 'Category' : 'Category / partner') + '</th><th class="r">Amount</th></tr></thead><tbody>' +
       (vis.length ? vis.map((r, j) => { const key = r.k + '|' + r.d + '|' + r.t + '|' + r.a + '|' + j, op = OPEN === key, fut = r.d > now;
@@ -26765,7 +26765,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   // ── 4 · Finance Overview: status next to the month
   function ovFix(){ const v = document.getElementById('v-finov'); if(!v) return; const hd = v.querySelector('.fx-h'); if(!hd) return;
     if(typeof isPres === 'function' && !isPres()) return;
-    const h = g('MN') ? fresh(['money']) : '<span class="fr busy">Loading sales and costs from the MONEY tab…</span>';
+    const h = g('MN') ? fresh(['money']) : '<span class="fr busy">Loading sales and costs from the money summary…</span>';
     let b = hd.querySelector('.st830o'); if(!b){ const sub = hd.querySelector('.fx-sub'); (sub || hd.firstElementChild).insertAdjacentHTML('afterend', '<span class="fx-sub st830 st830o" role="status">' + h + '</span>'); b = hd.querySelector('.st830o'); if(b) b._h = h; }
     else if(b._h !== h){ b.innerHTML = h; b._h = h; } }
 
@@ -26782,7 +26782,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
 (function(){
   if(window.__831) return; window.__831 = 1;
   document.head.insertAdjacentHTML('beforeend', '<style>.def831{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:12.5px;line-height:1.45;color:#5E5A75;background:#F6F5FA;border-radius:10px;padding:8px 12px;margin:0 0 12px}.def831 b{color:#2f2752}.bz2-def.def831{margin:10px 0 0}</style>');
-  const MONEY_DEF = '<b>Net</b> (also called profit) = sales − total costs. Total costs = recorded expenses + net salaries (PAYROLL tab) + government dues. Figures come from the MONEY tab. Transactions shows a different figure, <b>Difference</b> = sales − expense lines only.';
+  const MONEY_DEF = '<b>Net</b> (also called profit) = sales − total costs. Total costs = recorded expenses + net salaries + government dues, worked out by the database every 10 minutes. Transactions shows <b>Difference</b> = sales − expense lines only, so salaries and dues are not in it.';
   // Sales & costs
   const rm = window.renderMoney;
   if(typeof rm === 'function') window.renderMoney = function(){ const r = rm.apply(this, arguments);
@@ -26791,7 +26791,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   // Overview (home) · Business card
   const ob = window.ovBiz;
   if(typeof ob === 'function') window.ovBiz = function(){ const h = ob.apply(this, arguments);
-    return h + '<div class="def831 bz2-def"><b>Profit</b> = MONEY tab net: sales − expenses − net salaries − gov dues.</div>'; };
+    return h + '<div class="def831 bz2-def"><b>Profit</b> = money summary net: sales − expenses − net salaries − gov dues.</div>'; };
   try{ if(typeof VIEW !== 'undefined' && VIEW === 'money' && typeof MN !== 'undefined' && MN) renderMoney(); }catch(e){}
 })();
 </script>
@@ -28483,7 +28483,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     if(!e || !/Could not load MONEY/.test(e.textContent) || e.dataset.e942) return;
     var pres = typeof isPres === 'function' && isPres();
     e.dataset.e942 = '1'; e.setAttribute('role', 'alert');
-    e.innerHTML = '<b>Sales &amp; costs could not load.</b><br>The MONEY tab did not answer' + (pres ? ' · check the connection and try again.' : '. These figures are not part of this account; Payroll and Transactions are in the tabs above.') +
+    e.innerHTML = '<b>Sales &amp; costs could not load.</b><br>The money summary did not answer' + (pres ? ' · check the connection and try again.' : '. These figures are not part of this account; Payroll and Transactions are in the tabs above.') +
       '<div style="margin-top:10px"><button class="btn ghost sm" onclick="this.disabled=true;this.textContent=\'Loading…\';loadMoney()">Try again</button></div>'; }
   var _lm = window.loadMoney;
   if(typeof _lm === 'function') window.loadMoney = loadMoney = function(){ var r = _lm.apply(this, arguments); Promise.resolve(r).then(moneyErr, moneyErr); return r; };
@@ -28766,7 +28766,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   function build(I, A){
     A = Object.assign(defaults(), A || {}); var today = I.today, cur = today.slice(0, 7), dom = +today.slice(8, 10), miss = [], notes = [];
     var M = I.money, PLp = I.pl, X = I.exp || { rows: [], sales: [] };
-    if(!M) miss.push({ k: 'money', t: 'MONEY tab not loaded — monthly actuals unavailable' });
+    if(!M) miss.push({ k: 'money', t: 'money summary not loaded — monthly actuals unavailable' });
     var hist = M ? M.L.slice() : [], mrow = function(m){ return hist.find(function(x){ return x.m === m; }); };
     var full = hist.filter(function(x){ return x.m < cur; }).sort(function(a, b){ return a.m < b.m ? 1 : -1; }).slice(0, 12);
     if(M && M.skipped) notes.push(M.skipped + ' month row(s) in MONEY could not be read and were skipped (not counted as zero).');
@@ -28977,7 +28977,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     setTimeout(function(){ if(typeof VIEW !== 'undefined' && VIEW === 'forecast') paint(); }, 2500); }
   function inputs(){ var X = expData(); var nowMs = Date.now();
     return { today: phToday(), now: nowMs, money: parseMoney(typeof MN !== 'undefined' ? MN : null), pl: parsePL(typeof PL !== 'undefined' ? PL : null), exp: X, wallet: ST.wallet, sched: { days: ST.sched },
-      src: { money: (function(){ var m = parseMoney(typeof MN !== 'undefined' ? MN : null); return m && m.upd ? 'MONEY tab, updated ' + m.upd : 'MONEY tab'; })(), exp: X && X.at ? 'database copy ' + at(X.at) : '—', pl: 'PAYROLL (database copy)', wal: ST.walletAt ? 'coe-wallet, read ' + at(ST.walletAt) : '—', sched: ST.schedAt ? 'calendar days read ' + at(ST.schedAt) : '—' } }; }
+      src: { money: (function(){ var m = parseMoney(typeof MN !== 'undefined' ? MN : null); return m && m.upd ? 'money summary, updated ' + m.upd : 'money summary'; })(), exp: X && X.at ? 'database copy ' + at(X.at) : '—', pl: 'PAYROLL (database copy)', wal: ST.walletAt ? 'coe-wallet, read ' + at(ST.walletAt) : '—', sched: ST.schedAt ? 'calendar days read ' + at(ST.schedAt) : '—' } }; }
 
   /* ───────── painting ───────── */
   function cell(v, cls, cur){ if(v == null) return '<span class="na">incomplete</span>'; return '<span class="' + (cls || '') + '">' + (cur === 'CNY' ? Y0(v) : P0(v)) + '</span>'; }
@@ -28999,7 +28999,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     return h + '</svg>'; }
   function head(R){ return '<div class="fx-h"><h1>Forecast</h1><span class="fx-sub">Finance · prototype for review · ' + E(dL(R.today)) + '</span><span class="grow"></span>' +
       '<button class="btn ghost sm" onclick="fc980Edit()" aria-expanded="' + (ST.edit ? 'true' : 'false') + '">' + (ST.edit ? 'Close assumptions' : 'Assumptions') + '</button></div>' +
-      '<div class="fc-proto" role="note"><span aria-hidden="true">ⓘ</span><div><b>Prototype — not released.</b> Read-only: it reads the MONEY tab, PAYROLL, the sales/expenses copy, wallet balances and the calendar, and never changes them. ' +
+      '<div class="fc-proto" role="note"><span aria-hidden="true">ⓘ</span><div><b>Prototype — not released.</b> Read-only: it reads the money summary, PAYROLL, the sales/expenses copy, wallet balances and the calendar, and never changes them. ' +
       'Your assumptions are kept on this device only. Scheduled lessons and expected renewals are <b>estimates, not guaranteed</b>. The "expected net" tiles on Home and Sales &amp; costs are unchanged.</div></div>'; }
   function bar(R){ var A = ST.A; return '<div class="fx-bar"><div class="fx-seg" role="tablist" aria-label="Forecast view">' + [['m', 'Monthly'], ['w', '13-week cash']].map(function(x){ return '<button role="tab" aria-selected="' + (A.view === x[0]) + '" class="' + (A.view === x[0] ? 'on' : '') + '" onclick="fc980Set(\'view\',\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div>' +
       '<div class="fx-seg" role="group" aria-label="Scenario">' + SC3.map(function(k){ return '<button aria-pressed="' + (A.sc === k) + '" class="' + (A.sc === k ? 'on' : '') + '" onclick="fc980Set(\'sc\',\'' + k + '\')">' + SCL[k] + '</button>'; }).join('') + '</div></div>'; }
@@ -29037,14 +29037,14 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       ['Net without one-offs', 'netR', 'net', '']];
     var pastVal = function(x, k){ return { sales: x.sales.A, salesA: x.sales.A - x.one, one: x.one, exp: x.exp, expA: x.exp, sal: x.sal, salA: x.sal, gov: x.gov, cost: x.cost, net: x.net, netR: x.net - x.one }[k]; };
     var all = ms; ms = ms.filter(function(x){ return x.kind !== 'past'; });   /* table: this month + 5 ahead (the chart above shows the 3 past months) */
-    var t = '<div class="fx-card fc-wide"><div class="fx-ch"><h2>Month by month</h2><span class="fx-sub">MONEY tab definitions · past months in the chart above · ' + SCL[sc].toLowerCase() + ' figure, range underneath</span></div><div class="fc-sc"><table class="fc-t mo"><thead><tr><th scope="col">PHP</th>' +
+    var t = '<div class="fx-card fc-wide"><div class="fx-ch"><h2>Month by month</h2><span class="fx-sub">money summary definitions · past months in the chart above · ' + SCL[sc].toLowerCase() + ' figure, range underneath</span></div><div class="fc-sc"><table class="fc-t mo"><thead><tr><th scope="col">PHP</th>' +
       ms.map(function(x){ return '<th scope="col" class="' + (x.kind === 'past' ? 'past' : x.kind === 'cur' ? 'cur' : '') + '">' + mL(x.m) + '<br><span style="font-weight:400;text-transform:none;letter-spacing:0">' + (x.kind === 'past' ? 'actual' : x.kind === 'cur' ? 'to date + rest' : 'forecast') + '</span></th>'; }).join('') + '</tr></thead><tbody>';
     L.forEach(function(row){ var any = ms.some(function(x){ if(x.kind === 'past') return pastVal(x, row[1]) != null; var l = x.lines[row[1]]; return l && (l.t !== '' || row[2] !== 'sub'); }); if(!any) return;
       t += '<tr class="' + row[2] + '"><th scope="row" style="vertical-align:top;text-align:left;font-size:inherit;text-transform:none;letter-spacing:0;color:inherit;font-weight:' + (row[2] === 'sub' ? 400 : 700) + ';border-bottom:1px solid #F3F2F7;padding:7px 8px' + (row[2] === 'sub' ? ';padding-left:20px' : '') + '">' + row[0] + '</th>' + ms.map(function(x){
         if(x.kind === 'past'){ var pv = pastVal(x, row[1]); return '<td class="past">' + (pv == null ? '' : (row[2] === 'net' ? '<span class="' + (pv >= 0 ? 'in' : 'out') + '">' + P0(pv) + '</span>' : P0(pv))) + (row[2] === 'sub' && pv != null && pv !== 0 ? '<small>' + TAGW.A + '</small>' : '') + '</td>'; }
         var l = x.lines[row[1]]; if(!l || (row[2] === 'sub' && !l.t)) return '<td class="' + (x.kind === 'cur' ? 'cur' : '') + '">—</td>';
         return '<td class="' + (x.kind === 'cur' ? 'cur' : '') + '"' + (l.note ? ' title="' + E(l.note) + '"' : '') + '>' + rangeCell(l, sc, row[2] === 'net') + (l.t ? '<small>' + tgS(l.t).split('+').map(function(z){ return TAGW[z]; }).join(' + ') + '</small>' : '') + '</td>'; }).join('') + '</tr>'; });
-    t += '</tbody></table></div>' + legend() + '<div class="fc-leg">Hover a figure for how it is worked out. Past months are copied from the MONEY tab as they are. Conservative = lower sales and higher costs; optimistic = the opposite.</div></div>';
+    t += '</tbody></table></div>' + legend() + '<div class="fc-leg">Hover a figure for how it is worked out. Past months are copied from the money summary as they are. Conservative = lower sales and higher costs; optimistic = the opposite.</div></div>';
     var cards = '<div class="fc-cards">' + ms.filter(function(x){ return x.kind !== 'past'; }).map(function(x){ var g = function(k, lab, sub){ var l = x.lines[k]; if(!l || (sub && !l.t)) return ''; return '<div class="ln"><span>' + lab + (l.t ? ' ' + tg(l.t) : '') + '</span><b>' + rangeCell(l, sc, k === 'net' || k === 'netR') + '</b></div>'; };
       return '<div class="fc-card"><h3>' + mL(x.m, 1) + ' <span class="fc-s">' + (x.kind === 'cur' ? 'to date + rest of month' : 'forecast') + '</span></h3>' + g('salesA', 'Confirmed collections', 1) + g('renew', 'Expected renewals & new', 1) + g('one', 'One-off', 1) + g('sales', 'Sales') + g('exp', 'Expenses') + g('sal', 'Salaries') + g('gov', 'Gov dues') + g('net', 'Net') + g('netR', 'Net without one-offs') + '</div>'; }).join('') + legend() + '</div>';
     ms = all; return h + t + cards + payCard(R); }
@@ -29137,7 +29137,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   function paint(){ var v = document.getElementById('v-forecast'); if(!v) return; var tabs = v.querySelector(':scope > .grp-tabs'); var th = tabs ? tabs.outerHTML : '';
     if(!pres()){ v.innerHTML = th + '<div class="fx"><div class="fx-h"><h1>Forecast</h1></div><div class="fx-card">' + (typeof D !== 'undefined' && D && D.mgr ? 'The forecast is not part of this account.' : 'Loading…') + '</div></div>'; return; }
     var I = inputs(), R;
-    if(!I.money && !I.pl){ v.innerHTML = th + '<div class="fx">' + '<div class="fx-h"><h1>Forecast</h1><span class="fx-sub">loading the MONEY tab, PAYROLL, wallets and the calendar…</span></div><div class="sk"></div><div class="sk"></div></div>'; return; }
+    if(!I.money && !I.pl){ v.innerHTML = th + '<div class="fx">' + '<div class="fx-h"><h1>Forecast</h1><span class="fx-sub">loading the money summary, PAYROLL, wallets and the calendar…</span></div><div class="sk"></div><div class="sk"></div></div>'; return; }
     try{ R = build(I, ST.A); }catch(e){ v.innerHTML = th + '<div class="fx"><div class="fx-h"><h1>Forecast</h1></div><div class="fx-card">Could not build the forecast: ' + E(e && e.message) + '</div></div>'; try{ console.warn('980', e); }catch(x){} return; }
     window.__fc980R = R;
     var h = head(R) + bar(R) + incBanner(R) + (ST.edit ? paintAssump(R) : '') + (ST.A.view === 'w' ? paintCash(R) : paintMonthly(R)) + changed(R) + (ST.edit ? '' : '<div class="fx-card"><div class="fx-ch"><h2>Assumptions</h2><span class="grow"></span><a onclick="fc980Edit()">Open and edit ›</a></div><div class="fc-s">Held share ' + Math.round(ST.A.held.e * 1000) / 10 + '% (expected) · pay day ' + ST.A.payDay.e + ' · peso balance ' + (ST.A.phpBank == null || ST.A.phpBank === '' ? '<b class="na">not entered</b>' : P0(ST.A.phpBank)) + ' · rate ' + (ST.A.rate ? '₱' + ST.A.rate + '/¥' : '<b class="na">not entered</b>') + ' · ' + (ST.A.remits || []).length + ' remittance(s) · ' + (ST.A.items || []).length + ' item(s)</div></div>') +
