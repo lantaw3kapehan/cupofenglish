@@ -8,6 +8,7 @@
 //   upload_url  { sid, name } → { ok, path, url, token }   (coach / trainer of that session, or management)
 //   done        { sid, notes, video, path } → { ok, n }   (coaching)
 //   tnotes      { sid, notes, video, path } → { ok }      (a training session's trainer: notes + recording; attendance stays with management)
+//   ladder      → { ok, list }   (management · 1830: active teachers with the database rank, units and next rank, for the Trainings ladder)
 //   watch       { sid } → { ok, url }                     (recording of a training session: management, the trainer, or an invited teacher)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -45,6 +46,10 @@ Deno.serve(async (req: Request) => {
         return { id: r.id, teacher: r.teacher, done_at: r.done_at, topic: m[0] || "Coaching", notes: m.slice(1).join(" — "), mins: +((String(r.note).match(/\n§mins:(\d+)/) || [])[1] || 0) || null };
       });
       return out({ ok: true, who, upcoming: U.data || [], given, trains: TR.data || [] });
+    }
+    if (a === "ladder") {
+      if (!mgmt) return out({ ok: false, error: "Management only" }, 403);
+      const { data, error } = await db.rpc("coe_train_ladder"); return out({ ok: !error, error: error && error.message, list: data || [] });
     }
     if (a === "upload_url") {
       const S = await sess(+b.sid); if (!mine(S)) return out({ ok: false, error: "Only the coach of this session can add its recording" }, 403);
