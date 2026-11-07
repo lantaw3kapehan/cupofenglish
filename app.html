@@ -7156,7 +7156,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1644;
+const COE_V = 1645;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -15150,6 +15150,24 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
       if(!t.pdf) setTimeout(go, 50); else setTimeout(go, 50); }catch(e){} return r; };
   window.coeTrialCss = () => CSS; window.coeJsPdf = jspdf;   /* 379: shared with the monthly report */
   window.coeTrialPages = (t, r) => { if(r.cefr) TB.cefr = r.cefr; if(r.path) TB.path = r.path; const F = facts(t, r); return F ? '<style>' + CSS + '</style>' + pages(F).join('') : null; };   /* checks and previews */
+})();
+</script>
+<script>/* 1831 · (Misty 7 Nov) "Trials & sub classes" and "Write report" only for trials the teacher really taught: a trial that was cancelled
+   for her and given to another teacher (Leon 3 Nov: Pam's trial cancelled, Rose taught it) is dropped from her list. Checked against the
+   database calendar (coe-coach "mytrials": her non-cancelled -TC classes, last 45 days). Future trials and sub classes are untouched. */
+(function(){
+  let T = null, AT = 0, BUSY = 0;
+  const today = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const near = (a, b) => Math.abs(Date.parse(a + 'T00:00:00Z') - Date.parse(b + 'T00:00:00Z')) <= 864e5;
+  function apply(){ if(!T || typeof D === 'undefined' || !D || !Array.isArray(D.special)) return; const t0 = today(), lo = new Date(Date.now() + 8 * 3600e3 - 44 * 864e5).toISOString().slice(0, 10);
+    const keep = D.special.filter(x => { if(x.type !== 'Trial' || !x.code || !x.date) return true; const d = String(x.date).slice(0, 10); if(d >= t0 || d < lo) return true;
+      return T.some(c => c.code === String(x.code).trim().toUpperCase() && near(c.day, d)); });
+    if(keep.length !== D.special.length){ D.special = keep; try{ render(); }catch(e){} } }
+  async function check(){ try{ if(typeof D === 'undefined' || !D || D.mgr || !TOKEN || !(D.special || []).some(x => x.type === 'Trial')) return;
+      if(T && Date.now() - AT < 5 * 6e4){ apply(); return; } if(BUSY) return; BUSY = 1;
+      const r = await fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-coach', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'mytrials' }) }).then(x => x.json());
+      BUSY = 0; if(r && r.ok && Array.isArray(r.list)){ T = r.list; AT = Date.now(); apply(); } }catch(e){ BUSY = 0; } }
+  const _r = window.render; if(_r) window.render = function(){ const o = _r.apply(this, arguments); setTimeout(check, 0); return o; };
 })();
 </script>
 <script>
