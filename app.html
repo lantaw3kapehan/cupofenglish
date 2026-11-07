@@ -433,6 +433,66 @@ html:root:root{
   });
 })();
 </script>
+<script>/* 1826 · (Misty 7 Nov) the coach / trainer does her own part in the app: a teacher who coaches (e.g. Pam coaching Rose) writes the
+   coaching notes and uploads the recording; a teacher who leads a training session adds her notes and the recording. Attendance
+   stays with management. Each coaching given / training facilitated pays ₱200 per hour (database adds the payslip line). */
+(function(){
+  const URL1826 = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-coach';
+  const esc1826 = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const call1826 = async (action, o) => { const r = await fetch(URL1826, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, action }, o || {})) });
+    let j = null; try{ j = await r.json(); }catch(x){} if(!j || !j.ok) throw new Error((j && j.error) || 'Could not reach the server'); return j; };
+  const dt1826 = iso => { try{ return new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Manila', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }); }catch(x){ return String(iso || ''); } };
+  const d1826 = iso => { try{ return new Date(iso).toLocaleDateString('en-GB', { timeZone: 'Asia/Manila', day: 'numeric', month: 'short', year: 'numeric' }); }catch(x){ return String(iso || ''); } };
+  const hrs1826 = m => { m = +m || 60; return m % 60 ? m + ' min' : (m / 60) + ' h'; };
+  let G1826 = null, W1826 = '';
+  async function upload1826(inp, sid, prog){ const f = (($(inp) || {}).files || [])[0]; if(!f) return '';
+    const P = $(prog), u = await call1826('upload_url', { sid, name: f.name });
+    await new Promise((ok, no) => { const x = new XMLHttpRequest(); x.open('PUT', u.url); x.setRequestHeader('Content-Type', f.type || 'video/mp4'); x.setRequestHeader('x-upsert', 'true');
+      x.upload.onprogress = ev => { if(ev.lengthComputable && P) P.textContent = 'Uploading ' + Math.round(ev.loaded / ev.total * 100) + '% · keep this open'; };
+      x.onload = () => x.status < 300 ? ok() : no(new Error(x.status === 413 ? 'The video is too big (' + Math.round(f.size / 1048576) + ' MB). Export it smaller, or paste a Drive link.' : 'Upload failed (' + x.status + ')'));
+      x.onerror = () => no(new Error('Upload failed · check the internet and try again')); x.send(f); });
+    if(P) P.textContent = 'Uploaded ✓'; return u.path; }
+  const fileIn1826 = (id, pid, who) => '<label class="small mute">Or upload the recording (MP4 · private: ' + who + ' and management)</label><input type="file" id="' + id + '" accept="video/mp4,video/webm,video/quicktime" style="width:100%;margin-top:4px"><div id="' + pid + '" class="small mute" style="margin-top:4px"></div>';
+  function box1826(){ const el = document.getElementById('cg1826'); if(!el) return; const g = G1826;
+    if(!g || (g.who || '').toLowerCase() !== W1826.toLowerCase()){ el.innerHTML = ''; return; }
+    const U = g.upcoming || [], P = g.given || [], T = g.trains || []; if(!U.length && !P.length && !T.length){ el.innerHTML = ''; return; }
+    const now = Date.now(), coached = new Set(P.map(r => r.teacher)).size;
+    el.innerHTML = '<section class="tx-card"><div class="tx-h"><b>🧑‍🏫 Coaching &amp; trainings I give</b><span>' + (P.length ? P.length + (P.length === 1 ? ' coaching' : ' coachings') + ' · ' + coached + (coached === 1 ? ' teacher' : ' teachers') : '₱200 per hour') + '</span></div>'
+      + U.map(s => { const past = new Date(s.starts_at).getTime() < now; return '<div class="trm-it"><span><b>' + esc1826(s.note || 'Coaching') + '</b><small>' + esc1826(dt1826(s.starts_at)) + ' · ' + esc1826((s.invited || []).map(tName).join(', ')) + ' · ' + hrs1826(s.mins) + '</small></span>'
+        + (past ? '<button class="btn sm teal" onclick="cg1826Done(' + s.id + ')">Write notes</button>' : s.meet_url ? '<a class="btn sm teal" href="' + esc1826(s.meet_url) + '" target="_blank" rel="noopener">Join</a>' : '<span class="small mute">booked</span>') + '</div>'; }).join('')
+      + T.map(s => { const past = new Date(s.starts_at).getTime() < now, tt = (s.coe_trainings && s.coe_trainings.title) || s.training_id; return '<div class="trm-it"><span><b>Training · ' + esc1826(tt) + '</b><small>' + esc1826(dt1826(s.starts_at)) + ' · ' + (s.invited || []).length + ' invited · ' + hrs1826(s.mins)
+        + (s.status === 'done' ? ' · attendance marked' : '') + (s.trainer_notes ? ' · notes ✓' : '') + (s.recording_path ? ' · recording ✓' : '') + '</small></span>'
+        + (past ? '<button class="btn sm ' + (s.trainer_notes && s.recording_path ? 'ghost' : 'teal') + '" onclick="cg1826Train(' + s.id + ')">' + (s.trainer_notes || s.recording_path ? 'Edit notes' : 'Notes & recording') + '</button>' : s.meet_url ? '<a class="btn sm teal" href="' + esc1826(s.meet_url) + '" target="_blank" rel="noopener">Join</a>' : '<span class="small mute">coming</span>') + '</div>'; }).join('')
+      + P.slice(0, 6).map(r => '<div class="trm-it" style="align-items:flex-start"><span><b>' + esc1826(r.topic) + '</b><small>' + esc1826(d1826(r.done_at)) + ' · coached ' + esc1826(tName(r.teacher)) + (r.mins ? ' · ' + hrs1826(r.mins) : '') + '</small>'
+        + (r.notes ? '<details class="tx-cn"><summary><span>' + esc1826(String(r.notes).split(/\n/)[0].slice(0, 90)) + '</span><b>Read notes</b></summary><div class="small" style="white-space:pre-line;margin-top:6px">' + esc1826(r.notes) + '</div></details>' : '') + '</span></div>').join('')
+      + '</section>'; }
+  async function load1826(who){ W1826 = who; try{ const isMgr = typeof D !== 'undefined' && D && D.mgr; G1826 = await call1826('given', isMgr ? { teacher: who } : {}); }catch(x){} box1826(); }
+  window.cg1826Done = function(sid){ const s = ((G1826 || {}).upcoming || []).find(x => x.id === sid); if(!s) return; const t = (s.invited || []).map(tName).join(', ');
+    openSheet('<h1>Coaching done</h1><div class="mute small">' + esc1826(t) + ' · ' + esc1826(s.note || 'Coaching') + ' · ' + esc1826(dt1826(s.starts_at)) + ' · ' + hrs1826(s.mins) + '</div><div class="card" style="margin-top:12px"><label class="small mute">Notes for ' + esc1826(t) + ' · what we worked on, next steps</label><textarea id="cgN" rows="6" style="width:100%;margin:4px 0 10px"></textarea>'
+      + '<label class="small mute">Recording link (optional · e.g. Google Drive, shared with the teacher)</label><input id="cgV" placeholder="https://…" style="width:100%;margin:4px 0 10px">' + fileIn1826('cgF', 'cgFP', esc1826(t)) + '</div>'
+      + '<div class="small mute" style="margin-top:10px">' + esc1826(t) + ' sees your notes and the recording on her Trainings. Management sees it too.</div><button class="btn teal block" id="cgS" style="margin-top:12px" onclick="cg1826DoneSave(' + sid + ')">Save</button>'); };
+  window.cg1826DoneSave = async function(sid){ const b = $('cgS'), n = (($('cgN') || {}).value || '').trim(); if(n.length < 10) return toast('Write what you worked on and the next steps'); b.disabled = true;
+    try{ const path = await upload1826('cgF', sid, 'cgFP'); await call1826('done', { sid, notes: n, path, video: (($('cgV') || {}).value || '').trim() });
+      toast('Coaching saved ✓'); closeSheet(); load1826(W1826); try{ if(typeof loadAll === 'function') await loadAll(true); if(typeof paintAll === 'function') paintAll(); }catch(x){} }catch(x){ toast(x.message); b.disabled = false; } };
+  window.cg1826Train = function(sid){ const s = ((G1826 || {}).trains || []).find(x => x.id === sid); if(!s) return; const tt = (s.coe_trainings && s.coe_trainings.title) || s.training_id;
+    openSheet('<h1>' + esc1826(tt) + '</h1><div class="mute small">' + esc1826(dt1826(s.starts_at)) + ' · ' + hrs1826(s.mins) + ' · ' + esc1826((s.invited || []).map(tName).join(', ')) + '</div><div class="card" style="margin-top:12px"><label class="small mute">Trainer notes · what was covered, who needs follow-up</label><textarea id="ctN" rows="6" style="width:100%;margin:4px 0 10px">' + esc1826(s.trainer_notes || '') + '</textarea>'
+      + (s.recording_path ? '<div class="small" style="margin-bottom:8px">Recording added ✓ <a class="link" onclick="cg1826Watch(' + sid + ')">Watch</a> · add a new one below to replace it</div>' : '')
+      + '<label class="small mute">Recording link (optional · e.g. Google Drive)</label><input id="ctV" placeholder="https://…" style="width:100%;margin:4px 0 10px">' + fileIn1826('ctF', 'ctFP', 'the invited teachers') + '</div>'
+      + '<div class="small mute" style="margin-top:10px">Management marks who attended.</div><button class="btn teal block" id="ctS" style="margin-top:12px" onclick="cg1826TrainSave(' + sid + ')">Save</button>'); };
+  window.cg1826TrainSave = async function(sid){ const b = $('ctS'); b.disabled = true;
+    try{ const path = await upload1826('ctF', sid, 'ctFP'), n = (($('ctN') || {}).value || '').trim(), v = (($('ctV') || {}).value || '').trim(); if(!n && !path && !/^https?:\/\//.test(v)){ b.disabled = false; return toast('Write the notes or add the recording'); }
+      await call1826('tnotes', { sid, notes: n, path, video: v }); toast('Saved ✓'); closeSheet(); load1826(W1826); }catch(x){ toast(x.message); b.disabled = false; } };
+  window.cg1826Watch = async function(sid){ try{ const r = await call1826('watch', { sid }); if(r.link) return window.open(r.url, '_blank', 'noopener');
+      openSheet('<h1>Training recording</h1><video src="' + esc1826(r.url) + '" controls playsinline controlslist="nodownload" style="width:100%;margin-top:12px;border-radius:14px;background:#000"></video>'); }catch(x){ toast(x.message); } };
+  window.tsWatch1826 = window.cg1826Watch;
+  function wrap(){ const f = window.coachCard; if(typeof f !== 'function' || f.__w1826) return !!(f && f.__w1826);
+    const g = function(d, who){ let h = ''; try{ h = f(d, who); }catch(x){}
+      if(who && (who !== W1826 || !G1826)) setTimeout(() => load1826(who), 0); else setTimeout(box1826, 0);
+      return h + '<div id="cg1826"></div>'; };
+    g.__w1826 = true; window.coachCard = g; return true; }
+  if(!wrap()){ let n = 0; const t = setInterval(() => { if(wrap() || ++n > 120) clearInterval(t); }, 500); }
+})();
+</script>
 <script>/* 1814 · same-HTML guard (no flicker from identical redraws) */
 (function(){ if(window.__g1814) return; window.__g1814 = 1;
   var d = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML'); if(!d || !d.set || !d.get) return;
@@ -7067,7 +7127,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1639;
+const COE_V = 1640;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24195,7 +24255,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   /* 693 · coaching */
   const coachRecs = (d, who) => (d.records || []).filter(r => r.training_id === 'coach' && r.teacher === who && r.status === 'done').sort((a, b) => String(b.done_at).localeCompare(String(a.done_at)));
   const coachUp = (d, who) => (d.sessions || []).filter(s => s.training_id === 'coach' && s.status === 'scheduled' && (s.invited || []).includes(who) && new Date(s.starts_at).getTime() > Date.now() - 3 * 3600e3);
-  const splitN = n => { let t = String(n || ''); const c = (t.match(/\n§coach:(.*)/) || [])[1] || '', v = (t.match(/\n§video:(.*)/) || [])[1] || '', f = (t.match(/\n§file:(.*)/) || [])[1] || ''; t = t.replace(/\n§(coach|video|file):.*/g, ''); const m = t.split(' — '); return { topic: m[0] || '', notes: m.slice(1).join(' — '), coach: c.trim(), video: v.trim(), file: f.trim() }; };
+  const splitN = n => { let t = String(n || ''); const c = (t.match(/\n§coach:(.*)/) || [])[1] || '', v = (t.match(/\n§video:(.*)/) || [])[1] || '', f = (t.match(/\n§file:(.*)/) || [])[1] || ''; t = t.replace(/\n§(coach|video|file|mins):.*/g, ''); const m = t.split(' — '); return { topic: m[0] || '', notes: m.slice(1).join(' — '), coach: c.trim(), video: v.trim(), file: f.trim() }; };
   const packN = (topic, notes, coach, video, file) => (topic || 'Coaching') + (notes ? ' — ' + notes : '') + (coach ? '\n§coach:' + coach : '') + (file ? '\n§file:' + file : video ? '\n§video:' + video : '');
   const coachSel = (id, def) => { const T = ['' + ((typeof D !== 'undefined' && D && D.me && D.me.name) || 'Management') + ''].concat(teachers().map(x => x.name).sort()); return '<select id="' + id + '" style="width:100%;margin:4px 0 10px">' + [...new Set(T)].map(n => '<option' + (n === def ? ' selected' : '') + '>' + e(n) + '</option>').join('') + '</select>'; };
   function coachList(d, who){ const U = coachUp(d, who), P = coachRecs(d, who);
@@ -24230,7 +24290,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       + '<div class="card"><label class="small mute">Teacher</label><select id="tcT" style="width:100%;margin:4px 0 10px">' + T.map(n => '<option' + (n === name ? ' selected' : '') + '>' + e(n) + '</option>').join('') + '</select>'
       + '<label class="small mute">Coach</label>' + coachSel('tcC', (D.me || {}).name) + '<label class="small mute">Topic</label><input id="tcP" placeholder="e.g. REF · Reading Explorer Foundations, Unit 3" style="width:100%;margin:4px 0 10px">'
       + '<label class="small mute">Date and time (PH)</label><input type="datetime-local" id="tcD" value="' + now8.slice(0, 16) + '" style="width:100%;margin:4px 0 10px">'
-      + '<div id="tcBk"><label class="small mute">Minutes</label><input type="number" id="tcM" value="30" style="width:100%;margin:4px 0 10px"><label class="small mute">Meeting link (optional)</label><input id="tcU" style="width:100%;margin-top:4px"></div>'
+      + '<label class="small mute">Minutes</label><input type="number" id="tcM" value="60" style="width:100%;margin:4px 0 10px"><div id="tcBk"><label class="small mute">Meeting link (optional)</label><input id="tcU" style="width:100%;margin-top:4px"></div>'
       + '<div id="tcLg" class="hide"><label class="small mute">Notes for the teacher · what we worked on, next steps</label><textarea id="tcN" rows="5" style="width:100%;margin:4px 0 10px"></textarea><label class="small mute">Recording link (optional · e.g. Google Drive, shared with the teacher)</label><input id="tcV" placeholder="https://…" style="width:100%;margin:4px 0 10px">' + fileIn('tcF', 'tcFP') + '</div></div>'
       + '<button class="btn teal block" id="tcS" style="margin-top:12px" onclick="trCoachSave()">Book coaching</button>'); window._tcMode = 0; };
   window.trCoachMode = m => { window._tcMode = m; $('tcB').classList.toggle('on', !m); $('tcL').classList.toggle('on', !!m); $('tcBk').classList.toggle('hide', !!m); $('tcLg').classList.toggle('hide', !m); $('tcS').textContent = m ? 'Save coaching' : 'Book coaching'; };
@@ -24239,14 +24299,14 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       if(same.length){ let w = $('tcDup'); if(!w){ w = document.createElement('div'); w.id = 'tcDup'; w.className = 'card'; w.style.cssText = 'margin-top:12px;border:1.5px solid #F0C9BD;background:#FBEDE8'; const b0 = $('tcS'); b0.parentNode.insertBefore(w, b0); }
         w.innerHTML = '<b>' + e(tName(t)) + ' already has a coaching on ' + e(fmtD(same[0].done_at)) + '</b><div class="small" style="margin:4px 0 10px">' + e(splitN(same[0].note).topic) + ' · to add the recording, use + Recording on that coaching instead of logging it again.</div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sm teal" onclick="trCoachRec(' + same[0].id + ')">+ Recording on that one</button><button class="btn sm ghost" onclick="trCoachSave(1)">It\'s a different session · save</button></div>'; return; } }
     const b = $('tcS'); b.disabled = true; try{
-      if(window._tcMode){ const fp = await coachFile('tcF', t, 'tcFP'); await call('rec_add', { teacher: t, training_id: 'coach', status: 'done', via: 'live', done_at: d + ':00+08:00', note: packN(p, v('tcN').trim(), v('tcC'), v('tcV').trim(), fp) }); }
-      else await call('sess_set', { s: { training_id: 'coach', starts_at: d + ':00+08:00', mins: +v('tcM') || 30, facilitator: v('tcC') || (D.me || {}).name || '', meet_url: v('tcU'), note: p, invited: [t] } });
+      if(window._tcMode){ const fp = await coachFile('tcF', t, 'tcFP'); await call('rec_add', { teacher: t, training_id: 'coach', status: 'done', via: 'live', done_at: d + ':00+08:00', note: packN(p, v('tcN').trim(), v('tcC'), v('tcV').trim(), fp) + '\n§mins:' + (+v('tcM') || 60) }); }
+      else await call('sess_set', { s: { training_id: 'coach', starts_at: d + ':00+08:00', mins: +v('tcM') || 60, facilitator: v('tcC') || (D.me || {}).name || '', meet_url: v('tcU'), note: p, invited: [t] } });
       toast(window._tcMode ? 'Coaching saved ✓' : 'Coaching booked ✓ · ' + t + ' sees it on Trainings'); closeSheet(); await loadAll(true); paintAll(); }catch(x){ toast(x.message); b.disabled = false; } };
   window.trCoachDone = function(sid){ const s = (AL.sessions || []).find(x => x.id === sid); if(!s) return; const t = (s.invited || [])[0] || '';
     openSheet('<h1>Coaching done</h1><div class="mute small">' + e(tName(t)) + ' · ' + e(s.note || '') + ' · ' + e(fmtDT(s.starts_at)) + '</div><div class="card" style="margin-top:12px"><label class="small mute">Notes for the teacher · what we worked on, next steps</label><textarea id="tcN2" rows="6" style="width:100%;margin:4px 0 10px"></textarea><label class="small mute">Coach</label>' + coachSel('tcC2', s.facilitator || (D.me || {}).name) + '<label class="small mute">Recording link (optional · e.g. Google Drive, shared with the teacher)</label><input id="tcV2" placeholder="https://…" style="width:100%;margin:4px 0 10px">' + fileIn('tcF2', 'tcFP2') + '</div>'
       + '<button class="btn teal block" id="tcS2" style="margin-top:12px" onclick="trCoachDoneSave(' + sid + ')">Save</button>'); };
   window.trCoachDoneSave = async function(sid){ const s = (AL.sessions || []).find(x => x.id === sid); if(!s) return; const b = $('tcS2'); b.disabled = true; const n = (($('tcN2') || {}).value || '').trim();
-    try{ const fp = await coachFile('tcF2', (s.invited || [])[0] || 'coach', 'tcFP2'); for(const t of (s.invited || [])) await call('rec_add', { teacher: t, training_id: 'coach', status: 'done', via: 'live', done_at: s.starts_at, note: packN(s.note || 'Coaching', n, (($('tcC2') || {}).value || s.facilitator || ''), (($('tcV2') || {}).value || '').trim(), fp) });
+    try{ const fp = await coachFile('tcF2', (s.invited || [])[0] || 'coach', 'tcFP2'); for(const t of (s.invited || [])) await call('rec_add', { teacher: t, training_id: 'coach', status: 'done', via: 'live', done_at: s.starts_at, note: packN(s.note || 'Coaching', n, (($('tcC2') || {}).value || s.facilitator || ''), (($('tcV2') || {}).value || '').trim(), fp) + '\n§mins:' + (s.mins || 60) });
       await call('sess_set', { s: Object.assign({}, s, { status: 'done' }) }); toast('Saved ✓'); closeSheet(); await loadAll(true); paintAll(); }catch(x){ toast(x.message); b.disabled = false; } };
   window.trListOpen = k => { const L = (window._trLists || {})[k]; if(!L) return; openSheet('<h1>' + L[0] + '</h1><div style="margin-top:10px">' + (L[1].join('') || '<div class="small mute" style="padding:10px 0">Nothing here now.</div>') + '</div>' + (L[2] ? '<div style="margin-top:14px">' + L[2] + '</div>' : '')); };
   /* 698: ★ count in the header + "Cleared to teach" on Growth */
@@ -24431,15 +24491,15 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     const dt = s ? new Date(new Date(s.starts_at).getTime() + 8 * 3600e3).toISOString().slice(0, 16) : '', inv = s ? s.invited || [] : who ? [who] : [];
     openSheet('<h1>' + (s ? 'Edit session' : 'Schedule a training') + '</h1><div class="card" style="margin-top:12px">'
       + '<label class="small mute">Training</label><select id="tsT" style="width:100%;margin:4px 0 10px">' + M.map(t => '<option value="' + t.id + '"' + ((s ? s.training_id : tid) === t.id ? ' selected' : '') + '>' + e(t.title) + '</option>').join('') + '</select>'
-      + '<label class="small mute">Date and time (PH)</label><input type="datetime-local" id="tsD" value="' + dt + '" style="width:100%;margin:4px 0 10px">'
+      + '<div class="row" style="gap:10px"><div class="grow"><label class="small mute">Date</label><input type="date" id="tsD0" value="' + (dt ? dt.slice(0, 10) : new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)) + '" style="width:100%;margin:4px 0 10px"></div><div class="grow"><label class="small mute">Time (PH)</label><input type="time" id="tsD1" value="' + (dt ? dt.slice(11, 16) : '') + '" style="width:100%;margin:4px 0 10px"></div></div>'
       + '<label class="small mute">Minutes</label><input type="number" id="tsM" value="' + (s ? s.mins : 60) + '" style="width:100%;margin:4px 0 10px">'
       + '<label class="small mute">Facilitator</label><select id="tsF" style="width:100%;margin:4px 0 10px"><option value="">' + e((D.me || {}).name || 'Management') + '</option>' + T.map(n => '<option' + (s && s.facilitator === n ? ' selected' : '') + '>' + e(n) + '</option>').join('') + '</select>'
       + '<label class="small mute">Meeting link (VooV)</label><input id="tsU" value="' + e(s ? s.meet_url || '' : '') + '" style="width:100%;margin:4px 0 10px">'
       + '<label class="small mute">Note to teachers (optional)</label><input id="tsN" value="' + e(s ? s.note || '' : '') + '" style="width:100%;margin-top:4px"></div>'
       + '<h2 style="font-size:15px;margin-top:14px">Who attends</h2><div class="row" style="flex-wrap:wrap;gap:6px">' + T.map(n => '<label class="chip" style="cursor:pointer"><input type="checkbox" class="tsI" value="' + e(n) + '"' + (inv.includes(n) ? ' checked' : '') + '> ' + e(tName(n)) + '</label>').join('') + '</div>'
       + '<div class="row" style="gap:8px;margin-top:14px"><button class="btn teal grow" onclick="trSchedSave(' + (sid || 0) + ')">Save</button>' + (s ? '<button class="btn ghost" onclick="trSchedSave(' + sid + ',1)">Cancel session</button>' : '') + '</div>'); };
-  window.trSchedSave = async function(sid, cancel){ const v = id => ($(id) || {}).value || ''; if(!v('tsD')) return toast('Pick the date and time');
-    const s = { id: sid || undefined, training_id: v('tsT'), starts_at: v('tsD') + ':00+08:00', mins: +v('tsM') || 60, facilitator: v('tsF') || (D.me || {}).name || '', meet_url: v('tsU'), note: v('tsN'), invited: [...document.querySelectorAll('.tsI:checked')].map(x => x.value) };
+  window.trSchedSave = async function(sid, cancel){ const v = id => ($(id) || {}).value || ''; if(!v('tsD0')) return toast('Pick the date'); if(!v('tsD1')) return toast('Pick the time the training starts'); const tsD = v('tsD0') + 'T' + v('tsD1').slice(0, 5);
+    const s = { id: sid || undefined, training_id: v('tsT'), starts_at: tsD + ':00+08:00', mins: +v('tsM') || 60, facilitator: v('tsF') || (D.me || {}).name || '', meet_url: v('tsU'), note: v('tsN'), invited: [...document.querySelectorAll('.tsI:checked')].map(x => x.value) };
     if(cancel) s.status = 'cancelled'; try{ await call('sess_set', { s }); toast(cancel ? 'Cancelled' : 'Saved ✓ · it shows on their Trainings'); closeSheet(); await loadAll(true); paintAll(); }catch(x){ toast(x.message); } };
   window.trAttend = function(sid){ const s = (AL.sessions || []).find(x => x.id === sid); if(!s) return; const T = teachers().map(x => x.name), L = (s.invited || []).concat(T.filter(n => !(s.invited || []).includes(n)));
     openSheet('<h1>Attendance</h1><div class="mute small">' + e(fmtDT(s.starts_at)) + ' · ticking marks the training done for them' + (s.facilitator ? ' · ' + e(tName(s.facilitator)) + ' gets "Facilitate one training"' : '') + '</div><div style="margin-top:12px">'
