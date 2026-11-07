@@ -7169,7 +7169,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1658;
+const COE_V = 1659;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -37224,7 +37224,9 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   const V = () => document.getElementById('v-assess');
   // ---------- list ----------
   async function loadList(){ try{ const r = await call('list'); if(r && r.ok){ S.list = r.list; if(VIEW === 'assess' && !S.a) paintList(); } }catch(e){} }
-  function chip(a){ if(a.essay_submitted_at && a.wr_band == null) return '<span class="as-k t">Essay in \u00b7 score it</span>';   /* 1779 */
+  function chip(a){ const tg = a && a.kind === 'trial' ? '<span class="as-k" style="background:#E8EEFB;color:#2B4C9B">Online trial' + (a.teacher ? ' \u00b7 ' + E(a.teacher) : '') + '</span>' : '';
+    return tg + chip0(a); }
+  function chip0(a){ if(a.essay_submitted_at && a.wr_band == null) return '<span class="as-k t">Essay in \u00b7 score it</span>';   /* 1779 */
     return a.shared_at ? '<span class="as-k ok">Result sent</span>' : a.status === 'final' ? '<span class="as-k t">Final</span>' : '<span class="as-k w">In progress</span>'; }
   function paintList(){ const L = S.list;
     V().innerHTML = '<div class="as-h"><h1>Walk-in assessment</h1><span class="grow"></span><button class="btn teal" onclick="as1778.newForm()">+ New walk-in</button></div>' +
@@ -37245,7 +37247,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     catch(e){ toast(String(e.message || e)); if(b){ b.disabled = false; b.textContent = 'Start assessment'; } } }
   async function open(id){ try{ LK.q = null; LK.err = ''; }catch(e){} const c = (S.list || []).find(x => x.id === id); S.a = c ? Object.assign({ sp: {}, wr: {}, notes: {} }, c) : null; S.tab = 'speak'; S.typeEssay = false; if(S.a) paint(); else V().innerHTML = '<div class="as-card">Loading…</div>';
     try{ const r = await call('get', { id }); if(r && r.ok){ S.a = r.a; paint(); } else toast('Could not open'); }catch(e){ toast('Could not open · check the connection'); } }
-  function back(){ flush(); try{ const L = (S.list || []).find(x => S.a && x.id === S.a.id); if(L) Object.assign(L, { name: S.a.name, sp_band: S.a.sp_band, wr_band: S.a.wr_band, cefr: S.a.cefr }); }catch(e){} S.a = null; clearTimers(); paintList(); loadList(); }
+  function back(){ if(typeof D !== 'undefined' && D && !D.mgr){ flush(); S.a = null; clearTimers(); go('today'); return; } flush(); try{ const L = (S.list || []).find(x => S.a && x.id === S.a.id); if(L) Object.assign(L, { name: S.a.name, sp_band: S.a.sp_band, wr_band: S.a.wr_band, cefr: S.a.cefr }); }catch(e){} S.a = null; clearTimers(); paintList(); loadList(); }
   // ---------- saving ----------
   function put(path, val){ const a = S.a; if(!a) return; const [k, sub] = path.split('.');
     if(sub){ a[k] = Object.assign({}, a[k] || {}, { [sub]: val }); S.pend[k] = Object.assign({}, S.pend[k] || {}, { [sub]: val }); } else { a[k] = val; S.pend[k] = val; }
@@ -37443,7 +37445,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   function lkSug(){ const q = (LK.q == null ? '' : LK.q).trim().toLowerCase(), L = lkStudents(), nameW = String((S.a && S.a.name) || '').toLowerCase().split(/\s+/).filter(w => w.length > 1);
     const sc = s => { const t = (s.code + ' ' + s.name + ' ' + s.cn).toLowerCase(); if(q) return t.indexOf(q) > -1 ? (s.code.toLowerCase() === q ? 3 : 2) : 0; return nameW.filter(w => t.indexOf(w) > -1).length; };
     return L.map(s => [sc(s), s]).filter(x => x[0] > 0).sort((a, b) => b[0] - a[0] || b[1].code.localeCompare(a[1].code)).slice(0, 6).map(x => x[1]); }
-  function lkHtml(){ const a = S.a; if(!a) return ''; lkLoad(); const cur = a.student_code || '', st = cur ? lkStudents().find(s => s.code === cur) : null;
+  function lkHtml(){ const a = S.a; if(!a || (typeof D !== 'undefined' && D && !D.mgr)) return ''; lkLoad(); const cur = a.student_code || '', st = cur ? lkStudents().find(s => s.code === cur) : null;
     let h = '<h3 style="margin-top:14px">Linked student</h3><div class="as-m">Shows in her student portal once linked. Later changes here show there on its next refresh.</div>';
     if(cur) h += '<div class="as-row" style="align-items:center"><span style="font-weight:700;background:#E3F4F5;color:#00575F;border-radius:999px;padding:6px 12px;font-size:13.5px">' + E(cur) + (st && st.name ? ' · ' + E(st.name) : '') + '</span><button class="btn ghost sm" ' + (LK.busy ? 'disabled ' : '') + 'onclick="as1783.link(\'\')">Un-link</button><button class="btn ghost sm" onclick="as1783.change()">Change</button></div>'
       + (st && st.access && st.ph ? '<div class="as-row" style="align-items:center"><span class="as-m" style="margin:0">Her portal: <b style="color:#00575F">English (Philippines)</b> · from Market › Philippines</span></div>' : '') + (st && st.access && !st.ph ? '<div class="as-row" style="align-items:center"><span class="as-m" style="margin:0">Her portal language</span><button class="btn sm ' + (st.locale === 'en-ph' ? 'ghost' : 'teal') + '" onclick="as1783.loc(\'' + cur + '\',\'zh\')">中文 + English</button><button class="btn sm ' + (st.locale === 'en-ph' ? 'teal' : 'ghost') + '" onclick="as1783.loc(\'' + cur + '\',\'en-ph\')">English (Philippines)</button>' + (st.ph ? '<span class="as-m" style="margin:0">Philippine market: always English</span>' : '') + '</div>' : '');
@@ -37465,7 +37467,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   window.as1783 = { q: v => { LK.q = v; LK.err = ''; const s = document.getElementById('as-lks'); if(s){ const t = document.createElement('div'); t.innerHTML = lkHtml(); const n = t.querySelector('#as-lks'); s.innerHTML = n ? n.innerHTML : ''; } },
     link: lkLink, change: off => { LK.q = off ? null : ''; LK.err = ''; lkRefresh(!off); }, refresh: () => lkRefresh(),
     loc: (code, l) => { const A = window.__ps1350; if(A && A.setLoc) A.setLoc(code, l).then(() => lkRefresh()); } };
-  window.as1778 = { ck, nm, edit, show, scrOpen, homeMsg, newForm, create, open, back, put, band, tab, path, share, unshare, essayOpen, essayClose, del, copy, msg, pic, tStart, tStop, typeEssay: v => { S.typeEssay = !!v; flush(); paint(); } };
+  window.as1778 = { openTrial: a => { S.a = Object.assign({ sp: {}, wr: {}, notes: {} }, a); S.tab = 'speak'; S.typeEssay = false; go('assess'); paint(); }, call, ck, nm, edit, show, scrOpen, homeMsg, newForm, create, open, back, put, band, tab, path, share, unshare, essayOpen, essayClose, del, copy, msg, pic, tStart, tStop, typeEssay: v => { S.typeEssay = !!v; flush(); paint(); } };
   const _go = window.go; window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'assess'){ if(S.a) paint(); else { paintList(); loadList(); } } else if(S.a) flush(); }catch(e){} return r; };
   const w0 = () => { if(typeof D !== 'undefined' && D && D.mgr){ try{ buildNav(); }catch(e){} if(VIEW === 'assess') go('assess'); } else setTimeout(w0, 1500); }; setTimeout(w0, 1200);
 })();
@@ -37897,6 +37899,39 @@ body:not(.role-t) #v-home > .ovc{display:contents}
     call({ action: 'qaseen' }).then(r => { if(!(r && r.ok && r.ts)) return; let cur = 0; try{ cur = +(store('get', 'coe.qaseen') || 0); }catch(e){}
       if(+r.ts > cur){ try{ store('set', 'coe.qaseen', String(r.ts)); }catch(e){} try{ if(typeof renderToday === 'function') renderToday(); }catch(e){} } }).catch(() => { done = 0; }); }
   setTimeout(pull, 2500); setInterval(pull, 60000);
+})();
+</script>
+<script>
+/* 1854 · online IELTS trial classes: the walk-in assessment as the trial's report */
+(function(){
+  if(window.__1854) return; window.__1854 = 1;
+  const C = (op, o) => (window.as1778 && window.as1778.call) ? window.as1778.call(op, o) : Promise.reject(new Error('not ready'));
+  const K = { ok: null, list: [], at: 0 };
+  const key = (d, s) => String(d || '').slice(0, 10) + '|' + String(s || '').trim().toLowerCase();
+  function load(){ if(typeof D === 'undefined' || !D || D.mgr || typeof TOKEN === 'undefined' || !TOKEN || Date.now() - K.at < 60000) return Promise.resolve(); K.at = Date.now();
+    return C('tlist').then(r => { K.ok = !!(r && r.ok); K.list = (r && r.list) || []; if(K.ok) clear(); }).catch(() => {}); }
+  function mine(q){ return K.list.find(a => a.kind === 'trial' && key(a.trial_date, a.name) === key(q.date, q.student)); }
+  function clear(){ try{ let ch = 0; (D.special || []).forEach(x => { if(x.reportMissing && mine({ date: x.date, student: x.student })){ x.reportMissing = false; ch = 1; } }); if(ch && typeof renderToday === 'function') renderToday(); }catch(e){} }
+  async function openA(q){ const ex = mine(q); toast(ex ? 'Opening the IELTS assessment…' : 'Making the IELTS assessment…');
+    try{ const r = await C('tnew', { date: q.date, time: q.time || '', student: q.student, code: q.code || '' }); if(!r || !r.ok) throw new Error((r && (r.msg || r.error)) || 'Not saved');
+      if(!mine(q)) K.list.unshift(r.a); clear(); if(typeof closeSheet === 'function') closeSheet(); window.as1778.openTrial(r.a); }
+    catch(e){ toast(String(e.message || e) + ' \u00b7 try again'); } }
+  window.ie1854 = { open: i => openA(TRQS[i]), report: i => { if(typeof closeSheet === 'function') closeSheet(); setTimeout(() => base(i), 60); } };
+  let base = window.trialSheet;
+  if(typeof base === 'function') window.trialSheet = function(i){ const q = TRQS[i]; if(!K.ok || !q) return base.apply(this, arguments);
+    const ex = mine(q); if(ex) return openA(q);
+    openSheet('<h1>Trial report \u00b7 ' + esc(q.student || '') + '</h1><div class="small mute">' + esc(q.date || '') + (q.time ? ' \u00b7 ' + esc(q.time) : '') + '</div>'
+      + '<button class="btn teal block" style="margin-top:16px" onclick="ie1854.open(' + i + ')">IELTS assessment</button><div class="small mute" style="margin-top:4px">The walk-in test: Speaking parts 1\u20133 with timers and notes, 0\u20139 bands and CEFR; Writing optional (send her the link). It is this trial\u2019s report, and you can edit it any time.</div>'
+      + '<button class="btn ghost block" style="margin-top:14px" onclick="ie1854.report(' + i + ')">Usual trial report</button><div class="small mute" style="margin-top:4px">For young learners: the 9 ratings and the two comments.</div>'); };
+  setTimeout(load, 2500); setInterval(() => { if(!document.hidden) load(); }, 300000);
+  /* management: Overview shows new online IELTS trial assessments (last 3 days, result not sent yet) */
+  const M = { list: [], at: 0 };
+  function mLoad(){ if(typeof D === 'undefined' || !D || !D.mgr || typeof TOKEN === 'undefined' || !TOKEN || Date.now() - M.at < 120000) return; M.at = Date.now();
+    C('list').then(r => { if(r && r.ok){ const t3 = Date.now() - 3 * 864e5; M.list = (r.list || []).filter(a => a.kind === 'trial' && !a.shared_at && Date.parse(a.updated_at) > t3); try{ if(VIEW === 'home') renderHome(); if(typeof hmBadge === 'function') hmBadge(); }catch(e){} } }).catch(() => {}); }
+  const q0 = window.hmQueue; if(typeof q0 === 'function') window.hmQueue = function(){ const o = q0.apply(this, arguments); try{ const L = M.list;
+    if(o && o.Q && L.length) o.Q.push({ n: L.length, tone: '', t: 'Online IELTS trial assessments', s: L.slice(0, 3).map(a => a.name + (a.teacher ? ' (' + a.teacher + ')' : '') + (a.sp_band != null ? ' \u00b7 ' + (+a.sp_band).toFixed(1) : '')).join(' \u00b7 ') + ' \u00b7 open Walk-in test', go: "go('assess')" }); }catch(e){} return o; };
+  setTimeout(mLoad, 6000); setInterval(() => { if(!document.hidden) mLoad(); }, 300000);
+  const _go = window.go; if(typeof _go === 'function') window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'today'){ K.at = 0; load(); } }catch(e){} return r; };
 })();
 </script>
 </body>
