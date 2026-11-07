@@ -433,6 +433,33 @@ html:root:root{
   });
 })();
 </script>
+<script>/* 1828 · recording drop box (coaching and training recordings): drag the video file onto the box, or tap to choose.
+   The drop is handled here before the class-video drop handler (780), which would otherwise say "drop it on the class's box". */
+(function(){
+  if(window.vdz1828) return;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const IC = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="m16 10 6-3v10l-6-3z"/></svg>';
+  const st = document.createElement('style');
+  st.textContent = '.vdz1828 .ic{background:linear-gradient(135deg,#00A3AD,#00737B)!important}.vdz1828.ok .ic{background:linear-gradient(135deg,#3FA37A,#2E7D5B)!important}';
+  document.head.appendChild(st);
+  window.vdz1828 = (id, pid, who) => '<label class="small mute">Recording (MP4 · private: ' + esc(who) + ' and management)</label>'
+    + '<label class="drop vdz1828" for="' + id + '" style="margin-top:4px"><input type="file" id="' + id + '" accept="video/mp4,video/webm,video/quicktime" hidden>'
+    + '<span class="ic">' + IC + '</span><span class="grow"><b class="vdzT">Drag the video here</b><span class="small mute vdzS">or tap to choose · one file</span></span></label>'
+    + '<div id="' + pid + '" class="small mute" style="margin-top:4px"></div>';
+  const show = (z, f) => { const t = z.querySelector('.vdzT'), s = z.querySelector('.vdzS'); if(!f) return;
+    if(t) t.textContent = f.name; if(s) s.textContent = Math.max(1, Math.round(f.size / 1048576)) + ' MB · ready · tap to change'; z.classList.add('ok'); };
+  const zone = e => e.target && e.target.closest && e.target.closest('.vdz1828');
+  const files = e => e.dataTransfer && [...(e.dataTransfer.types || [])].indexOf('Files') > -1;
+  ['dragenter', 'dragover'].forEach(n => window.addEventListener(n, e => { const z = zone(e); if(!z || !files(e)) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; z.classList.add('on'); }, true));
+  window.addEventListener('dragleave', e => { const z = zone(e); if(z && !z.contains(e.relatedTarget)) z.classList.remove('on'); }, true);
+  window.addEventListener('drop', e => { const z = zone(e); if(!z || !files(e)) return; e.preventDefault(); e.stopPropagation(); z.classList.remove('on');
+    const L = e.dataTransfer.files, f = L && L[0]; if(!f) return;
+    if(!/^video\//.test(f.type) && !/\.(mp4|webm|mov|m4v)$/i.test(f.name)) return toast('That is not a video file · MP4 please');
+    const inp = z.querySelector('input[type=file]'); try{ const dt = new DataTransfer(); dt.items.add(f); inp.files = dt.files; }catch(x){ return toast('Tap the box to choose the file'); }
+    if(L.length > 1) toast('One video only · using ' + f.name); show(z, f); }, true);
+  document.addEventListener('change', e => { const i = e.target; if(i && i.type === 'file' && i.closest && i.closest('.vdz1828')) show(i.closest('.vdz1828'), (i.files || [])[0]); });
+})();
+</script>
 <script>/* 1826 · (Misty 7 Nov) the coach / trainer does her own part in the app: a teacher who coaches (e.g. Pam coaching Rose) writes the
    coaching notes and uploads the recording; a teacher who leads a training session adds her notes and the recording. Attendance
    stays with management. Each coaching given / training facilitated pays ₱200 per hour (database adds the payslip line). */
@@ -452,7 +479,7 @@ html:root:root{
       x.onload = () => x.status < 300 ? ok() : no(new Error(x.status === 413 ? 'The video is too big (' + Math.round(f.size / 1048576) + ' MB). Export it smaller, or paste a Drive link.' : 'Upload failed (' + x.status + ')'));
       x.onerror = () => no(new Error('Upload failed · check the internet and try again')); x.send(f); });
     if(P) P.textContent = 'Uploaded ✓'; return u.path; }
-  const fileIn1826 = (id, pid, who) => '<label class="small mute">Or upload the recording (MP4 · private: ' + who + ' and management)</label><input type="file" id="' + id + '" accept="video/mp4,video/webm,video/quicktime" style="width:100%;margin-top:4px"><div id="' + pid + '" class="small mute" style="margin-top:4px"></div>';
+  const fileIn1826 = (id, pid, who) => window.vdz1828(id, pid, who);
   function box1826(){ const el = document.getElementById('cg1826'); if(!el) return; const g = G1826;
     if(!g || (g.who || '').toLowerCase() !== W1826.toLowerCase()){ el.innerHTML = ''; return; }
     const U = g.upcoming || [], P = g.given || [], T = g.trains || []; if(!U.length && !P.length && !T.length){ el.innerHTML = ''; return; }
@@ -469,7 +496,7 @@ html:root:root{
   async function load1826(who){ W1826 = who; try{ const isMgr = typeof D !== 'undefined' && D && D.mgr; G1826 = await call1826('given', isMgr ? { teacher: who } : {}); }catch(x){} box1826(); }
   window.cg1826Done = function(sid){ const s = ((G1826 || {}).upcoming || []).find(x => x.id === sid); if(!s) return; const t = (s.invited || []).map(tName).join(', ');
     openSheet('<h1>Coaching done</h1><div class="mute small">' + esc1826(t) + ' · ' + esc1826(s.note || 'Coaching') + ' · ' + esc1826(dt1826(s.starts_at)) + ' · ' + hrs1826(s.mins) + '</div><div class="card" style="margin-top:12px"><label class="small mute">Notes for ' + esc1826(t) + ' · what we worked on, next steps</label><textarea id="cgN" rows="6" style="width:100%;margin:4px 0 10px"></textarea>'
-      + '<label class="small mute">Recording link (optional · e.g. Google Drive, shared with the teacher)</label><input id="cgV" placeholder="https://…" style="width:100%;margin:4px 0 10px">' + fileIn1826('cgF', 'cgFP', esc1826(t)) + '</div>'
+      + fileIn1826('cgF', 'cgFP', esc1826(t)) + '</div>'
       + '<div class="small mute" style="margin-top:10px">' + esc1826(t) + ' sees your notes and the recording on her Trainings. Management sees it too.</div><button class="btn teal block" id="cgS" style="margin-top:12px" onclick="cg1826DoneSave(' + sid + ')">Save</button>'); };
   window.cg1826DoneSave = async function(sid){ const b = $('cgS'), n = (($('cgN') || {}).value || '').trim(); if(n.length < 10) return toast('Write what you worked on and the next steps'); b.disabled = true;
     try{ const path = await upload1826('cgF', sid, 'cgFP'); await call1826('done', { sid, notes: n, path, video: (($('cgV') || {}).value || '').trim() });
@@ -477,7 +504,7 @@ html:root:root{
   window.cg1826Train = function(sid){ const s = ((G1826 || {}).trains || []).find(x => x.id === sid); if(!s) return; const tt = (s.coe_trainings && s.coe_trainings.title) || s.training_id;
     openSheet('<h1>' + esc1826(tt) + '</h1><div class="mute small">' + esc1826(dt1826(s.starts_at)) + ' · ' + hrs1826(s.mins) + ' · ' + esc1826((s.invited || []).map(tName).join(', ')) + '</div><div class="card" style="margin-top:12px"><label class="small mute">Trainer notes · what was covered, who needs follow-up</label><textarea id="ctN" rows="6" style="width:100%;margin:4px 0 10px">' + esc1826(s.trainer_notes || '') + '</textarea>'
       + (s.recording_path ? '<div class="small" style="margin-bottom:8px">Recording added ✓ <a class="link" onclick="cg1826Watch(' + sid + ')">Watch</a> · add a new one below to replace it</div>' : '')
-      + '<label class="small mute">Recording link (optional · e.g. Google Drive)</label><input id="ctV" placeholder="https://…" style="width:100%;margin:4px 0 10px">' + fileIn1826('ctF', 'ctFP', 'the invited teachers') + '</div>'
+      + fileIn1826('ctF', 'ctFP', 'the invited teachers') + '</div>'
       + '<div class="small mute" style="margin-top:10px">Management marks who attended.</div><button class="btn teal block" id="ctS" style="margin-top:12px" onclick="cg1826TrainSave(' + sid + ')">Save</button>'); };
   window.cg1826TrainSave = async function(sid){ const b = $('ctS'); b.disabled = true;
     try{ const path = await upload1826('ctF', sid, 'ctFP'), n = (($('ctN') || {}).value || '').trim(), v = (($('ctV') || {}).value || '').trim(); if(!n && !path && !/^https?:\/\//.test(v)){ b.disabled = false; return toast('Write the notes or add the recording'); }
@@ -7127,7 +7154,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1641;
+const COE_V = 1642;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24274,11 +24301,11 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       x.onload = () => { if(x.status < 300) return ok(); let m = ''; try{ const j = JSON.parse(x.responseText); m = j.message || j.error || ''; }catch(y){} no(new Error(/exceed|too large|size/i.test(m) || x.status === 413 ? 'The video is bigger than the upload limit (' + Math.round(f.size / 1048576) + ' MB). Export it smaller, or paste a Drive link instead.' : 'Upload failed (' + x.status + ')' + (m ? ': ' + m : ''))); };
       x.onerror = () => no(new Error('Upload failed · check the internet and try again')); x.send(f); });
     if(P) P.textContent = 'Uploaded ✓'; return u.path; }
-  const fileIn = (id, pid) => '<label class="small mute">Or upload the recording (MP4 · stays private: only this teacher and management)</label><input type="file" id="' + id + '" accept="video/mp4,video/webm,video/quicktime" style="width:100%;margin-top:4px"><div id="' + pid + '" class="small mute" style="margin-top:4px"></div>';
+  const fileIn = (id, pid) => window.vdz1828(id, pid, 'this teacher');
   window.trCoachPlay = async function(id){ try{ const r = await call('coach_video', { id }); openSheet('<h1>Coaching recording</h1><video src="' + e(r.url) + '" controls playsinline style="width:100%;margin-top:12px;border-radius:14px;background:#000"></video>'); }catch(x){ toast(x.message); } };
-  window.trCoachRec = function(id){ openSheet('<h1>Coaching recording</h1><div class="card" style="margin-top:12px">' + fileIn('tcF3', 'tcFP3') + '<label class="small mute" style="display:block;margin-top:12px">Or a link (e.g. Google Drive, shared with the teacher)</label><input id="tcV3" placeholder="https://…" style="width:100%;margin-top:4px"></div><button class="btn teal block" id="tcS3" style="margin-top:12px" onclick="trCoachRecSave(' + id + ')">Save</button>'); };
+  window.trCoachRec = function(id){ openSheet('<h1>Coaching recording</h1><div class="card" style="margin-top:12px">' + fileIn('tcF3', 'tcFP3') + '</div><button class="btn teal block" id="tcS3" style="margin-top:12px" onclick="trCoachRecSave(' + id + ')">Save</button>'); };
   window.trCoachRecSave = async function(id){ const b = $('tcS3'), r = ((AL && AL.records) || (TV && TV.records) || []).find(x => x.id === id) || {}; b.disabled = true;
-    try{ const path = await coachFile('tcF3', r.teacher || 'coach', 'tcFP3'), url = (($('tcV3') || {}).value || '').trim(); if(!path && !/^https?:\/\//.test(url)){ b.disabled = false; return toast('Choose a video or paste a link'); }
+    try{ const path = await coachFile('tcF3', r.teacher || 'coach', 'tcFP3'), url = (($('tcV3') || {}).value || '').trim(); if(!path && !/^https?:\/\//.test(url)){ b.disabled = false; return toast('Drag the video in, or tap to choose it'); }
       await call('coach_attach', { id, path, url }); toast('Recording saved ✓ · the teacher can watch it'); closeSheet(); await loadAll(true); paintAll(); }catch(x){ toast(x.message); b.disabled = false; } };
   /* 721: management · per-teacher coaching record */
   function coachRows(d, T){ return T.map(x => ({ n: x.name, P: coachRecs(d, x.name) })).sort((a, b) => b.P.length - a.P.length || String(a.n).localeCompare(b.n))
@@ -24291,7 +24318,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       + '<label class="small mute">Coach</label>' + coachSel('tcC', (D.me || {}).name) + '<label class="small mute">Topic</label><input id="tcP" placeholder="e.g. REF · Reading Explorer Foundations, Unit 3" style="width:100%;margin:4px 0 10px">'
       + '<label class="small mute">Date and time (PH)</label><input type="datetime-local" id="tcD" value="' + now8.slice(0, 16) + '" style="width:100%;margin:4px 0 10px">'
       + '<label class="small mute">Minutes</label><input type="number" id="tcM" value="60" style="width:100%;margin:4px 0 10px"><div id="tcBk"><label class="small mute">Meeting link (optional)</label><input id="tcU" style="width:100%;margin-top:4px"></div>'
-      + '<div id="tcLg" class="hide"><label class="small mute">Notes for the teacher · what we worked on, next steps</label><textarea id="tcN" rows="5" style="width:100%;margin:4px 0 10px"></textarea><label class="small mute">Recording link (optional · e.g. Google Drive, shared with the teacher)</label><input id="tcV" placeholder="https://…" style="width:100%;margin:4px 0 10px">' + fileIn('tcF', 'tcFP') + '</div></div>'
+      + '<div id="tcLg" class="hide"><label class="small mute">Notes for the teacher · what we worked on, next steps</label><textarea id="tcN" rows="5" style="width:100%;margin:4px 0 10px"></textarea>' + fileIn('tcF', 'tcFP') + '</div></div>'
       + '<button class="btn teal block" id="tcS" style="margin-top:12px" onclick="trCoachSave()">Book coaching</button>'); window._tcMode = 0; };
   window.trCoachMode = m => { window._tcMode = m; $('tcB').classList.toggle('on', !m); $('tcL').classList.toggle('on', !!m); $('tcBk').classList.toggle('hide', !!m); $('tcLg').classList.toggle('hide', !m); $('tcS').textContent = m ? 'Save coaching' : 'Book coaching'; };
   window.trCoachSave = async function(force){ const v = id => ($(id) || {}).value || '', t = v('tcT'), p = v('tcP').trim(), d = v('tcD'); if(!t || !p) return toast('Choose the teacher and write the topic'); if(!d) return toast('Pick the date');
@@ -24303,7 +24330,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       else await call('sess_set', { s: { training_id: 'coach', starts_at: d + ':00+08:00', mins: +v('tcM') || 60, facilitator: v('tcC') || (D.me || {}).name || '', meet_url: v('tcU'), note: p, invited: [t] } });
       toast(window._tcMode ? 'Coaching saved ✓' : 'Coaching booked ✓ · ' + t + ' sees it on Trainings'); closeSheet(); await loadAll(true); paintAll(); }catch(x){ toast(x.message); b.disabled = false; } };
   window.trCoachDone = function(sid){ const s = (AL.sessions || []).find(x => x.id === sid); if(!s) return; const t = (s.invited || [])[0] || '';
-    openSheet('<h1>Coaching done</h1><div class="mute small">' + e(tName(t)) + ' · ' + e(s.note || '') + ' · ' + e(fmtDT(s.starts_at)) + '</div><div class="card" style="margin-top:12px"><label class="small mute">Notes for the teacher · what we worked on, next steps</label><textarea id="tcN2" rows="6" style="width:100%;margin:4px 0 10px"></textarea><label class="small mute">Coach</label>' + coachSel('tcC2', s.facilitator || (D.me || {}).name) + '<label class="small mute">Recording link (optional · e.g. Google Drive, shared with the teacher)</label><input id="tcV2" placeholder="https://…" style="width:100%;margin:4px 0 10px">' + fileIn('tcF2', 'tcFP2') + '</div>'
+    openSheet('<h1>Coaching done</h1><div class="mute small">' + e(tName(t)) + ' · ' + e(s.note || '') + ' · ' + e(fmtDT(s.starts_at)) + '</div><div class="card" style="margin-top:12px"><label class="small mute">Notes for the teacher · what we worked on, next steps</label><textarea id="tcN2" rows="6" style="width:100%;margin:4px 0 10px"></textarea><label class="small mute">Coach</label>' + coachSel('tcC2', s.facilitator || (D.me || {}).name) + '' + fileIn('tcF2', 'tcFP2') + '</div>'
       + '<button class="btn teal block" id="tcS2" style="margin-top:12px" onclick="trCoachDoneSave(' + sid + ')">Save</button>'); };
   window.trCoachDoneSave = async function(sid){ const s = (AL.sessions || []).find(x => x.id === sid); if(!s) return; const b = $('tcS2'); b.disabled = true; const n = (($('tcN2') || {}).value || '').trim();
     try{ const fp = await coachFile('tcF2', (s.invited || [])[0] || 'coach', 'tcFP2'); for(const t of (s.invited || [])) await call('rec_add', { teacher: t, training_id: 'coach', status: 'done', via: 'live', done_at: s.starts_at, note: packN(s.note || 'Coaching', n, (($('tcC2') || {}).value || s.facilitator || ''), (($('tcV2') || {}).value || '').trim(), fp) + '\n§mins:' + (s.mins || 60) });
