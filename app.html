@@ -7180,7 +7180,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1674;
+const COE_V = 1675;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36706,7 +36706,10 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       + '<div class="m" style="margin-top:6px">Scheduled payout date: ' + esc(longDay(sl.payout_date || nextPay(S.month))) + ' · Payment method: ' + esc(sl.method || 'Bank Transfer (UnionBank)') + '</div>'
       + '<div class="k"><div class="kg"><span class="m">Gross compensation</span><b>' + pz(gross) + '</b></div><div class="kd"><span class="m">Total deductions</span><b>' + pz(totalDed) + '</b></div><div class="kn"><span class="m">Net compensation</span><b>' + pz(net) + '</b></div></div>'
       + '<h2>Compensation</h2><table>' + row('<b>Item</b>', '<b>Units</b>', '<b>Amount</b>')
-      + (+r.base ? row('Base pay (days worked)', '', pz(r.base)) : '')
+      + (+r.base ? (() => { const D = S.days; if(!D || !(+D.n)) return row('Base pay (days worked)', '', pz(r.base));   /* 1876 */
+        const hp = Math.round((+D.holPay || 0) * 100) / 100, dp = Math.round(((+r.base || 0) - hp) * 100) / 100, part = (+D.n) - (+D.full || 0);
+        return row('Office days worked' + (+D.rate ? ' @ ' + pz(D.rate) + ' per day' : '') + (part > 0 ? ' <span class="m">(' + (+D.full) + ' full · ' + part + ' partial ' + (part === 1 ? 'day' : 'days') + ')</span>' : ''), (+D.n) + ' ' + ((+D.n) === 1 ? 'day' : 'days'), pz(dp))
+          + (hp ? row('Holiday pay', (+D.hol || '') + ((+D.hol) ? ((+D.hol) === 1 ? ' day' : ' days') : ''), pz(hp)) : ''); })() : '')
       + (rr1765 ? rr1765.rows : '') + (rr1765 ? '' : (+r.reg || 0) || !(+r.base) ? row('Regular lessons @ ' + rateTxt, +r.reg || 0, pz((r.courses || []).length ? lessonsPay - ((+r.sub || 0) + (+r.trial || 0)) * (+r.rate || 0) : regPay)) : '')
       + (rr1765 ? '' : ((+r.trial) ? row('Trial classes', +r.trial, pz((+r.trial) * (+r.rate || 0))) : '') + ((+r.sub) ? row('Substitute classes', +r.sub, pz((+r.sub) * (+r.rate || 0))) : ''))
       + inc.map(c => row('Incentive · ' + esc(c.type || c.subject) + (c.student ? ' · ' + esc(c.student) : '') + ' <span class="m">' + esc(c.id) + '</span>', '', pz(c.incentive))).join('')
