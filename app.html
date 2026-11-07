@@ -7156,7 +7156,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1645;
+const COE_V = 1646;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -15162,7 +15162,10 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
   function apply(){ if(!T || typeof D === 'undefined' || !D || !Array.isArray(D.special)) return; const t0 = today(), lo = new Date(Date.now() + 8 * 3600e3 - 44 * 864e5).toISOString().slice(0, 10);
     const keep = D.special.filter(x => { if(x.type !== 'Trial' || !x.code || !x.date) return true; const d = String(x.date).slice(0, 10); if(d >= t0 || d < lo) return true;
       return T.some(c => c.code === String(x.code).trim().toUpperCase() && near(c.day, d)); });
-    if(keep.length !== D.special.length){ D.special = keep; try{ render(); }catch(e){} } }
+    let ch = keep.length !== D.special.length;
+    keep.forEach(x => { if(x.type !== 'Trial' || !x.reportMissing || !x.code || !x.date) return; const d = String(x.date).slice(0, 10);
+      if(T.some(c => c.existing && c.code === String(x.code).trim().toUpperCase() && near(c.day, d))){ x.reportMissing = false; x.status = 'Teacher change'; ch = true; } });   /* 1832 */
+    if(ch){ D.special = keep; try{ render(); }catch(e){} } }
   async function check(){ try{ if(typeof D === 'undefined' || !D || D.mgr || !TOKEN || !(D.special || []).some(x => x.type === 'Trial')) return;
       if(T && Date.now() - AT < 5 * 6e4){ apply(); return; } if(BUSY) return; BUSY = 1;
       const r = await fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-coach', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'mytrials' }) }).then(x => x.json());
