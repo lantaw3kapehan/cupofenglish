@@ -7156,7 +7156,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1643;
+const COE_V = 1644;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24211,9 +24211,14 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
 
   /* ---------- management ---------- */
   let TV = null;   // management viewing one teacher's path
-  function teachers(){ const P = (typeof PF !== 'undefined' && PF) || (typeof kept === 'function' && kept('perf')) || null; const T = (P && P.teachers) || [];
+  function teachers(){ lad1830(); const DB = window._lad1830; if(DB && DB.length) return DB.map(x => ({ name: x.name, ix: x.fixed || !x.rank ? -1 : rix(x.rank), rank: x.rank, life: +x.life || 0, next: x.next ? { name: x.next.name, need: +x.next.need, units: +x.next.units } : null, fixed: !!x.fixed }));
+    const P = (typeof PF !== 'undefined' && PF) || (typeof kept === 'function' && kept('perf')) || null; const T = (P && P.teachers) || [];
     const names = T.map(x => ({ name: x.name, ix: typeof x.rankIx === 'number' ? x.rankIx : rix(x.rank), rank: x.rank, life: x.lifetime, next: x.next }));
     (AL && AL.records || []).forEach(r => { if(!names.some(x => x.name === r.teacher)) names.push({ name: r.teacher, ix: -1, rank: '', life: 0 }); }); return names; }
+  function lad1830(){ if(window._lad1830p) return; window._lad1830p = 1;   /* 1830 · ranks from the database */
+    fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-coach', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'ladder' }) })
+      .then(r => r.json()).then(j => { if(j && j.ok && Array.isArray(j.list) && j.list.length){ window._lad1830 = j.list; try{ paintAll(); }catch(x){} } }).catch(() => {})
+      .finally(() => setTimeout(() => { window._lad1830p = 0; }, 120000)); }
   async function needPerf(){ if((typeof PF !== 'undefined' && PF) || (typeof kept === 'function' && kept('perf'))) return; try{ const v = await api('mgmtPerformance', TOKEN); if(v){ try{ keep('perf', v); }catch(x){} try{ PF = v; }catch(x){} } }catch(x){} }
   function paintAll(){ const v = $('v-train'); if(!v || !AL) return; const d = AL, T = teachers(), M = (d.trainings || []).filter(t => t.kind === 'mandatory').sort((a, b) => a.sort - b.sort);
     const now = Date.now(), up = (d.sessions || []).filter(s => s.status === 'scheduled').sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
@@ -24261,7 +24266,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     const act = (key, lab, sub, warn) => '<button type="button" class="tq-a' + (warn && n(key) ? ' warn' : '') + '" onclick="trListOpen(\'' + key + '\')"><span class="grow"><b>' + lab + '</b><small>' + sub + '</small></span><strong>' + n(key) + '</strong><span class="mute">›</span></button>';
     return '<section class="tq"><div class="tq-l"><div class="tx-h"><b>Team ladder</b><span>' + T.filter(x => x.ix >= 0).length + ' teachers · tap a name for their path</span></div>'
       + rows.map(r => '<div class="tq-r" style="--c:' + (RC[r.rk] || '#00A3AD') + '"><div class="tq-rk"><span>' + e(RS[r.rk] || r.rk) + '</span><small>' + r.L.length + '</small></div><div class="tq-t">' + (r.L.length ? r.L.map(chip).join('') : '<span class="tq-e">—</span>') + '</div></div>').join('')
-      + (none.length ? '<div class="tq-r" style="--c:#C9C6D6"><div class="tq-rk"><span>Rank not set</span><small>' + none.length + '</small></div><div class="tq-t">' + none.map(x => '<button type="button" class="tq-c" onclick="trView(\'' + e(x.name) + '\')"><b>' + e(x.name) + '</b></button>').join('') + '</div></div>' : '')
+      + (none.length ? '<div class="tq-r" style="--c:#C9C6D6"><div class="tq-rk"><span>' + (none.every(x => x.fixed) ? 'Fixed rate' : 'Rank not set') + '</span><small>' + none.length + '</small></div><div class="tq-t">' + none.map(x => '<button type="button" class="tq-c" onclick="trView(\'' + e(x.name) + '\')"><b>' + e(x.name) + '</b></button>').join('') + '</div></div>' : '')
       + '<div class="tq-lg"><span><i class="tq-b"><i style="width:60%"></i></i> units to the next rank</span><span><em>! 2</em> trainings not recorded yet</span><span><em class="r">ready · training missing</em> units enough, training blocks the rank</span></div></div>'
       + '<div class="tq-rt"><div class="tx-h"><b>To act on</b></div>' + act('need', 'Needs you', 'approve reflections · tick recordings', 1) + act('blocked', 'Blocked from the next rank', 'enough units · a training is missing', 1)
       + act('coming', 'Coming up', 'scheduled sessions') + '<button type="button" class="tq-a" onclick="trListOpen(\'coach\')"><span class="grow"><b>Coaching</b><small>' + CR.filter(x => x).length + (CR.filter(x => x).length === 1 ? ' teacher' : ' teachers') + ' coached</small></span><strong>' + CT + '</strong><span class="mute">›</span></button>'
