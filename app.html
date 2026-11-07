@@ -4448,10 +4448,11 @@ async function fd1806load(){ if(FD1806.busy || typeof sbDoc !== 'function') retu
 function fd1806paint(){ const v = $('v-home'); if(!v || !(typeof D !== 'undefined' && D && D.mgr)) return; const L = FD1806.items; if(!L) return;
   const s = fd1806seen(), nw = L.filter(x => fd1806new(x, s)), ic = { leave: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17M10 13.5l4 4M14 13.5l-4 4"/></svg>', withdrawn: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>', msg: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19.5l1.5-4.3A7.5 7.5 0 1 1 20 11.5z"/></svg>' }, lb = { leave: 'filed a notice of unavailability', withdrawn: 'withdrew a notice', msg: 'sent a message' };
   const ago = t => { const m = Math.round((Date.now() - Date.parse(t)) / 6e4); return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' + new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); };
-  const pool = nw.length ? nw : L.slice(0, 3), show = FD1806.all ? pool.slice(0, 12) : pool.slice(0, 3);   /* 1815: 3 unless Show all */
-  const h = '<section class="fd1806' + (nw.length ? ' on' : '') + '" id="fd1806"><div class="fd-h"><b>' + (nw.length ? nw.length + ' new from teachers' : 'From teachers · nothing new') + '</b>'
-    + (nw.length ? '<button class="btn sm ghost" onclick="fd1806all()">Mark all seen</button>' : '<span class="small mute">last 7 days</span>') + '</div>'
-    + (show.length ? show.map(x => '<a class="fd-r' + (fd1806new(x, s) ? ' n' : '') + '" onclick="fd1806open(\'' + esc(x.id) + '\')"><span class="fd-i fd-' + esc(x.k) + '">' + (ic[x.k] || '') + '</span><span class="fd-t"><b>' + esc(tName(x.who || '')) + '</b> ' + (lb[x.k] || '') + (x.st && x.k === 'leave' ? ' · <i>' + esc(x.st) + '</i>' : '') + '<br><span class="small mute">' + esc(x.d || '') + '</span></span><span class="small mute fd-a">' + ago(x.at) + '</span></a>').join('') + (pool.length > 3 ? '<a class="link small" style="display:block;padding:6px 6px 0" onclick="FD1806.all=!FD1806.all;fd1806paint()">' + (FD1806.all ? 'Show fewer' : 'Show all ' + pool.length) + '</a>' : '') : '<div class="small mute" style="padding:6px 0">No notices or messages from teachers in the last 7 days.</div>')
+  const pool = nw.length ? nw : L.slice(0, 3), show = !FD1806.open ? [] : FD1806.all ? pool.slice(0, 12) : pool.slice(0, 3);   /* 1815: 3 unless Show all · 1837: one line until Show */
+  const cnt37 = k => nw.filter(x => x.k === k).length, sumL37 = [[cnt37('leave'), 'notice of unavailability', 'notices of unavailability'], [cnt37('withdrawn'), 'withdrawn notice', 'withdrawn notices'], [cnt37('msg'), 'message', 'messages']].filter(a => a[0]).map(a => a[0] + ' ' + (a[0] === 1 ? a[1] : a[2])), sum37 = sumL37.length > 1 ? sumL37.slice(0, -1).join(', ') + ' and ' + sumL37[sumL37.length - 1] : (sumL37[0] || '');
+  const h = '<section class="fd1806' + (nw.length ? ' on' : '') + '" id="fd1806"><div class="fd-h"><span class="fd37"><b>' + (nw.length ? 'From teachers: ' + nw.length + ' new' : 'From teachers: nothing new') + '</b><span class="small mute">' + (nw.length ? esc(sum37) : 'Last 7 days') + '</span></span>'
+    + '<span class="fd37b">' + (nw.length && FD1806.open ? '<button class="btn sm ghost" onclick="fd1806all()">Mark all seen</button>' : '') + (L.length ? '<button class="btn sm ' + (FD1806.open || !nw.length ? 'ghost' : 'teal') + '" aria-expanded="' + !!FD1806.open + '" onclick="FD1806.open=!FD1806.open;fd1806paint()">' + (FD1806.open ? 'Hide' : 'Show') + '</button>' : '') + '</span></div>'
+    + (show.length ? show.map(x => '<a class="fd-r' + (fd1806new(x, s) ? ' n' : '') + '" onclick="fd1806open(\'' + esc(x.id) + '\')"><span class="fd-i fd-' + esc(x.k) + '">' + (ic[x.k] || '') + '</span><span class="fd-t"><b>' + esc(tName(x.who || '')) + '</b> ' + (lb[x.k] || '') + (x.st && x.k === 'leave' ? ' · <i>' + esc(x.st) + '</i>' : '') + '<br><span class="small mute">' + esc(x.d || '') + '</span></span><span class="small mute fd-a">' + ago(x.at) + '</span></a>').join('') + (pool.length > 3 ? '<a class="link small" style="display:block;padding:6px 6px 0" onclick="FD1806.all=!FD1806.all;fd1806paint()">' + (FD1806.all ? 'Show fewer' : 'Show all ' + pool.length) + '</a>' : '') : (FD1806.open ? '<div class="small mute" style="padding:6px 0">No notices or messages from teachers in the last 7 days.</div>' : ''))
     + '</section>';
   const old = $('fd1806'); if(old) old.outerHTML = h; else { const ov = v.querySelector('.ov') || v; ov.insertAdjacentHTML('afterbegin', h); } }
 function fd1806all(){ const s = fd1806seen(); s.all = (FD1806.items && FD1806.items[0] && FD1806.items[0].at) || new Date().toISOString(); s.o = {}; fd1806save(s); fd1806paint(); }
@@ -4993,7 +4994,10 @@ const closed = c => /^(Not renewing|Paused|Renewing)/.test((REN||{})[String(c||'
 const ren = (R ? R.rows : []).filter(r => !closed(r[1])).map(r => { const left = parseFloat(r[tdCol(R,/LESSON|LEFT/,3)]), end = tdDays(r[tdCol(R,/EXPECTED|END/,5)]);
 return { name: r[0], now: !(left > 0) || left <= 1 || (end != null && end <= 7) }; });
 const fol = (F ? F.rows : []).filter(r => { const fu = r[tdCol(F,/FOLLOW/,7)]; return (!fu || /not set/i.test(fu)) && !TFU[tfuKey(r[0], r[1])] && !(window.tdExisting1813 && tdExisting1813(r[2], r[0])); });   /* 1813 */
-return { renNow: ren.filter(x => x.now), ren, fol, rep: P ? (P.rows || []).filter(r => { const t = trlFor(r[0], r[1], r[2]); return !(t && t.status === 'Sent'); }) : [], fix: X ? X.rows : [] }; }
+const rep = (P ? (P.rows || []) : []).filter(r => String(r[1] || '').trim() && !/reports? (are )?saved|all recent/i.test(String(r[0]) + ' ' + String(r[1]))).filter(r => { const t = trlFor(r[0], r[1], r[2]); return !(t && t.status === 'Sent'); });   /* 1837: counted the same way as the To do screen */
+try{ if(typeof TRL !== 'undefined' && TRL && TRL.rows && typeof ymdLocal === 'function'){ const s14 = ymdLocal(new Date(Date.now() - 14 * 864e5)); TRL.rows.forEach(t => { if(!t.date || t.status === 'Sent' || t.date < s14) return; if(rep.some(r => String(r[0] || '').slice(0, 10) === t.date && String(r[1] || '').trim().toLowerCase() === String(t.student || '').trim().toLowerCase())) return; rep.push([t.date, t.student, t.code]); }); } }catch(e){}
+const fix = (X ? X.rows : []).filter(r => { try{ const k = fixKey({ date: r[0], name: r[1], t: r[tdCol(X,/TEACHER/,2)], issue: r[tdCol(X,/ISSUE/,8)] || r.slice(3).filter(Boolean).pop() || '' }); return !FIXI[k] && !FIXD[k]; }catch(e){ return true; } });
+return { renNow: ren.filter(x => x.now), ren, fol, rep, fix }; }
 function hmQueue(){                                            // what needs management, most urgent first
 const Q = [], W = [], ok = [], add = (list, n, x) => { if(n > 0) list.push(Object.assign({ n }, x)); else if(x.okLabel) ok.push(x.okLabel); };
 const late = (MO && MO.late) || [];
@@ -7156,7 +7160,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1650;
+const COE_V = 1651;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -37625,6 +37629,171 @@ return (/^ST-\d{4}-\d{3}$/.test(code) && teacher && /^\d{4}-\d{2}$/.test(month))
     for(const k in base) try{ w[k] = base[k]; }catch(e){}
     w.__1834 = 1; window.api = w; return true; }
   if(!wrap()){ let n = 0; const t = setInterval(() => { if(wrap() || ++n > 40) clearInterval(t); }, 250); }
+})();
+</script>
+<style id="s1837">/* 1837 · (Misty 7 Nov, approved mock) management menu in four groups: Today, People, Messages, Finance;
+   Overview: numbers first, "Needs you" rows, teacher messages folded; every screen lined up the same way */
+@media(min-width:900px){
+  body:not(.role-t) #navIn > .ng:not(.ng37){display:none!important}
+  body:not(.role-t) #navIn > [data-v="more"]{display:none!important}
+  body:not(.role-t) #navIn > .ng37[data-g="today"]{margin-top:2px!important}
+}
+body:not(.role-t) #navIn > [data-v="db"]{display:none!important}
+body:not(.role-t) #navIn > *{order:90}
+body:not(.role-t) #navIn > .ng37[data-g="today"]{order:0}
+body:not(.role-t) #navIn > [data-v="home"]{order:1}
+body:not(.role-t) #navIn > [data-v="mtoday"]{order:2}
+body:not(.role-t) #navIn > [data-v="schedule"]{order:3}
+body:not(.role-t) #navIn > [data-v="monitor"]{order:4}
+body:not(.role-t) #navIn > [data-v="team"]{order:5}
+body:not(.role-t) #navIn > .ng37[data-g="people"]{order:10}
+body:not(.role-t) #navIn > [data-v="astudents"]{order:11}
+body:not(.role-t) #navIn > [data-v="trials"]{order:12}
+body:not(.role-t) #navIn > [data-v="enquiry"]{order:13}
+body:not(.role-t) #navIn > [data-v="teachers"]{order:14}
+body:not(.role-t) #navIn > [data-x="contracts"]{order:15}
+body:not(.role-t) #navIn > [data-x="notices"]{order:16}
+body:not(.role-t) #navIn > [data-v="assess"]{order:17}
+body:not(.role-t) #navIn > .ng37[data-g="msgs"]{order:20}
+body:not(.role-t) #navIn > [data-v="msgs"]{order:21}
+body:not(.role-t) #navIn > [data-v="chat"]{order:22}
+body:not(.role-t) #navIn > .ng37[data-g="fin"]{order:30}
+body:not(.role-t) #navIn > [data-v="payroll"]{order:31}
+body:not(.role-t) #navIn > [data-v="mypay"]{order:32}
+.g37l,.g37i{display:none}
+#g37bar{display:none}
+@media(max-width:899px){
+  body:not(.role-t) nav #navIn > :is(a,button){display:none!important}
+  body:not(.role-t) nav #navIn > .g37x{display:flex!important}
+  body:not(.role-t) nav #navIn > .g37x > .nl{display:none!important}
+  body:not(.role-t) nav #navIn > .g37x > .g37l{display:block;color:#4C4868}
+  body:not(.role-t) nav #navIn > .g37x:has(> .g37i) > svg{display:none!important}
+  body:not(.role-t) nav #navIn > .g37x > .g37i{display:flex;align-items:center;justify-content:center}
+  body:not(.role-t) nav #navIn > .g37x > .g37i svg{width:22px;height:22px}
+  body:not(.role-t) nav #navIn > .g37on{color:#00575F!important;font-weight:700!important;background:transparent!important;box-shadow:#00707A 0 3px 0 inset!important}
+  body:not(.role-t) nav #navIn > .g37on > .g37l{color:#00575F}
+  body:not(.role-t) nav #navIn > .g37on svg{border-radius:12px;color:#00575F;background:#D7EFF1!important;padding:3px 10px!important;width:44px!important;height:28px!important;margin:-3px 0!important;box-sizing:border-box}
+  body:not(.role-t) #g37bar.on{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0 12px;margin:0}
+  #g37bar::-webkit-scrollbar{display:none}
+  #g37bar button{flex:none;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid #CFE6E8;background:#fff;color:#00636B;font:600 13.5px/1 Inter,system-ui,sans-serif;cursor:pointer}
+  #g37bar button.on{background:#00707A;border-color:#00707A;color:#fff}
+}
+/* Overview order: numbers, Needs you, From teachers, then the rest */
+body:not(.role-t) #v-home:not(.hide){display:flex;flex-direction:column;gap:16px}
+body:not(.role-t) #v-home > .ovc{display:contents}
+#v-home > *, #v-home > .ovc > *{order:50}
+#v-home > .ovc > .x-top{order:1}
+#v-home #nd37{order:2}
+#v-home #fd1806{order:3;margin:0!important}
+#v-home #ovMon{order:4}
+#v-home > .ovc > .ov-two{order:5}
+#v-home > .ovc > .g890-risk{order:6}
+#v-home #x21c{order:7;margin:0!important}
+#v-home > .ovc > .g890-tr{order:8}
+#v-home > .ovc > .c-foot{order:9}
+#v-home .x-top > a.x-todo{display:none!important}
+#nd37{background:#fff;border:1px solid var(--line,#ECEAF1);border-radius:18px;padding:16px 18px 12px}
+#nd37 .nd-h{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+#nd37 .nd-h h2{margin:0;font-size:18px;font-weight:600}
+#nd37 .nd-h .nd-c{min-width:24px;height:24px;padding:0 8px;border-radius:999px;background:#E2F4F5;color:#00636B;font:600 13px/24px Inter,system-ui,sans-serif;text-align:center;box-sizing:border-box}
+#nd37 .nd-h a{margin-left:auto;font-size:14px;font-weight:600;color:#00636B;cursor:pointer}
+#nd37 .nd-r{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #F1EFF5}
+#nd37 .nd-r:first-of-type{border-top:0}
+#nd37 .nd-n{flex:none;min-width:40px;height:32px;border-radius:10px;background:#F3F2F8;color:#2B2253;font:600 15px/32px Inter,system-ui,sans-serif;text-align:center;font-variant-numeric:tabular-nums}
+#nd37 .nd-r.hot .nd-n{background:#FDEEE6;color:#9A3F2C}
+#nd37 .nd-t{flex:1;min-width:0;display:flex;flex-direction:column}
+#nd37 .nd-t b{font-size:15px;font-weight:600}
+#nd37 .nd-t small{font-size:13px;color:#6B6782;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#nd37 .nd-r .btn{flex:none;min-height:36px;min-width:76px}
+#nd37 .nd-w{margin-top:6px;padding-top:10px;border-top:1px solid #F1EFF5;font-size:13px;color:#6B6782;line-height:1.5}
+#nd37 .nd-w a{color:#00636B;cursor:pointer;font-weight:600}
+#nd37 .nd-ok{padding:8px 0;font-size:14px;color:#2F6F44}
+.fd37{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fd37b{display:flex;gap:8px;flex:none}
+/* every screen lined up the same way */
+@media(min-width:900px){
+  #main1467 > [id^="v-"]{max-width:1180px;margin-left:auto;margin-right:auto}
+  body:not(.role-t) #v-home:not(.hide){padding-top:16px}
+  #main1467 > [id^="v-"] > :is(.lead,.mo-h,.as-h):first-child{margin-top:28px!important}
+  #main1467 > [id^="v-"] > .grp-tabs + .lead{margin-top:4px!important}
+  #main1467 > [id^="v-"] > .grp-tabs + .lead h1{margin-top:0!important}
+}
+.grp-tabs[data-g="payroll"] > :nth-child(4){margin-left:0!important;opacity:1!important}
+.grp-tabs[data-g="teachers"] .x816{margin-left:0!important}
+.grp-tabs[data-g="teachers"] .x816::before{display:none!important}
+#as40Add{min-height:40px!important;border-radius:999px!important;font-size:14px!important;padding:0 16px!important}
+</style>
+<script>
+/* 1837 · four menu groups, the phone group bar, and Overview's "Needs you" rows */
+(function(){
+  if(window.__1837) return; window.__1837 = 1;
+  const $1 = id => document.getElementById(id);
+  const isM = () => typeof D !== 'undefined' && D && D.mgr;
+  const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const PEOPLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2 .8 3 2.8 3 6"/></svg>';
+  const CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19.5l1.5-4.3A7.5 7.5 0 1 1 20 11.5z"/></svg>';
+  const GR = [
+    { k: 'today', l: 'Today', lead: 'home', v: [['home', 'Overview'], ['mtoday', 'To do'], ['schedule', 'Schedule'], ['monitor', 'Monitor']] },
+    { k: 'people', l: 'People', lead: 'astudents', icon: PEOPLE, v: [['astudents', 'Students'], ['trials', 'Trials'], ['teachers', 'Teachers'], ['assess', 'Walk-in test']] },
+    { k: 'msgs', l: 'Messages', lead: 'msgs', icon: CHAT, v: [['msgs', 'Notices & requests'], ['chat', 'Team Chat']] },
+    { k: 'fin', l: 'Finance', lead: 'payroll', v: [['payroll', 'Finance']] }];
+  const SUB = { team: 'monitor', reports: 'astudents', db: 'astudents', active: 'astudents', enquiry: 'trials', perf: 'teachers', train: 'teachers', leave: 'teachers', actions: 'teachers',
+    finov: 'payroll', expenses: 'payroll', gov: 'payroll', money: 'payroll', forecast: 'payroll', wallets: 'payroll', mypay: 'payroll' };
+  const item = v => { const n = $1('navIn'); return n ? n.querySelector(':scope > [data-v="' + v + '"]') : null; };
+  const groupOf = v => { const t = SUB[v] || v; return GR.find(g => g.v.some(x => x[0] === t)) || null; };
+
+  function decorate(){ const n = $1('navIn'); if(!n || !isM()) return;
+    GR.forEach(g => { if(!n.querySelector(':scope > .ng37[data-g="' + g.k + '"]')){ const d = document.createElement('div'); d.className = 'ng ng37'; d.dataset.g = g.k; d.textContent = g.l; n.appendChild(d); }
+      const a = item(g.lead); if(!a) return;
+      if(!a.classList.contains('g37x')) a.classList.add('g37x');
+      if(!a.querySelector(':scope > .g37l')){ const s = document.createElement('span'); s.className = 'g37l'; s.textContent = g.l; const nl = a.querySelector(':scope > .nl'); if(nl) nl.insertAdjacentElement('afterend', s); else a.appendChild(s); }
+      if(g.icon && !a.querySelector(':scope > .g37i')){ const s = document.createElement('span'); s.className = 'g37i'; s.innerHTML = g.icon; a.insertBefore(s, a.firstChild); } });
+    mark(); }
+
+  function mark(){ if(!isM() || typeof VIEW === 'undefined') return; const g = groupOf(VIEW);
+    GR.forEach(x => { const a = item(x.lead); if(a){ const on = !!(g && g.k === x.k); if(a.classList.contains('g37on') !== on) a.classList.toggle('g37on', on); } });
+    bar(g); }
+
+  function bar(g){ const m = $1('main1467'); if(!m) return; let b = $1('g37bar');
+    if(!b){ b = document.createElement('div'); b.id = 'g37bar'; b.setAttribute('role', 'tablist'); b.setAttribute('aria-label', 'Screens in this group'); m.insertBefore(b, m.firstChild); }
+    const cur = SUB[VIEW] || VIEW, L = g ? g.v.filter(x => item(x[0])) : [];
+    const h = L.length > 1 ? L.map(x => '<button type="button" role="tab" aria-selected="' + (x[0] === cur) + '" class="' + (x[0] === cur ? 'on' : '') + '" onclick="go(\'' + x[0] + '\')">' + E(x[1]) + '</button>').join('') : '';
+    if(b.__h !== h){ b.__h = h; b.innerHTML = h; }
+    const on = !!h; if(b.classList.contains('on') !== on) b.classList.toggle('on', on); }
+
+  /* Overview · "Needs you": the same items as To do, one row each, most urgent first */
+  const KEY = { 'Renewals to act on now': ['renew', 'Copy the reminder and send it in WeChat.'], 'Trial reports to send': ['reports', 'Send the trial report to the parent.'],
+    'Trials not followed up': ['follow', 'Parents are waiting to hear about enrolment.'], 'Data to fix': ['fix', 'Missing codes or details to correct.'] };
+  function rows(q){ const R = [];
+    (q.Q || []).forEach(x => { if(x.t === 'App check') return;
+      if(x.t === 'Waiting in To do' && x.s){ String(x.s).split(' · ').forEach(p => { const m = p.match(/^(.*?)\s+(\d+(?:\.\d+)?)$/); if(!m) return; const t = m[1].trim(), k = KEY[t];
+          R.push({ t, n: +m[2], tone: t === 'Renewals to act on now' ? 'hot' : '', s: k ? k[1] : '', go: k ? "go('mtoday');setTimeout(()=>tdJump('" + k[0] + "'),80)" : "go('mtoday')" }); }); return; }
+      R.push({ t: x.t, n: +x.n || 0, tone: x.tone, s: String(x.s || '').replace(/ · /g, ', '), go: x.go || "go('mtoday')" }); });
+    const rank = { hot: 0, '': 1, low: 2 }; const rk = t => (t in rank ? rank[t] : 1); return R.filter(x => x.n > 0).sort((a, b) => rk(a.tone) - rk(b.tone) || b.n - a.n); }
+  let busy = 0;
+  function needs(){ busy = 0; const v = $1('v-home'); if(!v || !isM()) return; const top = v.querySelector('.ovc > .x-top'); if(!top) return;
+    let q = null; try{ q = hmQueue(); }catch(e){ return; } if(!q) return;
+    const R = rows(q), S = R.slice(0, 5), W = q.W || [];
+    const nf = n => (Math.round(n * 10) / 10).toString();
+    let h = '<div class="nd-h"><h2>Needs you</h2><a onclick="go(\'mtoday\')">Open To do ›</a></div>';
+    h += S.length ? S.map(x => '<div class="nd-r' + (x.tone === 'hot' ? ' hot' : '') + '"><span class="nd-n">' + nf(x.n) + '</span><span class="nd-t"><b>' + E(x.t) + '</b>' + (x.s ? '<small title="' + E(x.s) + '">' + E(x.s) + '</small>' : '') + '</span><button class="btn sm ' + (x.tone === 'hot' ? 'teal' : 'ghost') + '" onclick="' + E(x.go) + '">Open</button></div>').join('')
+      : '<div class="nd-ok">Nothing needs you right now.</div>';
+    if(R.length > S.length) h += '<div class="nd-w">' + (R.length - S.length) + ' more in <a onclick="go(\'mtoday\')">To do</a>.</div>';
+    if(W.length) h += '<div class="nd-w">Waiting on others, no action needed yet: ' + W.map(x => '<a onclick="' + E(x.go || '') + '">' + nf(+x.n || 0) + ' ' + E(String(x.t || '').charAt(0).toLowerCase() + String(x.t || '').slice(1)) + '</a>').join(', ') + '.</div>';
+    let el = $1('nd37');
+    if(!el){ el = document.createElement('section'); el.id = 'nd37'; el.setAttribute('aria-label', 'Needs you'); }
+    if(el.parentNode !== top.parentNode) top.insertAdjacentElement('afterend', el);
+    if(el.__h !== h){ el.__h = h; el.innerHTML = h; } }
+  const soon = () => { if(busy) return; busy = 1; setTimeout(needs, 60); };
+
+  function start(){ if(!isM() || !$1('navIn')){ setTimeout(start, 600); return; }
+    decorate(); needs();
+    new MutationObserver(() => { decorate(); }).observe($1('navIn'), { childList: true });
+    const vh = $1('v-home'); if(vh) new MutationObserver(soon).observe(vh, { childList: true, subtree: true });
+    const g0 = window.go; if(typeof g0 === 'function' && !g0.__1837){ const w = function(){ const r = g0.apply(this, arguments); try{ decorate(); if(VIEW === 'home') soon(); }catch(e){} return r; }; w.__1837 = 1; window.go = w; try{ go = w; }catch(e){} }
+    window.addEventListener('hashchange', () => setTimeout(mark, 0));
+    setInterval(() => { try{ if(!document.hidden){ mark(); if(VIEW === 'home') needs(); } }catch(e){} }, 30000); }
+  if(document.readyState === 'complete') setTimeout(start, 300); else window.addEventListener('load', () => setTimeout(start, 300));
 })();
 </script>
 </body>
