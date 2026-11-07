@@ -9,6 +9,7 @@
 //   done        { sid, notes, video, path } → { ok, n }   (coaching)
 //   tnotes      { sid, notes, video, path } → { ok }      (a training session's trainer: notes + recording; attendance stays with management)
 //   ladder      → { ok, list }   (management · 1830: active teachers with the database rank, units and next rank, for the Trainings ladder)
+//   mytrials    { as? } → { ok, list:[{day, code}] }   (1831: trial classes the teacher really taught — not cancelled — last 45 days)
 //   watch       { sid } → { ok, url }                     (recording of a training session: management, the trainer, or an invited teacher)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -46,6 +47,13 @@ Deno.serve(async (req: Request) => {
         return { id: r.id, teacher: r.teacher, done_at: r.done_at, topic: m[0] || "Coaching", notes: m.slice(1).join(" — "), mins: +((String(r.note).match(/\n§mins:(\d+)/) || [])[1] || 0) || null };
       });
       return out({ ok: true, who, upcoming: U.data || [], given, trains: TR.data || [] });
+    }
+    if (a === "mytrials") {
+      const who = (mgmt && b.as ? str(b.as, 60) : me).toLowerCase(), since = new Date(Date.now() + 8 * 3600e3 - 45 * 864e5).toISOString().slice(0, 10);
+      const { data, error } = await db.from("classes").select("day,code,cancelled,data").contains("teachers", JSON.stringify([who])).gte("day", since).eq("cancelled", false).limit(2000);
+      if (error) return out({ ok: false, error: error.message });
+      const list = (data || []).filter((c: any) => /-TC$/i.test(String((c.data || {}).title || "").replace(/\s+X$/i, "").trim())).map((c: any) => ({ day: String(c.day), code: String(c.code || "").toUpperCase() }));
+      return out({ ok: true, who, list });
     }
     if (a === "ladder") {
       if (!mgmt) return out({ ok: false, error: "Management only" }, 403);
