@@ -2649,10 +2649,15 @@ setInterval(() => { if(D && !D.mgr && !document.hidden){ loadMyReady(); loadTLea
 let FB = null, FB_AT = 0, FBF = null, FBS = null;
 function fbDue(s){ if(!s || !s.feedbackDue) return false; if(!FB || !FB.students) return true;
 const x = FB.students.find(y => y.code === s.code); return !!x && !x.done; }
+async function fbDbMerge(){ try{ if(!FB || !Array.isArray(FB.students) || !TOKEN) return;   /* 1916: the database's done / fix list wins */
+  const r = await fetch(FAST_URL + '-fbs', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN }) }).then(x => x.json());
+  if(!r || !r.ok || (r.month && FB.month && r.month !== FB.month)) return; const dn = r.done || {}, fx = r.fix || {};
+  FB.students.forEach(s => { const c = String(s.code || '').toUpperCase(); if(dn[c] && (!s.done || (+dn[c].ts || 0) > (+s.done.ts || 0))) s.done = dn[c]; if(fx[c]) s.fix = fx[c]; else if(dn[c] && s.fix) s.fix = null; });
+  FB.done = FB.students.filter(s => s.done).length; FB.fix = FB.students.filter(s => s.fix).length; }catch(e){} }
 async function fbLoad(force){
 if(!D || D.mgr || (!force && Date.now() - FB_AT < 5*60000)) return; FB_AT = Date.now();
 if(!FB){ try{ FB = JSON.parse(store('get','coe.fb')||'null'); }catch(e){} }
-try{ FB = await api('tFbStatus', TOKEN); store('set','coe.fb', JSON.stringify(FB)); renderToday(); renderStudents(); if(!window._fbpf){ window._fbpf = 1; setTimeout(fbPrefetch, 4000); } }catch(e){}
+try{ FB = await api('tFbStatus', TOKEN); await fbDbMerge(); store('set','coe.fb', JSON.stringify(FB)); renderToday(); renderStudents(); if(!window._fbpf){ window._fbpf = 1; setTimeout(fbPrefetch, 4000); } }catch(e){}
 }
 const FB_SKILL = t => /LISTEN/i.test(t) ? ['Listening','听力','l'] : /SPEAK/i.test(t) ? ['Speaking','口语','s'] : /READ/i.test(t) ? ['Reading','阅读','r'] : /WRIT/i.test(t) ? ['Writing','写作','w'] : [t,'',''];
 const FB_TXT = t => /STRENGTH/i.test(t) ? ['Strengths','strengths','What did the student do well this month? Be specific (skills, examples).'] : /IMPROVE/i.test(t) ? ['Areas for improvement','areas','What should improve, and why it matters for their level.'] : /NEXT/i.test(t) ? ['Next steps & learning goals','next','What you will do next month and how parents can help.'] : [t,'',''];
@@ -7194,7 +7199,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1689;
+const COE_V = 1690;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
