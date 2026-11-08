@@ -3012,7 +3012,7 @@ let h = `<div class="lead"><h1>Pay</h1><div class="mute small">${month} so far �
 <div class="small mute" style="margin-top:8px">Regular ${me.nowReg||0} · Trial ${me.nowTrial||0} · Sub ${me.nowSub||0} · ${peso(me.rate)}/lesson</div></div>`;
 if(me.rank){
 h += `<h2>Rank</h2><div class="card"><div class="row"><b class="grow">${esc(me.rank)}</b><span class="num">${peso(me.rate)}/lesson</span></div>
-<div class="small mute">${(m => { const now = (+m.nowReg || 0) + (+m.nowTrial || 0) + (+m.nowSub || 0), l = +m.lifetime || 0; return l < now ? (Math.round((l + now) * 10) / 10).toLocaleString() + ' lifetime units incl. this month' : l.toLocaleString() + ' lifetime units'; })(me)}${me.rankDate?' · since '+esc(me.rankDate):''}</div>${me.rankWaiting ? '<div class="small" style="margin-top:6px;color:#8A5A00">' + esc(me.rankWaiting) + ' · ask Operations to schedule them</div>' : ''}</div>`;
+<div class="small mute">${(m => { const now = (+m.nowReg || 0) + (+m.nowTrial || 0) + (+m.nowSub || 0), l = +m.lifetime || 0; return l < now ? (Math.round((l + now) * 10) / 10).toLocaleString() + ' lifetime units incl. this month' : l.toLocaleString() + ' lifetime units'; })(me)}${me.rankDate?' · since '+esc(String(me.rankDate).replace(/^Before /,'before ')):''}</div>${me.rankWaiting ? '<div class="small" style="margin-top:6px;color:#8A5A00">' + esc(me.rankWaiting) + ' · ask Operations to schedule them</div>' : ''}</div>`;
 }
 h += `<h2>Pay history</h2>`;
 h += pay.length ? `<table><tr><th>Month</th><th>Units</th><th>Net</th><th>Status</th></tr>${pay.map(p=>`<tr onclick='paySheet(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="cursor:pointer"><td>${esc(p.month)}</td><td class="num">${p.units}</td><td class="num"><b>${peso(p.net)}</b></td>
@@ -4055,7 +4055,7 @@ function ttCard(){
 const t = TT, m = t.me || {}, f = t.profile || {};
 let h = `<div class="card" style="margin-top:10px"><div class="row"><div class="av">${esc(t.name[0])}</div><div class="grow"><b>${esc(f.full||t.name)}</b>
 <div class="small mute">${esc([f.code, f.position, f.type, f.hired?'hired '+f.hired:'', f.status].filter(Boolean).join(' · '))}</div></div></div>
-<div class="stats" style="margin-top:12px"><div class="stat"><b style="font-size:15px">${esc(m.rank||'—')}</b><span>${m.rate?peso(m.rate)+'/lesson':'rank'}${m.rankDate?' · since '+esc(m.rankDate):''}</span></div>
+<div class="stats" style="margin-top:12px"><div class="stat"><b style="font-size:15px">${esc(m.rank||'—')}</b><span>${m.rate?peso(m.rate)+'/lesson':'rank'}${m.rankDate?' · since '+esc(String(m.rankDate).replace(/^Before /,'before ')):''}</span></div>
 <div class="stat"><b class="num">${(m.lifetime||0).toLocaleString()}</b><span>lifetime units</span></div>
 <div class="stat"><b class="num">${t.students}</b><span>students</span></div></div>
 <div class="stats" style="margin-top:10px"><div class="stat"><b class="num">${(m.nowReg||0)+(m.nowTrial||0)+(m.nowSub||0)}</b><span>units this month</span></div>
@@ -6109,7 +6109,7 @@ const t = TS; if(!t || !t.events) return; const E = t.events, live = E.filter(e 
 const mins = live.reduce((a, e) => a + (new Date(e.end) - new Date(e.start)) / 6e4, 0), stu = new Set(live.map(e => e.code || e.student)).size, left = live.filter(e => new Date(e.end) > now).length;
 const last = new Date(t.from + 'T12:00:00'); last.setDate(last.getDate() + t.days - 1);
 const seg = [['week','This week'],['next','Next week'],['month','This month'],['nextm','Next month']];
-let h = `<h1>My schedule</h1><div class="mute small">${esc(svDate(t.from,{day:'numeric',month:'short'}))} – ${esc(last.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}))} · from the CupOfEnglish calendar</div>
+let h = `<h1>My schedule</h1><div class="mute small">${esc(svDate(t.from,{day:'numeric',month:'short'}))} – ${esc(last.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}))} · live from the app</div>
 <div class="seg" style="margin:10px 0 0">${seg.map(([k,l]) => `<button class="${t.k===k?'on':''}" onclick="tsOpen('${k}')">${l}</button>`).join('')}</div>
 <div class="stats" style="margin-top:12px"><div class="stat"><b class="num">${live.length}</b><span>classes · ${stu} students</span></div><div class="stat"><b class="num">${(mins/60).toFixed(mins%60?1:0)}</b><span>hours teaching</span></div><div class="stat"><b class="num">${left}</b><span>still to teach</span></div></div><section class="sec" style="margin-top:12px">`;
 const row = e => { const on = !e.cancelled && now >= new Date(e.start) && now < new Date(e.end);
@@ -6122,7 +6122,7 @@ for(let k = 0; k < t.days; k++){ const d = new Date(t.from + 'T12:00:00'); d.set
 if(!L.length && t.days > 7) continue;                     /* a month: only days with classes */
 (y < today ? done : up).push(dayH(d, y, y === today ? svNowFirst(L) : L)); }
 h += (up.length ? up.join('') : '<div class="sv-none">No more classes in this period.</div>') + `</section>` + (done.length ? `<div class="sv-wk">Finished</div><section class="sec" style="margin-top:6px">${done.reverse().join('')}</section>` : '');
-if(VIEW === 'tsched'){ const hh = h.replace('<h1>My schedule</h1><div class="mute small">', '<div class="lead"><h1>Schedule</h1><div class="mute small">').replace('from the CupOfEnglish calendar</div>', 'from the CupOfEnglish calendar</div></div>'), k = hh.indexOf('</div></div>') + 12;
+if(VIEW === 'tsched'){ const hh = h.replace('<h1>My schedule</h1><div class="mute small">', '<div class="lead"><h1>Schedule</h1><div class="mute small">').replace('live from the app</div>', 'live from the app</div></div>'), k = hh.indexOf('</div></div>') + 12;
 $('v-tsched').innerHTML = k > 11 ? hh.slice(0, k) + tlvHtml() + hh.slice(k) : hh + tlvHtml(); }   /* leave lives with the schedule it changes */
 else $('sheetBody').innerHTML = h;
 }
@@ -7194,7 +7194,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1686;
+const COE_V = 1687;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -20845,7 +20845,7 @@ body:not(.mgr) ::-webkit-scrollbar{width:8px;height:8px} body:not(.mgr) ::-webki
       const L = E.filter(e => e.day === y).sort((a, b) => String(a.start).localeCompare(String(b.start))); days.push({ d, y, L, n: L.filter(e => !e.cancelled).length }); }
     const mx = Math.max(1, ...days.map(x => x.n));
     /* summary */
-    let h = `<div class="lead ld501"><h1>Schedule</h1><div class="mute small">${esc(wd(first, { day: 'numeric', month: 'short' }))} – ${esc(wd(last, { day: 'numeric', month: 'short', year: 'numeric' }))} · from the CupOfEnglish calendar</div>
+    let h = `<div class="lead ld501"><h1>Schedule</h1><div class="mute small">${esc(wd(first, { day: 'numeric', month: 'short' }))} – ${esc(wd(last, { day: 'numeric', month: 'short', year: 'numeric' }))} · live from the app</div>
 <div class="seg">${seg.map(([k, l]) => `<button class="${t.k === k ? 'on' : ''}" onclick="tsOpen('${k}')">${l}</button>`).join('')}</div></div>`;
     h += `<section class="sm501"><div class="f501"><span title="Classes">${ic.cls}<b>${live.length}</b> class${live.length === 1 ? '' : 'es'}</span><span title="Students">${ic.stu}<b>${stu}</b> student${stu === 1 ? '' : 's'}</span><span title="Hours teaching">${ic.hrs}<b>${esc(hrs(mins))}</b> teaching</span>${cx.length ? `<span class="cx501" title="Cancelled">${ic.cx}<b>${cx.length}</b> cancelled</span>` : ''}</div>`;
     if(live.length) h += `<div class="pb501"><div class="bar">${done ? `<i style="width:${(done / live.length * 100).toFixed(1)}%"></i>` : ''}${left ? '<em></em>' : ''}</div><div class="lg"><span><b>✓ ${done}</b> taught</span><span><b class="tl">${left}</b> still to teach</span></div></div>`;
@@ -27188,6 +27188,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     'body.role-t header .hd .iconbtn{order:2}' +
     'body.role-t header .hd .sp{order:3;flex:0 0 100%!important;height:0!important;display:block!important}' +
     'body.role-t header .hd #tinNag{order:4}' +
+    'header .hd .sp:has(#cmHead){height:auto!important;text-align:center;margin:2px 0}' +
     '}</style>');
 })();
 </script>
@@ -30162,7 +30163,7 @@ nav button.on:not(#z1101):not(#y1101){color:#00575F!important;font-weight:700!im
  body.is-mgr header .hd #hRank .live{margin:0!important}
  body.is-mgr header .hd .iconbtn{order:2}
  body.is-mgr header .hd .sp{order:3;flex:0 0 100%!important;height:0!important;display:block!important}
- body.is-mgr header .hd #onlN{order:4} body.is-mgr header .hd #tinNag{order:5}}
+ body.is-mgr header .hd #onlN{order:4} body.is-mgr header .hd #tinNag{order:5} header .hd .sp:has(#cmHead){height:auto!important;text-align:center;margin:2px 0}}
 /* ── status chips: icon + colour ── */
 :is(#app,#sheet,body>[id$="M"]) :is(.chip.green,.chip.t-ok):not(#z1101):not(#y1101){background:var(--c-ok-bg)!important;color:var(--c-ok)!important}
 :is(#app,#sheet,body>[id$="M"]) :is(.chip.amber,.chip.t-warn):not(#z1101):not(#y1101){background:var(--c-warn-bg)!important;color:var(--c-warn)!important}
