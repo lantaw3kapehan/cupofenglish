@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
   const mgmt = s.mode === "mgmt", me = String(s.name || "").trim(), a = String(b.action || ""), now = new Date().toISOString();
   try {
     if (a === "mine") {
-      if (mgmt) return out({ ok: true, rows: [], policy: [], ex: {}, now });
+      // 8 Nov (1887): office staff (management mode, e.g. Operations) see their own lates too and can submit proof
       const since = new Date(Date.now() + 8 * 3600e3 - 40 * 864e5).toISOString().slice(0, 10);
       const [L, X, pol] = await Promise.all([
         db.from("log_rows").select("data").eq("tab", "T-TIMEIN").in("data->>6", ["Late", "Late to class"]).gte("data->>0", since).ilike("data->>1", me).limit(200),
@@ -115,10 +115,13 @@ Deno.serve(async (req: Request) => {
       let U: Record<string, string> = {};
       if (paths.length) { const { data } = await db.storage.from(BUCKET).createSignedUrls(paths, 3600); (data || []).forEach((x: any) => { if (x.path) U[x.path] = x.signedUrl; }); }
       (X.data || []).forEach((x: any) => { const k = lc(x.teacher) + "|" + x.late_at; if (!ex[k]) ex[k] = { reason: x.reason, at: x.created_at, img: x.img_path ? U[x.img_path] || null : null, hasImg: !!x.img_path }; });
-      return out({ ok: true, rows, ...pol, ex, now });
+      // 1887: office staff → their contract (Annex A "Late Arrival: PHP 50 deduction per hour", ₱50 per started hour), not the teacher POLICY
+      const { data: st } = await db.from("staff").select("role").ilike("name", me).limit(1); const staff = !!(st && st[0] && !/^(teacher|admin)$/i.test(String(st[0].role || "")));
+      if (staff) rows.forEach((r: any) => { const m = Math.max(1, Math.ceil((utc(r.at).getTime() - (LOCAL.test(r.first) ? utc(r.first).getTime() : utc(r.at).getTime())) / 60e3)); r.lateMins = m; r.contract = 50 * Math.ceil(m / 60); });
+      return out({ ok: true, rows, ...pol, ex, now, staff, contract: staff ? { perHour: 50, text: "Contract, Annex A: Late Arrival · PHP 50 deduction per hour (₱50 per started hour). Only the President can waive it." } : null });
     }
     if (a === "submit") {
-      if (mgmt) return out({ ok: false, error: "Teachers only" });
+      // 8 Nov (1887): anyone signed in may explain their own late (office staff included)
       const key = str(b.key, 120), at = key.split("|")[1] || "", reason = String(b.reason == null ? "" : b.reason).replace(/\s+$/g, "").trim();
       if (lc(key.split("|")[0]) !== lc(me) || !LOCAL.test(at)) return out({ ok: false, error: "This notice is not yours." });
       if (!reason) return out({ ok: false, error: "Write the reason." });
