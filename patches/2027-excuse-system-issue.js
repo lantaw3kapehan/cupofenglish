@@ -62,7 +62,7 @@ const SCRIPT = `<script id="x2027">
 })();
 </script>
 `;
-require(require('path').join(__dirname, '..', 'tools', 'lib.js'))(file, [
+require('../tools/lib.js')(file, [
  [
   "if(!L.length){ if(box) box.remove(); LQS = sig; return; }",
   "if(!L.length){ if(box && root.contains(box) && LQS === 'none2027' && !force) return; LQS = 'none2027';   /* 2027: a slim line stays so the system-issue edit is always here */\n      if(!box || !root.contains(box)){ box = document.createElement('section'); box.id = 'lqmBox'; box.style.cssText = 'margin:0 0 16px'; root.insertBefore(box, root.firstChild); }\n      box.innerHTML = '<div class=\"lqm\" style=\"background:#fff;border-color:#ECEAF2;padding:10px 16px\"><div class=\"row\" style=\"gap:10px;align-items:center;flex-wrap:wrap\"><b class=\"grow\">⏱ Lates · nothing to decide</b><a class=\"x27-l\" onclick=\"exOpen2027()\">Excuse a system issue →</a></div></div>'; return; }"
