@@ -2175,7 +2175,7 @@ chat:    [() => !!(window.chat1400 && chat1400.has()), () => chat1400.render(), 
 };
 const MGMT_ONLY1997 = /^(home|monitor|mtoday|schedule|msgs|astudents|reports|assess|enquiry|trials|teachers|perf|leave|payroll|money|mypay|actions|db|team|active|expenses|finov|wallets|forecast|gov|act)$/;
 function go(v){
-if(typeof D !== 'undefined' && D && !D.mgr && MGMT_ONLY1997.test(String(v || ''))) v = 'today';   /* 1997: teachers never open management screens */
+if(typeof D !== 'undefined' && D && !D.mgr && MGMT_ONLY1997.test(String(v || ''))){ v = 'today'; try{ setTimeout(() => toast('That screen is for management · here is your Today'), 50); }catch(e){} }   /* 1997: teachers never open management screens */
 VIEW = v; tab1505.set('coe.view', v); VIEWS.forEach(x => $('v-'+x).classList.toggle('hide', x!==v));
 if(v==='astudents'){ if(MS) renderAStudents(); else loadStudents(); }   // list made in the background → draw it now
 if(v==='schedule'){ if(SC) renderSchedule(); if(!SC || !SC._t || Date.now() - SC._t > 60000) loadSchedule(0, !!SC); }   
@@ -2198,7 +2198,7 @@ function render(){
 if(!D) return;
 const me = D.me || {};
 $('hName').textContent = me.name ? (D.mgr ? me.name : tName(me.name)) : 'Teacher';
-$('hRank').innerHTML = D.mgr ? `${esc(me.role || 'Management')} <span class="live" id="liveTag"><i></i>Live${PULSE.time?' · '+PULSE.time:''}</span>` : esc([me.rank, me.rate ? peso(me.rate)+'/lesson' : ''].filter(Boolean).join(' · '));
+$('hRank').innerHTML = D.mgr ? `${esc(me.role || 'Management')} <span class="live" id="liveTag"><i></i>Live${PULSE.time?' · '+PULSE.time:''}</span>` : esc([me.rank, me.rate ? peso(me.rate)+'/unit' : ''].filter(Boolean).join(' · '));
 const nk = D.mgr ? 'm' : 't';
 if(nk !== NAVKEY){ NAVKEY = nk; buildNav(); setTimeout(() => { if(!D) return; if(D.mgr){ if(!MSG) MSG = kept('msgs'); msgBadge(); loadMsgs(true); if(!PCKM) PCKM = kept('paychkm'); loadPayChecks();
 ['reports', 'active', 'leave', 'perf', 'actions'].forEach((k, i) => setTimeout(() => { const S = SCREENS[k]; if(!S || document.hidden || VIEW === k) return; if(!S[0]() || Date.now() - (SEEN[k] || 0) > 600000){ SEEN[k] = Date.now(); bg(() => S[2](true)); } }, 6000 + i * 4000)); } else { if(!TMSG) TMSG = kept('tmsgs'); if(!PCK) PCK = kept('paychk'); loadTMsgs(); loadPayCheck(); } }, 2000); const sv = tab1505.get('coe.view'), ok = (D.mgr ? NAV_M : NAV_T).some(x => x[0] === sv) || (D.mgr && sv === 'more');
@@ -2371,7 +2371,7 @@ if(ci) inBtn = (ci.time ? `<button type="button" class="chip ${ci.status==='On t
 + (ci.decision ? `<div class="hw due"><span class="ic">!</span><div class="grow"><b>Tagged late to class</b><div class="small">${esc(ci.decision)}</div></div></div>` : (ci.flag && D.mgr) ? `<span class="chip coral" style="margin:8px 0 0 6px">${esc(ci.flag)}</span>` : '');
 else if(contPrev) inBtn = `<span class="chip" style="margin:8px 0 0 6px">Same class as ${tm(contPrev.start)} · no I'm in needed</span>`;
 else if(isFirst) inBtn = D.timeIn ? `<span class="chip ${D.timeIn.status==='On time'?'green':'red'}" style="margin:8px 0 0 6px">${D.timeIn.status==='On time'?'Timed in':esc(D.timeIn.status)} ${esc(D.timeIn.time)}</span>`
-: `<button class="btn teal sm" style="margin:8px 0 0 6px" onclick="timeInSheet()">Time in (first class)</button>`;
+: (Date.now() < new Date(c.start).getTime() - 40 * 6e4 ? `<button class="btn ghost sm" style="margin:8px 0 0 6px" title="Time in opens ${tm(new Date(new Date(c.start).getTime() - 40 * 6e4).toISOString())} · this shows how it works" onclick="timeInSheet()">How time-in works</button>` : `<button class="btn teal sm" style="margin:8px 0 0 6px" title="Records your time-in for today" onclick="timeInSheet()">Time in now</button>`);   /* 1998 */
 else if(now && +now >= +ciOpen) inBtn = D.timeIn ? `<button class="btn teal sm" style="margin:8px 0 0 6px" onclick="classIn('${esc(c.id)}')">I'm in${now > st ? ' · late' : ''}</button>`
 : `<button class="btn ghost sm" style="margin:8px 0 0 6px" onclick="toast('Time in for your first class first');timeInSheet()">Time in first</button>`;
 else if(now && st > now) inBtn = `<span class="chip" style="margin:8px 0 0 6px" title="I'm in opens 5 minutes before class, or right after your previous class">I'm in · opens ${tm(ciOpen.toISOString())}</span>`;
@@ -3028,7 +3028,7 @@ return `<section class="sec"><h2>Peer feedback <span class="c">from fellow teach
 function nowPayOf(m){ m = m || {}; return Math.round((+m.nowPay || 0) + (+m.nowTrial || 0) * (+m.rate || 0)); }   /* 14 Oct: trials paid at the same rate, not regular units */
 function rank1764(){ try{ const k = window.MYPAY1763 && MYPAY1763.rank; if(!k || !D || !D.me || D.mgr) return; if(!k.fixed && k.rank) Object.assign(D.me, { rank: k.rank, rankDate: k.rankDate || D.me.rankDate });   /* 1764 */
   Object.assign(D.me, { rate: +k.rate || D.me.rate, lifetime: +k.lifetime, rankWaiting: k.waiting || '' });
-  try{ const h = $('hRank'); if(h) h.innerHTML = esc([D.me.rank, D.me.rate ? peso(D.me.rate) + '/lesson' : ''].filter(Boolean).join(' · ')); }catch(e){}   /* 1772 */ }catch(e){} }
+  try{ const h = $('hRank'); if(h) h.innerHTML = esc([D.me.rank, D.me.rate ? peso(D.me.rate) + '/unit' : ''].filter(Boolean).join(' · ')); }catch(e){}   /* 1772 */ }catch(e){} }
 function renderPay(){ try{ if(window.MYPAY1763 && typeof D !== 'undefined' && D && !D.mgr){ D.pay = MYPAY1763.pay; rank1764(); } }catch(e){}   /* 1763 */
 const me = D.me||{}, pay = D.pay||[], adj = D.adj||[];
 const est = nowPayOf(me) + (me.monthBonus||0) - (me.monthDeduct||0);
@@ -3039,9 +3039,9 @@ let h = `<div class="lead"><h1>Pay</h1><div class="mute small">${month} so far �
 <div class="stats" style="margin-top:12px"><div class="stat"><b class="num">${units}</b><span>units</span></div>
 <div class="stat"><b class="num plus">+${peso(me.monthBonus)}</b><span>bonus</span></div>
 <div class="stat"><b class="num minus">−${peso(me.monthDeduct)}</b><span>deductions</span></div></div>
-<div class="small mute" style="margin-top:8px">Regular ${me.nowReg||0} · Trial ${me.nowTrial||0} · Sub ${me.nowSub||0} · ${peso(me.rate)}/lesson</div></div>`;
+<div class="small mute" style="margin-top:8px">Regular ${me.nowReg||0} · Trial ${me.nowTrial||0} · Sub ${me.nowSub||0} · ${peso(me.rate)}/unit</div></div>`;
 if(me.rank){
-h += `<h2>Rank</h2><div class="card"><div class="row"><b class="grow">${esc(me.rank)}</b><span class="num">${peso(me.rate)}/lesson</span></div>
+h += `<h2>Rank</h2><div class="card"><div class="row"><b class="grow">${esc(me.rank)}</b><span class="num">${peso(me.rate)}/unit</span></div>
 <div class="small mute">${(m => { const now = (+m.nowReg || 0) + (+m.nowTrial || 0) + (+m.nowSub || 0), l = +m.lifetime || 0; return l < now ? (Math.round((l + now) * 10) / 10).toLocaleString() + ' lifetime units incl. this month' : l.toLocaleString() + ' lifetime units'; })(me)}${me.rankDate?' · since '+esc(String(me.rankDate).replace(/^Before /,'before ')):''}</div>${me.rankWaiting ? '<div class="small" style="margin-top:6px;color:#8A5A00">' + esc(me.rankWaiting) + ' · ask Operations to schedule them</div>' : ''}</div>`;
 }
 h += `<h2>Pay history</h2>`;
@@ -3666,7 +3666,7 @@ catch(e){ if(!p0 && mine()) $('sheetBody').innerHTML = `<h1 data-tch="${esc(name
 function tchHtml(name, p){
 const me = p.me || {};
 const today = (p.schedule||[]).filter(c=>c.day===p.today).sort((a,b)=>a.start.localeCompare(b.start));
-let h = `<h1 style="padding-right:48px">${esc(tName(name))}</h1><div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px"><button class="btn ghost sm" onclick="closeSheet();go('teachers');loadTT('${esc(name)}')">TEACHERS tab</button><button class="btn ghost sm" onclick="actLog('${esc(name)}')">📋 Activity log</button><button class="btn ghost sm" onclick="avOpen('${esc(name)}')">Open slots</button><button class="btn ghost sm" onclick="profOpen('${esc(name)}')">Profile card</button><button class="btn ghost sm" onclick="payslip('${esc(name)}')">Payslip</button><button class="btn ghost sm" onclick="unitsSheet('${esc(name)}')">Lessons counted</button><button class="btn sm teal" onclick="growthSheet('${esc(name)}')">Growth</button><button class="btn ghost sm" onclick="pwSet('${esc(name)}')">Password · access</button></div><div class="mute small">${esc([me.rank, me.rate?peso(me.rate)+'/lesson':'', (me.lifetime||0).toLocaleString()+' lifetime units'].filter(Boolean).join(' · '))}</div>
+let h = `<h1 style="padding-right:48px">${esc(tName(name))}</h1><div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px"><button class="btn ghost sm" onclick="closeSheet();go('teachers');loadTT('${esc(name)}')">TEACHERS tab</button><button class="btn ghost sm" onclick="actLog('${esc(name)}')">📋 Activity log</button><button class="btn ghost sm" onclick="avOpen('${esc(name)}')">Open slots</button><button class="btn ghost sm" onclick="profOpen('${esc(name)}')">Profile card</button><button class="btn ghost sm" onclick="payslip('${esc(name)}')">Payslip</button><button class="btn ghost sm" onclick="unitsSheet('${esc(name)}')">Lessons counted</button><button class="btn sm teal" onclick="growthSheet('${esc(name)}')">Growth</button><button class="btn ghost sm" onclick="pwSet('${esc(name)}')">Password · access</button></div><div class="mute small">${esc([me.rank, me.rate?peso(me.rate)+'/unit':'', (me.lifetime||0).toLocaleString()+' lifetime units'].filter(Boolean).join(' · '))}</div>
 <div class="stats" style="margin-top:12px"><div class="stat"><b class="num">${(me.nowReg||0)+(me.nowTrial||0)+(me.nowSub||0)}</b><span>units this month</span></div>
 <div class="stat"><b class="num">${peso(nowPayOf(me)+(me.monthBonus||0)-(me.monthDeduct||0))}</b><span>pay so far</span></div>
 <div class="stat"><b class="num">${(p.students||[]).length}</b><span>students</span></div></div>`;
@@ -4087,7 +4087,7 @@ function ttCard(){
 const t = TT, m = t.me || {}, f = t.profile || {};
 let h = `<div class="card" style="margin-top:10px"><div class="row"><div class="av">${esc(t.name[0])}</div><div class="grow"><b>${esc(f.full||t.name)}</b>
 <div class="small mute">${esc([f.code, f.position, f.type, f.hired?'hired '+f.hired:'', f.status].filter(Boolean).join(' · '))}</div></div></div>
-<div class="stats" style="margin-top:12px"><div class="stat"><b style="font-size:15px">${esc(m.rank||'—')}</b><span>${m.rate?peso(m.rate)+'/lesson':'rank'}${m.rankDate?' · since '+esc(String(m.rankDate).replace(/^Before /,'before ')):''}</span></div>
+<div class="stats" style="margin-top:12px"><div class="stat"><b style="font-size:15px">${esc(m.rank||'—')}</b><span>${m.rate?peso(m.rate)+'/unit':'rank'}${m.rankDate?' · since '+esc(String(m.rankDate).replace(/^Before /,'before ')):''}</span></div>
 <div class="stat"><b class="num">${(m.lifetime||0).toLocaleString()}</b><span>lifetime units</span></div>
 <div class="stat"><b class="num">${t.students}</b><span>students</span></div></div>
 <div class="stats" style="margin-top:10px"><div class="stat"><b class="num">${(m.nowReg||0)+(m.nowTrial||0)+(m.nowSub||0)}</b><span>units this month</span></div>
@@ -6664,7 +6664,7 @@ const tiers = L.map((r, i) => ({ r, i })).reverse().map(({ r, i }) => {
 const st = i < ix ? 'done' : i === ix ? 'cur' : i === ix + 1 ? 'next' : 'lock', w = 46 + (i === n - 1 ? 0 : 0) + Math.round((n - 1 - i) / (n - 1) * 54);
 return `<div class="py-t ${st}" style="width:${w}%"><b>${esc(r.name)}</b><span>${peso(r.rate)} · ${r.units ? fmtU(r.units) + '+ units' : 'start'}</span>${st==='cur'?'<i>You are here</i>':st==='next'&&c.next?`<i>${fmtU(c.next.need)} units to go</i>`:st==='done'?'<i>✓</i>':''}</div>`; }).join('');
 const pct = c.next ? Math.min(100, Math.max(0, Math.round((c.lifetime - c.from) / (c.next.units - c.from) * 100))) : 100;
-let h = `<section class="sec"><h2>Career path <span class="c">${esc(c.rank||'')}${c.rate?' · '+peso(c.rate)+' per class':''}</span></h2>
+let h = `<section class="sec"><h2>Career path <span class="c">${esc(c.rank||'')}${c.rate?' · '+peso(c.rate)+'/unit':''}</span></h2>
 <div class="py-wrap"><div class="py">${tiers}</div>
 <div class="py-side"><div class="small mute">Lifetime units</div><div class="gr-score"><b>${fmtU(c.lifetime)}</b></div>${c.liveNote ? `<div class="small mute" style="margin:-2px 0 6px">${esc(c.liveNote)}</div>` : ''}
 ${c.next ? `<div class="py-bar"><i style="width:${pct}%"></i></div><div class="small"><b>${pct}%</b> of the way to <b>${esc(c.next.name)}</b> (${peso(c.next.rate)})</div><div class="small mute">${c.waiting ? esc(c.waiting) + ' · ask Operations to schedule them' : fmtU(c.next.need) + ' more units · every class counts'}</div>`
@@ -7243,7 +7243,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1721;
+const COE_V = 1722;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -18943,7 +18943,7 @@ body #v-teachers .tc2-line .pg{height:6px!important}
     const FBO = new Date().getDate() >= 25;   /* 447: monthly feedback opens on the 25th */
     const S = (p.students || []).map(s => FBO ? s : Object.assign({}, s, { feedbackDue: false })), fb = S.filter(s => s.feedbackDue).length;
     let h = '<div class="t46" style="--rt:' + k[1] + ';--rb:' + k[2] + ';--rc:' + k[3] + '">' +
-      '<div class="hd"><div class="av">' + esc(String(name).replace(/^teacher\s+/i, '').slice(0, 2).toUpperCase()) + '</div><div><h1 data-tch="' + esc(name) + '">' + esc(tName(name)) + '</h1><div class="sub">' + (me.rank ? '<span class="rk">' + esc(me.rank) + '</span>' : '') + esc([me.rate ? peso(me.rate) + '/lesson' : '', (me.lifetime || 0).toLocaleString() + ' lifetime units'].filter(Boolean).join(' · ')) + '</div></div></div>' +
+      '<div class="hd"><div class="av">' + esc(String(name).replace(/^teacher\s+/i, '').slice(0, 2).toUpperCase()) + '</div><div><h1 data-tch="' + esc(name) + '">' + esc(tName(name)) + '</h1><div class="sub">' + (me.rank ? '<span class="rk">' + esc(me.rank) + '</span>' : '') + esc([me.rate ? peso(me.rate) + '/unit' : '', (me.lifetime || 0).toLocaleString() + ' lifetime units'].filter(Boolean).join(' · ')) + '</div></div></div>' +
       '<div class="act"><button class="btn sm teal" onclick="growthSheet(\'' + q(name) + '\')">Growth</button><button class="btn ghost sm" onclick="payslip(\'' + q(name) + '\')">Payslip</button><button class="btn ghost sm" onclick="avOpen(\'' + q(name) + '\')">Open slots</button><button class="btn ghost sm" onclick="profOpen(\'' + q(name) + '\')">Profile card</button><button class="btn ghost sm" onclick="pwSet(\'' + q(name) + '\')">Password · access</button><button class="btn ghost sm" onclick="closeSheet();go(\'teachers\');loadTT(\'' + q(name) + '\')">TEACHERS tab</button></div>';
     const du = prev ? units - num(prev.units) : null;
     const pace = (() => { const d = new Date(), dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); return d.getDate() > 2 ? Math.round(units / d.getDate() * dim) : null; })(), pu = prev ? num(prev.units) : null;   /* 450 */
@@ -20626,7 +20626,7 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
       const vd = (D.vids || {})[c.id], vSt = vd && vd.url ? 'd' : ended ? 'n' : 'l';
       const cd = esc(c.code), ci2 = esc(c.id), dy = esc(c.day);
       const html = '<div class="cs93">' +
-        pill(inSt, inSt === 'l' && isFirst ? 'Time in from ' + tiOp : isFirst && inSt === 'n' ? 'Time in' : 'In', isFirst ? 'timeInSheet()' : D.timeIn ? "classIn('" + ci2 + "')" : 'timeInSheet()', inSt === 'd' ? (contPrev ? 'Same class as before · no I’m in needed' : 'In') : inSt === 'n' ? (isFirst || !D.timeIn ? 'Tap to time in' : 'Tap “I’m in”') : isFirst ? 'Time in opens ' + tiOp + ' · 30–40 minutes before your first class' : 'I’m in opens 5 minutes before class, or right after your previous class') +
+        pill(inSt, inSt === 'l' && isFirst ? 'Time in opens ' + tiOp : isFirst && inSt === 'n' ? 'Time in' : 'In', isFirst ? 'timeInSheet()' : D.timeIn ? "classIn('" + ci2 + "')" : 'timeInSheet()', inSt === 'd' ? (contPrev ? 'Same class as before · no I’m in needed' : 'In') : inSt === 'n' ? (isFirst || !D.timeIn ? 'Tap to time in' : 'Tap “I’m in”') : isFirst ? 'Time in opens ' + tiOp + ' · 30–40 minutes before your first class' : 'I’m in opens 5 minutes before class, or right after your previous class') +
         pill(hwSt, 'Homework', "hwSheet('" + ci2 + "')", hwSt === 'd' ? 'Homework given' + (hw && hw.time ? ' · ' + hw.time : '') : hwSt === 'n' ? 'Mark the homework' : 'After the class starts') +
         pill(noteSt, 'Note', "noteSheet('" + cd + "','" + ci2 + "','" + dy + "')", noteSt === 'd' ? 'Class note saved' : noteSt === 'n' ? 'Add today’s class note' : 'After the class') +
         pill(vSt, 'Video', "(function(e){var r=e&&e.closest('.cls');var h=r&&[...r.querySelectorAll('.hw')].find(function(x){return /video/i.test(x.textContent)});if(h)h.scrollIntoView({behavior:'smooth',block:'center'})})(this)", vSt === 'd' ? 'Video uploaded' : vSt === 'n' ? 'Upload the class video' : 'After the class') +
@@ -21258,7 +21258,7 @@ body:not(.mgr) #v-pay{background:none!important;border:0!important;box-shadow:no
     /* rank → header line */
     const hr = H.find(x => /^Rank/.test(x.textContent.trim())), lead = v.querySelector('.lead');
     if(lead && !lead.querySelector('.rk509') && me.rank){ const since = me.rankDate ? (() => { const m = String(me.rankDate).match(/^(\d{4})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, 1).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : me.rankDate; })() : '';
-      lead.insertAdjacentHTML('beforeend', `<div class="rk509"><b>${IC}${esc(me.rank)}</b><span>${esc(peso(me.rate))}/lesson</span><span>· ${(m => { const now = (+m.nowReg || 0) + (+m.nowTrial || 0) + (+m.nowSub || 0), l = +m.lifetime || 0; return l < now ? (Math.round((l + now) * 10) / 10).toLocaleString() + ' lifetime units incl. this month' : l.toLocaleString() + ' lifetime units'; })(me)}</span>${since ? `<span>· since ${esc(String(since).replace(/^Before /, 'before '))}</span>` : ''}</div>`); }
+      lead.insertAdjacentHTML('beforeend', `<div class="rk509"><b>${IC}${esc(me.rank)}</b><span>${esc(peso(me.rate))}/unit</span><span>· ${(m => { const now = (+m.nowReg || 0) + (+m.nowTrial || 0) + (+m.nowSub || 0), l = +m.lifetime || 0; return l < now ? (Math.round((l + now) * 10) / 10).toLocaleString() + ' lifetime units incl. this month' : l.toLocaleString() + ' lifetime units'; })(me)}</span>${since ? `<span>· since ${esc(String(since).replace(/^Before /, 'before '))}</span>` : ''}</div>`); }
     if(hr){ const c = hr.nextElementSibling; if(c && c.classList.contains('card')) c.remove(); hr.remove(); }
     /* history table → fold under the chart */
     const hh = H.find(x => /^History/.test(x.textContent.trim()));
@@ -29831,7 +29831,8 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
   function scopes(){ const v = document.getElementById('v-home'); if(!v || typeof D === 'undefined' || !D || !D.mgr) return;
     try{ const nx = v.querySelectorAll('.x-st a small'); nx.forEach(s => { if(!s.title) s.title = s.textContent; }); }catch(e){}
     v.querySelectorAll('.ov-th > span, .x-h > span, .x-h > b, h2, .ov-h b, .ov-h span').forEach(sp => { const t = (sp.textContent || '').trim(); const box = sp.closest('section, .ov-c, .x-c, .card, .ov-ql, .ov-row') || sp.parentNode;
-      if(/^per student · lessons left/.test(t) && box){ const nums = [...box.querySelectorAll('b, .num')].map(b => parseInt((b.textContent || '').replace(/[^\d]/g, ''), 10)).filter(n => !isNaN(n)); const lab = [...box.querySelectorAll('*')].filter(e => /^(Healthy|5 or fewer|Ran out)$/.test((e.textContent || '').trim()));
+      if(/^(per student · lessons left|students with a package)/.test(t) && !/^\d/.test(t)){ const xc = sp.closest('.x-c'); const n1998 = xc ? [...xc.querySelectorAll('.x-lg > span > b')].reduce((a, b) => a + (parseInt((b.textContent || '').replace(/[^\d]/g, ''), 10) || 0), 0) : 0; if(n1998){ const tx1998 = n1998 + ' students with a package · lessons left'; if(sp.textContent !== tx1998) sp.textContent = tx1998; } }
+      if(false){ const nums = [...box.querySelectorAll('b, .num')].map(b => parseInt((b.textContent || '').replace(/[^\d]/g, ''), 10)).filter(n => !isNaN(n)); const lab = [...box.querySelectorAll('*')].filter(e => /^(Healthy|5 or fewer|Ran out)$/.test((e.textContent || '').trim()));
         let sum = 0; lab.forEach(e => { const nb = e.nextElementSibling || (e.parentNode && e.parentNode.querySelector('b')); const n = parseInt(((nb && nb.textContent) || '').replace(/[^\d]/g, ''), 10); if(!isNaN(n)) sum += n; });
         const tx = (sum ? sum + ' students with a package' : 'students with a package') + ' · lessons left'; if(sp.textContent !== tx) sp.textContent = tx; }
       if(/^Parent reports sent · /.test(t) && !sp.querySelector('.sc1996')){ const b = sp.parentNode && sp.parentNode.querySelector('b'); const m = b && (b.textContent || '').match(/\/\s*(\d+)/); if(m) sp.insertAdjacentHTML('beforeend', '<span class="sc1996">' + m[1] + ' = students taught that month</span>'); }
@@ -29839,6 +29840,15 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
   let q = 0; const later = () => { clearTimeout(q); q = setTimeout(scopes, 120); };
   const go0 = () => { const h = document.getElementById('v-home'); if(!h){ setTimeout(go0, 800); return; } new MutationObserver(later).observe(h, { childList: true, subtree: true }); later(); };
   if(document.readyState === 'complete') setTimeout(go0, 400); else window.addEventListener('load', () => setTimeout(go0, 400));
+})();
+/* 1998 · Pay and Growth explain the unit */
+(function(){ function put(){ try{ if(typeof D === 'undefined' || !D || D.mgr || !D.me) return; const rate = D.me.rate ? peso(D.me.rate) : '';
+    const tx = 'Pay is per unit · 1 unit = a 50-minute class · a 25-minute class = 0.5 unit · trial and substitute classes count the same way · pay = units × ' + (rate ? rate + ' (your rate per unit)' : 'your rate per unit') + '.';
+    ['v-pay', 'v-growth'].forEach(id => { const v = document.getElementById(id); if(!v || !v.childElementCount) return; let e = v.querySelector('.unit1998'); if(!e){ e = document.createElement('div'); e.className = 'unit1998 small mute'; e.style.cssText = 'margin:6px 0 10px;line-height:1.45';
+      const h = v.querySelector('h1, .lead, .sec h2'); if(h && h.parentNode) h.parentNode.insertBefore(e, h.nextSibling); else v.insertBefore(e, v.firstChild); } if(e.textContent !== tx) e.textContent = tx; }); }catch(e){} }
+  let q = 0; const later = () => { clearTimeout(q); q = setTimeout(put, 150); };
+  const start = () => { ['v-pay', 'v-growth'].forEach(id => { const v = document.getElementById(id); if(v) new MutationObserver(later).observe(v, { childList: true }); }); later(); };
+  if(document.readyState === 'complete') setTimeout(start, 500); else window.addEventListener('load', () => setTimeout(start, 500));
 })();
 function plParse1995(t){ t = String(t || '').replace(/\s+/g, ''); var neg = /^[-−–]|\([^)]*\)|^₱[-−–]/.test(t), m = t.match(/([\d.,]+)\s*([kKmM]?)/); if(!m) return 0; var v = parseFloat(m[1].replace(/,/g, '')) || 0; if(/k/i.test(m[2])) v *= 1e3; if(/m/i.test(m[2])) v *= 1e6; return neg ? -v : v; }
 function plLabel1995(month, n, cur){ n = Math.round(Number(n) || 0); var a = '₱' + Math.abs(n).toLocaleString('en-PH'), mtd = cur ? ' (month to date)' : '';
