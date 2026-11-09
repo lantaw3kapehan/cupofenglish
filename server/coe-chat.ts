@@ -153,7 +153,7 @@ Deno.serve(async (req: Request) => {
       else L.push({ id: "dm:" + lc(me), name: "Management", kind: "direct", sort: 100 });
       const ids = L.map((g: any) => g.id);
       if (up) await db.from("chat_groups").upsert(L.filter((g: any) => g.kind === "direct").map((g: any) => ({ id: g.id, name: g.name, kind: "direct", sort: 100 })), { onConflict: "id", ignoreDuplicates: true });
-      const un: any = {}, at: any = {}, fm: any = {};   // 2008: fm = unread from management (they still sound during a teacher's class) (U || []).forEach((x: any) => { const m = x.chat_messages, g = m.gid; if (!ids.includes(g)) return; const tg = (m.mentions || []).some((n: string) => lc(n) === lc(me) || n === "all") || m.needs_reply;
+      const un: any = {}, at: any = {}, fm: any = {}; /* 2008: fm = unread from management (they still sound during a teacher's class) */ (U || []).forEach((x: any) => { const m = x.chat_messages, g = m.gid; if (!ids.includes(g)) return; const tg = (m.mentions || []).some((n: string) => lc(n) === lc(me) || n === "all") || m.needs_reply;
         if (g === "timein" && !mgmt && !tg) return;   // 1495: other teachers' check-ins never count as unread for a teacher
         un[g] = (un[g] || 0) + 1; if (tg) at[g] = (at[g] || 0) + 1; if (m.author_mgmt) fm[g] = (fm[g] || 0) + 1; });
       return L.filter((g: any) => canSee(g.id)).map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, unread: un[g.id] || 0, tagged: at[g.id] || 0, fromMg: fm[g.id] || 0, ...(CUST[g.id] ? { custom: true, people: CUST[g.id] } : {}) }));
