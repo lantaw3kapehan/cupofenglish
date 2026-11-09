@@ -2686,6 +2686,7 @@ const HW_TOLD = {};
 const canNotify = () => 'Notification' in window && Notification.permission === 'granted';
 async function notify(title, body, tag, stay, hush){
 if(!canNotify()) return false;
+if(!hush && document.visibilityState === 'visible') hush = true;   /* 2032: on screen → the app's own sound only */
 const o = { body, tag, renotify: true, silent: !!hush, vibrate: hush ? [] : [200,100,200], requireInteraction: !!stay, icon: 'icon-192.png', badge: 'icon-192.png' };
 try{ if(navigator.serviceWorker && navigator.serviceWorker.controller){ const r = await navigator.serviceWorker.ready; await r.showNotification(title, o); return true; } }catch(e){}
 try{ new Notification(title, o); return true; }catch(e){ return false; }
@@ -7326,7 +7327,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1753;
+const COE_V = 1754;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
