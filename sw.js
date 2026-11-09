@@ -24,7 +24,10 @@ self.addEventListener('push', e => {
   const at = /^chat-at/.test(d.tag || '');   // 1402: Team Chat mention / needs reply / direct message: stays until clicked, stronger vibration
   const ch = /^chat/.test(d.tag || '');      // 1419 (Misty 10:11): every Team Chat alert says it is from our Team Chat; sender and group go in the text
   if (ch) { d.body = (d.title ? d.title + ': ' : '') + (d.body || ''); d.title = 'CupOfEnglish Team Chat'; }
-  e.waitUntil(self.registration.showNotification(d.title || 'CupOfEnglish', { body: d.body || '', tag: d.tag || 'coe', renotify: true, requireInteraction: at, silent: false, icon: 'icon-192.png', badge: 'icon-192.png', vibrate: at ? [300, 120, 300, 120, 500] : [200, 100, 200], data: { url: d.url || './' } }));
+  // 2032 (9 Nov 21:05, Misty: "I'm hearing an extra sound but not on Team Chat"): while the app is open on screen it already plays the
+  // marimba, so the phone / computer notification comes silently (no second system sound). App closed → the usual notification sound.
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(l => l.some(c => c.visibilityState === 'visible' && c.url.startsWith(self.registration.scope))).catch(() => false).then(open =>
+    self.registration.showNotification(d.title || 'CupOfEnglish', { body: d.body || '', tag: d.tag || 'coe', renotify: !open, requireInteraction: at && !open, silent: open, icon: 'icon-192.png', badge: 'icon-192.png', vibrate: open ? [] : at ? [300, 120, 300, 120, 500] : [200, 100, 200], data: { url: d.url || './' } })));
 });
 self.addEventListener('notificationclick', e => {
   e.notification.close();
