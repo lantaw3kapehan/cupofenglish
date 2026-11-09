@@ -779,6 +779,16 @@ function teacherSafe(d: any) {
   }
   return x;
 }
+// QA 2 Nov 2026: a teacher may open homework history, note comments and goals only for a student she has a class with
+// (last 365 days or booked ahead); before, any student code worked. Cached 5 minutes per teacher + student.
+const OWN: Record<string, { at: number; ok: boolean }> = {};
+async function ownStudent(db: any, name: string, code: string) {
+  const t = name.trim().toLowerCase(), c = code.trim().toUpperCase(); if (!t || !/^ST-\d{4}-\d{3}$/.test(c)) return false;
+  const k = t + "|" + c, hit = OWN[k]; if (hit && Date.now() - hit.at < 300e3) return hit.ok;
+  const since = new Date(Date.now() + 8 * 3600e3 - 365 * 864e5).toISOString().slice(0, 10);
+  const { data, error } = await db.from("classes").select("id").eq("code", c).gte("day", since).contains("teachers", JSON.stringify([t])).limit(1);
+  if (error) return false; const ok = !!(data && data.length); OWN[k] = { at: Date.now(), ok }; return ok;
+}
 async function calc(db: any, fn: string, args: any[], base?: any, ctx?: any) {
   const partial = Date.now() - 3600e3;
   if (fn === "mgmtActive") return { data: await activeLive(db), at: await tabsAt(db, FN_TABS[fn]), full: true };
@@ -862,6 +872,7 @@ async function calc(db: any, fn: string, args: any[], base?: any, ctx?: any) {
   if (LOOKUP_TABS[fn]) {   // 15 Oct · simple look-ups (see above)
     const t = await tabsAt(db, [LOOKUP_TABS[fn]]); if (!t) return null;
     const who = String((ctx && (ctx.as || ctx.name)) || ""), a0 = String(args[0] || "");
+    if (ctx && ctx.mode !== "mgmt" && /^(tHwHist|tNoteComments|tGoals)$/.test(fn) && !(await ownStudent(db, String(ctx.name || ""), a0))) return null;   // QA 2 Nov: a teacher's own students only
     let d: any = null;
     if (fn === "tHwHist") d = await hwHistLive(db, a0.trim().toUpperCase());
     else if (fn === "tNoteComments") d = await noteCommentsLive(db, a0.trim().toUpperCase());
