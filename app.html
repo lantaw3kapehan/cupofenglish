@@ -2654,9 +2654,9 @@ const gap = prev ? (new Date(c.start) - new Date(prev.end)) / 60000 : 1e9, back 
 const once = k => !HW_TOLD[k] && (HW_TOLD[k] = 1) && !remTold(k);
 if(!inAlready && !back){
 const lead = c === first ? 15 : 10;
-if(toStart <= lead && toStart > 2 && once('snd:' + c.id)) nudge(teaching ? 'quiet' : 'soon', (c === first ? 'First class in ' : 'Next class in ') + Math.round(toStart) + ' min · ' + who + ' at ' + tm(c.start) + (c === first && !D.timeIn ? ' · laptop, LAN, share entire screen' : ''));
+if(toStart <= lead && toStart > 2 && once('snd:' + c.id)) nudge(teaching ? 'quiet' : 'soon', (c === first ? 'First class in ' : 'Next class in ') + Math.round(toStart) + ' min · ' + who + ' at ' + tm(c.start) + (c === first && !D.timeIn ? ' · laptop, LAN, share entire screen' : '') + ' · close Facebook and chat apps');   /* 2008 */
 if(toStart <= 2 && toStart > -3 && once('now:' + c.id)){ HW_TOLD['snd:' + c.id] = 1; nudge(teaching ? 'quiet' : 'now', 'Class with ' + who + ' starts ' + (toStart > 0.5 ? 'in ' + Math.ceil(toStart) + ' min' : 'now') + ' · tap I\'m in');
-notify('Starting now · ' + who, tm(c.start) + (c.book ? ' · ' + c.book : '') + '. Open VooV and tap I\'m in.', 'coe-now-' + c.id, true); }
+notify('Starting now · ' + who, tm(c.start) + (c.book ? ' · ' + c.book : '') + '. Open VooV and tap I\'m in. Close Facebook, Messenger and other chat apps, and focus on your student until the class ends.', 'coe-now-' + c.id, true); }   /* 2008 */
 }
 if(!inAlready && back){
 const toPrevEnd = (new Date(prev.end) - now) / 60000, pw = prev.student || prev.code || 'your student';
@@ -7248,7 +7248,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1731;
+const COE_V = 1732;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -33283,7 +33283,21 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
 (function(){
   var URL_ = (typeof FAST_URL !== 'undefined' ? FAST_URL : 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe') + '-chat';
   var sndOn = function(){ try{ return localStorage.getItem('coe.chatSnd') !== '0'; }catch(e){ return true; } };
-  var AU = null, AUOK = false, ATN = -1, HOLD = 0;
+  var AU = null, AUOK = false, ATN = -1, HOLD = 0, FMN = -1;   /* 2008: FMN = unread from management */
+  /* 2008 · "Focus on your class": a teacher posted in a group chat while her own class is running (one sheet per class, then a short message) */
+  window.focus2008 = function(c){ try{
+    var until = c && c.until ? new Date(c.until).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' }) : '';
+    var who = c && c.student ? c.student : 'your student', k = 'coe.focus2008.' + (c && c.until || ''), seen = false;
+    try{ seen = sessionStorage.getItem(k) === '1'; sessionStorage.setItem(k, '1'); }catch(e){}
+    var line = 'You are in class with ' + who + (until ? ' until ' + until : '') + '.';
+    if(seen || typeof openSheet !== 'function'){ toast2(line + ' Please focus on your class.'); return; }
+    var e = function(s){ return String(s).replace(/[&<>"]/g, function(x){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[x]; }); };
+    openSheet('<h2 style="font-family:\'Fredoka One\',sans-serif;font-weight:400;margin:0 0 6px">Focus on your class</h2>' +
+      '<div style="font-size:16px;line-height:1.55">' + e(line) + ' Team Chat can wait until the class ends.</div>' +
+      '<div style="font-size:16px;line-height:1.55;margin-top:8px">Please close Facebook, Messenger and other chat apps. Your student deserves your full attention.</div>' +
+      '<div style="color:#5E6272;font-size:14px;line-height:1.5;margin-top:8px">Messages from management still reach you during class. Chat posts during class are noted.</div>' +
+      '<button class="btn teal" style="margin-top:14px;width:100%" onclick="closeSheet()">Back to my class</button>');
+  }catch(e){} };
   /* 1419 (Misty 10:11): our own Team Chat sound, loud (peak −1 dBFS, played at the volume set in Chat sounds, default 100 %).
      chat-alert.wav (rising G–C–E–G chime, played twice): tagged, Needs reply, direct message. chat-msg.wav (short E–A, once): an
      ordinary group message, not for muted groups, can be switched off. Nothing while my class runs (alerts wait until it ends). */
@@ -33313,9 +33327,10 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
   function ding(r){ var G = r.groups || [], n = G.reduce(function(a, g){ return a + (g.tagged || 0) + (g.kind === 'direct' ? (g.unread || 0) : 0); }, 0);
     var mu = (S.init && S.init.muted) || [], u = G.reduce(function(a, g){ return a + (g.kind !== 'direct' && g.id !== 'ann' && mu.indexOf(g.id) < 0 ? (g.unread || 0) : 0); }, 0);
     var nav = document.querySelector('nav button[data-v="chat"] .dot'); if(nav) nav.classList.toggle('at', n > 0);
+    var fmN = G.reduce(function(a, g){ return a + (g.fromMg || 0); }, 0), upM = FMN >= 0 && fmN > FMN; FMN = fmN;   /* 2008 */
     if(ATN < 0){ ATN = n; UN = u; return; } var up = n > ATN, upU = u > UN; ATN = n; UN = u;
-    if(up || upU) flash(unreadAll());
-    if(r.inClass){ if(up) HOLD = 1; return; } if(up || HOLD === 1){ HOLD = 0; if(!AUOK){ HOLD = 2; showTap(); } chime(); }
+    if(up || upU || upM) flash(unreadAll());
+    if(r.inClass){ if(upM){ HOLD = 0; if(!AUOK){ HOLD = 2; showTap(); } chime(true); try{ toast2('New message from management. Please read it in Team Chat now.'); }catch(e){} return; } if(up) HOLD = 1; return; }   /* 2008: management gets through during class */ if(up || HOLD === 1){ HOLD = 0; if(!AUOK){ HOLD = 2; showTap(); } chime(); }
     else if(upU && msgOn()) chime(false, 'msg'); }
   var LS = 'coe.chat1400', S = { on: false, init: null, gid: null, day: null, data: null, view: 'chat', last: 0, busy: 0, opt: {}, img: null, q: null, ph: 'list', mem: null };
   try{ S.on = localStorage.getItem(LS) === '1'; }catch(e){}
@@ -33776,6 +33791,7 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
       var cid = S.cid || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)); S.cid = null; var tmp = { cid: cid, id: -Date.now(), gid: gs, author: S.init.me, mgmt: isMgr(), kind: voice ? 'voice' : img ? 'image' : 'text', body: v, img: voice || img, imgs: imgs.length > 1 ? imgs : null, at: new Date().toISOString(), n: 0, seen: 0, replied: 0, confirmed: 0, mentions: men, quote: rt ? { author: rt.author, body: rt.body } : null, pending: 1, rs: { img: img, imgs: imgs, voice: voice || null, rt: rt, op: op } };
       if(S.data && gs === S.gid && (!S.day || S.day === S.init.today)) S.data.msgs.push(tmp); if(!voice){ t.value = ''; S.img = null; S.imgs = []; } S.replyTo = null; S.opt = {}; render();
       S.sending = 1; try{ var r = await post('send', { gid: gs, body: v, mentions: men, needs_reply: !!op.nr, reply_by: by, confirm: !!op.cf, pin: !!op.pin, img: imgs.length > 1 ? null : img, imgs: imgs.length > 1 ? imgs : null, voice: voice || null, parent_id: rt ? rt.id : null, cid: cid });
+        if(r && r.ok && r.cls) try{ focus2008(r.cls); }catch(e){}   /* 2008 */
         if(r && r.ok){ if(S.data){ var ix = S.data.msgs.indexOf(tmp); if(ix > -1) S.data.msgs[ix] = r.msg; S.last = Math.max(S.last, r.msg.id); } render(true); load(true); if(gs !== S.gid){ toast2(gs === 'timein' ? 'Posted in Time-in' : 'Posted'); A.open(gs); } }
         else { tmp.pending = 0; tmp.failed = 1; if(gs !== S.gid){ S.imgs = imgs; S.img = img; } render(true); if(gs !== S.gid){ var t2 = document.getElementById('chTx'); if(t2) t2.value = v; } toast2((r && r.error) || 'Not sent · check the internet and try again'); } }
       catch(e){ tmp.pending = 0; tmp.failed = 1; if(gs !== S.gid){ S.imgs = imgs; S.img = img; } render(true); if(gs !== S.gid){ var t3 = document.getElementById('chTx'); if(t3) t3.value = v; } toast2('Not sent · check the internet and try again'); } finally{ S.sending = 0; } },
