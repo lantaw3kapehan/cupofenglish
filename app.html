@@ -2173,7 +2173,9 @@ mypay:   [() => MYP, () => renderMyPay(),   q => loadMyPay(q)],
 msgs:    [() => MSG, () => renderMsgs(),    q => loadMsgs(q)],
 chat:    [() => !!(window.chat1400 && chat1400.has()), () => chat1400.render(), q => chat1400.load(q)]
 };
+const MGMT_ONLY1997 = /^(home|monitor|mtoday|schedule|msgs|astudents|reports|assess|enquiry|trials|teachers|perf|leave|payroll|money|mypay|actions|db|team|active|expenses|finov|wallets|forecast|gov|act)$/;
 function go(v){
+if(typeof D !== 'undefined' && D && !D.mgr && MGMT_ONLY1997.test(String(v || ''))) v = 'today';   /* 1997: teachers never open management screens */
 VIEW = v; tab1505.set('coe.view', v); VIEWS.forEach(x => $('v-'+x).classList.toggle('hide', x!==v));
 if(v==='astudents'){ if(MS) renderAStudents(); else loadStudents(); }   // list made in the background → draw it now
 if(v==='schedule'){ if(SC) renderSchedule(); if(!SC || !SC._t || Date.now() - SC._t > 60000) loadSchedule(0, !!SC); }   
@@ -4134,11 +4136,18 @@ async function tdDbGet(){ try{ if(!TOKEN || !(D && D.mgr)) return null; const ac
   const d = r && r.ok && r.docs && r.docs['sys:todaydb'], on = r && r.ok && r.docs && r.docs['sys:todaylive'];
   if(!d || !on || !on.data || !on.data.on || !d.data || !Array.isArray(d.data.rows) || Date.now() - Date.parse(d.at) > 10 * 6e4) return null;
   return { rows: d.data.rows, db: true }; }catch(e){ return null; } }
+var TDX1996 = window.TDX1996 = {};   /* 1996: when each To do side list last arrived this session */
+function tdSide1996(){ if(!TOKEN || typeof D === 'undefined' || !D || !D.mgr) return; if(Date.now() - (TDX1996.side || 0) < 3 * 6e4) return; TDX1996.side = Date.now();
+  const done = () => { try{ if(VIEW === 'home'){ if(window.nd1837) nd1837(); if(typeof renderHome === 'function') renderHome(); } if(VIEW === 'mtoday' && TD) renderMToday(); }catch(e){} };
+  api('mgmtRenewals', TOKEN).then(v => { REN = v || {}; TDX1996.ren = Date.now(); try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){} done(); }).catch(()=>{});
+  api('mgmtTrialFus', TOKEN).then(v => { TFU = v || {}; TDX1996.tfu = Date.now(); try{ localStorage.setItem('coe.tfu', JSON.stringify(TFU)); }catch(e){} done(); }).catch(()=>{});
+  api('mgmtFixIgnored', TOKEN).then(v => { FIXI = {}; Object.keys(v || {}).forEach(k => { if(k.indexOf('done:') === 0){ if(!FIXD[k.slice(5)]) FIXD[k.slice(5)] = v[k]; } else FIXI[k] = 1; }); TDX1996.fixi = Date.now(); fixKeep(); done(); }).catch(()=>{});
+  loadTrials().then(done, done); }
 async function loadMToday(quiet){ urls();
 if(!TD && !quiet && !kept('mtoday')) $('v-mtoday').innerHTML = loading('Today');
-api('mgmtRenewals', TOKEN).then(v => { REN = v || {}; try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){} if(TD && VIEW === 'mtoday') renderMToday(); }).catch(()=>{});
-api('mgmtTrialFus', TOKEN).then(v => { TFU = v || {}; try{ localStorage.setItem('coe.tfu', JSON.stringify(TFU)); }catch(e){} if(TD && VIEW === 'mtoday') renderMToday(); }).catch(()=>{});
-api('mgmtFixIgnored', TOKEN).then(v => { FIXI = {}; Object.keys(v || {}).forEach(k => { if(k.indexOf('done:') === 0){ if(!FIXD[k.slice(5)]) FIXD[k.slice(5)] = v[k]; } else FIXI[k] = 1; }); fixKeep(); if(TD && VIEW === 'mtoday') renderMToday(); }).catch(()=>{});
+api('mgmtRenewals', TOKEN).then(v => { TDX1996.ren = Date.now(); REN = v || {}; try{ localStorage.setItem('coe.ren', JSON.stringify(REN)); }catch(e){} if(TD && VIEW === 'mtoday') renderMToday(); }).catch(()=>{});
+api('mgmtTrialFus', TOKEN).then(v => { TDX1996.tfu = Date.now(); TFU = v || {}; try{ localStorage.setItem('coe.tfu', JSON.stringify(TFU)); }catch(e){} if(TD && VIEW === 'mtoday') renderMToday(); }).catch(()=>{});
+api('mgmtFixIgnored', TOKEN).then(v => { TDX1996.fixi = Date.now(); FIXI = {}; Object.keys(v || {}).forEach(k => { if(k.indexOf('done:') === 0){ if(!FIXD[k.slice(5)]) FIXD[k.slice(5)] = v[k]; } else FIXI[k] = 1; }); fixKeep(); if(TD && VIEW === 'mtoday') renderMToday(); }).catch(()=>{});
 loadTrials();   // trial report status (Ready / being made / sent) for the "Trial reports to send" list
 try{ await swr('mtoday', () => tdDbGet().then(d => d || api('mgmtTab', TOKEN, 'TODAY')), v => TD = v, renderMToday); }catch(e){ if(!quiet) $('v-mtoday').innerHTML = '<div class="empty">Could not load TODAY.</div>'; }
 }
@@ -5057,7 +5066,9 @@ const fol = (F ? F.rows : []).filter(r => { const fu = r[tdCol(F,/FOLLOW/,7)]; r
 const rep = (P ? (P.rows || []) : []).filter(r => String(r[1] || '').trim() && !/reports? (are )?saved|all recent/i.test(String(r[0]) + ' ' + String(r[1]))).filter(r => { const t = trlFor(r[0], r[1], r[2]); return !(t && t.status === 'Sent'); });   /* 1837: counted the same way as the To do screen */
 try{ if(typeof TRL !== 'undefined' && TRL && TRL.rows && typeof ymdLocal === 'function'){ const s14 = ymdLocal(new Date(Date.now() - 14 * 864e5)); TRL.rows.forEach(t => { if(!t.date || t.status === 'Sent' || t.date < s14) return; if(rep.some(r => String(r[0] || '').slice(0, 10) === t.date && String(r[1] || '').trim().toLowerCase() === String(t.student || '').trim().toLowerCase())) return; rep.push([t.date, t.student, t.code]); }); } }catch(e){}
 const fix = (X ? X.rows : []).filter(r => { try{ const k = fixKey({ date: r[0], name: r[1], t: r[tdCol(X,/TEACHER/,2)], issue: r[tdCol(X,/ISSUE/,8)] || r.slice(3).filter(Boolean).pop() || '' }); return !FIXI[k] && !FIXD[k]; }catch(e){ return true; } });
-return { renNow: ren.filter(x => x.now), ren, fol, rep, fix }; }
+const X1996 = window.TDX1996 || {}, wait = [X1996.ren ? '' : 'renewals', X1996.trl ? '' : 'trial reports', X1996.tfu ? '' : 'trial follow-ups', X1996.fixi ? '' : 'data fixes'].filter(Boolean);   /* 1996 */
+if(wait.length) try{ tdSide1996(); }catch(e){}
+return { renNow: X1996.ren ? ren.filter(x => x.now) : [], ren: X1996.ren ? ren : [], fol: X1996.tfu ? fol : [], rep: X1996.trl ? rep : [], fix: X1996.fixi ? fix : [], wait }; }
 function hmQueue(){                                            // what needs management, most urgent first
 const Q = [], W = [], ok = [], add = (list, n, x) => { if(n > 0) list.push(Object.assign({ n }, x)); else if(x.okLabel) ok.push(x.okLabel); };
 const late = (MO && MO.late) || [];
@@ -6892,7 +6903,7 @@ try{ await swr('rep', () => api('mgmtReports', TOKEN, RP_M), v => { if(v && v.wa
 }
 let RPW = 0;
 async function rpWait(){ if(!RP || !RP.waitLater || RPW) return; RPW = 1; const m = RP.month; try{ const r = await api('mgmtReportsWait', TOKEN, m); if(r && r.ok && RP && RP.month === r.month){ const have = {}; (RP.rows||[]).concat(RP.making||[]).forEach(x => have[x.code] = 1); RP.waiting = (r.waiting||[]).filter(x => !have[x.code]); RP.waitLater = false; keep('rep', RP); if(VIEW==='reports') renderReports(); if(VIEW==='mtoday') renderMToday(); } }catch(e){} RPW = 0; }
-async function loadTrials(){ try{ await swr('trl', () => api('mgmtTrials', TOKEN), v => TRL = v, () => { if(VIEW==='reports') renderReports(); if(VIEW==='mtoday') renderMToday(); }); }catch(e){} }
+async function loadTrials(){ try{ await swr('trl', () => api('mgmtTrials', TOKEN).then(v => { try{ TDX1996.trl = Date.now(); }catch(e){} return v; }), v => TRL = v, () => { if(VIEW==='reports') renderReports(); if(VIEW==='mtoday') renderMToday(); }); }catch(e){} }
 const TL_ST = s => s==='Sent' ? ['green','Sent'] : s==='Ready' ? ['coral','To send'] : s==='Translating' ? ['','Adding Chinese'] : s==='Sending' ? ['','Just sent'] : s==='Redo asked' ? ['amber','Redo asked'] : s==='Redone · updating' ? ['teal','Redone · updating'] : ['','Making PDF'];
 
 async function tlOpen(i){
@@ -7232,7 +7243,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1718;
+const COE_V = 1721;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7885,7 +7896,7 @@ let h = `<div class="bz-k">
 <div><span>Average profit / month</span><b class="num">${k(avg)}</b><em>last ${full.length} months${best ? ' · best ' + esc(String(best.m).split(' ')[0].slice(0, 3)) + ' ' + k(best.net) : ''}</em></div>
 <div class="bz-now"><span>${esc(cm)} so far · day ${day}/${dim}</span><b class="num">${mtd ? k(mtd.sales) : '—'}</b><em class="${pacePct != null && pacePct >= 100 ? 'up' : 'dn'}">${proj ? 'on pace for ' + k(proj) + (pacePct != null ? ' · ' + pacePct + '% of ' + esc(pm.slice(0, 3)) : '') : 'sales this month'}</em></div></div>
 <div class="bz-ch">${L.map(m => { const cur = m === mtd, s = m.sales || 0, c = m.costs || 0, loss = c > s, top = Math.max(s, c);
-return `<div class="bz-c ${cur ? 'cur' : ''} ${m === best ? 'best' : ''}" title="${esc(m.m + ' · sales ' + hmPeso(s) + ' · costs ' + hmPeso(c) + ' · profit ' + hmPeso(m.net) + (cur && proj ? ' · on pace for ' + hmPeso(proj) + ' sales' : ''))}">
+return `<div class="bz-c ${cur ? 'cur' : ''} ${m === best ? 'best' : ''}" title="${esc(m.m + ' · sales ' + hmPeso(s) + ' · costs ' + hmPeso(c) + ' · ' + (Math.round(m.net || 0) < 0 ? 'loss ' + hmPeso(-(m.net || 0)) : Math.round(m.net || 0) > 0 ? 'profit ' + hmPeso(m.net) : 'break-even') + (cur ? ' (month to date)' : '') + (cur && proj ? ' · on pace for ' + hmPeso(proj) + ' sales' : ''))}">
 <b class="bz-v ${m.net < 0 ? 'neg' : ''}">${cur ? 'so far' : (m === best ? '★ ' : '') + k(m.net)}</b>${cur && proj > s ? `<i class="bz-proj" style="height:${px(proj)}px"></i>` : ''}<div class="bz-bar ${loss ? 'loss' : ''}" style="height:${px(top)}px"><i class="bz-cost" style="height:${top ? Math.round(Math.min(s, c) / top * 100) : 0}%"></i></div><span>${esc(String(m.m).slice(0, 3))}</span></div>`; }).join('')}</div>
 <div class="ov-kr"><span class="ov-k"><i style="background:#00A3AD"></i>Profit</span><span class="ov-k"><i style="background:#CFCBE0"></i>Costs</span><span class="ov-k">Whole bar = sales · number = profit</span>${proj ? '<span class="ov-k"><i style="background:#fff;border:1.5px dashed #00A3AD"></i>' + esc(cm) + ' at today’s pace</span>' : ''}</div>
 ${Y.length ? `<div class="small mute" style="margin-top:6px">${yr} so far · sales <b>${hmPeso(Y.reduce((a, m) => a + (m.sales || 0), 0))}</b> · profit <b>${hmPeso(Y.reduce((a, m) => a + (m.net || 0), 0))}</b></div>` : ''}`;
@@ -16851,9 +16862,9 @@ section.sec{border-color:var(--line)}
     const z = top + Math.round(hi / span * usable);   /* the zero line from the top */
     h += '<div class="bz2-h"><span><b>Profit each month</b> · teal = profit, coral = loss</span><span>' + (best ? '★ best ' + esc(mo(best)) + ' ' + k(best.net) : '') + '</span></div>';
     h += '<div class="bz2-ch" style="--z:' + z + 'px">' + L.map(m => { const cur = m === mtd, n = m.net || 0, px = Math.max(n ? 3 : 0, Math.round(Math.abs(n) / span * usable));
-      const tip = esc(m.m + ' · sales ' + hmPeso(m.sales || 0) + ' · costs ' + hmPeso(m.costs || 0) + ' · profit ' + hmPeso(n) + (cur && proj ? ' · sales pace ' + hmPeso(proj) : ''));
+      const tip = esc(m.m + ' · sales ' + hmPeso(m.sales || 0) + ' · costs ' + hmPeso(m.costs || 0) + ' · ' + (Math.round(n) < 0 ? 'loss ' + hmPeso(-n) : Math.round(n) > 0 ? 'profit ' + hmPeso(n) : 'break-even') + (cur ? ' (month to date)' : '') + (cur && proj ? ' · sales pace ' + hmPeso(proj) : ''));   /* 1995 */
       const lab = '<b class="' + (n < 0 ? 'neg' : '') + '" style="' + (n >= 0 ? 'top:' + (z - px - 15) + 'px' : 'top:' + (z + px + 2) + 'px') + '">' + (cur ? 'so far ' : '') + k(n) + '</b>';
-      return '<div class="bz2-c ' + (cur ? 'cur' : '') + (m === best ? ' best' : '') + '" title="' + tip + '">' + (n >= 0 ? '<i class="p" style="height:' + px + 'px"></i>' : '<i class="n" style="height:' + px + 'px"></i>') + lab + '<span>' + esc(mo(m)) + '</span></div>'; }).join('') + '</div>';
+      return '<div class="bz2-c ' + (cur ? 'cur' : '') + (m === best ? ' best' : '') + '" data-n="' + Math.round(n) + '" title="' + tip + '">' + (n >= 0 ? '<i class="p" style="height:' + px + 'px"></i>' : '<i class="n" style="height:' + px + 'px"></i>') + lab + '<span>' + esc(mo(m)) + '</span></div>'; }).join('') + '</div>';
     if(Y.length) h += '<div class="bz2-y">' + yr + ' so far · sales <b>' + hmPeso(Y.reduce((a, m) => a + (m.sales || 0), 0)) + '</b> · profit <b>' + hmPeso(Y.reduce((a, m) => a + (m.net || 0), 0)) + '</b></div>';
     return h; };
   /* Last week moves under Quality (right column), so the page ends sooner */
@@ -29811,16 +29822,40 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
 #v-home .bz2-c[tabindex]{cursor:pointer}
 </style>
 <script>
+/* 1995: one wording for a month's result — also used by tools/test-profit-label.js */
+/* 1996 · Overview: student totals say what they count; next-class teacher in full; Waiting on teachers block */
+(function(){ try{ const st = document.createElement('style'); st.textContent = '#v-home .x-st a small{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere}'
+  + '#nd37 .nd-wt{margin-top:10px;padding-top:10px;border-top:1px solid var(--line,#E6E3EE)}#nd37 .nd-wh{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}#nd37 .nd-wh b{font-size:14px}#nd37 .nd-wh small{color:var(--ink3,#6B6880);font-size:12px}'
+  + '#nd37 .nd-wr{display:flex;align-items:center;gap:10px;padding:6px 0;cursor:pointer;color:inherit;text-decoration:none;font-size:13.5px}#nd37 .nd-wr .nd-n{min-width:32px;text-align:center;background:#F3F2F8;border-radius:8px;padding:3px 6px;font-weight:700;font-size:13px}'
+  + '#nd37 .nd-sc,#nd37 .nd-chk{font-size:12px}#nd37 .nd-chk{color:#9A5B00}.sc1996{display:block;font-size:12px;color:var(--ink3,#6B6880);font-weight:500;margin-top:2px}'; document.head.appendChild(st); }catch(e){}
+  function scopes(){ const v = document.getElementById('v-home'); if(!v || typeof D === 'undefined' || !D || !D.mgr) return;
+    try{ const nx = v.querySelectorAll('.x-st a small'); nx.forEach(s => { if(!s.title) s.title = s.textContent; }); }catch(e){}
+    v.querySelectorAll('.ov-th > span, .x-h > span, .x-h > b, h2, .ov-h b, .ov-h span').forEach(sp => { const t = (sp.textContent || '').trim(); const box = sp.closest('section, .ov-c, .x-c, .card, .ov-ql, .ov-row') || sp.parentNode;
+      if(/^per student · lessons left/.test(t) && box){ const nums = [...box.querySelectorAll('b, .num')].map(b => parseInt((b.textContent || '').replace(/[^\d]/g, ''), 10)).filter(n => !isNaN(n)); const lab = [...box.querySelectorAll('*')].filter(e => /^(Healthy|5 or fewer|Ran out)$/.test((e.textContent || '').trim()));
+        let sum = 0; lab.forEach(e => { const nb = e.nextElementSibling || (e.parentNode && e.parentNode.querySelector('b')); const n = parseInt(((nb && nb.textContent) || '').replace(/[^\d]/g, ''), 10); if(!isNaN(n)) sum += n; });
+        const tx = (sum ? sum + ' students with a package' : 'students with a package') + ' · lessons left'; if(sp.textContent !== tx) sp.textContent = tx; }
+      if(/^Parent reports sent · /.test(t) && !sp.querySelector('.sc1996')){ const b = sp.parentNode && sp.parentNode.querySelector('b'); const m = b && (b.textContent || '').match(/\/\s*(\d+)/); if(m) sp.insertAdjacentHTML('beforeend', '<span class="sc1996">' + m[1] + ' = students taught that month</span>'); }
+      if(/^Where students come from/.test(t) && sp.parentNode && !sp.parentNode.querySelector('.sc1996')){ sp.insertAdjacentHTML('afterend', '<span class="sc1996">active students: every code ticked active in Packages, once each</span>'); } }); }
+  let q = 0; const later = () => { clearTimeout(q); q = setTimeout(scopes, 120); };
+  const go0 = () => { const h = document.getElementById('v-home'); if(!h){ setTimeout(go0, 800); return; } new MutationObserver(later).observe(h, { childList: true, subtree: true }); later(); };
+  if(document.readyState === 'complete') setTimeout(go0, 400); else window.addEventListener('load', () => setTimeout(go0, 400));
+})();
+function plParse1995(t){ t = String(t || '').replace(/\s+/g, ''); var neg = /^[-−–]|\([^)]*\)|^₱[-−–]/.test(t), m = t.match(/([\d.,]+)\s*([kKmM]?)/); if(!m) return 0; var v = parseFloat(m[1].replace(/,/g, '')) || 0; if(/k/i.test(m[2])) v *= 1e3; if(/m/i.test(m[2])) v *= 1e6; return neg ? -v : v; }
+function plLabel1995(month, n, cur){ n = Math.round(Number(n) || 0); var a = '₱' + Math.abs(n).toLocaleString('en-PH'), mtd = cur ? ' (month to date)' : '';
+  if(n === 0) return month + ' · break-even' + (cur ? ' so far' : '') + mtd;
+  return month + ' · ' + (n > 0 ? 'profit' : 'loss') + (cur ? ' so far' : '') + ' ' + a + mtd; }
+window.plLabel1995 = plLabel1995; window.plParse1995 = plParse1995;
 (function(){
   if(window.__1002) return; window.__1002 = 1;
   var ML = { Jan:'January',Feb:'February',Mar:'March',Apr:'April',May:'May',Jun:'June',Jul:'July',Aug:'August',Sep:'September',Sept:'September',Oct:'October',Nov:'November',Dec:'December' };
   function bars(){ var v = document.getElementById('v-home'); if(!v) return; var yr = '';
     try{ var t = (v.querySelector('.bz2-y') || {}).textContent || ''; var m = t.match(/(20\d\d)/); if(m) yr = m[1]; }catch(e){}
-    v.querySelectorAll('.bz2-c').forEach(function(c){ if(c.dataset.d1002) return; c.dataset.d1002 = '1';
+    v.querySelectorAll('.bz2-c').forEach(function(c){
       var mon = ((c.querySelector('span') || {}).textContent || '').trim(), val = ((c.querySelector('b') || {}).textContent || '').replace(/^so far\s*/i, '').trim();
-      var neg = /^-/.test(val), lab = (ML[mon] || mon) + ' · ' + (c.classList.contains('cur') ? 'profit so far ' : neg ? 'loss ' : 'profit ') + val.replace(/^-/, '');
-      c.setAttribute('tabindex', '0'); c.setAttribute('role', 'img'); c.setAttribute('aria-label', lab); c.title = lab;
-      var show = function(){ try{ toast(lab); }catch(e){} };
+      var n = c.dataset.n != null && c.dataset.n !== '' ? Number(c.dataset.n) : plParse1995(val), lab = plLabel1995(ML[mon] || mon, n, c.classList.contains('cur'));   /* 1995: from the number, every time */
+      c.setAttribute('aria-label', lab); c.title = lab; c._lab1995 = lab; if(c.dataset.d1002) return; c.dataset.d1002 = '1';
+      c.setAttribute('tabindex', '0'); c.setAttribute('role', 'img');
+      var show = function(){ try{ toast(c._lab1995 || lab); }catch(e){} };
       c.addEventListener('click', show); c.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); show(); } }); }); }
   var q = 0, later = function(){ clearTimeout(q); q = setTimeout(bars, 80); }; window.__l1002 = later;
   ['render', 'go'].forEach(function(n){ var f = window[n]; if(typeof f !== 'function') return; window[n] = function(){ var r = f.apply(this, arguments); later(); setTimeout(later, 800); return r; }; });
@@ -38244,7 +38279,10 @@ body:not(.role-t) #v-home > .ovc{display:contents}
     h += S.length ? S.map(x => '<div class="nd-r' + (x.tone === 'hot' ? ' hot' : '') + '"><span class="nd-n">' + nf(x.n) + '</span><span class="nd-t"><b>' + E(x.t) + '</b>' + (x.s ? '<small title="' + E(x.s) + '">' + E(x.s) + '</small>' : '') + '</span><button class="btn sm ' + (x.tone === 'hot' ? 'teal' : 'ghost') + '" onclick="' + E(x.go) + '">Open</button></div>').join('')
       : '<div class="nd-ok">Nothing needs you right now.</div>';
     if(R.length > S.length) h += '<div class="nd-w">' + (R.length - S.length) + ' more in <a onclick="go(\'mtoday\')">To do</a>.</div>';
-    if(W.length) h += '<div class="nd-w">Waiting on others, no action needed yet: ' + W.map(x => '<a onclick="' + E(x.go || '') + '">' + nf(+x.n || 0) + ' ' + E(String(x.t || '').charAt(0).toLowerCase() + String(x.t || '').slice(1)) + '</a>').join(', ') + '.</div>';
+    let tw = []; try{ const T0 = hmTodo(); tw = (T0 && T0.wait) || []; }catch(e){}   /* 1996 */
+    if(tw.length) h += '<div class="nd-w nd-chk">Checking ' + E(tw.join(', ')) + ' · counts appear when they have loaded (same as To do).</div>';
+    else h += '<div class="nd-w nd-sc">Same items and numbers as To do. Renewals here are only those to act on now; To do also lists the ones coming up.</div>';
+    if(W.length) h += '<div class="nd-wt"><div class="nd-wh"><b>Waiting on teachers</b><small>no action from you yet</small></div>' + W.map(x => '<a class="nd-wr" onclick="' + E(x.go || '') + '"><span class="nd-n">' + nf(+x.n || 0) + '</span><span>' + E(x.t || '') + '</span></a>').join('') + '</div>';
     let el = $1('nd37');
     if(!el){ el = document.createElement('section'); el.id = 'nd37'; el.setAttribute('aria-label', 'Needs you'); }
     if(el.parentNode !== top.parentNode) top.insertAdjacentElement('afterend', el);
@@ -38252,7 +38290,7 @@ body:not(.role-t) #v-home > .ovc{display:contents}
   const soon = () => { if(busy) return; busy = 1; queueMicrotask(needs); };   /* 1840: before the screen paints, no gap */
 
   function start(){ if(!isM() || !$1('navIn')){ setTimeout(start, 600); return; }
-    decorate(); needs();
+    decorate(); needs(); window.nd1837 = needs;   /* 1996 */
     new MutationObserver(() => { decorate(); }).observe($1('navIn'), { childList: true });
     const vh = $1('v-home'); if(vh) new MutationObserver(soon).observe(vh, { childList: true, subtree: true });
     const g0 = window.go; if(typeof g0 === 'function' && !g0.__1837){ const w = function(){ const r = g0.apply(this, arguments); try{ decorate(); if(VIEW === 'home') soon(); }catch(e){} return r; }; w.__1837 = 1; window.go = w; try{ go = w; }catch(e){} }
