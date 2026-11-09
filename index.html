@@ -44,7 +44,7 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
     try { localStorage.removeItem(KEY); } catch (e) {}
     return true;
   }
-  var net = get('app.html').catch(function () { return get(API + '?app=1'); });   // backup: the old Apps Script copy
+  var netP = null, net = { then: function (a, b) { if (!netP) netP = get('app.html').catch(function () { return get(API + '?app=1'); }); return netP.then(a, b); } };   // backup: the old Apps Script copy · 1970: fetched only when needed
   /* 23 Oct · 738 · opening the app waits up to 2.5 s for the newest screens; if they arrive in time the newest version opens right away
      (teachers kept seeing an old version because the saved copy always opened first). Slow or no internet → the saved copy, as before. */
   function show(h) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { paint(h); }); else paint(h); }
@@ -55,8 +55,17 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
       else if (have && !done) { done = true; clearTimeout(t); show(have); }
     }).catch(function () { if (have && !done) { done = true; clearTimeout(t); show(have); } else if (!have && !painted) document.getElementById('m').textContent = 'No connection. Check your internet and reopen.'; });
   }
-  if (cached) boot(cached);
-  else cGet().then(function (c) { boot(c && c.indexOf('COE_API') > -1 ? c : null); });
+  /* 1970 (9 Nov, Misty: "when refreshing, loading the screen seemed slow") · the app is 1.5 MB to download (8.9 s on a slow line), and every
+     refresh waited up to 2.5 s for it before opening the saved copy. Now the tiny version.txt is asked first (about 0.3 s): when the saved copy
+     is already the newest, it opens at once and the big download is skipped. A newer version (or no answer within 1.5 s) works as before. */
+  function vNow() { return Promise.race([fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('bad'); return r.text(); }).then(function (t) { var v = parseInt(t, 10); if (!v) throw new Error('bad'); return v; }),
+    new Promise(function (_, no) { setTimeout(function () { no(new Error('slow')); }, 1500); })]); }
+  function start(have) {
+    if (!have) return boot(null);
+    vNow().then(function (v) { if (ver(have) >= v) show(have); else boot(have); }, function () { boot(have); });
+  }
+  if (cached) start(cached);
+  else cGet().then(function (c) { start(c && c.indexOf('COE_API') > -1 ? c : null); });
 })();
 </script>
 </body>
