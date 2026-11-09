@@ -8,6 +8,7 @@ if (bad) process.exit(1);
 // 1540 · the renewal rules (server/RULES-renewals.md) are tested on every release: a change that breaks one fails here
 Promise.resolve(require('./renewal-suite.js')(file)).then((failed) => {   // 1546: the suite also runs async portal-hold cases
   if (failed) { console.error('Renewal test suite failed · see above'); process.exit(1); }
+  if (require('./test-profit-label.js')(file)) { console.error('Profit label checks failed · see above'); process.exit(1); }   // 1995
   const v = (s.match(/const COE_V = (\d+);/) || [])[1];
   if (!v) { console.error('COE_V not found'); process.exit(1); }
   fs.writeFileSync('version.txt', v + '\n');
