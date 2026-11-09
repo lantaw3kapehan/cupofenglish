@@ -60,9 +60,13 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
      is already the newest, it opens at once and the big download is skipped. A newer version (or no answer within 1.5 s) works as before. */
   function vNow() { return Promise.race([fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('bad'); return r.text(); }).then(function (t) { var v = parseInt(t, 10); if (!v) throw new Error('bad'); return v; }),
     new Promise(function (_, no) { setTimeout(function () { no(new Error('slow')); }, 1500); })]); }
+  /* 1986 (9 Nov, Misty: "refresh feels slow still") · a refresh right after a new version waited up to 4 s (version check + 1.5 MB download).
+     Now the saved copy always opens at once; a newer version downloads behind it and the app switches to it a few seconds later when it
+     is not in use (its own applyUpdate: reload, or the "New version ready" button while a form is open or a class is running). */
   function start(have) {
     if (!have) return boot(null);
-    vNow().then(function (v) { if (ver(have) >= v) show(have); else boot(have); }, function () { boot(have); });
+    show(have);
+    vNow().then(function (v) { if (ver(have) < v) net.then(function (h) { if (ver(h) > ver(have)) { cPut(h).then(cGet).then(function (c) { if (ver(c) === ver(h)) try { localStorage.removeItem(KEY); localStorage.setItem('coe.newV', String(ver(h))); } catch (e) {} }); } }, function () {}); }, function () {});   // marked only once the copy is really saved (no reload loop)
   }
   if (cached) start(cached);
   else cGet().then(function (c) { start(c && c.indexOf('COE_API') > -1 ? c : null); });
