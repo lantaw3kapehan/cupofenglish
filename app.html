@@ -43,7 +43,9 @@
       + (x.done ? '' : '<button class="btn sm" onclick="exAsk2027(\'video\',' + JSON.stringify(x.ref).replace(/"/g, '&quot;') + ')">Excuse · system issue</button>') + '</div>'; }
   function body(){ if(!EX) return '<div class="small mute" style="padding:14px 0">Loading the last 14 days…</div>';
     const T = EX.timein || [], V = EX.video || [];
-    return '<h3 class="x27-h">Late time-ins · ' + T.filter(x => !x.done).length + '</h3>' + (T.length ? T.map(tiRow).join('') : '<div class="small mute">None in the last 14 days.</div>')
+    const pen = x => !x.done && /^(Excused|Unexcused) · ₱/.test(String(x.dec || '')), T1 = T.filter(x => !pen(x)), T2 = T.filter(pen);   /* 2030 */
+    return '<h3 class="x27-h">Late time-ins · ' + T1.filter(x => !x.done).length + '</h3>' + (T1.length ? T1.map(tiRow).join('') : '<div class="small mute">None waiting in the last 14 days.</div>')
+      + (T2.length ? '<details class="x27-d"><summary class="small"><b>Already decided · penalty applied · ' + T2.length + '</b> <span class="mute">· only if a system issue is found later</span></summary>' + T2.map(tiRow).join('') + '</details>' : '')
       + '<h3 class="x27-h">Late video uploads · ' + V.filter(x => !x.done).length + '</h3>' + (V.length ? V.map(vRow).join('') : '<div class="small mute">None in the last 14 days.</div>'); }
   function paint(){ const b = document.getElementById('x27b'); if(b) b.innerHTML = body(); }
   async function load(){ try{ const r = await call({ action: 'list', days: 14 }); if(!r || !r.ok) throw new Error((r && r.error) || 'Could not load'); EX = r; paint(); return r; }
@@ -69,11 +71,11 @@
     openSheet('<h2 style="margin:0 0 4px">Excuse · system issue?</h2><div class="small mute">' + what + '</div>'
       + '<div style="background:#EEF8F9;border:1px solid #CDEBEE;border-radius:14px;padding:12px 14px;margin-top:12px;line-height:1.5">'
       + (kind === 'timein' ? 'The time-in becomes <b>On time</b>.' : 'The video is <b>not counted as late</b>.') + (cid ? ' Case <b>' + esc(cid) + '</b> is waived (no deduction, no points).' : ' No case is made for it.')
-      + ' Growth, Perfect Attendance awards and ranks are updated. Your name and today\'s date are kept on the record.</div>'
+      + (kind === 'timein' && /^(Excused|Unexcused) · ₱/.test(String(x.dec || '')) ? ' <b style="color:#B03A2E">This also cancels the ' + esc((String(x.dec).match(/₱[\d,]+/) || ['deduction'])[0]) + ' deduction.</b>' : '') + ' Growth, Perfect Attendance awards and ranks are updated. Your name and today\'s date are kept on the record.</div>'
       + '<input id="x27n" class="in-t" maxlength="160" style="margin-top:12px;width:100%" placeholder="What happened (optional) · e.g. the app froze at time-in">'
       + '<button class="btn block" id="x27go" style="margin-top:12px" onclick="_x27go()">Confirm · excuse</button><button class="btn ghost block" style="margin-top:8px" onclick="exOpen2027()">Back</button>'); };
   const st = document.createElement('style');
-  st.textContent = '.x27-h{font-size:15px;margin:16px 0 4px}.x27-r{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #F1EFF5;flex-wrap:wrap}.x27-r .btn{flex:none}.lqm a.x27-l{color:#00636B;font-weight:600;cursor:pointer;font-size:14px}';
+  st.textContent = '.x27-h{font-size:15px;margin:16px 0 4px}.x27-r{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #F1EFF5;flex-wrap:wrap}.x27-r .btn{flex:none}.lqm a.x27-l{color:#00636B;font-weight:600;cursor:pointer;font-size:14px}.x27-d{margin-top:14px;border-top:1px solid #F1EFF5;padding-top:10px}.x27-d>summary{cursor:pointer;color:#4C4868;padding:4px 0}';
   document.head.appendChild(st);
 })();
 </script>
@@ -7324,7 +7326,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1751;
+const COE_V = 1752;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
