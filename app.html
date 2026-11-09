@@ -7225,7 +7225,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1712;
+const COE_V = 1713;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -9068,7 +9068,7 @@ async function pcDb1230(code){ if(typeof FAST_URL === 'undefined' || !TOKEN) ret
     const st = ((typeof D !== 'undefined' && D && D.students) || []).find(x => x.code === code) || null;
     r.student = st ? { code: code, name: st.name || code, cn: st.cn || '', done: st.done, book: st.book || '' } : { code: code, name: code, cn: '', book: '' };
     try{ store('set', 'coe.pcrate', JSON.stringify(r.rate)); }catch(e){} return r; }catch(e){ return null; } finally{ clearTimeout(tid); } }
-window.pcPrefetch = function(code){ if(!code || PCF[code] || (window.PCDONE && PCDONE[code])) return; PCF[code] = api('tPcForm', TOKEN, code).then(r => { if(r && r.ok) try{ store('set', 'coe.pcf.' + code, JSON.stringify(r)); store('set', 'coe.pcrate', JSON.stringify(r.rate)); }catch(e){} return r; }).catch(() => { delete PCF[code]; return null; }); };
+window.pcPrefetch = function(code){ if(!code || PCF[code] || (window.PCDONE && PCDONE[code])) return; PCF[code] = pcDb1230(code).then(r => {   /* 1985: from the database */ if(r && r.ok) try{ store('set', 'coe.pcf.' + code, JSON.stringify(r)); store('set', 'coe.pcrate', JSON.stringify(r.rate)); }catch(e){} return r; }).catch(() => { delete PCF[code]; return null; }); };
 window.pcForm = async function(code){
 window._pcWhy = '';
 let r = null, rate = null; try{ r = JSON.parse(store('get', 'coe.pcf.' + code) || 'null'); }catch(e){} try{ rate = JSON.parse(store('get', 'coe.pcrate') || 'null'); }catch(e){}
@@ -9078,12 +9078,12 @@ openSheet('<h1>Progress check</h1>' + (r ? '' : '<div class="small mute">Opening
 let d = null; try{ d = JSON.parse(store('get', 'coe.pcd.' + code) || 'null'); }catch(e){}
 const mk = rr => ({ code, r: rr, picks: (P && P.code === code && P.picks) || (d && d.picks) || Array(9).fill(0), book: (P && P.code === code && P.book) || (d && d.book) || rr.ended || '', prog: (P && P.code === code && P.prog) || (d && d.prog) || '', next: (P && P.code === code && P.next) || (d && d.next) || '' });
 P = null; if(r && r.ok){ P = mk(r); pcPaint(); }
-const gq1230 = PCF[code] || api('tPcForm', TOKEN, code); delete PCF[code]; let db1230 = null;   /* 1230: the database answer first, Google's at the same time */
+const gq1230 = PCF[code] || null; delete PCF[code];   /* 1985 */ let db1230 = null;   /* 1230: the database answer first, Google's at the same time */
 try{ db1230 = await pcDb1230(code); }catch(e){}
 if(db1230 && $('sheet') && $('sheet').classList.contains('on') && !(fresh1230[code] && fresh1230[code] > Date.now() - 1000)){ const shown = P && P.code === code && P.r;
   if(!shown || shown.provisional || pcSig1230(shown) !== pcSig1230(db1230)){ const sc = $('sheet').scrollTop, fid = document.activeElement && document.activeElement.id, cur = fid && $(fid) && $(fid).selectionStart;
     if(P && P.code === code) pcSave(); P = mk(db1230); pcPaint(); try{ $('sheet').scrollTop = sc; if(fid && $(fid)){ $(fid).focus(); if(cur != null && $(fid).setSelectionRange) $(fid).setSelectionRange(cur, cur); } }catch(e){} } }
-let fresh = null; try{ fresh = await gq1230; }catch(e){}
+let fresh = null; try{ fresh = await gq1230; if(!(fresh && fresh.ok) && !db1230) fresh = await api('tPcForm', TOKEN, code); }catch(e){}   /* 1985: Google only when the database could not answer */
 if(fresh && fresh.ok && db1230 && P && P.code === code && pcSig1230(fresh) === pcSig1230(P.r)){ try{ store('set', 'coe.pcf.' + code, JSON.stringify(fresh)); store('set', 'coe.pcrate', JSON.stringify(fresh.rate)); }catch(e){} return; }   /* same as shown: keep the page still */
 if(fresh && fresh.ok){ try{ store('set', 'coe.pcf.' + code, JSON.stringify(fresh)); store('set', 'coe.pcrate', JSON.stringify(fresh.rate)); }catch(e){}
 if(!$('sheet') || !$('sheet').classList.contains('on')) return;
