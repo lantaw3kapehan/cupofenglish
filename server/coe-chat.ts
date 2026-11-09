@@ -3,6 +3,7 @@
 // (merged, mutable), management roster (add / remove a teacher), retry-safe sending (cid). Teachers never receive other people's presence or
 // per-person receipts. Kept in CupOfEnglish's database: nothing is deleted by the app (teachers can edit, shown "edited"; management can hide).
 // v21 (2008, 9 Nov): groups carry fromMg (unread from management); send answers cls { student, until } when a teacher posts in a group during her own class.
+// v22 (2010): videos and files (upurl + send file), up to 50 MB.
 // Phone alerts: chat_outbox → coe_push_queue (coe_chat_out, every minute, held while the teacher has a class running, merged per person).
 // 1495 (Misty 17:59): teachers may post class check-in pictures (picture + short caption) in Time-in; Time-in receipts, unread and alerts
 // are for management only (teachers are not alerted about each other's check-ins). A post waiting on a weak signal or refused is noted in
@@ -23,6 +24,8 @@ const str = (x: unknown, n = 2000) => String(x == null ? "" : x).trim().slice(0,
 const lc = (s: string) => String(s || "").trim().toLowerCase();
 const mnl = (t = Date.now()) => new Date(t + 8 * 3600e3).toISOString().slice(0, 10);
 const QUICK = ["Noted", "On it", "Done"];
+const FILE_MAX = 50 * 1024 * 1024;   // 2010
+const FILE_OK = /^(video\/(mp4|quicktime|webm|x-m4v|3gpp)|application\/(pdf|zip|x-zip-compressed|msword|vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet|presentationml\.presentation)|vnd\.ms-excel|vnd\.ms-powerpoint)|text\/plain|text\/csv)$/;
 // 1406 speed: the settings doc (10 s) and the active-teacher list (5 min; built from 30 days of sign-ins and classes) are cached per
 // server instance instead of being rebuilt on every 4-second poll. Adding / removing a teacher clears both at once.
 let CFG: { at: number; data: any } | null = null;
@@ -323,6 +326,19 @@ Deno.serve(async (req: Request) => {
       if (ids.length) await db.from("chat_reads").update({ seen_at: now }).eq("name", me).is("seen_at", null).in("mid", ids);
       return out({ ok: true });
     }
+    // v22 (2010, 9 Nov, Misty: "share videos later on or links, from different apps … like a communication app like WeChat"): videos and files.
+    // The phone/laptop uploads straight to storage with a one-time signed link (no size limit of a JSON request), then sends the message.
+    if (a === "upurl") {
+      const gid = str(b.gid, 60); if (!canSee(gid)) throw new Error("Not found"); if (gid === "ann" && !mgmt) throw new Error("Only management posts announcements");
+      if (gid === "timein" && !mgmt) throw new Error("Time-in takes a picture with a short caption");
+      const type = str(b.type, 100).toLowerCase(), size = Number(b.size) || 0, name = str(b.name, 120);
+      if (!FILE_OK.test(type)) throw new Error("This kind of file can't be shared here. Send a video, PDF, Word, Excel, PowerPoint, text or zip file.");
+      if (size <= 0 || size > FILE_MAX) throw new Error("The file is too large. Files up to 50 MB can be shared.");
+      const ext = (name.match(/\.([A-Za-z0-9]{1,5})$/) || [])[1] || (type.split("/")[1] || "bin").replace(/[^a-z0-9]/g, "").slice(0, 5) || "bin";
+      const path = today + "/f-" + crypto.randomUUID().slice(0, 8) + "." + ext.toLowerCase();
+      const { data, error } = await db.storage.from("chat").createSignedUploadUrl(path); if (error || !data) throw new Error("Upload not available · try again");
+      return out({ ok: true, path, url: data.signedUrl });
+    }
     if (a === "send") {
       const gid = str(b.gid, 60); if (!canSee(gid)) throw new Error("Not found"); if (gid === "ann" && !mgmt) throw new Error("Only management posts announcements");
       const tiT = gid === "timein" && !mgmt;   // 1495: a teacher's class check-in: a picture with a short caption, nothing else
@@ -334,18 +350,23 @@ Deno.serve(async (req: Request) => {
       const imgP: string[] = [];   // 1405: up to 5 pictures in one message (first in img_path, all in meta.imgs)
       if (Array.isArray(b.imgs) && b.imgs.length) { for (const x of b.imgs.slice(0, 5)) imgP.push(await upload(String(x), "m")); img_path = imgP[0]; }
       else if (b.img) img_path = await upload(String(b.img), "m"); else if (b.voice) img_path = await upload(String(b.voice), "v");
+      let fk = "", fm: any = null;   // 2010: a video or file already uploaded with upurl
+      if (!img_path && !tiT && b.file && typeof b.file === "object") { const fp = str(b.file.path, 80), ft = str(b.file.type, 100).toLowerCase();
+        if (!/^\d{4}-\d{2}-\d{2}\/f-[0-9a-f]{8}\.[a-z0-9]{1,5}$/.test(fp) || !FILE_OK.test(ft)) throw new Error("File not readable");
+        img_path = fp; fk = /^video\//.test(ft) ? "video" : "file"; fm = { file: { name: str(b.file.name, 120) || "File", type: ft, size: Number(b.file.size) || 0 } }; }
       if (!body && !img_path) throw new Error("Empty message");
       const mem = members(gid); let men = (tiT ? [] : Array.isArray(b.mentions) ? b.mentions : []).map(String).filter((n: string) => n === "all" || mem.some((x) => lc(x) === lc(n)));
       men = [...new Set(men.map((n: string) => n === "all" ? "all" : mem.find((x) => lc(x) === lc(n))!))];
       const nr = mgmt && !!b.needs_reply, cf = mgmt && !!b.confirm;
       const row = { gid, author: me, author_mgmt: mgmt, kind: b.voice && img_path ? "voice" : img_path ? "image" : (QUICK.includes(body) && parent ? "quick" : "text"), body, img_path, mentions: men, needs_reply: nr,
         reply_by: nr && b.reply_by ? new Date(String(b.reply_by)).toISOString() : null, confirm: cf, pinned: mgmt && !!b.pin, parent_id: parent, ukey: ckey, meta: imgP.length > 1 ? { imgs: imgP } : null };
+      if (fk) { (row as any).kind = fk; (row as any).meta = fm; }
       const m = await insertMsg(row);
       await markReplied(gid, parent);
       const gname = gid.startsWith("dm:") ? (mgmt ? "Management" : (meKind === "teacher" ? "Teacher " : "") + me) : ((await db.from("chat_groups").select("name").eq("id", gid).maybeSingle()).data?.name || "Team Chat");
       const others = (tiT ? mg : mem).filter((n) => lc(n) !== lc(me));   // 1495: Time-in alerts go to management only (soft)
       const loud: string[] = tiT ? [] : men.includes("all") || gid === "ann" || nr || cf || gid.startsWith("dm:") ? others : men;
-      const what = body || (b.voice ? "Voice message" : imgP.length > 1 ? "Sent " + imgP.length + " pictures" : "Sent a picture");
+      const what = body || (fk === "video" ? "Sent a video" : fk === "file" ? "Sent a file: " + fm.file.name : b.voice ? "Voice message" : imgP.length > 1 ? "Sent " + imgP.length + " pictures" : "Sent a picture");
       await push(loud, dn(me) + " · " + gname, (men.length ? "Tagged you: " : "") + what, "chat-at-" + m.id);   // chat-at-*: urgent (sw.js keeps it on screen)
       await push(others.filter((n) => !loud.some((x) => lc(x) === lc(n))), dn(me) + " · " + gname, what, "chat-" + m.id + "|" + gid, true);
       // 2008: a teacher posting in a group chat while her own class runs gets a reminder (the database notes it in coe_class_chat)
