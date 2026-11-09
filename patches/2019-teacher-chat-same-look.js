@@ -4,7 +4,7 @@
 //   is unchanged: Rename this group stays management-only (the server refuses teachers too), and receipts, pin, hide and Requires reply
 //   remain as before. Applies after 2017 and 2018. Held until after classes.
 const file = process.argv[2];
-require(require('path').join(__dirname, '..', 'tools', 'lib.js'))(file, [
+require('../tools/lib.js')(file, [
  [
   "if(isMgr() && d && d.day === S.init.today){ ms = ms.replace(",
   "if(d && d.day === S.init.today){ ms = ms.replace("

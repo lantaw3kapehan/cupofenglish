@@ -2,7 +2,7 @@
 //   Hovering a message now shows only a small "⋯" beside it; tapping "⋯" opens a short labelled menu (React, Reply, Copy link, Edit,
 //   Pin, Hide). Any click closes it; a chat refresh keeps it open (S.m9). Teachers' chat unchanged. Held until after classes (no app restarts during time-in or class).
 const file = process.argv[2];
-require(require('path').join(__dirname, '..', 'tools', 'lib.js'))(file, [
+require('../tools/lib.js')(file, [
  [
   "(isMgr() ? (tl ? '<div class=\"ch-tools ch-t9\">' + tl + '</div>' : '') + '</div>' : '')",
   "(isMgr() ? (tl ? '<button type=\"button\" class=\"ch-dot9\" aria-label=\"Message options\" title=\"Message options\" onclick=\"chat1400.dot9(event,' + m.id + ')\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"5\" cy=\"12\" r=\"1.8\"/><circle cx=\"12\" cy=\"12\" r=\"1.8\"/><circle cx=\"19\" cy=\"12\" r=\"1.8\"/></svg></button><div class=\"ch-tools ch-t9\" role=\"menu\">' + tl + '</div>' : '') + '</div>' : '')   /* 2018 */"
