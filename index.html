@@ -48,8 +48,8 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
   /* 23 Oct · 738 · opening the app waits up to 2.5 s for the newest screens; if they arrive in time the newest version opens right away
      (teachers kept seeing an old version because the saved copy always opened first). Slow or no internet → the saved copy, as before. */
   function show(h) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { paint(h); }); else paint(h); }
-  function boot(have) {
-    var done = false, t = have ? setTimeout(function () { if (!done) { done = true; show(have); } }, 2500) : null;
+  function boot(have, wait) {
+    var done = false, t = have ? setTimeout(function () { if (!done) { done = true; show(have); } }, wait || 2500) : null;
     net.then(function (h) {
       if (h !== have && ver(h) >= ver(have)) { save(h); if (!done) { done = true; if (t) clearTimeout(t); show(h); } }   // never step back to an older copy (stale CDN or the old backup)
       else if (have && !done) { done = true; clearTimeout(t); show(have); }
@@ -63,10 +63,15 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
   /* 1986 (9 Nov, Misty: "refresh feels slow still") · a refresh right after a new version waited up to 4 s (version check + 1.5 MB download).
      Now the saved copy always opens at once; a newer version downloads behind it and the app switches to it a few seconds later when it
      is not in use (its own applyUpdate: reload, or the "New version ready" button while a form is open or a class is running). */
+  /* 2023 (9 Nov 18:05, teachers' laptops froze on opening; several kept running a copy from 7–8 Nov next to the new one): the saved copy
+     opens at once only when it IS the newest. When version.txt says it is older, the newest is downloaded first (up to 8 s, then the saved
+     copy as before), so opening the app never starts last week's version and then restarts into the new one a few minutes later. */
   function start(have) {
     if (!have) return boot(null);
-    show(have);
-    vNow().then(function (v) { if (ver(have) < v) net.then(function (h) { if (ver(h) > ver(have)) { cPut(h).then(cGet).then(function (c) { if (ver(c) === ver(h)) try { localStorage.removeItem(KEY); localStorage.setItem('coe.newV', String(ver(h))); } catch (e) {} }); } }, function () {}); }, function () {});   // marked only once the copy is really saved (no reload loop)
+    vNow().then(function (v) {
+      if (ver(have) >= v) return show(have);
+      boot(have, 8000);
+    }, function () { show(have); });
   }
   if (cached) start(cached);
   else cGet().then(function (c) { start(c && c.indexOf('COE_API') > -1 ? c : null); });
