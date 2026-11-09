@@ -9,6 +9,10 @@
 // Flag: docs sys:chat { enabled, pilot:[teacher names] | "*", exclude?:[names], gx?:{ groupId:[names left out] }, mgmt?:[names], alias?:{account:name} }.
 // QA 2 Nov 2026: poll's "teacher is in class now" look-up sent cs.{name} to the jsonb teachers column, which Postgres refused (invalid json, ~5,000 a day),
 // so inClass was always false and the chat chime could sound during a class. It now sends cs.["name"].
+// v18 (5 Nov 2026, Misty: "make groupchats with teachers for example, Pam and Rose for training … easy to add and remove, and we should also
+// can name the groupchat"): management makes named groups for chosen people (chat_groups.members; management can always read).
+// action gsave { gid?, name, people[] } creates / renames / changes members (a system line in the group says who was added or removed);
+// action garchive { gid } closes a group (kept in the database, messages kept). Teachers and staff see only the groups they are in.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const ORIGINS = ["https://app.cupofenglishatph.com"];
@@ -47,6 +51,12 @@ async function activeTeachers(): Promise<Record<string, string>> {
   const nm: Record<string, string> = {}; (TS || []).forEach((x: any) => { nm[lc(x.name)] = String(x.name); });
   (TC || []).forEach((c: any) => (c.teachers || []).forEach((t: string) => { const k = lc(t); if (k && !nm[k]) nm[k] = k.charAt(0).toUpperCase() + k.slice(1); }));
   ROS = { at: Date.now(), nm }; return { ...nm };
+}
+// v18: the standard and named groups (one list, cached 60 s; a change clears it)
+async function groupRows(): Promise<any[]> {
+  if (GRP && Date.now() - GRP.at < 60e3) return GRP.rows;
+  const { data } = await db.from("chat_groups").select("id,name,kind,sort,members,created_by,archived_at").eq("kind", "group").is("archived_at", null).order("sort");
+  GRP = { at: Date.now(), rows: data || [] }; return GRP.rows;
 }
 
 Deno.serve(async (req: Request) => {
@@ -103,10 +113,13 @@ Deno.serve(async (req: Request) => {
     const vis = mgmt ? everyone : meKind === "staff" ? [...new Set([...mg, me])] : [...new Set([...mg, ...pilot])];
     // 1413 (Misty 23:27): per-group membership · sys:chat gx = { groupId: [teacher names left out of that group] }; checked here on every action
     const gx: Record<string, string[]> = cfg.gx && typeof cfg.gx === "object" ? cfg.gx : {};
-    const inGroup = (n: string, gid: string) => isMg(n) || !(Array.isArray(gx[gid]) ? gx[gid] : []).some((x) => lc(String(x)) === lc(n));
+    // v18: named groups (chat_groups.members) — only the people chosen, plus management
+    const CUST: Record<string, string[]> = {}; (await groupRows()).forEach((g: any) => { if (Array.isArray(g.members)) CUST[g.id] = g.members.map(String); });
+    const inGroup = (n: string, gid: string) => isMg(n) || (CUST[gid] ? CUST[gid].some((x) => lc(x) === lc(n)) : !(Array.isArray(gx[gid]) ? gx[gid] : []).some((x) => lc(String(x)) === lc(n)));
     const members = (gid: string) => gid.startsWith("dm:") ? [...mg, ...pilot.filter((p) => "dm:" + lc(p) === gid), ...staffL.filter((p) => "dm:" + lc(p) === gid)]
+      : CUST[gid] ? [...new Set([...mg, ...everyone.filter((n) => !isMg(n) && inGroup(n, gid))])]
       : gid === "staff" ? [...mg, ...staffL] : [...mg, ...pilot].filter((n) => inGroup(n, gid));   // teacher groups: management + teachers only
-    const canSee = (gid: string) => gid.startsWith("dm:") ? (mgmt || gid === "dm:" + lc(me)) : (mgmt || (gid === "staff" ? meKind === "staff" : meKind === "teacher" && inGroup(me, gid)));
+    const canSee = (gid: string) => gid.startsWith("dm:") ? (mgmt || gid === "dm:" + lc(me)) : (mgmt || (CUST[gid] ? inGroup(me, gid) : gid === "staff" ? meKind === "staff" : meKind === "teacher" && inGroup(me, gid)));
     const need = () => { if (!mgmt) throw new Error("Management only"); };
     const lbl = (n: string) => { const r = SRo.rows[lc(n)]; return (r && r.role !== "teacher" && !SRo.tsess.has(lc(n)) ? "" : "Teacher ") + n; };
     const msg = async (id: number) => { const { data } = await db.from("chat_messages").select("*").eq("id", id).maybeSingle(); if (!data || !canSee(data.gid)) throw new Error("Not found"); return data; };
@@ -132,9 +145,9 @@ Deno.serve(async (req: Request) => {
     }
     async function groups(up = false) {
       const [G, { data: U }] = await Promise.all([
-        GRP && Date.now() - GRP.at < 60e3 ? Promise.resolve(GRP.rows) : db.from("chat_groups").select("id,name,kind,sort").eq("kind", "group").order("sort").then((r: any) => { GRP = { at: Date.now(), rows: r.data || [] }; return GRP.rows; }),
+        groupRows(),
         db.from("chat_reads").select("mid,chat_messages!inner(gid,mentions,needs_reply,hidden)").eq("name", me).is("seen_at", null).eq("chat_messages.hidden", false).limit(1000)]);
-      const L = (G || []).filter((g: any) => g.kind === "group").map((g: any) => ({ ...g }));
+      const L = (G || []).filter((g: any) => g.kind === "group").map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, sort: g.sort }));
       if (mgmt) { pilot.forEach((p) => L.push({ id: "dm:" + lc(p), name: "Teacher " + p, kind: "direct", sort: 100 })); staffL.forEach((p) => L.push({ id: "dm:" + lc(p), name: p, kind: "direct", sort: 101 })); }
       else L.push({ id: "dm:" + lc(me), name: "Management", kind: "direct", sort: 100 });
       const ids = L.map((g: any) => g.id);
@@ -142,7 +155,7 @@ Deno.serve(async (req: Request) => {
       const un: any = {}, at: any = {}; (U || []).forEach((x: any) => { const m = x.chat_messages, g = m.gid; if (!ids.includes(g)) return; const tg = (m.mentions || []).some((n: string) => lc(n) === lc(me) || n === "all") || m.needs_reply;
         if (g === "timein" && !mgmt && !tg) return;   // 1495: other teachers' check-ins never count as unread for a teacher
         un[g] = (un[g] || 0) + 1; if (tg) at[g] = (at[g] || 0) + 1; });
-      return L.filter((g: any) => canSee(g.id)).map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, unread: un[g.id] || 0, tagged: at[g.id] || 0 }));
+      return L.filter((g: any) => canSee(g.id)).map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, unread: un[g.id] || 0, tagged: at[g.id] || 0, ...(CUST[g.id] ? { custom: true, people: CUST[g.id] } : {}) }));
     }
     async function push(to: string[], title: string, body: string, tag: string, soft = false) {
       let T = [...new Set(to.filter((n) => n && lc(n) !== lc(me)))]; if (!T.length) return;
@@ -176,11 +189,46 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, me, mgmt, today, alias, muted: (MU || []).map((x: any) => x.gid), members: vis.map(mem), kind: meKind, groups: await groups(true),
         quick: QUICK, ready: mgmt ? ["Please redo your time-in check now (tap Redo now on Today).", "You're late for your class. Please join now and reply here.", "Substitute needed at [time] for [student]. Who can take it?"] : [] });
     }
+    // v18: named groups · create / rename / change members (management) · close
+    if (a === "gsave") {
+      need();
+      const name = str(b.name, 60); if (name.length < 2) throw new Error("Name the group");
+      const want = [...new Set((Array.isArray(b.people) ? b.people : []).map((x: unknown) => str(x, 40)).filter(Boolean))];
+      const pick = want.map((n) => everyone.find((x) => lc(x) === lc(n))).filter((x): x is string => !!x && !isMg(x));
+      if (!pick.length) throw new Error("Pick at least one person");
+      let gid = str(b.gid, 60), old: any = null;
+      if (gid) { const { data: G0 } = await db.from("chat_groups").select("*").eq("id", gid).maybeSingle(); if (!G0 || !Array.isArray(G0.members) || G0.archived_at) throw new Error("Pick a group"); old = G0; }
+      if (!old && (await groupRows()).some((g: any) => lc(g.name) === lc(name))) throw new Error("There is already a group with that name");
+      if (!old) {
+        gid = "g-" + crypto.randomUUID().slice(0, 8);
+        const { error } = await db.from("chat_groups").insert({ id: gid, name, kind: "group", sort: 50, members: pick, created_by: me, updated_at: now }); if (error) throw error;
+        await db.from("chat_messages").insert({ gid, author: me, author_mgmt: true, kind: "system", body: dn(me) + " made this group with " + pick.map(lbl).join(", "), mentions: [] });
+      } else {
+        const was: string[] = old.members.map(String), add = pick.filter((n) => !was.some((x) => lc(x) === lc(n))), gone = was.filter((n) => !pick.some((x) => lc(x) === lc(n)));
+        const { error } = await db.from("chat_groups").update({ name, members: pick, updated_at: now }).eq("id", gid); if (error) throw error;
+        const lines: string[] = [];
+        if (lc(name) !== lc(old.name)) lines.push(dn(me) + " renamed the group to " + name);
+        if (add.length) lines.push(dn(me) + " added " + add.map(lbl).join(", "));
+        if (gone.length) lines.push(dn(me) + " removed " + gone.map(lbl).join(", "));
+        for (const t of lines) await db.from("chat_messages").insert({ gid, author: me, author_mgmt: true, kind: "system", body: t, mentions: [] });
+        if (gone.length) for (const n of gone) await db.from("chat_outbox").update({ queued_at: now }).is("queued_at", null).ilike("to_name", n).like("tag", "chat-%");
+      }
+      GRP = null;
+      return out({ ok: true, gid, name, people: pick });
+    }
+    if (a === "garchive") {
+      need(); const gid = str(b.gid, 60);
+      const { data: G0 } = await db.from("chat_groups").select("*").eq("id", gid).maybeSingle(); if (!G0 || !Array.isArray(G0.members)) throw new Error("Only groups you made can be closed");
+      await db.from("chat_groups").update({ archived_at: now, updated_at: now }).eq("id", gid);
+      await db.from("chat_messages").insert({ gid, author: me, author_mgmt: true, kind: "system", body: dn(me) + " closed this group", mentions: [] });
+      GRP = null; return out({ ok: true });
+    }
     if (a === "roster" || a === "member") {   // management: who is in Team Chat (applies to every group and direct chat)
       need();
       if (a === "member" && b.gid) {   // 1413: one group only (e.g. Time-in only); the teacher's chat with management is not affected
         const who = str(b.name, 40), gid = str(b.gid, 60); if (!who) throw new Error("Pick a teacher");
-        const { data: G1 } = await db.from("chat_groups").select("id,name,kind").eq("id", gid).maybeSingle(); if (!G1 || G1.kind !== "group") throw new Error("Pick a group");
+        const { data: G1 } = await db.from("chat_groups").select("id,name,kind,members").eq("id", gid).maybeSingle(); if (!G1 || G1.kind !== "group") throw new Error("Pick a group");
+        if (Array.isArray(G1.members)) throw new Error("Change this group's people with Edit group");
         const { data: cur } = await db.from("docs").select("data").eq("key", "sys:chat").maybeSingle(); const base = (cur && cur.data) || cfg;
         const GX: Record<string, string[]> = base.gx && typeof base.gx === "object" ? { ...base.gx } : {}; const L0 = (Array.isArray(GX[gid]) ? GX[gid] : []).map(String), has = L0.some((x) => lc(x) === lc(who));
         if (b.on ? has : !has) {
@@ -203,8 +251,8 @@ Deno.serve(async (req: Request) => {
       }
       SR = null; const R2 = await staffRoster();
       const exs = new Set((Array.isArray(cfg.exclude) ? cfg.exclude : []).map((x: string) => lc(x)));
-      const { data: GG } = await db.from("chat_groups").select("id,name,kind,sort").eq("kind", "group").order("sort");
-      const glist = (GG || []).filter((g: any) => g.id !== "ann").map((g: any) => ({ id: g.id, name: g.name }));
+      const { data: GG } = await db.from("chat_groups").select("id,name,kind,sort,members").eq("kind", "group").is("archived_at", null).order("sort");
+      const glist = (GG || []).filter((g: any) => g.id !== "ann" && !Array.isArray(g.members)).map((g: any) => ({ id: g.id, name: g.name }));
       const people: any[] = Object.values(R2.rows).filter((x: any) => x.status === "active" && !isMg(x.name) && !/^zz/i.test(x.name) && !/test/i.test(x.name));
       R2.tsess.forEach((k) => { if (!R2.rows[k] && !/^zz/.test(k) && !/test/.test(k) && !isMg(k)) people.push({ name: k.charAt(0).toUpperCase() + k.slice(1), role: "teacher", chat: true, status: "active" }); });
       const list = people.sort((x: any, y: any) => String(x.name).localeCompare(String(y.name))).map((x: any) => { const k = lc(x.name), teach = x.role === "teacher" || R2.tsess.has(k);
@@ -225,7 +273,7 @@ Deno.serve(async (req: Request) => {
         groups(), db.from("chat_reacts").select("at").order("at", { ascending: false }).limit(1),
         tOk ? db.from("chat_typing").select("name,at").eq("gid", tg).gt("at", new Date(Date.now() - 6000).toISOString()).neq("name", me).then((r: any) => r.data || []) : Promise.resolve([])]);
       // 1419 typing: the open chat only; teachers see only management typing (no presence of other teachers)
-      const typing = (TY || []).filter((x: any) => mgmt || isMg(x.name) || tg.startsWith("dm:")).map((x: any) => dn(x.name));
+      const typing = (TY || []).filter((x: any) => mgmt || isMg(x.name) || tg.startsWith("dm:") || !!CUST[tg]).map((x: any) => dn(x.name));
       return out({ ok: true, last: L && L[0] ? L[0].id : 0, rv: RV && RV[0] ? RV[0].at : null, typing, groups: gr, today, inClass: !!(C && C.length) });
     }
     if (a === "list") {
@@ -238,7 +286,7 @@ Deno.serve(async (req: Request) => {
       // 1406: Announcements left the channel list (Misty 21:13); their open Confirm / Needs reply items show in All Teachers until done
       const open = DO.filter((m: any) => m.gid !== gid || m.day < today).filter((m: any) => mgmt ? (m.needs_reply ? m.replied < m.n : m.confirmed < m.n) : (m.mine && (m.needs_reply ? !m.mine.replied : !m.mine.confirmed))).slice(0, 10);
       const pending = mgmt && gid === "timein" && day === today ? ((await db.from("chat_pending").select("name,what,net,st,at").gt("at", new Date(Date.now() - 18 * 36e5).toISOString()).order("at")).data || []) : [];
-      return out({ ok: true, gid, day, today, msgs: DM, pinned: DP, open, members: members(gid), pending });
+      return out({ ok: true, gid, day, today, msgs: DM, pinned: DP, open, members: members(gid), pending, ...(CUST[gid] ? { custom: true, people: CUST[gid] } : {}) });
     }
     if (a === "todo") {   // 1415 (Misty 23:27): open chat items for Today · Needs reply / @name / Confirm not answered yet (last 3 days, visible chats only)
       const since = new Date(Date.now() - 3 * 864e5).toISOString();
