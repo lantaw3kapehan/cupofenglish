@@ -1993,13 +1993,18 @@ function bootFresh1609(){ try{ const m = window.__boot1609 || JSON.parse(session
 function bootSame1971(){ try{ return !!TOKEN && !!(D && D.mgr && D.me && D.me.name); }catch(e){ return false; } }   /* 1980: coe.m.* lives in IndexedDB, not localStorage */   /* 1971: same sign-in on this device, any age */
 function bootDay1971(d){ try{ const t = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10); if(d && d.today && String(d.today).slice(0, 10) !== t){ d.today = t; d.timeIn = null; } }catch(e){} return d; }
 function bootMark1609(){ window.__boot1609 = { t: Date.now(), tk: String(TOKEN).slice(-12) }; try{ sessionStorage.setItem('coe.m.boot1616', JSON.stringify(window.__boot1609)); }catch(e){} try{ localStorage.setItem('coe.m.bootAt', String(Date.now())); localStorage.setItem('coe.m.bootTk', String(TOKEN).slice(-12)); }catch(e){} }   /* 1609 · 1616 */
+async function fastBoot1989(){ try{ if(typeof D !== 'undefined' && D) return null; if(typeof FAST_URL === 'undefined' || !TOKEN) return null;   /* 1989: first open of a teacher from the database */
+  const post = b => { const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 5000) : 0; return fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, b)), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid)); };
+  const p = await post({ op: 'ping' }); if(!p || !p.ok || !p.name || p.mode === 'mgmt') return null;
+  const k = String(p.name).trim().toLowerCase() + ':getBootstrap|[]', r = await post({ op: 'docs', keys: [k] }); const d = r && r.ok && r.docs && r.docs[k] && r.docs[k].data;
+  return d && d.me && d.me.name && !d.mgr ? d : null; }catch(e){ return null; } }
 async function reload(force){
 $('rf').classList.add('spin');
 try{
 if(force && D && D.mgr){   /* 639: management ↻ — its screens come from the database (about 0.5 s); the start data (getBootstrap) is on Google (10–30 s), so that runs behind */
   await loadMgmt(); if(MS){ MS = null; if(VIEW==='astudents') loadStudents(); } toast('Up to date'); $('rf').classList.remove('spin');
   return; }   /* 1978: no Google 'refresh' behind management ↻ */
-D = (!force && D && D.mgr && (bootFresh1609() || bootSame1971())) ? (window.__bootSkip1609 = 1, window.__bootBg1971 = !bootFresh1609(), bootDay1971(D)) : (window.__bootSkip1609 = 0, await api('getBootstrap', TOKEN));   /* 1609 */   /* 1604: management copy on this device (same sign-in, < 30 min) */   /* 638: ↻ shows the database copy first (about 2 s); Google's full re-check ('refresh', about 30 s) runs behind it */
+D = (!force && D && D.mgr && (bootFresh1609() || bootSame1971())) ? (window.__bootSkip1609 = 1, window.__bootBg1971 = !bootFresh1609(), bootDay1971(D)) : (window.__bootSkip1609 = 0, (await fastBoot1989()) || await api('getBootstrap', TOKEN));   /* 1609 */   /* 1604: management copy on this device (same sign-in, < 30 min) */   /* 638: ↻ shows the database copy first (about 2 s); Google's full re-check ('refresh', about 30 s) runs behind it */
 store('set', KEY_D, JSON.stringify(D)); if(D && D.mgr && !window.__bootSkip1609) bootMark1609(); render(); if(!D.mgr){ prefetchTeacher(force); fastFails(); }
 if(window.__bootBg1971){ window.__bootBg1971 = 0; const tk = TOKEN, nm = String((D && D.me && D.me.name) || '').toLowerCase(); fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'calc', token: tk, fn: 'getBootstrap', args: [], as: nm }) }).then(x => x.json()).then(r => { const v = r && r.ok && r.data; if(!nm || !v || !v.me || String(v.me.name || '').toLowerCase() !== nm || TOKEN !== tk || !D || !D.mgr) return; D = Object.assign({}, D, { today: v.today || D.today, timeIn: v.timeIn || null }); store('set', KEY_D, JSON.stringify(D));   /* 1983: from the database (was Google) */ bootMark1609(); const a = document.activeElement; if(document.querySelector('#sheet.on') || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return; render(); }).catch(() => {}); }   /* 1971 */
 if(force && D.mgr){ await loadMgmt(); if(MS){ MS = null; if(VIEW==='astudents') loadStudents(); } }
@@ -7227,7 +7232,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1716;
+const COE_V = 1717;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
