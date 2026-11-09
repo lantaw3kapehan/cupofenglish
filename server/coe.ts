@@ -321,7 +321,9 @@ async function teacherWeekLive(db: any, name: string, fromYmd: string, days: num
   days = Math.max(1, Math.min(42, Number(days) || 8));
   const from = /^\d{4}-\d{2}-\d{2}$/.test(fromYmd || "") ? fromYmd : add(today, -1), to = add(from, days - 1);
   const y = +today.slice(0, 4), mo = +today.slice(5, 7), eonm = new Date(Date.UTC(y, mo + 1, 0)).toISOString().slice(0, 10);   // end of next month
-  const lo0 = add(today, -7), hi0 = add(today, 42), lo = today.slice(0, 8) + "01" < lo0 ? today.slice(0, 8) + "01" : lo0, hi = eonm > hi0 ? eonm : hi0, qa = from > lo ? from : lo, qb = to < hi ? to : hi;
+  // 9 Nov (2039): the class table is the calendar and holds every month (Dec 2024 on), so any range is answered from it; Google's
+  // copy is no longer needed (a teacher opening an earlier or later month waited 5–8 s for Google).
+  const lo = "2000-01-01", hi = "2100-12-31", qa = from > lo ? from : lo, qb = to < hi ? to : hi; void eonm;
   let rows: any[] = [];
   if (qa <= qb) { const { data, error } = await db.from("classes").select("day,data").contains("teachers", JSON.stringify([lc])).gte("day", qa).lte("day", qb).limit(2000); if (error) throw new Error("db"); rows = data || []; }
   const outside = (from < lo) || (to > hi), bev = (base && Array.isArray(base.events)) ? base.events : null;
@@ -517,8 +519,10 @@ const hm2 = (x: any) => String(x).slice(11, 16);   // fmt_(d, 'HH:mm')
 const dMH = (x: any) => +String(x).slice(8, 10) + " " + MON[+String(x).slice(5, 7) - 1] + " " + hm2(x);   // 'd MMM HH:mm'
 const sinceDays = (n: number) => manila(new Date(Date.now() - n * 864e5)).slice(0, 10);
 async function hwHistLive(db: any, code: string) {
-  const v = await tab(db, "S-HOMEWORK"), out: any[] = [];
-  const rows = v.slice(1, 3001);
+  // 9 Nov (2039): only this student's rows are read (was the whole tab, 1–9 s on a busy evening)
+  const out: any[] = []; let rows: any[] = [];
+  const { data: q, error: qe } = await db.from("sheet_rows").select("r,data").eq("tab", "S-HOMEWORK").gt("r", 1).ilike("data->>3", code).order("r", { ascending: true }).limit(60);
+  if (!qe && q) rows = q.map((x: any) => x.data || []); else { const v = await tab(db, "S-HOMEWORK"); rows = v.slice(1, 3001); }
   for (let i = 0; i < rows.length && out.length < 8; i++) { const r = rows[i] || [];
     if (sv(cell(r, 3)).toUpperCase() !== code || !sv(cell(r, 5)).trim()) continue;
     out.push({ date: isD(r[1]) ? dd(r[1]) : sv(cell(r, 1)), teacher: sv(cell(r, 2)), text: sv(cell(r, 5)), eventId: sv(cell(r, 6)) }); }
