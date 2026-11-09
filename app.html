@@ -2628,10 +2628,11 @@ function acx(){ try{ ACX = ACX || new (window.AudioContext || window.webkitAudio
 ['pointerdown','keydown','touchstart'].forEach(ev => document.addEventListener(ev, function u(){ acx(); document.removeEventListener(ev, u, true); }, true));
 function chime(kind){   
 const a = acx(); if(!a) return false;
-const notes = kind === 'now' ? [[784,0],[988,.16],[1319,.32],[784,.9],[988,1.06],[1319,1.22]] : [[659,0],[880,.22]];
-notes.forEach(([f,t]) => { const o = a.createOscillator(), g = a.createGain(), at = a.currentTime + t;
-o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(0.35, at + .02); g.gain.exponentialRampToValueAtTime(0.0001, at + .55);
-o.connect(g).connect(a.destination); o.start(at); o.stop(at + .6); });
+const notes = kind === 'now' ? [[1319,0],[1047,.45],[1319,1.2],[1047,1.65]] : [[1319,0],[1047,.45]];   /* 2006 · soft bell ding-dong */
+const P = [[1,.30,.7],[2.76,.14,.35],[5.4,.07,.15],[8.93,.03,.07]];   /* bell overtones: [ratio, level, fade seconds] */
+notes.forEach(([f,t]) => P.forEach(([r,v,d]) => { if(f*r > 18000) return; const o = a.createOscillator(), g = a.createGain(), at = a.currentTime + t;
+o.type = 'sine'; o.frequency.value = f*r; g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(v, at + .004); g.gain.exponentialRampToValueAtTime(0.0001, at + .004 + d*6.9);
+o.connect(g).connect(a.destination); o.start(at); o.stop(at + .01 + d*6.9); }));
 return true;
 }
 function nudge(kind, msg){   
@@ -7247,7 +7248,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1729;
+const COE_V = 1730;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
