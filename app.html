@@ -1906,6 +1906,7 @@ async function sbRead(fn, args, real, ui){
   const sbDoc = k => sbDocV(k, fn); { const r0 = real; real = () => { const p = r0(); Promise.resolve(p).then(x => sbvMark(key, fn, x), () => {}); return p; }; }   /* 1300 */
   const age0 = d => d ? Date.now() - Date.parse(d.at) : Infinity, mx = fn in SB_BGAGE ? SB_BGAGE[fn] : 300000;
   const age = d => d && SB_LASTW && Date.now() - SB_LASTW < 120000 && Date.parse(d.at) < SB_LASTW ? Infinity / 2 : age0(d);   /* a copy made before your last save counts as old (shown, then refreshed) */
+  if(fn === 'getBootstrap' && typeof D !== 'undefined' && D && !D.mgr && D.me && D.me.name){ const d = await sbDoc(key); if(d && d.data && d.data.me && age0(d) < 3 * 864e5) return d.data; return real(); }   /* 1982: teacher home — the database, never Google while it has her screen */
   if(!ui){ const d = await sbDoc(key); if(d && (age(d) < mx || (d.live && age(d) < sbLiveMax(fn)))) return d.data; return real(); }
   if(fn === 'getBootstrap' && ui && typeof D !== 'undefined' && D && D.me && !D.mgr && SB_LASTW && Date.now() - SB_LASTW < 120000){   /* 787: just saved → keep the screen, check behind */
     const rp = real(); rp.then(x => { if(x && x.me && JSON.stringify(x) !== JSON.stringify(D)){ SB_FRESH[key] = { data: x, t: Date.now() }; sbRedraw(fn, args, x); } }).catch(() => {}); return D; }
@@ -2000,7 +2001,7 @@ D = (!force && D && D.mgr && (bootFresh1609() || bootSame1971())) ? (window.__bo
 store('set', KEY_D, JSON.stringify(D)); if(D && D.mgr && !window.__bootSkip1609) bootMark1609(); render(); if(!D.mgr){ prefetchTeacher(force); fastFails(); }
 if(window.__bootBg1971){ window.__bootBg1971 = 0; const tk = TOKEN; api('getBootstrap', tk).then(v => { if(!v || !v.mgr || TOKEN !== tk) return; D = v; store('set', KEY_D, JSON.stringify(D)); bootMark1609(); const a = document.activeElement; if(document.querySelector('#sheet.on') || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return; render(); }).catch(() => {}); }   /* 1971 */
 if(force && D.mgr){ await loadMgmt(); if(MS){ MS = null; if(VIEW==='astudents') loadStudents(); } }
-if(force){ toast('Up to date'); const tk = TOKEN; api('refresh', tk).then(v => { if(!v || TOKEN !== tk) return; store('set', KEY_D, JSON.stringify(v)); const a = document.activeElement; if(document.querySelector('#sheet.on') || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return; D = v; render(); }).catch(() => {}); }
+if(force) toast('Up to date');   /* 1982: no Google 'refresh' behind teacher ↻ */
 }catch(e){ if(!D) toast('Could not load. Check your internet.'); }
 $('rf').classList.remove('spin');
 }
@@ -7224,7 +7225,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1709;
+const COE_V = 1710;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
