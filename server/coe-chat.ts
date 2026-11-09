@@ -4,6 +4,7 @@
 // per-person receipts. Kept in CupOfEnglish's database: nothing is deleted by the app (teachers can edit, shown "edited"; management can hide).
 // v21 (2008, 9 Nov): groups carry fromMg (unread from management); send answers cls { student, until } when a teacher posts in a group during her own class.
 // v22 (2010): videos and files (upurl + send file), up to 50 MB.
+// v23 (2014): grename · management renames any group (All Teachers included).
 // Phone alerts: chat_outbox → coe_push_queue (coe_chat_out, every minute, held while the teacher has a class running, merged per person).
 // 1495 (Misty 17:59): teachers may post class check-in pictures (picture + short caption) in Time-in; Time-in receipts, unread and alerts
 // are for management only (teachers are not alerted about each other's check-ins). A post waiting on a weak signal or refused is noted in
@@ -219,6 +220,17 @@ Deno.serve(async (req: Request) => {
       }
       GRP = null;
       return out({ ok: true, gid, name, people: pick });
+    }
+    // v23 (2014, 9 Nov, Misty: "for the group of ALL TEACHERS, allow me to edit its group name"): management renames any group
+    if (a === "grename") {
+      need(); const gid = str(b.gid, 60), name = str(b.name, 60); if (name.length < 2) throw new Error("Name the group");
+      if (gid.startsWith("dm:")) throw new Error("Direct chats keep the person's name");
+      const { data: G0 } = await db.from("chat_groups").select("id,name,kind,archived_at").eq("id", gid).maybeSingle(); if (!G0 || G0.kind !== "group" || G0.archived_at) throw new Error("Pick a group");
+      if (lc(name) === lc(G0.name)) return out({ ok: true, gid, name });
+      if ((await groupRows()).some((g: any) => g.id !== gid && lc(g.name) === lc(name))) throw new Error("There is already a group with that name");
+      const { error } = await db.from("chat_groups").update({ name, updated_at: now }).eq("id", gid); if (error) throw error;
+      await db.from("chat_messages").insert({ gid, author: me, author_mgmt: true, kind: "system", body: dn(me) + " renamed the group to " + name, mentions: [] });
+      GRP = null; return out({ ok: true, gid, name });
     }
     if (a === "garchive") {
       need(); const gid = str(b.gid, 60);
