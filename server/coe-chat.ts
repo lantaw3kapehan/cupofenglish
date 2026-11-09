@@ -2,6 +2,7 @@
 // needs-reply, confirm, pinned, pictures (up to 5 per message), voice, time-in auto-post, search, Today/History, alerts for every group message
 // (merged, mutable), management roster (add / remove a teacher), retry-safe sending (cid). Teachers never receive other people's presence or
 // per-person receipts. Kept in CupOfEnglish's database: nothing is deleted by the app (teachers can edit, shown "edited"; management can hide).
+// v21 (2008, 9 Nov): groups carry fromMg (unread from management); send answers cls { student, until } when a teacher posts in a group during her own class.
 // Phone alerts: chat_outbox → coe_push_queue (coe_chat_out, every minute, held while the teacher has a class running, merged per person).
 // 1495 (Misty 17:59): teachers may post class check-in pictures (picture + short caption) in Time-in; Time-in receipts, unread and alerts
 // are for management only (teachers are not alerted about each other's check-ins). A post waiting on a weak signal or refused is noted in
@@ -146,16 +147,16 @@ Deno.serve(async (req: Request) => {
     async function groups(up = false) {
       const [G, { data: U }] = await Promise.all([
         groupRows(),
-        db.from("chat_reads").select("mid,chat_messages!inner(gid,mentions,needs_reply,hidden)").eq("name", me).is("seen_at", null).eq("chat_messages.hidden", false).limit(1000)]);
+        db.from("chat_reads").select("mid,chat_messages!inner(gid,mentions,needs_reply,hidden,author_mgmt)").eq("name", me).is("seen_at", null).eq("chat_messages.hidden", false).limit(1000)]);
       const L = (G || []).filter((g: any) => g.kind === "group").map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, sort: g.sort }));
       if (mgmt) { pilot.forEach((p) => L.push({ id: "dm:" + lc(p), name: "Teacher " + p, kind: "direct", sort: 100 })); staffL.forEach((p) => L.push({ id: "dm:" + lc(p), name: p, kind: "direct", sort: 101 })); }
       else L.push({ id: "dm:" + lc(me), name: "Management", kind: "direct", sort: 100 });
       const ids = L.map((g: any) => g.id);
       if (up) await db.from("chat_groups").upsert(L.filter((g: any) => g.kind === "direct").map((g: any) => ({ id: g.id, name: g.name, kind: "direct", sort: 100 })), { onConflict: "id", ignoreDuplicates: true });
-      const un: any = {}, at: any = {}; (U || []).forEach((x: any) => { const m = x.chat_messages, g = m.gid; if (!ids.includes(g)) return; const tg = (m.mentions || []).some((n: string) => lc(n) === lc(me) || n === "all") || m.needs_reply;
+      const un: any = {}, at: any = {}, fm: any = {};   // 2008: fm = unread from management (they still sound during a teacher's class) (U || []).forEach((x: any) => { const m = x.chat_messages, g = m.gid; if (!ids.includes(g)) return; const tg = (m.mentions || []).some((n: string) => lc(n) === lc(me) || n === "all") || m.needs_reply;
         if (g === "timein" && !mgmt && !tg) return;   // 1495: other teachers' check-ins never count as unread for a teacher
-        un[g] = (un[g] || 0) + 1; if (tg) at[g] = (at[g] || 0) + 1; });
-      return L.filter((g: any) => canSee(g.id)).map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, unread: un[g.id] || 0, tagged: at[g.id] || 0, ...(CUST[g.id] ? { custom: true, people: CUST[g.id] } : {}) }));
+        un[g] = (un[g] || 0) + 1; if (tg) at[g] = (at[g] || 0) + 1; if (m.author_mgmt) fm[g] = (fm[g] || 0) + 1; });
+      return L.filter((g: any) => canSee(g.id)).map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, unread: un[g.id] || 0, tagged: at[g.id] || 0, fromMg: fm[g.id] || 0, ...(CUST[g.id] ? { custom: true, people: CUST[g.id] } : {}) }));
     }
     async function push(to: string[], title: string, body: string, tag: string, soft = false) {
       let T = [...new Set(to.filter((n) => n && lc(n) !== lc(me)))]; if (!T.length) return;
@@ -347,7 +348,13 @@ Deno.serve(async (req: Request) => {
       const what = body || (b.voice ? "Voice message" : imgP.length > 1 ? "Sent " + imgP.length + " pictures" : "Sent a picture");
       await push(loud, dn(me) + " · " + gname, (men.length ? "Tagged you: " : "") + what, "chat-at-" + m.id);   // chat-at-*: urgent (sw.js keeps it on screen)
       await push(others.filter((n) => !loud.some((x) => lc(x) === lc(n))), dn(me) + " · " + gname, what, "chat-" + m.id + "|" + gid, true);
-      return out({ ok: true, msg: (await decorate([m]))[0] });
+      // 2008: a teacher posting in a group chat while her own class runs gets a reminder (the database notes it in coe_class_chat)
+      let cls: any = null;
+      if (!mgmt && !gid.startsWith("dm:") && gid !== "timein" && row.kind !== "quick") {
+        const { data: CC } = await db.from("coe_class_chat").select("student,ends_at").eq("mid", m.id).maybeSingle();
+        if (CC) cls = { student: CC.student || "", until: CC.ends_at };
+      }
+      return out({ ok: true, msg: (await decorate([m]))[0], ...(cls ? { cls } : {}) });
     }
     if (a === "quick") {
       const p = await msg(Number(b.id)); const t = QUICK.includes(String(b.text)) ? String(b.text) : "Noted";
