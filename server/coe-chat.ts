@@ -160,7 +160,10 @@ Deno.serve(async (req: Request) => {
       const un: any = {}, at: any = {}, fm: any = {}; /* 2008: fm = unread from management (they still sound during a teacher's class) */ (U || []).forEach((x: any) => { const m = x.chat_messages, g = m.gid; if (!ids.includes(g)) return; const tg = (m.mentions || []).some((n: string) => lc(n) === lc(me) || n === "all") || m.needs_reply;
         if (g === "timein" && !mgmt && !tg) return;   // 1495: other teachers' check-ins never count as unread for a teacher
         un[g] = (un[g] || 0) + 1; if (tg) at[g] = (at[g] || 0) + 1; if (m.author_mgmt) fm[g] = (fm[g] || 0) + 1; });
-      return L.filter((g: any) => canSee(g.id)).map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, unread: un[g.id] || 0, tagged: at[g.id] || 0, fromMg: fm[g.id] || 0, ...(CUST[g.id] ? { custom: true, people: CUST[g.id] } : {}) }));
+      const V = L.filter((g: any) => canSee(g.id));
+      /* 2031 (9 Nov, Misty: "someone who sent a message should always be at the top, like in common chats"): time of the last message per chat */
+      const last: any = {}; try { const { data: LA } = await db.rpc("coe_chat_last", { p_ids: V.map((g: any) => g.id) }); (LA || []).forEach((x: any) => { if (x.last_at) last[x.gid] = x.last_at; }); } catch (_e) { /* the list still shows, in its usual order */ }
+      return V.map((g: any) => ({ id: g.id, name: g.name, kind: g.kind, unread: un[g.id] || 0, tagged: at[g.id] || 0, fromMg: fm[g.id] || 0, last: last[g.id] || null, ...(CUST[g.id] ? { custom: true, people: CUST[g.id] } : {}) }));
     }
     async function push(to: string[], title: string, body: string, tag: string, soft = false) {
       let T = [...new Set(to.filter((n) => n && lc(n) !== lc(me)))]; if (!T.length) return;
