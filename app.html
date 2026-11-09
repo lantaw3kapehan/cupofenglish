@@ -3197,10 +3197,12 @@ NG = c; const box = () => $('ngBox'); if(box()) box().innerHTML = ngHtml();
 try{ const r = await api('mgmtNight', TOKEN, ds, !!fresh); if(NG_D !== ds) return; NG = r; store('set', k, JSON.stringify(r)); if(box()) box().innerHTML = ngHtml(); if(fresh) toast('Checked again'); }
 catch(e){ if(fresh) toast('Could not check. Try again.'); }
 }
+const mlx1968 = x => x.kind === 'Missed lesson';
+const mlNote1968 = x => { const m = +x.mins; if(!isFinite(m)) return 'cancelled'; const a = Math.abs(m), t = a >= 120 ? Math.round(a / 60) + ' h' : a + ' min'; return 'cancelled ' + t + (m >= 0 ? ' before' : ' after start'); };
 function decide(row, cond){
 const x = ((MO && MO.late) || []).find(l => l.row === row); if(!x) return;
 openSheet(`<h1>${cond==='Waive'?'Waive':'Mark '+cond}?</h1><div class="mute small">${esc(x.teacher)} · ${esc(x.kind)} · ${esc(x.date)} ${esc(x.time)}</div>
-<p class="small" style="margin-top:12px">${cond==='Waive'?'No penalty. The entry is marked Waived.':'Adds a '+(x.kind==='Late time-in'?'Teacher Late Time-in':'Teacher Late to Class')+' row at the top of ACTIONS. Amount and demerit points come from POLICY and flow into payroll.'}</p>
+<p class="small" style="margin-top:12px">${cond==='Waive'?'No penalty. The entry is marked Waived.':'Adds a '+(x.kind==='Late time-in'?'Teacher Late Time-in':mlx1968(x)?'Teacher Missed Lesson':'Teacher Late to Class')+' row at the top of ACTIONS. Amount and demerit points come from POLICY and flow into payroll.'}</p>
 <button class="btn block" id="dGo" style="margin-top:14px" onclick="sendDecide(${row},'${cond}')">Confirm</button>`);
 }
 async function sendDecide(row, cond){
@@ -7219,7 +7221,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1699;
+const COE_V = 1700;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7926,7 +7928,7 @@ let h = `<div class="lead"><h1>Time-ins</h1><div class="mute small">${new Date()
 if(late.length){
 h += `<h2>To review <span class="c">${late.length}</span></h2>` + late.map(x => `<div class="card" style="margin-top:8px">
 <div class="row"><b class="grow">${esc(tName(x.teacher))}</b><span class="chip red">${esc(x.kind)}</span></div>
-<div class="small mute">${esc(x.date)} · in ${esc(x.time)}${x.first ? ' · class ' + esc(x.first) : ''}${x.mins !== '' ? ' · ' + Math.abs(x.mins) + ' min ' + (x.mins >= 0 ? 'before' : 'after') : ''}${x.cls ? ' · ' + esc(x.cls) : ''}</div>
+<div class="small mute">${mlx1968(x) ? esc(x.date) + ' · class ' + esc(x.first) + ' · ' + mlNote1968(x) + (x.cls ? ' · ' + esc(x.cls) : '') + ' · lesson returned to the student' : `${esc(x.date)} · in ${esc(x.time)}${x.first ? ' · class ' + esc(x.first) : ''}${x.mins !== '' ? ' · ' + Math.abs(x.mins) + ' min ' + (x.mins >= 0 ? 'before' : 'after') : ''}${x.cls ? ' · ' + esc(x.cls) : ''}`}</div>
 <div class="ti-tags" style="margin-top:6px">${tiNet(x)}${tiTown(x)}</div>${window.lxM1671 ? lxM1671(x) : ''}
 <div class="row" style="margin-top:10px;gap:6px"><button class="btn ghost sm grow" onclick="decide(${x.row},'Excused')">Excused</button>
 <button class="btn sm grow" onclick="decide(${x.row},'Unexcused')">Unexcused</button><button class="btn ghost sm" onclick="decide(${x.row},'Waive')">Waive</button></div></div>`).join('');
@@ -23799,8 +23801,9 @@ go();
     if(box && root.contains(box) && sig === LQS && !force) return; LQS = sig;
     if(!box || !root.contains(box)){ box = document.createElement('section'); box.id = 'lqmBox'; box.style.cssText = 'margin:0 0 16px'; const v = document.getElementById('vcmBox'); if(v && root.contains(v)) v.after(box); else root.insertBefore(box, root.firstChild); }
     const due = x => { const t = +x.row > 1e9 ? +x.row + 864e5 : 0; return t ? new Date(t).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' }) : ''; };
-    const row = x => '<div class="lqm-it"><div class="grow"><b>' + esc(typeof tName === 'function' ? tName(x.teacher) : x.teacher) + ' · ' + esc(x.kind) + (x.mins !== '' && x.mins != null ? ' · ' + Math.abs(+x.mins) + ' min' + (+x.mins > 0 ? ' before' : ' after start') : '') + '</b>'
-      + '<div class="small mute">' + esc(x.date) + ' · tapped ' + esc(x.time) + (x.first ? ' · class ' + esc(x.first) : '') + (x.cls ? ' · ' + esc(x.cls) : '') + (due(x) ? ' · <span style="color:#B4532F">auto Unexcused ' + esc(due(x)) + '</span>' : '') + '</div>' + (window.lxM1671 ? lxM1671(x) : '') + '</div>'
+    const ml = x => x.kind === 'Missed lesson', mlN = x => { const m = +x.mins, a = Math.abs(m); return isFinite(m) ? 'cancelled ' + (a >= 120 ? Math.round(a / 60) + ' h' : a + ' min') + (m >= 0 ? ' before' : ' after start') : 'cancelled'; };
+    const row = x => '<div class="lqm-it"><div class="grow"><b>' + esc(typeof tName === 'function' ? tName(x.teacher) : x.teacher) + ' · ' + esc(x.kind) + (ml(x) ? '' : x.mins !== '' && x.mins != null ? ' · ' + Math.abs(+x.mins) + ' min' + (+x.mins > 0 ? ' before' : ' after start') : '') + '</b>'
+      + '<div class="small mute">' + (ml(x) ? esc(x.date) + ' · class ' + esc(x.first) + ' · ' + mlN(x) + (x.cls ? ' · ' + esc(x.cls) : '') + ' · lesson returned to the student · no automatic decision' : esc(x.date) + ' · tapped ' + esc(x.time) + (x.first ? ' · class ' + esc(x.first) : '') + (x.cls ? ' · ' + esc(x.cls) : '') + (due(x) ? ' · <span style="color:#B4532F">auto Unexcused ' + esc(due(x)) + '</span>' : '')) + '</div>' + (window.lxM1671 ? lxM1671(x) : '') + '</div>'
       + '<div class="lqm-b"><button class="btn sm ghost" onclick="actLog(\'' + esc(x.teacher) + '\',\'' + (+x.row > 1e9 ? new Date(+x.row + 8 * 3600e3).toISOString().slice(0, 10) : '') + '\')">📋 Proof</button><button class="btn sm ghost" onclick="decide(' + x.row + ',\'Excused\')">Excused</button><button class="btn sm" style="background:#C2483A;color:#fff;border-color:#C2483A" onclick="decide(' + x.row + ',\'Unexcused\')">Unexcused</button><button class="btn sm ghost" onclick="decide(' + x.row + ',\'Waive\')">Waive</button></div></div>';
     box.innerHTML = '<div class="lqm"><b>⏱ Lates to decide · ' + L.length + '</b><div class="small mute" style="margin:2px 0 6px">POLICY · Excused or Unexcused adds the case and the deduction · Waive = no penalty · not decided in 24 h → Unexcused automatically</div>' + L.map(row).join('') + '</div>'; }
   (function(){ const st = document.createElement('style'); st.textContent = '.lqm{border:1.5px solid #F0C9BD;background:#FFF6F3;border-radius:16px;padding:14px 16px}.lqm-it{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #F6DDD4;flex-wrap:wrap}.lqm-b{display:flex;gap:6px}'; document.head.appendChild(st);
