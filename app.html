@@ -1905,7 +1905,7 @@ async function sbRead(fn, args, real, ui){
   const key = sbKey(fn, args), f = SB_FRESH[key]; if(f && Date.now() - f.t < 20000) return f.data;
   const sbDoc = k => sbDocV(k, fn); { const r0 = real; real = () => { const p = r0(); Promise.resolve(p).then(x => sbvMark(key, fn, x), () => {}); return p; }; }   /* 1300 */
   const age0 = d => d ? Date.now() - Date.parse(d.at) : Infinity, mx = fn in SB_BGAGE ? SB_BGAGE[fn] : 300000;
-  const age = d => d && SB_LASTW && Date.now() - SB_LASTW < 120000 && Date.parse(d.at) < SB_LASTW ? Infinity / 2 : age0(d);   /* a copy made before your last save counts as old (shown, then refreshed) */
+  const age = d => d && !d.live && SB_LASTW && Date.now() - SB_LASTW < 120000 && Date.parse(d.at) < SB_LASTW ? Infinity / 2 : age0(d);   /* a copy made before your last save counts as old (shown, then refreshed) */
   if(fn === 'getBootstrap' && typeof D !== 'undefined' && D && !D.mgr && D.me && D.me.name){ const d = await sbDoc(key); if(d && d.data && d.data.me && age0(d) < 3 * 864e5) return d.data; return real(); }   /* 1982: teacher home — the database, never Google while it has her screen */
   if(!ui){ const d = await sbDoc(key); if(d && (age(d) < mx || (d.live && age(d) < sbLiveMax(fn)))) return d.data; return real(); }
   if(fn === 'getBootstrap' && ui && typeof D !== 'undefined' && D && D.me && !D.mgr && SB_LASTW && Date.now() - SB_LASTW < 120000){   /* 787: just saved → keep the screen, check behind */
@@ -1999,7 +1999,7 @@ if(force && D && D.mgr){   /* 639: management ↻ — its screens come from the 
   return; }   /* 1978: no Google 'refresh' behind management ↻ */
 D = (!force && D && D.mgr && (bootFresh1609() || bootSame1971())) ? (window.__bootSkip1609 = 1, window.__bootBg1971 = !bootFresh1609(), bootDay1971(D)) : (window.__bootSkip1609 = 0, await api('getBootstrap', TOKEN));   /* 1609 */   /* 1604: management copy on this device (same sign-in, < 30 min) */   /* 638: ↻ shows the database copy first (about 2 s); Google's full re-check ('refresh', about 30 s) runs behind it */
 store('set', KEY_D, JSON.stringify(D)); if(D && D.mgr && !window.__bootSkip1609) bootMark1609(); render(); if(!D.mgr){ prefetchTeacher(force); fastFails(); }
-if(window.__bootBg1971){ window.__bootBg1971 = 0; const tk = TOKEN; api('getBootstrap', tk).then(v => { if(!v || !v.mgr || TOKEN !== tk) return; D = v; store('set', KEY_D, JSON.stringify(D)); bootMark1609(); const a = document.activeElement; if(document.querySelector('#sheet.on') || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return; render(); }).catch(() => {}); }   /* 1971 */
+if(window.__bootBg1971){ window.__bootBg1971 = 0; const tk = TOKEN, nm = String((D && D.me && D.me.name) || '').toLowerCase(); fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'calc', token: tk, fn: 'getBootstrap', args: [], as: nm }) }).then(x => x.json()).then(r => { const v = r && r.ok && r.data; if(!nm || !v || !v.me || String(v.me.name || '').toLowerCase() !== nm || TOKEN !== tk || !D || !D.mgr) return; D = Object.assign({}, D, { today: v.today || D.today, timeIn: v.timeIn || null }); store('set', KEY_D, JSON.stringify(D));   /* 1983: from the database (was Google) */ bootMark1609(); const a = document.activeElement; if(document.querySelector('#sheet.on') || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return; render(); }).catch(() => {}); }   /* 1971 */
 if(force && D.mgr){ await loadMgmt(); if(MS){ MS = null; if(VIEW==='astudents') loadStudents(); } }
 if(force) toast('Up to date');   /* 1982: no Google 'refresh' behind teacher ↻ */
 }catch(e){ if(!D) toast('Could not load. Check your internet.'); }
@@ -7225,7 +7225,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1710;
+const COE_V = 1711;
 function newerSaved(){ let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -25926,7 +25926,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const w = function(fn){ if(fn !== 'mgmtPulse') return base.apply(this, arguments);
     const since = arguments[2], self = this, args = arguments;
     const dbp = fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'pulse', since: since || 0 }) }).then(x => x.json());
-    const wantG = Date.now() - gAt > 15 * 6e4;   /* 1881 */ if(wantG) gAt = Date.now();
+    const wantG = false;   /* 1983: sheets frozen, the app is the calendar — nothing changes on Google's side */   /* 1881 */ if(wantG) gAt = Date.now();
     if(wantG) Promise.resolve(base.apply(self, args)).then(g => { try{ if(g && Array.isArray(g.items)) g.items.forEach(x => { const k = x.t + '|' + x.fn + '|' + x.who; if(x.fn && DBF.test(x.fn) || GS1788[k]) return; GS1788[k] = 1; GQ1788.push(x); }); if(Object.keys(GS1788).length > 600) GS1788 = {}; }catch(e){} }, () => {});   /* 1788 */
     return dbp.then(async r => { if(!r || r.ok === false) throw new Error('db');
         let items = r.items || [];
