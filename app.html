@@ -7338,7 +7338,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1757;
+const COE_V = 1758;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7494,7 +7494,16 @@ docShow('SHPKG', T, { rows: h, pick: '' }, code);
 try{ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const up = s => String(s || '').trim().toUpperCase(), R = AT.rows.filter(x => up(x[C.code]) === up(code) && x[C.enrolled] !== '').sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])));
 if(R.length > 1){ const cur = (lsRows(code) || {}).r; $('sheetBody').insertAdjacentHTML('afterbegin', '<div class="small mute noprint">' + R.length + ' packages · pick one for its own summary</div><div class="seg noprint" style="flex-wrap:wrap;margin-bottom:8px">' + R.map(x => '<button class="' + (x === cur ? 'on' : '') + '" onclick="window.LS_PICK={code:\'' + esc(up(code)) + '\',row:' + x[C.row] + '};shSummary(\'' + esc(code) + '\')">' + esc((C.course != null && x[C.course] && typeof pkCourse === 'function' ? pkCourse(x[C.course]) + ' · ' : '') + x[C.teacher] + ' · ' + x[C.enrolled] + ' lessons · ' + x[C.start]) + '</button>').join('') + '</div>'); } }catch(e){} }
 const _tsSh = tabSheet;
-tabSheet = function(key, title, pick, pick2){ try{ if(key === 'INDPKG' && D && D.mgr && pick && (shGroup(pick) || lsRows(pick))) return shSummary(pick); }catch(e){} return _tsSh.apply(this, arguments); };
+tabSheet = function(key, title, pick, pick2){ try{ if(key === 'INDPKG' && D && D.mgr && pick && (shGroup(pick) || lsRows(pick))) return shSummary(pick); }catch(e){}
+  if(key === 'INDPKG' && D && D.mgr && pick){   /* 2038: no package yet → a clear note, never Google's old sheet */
+    if(!(AT && AT.cols)){ if(tabSheet._w2038 !== pick){ tabSheet._w2038 = pick; openSheet('<h1>Lesson summary</h1><div class="paper"><div class="sk"></div><div class="sk" style="width:60%"></div></div>'); loadActive(true).then(() => { tabSheet(key, title, pick, pick2); }, () => { tabSheet(key, title, pick, pick2); }); return; } }
+    tabSheet._w2038 = '';
+    const up = String(pick).trim().toUpperCase(), cls = (typeof STU !== 'undefined' && STU && String(STU.code || '').toUpperCase() === up && Array.isArray(STU.cls)) ? STU.cls.filter(c => c && !c.cancelled) : [];
+    const tr = cls.filter(c => /-TC\b|trial/i.test(String(c.title || ''))), nm = (typeof STU !== 'undefined' && STU && STU.s && (STU.s.name || STU.s.en)) || '';
+    const line = c => { const d = new Date(c.start); return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + tm(c.start) + (c.teacher ? ' · Teacher ' + String(typeof tName === 'function' ? tName(c.teacher) : c.teacher).replace(/^Teacher\s+/i, '') : '') + (c.book ? ' · ' + c.book : ''); };
+    openSheet('<h1>Lesson summary</h1><div class="mute small">' + esc((nm ? nm + ' · ' : '') + up) + '</div><div class="card" style="margin-top:12px;padding:14px 16px;background:#F7F5FC;border-color:#E2DEEE;line-height:1.5"><b>No package yet</b><div class="small" style="margin-top:4px">The lesson summary starts once the student is enrolled (Enrolled · paid). A trial class never counts toward a package.</div>' + (tr.length ? '<div class="small" style="margin-top:8px"><b>Trial class</b> · ' + tr.map(c => esc(line(c))).join('<br>') + '</div>' : '') + '</div>');
+    return; }
+  return _tsSh.apply(this, arguments); };
 const _drSh = docRefresh;
 docRefresh = function(){ if(DOCV && DOCV.key === 'SHPKG') return shSummary(DOCV.pick, true); return _drSh.apply(this, arguments); };
 const FU_STEPS = [{ day: 3, k: 'd3', en: 'Day 3 · gentle check-in', zh: '第3天 · 温和问候' }, { day: 7, k: 'd7', en: 'Day 7 · send open times + suggested plan', zh: '第7天 · 发送可约时间和建议课程' }, { day: 14, k: 'd14', en: 'Day 14 · last friendly note', zh: '第14天 · 最后一次友好提醒' }, { day: 21, k: 'close', en: 'Close · no reply after 3 messages', zh: '结束跟进' }];
