@@ -564,8 +564,12 @@ async function monDayLive(db: any, date: string) {
 }
 async function remindersLive(db: any, day: string) {
   day = String(day || manila().slice(0, 10)).slice(0, 10);
-  const v = await tab(db, "REMINDERS"), n = v.length, out: Record<string, any> = {};
-  if (n > 1) v.slice(Math.max(1, n - 1500), n).forEach((r) => { r = r || []; const d = isD(r[1]) ? dd(r[1]) : sv(cell(r, 1)); if (d !== day || !cell(r, 8)) return;
+  // 9 Nov (2036, Misty: "these have been reminded but it's still showing"): the sheet copy REMINDERS stopped on 8 Nov (1921);
+  // "sent" now comes from the database (coe_reminders, written by tRemindLog / mgmtRemindLog), so every device sees who reminded.
+  const out: Record<string, any> = {};
+  const { data: R, error } = await db.from("coe_reminders").select("data").eq("day", day).limit(3000);
+  if (error) throw new Error("db");
+  (R || []).forEach((x: any) => { const r = Array.isArray(x.data) ? x.data : []; if (!cell(r, 8)) return;
     out[sv(r[8])] = { by: sv(cell(r, 7)), at: isD(r[0]) ? hm2(r[0]) : sv(cell(r, 0)) }; });
   return { ok: true, day, rem: out };
 }
