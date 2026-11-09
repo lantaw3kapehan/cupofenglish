@@ -975,6 +975,7 @@ Deno.serve(async (req: Request) => {
     try {
       let base = null;
       const scope = (fn === "tStudent" || fn === "tSchedule" || fn === "getBootstrap" || fn === "tFbStatus" || fn === "tMyVisits" || fn === "tMyComments") ? String(b.as || "").toLowerCase() : (b.scope === "pres" ? "pres" : "mgmt");   // b.as: check a teacher's view (management only)
+      if (!mayRead(s, scope) && (scope === "pres" || scope === "mgmt")) return out({ ok: false, error: "AUTH" }, 403);   // 9 Nov · a President-only copy is read only by the President (Operations asked for scope "pres" and got its base)
       if (/^(mgmtStudent|mgmtStuClasses|tStudent|mgmtSchedule|tSchedule|mgmtTeacherWeek|mgmtActions|mgmtPayroll|mgmtLeave|tMyVisits|tMyComments|mgmtTab|mgmtMsgs|mgmtDatabase|dbLists)$/.test(fn) && !b.nobase) { const { data: d } = await db.from("docs").select("data").eq("key", scope + ":" + fn + "|" + JSON.stringify(args)).maybeSingle(); base = d ? d.data : null; }
       const t0 = Date.now(), r = await calc(db, fn, args, base, (fn === "tStudent" || fn === "tSchedule" || fn === "tMyComments" || fn === "tMyVisits" || fn === "tLeave" || fn === "tMsgs") ? { name: b.as } : (fn === "getBootstrap" || fn === "tFbStatus") ? { as: b.as, mode: "mgmt" } : s);
       return out({ ok: true, data: r ? r.data : null, full: r ? r.full : false, ms: Date.now() - t0, at: r && r.at ? new Date(r.at).toISOString() : null });
