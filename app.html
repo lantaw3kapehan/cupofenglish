@@ -7372,7 +7372,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1767;
+const COE_V = 1768;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -31734,13 +31734,18 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   var C = { day: '', at: 0, busy: 0, ci: {}, ti: {} };
   var hm = function(iso){ try{ return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' }); }catch(e){ return ''; } };
   function dayOf(e){ try{ return new Date(Date.parse(e.start) + 8 * 3600e3).toISOString().slice(0, 10); }catch(x){ return ''; } }
-  function fill(e){ try{ if(!e || e.cancelled || (e.ci && (e.ci.time || e.ci.decision))) return;
+  function fill(e){ try{ if(!e || e.cancelled) return;
+      var dd = dayOf(e);   /* 2051: a weekly class keeps the same id every week, so an "I'm in" counts only on its own day */
+      if(e.ci && e.ci.app1145 && e.ci.d2051 !== dd) e.ci = null;
+      if(e.ci && (e.ci.time || e.ci.decision)) return;
+      if(C.day !== dd) return;
       var x = C.ci[e.id + '|' + e.start] || C.ci[e.id];
+      if(x && dayOf({ start: x.start || x.at }) !== dd) x = null;
       if(!x && e.first){ var t = String(e.teacher || '').split(',')[0].trim().toLowerCase(); x = C.ti[t]; if(x && !x.status) x = null; }
       if(!x) return;
       var mins = x.mins != null ? +x.mins : Math.max(0, Math.round((Date.parse(x.at) - Date.parse(e.start)) / 6e4));
       var st = x.status || (Date.parse(x.at) <= Date.parse(e.start) ? 'On time' : 'Late to class');
-      e.ci = Object.assign({}, e.ci || {}, { time: x.time || hm(x.at), status: st, mins: mins, first: x.kind === 'ti', app1145: 1 }); }catch(err){} }
+      e.ci = Object.assign({}, e.ci || {}, { time: x.time || hm(x.at), status: st, mins: mins, first: x.kind === 'ti', app1145: 1, d2051: dd }); }catch(err){} }
   async function load(day){
     if(C.busy){ setTimeout(kick, 1500); return false; } if(typeof TOKEN === 'undefined' || !TOKEN || typeof D === 'undefined' || !D || !D.mgr) return false;
     if(C.day === day && Date.now() - C.at < 55000) return false; C.busy = 1;
