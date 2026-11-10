@@ -4631,10 +4631,18 @@ function lv1804signed(t, day){ if(!LVCT1804.d && !LVCT1804.p && Date.now() - LVC
 /* 1806 · New from teachers (management Home) */
 const FD1806 = { items: null, at: 0, busy: 0 };
 function fd1806seen(){ try{ return JSON.parse(localStorage.getItem('fd1806') || '{}'); }catch(e){ return {}; } }
-function fd1806save(s){ try{ localStorage.setItem('fd1806', JSON.stringify(s)); }catch(e){} }
-function fd1806new(x, s){ return !(s.all && x.at <= s.all) && !(s.o && s.o[x.id]); }
+function fd1806save(s){ try{ localStorage.setItem('fd1806', JSON.stringify(s)); }catch(e){}
+  try{ const o = s.o || {}, k = Object.keys(o); if(k.length > 300) k.slice(0, k.length - 300).forEach(x => delete o[x]);   /* 2046: kept in the database too */
+    fetch(SEEN2046, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'set', box: 'fd1806', data: { all: s.all || '', o } }) }).catch(() => {}); }catch(e){} }
+function fd1806new(x, s){ if(x && x.k === 'leave' && /^(Approved|Declined|Cancelled)/i.test(String(x.st || ''))) return false;   /* 2046: already decided */
+  return !(s.all && x.at <= s.all) && !(s.o && s.o[x.id]); }
+const SEEN2046 = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-seen';
+function fd1806sync(){ try{ if(fd1806sync._at && Date.now() - fd1806sync._at < 60000) return; fd1806sync._at = Date.now();
+  fetch(SEEN2046, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'get', box: 'fd1806' }) }).then(r => r.json()).then(j => { if(!j || !j.ok || !j.data) return;
+    const a = fd1806seen(), b = j.data, m = { all: [a.all, b.all].filter(Boolean).sort().pop() || '', o: Object.assign({}, b.o || {}, a.o || {}) };
+    try{ localStorage.setItem('fd1806', JSON.stringify(m)); }catch(e){} if(JSON.stringify(m) !== JSON.stringify(a)) try{ fd1806paint(); }catch(e){} }).catch(() => {}); }catch(e){} }
 async function fd1806load(){ if(FD1806.busy || typeof sbDoc !== 'function') return; FD1806.busy = 1; try{ const d = await sbDoc('mgmt:feed1806'); if(d && d.data && Array.isArray(d.data.items)){ FD1806.items = d.data.items; FD1806.att = d.data.att || {}; FD1806.dec = d.data.dec || {}; FD1806.at = Date.now(); } }catch(e){} FD1806.busy = 0; fd1806paint(); }
-function fd1806paint(){ const v = $('v-home'); if(!v || !(typeof D !== 'undefined' && D && D.mgr)) return; const L = FD1806.items; if(!L) return;
+function fd1806paint(){ const v = $('v-home'); if(!v || !(typeof D !== 'undefined' && D && D.mgr)) return; const L = FD1806.items; if(!L) return; fd1806sync();
   const s = fd1806seen(), nw = L.filter(x => fd1806new(x, s)), ic = { leave: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17M10 13.5l4 4M14 13.5l-4 4"/></svg>', withdrawn: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>', msg: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19.5l1.5-4.3A7.5 7.5 0 1 1 20 11.5z"/></svg>' }, lb = { leave: 'filed a notice of unavailability', withdrawn: 'withdrew a notice', msg: 'sent a message' };
   const ago = t => { const m = Math.round((Date.now() - Date.parse(t)) / 6e4); return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' + new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); };
   const pool = nw.length ? nw : L.slice(0, 3), show = !FD1806.open ? [] : FD1806.all ? pool.slice(0, 12) : pool.slice(0, 3);   /* 1815: 3 unless Show all · 1837: one line until Show */
@@ -7364,7 +7372,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1764;
+const COE_V = 1765;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
