@@ -6867,7 +6867,7 @@ h += `<section class="gr-hero"><div class="gr-ring">${grRing(e.pct)}</div><div c
 <div class="small mute">${esc(e.period)} evaluation</div>
 <div class="gr-score"><b>${e.avg.toFixed(1)}</b><span>/ 5</span><i class="chip ${/^(Exceeds|Meets)/i.test(e.decision)?'green':/^Developing/i.test(e.decision)?'amber':'red'}">${esc(e.decision)}</i>${pe ? delta(e.avg - pe.avg, String(pe.period).split(' ')[0], '', 1) : '<i class="dl eq">First evaluation</i>'}</div>
 <div class="gr-msg">${esc(msg)}</div>
-<div class="small mute">Observed ${esc(e.observed)}${e.obsDate?' · '+esc(e.obsDate):''} · Evaluator ${esc(e.evaluator)}</div></div>
+<div class="small mute">Observed ${esc(e.observed)}${e.obsDate?' · '+esc((d => { const t = Date.parse(d); return isNaN(t) ? d : new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); })(e.obsDate)):''} · Evaluator ${esc(e.evaluator)}</div></div>
 ${trend.length > 1 ? `<div class="gr-trend">${trend.map((x,j) => `<div title="${esc(x.period)} · ${x.avg}"><b class="${j && x.avg > trend[j-1].avg ? 'up' : j && x.avg < trend[j-1].avg ? 'dn' : ''}">${x.avg.toFixed(1)}</b><i style="height:${Math.round(x.avg/5*48)}px" class="${x===e?'on':''}"></i><span>${esc(String(x.period).slice(0,3))}</span></div>`).join('')}</div>` : ''}</section>`;
 } else if(QA) {
 h += `<section class="gr-hero"><div class="grow"><div class="gr-msg">${mgr?'No QA evaluation yet for this teacher.':'Your first QA evaluation will appear here as soon as management submits it.'}</div></div></section>`;
@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1771;
+const COE_V = 1772;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -8893,7 +8893,7 @@ let h = _cr(c, stuBy, now);
 try{ if(D && !D.mgr && MYV && c.code && !c.cancelled){ const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
 const v = MYV.find(x => x.code === c.code && x.date >= since && /To improve:/.test(x.note || ''));
 if(v){ const imp = (String(v.note).match(/To improve:\s*(.*)/) || [])[1] || '';
-h = h.replace(/<\/div><\/div>\s*$/, '<div class="hw" style="margin-top:8px;background:#FDF1EB;border-radius:10px;padding:8px 10px"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 3.5h6v3H9z"/><path d="m9 13.5 2 2 4-4"/></svg></span><div class="grow small"><b style="color:#B5592C">From Management\'s class visit (' + esc(v.date) + '):</b> ' + esc(imp) + '</div></div></div></div>'); } } }catch(e){}
+h = h.replace(/<\/div><\/div>\s*$/, '<div class="hw" style="margin-top:8px;background:#FDF1EB;border-radius:10px;padding:8px 10px"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 3.5h6v3H9z"/><path d="m9 13.5 2 2 4-4"/></svg></span><div class="grow small"><b style="color:#B5592C">From Management\'s class visit (' + esc((d => { const t = Date.parse(String(d) + (/^\d{4}-\d{2}-\d{2}$/.test(String(d)) ? 'T12:00:00' : '')); return isNaN(t) ? d : new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); })(v.date)) + '):</b> ' + esc(imp) + '</div></div></div></div>'); } } }catch(e){}
 return h;
 };
 let MVD = null, MVD_AT = 0;
@@ -16127,7 +16127,7 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
       if(r && r.ok){ V = r; at = Date.now(); card(); } }catch(e){} finally{ busy = false; } }
   function card(){ const v = $('v-mtoday'); if(!v) return; let el = $('vid1882'); const L = (V && V.list) || [];
     if(!L.length){ if(el) el.remove(); return; }
-    const ym = String(V.day || '').slice(0, 7), mon = new Date(String(V.day) + 'T12:00:00').toLocaleDateString('en-US', { month: 'long' }), dl = new Date(String(V.day) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+    const ym = String(V.day || '').slice(0, 7), mon = new Date(String(V.day) + 'T12:00:00').toLocaleDateString('en-US', { month: 'long' }), dl = new Date(String(V.day) + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
     const row = x => '<div style="padding:8px 0;border-top:1px solid #EFEDF4;cursor:pointer" onclick="vid1939Open(\'' + esc(String(x.teacher)).replace(/'/g, '') + '\',\'' + ym + '\')"><b>' + esc(x.teacher) + '</b> '
       + (x.missing ? '<span style="color:#B42318;font-weight:600">' + x.missing + ' missing</span> <span class="small mute">' + esc(x.classes || '') + '</span>' : '<span class="small" style="color:#0E6B5C">yesterday all in</span>')
       + (x.late ? ' · <span style="color:#B54708;font-weight:600">' + x.late + ' late</span>' : '')
@@ -16930,9 +16930,10 @@ section.sec{border-color:var(--line)}
         const c1 = '<a class="x-c" onclick="go(\'astudents\')"><div class="x-h"><b>Where students come from</b><span>active</span></div><div class="x-dn">' + donut(SRC.map(([k, l, c]) => [l, kind[k] || 0, c]), n, 'students') +
           '<div class="x-lg">' + SRC.filter(([k]) => kind[k]).map(([k, l, c]) => '<span style="--c:' + c + '">' + l + '<b>' + Math.round(kind[k] / tot * 100) + '%</b></span>').join('') + '</div></div>' +
           (P.length ? '<div class="x-mini"><em>Top partners</em>' + P.map(([p, c]) => '<div><span>' + esc(p) + '</span><b>' + c + '</b></div>').join('') + '</div>' : '') + '</a>';
-        const out = S.filter(s => s.left != null && s.left <= 0).length, low = S.filter(s => s.left != null && s.left > 0 && s.left <= 5).length, ok = n - out - low;
+        const PS2056 = (typeof MS !== 'undefined' && Array.isArray(MS) && MS.length) ? MS : S;   /* 2056: the same students as Students › 5 or fewer left */
+        const out = PS2056.filter(s => s.left != null && s.left <= 0).length, low = PS2056.filter(s => s.left != null && s.left > 0 && s.left <= 5).length, ok = PS2056.length - out - low;
         const rh = $('rnHome'), rk = rh ? (rh.textContent.match(/(\d+)\s+students?\s+may not renew/) || [])[1] : '';
-        const c2 = '<a class="x-c" onclick="go(\'active\')"><div class="x-h"><b>Packages</b><span>lessons left</span></div><div class="x-dn">' + donut([['Healthy', ok, '#00A3AD'], ['5 or fewer left', low, '#E0A030'], ['Ran out', out, '#B4442F']], Math.round(ok / tot * 100) + '%', 'healthy') +
+        const c2 = '<a class="x-c" onclick="go(\'active\')"><div class="x-h"><b>Packages</b><span>lessons left</span></div><div class="x-dn">' + donut([['Healthy', ok, '#00A3AD'], ['5 or fewer left', low, '#E0A030'], ['Ran out', out, '#B4442F']], Math.round(ok / (PS2056.length || 1) * 100) + '%', 'healthy') +
           '<div class="x-lg"><span style="--c:#00A3AD">Healthy<b>' + ok + '</b></span><span style="--c:#E0A030">5 or fewer<b>' + low + '</b></span><span style="--c:#B4442F">Ran out<b>' + out + '</b></span></div></div>' +
           (rk ? '<div class="x-warn"><b>' + rk + '</b> may not renew · see why ›</div>' : '') + '</a>';
         const LC = {}; ((typeof MS !== 'undefined' && MS) || []).forEach(s => { const l = (String(s.cefr || '').match(/Pre-A1|A1|A2|B1|B2|C1|C2/) || [])[0]; if(l) LC[l] = (LC[l] || 0) + 1; });
@@ -26546,7 +26547,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     v.innerHTML = '<div class="mo-h"><h1>Monitor</h1><div class="seg" style="margin:0"><button class="' + (tday ? 'on' : '') + '" onclick="moDay(\'\')">Today</button><button class="' + (d.day === yd ? 'on' : '') + '" onclick="moDay(\'' + yd + '\')">Yesterday</button></div><span class="grow"></span><span class="small mute">Updated ' + E(d.now) + '</span><button class="btn ghost sm" onclick="moLoad()">↻</button></div>' +
       tabBar(M.tab) +
       '<div class="mo-who"><button class="' + (M.who ? '' : 'on') + '" onclick="moWho(\'\')">All teachers</button>' + (d.teachers || []).map(t => '<button class="' + (M.who === t.name ? 'on' : '') + '" onclick="moWho(\'' + E(t.name) + '\')">' + E(t.name) + '</button>').join('') + '</div>' +
-      (showBoard ? '<div class="mo-att">' + (ATT.some(([k]) => A[k]) ? ATT.filter(([k]) => A[k]).map(([k, l]) => '<button class="' + (M.att === k ? 'on' : '') + '" onclick="moAtt(\'' + k + '\')">' + l + ' · ' + A[k] + '</button>').join('') : '<button class="ok">✓ Nothing missing so far</button>') + (M.att ? '<button class="ok" style="cursor:pointer" onclick="moAtt(\'\')">Show all</button>' : '') + '</div>' + board(T) : '') +
+      (showBoard ? '<div class="mo-att">' + (ATT.some(([k]) => A[k]) ? ATT.filter(([k]) => A[k]).map(([k, l]) => '<button class="' + (M.att === k ? 'on' : '') + '" onclick="moAtt(\'' + k + '\')">' + l + ' · ' + A[k] + '</button>').join('') : '<button class="ok">✓ Nothing missing so far</button>') + (M.att ? '<button class="ok" style="cursor:pointer" onclick="moAtt(\'\')">Show all</button>' : '') + '</div>' + board(T.filter(t => M.who || (t.classes || []).some(c => !c.cancelled) || t.timeIn)) : '') +
       '<div class="mo-f"><h2>' + (M.tab === 'All' ? 'Everything done in the app' : E(M.tab)) + (M.who ? ' · ' + E(M.who) : '') + '</h2>' + feed() + '</div>'; }
   window.moLoad = () => load(true); window.__monData = () => M.data;
   window.moTab = t => { if(t === 'Time-ins'){ M.tab = 'Time-ins'; keepUi(); go('team'); return; } M.tab = t; keepUi(); if(VIEW !== 'monitor') go('monitor'); else paint(); };
@@ -27032,7 +27033,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   async function openOv(){ paintOv(); loadF(); try{ if(SC() && typeof loadMoney === 'function'){ const p = loadMoney(true); if(p && p.then) p.then(() => { if(VIEW === 'finov') paintOv(); }, () => {}); } }catch(e){} setTimeout(() => { if(VIEW === 'finov') paintOv(); }, 2500); }
   const _go = window.go; window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'finov') openOv(); }catch(e){} return r; };
   // the sidebar's Finance opens Overview
-  function navFix(){ document.querySelectorAll('nav button[data-v="payroll"]').forEach(b => { if(b._f823) return; b._f823 = 1; b.onclick = e => { e.preventDefault(); e.stopPropagation(); go('finov'); }; }); }
+  function navFix(){ document.querySelectorAll('nav [data-v="payroll"], #navIn [data-v="payroll"]').forEach(b => { if(b._f823) return; b._f823 = 1; b.onclick = e => { e.preventDefault(); e.stopPropagation(); go('finov'); }; }); }
   const _bn = window.buildNav; if(typeof _bn === 'function') window.buildNav = function(){ const r = _bn.apply(this, arguments); try{ navFix(); }catch(e){} return r; };
   setTimeout(navFix, 3000); setTimeout(navFix, 9000);
 
@@ -28158,7 +28159,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const KEY = 'coe.td891';
   const pref = () => { try{ return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }catch(e){ return {}; } };
   const save = (id, open) => { try{ const o = pref(); o[id] = open ? 1 : 0; localStorage.setItem(KEY, JSON.stringify(o)); }catch(e){} };
-  const items = sec => sec.querySelectorAll('.tdr,.tdl,.li').length;
+  const items = sec => sec.querySelectorAll(sec.id === 'td-renew' ? '.tdr:not(.yes):not(.closed):not(.done)' : '.tdr,.tdl,.li').length;   /* 2056: Renewals counts only the ones to remind (same as the tile and Overview) */
   function setBtn(sec){ const b = sec.querySelector(':scope > :first-child .g891-t, :scope > .g891-t'); if(!b) return; const c = sec.classList.contains('g891-c'), n = items(sec);
     b.textContent = (c ? 'Show' : 'Hide') + (c && n ? ' · ' + n : ''); b.setAttribute('aria-expanded', c ? 'false' : 'true'); }
   function openSec(sec){ if(sec && sec.classList.contains('g891-c')){ sec.classList.remove('g891-c'); setBtn(sec); save(sec.id, 1); } }
@@ -38833,6 +38834,22 @@ body:not(.role-t) #v-home > .ovc{display:contents}
         + (many ? '<td>' + e(x.n) + '</td>' : '') + '<td>Class not held by the teacher<div style="font-size:11px;color:#6F6B85">因老师原因未能上课</div></td>'
         + '<td style="text-align:right;white-space:nowrap"><b style="color:#3FA7A8">+' + x.u + '</b> returned<div style="font-size:11px;color:#6F6B85">已退回 ' + x.u + ' 课时</div></td></tr>').join('') + '</table>'
       + '<div style="margin-top:6px;font-size:12px;color:#4A4766;line-height:1.5">' + tot + ' lesson' + (tot === 1 ? '' : 's') + ' returned: not counted as completed, still in the package.<br>共退回 ' + tot + ' 课时，不计入已上课时，仍保留在课程包中。</div>'; };
+})();
+</script>
+<style id="st2056">/* 2056: Overview keeps the profit figures, the monthly chart is in Finance › Overview; teacher Today on a laptop shows the waiting message once (Needs your action) */
+#v-home details.t1000,#v-home .bz2-h,#v-home .bz2-ch,#v-home .bz2-y,#v-home .bz2-def{display:none!important}
+@media(min-width:900px){#urg2001{display:none!important}}</style>
+<script>
+/* 2056 (10 Nov, Misty: "do all 1-5"): on To do each tile shows the number of rows in its own list that need action
+   (Renewals: not counting Renewing, Not renewing or Renewed; Trial follow-ups: the rows listed), so tile, list and Overview agree. */
+(function(){
+  const cnt = s => s.querySelectorAll(s.id === 'td-renew' ? '.tdr:not(.yes):not(.closed):not(.done)' : '.tdr,.tdl').length;
+  function sync(){ try{ const v = document.getElementById('v-mtoday'); if(!v) return;
+    v.querySelectorAll('.tdsum a').forEach(a => { const m = (a.getAttribute('onclick') || '').match(/tdJump\('(renew|follow)'\)/); if(!m) return;
+      const sec = v.querySelector('#td-' + m[1]), b = a.querySelector('b.num'); if(!b) return; const c = String(sec ? cnt(sec) : 0); if(b.textContent !== c) b.textContent = c; }); }catch(e){} }
+  const r = window.renderMToday; if(typeof r === 'function') window.renderMToday = function(){ const x = r.apply(this, arguments); sync(); return x; };
+  /* the menu's Finance opens Finance › Overview (the tabs inside Finance still open Payroll) */
+  const g0 = window.go; if(typeof g0 === 'function') window.go = function(v){ try{ const ev = window.event; if(v === 'payroll' && ev && ev.type === 'click' && ev.target && ev.target.closest && ev.target.closest('#navIn [data-v="payroll"], nav [data-v="payroll"]')) v = 'finov'; }catch(e){} return g0.apply(this, [v].concat([].slice.call(arguments, 1))); };
 })();
 </script>
 </body>
