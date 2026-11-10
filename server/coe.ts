@@ -895,6 +895,36 @@ async function calc(db: any, fn: string, args: any[], base?: any, ctx?: any) {
     else if (fn === "tLeave") { if (!who) return null; d = await leaveLive(db, who); }
     return d ? { data: d, at: t, full: true } : null;
   }
+  // 10 Nov · 2050 · the last management lists that still waited for Google, now from the database:
+  //   mgmtPlanFlags (goals that look like another student's) from the goals table, checked identical (18 of 18, Nov);
+  //   schedLists (student / teacher / book pickers) from the students, DATABASE and staff tables;
+  //   moneyLists and mgmtUrls are settings (Sales/Expenses choices, sheet links): the last saved copy is the answer.
+  if (fn === "mgmtPlanFlags") {
+    if (!ctx || ctx.mode !== "mgmt") return null;
+    let month = String(args[0] || ""); if (!/^\d{4}-\d{2}$/.test(month)) month = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 7);
+    const { data: rows, error } = await db.from("log_rows").select("id,data").eq("tab", "S-GOALS").order("id").limit(5000); if (error) return null;
+    const flags: Record<string, any[]> = {};
+    for (const r of rows || []) { const d = r.data || []; if (String(d[1] || "").slice(0, 7) !== month || !String(d[13] || "")) continue;
+      const code = String(d[2]); (flags[code] = flags[code] || []).push({ no: Number(d[5]) || 1, teacher: String(d[4] || ""), goal: String(d[7] || ""), similar: String(d[13]) }); }
+    return { data: { ok: true, month, flags }, at: Date.now(), full: true };
+  }
+  if (fn === "schedLists") {
+    if (!ctx || ctx.mode !== "mgmt") return null;
+    const [S, DB, st] = await Promise.all([studentsFromTables(db), tab(db, "DATABASE"), db.from("staff").select("name,role,status")]);
+    if (!Array.isArray(S) || !S.length || st.error) return null;
+    const list: any[] = S.map((x: any) => ({ code: x.code, name: x.name, book: x.book || "", teachers: x.teachers })), seen: Record<string, number> = {};
+    list.forEach((x) => seen[x.code] = 1);
+    DB.forEach((r) => { const code = String(cell(r, 0)).trim(); if (!/^ST-/i.test(code) || seen[code]) return; seen[code] = 1;
+      const cb = String(cell(r, 19)), book = cb.indexOf(",") > 0 ? cb.split(",").pop()!.trim() : String(cell(r, 12));
+      list.push({ code, name: cell(r, 2) || cell(r, 1), book, teachers: cell(r, 14) ? [String(cell(r, 14))] : [], trial: !!(cell(r, 10) && !cell(r, 16)) }); });
+    const bk: Record<string, any> = {}, addB = (b: any) => { b = String(b || "").trim(); if (!b || b.length > 40) return; const k = b.toUpperCase().replace(/[^A-Z0-9]/g, ""); if (!k) return; const o = bk[k] || (bk[k] = { name: b.replace(/\s+/g, ""), n: 0 }); o.n++; };
+    list.forEach((x) => addB(x.book));
+    DB.forEach((r) => { String(cell(r, 19) || "").split(",").forEach(addB); addB(cell(r, 12)); });
+    const books = Object.keys(bk).map((k) => bk[k]).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name)).map((o) => o.name);
+    const teachers = (st.data || []).filter((x: any) => /^(teacher|admin)$/.test(String(x.role)) && x.status === "active").map((x: any) => String(x.name)).sort();
+    return { data: { students: list.sort((a, b) => String(b.code).localeCompare(String(a.code))), teachers, books }, at: Date.now(), full: true };
+  }
+  if (fn === "moneyLists" || fn === "mgmtUrls") return ctx && ctx.mode === "mgmt" && base && typeof base === "object" ? { data: base, at: Date.now(), full: true } : null;
   return null;
 }
 const SAME_FOR_ALL = /^(mgmt|pres):(mgmtTab\|\["(TODAY|ACTIVE|DATABASE)"\]|mgmtTrialFus\|\[\]|mgmtFixIgnored\|\[\]|mgmtDatabase\|\[\]|dbLists\|\[\]|dbRecord\||mgmtStudents\|\[\]|mgmtStudent\||mgmtStuClasses\|)/;
