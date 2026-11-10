@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1777;
+const COE_V = 1778;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -38848,7 +38848,10 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   }catch(err){ return ''; } };
 </script>
 <script id="t2060">
-/* 2061 (10 Nov 15:57, Misty: "dont include december count anymore, only until november"): months counted January to
+/* 2062 (10 Nov 16:09, Misty: "so when it's given to her, she will see the breakdown" · "okay great"): a "Show this breakdown to
+   <name>" switch (off until the President turns it on). When on, that person gets a "My 13th month" button on Payroll with her
+   own breakdown, read only: months, days × rate, total ÷ 12, paid on. No penalties, notes or reasons (edge coe-13th v5 op "mine").
+   2061 (10 Nov 15:57, Misty: "dont include december count anymore, only until november"): months counted January to
    November by default (÷ 12), with a "Count the months up to" choice; later months show as not counted.
    2060 (10 Nov 15:45, Misty: "Celine's final 13th month pay … PRESIDENT ACCESS ONLY so I could see and edit · aligned with DOLE ·
    Celine should not have access of it yet"). Payroll › 13th month (button shows for the President only; the server coe-13th also
@@ -38904,6 +38907,7 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     h += '<div class="box"><div class="lab">Adjustment (₱, use a minus sign to take off)</div><input class="in" id="t13adj" oninput="t2060calc()" type="number" step="0.01" value="' + e(p.saved.adj || '') + '" placeholder="0">'
       + '<div class="lab">Reason for the adjustment</div><input class="in" id="t13adjn" value="' + e(p.saved.adj_note) + '" placeholder="e.g. unpaid days not in the time records">'
       + '<div class="lab">Note</div><textarea class="in" id="t13note" rows="2">' + e(p.saved.note) + '</textarea>'
+      + '<label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-weight:600;font-size:14px"><input type="checkbox" id="t13sh"' + (p.shared ? ' checked' : '') + '> Show this breakdown to ' + e(p.person) + '</label><div class="small mute">' + (p.shared ? e(p.person) + ' can see her months, days, rates and the total on Payroll (no penalties, notes or reasons).' : 'Off: ' + e(p.person) + ' cannot see any of this. Turn it on when you give it, then Save.') + '</div>'
       + '<div class="lab">Count the months up to</div><select class="in" id="t13upto" onchange="t2060upto(this.value)">' + MN.map((n, i) => '<option value="' + (i + 1) + '"' + (i + 1 === p.upto ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>'
       + '<div class="lab">Paid on</div><input class="in" id="t13paid" type="date" value="' + e(p.saved.paid_on) + '">'
       + '<button class="btn teal block" style="margin-top:12px" id="t13go" onclick="t2060save()">Save</button>'
@@ -38914,7 +38918,7 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   function gather(){ const p = person(), est = {}, ovr = {};
     document.querySelectorAll('.t13 [data-est]').forEach(i => { est[i.dataset.est] = i.value; });
     document.querySelectorAll('.t13 [data-ovr]').forEach(i => { if(i.value !== '') ovr[i.dataset.ovr] = i.value; });
-    return { person: p.person, upto: ($('t13upto') || {}).value || p.upto, est, ovr, adj: ($('t13adj') || {}).value || 0, adj_note: ($('t13adjn') || {}).value || '', note: ($('t13note') || {}).value || '', paid_on: ($('t13paid') || {}).value || '' }; }
+    return { person: p.person, shared: !!($('t13sh') || {}).checked, upto: ($('t13upto') || {}).value || p.upto, est, ovr, adj: ($('t13adj') || {}).value || 0, adj_note: ($('t13adjn') || {}).value || '', note: ($('t13note') || {}).value || '', paid_on: ($('t13paid') || {}).value || '' }; }
   window.t2060 = function(){ if(!pres()) return; T.d = null; T.edit = {}; paint(); call({ op: 'get' }).then(d => { T.d = d; paint(); }).catch(() => { T.d = { ok: false, error: 'No connection' }; paint(); }); };
   window.t2060calc = function(){ const p = person(); if(!p) return; let t = 0;
     const up = +((($('t13upto') || {}).value) || p.upto);
@@ -38929,7 +38933,19 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   window.t2060save = function(){ if(T.busy) return; T.busy = 1; const b = $('t13go'); if(b){ b.disabled = true; b.textContent = 'Saving…'; }
     call(Object.assign({ op: 'save' }, gather())).then(d => { T.busy = 0; if(d && d.ok){ T.d = d; T.edit = {}; paint(); try{ toast('Saved'); }catch(x){} } else { if(b){ b.disabled = false; b.textContent = 'Save'; } try{ toast((d && d.error) || 'Not saved'); }catch(x){} } })
       .catch(() => { T.busy = 0; if(b){ b.disabled = false; b.textContent = 'Save'; } try{ toast('Not saved · no connection'); }catch(x){} }); };
-  function addBtn(){ try{ if(!pres()) return; const a = document.querySelector('#v-payroll .py-act'); if(!a || a.querySelector('.t13b')) return;
+  const MY = { d: null, at: 0 };
+  function myPaint(){ const d = MY.d && MY.d.me; if(!d) return; let h = '<div class="t13"><h1>My 13th month pay · ' + MY.d.year + '</h1><div class="sub">DOLE rule (PD 851): basic salary earned ÷ 12. Counted: January to ' + MN[d.upto - 1] + '. Basic = days worked × daily rate (holiday premiums, allowances and incentives are not part of it).</div>'
+      + '<div class="hero"><span>' + e(d.person) + ' · 13th month pay' + (d.estimated ? ' (estimate)' : '') + '</span><b>' + P(d.pay) + '</b><span>' + P(d.total) + ' ÷ 12' + (d.paid_on ? ' · paid ' + e(d.paid_on) : '') + '</span></div><table><tr><th>Month</th><th class="n">Days</th><th class="n">Rate</th><th class="n">Basic</th></tr>';
+    d.months.forEach(m => { if(m.src === 'off') return; const dd = m.src === 'estimate' ? m.est : Math.round(m.rates.reduce((t, x) => t + x.d, 0) * 100) / 100;
+      h += '<tr><td>' + MN[m.m - 1] + (m.src === 'estimate' ? '<div class="est">estimate</div>' : '') + '</td><td class="n">' + (d.fixed ? '' : dd) + '</td><td class="n small">' + (d.fixed ? 'monthly' : m.rates.length ? m.rates.map(x => (m.rates.length > 1 ? x.d + ' × ' : '') + '₱' + x.r).join(' + ') : '₱' + d.rate) + '</td><td class="n">' + P(m.basic) + '</td></tr>'; });
+    if(d.adj) h += '<tr><td>Adjustment</td><td></td><td></td><td class="n">' + P(d.adj) + '</td></tr>';
+    openSheet(h + '<tr class="tot"><td>Basic</td><td></td><td></td><td class="n">' + P(d.total) + '</td></tr><tr class="tot"><td>13th month (÷ 12)</td><td></td><td></td><td class="n">' + P(d.pay) + '</td></tr></table></div>'); }
+  window.t2062my = function(){ myPaint(); };
+  function myBtn(){ try{ const a = document.querySelector('#v-payroll .py-act'); if(!a || typeof TOKEN === 'undefined' || !TOKEN) return;
+    const put = () => { if(MY.d && MY.d.shown && !a.querySelector('.t13m')) a.insertAdjacentHTML('afterbegin', '<button class="btn ghost t13m" onclick="t2062my()">My 13th month</button>'); };
+    if(Date.now() - MY.at < 10 * 60e3){ put(); return; } MY.at = Date.now();
+    call({ op: 'mine' }).then(d => { MY.d = d && d.ok ? d : null; put(); }).catch(() => {}); }catch(x){} }
+  function addBtn(){ try{ if(!pres()){ myBtn(); return; } const a = document.querySelector('#v-payroll .py-act'); if(!a || a.querySelector('.t13b')) return;
     a.insertAdjacentHTML('afterbegin', '<button class="btn ghost t13b" onclick="t2060()">13th month</button>'); }catch(x){} }
   const r = window.renderPayroll; if(typeof r === 'function') window.renderPayroll = function(){ const x = r.apply(this, arguments); addBtn(); return x; };
 })();
