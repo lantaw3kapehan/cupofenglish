@@ -12,7 +12,12 @@ module.exports = function(file){
   ok(s.indexOf("if(toOpen > 0) return '';") > -1, 'teacher Needs your action: feedback listed only once it opens');
   ok(s.indexOf('onclick="tMsgNew()">New message</button><button class="btn ghost" onclick="tlvSheet()">Request leave</button><button class="btn ghost rf"') < 0, 'teacher Notices: Request leave only on Schedule');
   ok(s.indexOf("['v-pay', 'v-growth'].forEach(id => { const v = document.getElementById(id); if(!v || !v.childElementCount) return; let e = v.querySelector('.unit1998');") < 0, 'teacher Growth: the unit note only on Pay');
+  // 2056
+  ok(/#v-home details\.t1000,[^{]*\{display:none/.test(s), 'Overview: the monthly profit chart only on Finance › Overview');
+  ok(/@media\(min-width:900px\)\{#urg2001\{display:none/.test(s), 'teacher Today (laptop): the waiting message shows once');
+  ok(s.indexOf("sec.id === 'td-renew' ? '.tdr:not(.yes):not(.closed):not(.done)'") > -1, 'To do: Renewals counted the same in the tile, the list and Overview');
+  ok(s.indexOf('const PS2056 = ') > -1, 'Overview Packages: the same students as Students › 5 or fewer left');
   if(failed) console.error('No-repeats check: ' + failed + ' case(s) failed');
-  else console.log('Removed repeats stay removed (8 checks)');
+  else console.log('Removed repeats stay removed (12 checks)');
   return failed;
 };
