@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<style id="st2053">/* 2053 (10 Nov, final QA): no repeated buttons or information (see patches/2053) */#navIn .sb-rec{display:none!important}#v-home .x-pay{display:none!important}#nd37 .nd-chk,#nd37 .nd-sc{display:none!important}#v-mtoday .td2-ok{display:none!important}#v-mtoday #td-ref{display:none!important}</style>
 <script id="mo2025">
 /* 2025 (9 Nov, after teachers' apps froze: a screen arranger kept moving two boxes forever) · safety stop for every page watcher:
    a watcher (MutationObserver) that is woken more than 200 times in 2 seconds (after the first 20 seconds of opening) is paused for 30 seconds instead of freezing the page,
@@ -2316,7 +2317,7 @@ function render(){
 if(!D) return;
 const me = D.me || {};
 $('hName').textContent = me.name ? (D.mgr ? me.name : tName(me.name)) : 'Teacher';
-$('hRank').innerHTML = D.mgr ? `${esc(me.role || 'Management')} <span class="live" id="liveTag"><i></i>Live${PULSE.time?' · '+PULSE.time:''}</span>` : esc([me.rank, me.rate ? peso(me.rate)+'/unit' : ''].filter(Boolean).join(' · '));
+$('hRank').innerHTML = D.mgr ? `${esc(me.role || 'Management')} <span class="live" id="liveTag"><i></i>Live${PULSE.time?' · '+PULSE.time:''}</span>` : esc(me.rank || '');   /* 2054: no pay rate in the header (it shows on screen shares; the rate is on Pay) */
 const nk = D.mgr ? 'm' : 't';
 if(nk !== NAVKEY){ NAVKEY = nk; buildNav(); setTimeout(() => { if(!D) return; if(D.mgr){ if(!MSG) MSG = kept('msgs'); msgBadge(); loadMsgs(true); if(!PCKM) PCKM = kept('paychkm'); loadPayChecks();
 ['reports', 'active', 'leave', 'perf', 'actions'].forEach((k, i) => setTimeout(() => { const S = SCREENS[k]; if(!S || document.hidden || VIEW === k) return; if(!S[0]() || Date.now() - (SEEN[k] || 0) > 600000){ SEEN[k] = Date.now(); bg(() => S[2](true)); } }, 6000 + i * 4000)); } else { if(!TMSG) TMSG = kept('tmsgs'); if(!PCK) PCK = kept('paychk'); loadTMsgs(); loadPayCheck(); } }, 2000); const sv = tab1505.get('coe.view'), ok = (D.mgr ? NAV_M : NAV_T).some(x => x[0] === sv) || (D.mgr && sv === 'more');
@@ -3148,7 +3149,7 @@ return `<section class="sec"><h2>Peer feedback <span class="c">from fellow teach
 function nowPayOf(m){ m = m || {}; return Math.round((+m.nowPay || 0) + (+m.nowTrial || 0) * (+m.rate || 0)); }   /* 14 Oct: trials paid at the same rate, not regular units */
 function rank1764(){ try{ const k = window.MYPAY1763 && MYPAY1763.rank; if(!k || !D || !D.me || D.mgr) return; if(!k.fixed && k.rank) Object.assign(D.me, { rank: k.rank, rankDate: k.rankDate || D.me.rankDate });   /* 1764 */
   Object.assign(D.me, { rate: +k.rate || D.me.rate, lifetime: +k.lifetime, rankWaiting: k.waiting || '' });
-  try{ const h = $('hRank'); if(h) h.innerHTML = esc([D.me.rank, D.me.rate ? peso(D.me.rate) + '/unit' : ''].filter(Boolean).join(' · ')); }catch(e){}   /* 1772 */ }catch(e){} }
+  try{ const h = $('hRank'); if(h) h.innerHTML = esc(D.me.rank || '');   /* 2054 */ }catch(e){}   /* 1772 */ }catch(e){} }
 function renderPay(){ try{ if(window.MYPAY1763 && typeof D !== 'undefined' && D && !D.mgr){ D.pay = MYPAY1763.pay; rank1764(); } }catch(e){}   /* 1763 */
 const me = D.me||{}, pay = D.pay||[], adj = D.adj||[];
 const est = nowPayOf(me) + (me.monthBonus||0) - (me.monthDeduct||0);
@@ -4965,7 +4966,7 @@ num += `<h3 class="tdh">Monthly trend</h3><div class="tdbars">${T.rows.slice().r
 if(B && B.rows.length) num += `<h3 class="tdh">By teacher · last 12 months</h3>` + grid([B.head.map(h => h.charAt(0) + h.slice(1).toLowerCase())].concat(B.rows.map(r => [tName(r[0])].concat(r.slice(1)))));
 if(PL && PL.rows.length) num += `<h3 class="tdh">Plans chosen vs ★ suggested</h3>` + grid([PL.head].concat(PL.rows)) + (PL.note ? `<div class="small mute">${esc(PL.note)}</div>` : '');
 const numH = num ? `<details class="sec tdx" id="td-num"><summary><h2>Trials &amp; enrolment <span class="c">conversion, trend, by teacher, plans</span></h2><span class="chev">›</span></summary>${num}</details>` : '';
-return `<div class="lead"><h1>To do</h1><div class="mute small">${upd ? 'Updated ' + esc(String(upd).replace(/(\d{1,2}:\d{2})H\b/, '$1')) : ''}${sheetLink('TODAY')}</div></div>
+return `<div class="lead"><h1>To do</h1><div class="mute small">${upd ? 'Updated ' + esc(((String(upd).match(/(\d{1,2}:\d{2})/) || [])[1]) || String(upd)) : ''}${sheetLink('TODAY')}</div></div>
 <div class="tdsum">${sum}</div>${repH}${renH}${folH}${fixH}${refH}`;
 }
 function grid(rows){
@@ -5333,7 +5334,7 @@ if(!(dow === 1 || dow === 2) || hid) return `<div class="small" style="text-alig
 const S = wsCalc(), tile = (n, t, s, c) => `<div style="flex:1 1 130px;min-width:0;background:#F6FAFB;border-radius:14px;padding:10px 12px"><b class="num" style="font-size:24px;color:${c || '#2B2253'}">${n}</b><div style="font-weight:600;font-size:13px">${t}</div><div class="small mute">${s}</div></div>`;
 return `<section class="ov-card" style="border:1.5px solid #00A3AD"><div class="ov-hd"><h2>Last week</h2><span>${esc(wsLbl(L))}</span><a class="lk" onclick="wsSheet()">Details ›</a></div>` +
 (!S ? `<div class="sk"></div><div class="small mute">Reading last week's calendar…</div>` :
-`<div class="row" style="gap:10px;flex-wrap:wrap">${tile(S.live.length, 'Classes', S.cx.length + ' cancelled')}${S.hasRem ? tile(S.miss.length, 'Not reminded', S.early + ' early · ' + S.ten + ' 10-min sent', S.miss.length ? '#C0392B' : '#1E7A55') : tile('—', 'Reminders', 'tracking began 12 Oct')}${(() => { const o = S.out.filter(r => !wsHandled(r[WS.C.code])).length, l = S.low.filter(r => !wsHandled(r[WS.C.code])).length; return tile(o + l, 'Renew soon', o + ' ran out · ' + l + ' with 1–2 left', o ? '#C0392B' : '#D9962B'); })()}${(() => { const I = S.idle.filter(r => !wsHandled(r[WS.C.code])), n = I.filter(r => !r._cx).length, c = I.length - n; return tile(n, 'No class last week', 'nothing on the calendar' + (c ? ' · +' + c + ' cancelled all' : ''), n ? '#D9962B' : '#1E7A55'); })()}</div>`) +
+`<div class="row" style="gap:10px;flex-wrap:wrap">${tile(S.live.length, 'Classes', S.cx.length + ' cancelled')}${S.hasRem ? tile(S.miss.length, 'Not reminded', S.early + ' early · ' + S.ten + ' 10-min sent', S.miss.length ? '#C0392B' : '#1E7A55') : tile('—', 'Reminders', 'tracking began 12 Oct')}${(() => { const I = S.idle.filter(r => !wsHandled(r[WS.C.code])), n = I.filter(r => !r._cx).length, c = I.length - n; return tile(n, 'No class last week', 'nothing on the calendar' + (c ? ' · +' + c + ' cancelled all' : ''), n ? '#D9962B' : '#1E7A55'); })()}</div>`) +
 `<div style="text-align:right"><a class="lk small" onclick="try{localStorage.setItem('coe.wsHide','${L[0]}')}catch(e){};renderHome()">Hide for this week</a></div></section>`;
 }
 /* Follow-ups from the Monday summary: copy a short bilingual message for the parent group, and keep the parent's answer
@@ -7372,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1769;
+const COE_V = 1771;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -8736,7 +8737,8 @@ if(FB.open !== false && (due < today || (FB.total && FB.done >= FB.total))) due 
 const op = FB.open === false && FB.opens ? new Date(FB.opens + 'T12:00:00') : new Date(due.getFullYear(), due.getMonth() - 1, 25, 12);
 const cls = new Date(due.getFullYear(), due.getMonth() - 1, 1).toLocaleDateString('en-US', { month: 'long' });
 const f = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), toOpen = Math.round((op - today) / 864e5);
-const when = toOpen > 0 ? 'opens ' + f(op) + ' (in ' + toOpen + ' day' + (toOpen === 1 ? '' : 's') + ')' : 'open now';
+if(toOpen > 0) return '';   /* 2054: Needs your action lists the monthly feedback only once it opens (the 25th) */
+const when = 'open now';
 return '<div class="li"><span class="chip">Feedback</span><div class="grow"><div class="ell"><b>' + esc(cls) + ' classes</b> monthly feedback · ' + esc(when) + '</div><div class="small mute">Due ' + esc(f(due)) + ' · before pay on the 10th · keep adding class notes, they become your feedback</div></div></div>';
 }catch(e){ return ''; }
 };
@@ -16132,7 +16134,7 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
       + '<div class="small mute">' + esc(mon) + ' so far: ' + x.monthMissing + ' missing · ' + x.monthLate + ' late upload' + (x.monthLate === 1 ? '' : 's') + ' · tap for the videos</div>' + lateCases(x.teacher, ym) + '</div>';
     const html = '<div class="card" id="vid1882" style="margin:0 0 14px"><b>▶ Class videos</b> <span class="small mute">· yesterday ' + esc(dl) + ' and ' + esc(mon) + ' so far</span>'
       + L.map(row).join('') + '<div class="small mute" style="margin-top:6px">Missing = class held, no video or screen proof · late = uploaded after the class day. Teachers get a reminder at 22:30 for classes without a video.</div></div>';
-    if(el) el.outerHTML = html; else v.insertAdjacentHTML('afterbegin', html); }
+    if(el) el.outerHTML = html; else { const ld2053 = v.querySelector(':scope > .lead'); if(ld2053) ld2053.insertAdjacentHTML('afterend', html); else v.insertAdjacentHTML('afterbegin', html); } }   /* 2053: under the To do title */
   const rt = window.renderMToday; if(rt) window.renderMToday = function(){ const r = rt.apply(this, arguments); try{ card(); load(); }catch(e){} return r; };
   setTimeout(load, 4000); setInterval(() => { at = 0; load(); }, 30 * 6e4);
   /* 1939: a teacher's class videos this month (missing · late · every lesson with its video) */
@@ -21330,7 +21332,7 @@ ${(window.ie1854 && ie1854.chip && ie1854.chip(t)) || (t.reportMissing ? `<span 
       const G = {}; rest.forEach(t => (G[grp(t.lastAt)] = G[grp(t.lastAt)] || []).push(t));
       ['Today', 'Yesterday', 'This week', 'Earlier'].forEach(g => { if(G[g]) body += `<div class="g508">${g} <em>· ${G[g].length}</em></div><div class="ls508">${G[g].map(row).join('')}</div>`; }); }
     const h = `<div class="lead hd508"><div><h1>Notices &amp; requests</h1><div class="mute small">Formal notices and requests. Tap Got it so management knows you’ve read it. Everything is kept here</div></div>
-<div class="ac"><button class="btn teal" onclick="tMsgNew()">New message</button><button class="btn ghost" onclick="tlvSheet()">Request leave</button><button class="btn ghost rf" title="Check for new messages" onclick="loadTMsgs()">${SV.rf}</button></div></div>
+<div class="ac"><button class="btn teal" onclick="tMsgNew()">New message</button><button class="btn ghost rf" title="Check for new messages" onclick="loadTMsgs()">${SV.rf}</button></div></div>
 <div class="st508">${tile('unread', nU, 'unread', '●', '#00A3AD')}${tile('reply', nW, 'to acknowledge', '!', '#D4705A')}${tile('saved', nS, 'saved on this device', '★', '#D9A21B')}</div>
 <input class="in-t q508" placeholder="Search messages and memos" value="${esc(TIF.q)}" oninput="TIF.q=this.value;clearTimeout(window._tiq);window._tiq=setTimeout(()=>{renderTInbox();const e=document.querySelector('#v-tinbox input');if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},250)">
 <div class="seg">${seg}</div>${body}`;
@@ -29989,7 +29991,7 @@ html:root{--d-ink:#2B2450;--d-text:#3A3556;--d-mute:#5E5A76;--d-faint:#8C88A3;--
 /* 1998 · Pay and Growth explain the unit */
 (function(){ function put(){ try{ if(typeof D === 'undefined' || !D || D.mgr || !D.me) return; const rate = D.me.rate ? peso(D.me.rate) : '';
     const tx = 'Pay is per unit · 1 unit = a 50-minute class · a 25-minute class = 0.5 unit · trial and substitute classes count the same way · pay = units × ' + (rate ? rate + ' (your rate per unit)' : 'your rate per unit') + '.';
-    ['v-pay', 'v-growth'].forEach(id => { const v = document.getElementById(id); if(!v || !v.childElementCount) return; let e = v.querySelector('.unit1998'); if(!e){ e = document.createElement('div'); e.className = 'unit1998 small mute'; e.style.cssText = 'margin:6px 0 10px;line-height:1.45';
+    ['v-pay'].forEach(id => { const v = document.getElementById(id); if(!v || !v.childElementCount) return; let e = v.querySelector('.unit1998');   /* 2054: Pay only (Growth repeated it) */ if(!e){ e = document.createElement('div'); e.className = 'unit1998 small mute'; e.style.cssText = 'margin:6px 0 10px;line-height:1.45';
       const h = v.querySelector('h1, .lead, .sec h2'); if(h && h.parentNode) h.parentNode.insertBefore(e, h.nextSibling); else v.insertBefore(e, v.firstChild); } if(e.textContent !== tx) e.textContent = tx; }); }catch(e){} }
   let q = 0; const later = () => { clearTimeout(q); q = setTimeout(put, 150); };
   const start = () => { ['v-pay', 'v-growth'].forEach(id => { const v = document.getElementById(id); if(v) new MutationObserver(later).observe(v, { childList: true }); }); later(); };
