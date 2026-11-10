@@ -1,4 +1,4 @@
-// coe-13th v4 (Misty 15:57 "dont include december count anymore, only until november": months January..upto are counted, upto 11 by default, ÷ 12) · v3 (rates per month split by rate with days and amount; holiday premium shown, not counted) · v2 (fixed monthly pay: estimate = last month's pay) · v1 · 10 Nov 2026 (Misty 15:45: "13th month pay … PRESIDENT ACCESS ONLY so I could see and edit · aligned with DOLE ·
+// coe-13th v5 (Misty 16:09: "Show to <person>" switch — op "mine" for the person's own session, only when shared; no penalties, notes or reasons) · v4 (Misty 15:57 "dont include december count anymore, only until november": months January..upto are counted, upto 11 by default, ÷ 12) · v3 (rates per month split by rate with days and amount; holiday premium shown, not counted) · v2 (fixed monthly pay: estimate = last month's pay) · v1 · 10 Nov 2026 (Misty 15:45: "13th month pay … PRESIDENT ACCESS ONLY so I could see and edit · aligned with DOLE ·
 //   Celine should not have access of it yet"). PRESIDENT ONLY (mgmt session named CupOfEnglish) — everyone else gets 403.
 // DOLE rule (PD 851, Revised Guidelines): 13th month = total BASIC salary actually earned in the calendar year ÷ 12, paid on or
 //   before 24 December. Basic = days worked × daily rate (from coe_staff_day). Not counted: incentives, allowances, holiday/OT
@@ -26,7 +26,8 @@ Deno.serve(async (req: Request) => {
   const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
   if (!s || new Date(s.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
   const me = String(s.name || "").trim();
-  if (!(s.mode === "mgmt" && me.toLowerCase() === "cupofenglish")) return out({ ok: false, error: "President only" }, 403);
+  const isPres = s.mode === "mgmt" && me.toLowerCase() === "cupofenglish", opIn = str(b.op, 10);
+  if (!isPres && opIn !== "mine") return out({ ok: false, error: "President only" }, 403);
   const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), curY = +today.slice(0, 4), curM = +today.slice(5, 7);
   const year = Math.trunc(num(b.year)) || curY; if (year < 2024 || year > curY + 1) return out({ ok: false, error: "year" }, 400);
   const op = str(b.op, 10);
@@ -35,16 +36,17 @@ Deno.serve(async (req: Request) => {
     const clean = (o: any, max: number) => { const r: Record<string, number> = {}; for (const k of Object.keys(o || {})) { const m = +k, v = num(o[k]); if (m >= 1 && m <= 12 && String(o[k]).trim() !== "" && isFinite(v) && v >= 0 && v <= max) r[String(m)] = r2(v); } return r; };
     const adj = num(b.adj);
     const up = Math.trunc(num(b.upto));
-    const row = { year, person, upto: up >= 1 && up <= 12 ? up : 11, est: clean(b.est, 31), ovr: clean(b.ovr, 200000), adj: isFinite(adj) ? r2(adj) : 0, adj_note: str(b.adj_note, 300), note: str(b.note, 600),
+    const row = { year, person, shared: !!b.shared, upto: up >= 1 && up <= 12 ? up : 11, est: clean(b.est, 31), ovr: clean(b.ovr, 200000), adj: isFinite(adj) ? r2(adj) : 0, adj_note: str(b.adj_note, 300), note: str(b.note, 600),
       paid_on: /^\d{4}-\d{2}-\d{2}$/.test(str(b.paid_on, 10)) ? str(b.paid_on, 10) : null, updated_by: me, updated_at: new Date().toISOString() };
     const { error } = await db.from("coe_13th").upsert(row); if (error) return out({ ok: false, error: "not saved" }, 500);
     await db.from("coe_13th_log").insert({ year, person, row, by_name: me });
-  } else if (op !== "get") return out({ ok: false, error: "unknown op" }, 400);
+  } else if (op !== "get" && op !== "mine") return out({ ok: false, error: "unknown op" }, 400);
   const [{ data: days }, { data: saved }, { data: act }] = await Promise.all([
     db.from("coe_staff_day").select("day,name,base,pay,fixed,holiday").gte("day", year + "-01-01").lte("day", year + "-12-31").is("removed_at", null).order("day"),
     db.from("coe_13th").select("*").eq("year", year),
     db.from("docs").select("data").eq("key", "pres:mgmtActions|[]").maybeSingle()]);
-  const names = [...new Set((days || []).map((d: any) => String(d.name)))].concat((saved || []).map((x: any) => x.person)).filter((v, i, a) => a.indexOf(v) === i).sort();
+  let names = [...new Set((days || []).map((d: any) => String(d.name)))].concat((saved || []).map((x: any) => x.person)).filter((v, i, a) => a.indexOf(v) === i).sort();
+  if (op === "mine") { const sv: any = (saved || []).find((x: any) => String(x.person).toLowerCase() === me.toLowerCase()); if (!sv || !sv.shared) return out({ ok: true, year, shown: false }); names = [sv.person]; }
   const rows: any[] = ((act && act.data && act.data.rows) || []);
   const people = names.map((person) => {
     const D = (days || []).filter((d: any) => d.name === person), S: any = (saved || []).find((x: any) => x.person === person) || {};
@@ -70,5 +72,8 @@ Deno.serve(async (req: Request) => {
       saved: { adj: +S.adj || 0, adj_note: S.adj_note || "", note: S.note || "", paid_on: S.paid_on || "", updated_by: S.updated_by || "", updated_at: S.updated_at || "" },
       estimated: months.some((x) => x.src === "estimate"), total, pay: r2(total / 12) };
   });
+  if (op === "mine") { const p: any = people[0]; return out({ ok: true, year, shown: true, me: { person: p.person, fixed: p.fixed, rate: p.rate, upto: p.upto, total: p.total, pay: p.pay, estimated: p.estimated, adj: p.saved.adj, paid_on: p.saved.paid_on,
+    months: p.months.map((m: any) => ({ m: m.m, rates: m.rates, basic: m.basic, src: m.src === "typed" ? "records" : m.src, est: m.est })) } }); }
+  people.forEach((p: any) => { const sv: any = (saved || []).find((x: any) => x.person === p.person); p.shared = !!(sv && sv.shared); });
   return out({ ok: true, year, today, people });
 });
