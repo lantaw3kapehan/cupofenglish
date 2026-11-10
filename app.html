@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1776;
+const COE_V = 1777;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -38848,7 +38848,9 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   }catch(err){ return ''; } };
 </script>
 <script id="t2060">
-/* 2060 (10 Nov 15:45, Misty: "Celine's final 13th month pay … PRESIDENT ACCESS ONLY so I could see and edit · aligned with DOLE ·
+/* 2061 (10 Nov 15:57, Misty: "dont include december count anymore, only until november"): months counted January to
+   November by default (÷ 12), with a "Count the months up to" choice; later months show as not counted.
+   2060 (10 Nov 15:45, Misty: "Celine's final 13th month pay … PRESIDENT ACCESS ONLY so I could see and edit · aligned with DOLE ·
    Celine should not have access of it yet"). Payroll › 13th month (button shows for the President only; the server coe-13th also
    refuses everyone else). DOLE (PD 851): basic salary actually earned January–December ÷ 12, paid on or before 24 December.
    Basic = days worked × daily rate from the daily time records. Months not finished are estimated (days × current rate) and can be
@@ -38878,14 +38880,15 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     if(!T.d){ show('<div class="t13"><h1>13th month pay</h1><div class="sub">Loading…</div></div>'); return; }
     if(!T.d.ok){ show('<div class="t13"><h1>13th month pay</h1><div class="empty" role="alert">' + e(T.d.error === 'President only' ? 'Only the President can open this.' : 'Could not load. ' + (T.d.error || '')) + '</div></div>'); return; }
     const L = T.d.people || [], p = person();
-    let h = '<div class="t13"><h1>13th month pay · ' + T.y + '</h1><div class="sub">Only you can see this page. DOLE rule (PD 851): basic salary actually earned from January to December ÷ 12, paid on or before 24 December. Basic = days worked × daily rate. Not counted: incentives, allowances, SSS, Pag-IBIG, PhilHealth, rent and bills. Penalties are not deducted. Holiday premiums are paid on payroll but are not basic salary.</div>';
+    let h = '<div class="t13"><h1>13th month pay · ' + T.y + '</h1><div class="sub">Only you can see this page. DOLE rule (PD 851): basic salary actually earned ÷ 12, paid on or before 24 December. Counted here: January to ' + MN[(p ? p.upto : 11) - 1] + '. Basic = days worked × daily rate. Not counted: incentives, allowances, SSS, Pag-IBIG, PhilHealth, rent and bills. Penalties are not deducted. Holiday premiums are paid on payroll but are not basic salary.</div>';
     if(L.length > 1) h += '<div class="seg">' + L.map(x => '<button class="' + (x === p ? 'on' : '') + '" onclick="t2060who(\'' + e(x.person) + '\')">' + e(x.person) + '</button>').join('') + '</div>';
     if(!p){ show(h + '<div class="empty">No daily time records for ' + T.y + '.</div></div>'); return; }
     T.who = p.person;
     h += '<div class="hero"><span>' + e(p.person) + ' · 13th month pay' + (p.estimated ? ' (estimate until the year’s days are in)' : '') + '</span><b id="t13p1">' + P(p.pay) + '</b><span><span id="t13t1">' + P(p.total) + '</span> basic for the year ÷ 12' + (p.saved.paid_on ? ' · paid ' + e(p.saved.paid_on) : '') + '</span></div>';
     h += '<table><tr><th>Month</th><th class="n">Days</th><th class="n">Rate</th><th class="n">Basic</th></tr>';
     p.months.forEach(m => {
-      const k = String(m.m), ed = T.edit[k] || m.src === 'typed';
+      const k = String(m.m), ed = (T.edit[k] || m.src === 'typed') && m.src !== 'off';
+      if(m.src === 'off'){ h += '<tr style="color:#A9A6B8"><td>' + MN[m.m - 1] + '<div class="small">not counted</div></td><td></td><td></td><td class="n">—</td></tr>'; return; }
       const rate = p.fixed ? 'monthly' : (m.rates.length ? m.rates.map(x => (m.rates.length > 1 ? x.d + ' × ' : '') + '₱' + x.r).join(' + ') : (m.src === 'estimate' ? '₱' + p.rate : '—'));
       const days = m.src === 'estimate' && !p.fixed ? '<input class="sm" type="number" min="0" max="31" step="0.5" data-est="' + k + '" oninput="t2060calc()" value="' + e(m.est) + '"' + (m.days ? ' title="' + m.days + ' days so far"' : '') + '>' : (p.fixed ? '' : String(Math.round(m.rates.reduce((t, x) => t + x.d, 0) * 100) / 100));   /* day-equivalents: a half day counts 0.5 */
       const basic = ed ? '<input class="sm md" type="number" min="0" step="0.01" data-ovr="' + k + '" oninput="t2060calc()" value="' + e(m.ovr != null ? m.ovr : m.basic) + '"> <a class="ed" onclick="t2060ed(\'' + k + '\',0)">records</a>'
@@ -38901,6 +38904,7 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     h += '<div class="box"><div class="lab">Adjustment (₱, use a minus sign to take off)</div><input class="in" id="t13adj" oninput="t2060calc()" type="number" step="0.01" value="' + e(p.saved.adj || '') + '" placeholder="0">'
       + '<div class="lab">Reason for the adjustment</div><input class="in" id="t13adjn" value="' + e(p.saved.adj_note) + '" placeholder="e.g. unpaid days not in the time records">'
       + '<div class="lab">Note</div><textarea class="in" id="t13note" rows="2">' + e(p.saved.note) + '</textarea>'
+      + '<div class="lab">Count the months up to</div><select class="in" id="t13upto" onchange="t2060upto(this.value)">' + MN.map((n, i) => '<option value="' + (i + 1) + '"' + (i + 1 === p.upto ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>'
       + '<div class="lab">Paid on</div><input class="in" id="t13paid" type="date" value="' + e(p.saved.paid_on) + '">'
       + '<button class="btn teal block" style="margin-top:12px" id="t13go" onclick="t2060save()">Save</button>'
       + (p.saved.updated_at ? '<div class="small mute" style="margin-top:6px">Last saved ' + e(new Date(p.saved.updated_at).toLocaleString('en-GB', { timeZone: 'Asia/Manila', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })) + '</div>' : '') + '</div>';
@@ -38910,14 +38914,16 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   function gather(){ const p = person(), est = {}, ovr = {};
     document.querySelectorAll('.t13 [data-est]').forEach(i => { est[i.dataset.est] = i.value; });
     document.querySelectorAll('.t13 [data-ovr]').forEach(i => { if(i.value !== '') ovr[i.dataset.ovr] = i.value; });
-    return { person: p.person, est, ovr, adj: ($('t13adj') || {}).value || 0, adj_note: ($('t13adjn') || {}).value || '', note: ($('t13note') || {}).value || '', paid_on: ($('t13paid') || {}).value || '' }; }
+    return { person: p.person, upto: ($('t13upto') || {}).value || p.upto, est, ovr, adj: ($('t13adj') || {}).value || 0, adj_note: ($('t13adjn') || {}).value || '', note: ($('t13note') || {}).value || '', paid_on: ($('t13paid') || {}).value || '' }; }
   window.t2060 = function(){ if(!pres()) return; T.d = null; T.edit = {}; paint(); call({ op: 'get' }).then(d => { T.d = d; paint(); }).catch(() => { T.d = { ok: false, error: 'No connection' }; paint(); }); };
   window.t2060calc = function(){ const p = person(); if(!p) return; let t = 0;
-    p.months.forEach(m => { const k = String(m.m), o = document.querySelector('.t13 [data-ovr="' + k + '"]'), d = document.querySelector('.t13 [data-est="' + k + '"]');
-      let v = m.basic; if(o && o.value !== '') v = +o.value || 0; else if(d){ v = (+d.value || 0) * p.rate; const c = document.getElementById('t13b' + k); if(c && c.firstChild && c.firstChild.nodeType === 3) c.firstChild.nodeValue = P(v) + ' '; }
+    const up = +((($('t13upto') || {}).value) || p.upto);
+    p.months.forEach(m => { if(m.m > up) return; const k = String(m.m), o = document.querySelector('.t13 [data-ovr="' + k + '"]'), d = document.querySelector('.t13 [data-est="' + k + '"]');
+      let v = m.src === 'off' ? (m.ovr != null ? m.ovr : m.done ? m.actual : (p.fixed ? p.rate : m.est * p.rate)) : m.basic; if(o && o.value !== '') v = +o.value || 0; else if(d){ v = (+d.value || 0) * p.rate; const c = document.getElementById('t13b' + k); if(c && c.firstChild && c.firstChild.nodeType === 3) c.firstChild.nodeValue = P(v) + ' '; }
       t += v; });
     t += +(($('t13adj') || {}).value || 0) || 0; const set = (id, x) => { const el = document.getElementById(id); if(el) el.textContent = x; };
     set('t13t1', P(t)); set('t13t2', P(t)); set('t13p1', P(t / 12)); set('t13p2', P(t / 12)); };
+  window.t2060upto = function(v){ const p = person(); if(!p) return; p.upto = +v || 11; t2060save(); };   /* saves at once so the table redraws with the right months */
   window.t2060who = function(n){ T.who = n; T.edit = {}; paint(); };
   window.t2060ed = function(k, on){ if(on) T.edit[k] = 1; else { delete T.edit[k]; const p = person(), m = p && p.months[+k - 1]; if(m){ m.ovr = null; if(m.src === 'typed'){ m.src = m.done ? 'records' : 'estimate'; m.basic = m.done || p.fixed ? (m.done ? m.actual : p.rate) : m.est * p.rate; } } } paint(); };
   window.t2060save = function(){ if(T.busy) return; T.busy = 1; const b = $('t13go'); if(b){ b.disabled = true; b.textContent = 'Saving…'; }
