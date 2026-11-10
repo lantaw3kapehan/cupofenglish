@@ -11,6 +11,7 @@ Promise.resolve(require('./renewal-suite.js')(file)).then((failed) => {   // 154
   if (require('./test-profit-label.js')(file)) { console.error('Profit label checks failed · see above'); process.exit(1); }   // 1995
   return Promise.resolve(require('./test-weekly-same-id.js')(file)).then((wk) => {   // 2052: an "I'm in" only on its own day (10 Nov, Jimmy)
     if (wk) { console.error('Weekly class check failed · an "I\'m in" shows on another day · see above'); process.exit(1); }
+    if (require('./test-no-repeats.js')(file)) { console.error('No-repeats check failed · a removed repeat came back · see above'); process.exit(1); }   // 2055
     return require('./test-arrangers.js')(file);   // 2025: no screen may keep rearranging itself (9 Nov freeze)
   });
 }).then((loop) => {
