@@ -1,4 +1,4 @@
-// coe-13th v3 (rates per month split by rate with days and amount; holiday premium shown, not counted) · v2 (fixed monthly pay: estimate = last month's pay) · v1 · 10 Nov 2026 (Misty 15:45: "13th month pay … PRESIDENT ACCESS ONLY so I could see and edit · aligned with DOLE ·
+// coe-13th v4 (Misty 15:57 "dont include december count anymore, only until november": months January..upto are counted, upto 11 by default, ÷ 12) · v3 (rates per month split by rate with days and amount; holiday premium shown, not counted) · v2 (fixed monthly pay: estimate = last month's pay) · v1 · 10 Nov 2026 (Misty 15:45: "13th month pay … PRESIDENT ACCESS ONLY so I could see and edit · aligned with DOLE ·
 //   Celine should not have access of it yet"). PRESIDENT ONLY (mgmt session named CupOfEnglish) — everyone else gets 403.
 // DOLE rule (PD 851, Revised Guidelines): 13th month = total BASIC salary actually earned in the calendar year ÷ 12, paid on or
 //   before 24 December. Basic = days worked × daily rate (from coe_staff_day). Not counted: incentives, allowances, holiday/OT
@@ -34,7 +34,8 @@ Deno.serve(async (req: Request) => {
     const person = str(b.person, 60); if (!person) return out({ ok: false, error: "person" }, 400);
     const clean = (o: any, max: number) => { const r: Record<string, number> = {}; for (const k of Object.keys(o || {})) { const m = +k, v = num(o[k]); if (m >= 1 && m <= 12 && String(o[k]).trim() !== "" && isFinite(v) && v >= 0 && v <= max) r[String(m)] = r2(v); } return r; };
     const adj = num(b.adj);
-    const row = { year, person, est: clean(b.est, 31), ovr: clean(b.ovr, 200000), adj: isFinite(adj) ? r2(adj) : 0, adj_note: str(b.adj_note, 300), note: str(b.note, 600),
+    const up = Math.trunc(num(b.upto));
+    const row = { year, person, upto: up >= 1 && up <= 12 ? up : 11, est: clean(b.est, 31), ovr: clean(b.ovr, 200000), adj: isFinite(adj) ? r2(adj) : 0, adj_note: str(b.adj_note, 300), note: str(b.note, 600),
       paid_on: /^\d{4}-\d{2}-\d{2}$/.test(str(b.paid_on, 10)) ? str(b.paid_on, 10) : null, updated_by: me, updated_at: new Date().toISOString() };
     const { error } = await db.from("coe_13th").upsert(row); if (error) return out({ ok: false, error: "not saved" }, 500);
     await db.from("coe_13th_log").insert({ year, person, row, by_name: me });
@@ -49,6 +50,7 @@ Deno.serve(async (req: Request) => {
     const D = (days || []).filter((d: any) => d.name === person), S: any = (saved || []).find((x: any) => x.person === person) || {};
     const fixed = D.length > 0 && D.every((d: any) => d.fixed);   // a fixed monthly pay (one row a month), not a daily rate
     let rate = 0; D.forEach((d: any) => { const v = fixed ? +d.pay : +d.base; if (v > 0) rate = v; });
+    const upto = S.upto >= 1 && S.upto <= 12 ? +S.upto : 11;
     const months = [];
     for (let m = 1; m <= 12; m++) {
       const M = D.filter((d: any) => +String(d.day).slice(5, 7) === m && +d.pay > 0), actual = r2(M.reduce((a: number, d: any) => a + +d.pay, 0));
@@ -58,12 +60,13 @@ Deno.serve(async (req: Request) => {
       const ov = S.ovr && S.ovr[String(m)] != null ? +S.ovr[String(m)] : null, ed = S.est && S.est[String(m)] != null ? +S.est[String(m)] : 26;
       let basic = actual, src = "records";
       if (ov != null) { basic = ov; src = "typed"; } else if (!done) { basic = r2(fixed ? rate : ed * rate); src = "estimate"; }
+      if (m > upto) { basic = 0; src = "off"; }   // not counted (after the last month counted)
       months.push({ m, days: M.length, actual, rates, prem, done, part, est: ed, ovr: ov, basic, src });
     }
     const penalties = rows.filter((r) => String(r.employee || "").toLowerCase() === person.toLowerCase() && String(r.type) !== "Deductions" && num(r.amount) > 0 && String(r.when || "").includes(String(year)))
       .map((r) => ({ when: str(r.when, 20), what: str(r.action || r.type, 120), amount: num(r.amount) }));
     const total = r2(months.reduce((a, x) => a + x.basic, 0) + (+S.adj || 0));
-    return { person, fixed, rate, months, penalties, penaltyTotal: r2(penalties.reduce((a, p) => a + p.amount, 0)),
+    return { person, fixed, rate, upto, months, penalties, penaltyTotal: r2(penalties.reduce((a, p) => a + p.amount, 0)),
       saved: { adj: +S.adj || 0, adj_note: S.adj_note || "", note: S.note || "", paid_on: S.paid_on || "", updated_by: S.updated_by || "", updated_at: S.updated_at || "" },
       estimated: months.some((x) => x.src === "estimate"), total, pay: r2(total / 12) };
   });
