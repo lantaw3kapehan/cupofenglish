@@ -3135,7 +3135,7 @@ closeSheet(); render(); toast('Peer review sent · ' + r.total + '/125 · thank 
 }
 function peerHtml(P, mgr){
 if(!P) return ''; const L = P.list || [], T = P.titles || [];
-if(!L.length) return `<section class="sec"><h2>Peer feedback <span class="c">from fellow teachers</span></h2><div class="mute small">${mgr?'No peer review for this teacher yet.':'When a fellow teacher reviews one of your classes, it shows here.'}</div></section>`;
+if(!L.length) return `<section class="sec"><h2>Peer feedback <span class="c">from fellow teachers</span></h2>${mgr ? '' : (window.pr2059 ? pr2059() : '')}<div class="mute small">${mgr?'No peer review for this teacher yet.':'When a fellow teacher reviews one of your classes, it shows here.'}</div></section>`;
 const one = (x, open) => `<details class="fbold" ${open?'open':''}><summary class="row" style="gap:10px"><div class="grow"><b>${esc(x.at)}</b> <span class="small mute">by ${esc(tName(x.evaluator))}${x.student?' · class with '+esc(x.student):''}</span></div><b class="num">${x.total}/125</b><span class="chip ${x.pct>=80?'green':x.pct>=70?'teal':'coral'}">${x.pct}%</span></summary>
 <div class="pr-sc">${x.scores.map((s,i) => `<div><b class="num">${s}</b><span>${esc(T[i]||'')}</span></div>`).join('')}</div>
 ${x.overall?`<div class="gr-k">Overall</div><div class="gr-text small">${nl2br(x.overall)}</div>`:''}
@@ -3143,7 +3143,7 @@ ${x.comments.map((c,i) => c ? `<div class="gr-k">${esc(T[i]||'')}</div><div clas
 const top = L.filter(x => x.date === L[0].date && x.student === L[0].student), avg = Math.round(top.reduce((a,x)=>a+x.total,0)/top.length);
 const sum = top.length > 1 ? `<div class="pr-sc" style="grid-template-columns:repeat(${T.length},1fr)">${T.map((t,i) => `<div><b class="num">${Math.round(top.reduce((a,x)=>a+(x.scores[i]||0),0)/top.length)}</b><span>${esc(t)}</span></div>`).join('')}</div>
 <div class="small mute" style="margin:6px 0 4px">Average of ${top.length} teachers on your class${L[0].student?' with '+esc(L[0].student):''} · ${avg}/125 (${Math.round(avg/125*100)}%)</div>` : '';
-return `<section class="sec"><h2>Peer feedback <span class="c">from fellow teachers · ${L.length}</span></h2>${sum}${L.map((x,i) => one(x, i===0 && top.length < 2)).join('')}</section>`;
+return `<section class="sec"><h2>Peer feedback <span class="c">from fellow teachers · ${L.length}</span></h2>${mgr ? '' : (window.pr2059 ? pr2059() : '')}${sum}${L.map((x,i) => one(x, i===0 && top.length < 2)).join('')}</section>`;
 }
 
 function nowPayOf(m){ m = m || {}; return Math.round((+m.nowPay || 0) + (+m.nowTrial || 0) * (+m.rate || 0)); }   /* 14 Oct: trials paid at the same rate, not regular units */
@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1774;
+const COE_V = 1775;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -38835,6 +38835,17 @@ body:not(.role-t) #v-home > .ovc{display:contents}
         + '<td style="text-align:right;white-space:nowrap"><b style="color:#3FA7A8">+' + x.u + '</b> returned<div style="font-size:11px;color:#6F6B85">已退回 ' + x.u + ' 课时</div></td></tr>').join('') + '</table>'
       + '<div style="margin-top:6px;font-size:12px;color:#4A4766;line-height:1.5">' + tot + ' lesson' + (tot === 1 ? '' : 's') + ' returned: not counted as completed, still in the package.<br>共退回 ' + tot + ' 课时，不计入已上课时，仍保留在课程包中。</div>'; };
 })();
+</script>
+<script>
+/* 2059 (10 Nov 14:16, Misty: "how come Kat has to ask where she sees the peer review"): the peer review a teacher still has to
+   write was only on Today › Needs your action. Growth › Peer feedback (where teachers look for peer reviews) now shows it too,
+   at the top, with an Open button (the same form). */
+window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.mgr && Array.isArray(D.peer)) ? D.peer : []; if(!P.length) return '';
+  const me = String((D.me && D.me.name) || '').toLowerCase(), e = x => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const mo = m => { const d = new Date(String(m || '').slice(0, 7) + '-15T12:00:00'); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { month: 'long' }) + ' '; };
+  return '<div class="pr2059">' + P.map(x => '<div class="li" style="cursor:pointer" onclick="peerSheet(\'' + e(x.id) + '\')"><span class="chip teal">To do</span><div class="grow ell"><b>' + e(mo(x.month)) + 'peer review</b> · ' +
+    (String(x.teacher || '').toLowerCase() === me ? 'your own class' : 'Teacher ' + e(x.teacher) + '\'s class') + (x.student ? ' with ' + e(x.student) : '') + '</div><button type="button" class="btn teal sm" onclick="event.stopPropagation();peerSheet(\'' + e(x.id) + '\')">Open</button></div>').join('') + '</div>';
+  }catch(err){ return ''; } };
 </script>
 <style id="st2058">/* 2058: Overview › Last week tiles side by side in one row */
 #v-home section.ov-card .row:has(> div[style*="flex:1 1 130px"]){display:flex!important;flex-wrap:nowrap!important;gap:10px!important}
