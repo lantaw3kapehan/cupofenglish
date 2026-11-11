@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1804;
+const COE_V = 1805;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -27567,10 +27567,11 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   /* every dbRecord request: keep its promise, so the form knows when ITS fresh record has arrived */
   const REC = {};
   let PB = null;   /* the birthdate decision of the save that is being sent right now */
+  const PBK = {};   /* 2097: the same decision by row|code, kept 3 minutes (the save is sent after the form's awaits) */
   const a0 = window.api;
   window.api = function(fn){
     if(fn === 'saveStudent'){ try{ const f = arguments[2], row = Number(arguments[3]) || 0;
-        if(f && typeof f === 'object' && row > 0){ const P = PB;
+        if(f && typeof f === 'object' && row > 0){ const P2 = PBK[row + '|' + String(f.code || '')], P = (P2 && Date.now() - P2.t < 18e4) ? P2 : PB;   /* 2097 */
           if(P && P.row === row && String(f.code || '') === P.code){ f.birth = P.birth; delete f.birthKeep; delete f.birthClear; if(P.keep) f.birthKeep = 1; if(P.clear) f.birthClear = 1; }
           else if(!ISO.test(String(f.birth == null ? '' : f.birth).trim()) && !f.birthClear){ f.birth = ''; f.birthKeep = 1; } } }catch(e){ console.warn('960 save', e); } }   /* no decision (should not happen): never a blank or odd value, the server keeps the cell */
     const p = a0.apply(this, arguments);
@@ -27672,7 +27673,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       if(M === 'clear') d = { birth: '', clear: 1 };
       else if((M === 'input' || M === 'edit') && ISO.test(x) && x !== O) d = { birth: x };
       else d = { birth: O, keep: 1 };
-      PB = Object.assign({ row: r, code: c }, d);
+      PB = Object.assign({ row: r, code: c }, d); PBK[r + '|' + c] = Object.assign({ t: Date.now() }, PB);   /* 2097 */
       try{ return ss0.apply(this, arguments); } finally { PB = null; } }
     return ss0.apply(this, arguments); };
 })();
