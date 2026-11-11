@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1810;
+const COE_V = 1814;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7523,9 +7523,9 @@ ${(() => { /* 1786: months never below 0 · substitute lessons and earlier recor
 ${(() => { try{ return window.ret1969 ? ret1969(G, C, code, st) : ''; }catch(e){ return ''; } })()}<div style="margin-top:8px;font-size:11px;color:#6F6B85">Records current as of the date above. 记录更新至上述日期。</div></td></tr></table>`; }
 async function shSummary(code, force, bg){ $('sheet').classList.add('wide'); openSheet('<h1>Shared lesson summary</h1><div class="paper"><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div></div>');
 const had0 = !!(AT && AT.cols); try{ if(force || !had0) await loadActive(true); }catch(e){}
-if(had0 && !force && !bg){ const sig = JSON.stringify(AT && AT.rows); loadActive(true).then(() => { if(JSON.stringify(AT && AT.rows) !== sig && DOCV && DOCV.key === 'SHPKG' && DOCV.pick === code && $('sheet').classList.contains('on')){ shSummary(code, false, 1); toast('Updated to the latest numbers'); } }).catch(() => {}); }   /* 14 Oct: always ends on the latest ACTIVE */
+if(had0 && !force && !bg){ const sig = JSON.stringify(AT && AT.rows); loadActive(true).then(() => { if(JSON.stringify(AT && AT.rows) !== sig && DOCV && DOCV.key === 'SHPKG' && DOCV.pick === code && $('sheet').classList.contains('on') && window.__sh2104 && window.__sh2104.code === code && window.__sh2104.node && window.__sh2104.node.isConnected){   /* 2104: only while this summary is still on screen */ shSummary(code, false, 1); toast('Updated to the latest numbers'); } }).catch(() => {}); }   /* 14 Oct: always ends on the latest ACTIVE */
 const sh = !!shGroup(code), h = shHtml(code) || lsHtml(code), T = sh ? 'Shared lesson summary' : 'Lesson summary'; if(!h){ $('sheetBody').innerHTML = '<h1>' + T + '</h1><div class="empty">Could not load the packages. Try again.</div>'; return; }
-docShow('SHPKG', T, { rows: h, pick: '' }, code);
+docShow('SHPKG', T, { rows: h, pick: '' }, code); try{ window.__sh2104 = { code, node: $('sheetBody').querySelector('.paper') || $('sheetBody').firstElementChild }; }catch(e){}   /* 2104 */
 try{ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const up = s => String(s || '').trim().toUpperCase(), R = AT.rows.filter(x => up(x[C.code]) === up(code) && x[C.enrolled] !== '').sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])));
 if(R.length > 1){ const cur = (lsRows(code) || {}).r; $('sheetBody').insertAdjacentHTML('afterbegin', '<div class="small mute noprint">' + R.length + ' packages · pick one for its own summary</div><div class="seg noprint" style="flex-wrap:wrap;margin-bottom:8px">' + R.map(x => '<button class="' + (x === cur ? 'on' : '') + '" onclick="window.LS_PICK={code:\'' + esc(up(code)) + '\',row:' + x[C.row] + '};shSummary(\'' + esc(code) + '\')">' + esc((C.course != null && x[C.course] && typeof pkCourse === 'function' ? pkCourse(x[C.course]) + ' · ' : '') + x[C.teacher] + ' · ' + x[C.enrolled] + ' lessons · ' + x[C.start]) + '</button>').join('') + '</div>'); } }catch(e){} }
 const _tsSh = tabSheet;
@@ -9873,6 +9873,8 @@ const carry = +pk[C.carry] || 0; let rn = ''; try{ rn = String((typeof REN === '
 const pks = rows.filter(r => r[C.enrolled] !== '').sort((a, b) => String(b[C.start]).localeCompare(String(a[C.start])));
 const nf = (window.NAMEFIX || {})[code]; CN = { code: code, name: nf || pk[C.name] || code, cn: nf ? ((window.NAMEFIX || {})['cn:' + code] || '') : (pk[C.cn] || ''), kid: 1, rn: rn, L: (Array.isArray(L) ? L : []).filter(x => !/(^|-)\s*TC(\s+X)?\s*$/i.test(String(x.title || '').trim()) && !/trial/i.test(String(x.title || ''))), pi: 0, extra: rows.filter(r => r[C.enrolled] === '').map(r => cnTn(r[C.teacher])),
 pks: (pks.length ? pks : [pk]).map(r => ({ co: C.course != null ? String(r[C.course] || '') : '', t: String(r[C.teacher] || ''), en: r[C.enrolled], carry: Math.round(rows.reduce((a, q) => a + (+q[C.carry] || 0), 0) * 10) / 10, st: (s => s && Date.now() - new Date(s + 'T12:00:00').getTime() > 183 * 864e5 ? '' : s)(String(r[C.start] || '').slice(0, 10)), left: r[C.available], dl: C.deadline != null ? String(r[C.deadline] || '').slice(0, 10) : '' })) };
+try{ const g = typeof shGroup === 'function' ? shGroup(code) : null; CN.sib = [];   /* 2107: the other children on a shared package */
+  if(g){ const up2 = s => String(s || '').trim().toUpperCase(), seen = {}; seen[up2(code)] = 1; g.G.members.forEach(m => { const cd = up2(m[g.C.code]); if(!cd || seen[cd]) return; seen[cd] = 1; CN.sib.push({ code: cd, name: String(m[g.C.name] || cd).trim(), cn: String(m[g.C.cn] || '').trim() }); }); } }catch(e){}
 cnUse(0);
 }catch(e){ openSheet('<h1>Class notice</h1><div class="empty">Could not load ' + esc(code) + '. Check your internet and try again.</div>'); }
 }
@@ -9881,7 +9883,7 @@ const x = CN, u = +x.units || 0, c = +x.carry || 0, f = +x.free || 0, fm = n => 
 const sch = String(x.sch || '').trim().replace(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/g, '$1–$2');
 const parts = ['Paid 购买 ' + fm(u - (f > 0 && f < u ? f : 0))].concat(f > 0 && f < u ? ['Free 赠送 ' + fm(f)] : []).concat(c > 0 ? ['Carried 结转 ' + fm(c)] : []);
 return 'Class Notice 课程通知 · ' + (x.ren ? 'Renewal 续费' : 'New 新报名') +
-'\n\n' + x.name + (x.cn ? ' ' + x.cn : '') + ' · ' + x.code +
+'\n\n' + x.name + (x.cn ? ' ' + x.cn : '') + ' · ' + x.code + (x.sib && x.sib.length ? x.sib.map(s => '\n& ' + s.name + (s.cn ? ' ' + s.cn : '') + ' · ' + s.code).join('') + '\nShared package 共享课程包' : '') +   /* 2107 */
 (String(x.book || '').trim() ? '\n' + String(x.book).trim() : '') +
 '\n\nLessons 课时' + (ext ? '\n' + parts.join(' + ') + '\n= ' : ' ') + fm(tot) + (tot === 1 ? ' unit' : ' units') + '（' + fm(tot * 2) + ' classes 节 × 25 min）' +
 (x.until ? '\nValid until 有效期至 ' + x.until : '') +
@@ -22123,6 +22125,11 @@ window.ivNoStu = () => { S.code = ''; S.student = null; fill({ profile: null });
 function fill(r){
   const st = S.student, p = r.profile || {}, c = S.ctx;
   S.bill_name = p.bill_name || (st ? 'Student ' + (st.en || '') + (st.zh ? ' (' + st.zh + ')' : '') : '');
+  try{ if(!p.bill_name && st && S.code && typeof shGroup === 'function'){ const g = shGroup(S.code);   /* 2106: a shared package bills every child on it */
+    if(g){ const C = g.C, up = x => String(x || '').trim().toUpperCase(), seen = {}, kids = [];
+      g.G.members.forEach(m => { const cd = up(m[C.code]); if(!cd || seen[cd]) return; seen[cd] = 1; const en = String(m[C.name] || '').trim(), zh = String(m[C.cn] || '').trim(); if(en) kids.push({ cd, t: en + (zh ? ' (' + zh + ')' : '') }); });
+      kids.sort((a, b) => (a.cd === up(S.code) ? -1 : b.cd === up(S.code) ? 1 : a.cd.localeCompare(b.cd)));
+      if(kids.length > 1) S.bill_name = 'Students ' + kids.map(k => k.t).join(' & '); } } }catch(x){}
   S.bill_addr = p.bill_addr || (st && st.city ? st.city + (/city$/i.test(st.city) ? '' : ' City') + ',\nChina' : '');
   S.method = c.method || (() => { try{ return localStorage.getItem('coe.rpM') || ''; }catch(x){ return ''; } })() || 'Alipay';
   S.email = p.email || ''; S.reimb = p.reimb || null; S.useR = !!(p.reimb && Object.keys(p.reimb).length);
@@ -39740,7 +39747,9 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
 #v-finbrief .bz-bar>div:first-child span{white-space:normal}
 </style>
 <script id="s2102">
-/* 2103: the lists the check needs (packages, student records) are loaded first when the screen has not loaded them yet.
+/* 2105: a sibling must share the first TWO characters of the Chinese name (family name + generation name, e.g. 刘常悦 / 刘常乐), not only
+   the family name: 刘 alone matched three Jinan students.
+   2103: the lists the check needs (packages, student records) are loaded first when the screen has not loaded them yet.
    2102 (11 Nov 21:40, Misty: "where is the shared package with Andy option?"). The share option was a small link under the Enrolled · paid
    title. Now, when the student looks like a sibling of an enrolled student (same Chinese family name and the same referral / partner),
    Enrolled · paid opens with a clear card: "Andrew looks like Andy's sibling … Shares Andy's package →", and that form opens with Andy chosen. */
@@ -39749,9 +39758,9 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   const up = s => String(s == null ? '' : s).trim().toUpperCase(), E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   function me(code){ try{ const r = ((typeof DB !== 'undefined' && DB && DB.rows) || []).filter(x => up(x[0]) === up(code)).pop(); if(r) return { cn: String(r[1] || '').trim(), src: String(r[22] || '').trim() }; }catch(e){} return null; }
   function sibs(code){ const m = me(code); if(!m || !m.cn || /#ERROR/.test(m.cn)) return [];
-    try{ const C = {}; (AT.cols || []).forEach((c, i) => C[c] = i); const fam = m.cn.charAt(0), norm = s => String(s || '').replace(/^Partner\s*[–-]\s*/i, '').trim();
+    try{ const C = {}; (AT.cols || []).forEach((c, i) => C[c] = i); const fam = m.cn.length >= 3 ? m.cn.slice(0, 2) : '', norm = s => String(s || '').replace(/^Partner\s*[–-]\s*/i, '').trim();
       const out = {}; (AT.rows || []).forEach(r => { const c = up(r[C.code]); if(!c || c === up(code) || r[C.enrolled] === '' || r[C.enrolled] == null) return;
-        const cn = String(r[C.cn] || '').trim(); if(!cn || cn.charAt(0) !== fam || cn === m.cn) return; if(m.src && norm(r[C.source]) && norm(r[C.source]) !== norm(m.src)) return;
+        const cn = String(r[C.cn] || '').trim(); if(!fam || !cn || cn.length < 3 || cn.slice(0, 2) !== fam || cn === m.cn) return; if(m.src && norm(r[C.source]) && norm(r[C.source]) !== norm(m.src)) return;
         out[c] = { code: c, name: String(r[C.name] || ''), cn }; });
       return Object.values(out).slice(0, 3); }catch(e){ return []; } }
   const en0 = window.enSheet;
