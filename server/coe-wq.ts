@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-wq v10 (11 Nov 2026 · 2070: finished by the database when it can; Google only for what the database cannot do yet) · (27 Oct 2026) · slow management saves answered at once (Misty: "Yes I want them made instant").
+// CupOfEnglish · coe-wq v11 (11 Nov · 2073: a teacher's leave answer with files comes here too) · v10 (11 Nov 2026 · 2070: finished by the database when it can; Google only for what the database cannot do yet) · (27 Oct 2026) · slow management saves answered at once (Misty: "Yes I want them made instant").
 // POST { token, fn, args, rid } → the save is recorded in `writes` straight away (status busy) and the app shows "Saved"; Google's own
 // function is called in the background with the same sign-in and arguments, exactly as the app called it before (same checks, same
 // sheets, same Drive upload). Google's answer is kept on the `writes` row (done / error); the app reads it through coe-mgmt › writeStatus
@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
   let b: any; try { b = JSON.parse(await req.text()); } catch { return out({ ok: false, error: "bad request" }, 400); }
   const fn = String(b.fn || ""), args = b.args;
   if (!FNS[fn] || !Array.isArray(args) || args.length < 2 || args.length > 6) return out({ ok: false, error: "not allowed" }, 400);
-  if (fn === "tLeaveReply" && Array.isArray(args[3]) && args[3].length) return out({ ok: false, error: "not allowed" }, 400);   // v7: a leave answer with files goes to Google (files are not kept here)
+  if (fn === "tLeaveReply" && Array.isArray(args[3]) && args[3].reduce((n: number, x: any) => n + String((x && x.b64) || "").length, 0) > 42e6) return out({ ok: false, error: "too big" }, 413);   // v11 (2073): a leave answer with files is finished by the database; the files go to storage (coe-proof)
   if (fn === "mgmtRefund" && args[1] && typeof args[1] === "object" && args[1].dry) return out({ ok: false, error: "not allowed" }, 400);   // v8: the refund look-up is read by Google directly
   const token = String(args[0] || ""); if (token.length < 16 || token !== String(b.token || token)) return out({ ok: false, error: "AUTH" }, 401);
   const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
