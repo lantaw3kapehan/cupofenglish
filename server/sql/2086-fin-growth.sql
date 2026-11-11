@@ -1,0 +1,7 @@
+-- 2086 (11 Nov 19:05, Misty: "release it now"): coe_fin_growth() for Finance › Briefing "Growing the business" (President only, coe-finbrief v3 op growth).
+-- Applied as migrations 2086_fin_growth + 2086b_fin_growth_fixes (see the database for the function body).
+-- Renewals = packages bought in the month whose status starts "Renewed"; partners = agencies (Ms./Mr./Dr./Mrs.); one-off sales of ₱50,000+ left out of
+-- the lesson price; lesson cost = the latest full payroll month (coe_pay_hist; a lesson = half a unit) + that month's bills and gov; teacher room =
+-- latest coe_avail_snap without the President's own hours.
+-- Checked 11 Nov: direct ₱493 / partner ₱354 a lesson (partner 30+3 = ₱11,550 → ₱350); Sep cost ₱203 a lesson (teacher ₱89); Oct 20 new + 11 renewed;
+-- Nov so far 8 new + 2 renewed; trials Oct 16 of 23 became students; 152.5 free teacher hours a week.

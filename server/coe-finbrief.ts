@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-finbrief v2 (2085 · the President's finance figures: op "settings" / "set", e.g. phpBank, rate) · v1 (11 Nov 2026, 2084 · Misty: Finance for the President "like an accounting manager and president POV").
+// CupOfEnglish · coe-finbrief v3 (2086 · op "growth": coe_fin_growth()) · v2 (2085 · the President's finance figures: op "settings" / "set", e.g. phpBank, rate) · v1 (11 Nov 2026, 2084 · Misty: Finance for the President "like an accounting manager and president POV").
 // The President's Finance briefing: approvals (a paper trail only, nothing is blocked) and the manager's notes.
 // POST { token, op: "get" }                                   → { ok, rows: [{ id, kind, ref, label, body, by, at }] } (last 200)
 // POST { token, op: "add", kind, ref, label, body }           → { ok, row }   kind: note | approve | notyet | noted
@@ -41,6 +41,11 @@ Deno.serve(async (req: Request) => {
     const { error } = await db.from("coe_fin_brief").update({ removed_at: new Date().toISOString() }).eq("id", id).eq("kind", "note");
     if (error) return out({ ok: false, error: "not saved" }, 500);
     return out({ ok: true });
+  }
+  if (op === "growth") {   // v3 (2086): trials → students, renewals, what a lesson earns and costs, teacher room
+    const { data, error } = await db.rpc("coe_fin_growth");
+    if (error) return out({ ok: false, error: "db" }, 500);
+    return out({ ok: true, growth: data });
   }
   if (op === "settings") {   // v2 (2085)
     const { data, error } = await db.from("coe_fin_settings").select("key,value,by_name,at");
