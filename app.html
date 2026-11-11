@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1795;
+const COE_V = 1796;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -39181,7 +39181,8 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
 <script id="f2084">
 /* 2084 / 2085 (11 Nov, Misty: Finance for the President "like an account manager communicates with the president" · "I wanted to enter it
    here" · "Make it minimal, straightforward, effective, targeted"). Finance › Briefing, President only, first Finance tab.
-   v3 (2086): one "Growing the business" card from the database (coe_fin_growth: trials → students, renewals, what a lesson earns and
+   v4 (2088): due dates entered once (shown in Coming up, bold within 7 days), "Close last month" in the first 10 days, a Monday
+   reminder. v3 (2086): one "Growing the business" card from the database (coe_fin_growth: trials → students, renewals, what a lesson earns and
    costs, teacher room) and a safety-cushion line. v2 (2085): shorter; the peso bank balance and the yuan rate are typed in here and kept in the database (coe-finbrief settings), so every
    device and the Forecast use the same figures. Decisions are a record only. Numbers: the Forecast engine (fc980, expected case) and Packages. */
 (function(){
@@ -39281,7 +39282,8 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     if(cash) cash.rows.forEach(function(w){ (w.items || []).forEach(function(it){ if(!it.out || !it.d || it.d <= today || it.d > end || it.a == null || (it.cur || 'PHP') !== 'PHP') return; up.push({ d: it.d, l: it.l, a: it.a }); }); });
     up.sort(function(a, b){ return a.d < b.d ? -1 : 1; }); o.up = up; o.upTotal = up.reduce(function(s, x){ return s + x.a; }, 0);
     o.bank = A.phpBank == null || A.phpBank === '' ? null : +A.phpBank; o.bankDate = A.phpBankDate || ''; o.rate = A.rate == null || A.rate === '' ? null : +A.rate;
-    o.miss = R.miss || [];
+    o.miss = R.miss || []; o.walChecked = R.walChecked || '';
+    o.dues = ((B.set && B.set.bir && Array.isArray(B.set.bir.value)) ? B.set.bir.value : []).filter(function(x){ return x && x.d && x.l; }).sort(function(a, b){ return a.d < b.d ? -1 : 1; });
     var Xp = null; try{ Xp = fc980.inputs().exp; }catch(e){}
     o.big = Xp && Xp.rows ? Xp.rows.filter(function(r){ return r.d && r.d >= addD(today, -13) && r.d <= today && N(r.a) >= 10000; }).sort(function(a, b){ return N(b.a) - N(a.a); }).slice(0, 3) : [];
     o.low = null; try{ if(typeof AT !== 'undefined' && AT && AT.cols){ var C = {}; AT.cols.forEach(function(c, i){ C[c] = i; });
@@ -39315,6 +39317,9 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   function actions(o){ var D = [], cover = '';
     if(o.bank != null && o.up.length){ var left = o.bank - o.upTotal; cover = left >= 0 ? ' Covers the next 30 days of payments (' + about(o.upTotal) + ') with ' + about(left) + ' to spare.' : ' <b>Not enough</b> for the next 30 days (' + about(o.upTotal) + '): send about ' + about(-left) + ' from the yuan wallets.'; }
     if(o.bank != null && o.salaries != null){ var cushion = o.salaries, gap = o.bank - cushion; cover += ' Safety cushion (one month of payroll, ' + about(cushion) + '): ' + (gap >= 0 ? '<b>covered</b>.' : '<b>' + about(-gap) + ' short</b>.'); }
+    if(+o.today.slice(8, 10) <= 10){ var ms0 = o.today.slice(0, 8) + '01', pm = (function(){ var y = +o.today.slice(0, 4), m = +o.today.slice(5, 7) - 1; if(m < 1){ m = 12; y--; } return y + '-' + (m < 10 ? '0' : '') + m; })();
+      var ck = [[o.bankDate && o.bankDate >= ms0, 'bank balance'], [o.walChecked && o.walChecked >= ms0, 'wallet balances', 'wallets'], [!!(last('books:' + pm) && last('books:' + pm).kind === 'approve'), 'sign-off below']];
+      if(ck.some(function(x){ return !x[0]; })) D.push('<div class="fbz-d"><div class="t"><b>Close ' + E(mName(pm)) + ':</b> ' + ck.map(function(x){ return (x[0] ? '✓ ' : '○ ') + (x[2] && !x[0] ? '<a style="cursor:pointer;color:#1E6F6A;font-weight:700" onclick="go(\'' + x[2] + '\')">' + x[1] + '</a>' : x[1]); }).join(' · ') + '</div></div>'); }
     D.push(field('phpBank', '<b>Peso bank balance</b> (with cash on hand)' + (o.bankDate ? ', as of ' + E(dS(o.bankDate)) : '') + '.' + cover, o.bank, 'e.g. 250000', '₱'));
     if(o.salaries != null) D.push(decision('payroll:' + o.cur, 'Approve <b>' + E(mName(o.cur)) + ' payroll</b>, about <b>' + about(o.salaries) + '</b>, paid ' + E(dL(o.payDate)) + '.', ['approve', 'notyet']));
     if(o.last && o.last.net != null) D.push(decision('books:' + o.last.m, 'Sign off <b>' + E(mName(o.last.m)) + '</b>: received ' + about(o.last.sales) + ', spent ' + about(o.last.cost) + ', kept <b>' + about(o.last.net) + '</b>.', ['approve', 'notyet']));
@@ -39343,19 +39348,25 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
       '<div class="fbz-links" style="margin:8px 0 0"><a onclick="go(\'astudents\')">Students ›</a><a onclick="go(\'trials\')">Trials ›</a><a onclick="go(\'teachers\')">Teachers ›</a></div></div>'; }
 
   /* 4 · coming up + watch, short */
-  function ahead(o){ var rows = (o.up || []).slice(0, 4).map(function(x){ return '<tr><td>' + E(dL(x.d)) + ' · ' + E(String(x.l).replace(/\s*\((estimate|future-dated in EXPENSES)[^)]*\)/i, '').replace(/ · .*$/, '')) + '</td><td>' + about(x.a) + '</td></tr>'; }).join('');
+  function ahead(o){ var end30 = addD(o.today, 30), soon = addD(o.today, 7);
+    var dueRows = (o.dues || []).filter(function(x){ return x.d >= o.today && x.d <= end30; }).map(function(x){ return '<tr><td>' + (x.d <= soon ? '<b>' : '') + E(dL(x.d)) + ' · Due: ' + E(x.l) + (x.d <= soon ? '</b>' : '') + '</td><td>' + (x.a ? about(+x.a) : '') + '</td></tr>'; }).join('');
+    var rows = dueRows + (o.up || []).slice(0, 4).map(function(x){ return '<tr><td>' + E(dL(x.d)) + ' · ' + E(String(x.l).replace(/\s*\((estimate|future-dated in EXPENSES)[^)]*\)/i, '').replace(/ · .*$/, '')) + '</td><td>' + about(x.a) + '</td></tr>'; }).join('');
     var W = [];
     var covered = o.bank != null && o.bank - o.upTotal >= 0;
     if(!covered && o.miss.some(function(x){ return /remit/i.test(x.t || ''); })) W.push('Plan a transfer from the yuan wallets before ' + E(dL(o.payDate)) + ' (salaries are paid in pesos).');
     if(o.miss.some(function(x){ return x.k === 'neg'; })) W.push('CCB wallet is slightly short; top it up before its next payment.');
-    if(o.miss.some(function(x){ return /13th/i.test(x.t || ''); })) W.push('13th-month pay (December) is not in the plan yet.');
+    if(o.miss.some(function(x){ return /13th/i.test(x.t || ''); }) && !(o.dues || []).some(function(x){ return /13th/i.test(x.l); })) W.push('13th-month pay is not in the plan yet. Add it under Notes, due dates and record.');
     if(!rows && !W.length) return '';
     return '<div class="fbz-card"><h2>Coming up</h2>' + (rows ? '<table class="fbz-up">' + rows + '</table>' : '') + (W.length ? '<ul class="fbz-l" style="margin-top:8px">' + W.slice(0, 3).map(function(x){ return '<li>' + x + '</li>'; }).join('') + '</ul>' : '') + '</div>'; }
 
   function more(){ var L = (B.rows || []).filter(function(x){ return x.kind === 'note'; }).slice(0, 5), T = (B.rows || []).filter(function(x){ return x.kind !== 'note'; }).slice(0, 8);
-    var lab = function(x){ var m = /^set:(\w+)/.exec(x.ref || ''); if(m) return { phpBank: 'Peso bank balance updated', rate: 'Yuan rate updated' }[m[1]] || 'Figure updated'; return { approve: 'Approved', notyet: 'Not yet', noted: 'Noted' }[x.kind] + ' · ' + x.label; };
+    var lab = function(x){ var m = /^set:(\w+)/.exec(x.ref || ''); if(m) return { phpBank: 'Peso bank balance updated', rate: 'Yuan rate updated', bir: 'Due dates updated' }[m[1]] || 'Figure updated'; return { approve: 'Approved', notyet: 'Not yet', noted: 'Noted' }[x.kind] + ' · ' + x.label; };
     var t = function(x){ return E(new Date(x.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })); };
-    return '<details class="fbz-card"' + (B.open ? ' open' : '') + ' ontoggle="window.__fbzOpen=this.open"><summary>Notes and record</summary>' +
+    var dues = (B.set && B.set.bir && Array.isArray(B.set.bir.value)) ? B.set.bir.value : [];
+    var dueForm = '<div style="margin:4px 0 12px"><div style="font-weight:700;font-size:15px;margin-bottom:4px">Due dates</div><div class="fbz-m" style="margin:0 0 6px">BIR, SSS, PhilHealth, Pag-IBIG, 13th month… enter the date your accountant gives you; I remind you 7 days ahead.</div>' +
+      dues.slice().sort(function(a, b){ return a.d < b.d ? -1 : 1; }).map(function(x, i){ return '<div class="fbz-note">' + E(dL(x.d)) + ' · ' + E(x.l) + (x.a ? ' · ' + peso(+x.a) : '') + ' <small><a style="cursor:pointer;color:#9A4330" onclick="fbz2084due(\'rm\',' + dues.indexOf(x) + ')">Remove</a></small></div>'; }).join('') +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><input class="fbz-in" id="fbzDueL" placeholder="e.g. BIR 2550Q" style="width:170px"><input class="fbz-in" id="fbzDueD" type="date" style="width:160px"><input class="fbz-in" id="fbzDueA" inputmode="decimal" placeholder="₱ amount (optional)" style="width:160px"><button class="fbz-btn" onclick="fbz2084due(\'add\')">Add</button></div></div>';
+    return '<details class="fbz-card"' + (B.open ? ' open' : '') + ' ontoggle="window.__fbzOpen=this.open"><summary>Notes, due dates and record</summary>' + dueForm +
       '<textarea id="fbzNote" placeholder="A note in your own words, e.g. rent goes up in January."></textarea><div style="margin-top:6px"><button class="fbz-btn" onclick="fbz2084note(this)">Save note</button></div>' +
       L.map(function(x){ return '<div class="fbz-note">' + E(x.body) + '<small>' + t(x) + ' · <a style="cursor:pointer;color:#9A4330" onclick="fbz2084rm(' + (+x.id) + ')">Remove</a></small></div>'; }).join('') +
       T.map(function(x){ return '<div class="fbz-note">' + E(lab(x)) + '<small>' + t(x) + '</small></div>'; }).join('') + '</details>'; }
@@ -39382,6 +39393,23 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   window.fbz2084note = function(btn){ var ta = document.getElementById('fbzNote'), body = ta ? ta.value.trim() : ''; if(!body){ say('Write a note first'); return; } if(btn) btn.disabled = true;
     post({ op: 'add', kind: 'note', ref: 'note', body: body }).then(function(r){ if(btn) btn.disabled = false; if(r && r.ok){ (B.rows = B.rows || []).unshift(r.row); if(ta) ta.value = ''; say('Note saved'); paint(); } else say('Not saved · ' + ((r && r.error) || 'try again')); })
       .catch(function(){ if(btn) btn.disabled = false; say('Not saved · check your internet'); }); };
+  window.fbz2084due = function(op, i){ var cur = (B.set && B.set.bir && Array.isArray(B.set.bir.value)) ? B.set.bir.value.slice() : [];
+    if(op === 'rm') cur.splice(i, 1);
+    else { var l = (document.getElementById('fbzDueL') || {}).value || '', d = (document.getElementById('fbzDueD') || {}).value || '', a = (document.getElementById('fbzDueA') || {}).value || '';
+      if(!l.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(d)){ say('Enter what is due and the date'); return; }
+      var n = Number(String(a).replace(/[₱,\s]/g, '')); cur.push({ l: l.trim().slice(0, 60), d: d, a: a.trim() && !isNaN(n) ? n : null }); }
+    window.__fbzOpen = true;
+    post({ op: 'set', key: 'bir', value: cur }).then(function(r){ if(r && r.ok){ B.set = B.set || {}; B.set.bir = { value: cur }; say(op === 'rm' ? 'Removed' : 'Due date saved'); loadAll().then(paint); paint(); } else say('Not saved · ' + ((r && r.error) || 'try again')); }).catch(function(){ say('Not saved · check your internet'); }); };
+  /* Monday reminder: once each Monday, a small note at the bottom of the screen (President only) */
+  (function(){ var tries = 0; function check(){ tries++; try{ if(!pres()){ if(tries < 30) setTimeout(check, 5000); return; }
+      var t = phToday(), dow = new Date(t + 'T12:00:00Z').getUTCDay(); if(dow !== 1) return; var k = 'coe.fbzMon'; var seen = ''; try{ seen = localStorage.getItem(k) || ''; }catch(e){}
+      if(seen === t || (typeof VIEW !== 'undefined' && VIEW === 'finbrief') || document.getElementById('fbzMon')) return;
+      var d = document.createElement('div'); d.id = 'fbzMon'; d.setAttribute('role', 'status');
+      d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:60;background:#2B2253;color:#fff;border-radius:999px;padding:10px 12px 10px 18px;display:flex;gap:10px;align-items:center;font-size:15px;box-shadow:0 6px 24px rgba(0,0,0,.18);max-width:calc(100% - 32px)';
+      d.innerHTML = '<span>Your weekly finance briefing is ready.</span><button style="border:0;border-radius:999px;padding:7px 14px;font:inherit;font-weight:700;background:#fff;color:#2B2253;cursor:pointer">Open</button><button aria-label="Later" style="border:0;background:none;color:#fff;opacity:.75;font:inherit;cursor:pointer;padding:4px 6px">✕</button>';
+      var done = function(){ try{ localStorage.setItem(k, t); }catch(e){} d.remove(); };
+      d.children[1].onclick = function(){ done(); go('finbrief'); }; d.children[2].onclick = done; document.body.appendChild(d); }catch(e){} }
+    setTimeout(check, 6000); })();
   window.fbz2084rm = function(id){ post({ op: 'remove', id: id }).then(function(r){ if(r && r.ok){ B.rows = (B.rows || []).filter(function(x){ return x.id !== id; }); paint(); } }).catch(function(){}); };
 
   try{ if(typeof VIEWS !== 'undefined' && VIEWS.indexOf('finbrief') < 0) VIEWS.push('finbrief');
