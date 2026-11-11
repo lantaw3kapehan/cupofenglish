@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-proof v2 (second place service) · v1 (11 Nov 2026, 2067 · Misty: "DO ALL NOW"). Time-in and "I'm in" are finished by the database
+// CupOfEnglish · coe-proof v3 (2072 · leave-request proof files → storage "proofs/leave/…") · v2 (second place service) · v1 (11 Nov 2026, 2067 · Misty: "DO ALL NOW"). Time-in and "I'm in" are finished by the database
 // (coe_tin_takeover). This adds the two slow parts a few seconds later, never through Google:
 //   · the screen-proof screenshot → storage bucket "proofs" (a long random file name; the link replaces Google Drive's)
 //   · the place name from the location (OpenStreetMap), e.g. "Rizal St, Tayug, Pangasinan (±107 m)"
@@ -36,6 +36,26 @@ Deno.serve(async (req: Request) => {
   const done: any[] = [];
   for (const w of (W || []) as any[]) {
     let proof: string | null = null, place: string | null = null;
+    if (w.fn === "tLeaveRequest") {   // v3: the proof files of a leave request (photos, PDFs) → storage; coe_leave.proof gets the links
+      try {
+        const F = ((w.args || [])[1] || {}).files || [], lines: string[] = [];
+        const t = new Date(Date.parse(w.created_at) + 8 * 3600e3).toISOString(), stamp = t.slice(0, 10) + " " + t.slice(11, 13) + t.slice(14, 16);
+        let bad = false;
+        for (const f of F as any[]) {
+          const b = String((f && f.b64) || ""); if (b.length < 20) continue;
+          const nm = String((f && f.name) || "proof").replace(/[\r\n|]+/g, " ").slice(0, 120), mime = String((f && f.mime) || "application/octet-stream");
+          const ext = (nm.match(/\.([a-z0-9]{1,5})$/i) || [, mime === "application/pdf" ? "pdf" : "jpg"])[1]!.toLowerCase();
+          const path = "leave/" + t.slice(0, 7) + "/" + String(w.who || "x").toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + w.id + "-" + rnd() + "." + ext;
+          const up = await db.storage.from("proofs").upload(path, b64bytes(b), { contentType: mime, upsert: false });
+          if (up.error) { bad = true; break; }
+          lines.push(stamp + " " + String(w.who || "") + " · " + nm + "|" + URL0 + "/storage/v1/object/public/proofs/" + path);
+        }
+        if (bad) { done.push({ id: w.id, ok: false, retry: true }); continue; }
+        await db.rpc("coe_leave_proof_done", { p_wid: w.id, p_lines: lines.join("\n") });
+        done.push({ id: w.id, ok: true, files: lines.length });
+      } catch (_e) { done.push({ id: w.id, ok: false }); }
+      continue;
+    }
     try {
       const dv = w.fn === "timeIn" ? (w.args || [])[3] || {} : (w.args || [])[2] || {};
       const shot = w.fn === "timeIn" ? String((w.args || [])[1] || "") : String(dv.shot || "");
