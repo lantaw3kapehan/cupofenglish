@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1793;
+const COE_V = 1794;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -39181,7 +39181,8 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
 <script id="f2084">
 /* 2084 / 2085 (11 Nov, Misty: Finance for the President "like an account manager communicates with the president" · "I wanted to enter it
    here" · "Make it minimal, straightforward, effective, targeted"). Finance › Briefing, President only, first Finance tab.
-   v2 (2085): shorter; the peso bank balance and the yuan rate are typed in here and kept in the database (coe-finbrief settings), so every
+   v3 (2086): one "Growing the business" card from the database (coe_fin_growth: trials → students, renewals, what a lesson earns and
+   costs, teacher room) and a safety-cushion line. v2 (2085): shorter; the peso bank balance and the yuan rate are typed in here and kept in the database (coe-finbrief settings), so every
    device and the Forecast use the same figures. Decisions are a record only. Numbers: the Forecast engine (fc980, expected case) and Packages. */
 (function(){
   if(window.__2084) return; window.__2084 = 1;
@@ -39243,7 +39244,7 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   ].join('');
   try{ var st = document.createElement('style'); st.id = 's2084'; st.textContent = css; document.head.appendChild(st); }catch(e){}
 
-  var B = { rows: null, set: null, edit: {} };
+  var B = { rows: null, set: null, edit: {}, growth: null };
   function post(body){ return fetch(FB, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: tok() }, body)) }).then(function(x){ return x.json(); }); }
   function last(ref){ return (B.rows || []).filter(function(x){ return x.ref === ref && x.kind !== 'note'; })[0] || null; }
   /* the shared figures go into the Forecast's assumptions (this device too), so the Forecast and the Briefing agree */
@@ -39254,7 +39255,8 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   function loadAll(){ if(!pres()) return Promise.resolve();
     return Promise.all([
       post({ op: 'get' }).then(function(r){ if(r && r.ok) B.rows = r.rows || []; }).catch(function(){}),
-      post({ op: 'settings' }).then(function(r){ if(r && r.ok){ B.set = r.settings || {}; applySet(); } }).catch(function(){})]); }
+      post({ op: 'settings' }).then(function(r){ if(r && r.ok){ B.set = r.settings || {}; applySet(); } }).catch(function(){}),
+      post({ op: 'growth' }).then(function(r){ if(r && r.ok) B.growth = r.growth || null; }).catch(function(){})]); }
   function engine(){ try{ if(!window.fc980 || !fc980.inputs || !fc980.st) return null; var S = fc980.st(), A = Object.assign({}, S.A, { sc: 'e' }); return { R: fc980.build(fc980.inputs(), A), S: S }; }catch(e){ try{ console.warn('2084', e); }catch(x){} return null; } }
   function startLoads(){ try{ if(window.fc980 && fc980.load) fc980.load(); }catch(e){}
     try{ if((typeof AT === 'undefined' || !AT) && typeof loadActive === 'function') loadActive(true); }catch(e){}
@@ -39312,6 +39314,7 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     return '<div class="fbz-d"><div class="t">' + text + '</div><div class="b">' + b + '</div></div>'; }
   function actions(o){ var D = [], cover = '';
     if(o.bank != null && o.up.length){ var left = o.bank - o.upTotal; cover = left >= 0 ? ' Covers the next 30 days of payments (' + about(o.upTotal) + ') with ' + about(left) + ' to spare.' : ' <b>Not enough</b> for the next 30 days (' + about(o.upTotal) + '): send about ' + about(-left) + ' from the yuan wallets.'; }
+    if(o.bank != null && o.salaries != null){ var cushion = o.salaries, gap = o.bank - cushion; cover += ' Safety cushion (one month of payroll, ' + about(cushion) + '): ' + (gap >= 0 ? '<b>covered</b>.' : '<b>' + about(-gap) + ' short</b>.'); }
     D.push(field('phpBank', '<b>Peso bank balance</b> (with cash on hand)' + (o.bankDate ? ', as of ' + E(dS(o.bankDate)) : '') + '.' + cover, o.bank, 'e.g. 250000', '₱'));
     if(o.salaries != null) D.push(decision('payroll:' + o.cur, 'Approve <b>' + E(mName(o.cur)) + ' payroll</b>, about <b>' + about(o.salaries) + '</b>, paid ' + E(dL(o.payDate)) + '.', ['approve', 'notyet']));
     if(o.last && o.last.net != null) D.push(decision('books:' + o.last.m, 'Sign off <b>' + E(mName(o.last.m)) + '</b>: received ' + about(o.last.sales) + ', spent ' + about(o.last.cost) + ', kept <b>' + about(o.last.net) + '</b>.', ['approve', 'notyet']));
@@ -39319,15 +39322,31 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     if(o.miss.some(function(x){ return x.k === 'rate'; }) || o.rate != null) D.push(field('rate', '<b>Yuan-to-peso rate</b> we get when sending money home (pesos for ¥1).', o.rate, 'e.g. 8.10', '₱'.slice(0, 0)));
     return '<div class="fbz-card"><h2>For you</h2>' + D.join('') + '<div class="fbz-m">Approving is a record only. It does not move money.</div></div>'; }
 
-  /* 3 · grow: the one thing that brings money in fastest */
-  function grow(o){ if(!o.low || !o.low.length) return '';
-    return '<div class="fbz-card"><h2>Next move: renewals</h2><div style="font-size:15px;line-height:1.5"><b>' + o.low.length + ' student' + (o.low.length === 1 ? '' : 's') + '</b> have 5 or fewer lessons left. Talk to their parents this week: ' +
-      o.low.slice(0, 5).map(function(x){ return E(x.name) + ' (' + x.left + ')'; }).join(', ') + (o.low.length > 5 ? ' +' + (o.low.length - 5) + ' more' : '') + '.</div><div class="fbz-links" style="margin:8px 0 0"><a onclick="go(\'astudents\')">Open Students ›</a></div></div>'; }
+  /* 3 · growing the business: at most 4 facts and one piece of advice (real data: coe_fin_growth) */
+  function grow(o){ var G = B.growth || {}, L = [], adv = '';
+    var T = G.trials || {}, tc = T[G.month], tp = T[G.prev];
+    if(tc && tc.trials) L.push('<b>Trials → students:</b> ' + tc.students + ' of ' + tc.trials + ' this month' + (tp && tp.trials ? ' (' + mName(G.prev) + ': ' + tp.students + ' of ' + tp.trials + ', ' + Math.round(tp.students / tp.trials * 100) + '%)' : '') + '.');
+    var rn = G.renewing || {}, low = o.low || [];
+    if(low.length || rn.reminded || rn.renewing) L.push('<b>Renewals:</b> ' + (low.length ? low.length + ' student' + (low.length === 1 ? '' : 's') + ' have 5 or fewer lessons left (' + low.slice(0, 4).map(function(x){ return E(x.name); }).join(', ') + (low.length > 4 ? ' +' + (low.length - 4) : '') + '). ' : '') + (rn.reminded || rn.renewing ? 'Operations has reminded ' + (rn.reminded || 0) + ' famil' + (rn.reminded === 1 ? 'y' : 'ies') + '; ' + (rn.renewing || 0) + ' are renewing.' : ''));
+    var P = G.price || {}, C = G.cost || null, dm = null, pmg = null;
+    if(P.direct && P.direct.perLesson && C){ dm = P.direct.perLesson - C.allPerLesson; pmg = P.partner && P.partner.perLesson ? P.partner.perLesson - C.allPerLesson : null;
+      L.push('<b>Each lesson:</b> a direct student pays ' + peso(P.direct.perLesson) + (P.partner && P.partner.perLesson ? ', a partner student ' + peso(P.partner.perLesson) : '') + '. A lesson costs us about ' + peso(C.allPerLesson) + ' in total (teacher ' + peso(C.teacherPerLesson) + '; ' + mName(C.month) + ' figures), so we keep about ' + peso(dm) + (pmg != null ? ' and ' + peso(pmg) : '') + '.'); }
+    var K = G.capacity || {}, room = null;
+    if(K.freeHours != null){ var per = K.activeStudents ? K.lessonsNextWeek / K.activeStudents : null; room = per ? Math.floor(K.freeHours * 60 / 25 / per) : null;
+      L.push('<b>Teachers:</b> ' + Math.round(K.freeHours) + ' free hours a week' + (room != null ? ', room for about ' + room + ' more students if their times match' : '') + '.' + (K.full && K.full.length ? ' Full: ' + K.full.map(E).join(', ') + '.' : '') + (K.mostFree && K.mostFree[0] ? ' Most room: ' + E(K.mostFree[0].t) + '.' : '')); }
+    if(K.freeHours != null && K.freeHours < 15) adv = 'Start hiring: teachers have less than 15 free hours a week left.';
+    else if(tc && tc.trials >= 3 && tc.students / tc.trials < 0.6) adv = 'Follow up every trial family within a day. That is where new students are won.';
+    else if(low.length >= 5) adv = 'Renewals first: a quick message to the ' + low.length + ' families near the end of their package brings money in fastest.';
+    else if(dm != null && pmg != null && dm > pmg * 1.4 && room != null && room > 20) adv = 'Grow direct students: each lesson keeps about ' + peso(dm - pmg) + ' more than a partner lesson, and the teachers have room.';
+    if(!L.length) return '';
+    return '<div class="fbz-card"><h2>Growing the business</h2><ul class="fbz-l">' + L.map(function(x){ return '<li>' + x + '</li>'; }).join('') + '</ul>' + (adv ? '<p class="fbz-say" style="font-size:15px;margin:10px 0 0"><b>My advice:</b> ' + adv + '</p>' : '') +
+      '<div class="fbz-links" style="margin:8px 0 0"><a onclick="go(\'astudents\')">Students ›</a><a onclick="go(\'trials\')">Trials ›</a><a onclick="go(\'teachers\')">Teachers ›</a></div></div>'; }
 
   /* 4 · coming up + watch, short */
   function ahead(o){ var rows = (o.up || []).slice(0, 4).map(function(x){ return '<tr><td>' + E(dL(x.d)) + ' · ' + E(String(x.l).replace(/\s*\((estimate|future-dated in EXPENSES)[^)]*\)/i, '').replace(/ · .*$/, '')) + '</td><td>' + about(x.a) + '</td></tr>'; }).join('');
     var W = [];
-    if(o.miss.some(function(x){ return /remit/i.test(x.t || ''); })) W.push('Plan a transfer from the yuan wallets before ' + E(dL(o.payDate)) + ' (salaries are paid in pesos).');
+    var covered = o.bank != null && o.bank - o.upTotal >= 0;
+    if(!covered && o.miss.some(function(x){ return /remit/i.test(x.t || ''); })) W.push('Plan a transfer from the yuan wallets before ' + E(dL(o.payDate)) + ' (salaries are paid in pesos).');
     if(o.miss.some(function(x){ return x.k === 'neg'; })) W.push('CCB wallet is slightly short; top it up before its next payment.');
     if(o.miss.some(function(x){ return /13th/i.test(x.t || ''); })) W.push('13th-month pay (December) is not in the plan yet.');
     if(!rows && !W.length) return '';
