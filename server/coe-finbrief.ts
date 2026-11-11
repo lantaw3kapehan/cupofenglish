@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-finbrief v1 (11 Nov 2026, 2084 · Misty: Finance for the President "like an accounting manager and president POV").
+// CupOfEnglish · coe-finbrief v2 (2085 · the President's finance figures: op "settings" / "set", e.g. phpBank, rate) · v1 (11 Nov 2026, 2084 · Misty: Finance for the President "like an accounting manager and president POV").
 // The President's Finance briefing: approvals (a paper trail only, nothing is blocked) and the manager's notes.
 // POST { token, op: "get" }                                   → { ok, rows: [{ id, kind, ref, label, body, by, at }] } (last 200)
 // POST { token, op: "add", kind, ref, label, body }           → { ok, row }   kind: note | approve | notyet | noted
@@ -40,6 +40,22 @@ Deno.serve(async (req: Request) => {
     const id = Number(b.id || 0); if (!id) return out({ ok: false, error: "not allowed" }, 400);
     const { error } = await db.from("coe_fin_brief").update({ removed_at: new Date().toISOString() }).eq("id", id).eq("kind", "note");
     if (error) return out({ ok: false, error: "not saved" }, 500);
+    return out({ ok: true });
+  }
+  if (op === "settings") {   // v2 (2085)
+    const { data, error } = await db.from("coe_fin_settings").select("key,value,by_name,at");
+    if (error) return out({ ok: false, error: "db" }, 500);
+    const o: Record<string, any> = {}; for (const r of data || []) o[r.key] = { value: r.value, by: r.by_name, at: r.at };
+    return out({ ok: true, settings: o });
+  }
+  if (op === "set") {   // v2 (2085): one figure at a time; a number, or { amount, date } and similar small objects
+    const key = String(b.key || "");
+    if (!/^(phpBank|rate|cushionMonths|items13|bir)$/.test(key)) return out({ ok: false, error: "not allowed" }, 400);
+    const value = b.value; const txt = JSON.stringify(value === undefined ? null : value);
+    if (txt.length > 4000) return out({ ok: false, error: "too big" }, 400);
+    const { error } = await db.from("coe_fin_settings").upsert({ key, value: value === undefined ? null : value, by_name: String(s.name || ""), at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) return out({ ok: false, error: "not saved" }, 500);
+    await db.from("coe_fin_brief").insert({ kind: "noted", ref: "set:" + key, label: "Updated " + key + " · " + txt.slice(0, 120), by_name: String(s.name || "") });
     return out({ ok: true });
   }
   return out({ ok: false, error: "unknown op" }, 400);
