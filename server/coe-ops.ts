@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-ops v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
+// CupOfEnglish · coe-ops v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
 // Management only (Operations and President). Teachers get "Management only".
 // POST { token, op: "check" }                        → { ok, items: [{ kind, ref, text, go }], at }   the daily database check (coe_ops_check)
 // POST { token, op: "ok", ref }                      → { ok }   "It's correct": this item never comes back (coe_ops_ok)
@@ -44,8 +44,20 @@ Deno.serve(async (req: Request) => {
     else if (inv) { const { data } = await db.from("coe_packages").select("code,name,source,buy").is("removed_at", null).ilike("name", inv).order("buy", { ascending: false }).limit(5);
       const codes = new Set((data || []).map((x: any) => String(x.code).toUpperCase())); pk = codes.size === 1 ? data![0] : null;
       if (codes.size > 1) return out({ ok: true, student: null, flags: [codes.size + " students are called " + inv + " (" + [...codes].join(", ") + "). Check this is the right one."], last: null, partnerHint: "" }); }
+    if (!pk && code) {   // v2: a first enrolment has no package yet: name and referral come from the student record
+      const { data: sr } = await db.from("coe_students").select("data").ilike("code", code).is("removed_at", null).limit(6);
+      const r = (sr || []).map((x: any) => x.data || []).find((d: any) => d[2] && !/#ERROR/.test(String(d[2])) && d[22] && !/#ERROR/.test(String(d[22])));
+      if (r) pk = { code, name: String(r[2]), source: String(r[22]).replace(/^Partner\s*[–-]\s*/i, ""), buy: null };
+    }
     const flags: string[] = [];
-    if (!pk && (code || inv)) flags.push("No student package found for " + (code || inv) + ". Check the name and code.");
+    if (!pk && !code && inv) flags.push("No student package found for " + inv + ". Check the name and code.");   // v2: with a code and no package yet, it is a first enrolment: nothing to flag
+    let classes: any = null;   // v2 (2093): the classes already booked from today, so the form's first class matches the calendar
+    if (code) { const t0 = new Date(Date.now() + 8 * 3600e3); t0.setUTCHours(0, 0, 0, 0); const since = new Date(t0.getTime() - 8 * 3600e3).toISOString();
+      const { data: cl } = await db.from("classes").select("starts_at,ends_at,data").ilike("code", code).eq("cancelled", false).gte("starts_at", since).order("starts_at").limit(400);
+      const L = (cl || []).filter((c: any) => { const d = c.data || {}; return !/^TC$/i.test(String(d.type || d.kind || "")) && !/-TC$/i.test(String(d.title || "").replace(/\s+X$/, "")); });
+      const md = (x: string) => new Date(new Date(x).getTime() + 8 * 3600e3).toISOString().slice(0, 10);
+      const mins = L.reduce((a: number, c: any) => a + Math.max(0, Math.round((new Date(c.ends_at).getTime() - new Date(c.starts_at).getTime()) / 6e4)), 0);
+      if (L.length) classes = { first: md(L[0].starts_at), last: md(L[L.length - 1].starts_at), n: L.length, lessons: Math.round(mins / 50 * 10) / 10 }; }
     let last: any = null, partnerHint = "";
     if (pk) {
       const nm = String(pk.name || "");
@@ -58,12 +70,12 @@ Deno.serve(async (req: Request) => {
         if (partner && !new RegExp("\\b" + ag + "\\b", "i").test(partner)) flags.push(nm + " came through " + pk.source + ", but the partner here is \"" + partner + "\".");
         if (!partner) flags.push(nm + " came through " + pk.source + ". Choose that partner.");
       } else if (partner && AG.test(partner)) flags.push(nm + " came through " + (pk.source || "no partner") + ", but the partner here is \"" + partner + "\".");
-      const { data: ls } = await db.from("coe_sales").select("day,pkg,free,partner,php").is("removed_at", null).ilike("invoice", "%\\_" + nm + "%").order("day", { ascending: false }).limit(1);
+      const { data: ls } = pk.buy ? await db.from("coe_sales").select("day,pkg,free,partner,php").is("removed_at", null).ilike("invoice", "%\\_" + nm + "%").order("day", { ascending: false }).limit(1) : { data: [] as any[] };   // v2: no "last time" on a first enrolment
       last = (ls || [])[0] || null;
       const pkg = Number(b.pkg || 0), free = Number(b.free || 0);
       if (last && pkg && (Number(last.pkg) !== pkg || Number(last.free || 0) !== free)) flags.push("Last time " + nm + " paid for " + last.pkg + (Number(last.free) ? " + " + last.free : "") + " lessons. This time it is " + pkg + (free ? " + " + free : "") + ".");
     }
-    return out({ ok: true, student: pk ? { code: pk.code, name: pk.name, source: pk.source } : null, last, partnerHint, flags });
+    return out({ ok: true, student: pk ? { code: pk.code, name: pk.name, source: pk.source } : null, last, partnerHint, flags, classes });
   }
   if (op === "week") {
     let who = [me];
