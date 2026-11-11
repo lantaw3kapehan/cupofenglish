@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-wq v11 (11 Nov · 2073: a teacher's leave answer with files comes here too) · v10 (11 Nov 2026 · 2070: finished by the database when it can; Google only for what the database cannot do yet) · (27 Oct 2026) · slow management saves answered at once (Misty: "Yes I want them made instant").
+// CupOfEnglish · coe-wq v12 (11 Nov · 2076: a signed agreement's file is kept for the database, not only sent to Google) · v11 (11 Nov · 2073: a teacher's leave answer with files comes here too) · v10 (11 Nov 2026 · 2070: finished by the database when it can; Google only for what the database cannot do yet) · (27 Oct 2026) · slow management saves answered at once (Misty: "Yes I want them made instant").
 // POST { token, fn, args, rid } → the save is recorded in `writes` straight away (status busy) and the app shows "Saved"; Google's own
 // function is called in the background with the same sign-in and arguments, exactly as the app called it before (same checks, same
 // sheets, same Drive upload). Google's answer is kept on the `writes` row (done / error); the app reads it through coe-mgmt › writeStatus
@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
   // a file (signed agreement) goes to Google but is not stored in the database row
   const a1 = args[1] && typeof args[1] === "object" ? args[1] : null, hasFile = !!(a1 && a1.file && a1.file.b64);
   if (hasFile && String(a1.file.b64).length > 12e6) return out({ ok: false, error: "too big" }, 413);
-  let stored = hasFile ? [token, { ...a1, file: { name: a1.file.name, mime: a1.file.mime, size: String(a1.file.b64).length, kept: false } }, ...args.slice(2)] : args;
+  let stored = args;   // v12 (2076): the file is kept in the save so the database stores it (coe-proof → storage); it is replaced by "(saved)" after
   // v10 (11 Nov · 2070): inserted as "new" so the database's own handlers can finish the save; only a save still open goes on to Google
   const { data: W0, error: we } = await db.rpc("coe_wq_insert", { p_rid: rid, p_fn: hasFile ? fn + ":file" : fn, p_args: stored, p_who: s.name, p_mode: s.mode });
   const w: any = W0;
