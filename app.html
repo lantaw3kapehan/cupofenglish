@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1779;
+const COE_V = 1780;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -15645,7 +15645,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
 .mr-ch{padding:6px 4px 0}.mr-d{font-size:10px;color:#7A768F}`;
   function baseCss(){ try{ return window.coeTrialCss ? coeTrialCss() : ''; }catch(x){ return ''; } }
   async function make(code, month, hint){ const r = await data(code); try{ if(window.fbcnLoad) await fbcnLoad(code, month); }catch(x){} const F = facts(code, month, r, hint); if(!F) throw new Error('nodata');
-    if((!F.zh.strengths || !F.zh.areas || !F.zh.next) && (F.strengths || F.areas || F.next)){ try{ const z = await api('mgmtZh', TOKEN, [F.strengths, F.areas, F.next], [F.student, F.cn]); if(z && z.ok && z.zh){ F.zh.strengths = F.zh.strengths || z.zh[0] || ''; F.zh.areas = F.zh.areas || z.zh[1] || ''; F.zh.next = F.zh.next || z.zh[2] || ''; } }catch(x){} }
+    if(false && (!F.zh.strengths || !F.zh.areas || !F.zh.next) && (F.strengths || F.areas || F.next)){   /* 2064: no Google translation; the reviewed Chinese (fbcn) only */ try{ const z = await api('mgmtZh', TOKEN, [F.strengths, F.areas, F.next], [F.student, F.cn]); if(z && z.ok && z.zh){ F.zh.strengths = F.zh.strengths || z.zh[0] || ''; F.zh.areas = F.zh.areas || z.zh[1] || ''; F.zh.next = F.zh.next || z.zh[2] || ''; } }catch(x){} }
     const [H2C, PDF] = await Promise.all([h2c(), window.coeJsPdf ? coeJsPdf() : Promise.reject(new Error('pdf'))]);
     const host = document.createElement('div'); host.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;z-index:-1';
     host.innerHTML = '<style>' + baseCss() + CSS2 + '</style>' + pages(F).join(''); document.body.appendChild(host);
@@ -38846,6 +38846,49 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   return '<div class="pr2059">' + P.map(x => '<div class="li" style="cursor:pointer" onclick="peerSheet(\'' + e(x.id) + '\')"><span class="chip teal">To do</span><div class="grow ell"><b>' + e(mo(x.month)) + 'peer review</b> · ' +
     (String(x.teacher || '').toLowerCase() === me ? 'your own class' : 'Teacher ' + e(x.teacher) + '\'s class') + (x.student ? ' with ' + e(x.student) : '') + '</div><button type="button" class="btn teal sm" onclick="event.stopPropagation();peerSheet(\'' + e(x.id) + '\')">Open</button></div>').join('') + '</div>';
   }catch(err){ return ''; } };
+</script>
+<script id="f2064">
+/* 2064 (11 Nov, Misty: "Fully off Google" · "ensure everything goes directly to the app now and that no google").
+   Monthly feedback and parent reports never ask Google. Placed last, so it answers before every older layer (which still had
+   "Google when the database cannot answer"):
+   · tFbForm   → coe-fbform (the form from the database; teachers and management)
+   · tFbPlus   → coe-fbp (the feedback helper; no daily compare with Google)
+   · tFbStatus → the database's own list (coe "docs", worked out live), else the copy on this phone
+   · mgmtReports / mgmtReportsWait → coe-lists · mgmtReport → coe-taps · mgmtReportPdf → none (the report is the app's picture)
+   If the database does not answer, the screen says so; it never falls back to Google. Sends (tFbSubmit, report Sent / Returned)
+   are finished by the database itself (2064 migrations). */
+(function(){
+  if(window.__2064) return; window.__2064 = 1;
+  const F = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/';
+  const NOG = /^(tFbForm|tFbPlus|tFbStatus|mgmtReport|mgmtReports|mgmtReportsWait|mgmtReportPdf)$/;
+  const post = (url, body, ms) => { const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), ms) : 0;
+    return fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid)); };
+  const fail = m => { const e = new Error(m); e.msg = m; throw e; };
+  async function db(fn, a){
+    const tok = a[0];
+    if(fn === 'tFbForm'){ let r = null; try{ r = await post(F + 'coe-fbform', { token: tok, code: a[1] }, 15000); }catch(e){}
+      if(r && r.ok) return r; if(r && r.msg) return { ok: false, msg: r.msg, notYet: !!r.notYet };
+      return { ok: false, msg: 'Could not open the feedback form. Check your internet and try again.' }; }
+    if(fn === 'tFbPlus'){ const r = await post(F + 'coe-fbp', { token: tok, code: String(a[1] || '').trim().toUpperCase() }, 10000).catch(() => null);
+      if(r && r.ok) return r; fail('The feedback helper is not available right now.'); }
+    if(fn === 'tFbStatus'){ let d = null; try{ d = await sbDoc(sbKey(fn, a)); }catch(e){}
+      if(d && d.data && d.data.month) return d.data;
+      try{ const c = JSON.parse(store('get', 'coe.fb') || 'null'); if(c && c.month) return c; }catch(e){}
+      fail('The feedback list could not be loaded. Check your internet.'); }
+    if(fn === 'mgmtReports' || fn === 'mgmtReportsWait'){
+      const r = await post(F + 'coe-lists', { token: tok, op: fn === 'mgmtReports' ? 'reports' : 'reportswait', month: a[1] || '' }, 15000).catch(() => null);
+      if(r && r.ok && r.data != null) return r.data; fail('Parent reports could not be loaded. Check your internet and try again.'); }
+    if(fn === 'mgmtReport'){ const r = await post(F + 'coe-taps', { token: tok, op: 'report', key: a[1] }, 15000).catch(() => null);
+      if(r && r.ok && r.data && r.data.report) return r.data; fail('This report could not be opened. Check your internet and try again.'); }
+    if(fn === 'mgmtReportPdf') return { ok: false, msg: 'The report is made in the app.' };
+  }
+  const wrap = base => { const w = function(fn){ const a = Array.prototype.slice.call(arguments, 1);
+      if(NOG.test(fn) && a[0] && typeof TOKEN !== 'undefined' && a[0] === TOKEN && !(typeof window.__fbGoogle2064 !== 'undefined' && window.__fbGoogle2064)) return db(fn, a);
+      return base.apply(this, arguments); };
+    for(const k in base) try{ w[k] = base[k]; }catch(e){} w.__2064 = 1; return w; };
+  if(typeof window.api === 'function') window.api = wrap(window.api);
+  if(typeof window.apiNow === 'function') window.apiNow = apiNow = wrap(window.apiNow);
+})();
 </script>
 <script id="t2060">
 /* 2062 (10 Nov 16:09, Misty: "so when it's given to her, she will see the breakdown" · "okay great"): a "Show this breakdown to
