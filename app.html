@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1802;
+const COE_V = 1803;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -39524,7 +39524,8 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
 #v-expenses th,#v-gov th,#v-forecast .fc-t th{color:#6B6782}
 </style>
 <script id="o2091">
-/* 2093 (11 Nov 20:29, Misty: Anna enrolment, the form said first class Wed 11 Nov while the classes start Sun 15 Nov; and "No student package found" on a first enrolment): the check card shows the booked classes, flags a first class or lesson count that differs, one tap sets the first class; the enrolment form opens with the first booked class. Server coe-ops v2.
+/* 2095 (11 Nov 20:37, Misty: "valid until 15 Mar" vs "last class 24 Feb"): the enrolment preview also shows the last booked class and how many days it leaves before the deadline (time for make-ups), or warns when classes run past it.
+   2093 (11 Nov 20:29, Misty: Anna enrolment, the form said first class Wed 11 Nov while the classes start Sun 15 Nov; and "No student package found" on a first enrolment): the check card shows the booked classes, flags a first class or lesson count that differs, one tap sets the first class; the enrolment form opens with the first booked class. Server coe-ops v2.
    2091 (11 Nov, Misty: Operations "always makes mistakes with details … I want her to be productive" · "go ahead and do all").
    1. The check card before Renewed · paid and Enrolled · paid (1583) also asks the database: the invoice name against the student, the partner
       against the student's referral (any agency, not only an empty or CupOfEnglish partner), and the package against last time. One tap fills the
@@ -39602,9 +39603,18 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
       .catch(function(){ var el = $i('o91fl'); if(el) el.remove(); }); }
   /* 2093: Enrolled · paid opens with the first class booked in the calendar (the form's own read can miss classes added a minute ago) */
   function fillFirst(inp){ if(!inp || inp.dataset.o93) return; inp.dataset.o93 = '1'; var S = null; try{ S = typeof ENS !== 'undefined' ? ENS : null; }catch(e){} if(!S || !S.code) return;
-    post({ op: 'precheck', code: S.code }, 6000).then(function(r){ var c = r && r.ok && r.classes, x = $i('enS'); if(!c || !x || x !== inp) return; var S2 = null; try{ S2 = ENS; }catch(e){}
-      if(!S2 || S2.code !== S.code || S2.touched || x.dataset.t || ($i('enSx') || {}).checked || x.value === c.first) return;
-      x.value = c.first; try{ if(typeof enPrev === 'function') enPrev(); }catch(e){} }).catch(function(){}); }
+    post({ op: 'precheck', code: S.code }, 6000).then(function(r){ var c = r && r.ok && r.classes, x = $i('enS'); if(c) BOOK[S.code] = c; if(!c || !x || x !== inp) return; var S2 = null; try{ S2 = ENS; }catch(e){}
+      if(!S2 || S2.code !== S.code || S2.touched || x.dataset.t || ($i('enSx') || {}).checked || x.value === c.first){ lastLine(); return; }
+      x.value = c.first; try{ if(typeof enPrev === 'function') enPrev(); }catch(e){} lastLine(); }).catch(function(){}); }
+  /* 2095: under "Valid until", the last booked class and the days it leaves for make-ups */
+  var BOOK = {};
+  function lastLine(){ try{ var S = typeof ENS !== 'undefined' ? ENS : null, el = $i('enP'); if(!S || !el) return; var c = BOOK[S.code], old = $i('o95last'); if(old) old.remove();
+    if(!c || S.tr || ($i('enSx') || {}).checked) return; var st = val('enS'), t = (+S.pkg || 0) + (+S.free || 0); if(!st || !(t > 0) || !window.coeRenew || !coeRenew.validFrom) return;
+    var dlv = coeRenew.validFrom(st, t); if(!dlv) return; var gap = Math.round((Date.parse(dlv + 'T12:00:00') - Date.parse(c.last + 'T12:00:00')) / 864e5);
+    el.insertAdjacentHTML('beforeend', '<div id="o95last" class="small" style="margin-top:6px' + (gap < 0 ? ';color:#9A3B22' : '') + '">' + (gap >= 0
+      ? 'Last booked class: <b>' + E(dl(c.last)) + '</b> · ' + (gap === 0 ? 'on the deadline (no time left for make-ups)' : gap + ' day' + (gap === 1 ? '' : 's') + ' before the deadline (time for make-ups)') + '.'
+      : '⚠ Last booked class <b>' + E(dl(c.last)) + '</b> is ' + (-gap) + ' day' + (gap === -1 ? '' : 's') + ' after the deadline. Check the classes or the package.') + '</div>'); }catch(e){} }
+  var ep0 = window.enPrev; if(typeof ep0 === 'function') window.enPrev = function(){ var r = ep0.apply(this, arguments); lastLine(); return r; };
   try{ new MutationObserver(function(){ var b = $i('rv1583'); if(b && !b.dataset.o91 && mgr()) addFlags(b); var s5 = $i('enS'); if(s5 && !s5.dataset.o93 && mgr()) fillFirst(s5); }).observe(document.body, { childList: true, subtree: true }); }catch(e){}
 
   /* Add sale: the same kind of check card */
