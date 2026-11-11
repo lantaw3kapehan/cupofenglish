@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-ops v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
+// CupOfEnglish · coe-ops v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
 // Management only (Operations and President). Teachers get "Management only".
 // POST { token, op: "check" }                        → { ok, items: [{ kind, ref, text, go }], at }   the daily database check (coe_ops_check)
 // POST { token, op: "ok", ref }                      → { ok }   "It's correct": this item never comes back (coe_ops_ok)
@@ -76,6 +76,19 @@ Deno.serve(async (req: Request) => {
       if (last && pkg && (Number(last.pkg) !== pkg || Number(last.free || 0) !== free)) flags.push("Last time " + nm + " paid for " + last.pkg + (Number(last.free) ? " + " + last.free : "") + " lessons. This time it is " + pkg + (free ? " + " + free : "") + ".");
     }
     return out({ ok: true, student: pk ? { code: pk.code, name: pk.name, source: pk.source } : null, last, partnerHint, flags, classes });
+  }
+  if (op === "invemail") {   // v3 (2099): a parent's email that came late: saved on the payment confirmation and on the student (coe_bill_profiles), then the app emails it
+    const no = Number(b.no || 0), em = String(b.email || "").trim().toLowerCase().slice(0, 120);
+    if (!(no > 0) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return out({ ok: false, error: "The email address looks wrong." });
+    const { data: inv, error } = await db.from("coe_invoices").update({ email: em }).eq("no", no).neq("status", "void").select("no,code,email").maybeSingle();
+    if (error || !inv) return out({ ok: false, error: "not saved" }, 500);
+    const code = String(inv.code || "");
+    if (/^ST-\d{4}-\d{3}$/.test(code)) {
+      const { data: ex } = await db.from("coe_bill_profiles").select("code,email").eq("code", code).maybeSingle();
+      if (!ex) await db.from("coe_bill_profiles").insert({ code, email: em, updated_by: me });
+      else if (!ex.email) await db.from("coe_bill_profiles").update({ email: em, updated_by: me, updated_at: new Date().toISOString() }).eq("code", code);
+    }
+    return out({ ok: true, email: em });
   }
   if (op === "week") {
     let who = [me];
