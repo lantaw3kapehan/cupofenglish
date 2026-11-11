@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1800;
+const COE_V = 1801;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -39522,7 +39522,8 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
 #v-expenses th,#v-gov th,#v-forecast .fc-t th{color:#6B6782}
 </style>
 <script id="o2091">
-/* 2091 (11 Nov, Misty: Operations "always makes mistakes with details … I want her to be productive" · "go ahead and do all").
+/* 2093 (11 Nov 20:29, Misty: Anna enrolment, the form said first class Wed 11 Nov while the classes start Sun 15 Nov; and "No student package found" on a first enrolment): the check card shows the booked classes, flags a first class or lesson count that differs, one tap sets the first class; the enrolment form opens with the first booked class. Server coe-ops v2.
+   2091 (11 Nov, Misty: Operations "always makes mistakes with details … I want her to be productive" · "go ahead and do all").
    1. The check card before Renewed · paid and Enrolled · paid (1583) also asks the database: the invoice name against the student, the partner
       against the student's referral (any agency, not only an empty or CupOfEnglish partner), and the package against last time. One tap fills the
       right partner. Add sale gets the same check card.
@@ -39565,16 +39566,27 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   ].join(''); document.head.appendChild(st); }catch(e){}
 
   /* ---------- 1 · the check card asks the database too ---------- */
-  function flagsHtml(r, partnerId){
+  var dl = function(d){ try{ return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); }catch(e){ return d; } };
+  function classFlags(r, startId, lessons){   /* 2093: the first class and the lessons in the form match what is booked in the calendar */
+    var c = r && r.classes, out = { fl: [], btn: '' }; if(!c) return out;
+    var st = startId ? val(startId) : '';
+    if(startId && st && st !== c.first){ out.fl.push('First class here is ' + dl(st) + ', but the first booked class is ' + dl(c.first) + '.'); out.btn = '<button type="button" class="o91-use" data-d="' + E(c.first) + '" data-id="' + E(startId) + '">Use first class: ' + E(dl(c.first)) + '</button>'; }
+    if(lessons && Math.abs(c.lessons - lessons) > 0.01) out.fl.push('The calendar has ' + c.n + ' classes booked (= ' + c.lessons + ' lessons), but the package is ' + lessons + ' lessons.');
+    return out; }
+  function flagsHtml(r, partnerId, startId, lessons){
+    var cf = classFlags(r, startId, lessons); if(cf.fl.length) r = Object.assign({}, r, { flags: cf.fl.concat((r && r.flags) || []) });
     var fl = (r && r.flags) || [], hint = r && r.partnerHint, cur = partnerId ? val(partnerId) : '';
     var h = '<div class="o91-fl" id="o91fl">';
     if(r && r.student) h += '<div><b>' + E(r.student.name) + ' · ' + E(r.student.code) + '</b>' + (r.student.source ? ' came through <b>' + E(r.student.source) + '</b>' : '') + '.</div>';
+    if(r && r.classes) h += '<div>Booked: ' + r.classes.n + ' classes (= ' + r.classes.lessons + ' lessons), ' + E(dl(r.classes.first)) + ' to ' + E(dl(r.classes.last)) + '.</div>';
     if(r && r.last) h += '<div>Last payment: ' + E(r.last.day) + ', ' + E(r.last.pkg) + (Number(r.last.free) ? ' + ' + E(r.last.free) : '') + ' lessons, partner ' + E(r.last.partner || 'none') + '.</div>';
-    h += fl.length ? fl.map(function(x){ return '<div style="margin-top:4px">⚠ ' + E(x) + '</div>'; }).join('') : '<div class="o91-ok" style="margin-top:4px">✓ Name, partner and package match the records.</div>';
+    h += fl.length ? fl.map(function(x){ return '<div style="margin-top:4px">⚠ ' + E(x) + '</div>'; }).join('') : '<div class="o91-ok" style="margin-top:4px">✓ Name, partner, first class and package match the records.</div>';
     if(partnerId && hint && hint.toLowerCase() !== cur.toLowerCase()) h += '<button type="button" class="o91-use" data-p="' + E(hint) + '" data-id="' + E(partnerId) + '">Use partner: ' + E(hint) + '</button>';
+    h += cf.btn;
     return h + '</div>'; }
   document.addEventListener('click', function(ev){ var b = ev.target && ev.target.closest && ev.target.closest('.o91-use'); if(!b) return;
-    var i = $i(b.dataset.id); if(!i) return; i.value = b.dataset.p; i.dataset.t = '1';
+    var i = $i(b.dataset.id); if(!i) return; i.value = b.dataset.d || b.dataset.p; i.dataset.t = '1';
+    if(b.dataset.d){ try{ if(typeof ENS !== 'undefined' && ENS) ENS.touched = 1; if(typeof enPrev === 'function') enPrev(); }catch(e){} try{ i.dispatchEvent(new Event('change', { bubbles: true })); }catch(e){} try{ toast('First class set to ' + dl(b.dataset.d) + '. Check it, then save again.'); }catch(e){} return; }
     try{ i.dispatchEvent(new Event('input', { bubbles: true })); }catch(e){}
     var sc = $i('o91sc'); if(sc){ sc.remove(); var fg = $i('fGo'); if(fg) fg.style.display = ''; }   /* Add sale: a fresh check on the next tap */
     try{ toast('Partner set to ' + b.dataset.p + '. Check it, then save again.'); }catch(e){} }, true);
@@ -39584,9 +39596,14 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     if(!S || !S.code) return; if(!ren && (S.tr || S.sale)) return;   /* a transfer or a payment already in SALES: nothing new to check */
     var pid = ren ? 'rpPa' : 'enPa', body = { op: 'precheck', code: S.code, invoice: val(ren ? 'rpI' : 'enI'), partner: val(pid), pkg: +S.pkg || 0, free: +S.free || 0 };
     var go = $i('rvGo'), row = go && go.parentNode; if(row) row.insertAdjacentHTML('beforebegin', '<div class="o91-fl" id="o91fl">Checking with the records…</div>');
-    post(body, 6000).then(function(r){ var el = $i('o91fl'); if(!el || !r || !r.ok){ if(el) el.remove(); return; } el.outerHTML = flagsHtml(r, pid); })
+    post(body, 6000).then(function(r){ var el = $i('o91fl'); if(!el || !r || !r.ok){ if(el) el.remove(); return; } el.outerHTML = flagsHtml(r, pid, ren ? '' : 'enS', ren ? 0 : (+S.pkg || 0) + (+S.free || 0)); })
       .catch(function(){ var el = $i('o91fl'); if(el) el.remove(); }); }
-  try{ new MutationObserver(function(){ var b = $i('rv1583'); if(b && !b.dataset.o91 && mgr()) addFlags(b); }).observe(document.body, { childList: true, subtree: true }); }catch(e){}
+  /* 2093: Enrolled · paid opens with the first class booked in the calendar (the form's own read can miss classes added a minute ago) */
+  function fillFirst(inp){ if(!inp || inp.dataset.o93) return; inp.dataset.o93 = '1'; var S = null; try{ S = typeof ENS !== 'undefined' ? ENS : null; }catch(e){} if(!S || !S.code) return;
+    post({ op: 'precheck', code: S.code }, 6000).then(function(r){ var c = r && r.ok && r.classes, x = $i('enS'); if(!c || !x || x !== inp) return; var S2 = null; try{ S2 = ENS; }catch(e){}
+      if(!S2 || S2.code !== S.code || S2.touched || x.dataset.t || ($i('enSx') || {}).checked || x.value === c.first) return;
+      x.value = c.first; try{ if(typeof enPrev === 'function') enPrev(); }catch(e){} }).catch(function(){}); }
+  try{ new MutationObserver(function(){ var b = $i('rv1583'); if(b && !b.dataset.o91 && mgr()) addFlags(b); var s5 = $i('enS'); if(s5 && !s5.dataset.o93 && mgr()) fillFirst(s5); }).observe(document.body, { childList: true, subtree: true }); }catch(e){}
 
   /* Add sale: the same kind of check card */
   var sm0 = window.sendMoney;
