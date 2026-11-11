@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-proof v1 (11 Nov 2026, 2067 · Misty: "DO ALL NOW"). Time-in and "I'm in" are finished by the database
+// CupOfEnglish · coe-proof v2 (second place service) · v1 (11 Nov 2026, 2067 · Misty: "DO ALL NOW"). Time-in and "I'm in" are finished by the database
 // (coe_tin_takeover). This adds the two slow parts a few seconds later, never through Google:
 //   · the screen-proof screenshot → storage bucket "proofs" (a long random file name; the link replaces Google Drive's)
 //   · the place name from the location (OpenStreetMap), e.g. "Rizal St, Tayug, Pangasinan (±107 m)"
@@ -19,6 +19,12 @@ async function placeOf(lat: number, lng: number, acc: string) {
     const a = (r && r.address) || {};
     const parts = [a.road || a.neighbourhood || a.hamlet || a.village || a.suburb, a.city || a.town || a.municipality || a.village, a.state || a.province || a.region, a.country]
       .filter((x: any, i: number, arr: any[]) => x && arr.indexOf(x) === i);
+    if (parts.length) return parts.join(", ") + tail;
+  } catch (_e) { /* try the second service */ }
+  try {   // v2: second free service when OpenStreetMap does not answer
+    const ac = new AbortController(), t = setTimeout(() => ac.abort(), 6000);
+    const r = await fetch("https://api.bigdatacloud.net/data/reverse-geocode-client?localityLanguage=en&latitude=" + lat + "&longitude=" + lng, { signal: ac.signal }).then((x) => x.json()).finally(() => clearTimeout(t));
+    const parts = [r && r.locality, r && r.city, r && r.principalSubdivision, r && r.countryName].filter((x: any, i: number, arr: any[]) => x && arr.indexOf(x) === i);
     if (parts.length) return parts.join(", ") + tail;
   } catch (_e) { /* keep the coordinates */ }
   return null;
