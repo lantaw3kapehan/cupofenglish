@@ -7,7 +7,7 @@
   const T = {};
   const grab = ev => { try{ const i = ev.target; if(!i || i.id !== 'sBirth') return; const f = i.closest('#sheetBody') || document; const R = f.querySelector('#sBirthR');
     const code = String((R && R.value) || '').split('|')[1] || ''; const v = String(i.value || '').trim();
-    if(/^ST-\d{4}-\d{3}$/i.test(code) && /^\d{4}-\d{2}-\d{2}$/.test(v)) T[code.toUpperCase()] = { v, t: Date.now() }; }catch(e){} };
+    if(/^ST-\d{4}-\d{3}$/i.test(code) && /^\d{4}-\d{2}(-\d{2})?$/.test(v)) T[code.toUpperCase()] = { v, t: Date.now() }; }catch(e){} };
   document.addEventListener('input', grab, true); document.addEventListener('change', grab, true);
   window.__bd2112T = T;   /* read by the 960 save hook (patched below): a typed date wins over "keep" */
 })();
