@@ -5,9 +5,11 @@
 //   "I'm in" locked until the cable is connected and the check redone, Operations told · unclear → Operations checks (nothing locked).
 // Runs from the database's own queue (coe_shot_claim), so calling it needs no sign-in and can do no harm. Needs the edge-function
 // secret ANTHROPIC_API_KEY; without it, it does nothing (returns off: true). Model: Claude Haiku 5.5 (vision).
+// Trial mode until the secret COE_SHOT_LIVE = 1: a Wi-Fi reading only tells Operations (to check how accurate the reading is first).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+const LIVE = Deno.env.get("COE_SHOT_LIVE") === "1";   // trial first: without it, a Wi-Fi reading only tells Operations (no lock)
 const KEY = Deno.env.get("ANTHROPIC_API_KEY") || "", MODEL = Deno.env.get("COE_SHOT_MODEL") || "claude-haiku-5-5";
 const out = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json" } });
 const b64 = (u: Uint8Array) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
@@ -52,7 +54,12 @@ Deno.serve(async (req: Request) => {
     const { data: W0 } = res.net === "wifi" ? await db.from("coe_wifi").select("status,answer").ilike("teacher", x.teacher).eq("day", x.day).maybeSingle() : { data: null } as any;
     const allowed = !!W0 && W0.status === "cleared" && /^(down|approval)$/.test(String(W0.answer || ""));
     if (res.net === "wifi" && allowed) res.why = "allowed today · " + (res.why || "");
-    if (res.net === "wifi" && !allowed) { const { data: fl } = await db.rpc("coe_wifi_flag", { p_teacher: x.teacher, p_src: "proof", p_proof: x.url, p_by: "Picture check" }); flagged = !!(fl as any)?.ok; }
+    if (res.net === "wifi" && !allowed && !LIVE) {   // trial: Operations checks the picture; nothing locked
+      const { data: C } = await db.from("docs").select("data").eq("key", "sys:chat").maybeSingle();
+      const L2: string[] = ((C && (C as any).data && (C as any).data.mgmt) || ["CupOfEnglish", "Celine"]);
+      await db.from("chat_outbox").insert(L2.map((n) => ({ to_name: n, title: "Picture check (trial) · Teacher " + x.teacher, body: ("Wi-Fi icon seen in the time-in picture? Please check it: Team Chat › Time-in · " + (res.why || "")).slice(0, 160), tag: "m-msg", release_at: new Date().toISOString() })));
+      res.why = "trial · " + (res.why || ""); }
+    if (res.net === "wifi" && !allowed && LIVE) { const { data: fl } = await db.rpc("coe_wifi_flag", { p_teacher: x.teacher, p_src: "proof", p_proof: x.url, p_by: "Picture check" }); flagged = !!(fl as any)?.ok; }
     await db.from("coe_shot_read").update({ net: res.net, os: res.os || null, why: res.why || null, usage: res.tokens || null, flagged, read_at: new Date().toISOString(),
       tries: (x.tries || 0) + 1 }).eq("log_id", x.log_id);
     done.push({ id: x.log_id, net: res.net });
