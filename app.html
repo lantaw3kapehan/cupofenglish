@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1842;
+const COE_V = 1843;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -27000,9 +27000,10 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     try{ const r = await fetch(FAST_URL + '-expenses', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN }) }).then(x => x.json());
       if(r && r.ok){ F.rows = r.rows; F.sales = r.sales || []; F.at = r.at; try{ localStorage.setItem('coe.exp', JSON.stringify({ rows: r.rows, sales: r.sales || [], at: r.at })); }catch(e){} if(VIEW === 'finov') paintOv(); } }catch(e){} F.busy = 0; }
   const pkg = r => { const n = Number(r.pkg) || 0, f = Number(r.free) || 0; if(n < 0 || f < 0) return 'refund · ' + Math.abs(n) + (f ? ' + ' + Math.abs(f) : '') + ' lessons'; return n ? n + (f ? ' + ' + f : '') + ' lessons' : ''; };
-  function txAll(src){ const E = ((src || F).rows || []).map(r => ({ k: 'out', d: r.d, t: r.t || '—', c: r.c || 'Other', a: r.a, q: r.q, ref: '', key: r.key }));
-    const S = ((src || F).sales || []).map(r => ({ k: 'in', d: r.d, t: r.t || 'Sale', c: r.src || 'Direct', a: r.a, ref: r.inv ? '#' + r.inv : '', pkg: pkg(r), pay: r.pay, rmb: r.rmb, key: r.key }));
-    return E.concat(S).sort((a, b) => b.d.localeCompare(a.d) || (a.k === 'in' ? -1 : 1)); }
+  function txAll(src){ const NOW = Date.now(), en = r => +r.n || (r.q ? NOW : 0);   /* 2144: newest entry first */
+    const E = ((src || F).rows || []).map(r => ({ k: 'out', d: r.d, t: r.t || '—', c: r.c || 'Other', a: r.a, q: r.q, ref: '', key: r.key, n: en(r) }));
+    const S = ((src || F).sales || []).map(r => ({ k: 'in', d: r.d, t: r.t || 'Sale', c: r.src || 'Direct', a: r.a, ref: r.inv ? '#' + r.inv : '', pkg: pkg(r), pay: r.pay, rmb: r.rmb, key: r.key, n: en(r) }));
+    return E.concat(S).sort((a, b) => (b.n - a.n) || b.d.localeCompare(a.d) || (a.k === 'in' ? -1 : 1)); }
   const syncAt = at => at ? new Date(at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
 
   // ── money summary (validated monthly figures) ──
