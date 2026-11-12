@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1839;
+const COE_V = 1840;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -39899,9 +39899,15 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     if($b('wfRedo')) $b('wfRedo').onclick = () => { try{ if(typeof window.wcRedo1270 === 'function'){ window.wcRedo1270(); setTimeout(() => { const s = document.getElementById('sheetBody'); if(s && s.querySelector('.wf2135')) say('Open Today › Redo your time-in check (it appears in a moment)'); }, 400); return; } }catch(e){} say('Open Today › Redo your time-in check'); };
     shown = (f.id || 0) + ':' + f.status; }
 
+  /* 2141: phone on Wi-Fi → one reminder per session; the laptop picture decides (coe-shot-read) */
+  function remind(go){ try{ openSheet('<div class="wf2135"><div class="wf-h"><b>Teach on your laptop with the LAN cable</b></div>'
+      + '<div class="small" style="margin:10px 2px 0;line-height:1.55">This phone is on Wi-Fi. That is fine for the app, but your <b>class</b> must be on your laptop with the <b>LAN cable</b> (Wi-Fi off). '
+      + 'Your <b>I&#39;m in</b> picture is checked: if it shows Wi-Fi, you get the contract warning and I&#39;m in is locked until the cable is connected.</div>'
+      + '<button type="button" class="btn teal block" id="wfRem" style="margin-top:14px">OK · my class laptop is on the LAN cable</button></div>');
+    const b = document.getElementById('wfRem'); if(b) b.onclick = () => { closeSheet(); go && go(); }; }catch(e){ go && go(); } }
   async function gate(go){
     if(!isT()) return go();
-    if(wifiNow()){ if(!sentB){ sentB = 1; await quick(call('browser')); } const f = await quick(state(true)); return show(f || { id: 0, status: 'warned', contract: '', src: 'browser' }, go); }
+    if(wifiNow() && !sentB){ sentB = 1; return remind(go); }   /* 2141: a reminder, not a lock */
     let f = null; try{ f = await quick(state(false)); }catch(e){}
     if(f) return show(f, go);
     return go(); }
@@ -39909,11 +39915,11 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   /* every way into "I'm in" goes through the gate */
   ['classIn', 'tapClassIn'].forEach(k => { const o = window[k]; if(typeof o !== 'function' || o.__wf) return;
     const w = function(){ const a = arguments, th = this; gate(() => o.apply(th, a)); }; w.__wf = 1; window[k] = w; });
-  const g0 = window.classInGo; if(typeof g0 === 'function' && !g0.__wf){ const w = async function(){ if(isT() && (wifiNow() || (C.flag && Date.now() - C.at < 120000))){ const f = C.flag || { id: 0, status: 'warned', src: 'browser' }; show(f, null); return; } return g0.apply(this, arguments); }; w.__wf = 1; window.classInGo = w; }
+  const g0 = window.classInGo; if(typeof g0 === 'function' && !g0.__wf){ const w = async function(){ if(isT() && (C.flag && Date.now() - C.at < 120000)){ const f = C.flag || { id: 0, status: 'warned', src: 'browser' }; show(f, null); return; } return g0.apply(this, arguments); }; w.__wf = 1; window.classInGo = w; }
 
   /* the warning shows by itself as soon as Wi-Fi is detected (checked every minute while the app is open) */
   async function tick(){ if(!isT() || document.hidden) return; let f = null;
-    if(wifiNow()){ if(!sentB){ sentB = 1; await call('browser'); } f = await state(true) || { id: 0, status: 'warned', src: 'browser' }; } else f = await state(true);
+    f = await state(true);
     if(!f){ shown = ''; return; } const k = (f.id || 0) + ':' + f.status; if(k === shown) return;
     const sh = document.getElementById('sheet'); if(sh && sh.classList.contains('on') && !(document.getElementById('sheetBody') || {}).querySelector?.('.wf2135')) return;   /* never over another open card */
     show(f, null); }
