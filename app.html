@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1844;
+const COE_V = 1845;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -39404,7 +39404,7 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     if(+o.today.slice(8, 10) <= 10){ var ms0 = o.today.slice(0, 8) + '01', pm = (function(){ var y = +o.today.slice(0, 4), m = +o.today.slice(5, 7) - 1; if(m < 1){ m = 12; y--; } return y + '-' + (m < 10 ? '0' : '') + m; })();
       var ck = [[o.bankDate && o.bankDate >= ms0, 'bank balance'], [o.walChecked && o.walChecked >= ms0, 'wallet balances', 'wallets'], [!!(last('books:' + pm) && last('books:' + pm).kind === 'approve'), 'sign-off']];
       if(ck.some(function(x){ return !x[0]; })) D.push('<div class="bz-d"><div class="t"><b>Close ' + E(mName(pm)) + '</b><small>' + ck.map(function(x){ return (x[0] ? '✓ ' : '○ ') + (x[2] && !x[0] ? '<a style="cursor:pointer;color:#00808B;font-weight:700" onclick="go(\'' + x[2] + '\')">' + x[1] + '</a>' : x[1]); }).join('&nbsp;&nbsp; ') + '</small></div></div>'); }
-    if(o.bank != null && o.up.length){ var left = o.bank - o.upTotal; sub = left >= 0 ? 'It covers the next 30 days of payments (' + about(o.upTotal) + '), with ' + about(left) + ' to spare.' : 'It does not cover the next 30 days of payments (' + about(o.upTotal) + '). Please send about <b>' + about(-left) + '</b> from the yuan wallets.'; }
+    if(o.bank != null && o.up.length){ var left = o.bank - o.upTotal; sub = left >= 0 ? 'It covers the next 30 days of payments (' + about(o.upTotal) + '), with ' + about(left) + ' to spare.' : cash2149(o, -left); }
     else if(o.bank == null) sub = 'I need it to tell you whether payroll and bills are covered.';
     var bAge = o.bankDate ? Math.floor((Date.parse(o.today) - Date.parse(String(o.bankDate).slice(0, 10))) / 864e5) : null;
     if(bAge != null && bAge > 7) sub = '<b style="color:#B4442A">Last updated ' + bAge + ' days ago. Please enter today\'s balance so Cash available is right.</b> ' + sub;
@@ -39471,6 +39471,39 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
       (T.length ? '<div class="bz-sub">Record</div>' + T.map(function(x){ return '<div class="bz-note">' + E(lab(x)) + '<small>' + t(x) + '</small></div>'; }).join('') : '') + '</details>'; }
 
   var LASTH = '';
+  /* 2149 · 3 · cash: the exact instruction */
+  function cash2149(o, short){ try{
+    var bal = o.bank, first = null; (o.up || []).slice().sort(function(a, b){ return a.d < b.d ? -1 : 1; }).forEach(function(x){ bal -= (+x.a || 0); if(first == null && bal < 0) first = x; });
+    var rate = +o.rate || 0, yuan = rate ? Math.ceil(short / rate / 100) * 100 : null, W = ((window.fc980 && fc980.st().wallet && fc980.st().wallet.wallets) || []).filter(function(w){ return +w.balance > 0; }).sort(function(a, b){ return b.balance - a.balance; });
+    var have = W.reduce(function(a, w){ return a + (+w.balance || 0); }, 0), by = first ? addD(first.d, -2) : null; if(by && by < o.today) by = o.today;
+    var t = 'It does not cover the next 30 days of payments (' + about(o.upTotal) + '). ';
+    t += 'Please send <b>' + (yuan ? '¥' + yuan.toLocaleString('en-US') + '</b> (about ' + about(short) + ' at ' + rate + ')' : about(short) + '</b>') + (by ? ' to the peso bank <b>by ' + E(dL(by)) + '</b>, before ' + E(first.l) + ' (' + about(+first.a) + ') on ' + E(dL(first.d)) : '') + '.';
+    if(W.length) t += ' The wallets hold ¥' + Math.round(have).toLocaleString('en-US') + ' now (' + W.map(function(w){ return E(w.wallet) + ' ¥' + Math.round(w.balance).toLocaleString('en-US'); }).join(', ') + ').';
+    if(yuan && have < yuan) t += ' That is ¥' + Math.round(yuan - have).toLocaleString('en-US') + ' short, so the rest has to come from payments still expected this month.';
+    return t; }catch(e){ return 'It does not cover the next 30 days of payments (' + about(o.upTotal) + '). Please send about <b>' + about(short) + '</b> from the yuan wallets.'; } }
+  /* 2149 · 1 · since you last looked */
+  function since2149(o){ try{ var prev = window.__fbzPrev || 0; if(!prev) return ''; var X = window.fc980 && fc980.st().exp; if(!X || !X.rows) return '';
+    var S = (X.sales || []).filter(function(r){ return +r.n > prev; }), Ex = (X.rows || []).filter(function(r){ return +r.n > prev; }), sa = S.reduce(function(a, r){ return a + (+r.a || 0); }, 0), ea = Ex.reduce(function(a, r){ return a + (+r.a || 0); }, 0);
+    var when = new Date(prev).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' });
+    var parts = []; if(S.length) parts.push(S.length + (S.length === 1 ? ' payment' : ' payments') + ' in (' + peso(Math.round(sa)) + ': ' + S.slice(0, 4).map(function(r){ return E(r.t); }).join(', ') + (S.length > 4 ? ' and ' + (S.length - 4) + ' more' : '') + ')');
+    if(Ex.length) parts.push(Ex.length + (Ex.length === 1 ? ' expense' : ' expenses') + ' (' + peso(Math.round(ea)) + ')');
+    return '<div class="bz-card" style="padding:12px 18px"><div class="bz-m" style="margin:0;font-size:15px;color:#2f2752"><b>Since you last looked</b> (' + E(when) + '): ' + (parts.length ? parts.join(' · ') + '.' : 'nothing new.') + '</div></div>'; }catch(e){ return ''; } }
+  /* 2149 · 2, 4, 5, 6 · how the month is going */
+  function month2149(o){ var GM = (B.growth && B.growth.more) || null; if(!GM) return ''; var h = '';
+    try{ var P = GM.pace; if(P && P.now != null){ var dd = +o.today.slice(8, 10), diff = P.now - P.prev;
+        h += '<div class="bz-d"><div class="t"><b>Pace.</b> By ' + dd + ' ' + E(mName(o.cur).slice(0, 3)) + ' we received ' + peso(P.now) + '. By the same day last month it was ' + peso(P.prev) + (diff ? ' (' + (diff > 0 ? '▲ ' : '▼ ') + peso(Math.abs(diff)) + ')' : '') + '.<small>Last month in total: ' + peso(P.prevAll) + '.</small></div></div>'; } }catch(e){}
+    try{ var Q = GM.pipe || {}, c = Q.confirmed || { n: 0, php: 0 }, l = Q.likely || { n: 0, php: 0 }, op = Q.open || { n: 0, php: 0 };
+      if(c.n + l.n + op.n){ h += '<div class="bz-d"><div class="t"><b>Renewals coming up</b> (5 lessons or fewer left), at their last price:<small>' +
+        '<b style="color:#1F7A55">Confirmed</b> ' + peso(c.php) + (c.n ? ' (' + E(c.names) + ')' : '') + ' · <b style="color:#87560D">Likely</b> ' + peso(l.php) + ' (' + l.n + ' reminded) · <b style="color:#B4442A">Not asked yet</b> ' + peso(op.php) + ' (' + op.n + (op.names ? ': ' + E(String(op.names).split(', ').slice(0, 5).join(', ')) + (op.n > 5 ? '…' : '') : '') + ')' +
+        (op.n ? '<br>Only ' + peso(c.php) + ' is sure. A reminder to the ' + op.n + ' not asked yet is the quickest way to firm up the rest.' : '') + '</small></div></div>'; } }catch(e){}
+    try{ var X = window.fc980 && fc980.st().exp, ms = o.today.slice(0, 7), exS = X && X.rows ? X.rows.filter(function(r){ return String(r.d).slice(0, 7) === ms && r.d <= o.today; }).reduce(function(a, r){ return a + (+r.a || 0); }, 0) : null;
+      var OO = GM.oneoff || [], oo = OO.reduce(function(a, x){ return a + (+x.a || 0); }, 0);
+      if(exS != null && OO.length) h += '<div class="bz-d"><div class="t"><b>Costs.</b> Expenses so far ' + peso(Math.round(exS)) + ', of which one-off purchases ' + peso(oo) + ' (' + OO.map(function(x){ return E(x.t); }).join(', ') + '). Regular running costs: ' + peso(Math.round(exS - oo)) + '.<small>One-offs are equipment, supplies and other purchases of ₱10,000 or more. Accounting, rent, utilities and dues count as regular.</small></div></div>'; }catch(e){}
+    try{ var W = [], P2 = GM.pace; if(P2 && P2.now > 0 && P2.partnerNow / P2.now >= 0.35) W.push('Partners brought ' + Math.round(P2.partnerNow / P2.now * 100) + '% of this month\'s income. A lot rests on them.');
+      var ci = o.salesMonth, co = o.costMonth; if(ci > 0 && co > 0 && co / ci >= 0.9) W.push('This month\'s costs take ' + Math.round(co / ci * 100) + '% of the income we expect.');
+      var F = B.growth && B.growth.capacity && B.growth.capacity.full; if(F && F.length >= 2) W.push('No free hours: ' + F.map(E).join(', ') + '. New students need other teachers.');
+      if(W.length) h += '<div class="bz-d"><div class="t"><b>Watch</b><small>' + W.slice(0, 3).join('<br>') + '</small></div></div>'; }catch(e){}
+    return h ? '<div class="bz-card"><h2>How the month is going</h2>' + h + '</div>' : ''; }
   function collect2147(o){ var GM = (B.growth && B.growth.more) || null; if(!GM) return ''; var S = GM.owe || [], P = (GM.partnerOwe || []).filter(function(p){ return p.n > 0; }); if(!S.length && !P.length) return '';
     var exp = S.reduce(function(a, x){ return a + (x.last && x.last.php ? +x.last.php : 0); }, 0), h = '';
     if(S.length) h += '<div class="bz-sub">Students · lessons used up or 2 or fewer left</div>' + S.map(function(x){ var l = +x.left, st = String(x.status || '').split(' · ')[0];
@@ -39485,7 +39518,7 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     var h = '<div class="bz-top"><div><h1>Briefing</h1><div class="bz-from">From your accounts manager, ' + E(new Date().toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Manila' })) + '.</div></div></div>';
     var o = compose();
     h += !o ? '<div class="bz-card"><p class="bz-say" style="margin:0">One moment, I am gathering the numbers…</p></div>'
-      : hero(o) + tiles(o) + '<div class="bz-cols"><div>' + actions(o) + collect2147(o) + ahead(o) + '</div><div>' + grow(o) + more() + '</div></div>' +
+      : hero(o) + since2149(o) + tiles(o) + '<div class="bz-cols"><div>' + actions(o) + collect2147(o) + ahead(o) + '</div><div>' + month2149(o) + grow(o) + more() + '</div></div>' +
         '<div class="bz-foot">The details: <a onclick="go(\'finov\')">Overview</a><a onclick="go(\'payroll\')">Payroll</a><a onclick="go(\'forecast\')">Forecast</a><a onclick="go(\'wallets\')">Wallets</a></div>';
     if(h === LASTH) return;   /* nothing changed: no redraw, no flicker */
     LASTH = h; v.innerHTML = h;
@@ -39529,7 +39562,7 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   var _go = window.go; if(typeof _go === 'function') window.go = function(v){
     try{ var ev = window.event; if(v === 'finov' && pres() && ev && ev.type === 'click' && ev.target && ev.target.closest && ev.target.closest('#navIn [data-v="payroll"], nav [data-v="payroll"]')) v = 'finbrief'; }catch(e){}
     var r = _go.apply(this, [v].concat([].slice.call(arguments, 1)));
-    try{ if(v === 'finbrief'){ paint(); startLoads(); } if(v === 'forecast' && pres()) loadAll().then(function(){ try{ if(window.fc980 && fc980.load) fc980.load(); }catch(e){} }); }catch(e){ try{ console.warn('2084', e); }catch(x){} }
+    try{ if(v === 'finbrief'){ try{ window.__fbzPrev = +localStorage.getItem('coe.fbz.seen') || 0; localStorage.setItem('coe.fbz.seen', String(Date.now())); }catch(e){} paint(); startLoads(); } if(v === 'forecast' && pres()) loadAll().then(function(){ try{ if(window.fc980 && fc980.load) fc980.load(); }catch(e){} }); }catch(e){ try{ console.warn('2084', e); }catch(x){} }
     return r; };
   try{ if(typeof VIEW !== 'undefined' && VIEW === 'finbrief'){ paint(); startLoads(); } }catch(e){}
 })();
