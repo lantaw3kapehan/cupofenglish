@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1816;
+const COE_V = 1817;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -27574,6 +27574,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const on = () => { const x = sh(); return !!(x && x.classList.contains('on')); };
   const q = (b, id) => b ? b.querySelector('#' + id) : null;
   const ISO = /^\d{4}-\d{2}-\d{2}$/;
+  const ISOM = /^\d{4}-\d{2}(-\d{2})?$/;   /* 2113: a full date, or month and year only */
   const say = m => { try{ (window.toast || window.tst)(m); }catch(e){} };
   const ex = x => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const MON = ['January','February','March','April','May','June','July','August','September','October','November','December'], M3 = MON.map(m => m.slice(0, 3));
@@ -27592,7 +27593,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     if(fn === 'saveStudent'){ try{ const f = arguments[2], row = Number(arguments[3]) || 0;
         if(f && typeof f === 'object' && row > 0){ const P2 = PBK[row + '|' + String(f.code || '')], P = (P2 && Date.now() - P2.t < 18e4) ? P2 : PB;   /* 2097 */
           if(P && P.row === row && String(f.code || '') === P.code){ f.birth = P.birth; delete f.birthKeep; delete f.birthClear; if(P.keep) f.birthKeep = 1; if(P.clear) f.birthClear = 1; }
-          else if(!ISO.test(String(f.birth == null ? '' : f.birth).trim()) && !f.birthClear){ f.birth = ''; f.birthKeep = 1; }
+          else if(!ISOM.test(String(f.birth == null ? '' : f.birth).trim()) && !f.birthClear){ f.birth = ''; f.birthKeep = 1; }
           try{ const K = String(f.code || '').toUpperCase(), TY = window.__bd2112T && window.__bd2112T[K]; if(TY && Date.now() - TY.t < 9e5 && !f.birthClear){ f.birth = TY.v; delete f.birthKeep; delete window.__bd2112T[K]; } }catch(e){}   /* 2112: a typed date always goes */ } }catch(e){ console.warn('960 save', e); } }   /* no decision (should not happen): never a blank or odd value, the server keeps the cell */
     const p = a0.apply(this, arguments);
     if(fn === 'dbRecord'){ try{ REC[keyOf(Number(arguments[2]) || 0, String(arguments[3] || ''))] = { p: Promise.resolve(p), t: Date.now() }; }catch(e){} }
@@ -27622,7 +27623,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   function paint(b){
     const el = q(b, 'sBirth'), M = q(b, 'sBirthM'), O = q(b, 'sBirthO'), B = q(b, 'sBirthB'), L = q(b, 'sBirthL'); if(!el || !M || !O) return;
     const m = M.value, o = O.value, ro = q(b, 'sBirthRO'), x = q(b, 'sBirthX'), hint = q(b, 'sBirthH'), act = q(b, 'sBirthA');
-    if(m === 'input' || m === 'edit'){ if(el.type !== 'date') el.type = 'date'; el.hidden = false; }
+    if(m === 'input' || m === 'edit'){ const mo = !!(b.querySelector('input[type=checkbox][onchange*="sBirth"]') || {}).checked, ty = mo ? 'month' : 'date'; if(el.type !== ty) el.type = ty; el.hidden = false; }   /* 2113: the month box stays while the tick is on */
     else { if(el.type !== 'text') el.type = 'text'; el.hidden = true; }
     ro.hidden = m !== 'ro'; x.hidden = m !== 'clear'; hint.hidden = m !== 'edit';
     const btn = (a, t, c) => '<button type="button"' + (c ? ' class="' + c + '"' : '') + ' onclick="bd960Act(this,\'' + a + '\')">' + t + '</button>';
@@ -27648,7 +27649,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     const J = judge(O, lr ? lr[5] : '');
     if(!q(b, 'sBirthO')) el.insertAdjacentHTML('afterend', '<input type="hidden" id="sBirthO"><input type="hidden" id="sBirthM"><input type="hidden" id="sBirthB"><input type="hidden" id="sBirthL"><input type="hidden" id="sBirthR">'
       + '<div id="sBirthRO" class="bd960-ro" hidden></div><div id="sBirthX" class="bd960-ro" hidden>The birthdate will be removed when you save.</div>'
-      + '<div id="sBirthH" class="bd960-note" hidden>Pick the full date of birth. Leave it empty to keep the birthdate as it is.</div><div id="sBirthA" class="bd960-act" hidden></div>');
+      + '<div id="sBirthH" class="bd960-note" hidden>Pick the date of birth, or tick Only month and year. Leave it empty to keep the birthdate as it is.</div><div id="sBirthA" class="bd960-act" hidden></div>');
     const touched = !!el.dataset.t && String(el.value || '').trim() !== '';
     q(b, 'sBirthO').value = O; q(b, 'sBirthB').value = J.mode; q(b, 'sBirthL').value = J.label;
     q(b, 'sBirthM').value = J.mode === 'ro' && touched ? 'edit' : J.mode;
@@ -27691,7 +27692,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       const el = q(b, 'sBirth'), M = q(b, 'sBirthM').value, O = q(b, 'sBirthO').value, x = String(el.value || '').trim();
       let d;
       if(M === 'clear') d = { birth: '', clear: 1 };
-      else if((M === 'input' || M === 'edit') && ISO.test(x) && x !== O) d = { birth: x };
+      else if((M === 'input' || M === 'edit') && ISOM.test(x) && x !== O) d = { birth: x };   /* 2113: month and year is sent too */
       else d = { birth: O, keep: 1 };
       PB = Object.assign({ row: r, code: c }, d); PBK[r + '|' + c] = Object.assign({ t: Date.now() }, PB);   /* 2097 */
       try{ return ss0.apply(this, arguments); } finally { PB = null; } }
@@ -39800,7 +39801,7 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   const T = {};
   const grab = ev => { try{ const i = ev.target; if(!i || i.id !== 'sBirth') return; const f = i.closest('#sheetBody') || document; const R = f.querySelector('#sBirthR');
     const code = String((R && R.value) || '').split('|')[1] || ''; const v = String(i.value || '').trim();
-    if(/^ST-\d{4}-\d{3}$/i.test(code) && /^\d{4}-\d{2}-\d{2}$/.test(v)) T[code.toUpperCase()] = { v, t: Date.now() }; }catch(e){} };
+    if(/^ST-\d{4}-\d{3}$/i.test(code) && /^\d{4}-\d{2}(-\d{2})?$/.test(v)) T[code.toUpperCase()] = { v, t: Date.now() }; }catch(e){} };
   document.addEventListener('input', grab, true); document.addEventListener('change', grab, true);
   window.__bd2112T = T;   /* read by the 960 save hook (patched below): a typed date wins over "keep" */
 })();
