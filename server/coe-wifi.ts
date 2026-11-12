@@ -31,7 +31,8 @@ Deno.serve(async (req: Request) => {
   if (!mgmt) {
     if (op === "mine") {
       const { data } = await db.from("coe_wifi").select("id,status,contract,src,flagged_at,answer").ilike("teacher", me).eq("day", today()).maybeSingle();
-      return out({ ok: true, flag: data && (data.status === "warned" || data.status === "asked") ? { id: data.id, status: data.status, contract: data.contract, src: data.src, at: data.flagged_at } : null });
+      const { data: ct } = await db.rpc("coe_wifi_contract", { p_teacher: me });
+      return out({ ok: true, contract: ct || "2025", flag: data && (data.status === "warned" || data.status === "asked") ? { id: data.id, status: data.status, contract: data.contract, src: data.src, at: data.flagged_at } : null });
     }
     if (op === "browser") {
       const { data, error } = await db.rpc("coe_wifi_flag", { p_teacher: me, p_src: "browser", p_proof: null, p_by: "System" });

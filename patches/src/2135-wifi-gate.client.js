@@ -15,12 +15,12 @@
   const isT = () => { try{ return typeof D !== 'undefined' && D && !D.mgr; }catch(e){ return false; } };
   const wifiNow = () => { try{ return (navigator.connection || {}).type === 'wifi'; }catch(e){ return false; } };
   const say = m => { try{ (window.toast || function(){})(m); }catch(e){} };
-  const me = () => { try{ return String((D && (D.name || D.teacher)) || (typeof NAME !== 'undefined' ? NAME : '') || '').replace(/^Teacher\s+/i, ''); }catch(e){ return ''; } };
-  let C = { at: 0, flag: null }, sentB = 0, shown = '';
-  async function state(force){ if(!force && Date.now() - C.at < 90000) return C.flag;   /* the minute check keeps this fresh, so the tap is not slowed */ const r = await call('mine'); if(r && r.ok) C = { at: Date.now(), flag: r.flag || null }; return C.flag; }
+  const me = () => { try{ return String((D && ((D.me && D.me.name) || D.name || D.teacher)) || '').replace(/^Teacher\s+/i, ''); }catch(e){ return ''; } };
+  let C = { at: 0, flag: null }, sentB = 0, shown = '', CT = '';   /* CT: the teacher's contract (addendum | 2025), kept from the last check */
+  async function state(force){ if(!force && Date.now() - C.at < 90000) return C.flag;   /* the minute check keeps this fresh, so the tap is not slowed */ const r = await call('mine'); if(r && r.ok){ C = { at: Date.now(), flag: r.flag || null }; if(r.contract) CT = r.contract; } return C.flag; }
   const quick = p => Promise.race([p, new Promise(z => setTimeout(() => z(C.flag), 2500))]);   /* never wait long: the class comes first */
 
-  function text(f){ const nm = me(), add = f.contract === 'addendum', hh = new Date(f.at || Date.now()).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  function text(f){ const nm = me(), add = (f.contract || CT) === 'addendum', hh = new Date(f.at || Date.now()).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
     const where = f.src === 'browser' ? 'your device says you are connected by <b>Wi-Fi</b>, not a LAN cable' : 'your time-in picture shows you are connected by <b>Wi-Fi</b>, not a LAN cable';
     const rule = add ? 'Your contract requires a wired connection for every lesson (Addendum No. 1, Clause 3.2). Wi-Fi is allowed only with the Company’s written approval.'
       : 'Your contract requires a cable internet connection, not Wi-Fi (Independent Contractor Agreement, Annex A, Technical Requirements (a); Memo No. 20).';
