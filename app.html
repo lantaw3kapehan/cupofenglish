@@ -7373,7 +7373,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1843;
+const COE_V = 1844;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -39329,7 +39329,9 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     return Promise.all([
       post({ op: 'get' }).then(function(r){ if(r && r.ok) B.rows = r.rows || []; }).catch(function(){}),
       post({ op: 'settings' }).then(function(r){ if(r && r.ok){ B.set = r.settings || {}; applySet(); } }).catch(function(){}),
-      post({ op: 'growth' }).then(function(r){ if(r && r.ok) B.growth = r.growth || null; }).catch(function(){})]); }
+      post({ op: 'growth' }).then(function(r){ if(r && r.ok) B.growth = r.growth || null; }).catch(function(){}),
+      fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-13th', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: tok(), op: 'get', year: +new Date().toISOString().slice(0, 4) }) }).then(function(x){ return x.json(); })
+        .then(function(r){ if(r && r.ok){ var P = (r.people || []).filter(function(p){ return !(p.saved && p.saved.paid_on); }); B.th13 = { total: P.reduce(function(a, p){ return a + (+p.pay || 0); }, 0), n: P.length, year: r.year }; } }).catch(function(){})]); }
   function engine(){ try{ if(!window.fc980 || !fc980.inputs || !fc980.st) return null; var S = fc980.st(), A = Object.assign({}, S.A, { sc: 'e' }); return { R: fc980.build(fc980.inputs(), A), S: S }; }catch(e){ try{ console.warn('2084', e); }catch(x){} return null; } }
   function startLoads(){ try{ if(window.fc980 && fc980.load) fc980.load(); }catch(e){}
     try{ if((typeof AT === 'undefined' || !AT) && typeof loadActive === 'function') loadActive(true); }catch(e){}
@@ -39404,7 +39406,11 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
       if(ck.some(function(x){ return !x[0]; })) D.push('<div class="bz-d"><div class="t"><b>Close ' + E(mName(pm)) + '</b><small>' + ck.map(function(x){ return (x[0] ? '✓ ' : '○ ') + (x[2] && !x[0] ? '<a style="cursor:pointer;color:#00808B;font-weight:700" onclick="go(\'' + x[2] + '\')">' + x[1] + '</a>' : x[1]); }).join('&nbsp;&nbsp; ') + '</small></div></div>'); }
     if(o.bank != null && o.up.length){ var left = o.bank - o.upTotal; sub = left >= 0 ? 'It covers the next 30 days of payments (' + about(o.upTotal) + '), with ' + about(left) + ' to spare.' : 'It does not cover the next 30 days of payments (' + about(o.upTotal) + '). Please send about <b>' + about(-left) + '</b> from the yuan wallets.'; }
     else if(o.bank == null) sub = 'I need it to tell you whether payroll and bills are covered.';
+    var bAge = o.bankDate ? Math.floor((Date.parse(o.today) - Date.parse(String(o.bankDate).slice(0, 10))) / 864e5) : null;
+    if(bAge != null && bAge > 7) sub = '<b style="color:#B4442A">Last updated ' + bAge + ' days ago. Please enter today\'s balance so Cash available is right.</b> ' + sub;
     D.push(field('phpBank', '<b>Peso bank balance</b>, with cash on hand' + (o.bankDate ? ' (as of ' + E(dS(o.bankDate)) + ')' : '') + '.', sub, o.bank, 'e.g. 250000', true));
+    if(B.th13 && B.th13.total > 0){ var dec = o.today.slice(0, 4) + '-12-24', mLeft = Math.max(1, 12 - (+o.today.slice(5, 7)) + 1);
+      D.push('<div class="bz-d"><div class="t"><b>13th-month pay</b> of about <b>' + about(B.th13.total) + '</b>, paid by ' + E(dL(dec)) + '.<small>' + (mLeft > 1 ? 'Set aside about <b>' + about(B.th13.total / mLeft) + '</b> a month until then.' : 'Set it aside this month.') + ' From Payroll › 13th month.</small></div><div class="b"><button class="bz-btn gh" onclick="go(\'payroll\')">Open</button></div></div>'); }
     if(o.salaries != null) D.push(decision('payroll:' + o.cur, 'Approve the <b>' + E(mName(o.cur)) + ' payroll</b> of about <b>' + about(o.salaries) + '</b>, paid on ' + E(dL(o.payDate)) + '.', ['approve', 'notyet'], done));
     if(o.last && o.last.net != null) D.push(decision('books:' + o.last.m, 'Sign off <b>' + E(mName(o.last.m)) + '</b>: we received ' + about(o.last.sales) + ', spent ' + about(o.last.cost) + ' and kept <b>' + about(o.last.net) + '</b>.', ['approve', 'notyet'], done));
     (o.big || []).forEach(function(r){ D.push(decision('big:' + r.d + ':' + Math.round(N(r.a)) + ':' + String(r.t || r.c || '').slice(0, 30), 'Large payment of <b>' + peso(N(r.a)) + '</b> for ' + E(r.t || r.c || 'an expense') + ' on ' + E(dS(r.d + 'T12:00:00+08:00')) + '.', ['noted'], done)); });
@@ -39419,13 +39425,16 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   function ahead(o){ var end30 = addD(o.today, 30), soon = addD(o.today, 7), L = [];
     (o.dues || []).forEach(function(x){ if(x.d >= o.today && x.d <= end30) L.push({ d: x.d, l: 'Due: ' + x.l, a: x.a ? +x.a : null, soon: x.d <= soon }); });
     (o.up || []).forEach(function(x){ L.push({ d: x.d, l: x.l, a: x.a, est: x.est, soon: x.d <= soon }); });
+    try{ var GM = (B.growth && B.growth.more) || {}; (GM.gov || []).forEach(function(g){ if(!g.amount || g.due > end30) return; var late = g.due < o.today;
+        L.push({ d: late ? o.today : g.due, l: 'Government dues for ' + mName(g.month) + (late ? ' (past ' + dS(g.due + 'T12:00:00+08:00') + ')' : '') + ': SSS, PhilHealth, Pag-IBIG' + (+g.bir ? ', BIR' : ''), a: +g.amount, soon: true }); });
+      if(B.th13 && B.th13.total > 0){ var d13 = o.today.slice(0, 4) + '-12-24'; if(d13 <= end30) L.push({ d: d13, l: '13th-month pay', a: B.th13.total, est: true, soon: d13 <= soon }); } }catch(e){}
     L.sort(function(a, b){ return a.d < b.d ? -1 : 1; });
     var rows = L.slice(0, 6).map(function(x){ var dt = new Date(x.d + 'T12:00:00+08:00');
       return '<div class="' + (x.soon ? 'soon' : '') + '"><div class="bz-date"><b>' + dt.getDate() + '</b><small>' + dt.toLocaleDateString('en-GB', { month: 'short', timeZone: 'Asia/Manila' }) + '</small></div><div class="l">' + E(x.l) + '<small>' + E(dt.toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'Asia/Manila' })) + (x.est ? ', estimate' : '') + '</small></div><div class="v">' + (x.a != null ? about(x.a) : '') + '</div></div>'; }).join('');
     var W = [], covered = o.bank != null && o.bank - o.upTotal >= 0;
     if(!covered && o.miss.some(function(x){ return /remit/i.test(x.t || ''); })) W.push('Plan a transfer from the yuan wallets before ' + E(dL(o.payDate)) + ', as salaries are paid in pesos.');
     if(o.miss.some(function(x){ return x.k === 'neg'; })) W.push('The CCB wallet is slightly short. Top it up before its next payment.');
-    if(o.miss.some(function(x){ return /13th/i.test(x.t || ''); }) && !(o.dues || []).some(function(x){ return /13th/i.test(x.l); })) W.push('The 13th-month pay is not in the plan yet. Add it under Notes, due dates and record.');
+    if(!(B.th13 && B.th13.total > 0) && o.miss.some(function(x){ return /13th/i.test(x.t || ''); }) && !(o.dues || []).some(function(x){ return /13th/i.test(x.l); })) W.push('The 13th-month pay is not in the plan yet. Add it under Notes, due dates and record.');
     if(!rows && !W.length) return '';
     return '<div class="bz-card"><h2>Coming up</h2>' + (rows ? '<div class="bz-up">' + rows + '</div>' : '') + (W.length ? '<ul class="bz-w">' + W.slice(0, 3).map(function(x){ return '<li>' + x + '</li>'; }).join('') + '</ul>' : '') + '</div>'; }
 
@@ -39462,13 +39471,21 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
       (T.length ? '<div class="bz-sub">Record</div>' + T.map(function(x){ return '<div class="bz-note">' + E(lab(x)) + '<small>' + t(x) + '</small></div>'; }).join('') : '') + '</details>'; }
 
   var LASTH = '';
+  function collect2147(o){ var GM = (B.growth && B.growth.more) || null; if(!GM) return ''; var S = GM.owe || [], P = (GM.partnerOwe || []).filter(function(p){ return p.n > 0; }); if(!S.length && !P.length) return '';
+    var exp = S.reduce(function(a, x){ return a + (x.last && x.last.php ? +x.last.php : 0); }, 0), h = '';
+    if(S.length) h += '<div class="bz-sub">Students · lessons used up or 2 or fewer left</div>' + S.map(function(x){ var l = +x.left, st = String(x.status || '').split(' · ')[0];
+      return '<div class="bz-d"><div class="t"><b>' + E(x.name) + (x.cn ? ' ' + E(x.cn) : '') + '</b>' + (x.shared ? ' & ' + E(x.shared) : '') + ' · Teacher ' + E(x.teacher) + '<small>' + (l <= 0 ? '<b style="color:#B4442A">Lessons used up</b>' : l + (l === 1 ? ' lesson' : ' lessons') + ' left') + (st ? ' · ' + E(st) : ' · no reminder yet') +
+        (x.last && x.last.php ? ' · last paid ' + peso(+x.last.php) + ' on ' + E(dS(x.last.day + 'T12:00:00+08:00')) + (x.last.partner && !/^CupOfEnglish$/i.test(x.last.partner) ? ' (' + E(x.last.partner) + ')' : '') : '') + '</small></div></div>'; }).join('') +
+      (exp ? '<div class="bz-m">If they renew as last time: about ' + about(exp) + '.</div>' : '');
+    if(P.length) h += '<div class="bz-sub">Partners</div>' + P.map(function(p){ return '<div class="bz-d"><div class="t"><b>' + E(p.partner) + '</b>: ' + p.n + (p.n === 1 ? ' sale' : ' sales') + (p.since ? ' since ' + E(dS(p.since + 'T12:00:00+08:00')) : '') + ' not marked paid yet<small>' + (p.rmb ? '¥' + Number(p.rmb).toLocaleString('en-US') + ' · ' : '') + 'about ' + about(+p.php) + '. Mark them paid on the partner page when the money arrives.</small></div></div>'; }).join('');
+    return '<div class="bz-card"><h2>Money to collect</h2>' + h + '</div>'; }
   function paint(){ var v = document.getElementById('v-finbrief'); if(!v) return; if(!pres()){ v.innerHTML = '<div class="empty">The briefing is for the President.</div>'; LASTH = ''; return; }
     var keep = '', ae = document.activeElement; try{ var ta = document.getElementById('fbzNote'); if(ta) keep = ta.value; }catch(e){}
     if(ae && v.contains(ae) && /INPUT|TEXTAREA/.test(ae.tagName)) return;   /* never redraw under the cursor */
     var h = '<div class="bz-top"><div><h1>Briefing</h1><div class="bz-from">From your accounts manager, ' + E(new Date().toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Manila' })) + '.</div></div></div>';
     var o = compose();
     h += !o ? '<div class="bz-card"><p class="bz-say" style="margin:0">One moment, I am gathering the numbers…</p></div>'
-      : hero(o) + tiles(o) + '<div class="bz-cols"><div>' + actions(o) + ahead(o) + '</div><div>' + grow(o) + more() + '</div></div>' +
+      : hero(o) + tiles(o) + '<div class="bz-cols"><div>' + actions(o) + collect2147(o) + ahead(o) + '</div><div>' + grow(o) + more() + '</div></div>' +
         '<div class="bz-foot">The details: <a onclick="go(\'finov\')">Overview</a><a onclick="go(\'payroll\')">Payroll</a><a onclick="go(\'forecast\')">Forecast</a><a onclick="go(\'wallets\')">Wallets</a></div>';
     if(h === LASTH) return;   /* nothing changed: no redraw, no flicker */
     LASTH = h; v.innerHTML = h;
