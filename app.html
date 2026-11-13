@@ -3183,7 +3183,7 @@ let MYP = null;
 async function myPay1870(){ try{ const r = await fetch(FAST_URL + '-payedit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'mgmtmypay' }) }).then(x => x.json());
   if(r && r.ok && r.data && Array.isArray(r.data.pay)) return r.data; }catch(e){} return api('mgmtMyPay', TOKEN); }   /* 1870: management's own pay from the database; Google only if it does not answer */
 async function loadMyPay(quiet){
-try{ const _t1300 = +(store('get', 'coe.mypayT') || 0), _c1300 = kept('mypay') && Date.now() - _t1300 < (quiet ? 360 : 30) * 6e4 &&   /* 1677: start-up load uses a copy up to 6 h old */ (quiet || typeof SB_LASTW === 'undefined' || !SB_LASTW || Date.now() - SB_LASTW > 120000);   /* 1675: not only when quiet */   /* 1300 */
+try{ const _t1300 = +(store('get', 'coe.mypayT') || 0), _c1300 = kept('mypay') && (m => m.allTime !== undefined && (!m.allTime || m.allTime.paidNet != null))(kept('mypay')) && Date.now() - _t1300 < (quiet ? 360 : 30) * 6e4 &&   /* 1677: start-up load uses a copy up to 6 h old */ (quiet || typeof SB_LASTW === 'undefined' || !SB_LASTW || Date.now() - SB_LASTW > 120000);   /* 1675: not only when quiet */   /* 1300 */
   await swr('mypay', _c1300 ? () => Promise.resolve(kept('mypay')) : () => (quiet && typeof bg === 'function' ? bg(() => myPay1870()) : myPay1870()).then(v => { try{ store('set', 'coe.mypayT', String(Date.now())); }catch(e){} return v; }), v => MYP = v, () => { if(VIEW === 'mypay') renderMyPay(); const on = !!document.querySelector('#navIn [data-v="mypay"]'); if(!!(MYP && MYP.has) !== on) buildNav(); }); }
 catch(e){ if(!quiet && VIEW === 'mypay') $('v-mypay').innerHTML = '<div class="empty">Could not load your pay. Try again.</div>'; }
 }
@@ -7379,7 +7379,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1887;
+const COE_V = 1888;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -19960,7 +19960,7 @@ section.sec .gr-kpi{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!imp
   const ym = x => { const s = String((x && (x.m || x.month)) || ''); let m = s.match(/^(\d{4})-(\d{2})/); if(m) return m[1] + '-' + m[2]; m = s.match(/([A-Za-z]{3})[a-z]*\s+(\d{4})/); return m ? m[2] + '-' + String(MF.indexOf(m[1].toLowerCase()) + 1).padStart(2, '0') : ''; };
   const now = new Date(), k0 = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'), dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   window.pay70 = function(i, w){ const L = w === 'm' ? ((typeof MYP !== 'undefined' && MYP && MYP.pay) || []) : ((D && D.pay) || []); const x = L[i]; if(x && typeof paySheet === 'function') paySheet(x); };
-  function chart(L, w){ const R = L.map((x, i) => ({ x, i, k: ym(x) })).filter(o => o.k).sort((a, b) => a.k.localeCompare(b.k)).slice(-8); if(R.length < 2) return '';
+  function chart(L, w){ const R = L.map((x, i) => ({ x, i, k: ym(x) })).filter(o => o.k).sort((a, b) => a.k.localeCompare(b.k)).slice(w === 'm' ? -12 : -8); if(R.length < 2) return '';
     const mx = Math.max(1, ...R.map(o => num(o.x.net))), sh = n => n >= 1000 ? '₱' + (n / 1000).toFixed(1) + 'k' : '₱' + Math.round(n);
     return '<section class="pm70"><div class="h"><span>Pay by month</span><span>net · tap a month for the payslip</span></div><div class="cs">' +
       R.map(o => { const v = num(o.x.net), paid = /paid/i.test(o.x.status || '') || o.x.paid === true; return '<div class="' + (o.k === k0 ? 'cur' : paid ? '' : 'pd') + '" onclick="pay70(' + o.i + ',\'' + w + '\')" title="' + esc(o.x.month || o.k) + ' · ' + peso(v) + '"><i style="height:' + Math.max(2, v / mx * 100) + 'px"></i><b style="bottom:' + (v / mx * 100 + 3) + 'px">' + sh(v) + '</b></div>'; }).join('') +
