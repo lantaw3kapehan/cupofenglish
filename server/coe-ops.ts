@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-ops v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
+// CupOfEnglish · coe-ops v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
 // Management only (Operations and President). Teachers get "Management only".
 // POST { token, op: "check" }                        → { ok, items: [{ kind, ref, text, go }], at }   the daily database check (coe_ops_check)
 // POST { token, op: "ok", ref }                      → { ok }   "It's correct": this item never comes back (coe_ops_ok)
@@ -35,6 +35,11 @@ Deno.serve(async (req: Request) => {
     const { error } = await db.from("coe_ops_ok").upsert({ ref, by_name: me, at: new Date().toISOString() }, { onConflict: "ref" });
     if (error) return out({ ok: false, error: "not saved" }, 500);
     return out({ ok: true });
+  }
+  if (op === "finov") {   // v7 (2181)
+    const { data, error } = await db.rpc("coe_ops_finov");
+    if (error) return out({ ok: false, error: "db" }, 500);
+    return out({ ok: true, data });
   }
   if (op === "precheck") {
     const code = String(b.code || "").toUpperCase().match(/ST-\d{4}-\d{3}/)?.[0] || "";
