@@ -7377,7 +7377,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1851;
+const COE_V = 1852;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -40197,9 +40197,31 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     if(box) box.textContent = 'English for the teacher: translating…';
     T = setTimeout(() => { api('trEn', TOKEN, v).then(r => { const en = String((r && r.en) || '').trim(); const now = String((document.getElementById('eR') || {}).value || '').trim();
       if(now !== v) return; EN = { src: v, en }; const b2 = document.getElementById('eREn'); if(b2) b2.textContent = en ? 'English for the teacher: ' + en : 'No translation · the teacher sees the message as it is'; }).catch(() => {}); }, 600); };
+  window.cxEnReady2156 = function(){ const v = String((document.getElementById('eR') || {}).value || '').trim(); if(!zh(v) || (EN.src === v && EN.en)) return Promise.resolve();
+    clearTimeout(T); const box = document.getElementById('eREn'); if(box) box.textContent = 'English for the teacher: translating…';
+    const go2 = Promise.resolve().then(() => api('trEn', TOKEN, v)).then(r => { const en = String((r && r.en) || '').trim(); if(en){ EN = { src: v, en }; const b2 = document.getElementById('eREn'); if(b2) b2.textContent = 'English for the teacher: ' + en; } }).catch(() => {});
+    return Promise.race([go2, new Promise(z => setTimeout(z, 4000))]); };
   window.cxReason2154 = function(){ const v = String((document.getElementById('eR') || {}).value || '').trim(); if(!v) return '';
     const one = v.replace(/\s*\n+\s*/g, ' ').replace(/\s{2,}/g, ' ');
     return zh(v) && EN.src === v && EN.en ? one + ' · EN: ' + EN.en.replace(/\s*\n+\s*/g, ' ') : one; };
+})();
+</script>
+<script id="x2156">
+/* 2156 · Cancel waits for the English · Password screen from the database */
+(function(){
+  const se = window.sendEdit;
+  if(typeof se === 'function') window.sendEdit = function(i, action, src){ const self = this, a = arguments;
+    if(action === 'cancel' && window.cxEnReady2156 && !window.__cxW2156){ window.__cxW2156 = 1; try{ toast('Translating the message…'); }catch(e){}
+      return window.cxEnReady2156().then(() => { window.__cxW2156 = 0; return se.apply(self, a); }, () => { window.__cxW2156 = 0; return se.apply(self, a); }); }
+    return se.apply(this, arguments); };
+  const base = window.api;
+  if(typeof base === 'function'){ const w = function(fn){ const a = arguments, self = this;
+      if(fn === 'mgmtPwInfo' && typeof FAST_URL !== 'undefined'){ const ac = window.AbortController ? new AbortController() : null, t = ac ? setTimeout(() => ac.abort(), 5000) : 0;
+        return fetch(FAST_URL + '-pw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'info', token: a[1], name: a[2] }), signal: ac ? ac.signal : undefined })
+          .then(x => x.json()).finally(() => clearTimeout(t)).then(r => r && r.ok ? { has: !!r.has, at: r.at || '', by: r.by || '', msg: r.msg } : base.apply(self, a), () => base.apply(self, a)); }
+      return base.apply(this, arguments); };
+    for(const k in base) try{ w[k] = base[k]; }catch(e){}
+    window.api = w; }
 })();
 </script>
 </body>
