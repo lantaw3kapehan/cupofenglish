@@ -13,6 +13,7 @@
 //     → { final: true, msg } when this person's password was set in the app: Google does not know it, so asking Google would only
 //       accept the OLD password. The message is the one Google would give (wrong role / too many tries / wrong password).
 //     → { final: false } otherwise (Google decides as before). Reveals nothing about the password; no password is sent.
+//   v5 (13 Nov): each check is logged in coe_signin_shadow (kind 'fallback', the reason) · step 2.2 shadow check.
 //   POST { op: 'off', token, name }  → Access off in the database too (Google's mgmtAccessOff cannot remove an app-set password):
 //     coe_pw_off = password, sessions and failed tries removed. Same rules as Google's mgmtAccessOff (not yourself, not the President,
 //     a protected account needs the President). Audited.
@@ -53,6 +54,12 @@ Deno.serve(async (req: Request) => {
     const [{ data: live }, { data: p }, { data: u }, { data: f }] = await Promise.all([
       db.from("docs").select("data").eq("key", "sys:live").maybeSingle(), db.from("auth_pw").select("src").eq("email", email).maybeSingle(),
       db.from("auth_users").select("role").eq("email", email).maybeSingle(), db.from("auth_fails").select("n,until").eq("email", email).maybeSingle()]);
+    // v5 (13 Nov, step 2.2 · watch only): why this sign-in was not answered by the database (no e-mail or password is kept apart from
+    //   the e-mail typed; the reason is the same check coe's login makes). Read with: select * from coe_signin_shadow where kind='fallback'.
+    const locked = !!(f && f.until && Date.parse(f.until) > Date.now() && f.n >= 6), roleBad = !!u && (mode === "mgmt" ? !isMgr(u.role || "") : !/teacher/i.test(u.role || ""));
+    const why = !(live && live.data && live.data.login === true) ? "database sign-in off" : !u ? "e-mail not in the app list" : !p ? "no password in the database"
+      : roleBad ? "wrong mode (" + mode + ")" : locked ? "locked · too many tries" : "password did not match";
+    try { await db.from("coe_signin_shadow").insert({ kind: "fallback", email, mode, reason: why, detail: { src: p ? p.src : null, final: !!(p && p.src === "db" && u && live && live.data && live.data.login === true) } }); } catch (_e) { /* */ }
     if (!(live && live.data && live.data.login === true) || !p || p.src !== "db" || !u) return out(no);
     const mgr = isMgr(u.role || ""), pres = mode === "mgmt" && isPres(u.role || "");
     const help = pres ? ', or tap "President: first time or forgot password".' : mode === "mgmt" ? ", or ask the President." : ", or message Ops.";
