@@ -3195,9 +3195,9 @@ if(!p.has){ el.innerHTML = h + '<div class="empty">No pay records for ' + esc(p.
 if(cur) h += `<div class="card" style="margin-top:14px"><div class="mute small">${month} so far</div><div style="font-size:30px;font-weight:700" class="num">${peso(cur.net)}</div>
 <div class="stats" style="margin-top:12px"><div class="stat"><b class="num">${peso(cur.base + cur.lessonPay)}</b><span>${cur.lessonPay ? 'base + lessons' : 'base · from time-ins'}</span></div>
 <div class="stat"><b class="num plus">+${peso(cur.bonus || p.monthBonus || 0)}</b><span>bonus</span></div>
-<div class="stat"><b class="num minus">−${peso((cur.deduct || p.monthDeduct || 0) + cur.gov)}</b><span>deductions + gov</span></div></div>
-<div class="small mute" style="margin-top:8px">Government contributions (SSS, Pag-IBIG, PhilHealth and BIR): ${peso(cur.gov)}${cur.deduct ? '. Other deductions: ' + peso(cur.deduct) : ''}. Tap a month below for the full breakdown.</div></div>`;
-h += `<h2>History</h2>` + (hist.length || cur ? `<table><tr><th>Month</th><th>Base</th><th>Net</th><th>Status</th></tr>${(p.pay||[]).map(x => `<tr onclick='paySheet(${JSON.stringify(x).replace(/'/g,"&#39;")})' style="cursor:pointer"><td>${esc(x.month)}</td><td class="num">${peso(x.base + x.lessonPay)}</td><td class="num"><b>${peso(x.net)}</b></td>
+<div class="stat"><b class="num minus">−${peso((cur.deduct || p.monthDeduct || 0) + (p.govEmployer ? 0 : cur.gov))}</b><span>${p.govEmployer ? 'deductions' : 'deductions + gov'}</span></div></div>
+<div class="small mute" style="margin-top:8px">Government contributions (SSS, Pag-IBIG, PhilHealth and BIR): ${peso(cur.gov)}${p.govEmployer ? ', paid by CupOfEnglish and not taken from your pay' : ''}${cur.deduct ? '. Other deductions: ' + peso(cur.deduct) : ''}. Tap a month below for the full breakdown.</div></div>`;
+h += (window.att2180 ? att2180(p) : '') + `<h2>History</h2>` + (hist.length || cur ? `<table><tr><th>Month</th><th>Base</th><th>Net</th><th>Status</th></tr>${(p.pay||[]).map(x => `<tr onclick='paySheet(${JSON.stringify(x).replace(/'/g,"&#39;")})' style="cursor:pointer"><td>${esc(x.month)}</td><td class="num">${peso(x.base + x.lessonPay)}</td><td class="num"><b>${peso(x.net)}</b></td>
 <td>${paidChip(x)}</td></tr>`).join('')}</table>` : '<div class="empty">No months yet.</div>');
 if((p.adj||[]).length) h += `<h2>Bonuses &amp; deductions <span class="c">90 days</span></h2>${p.adj.map(a => `<div class="li"><div class="grow"><b class="ell" style="display:block">${esc(a.subject||a.type)}${a.cond?' · '+esc(a.cond):''}</b>
 <div class="small mute">${esc(a.date)}${a.detail?' · '+esc(a.detail):''}</div></div><b class="num ${a.plus?'plus':'minus'}">${a.plus?'+'+peso(a.plus):'−'+peso(a.minus)}</b></div>`).join('')}`;
@@ -7379,7 +7379,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1875;
+const COE_V = 1876;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -19971,7 +19971,7 @@ section.sec .gr-kpi{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!imp
   function teacher(){ const v = document.getElementById('v-pay'); if(!v || !D || !D.me) return; const card = [...v.querySelectorAll('.card')].find(c => /^\s*Estimated/.test(c.textContent)) || v.querySelector('.card');   /* 512: the pace bar belongs to the estimate */ const me = D.me, so = nowPayOf(me) + (me.monthBonus || 0) - (me.monthDeduct || 0);
     pace(card, so, D.pay || []); if(!v.querySelector('.pm70')){ const h = [...v.querySelectorAll('h2')].find(x => /^History/.test(x.textContent.trim())); const c = chart(D.pay || [], 't'); if(h && c) h.insertAdjacentHTML('beforebegin', c); } }
   function mine(){ const v = document.getElementById('v-mypay'); if(!v || typeof MYP === 'undefined' || !MYP || !MYP.pay) return; const cur = MYP.pay.find(x => x.m === MYP.month), card = [...v.querySelectorAll('.card')].find(c => /so far/.test(c.textContent)) || null;   /* 2179 */
-    if(cur && card){ const d0 = Math.max(1, now.getDate()), tgt = (num(cur.base) + num(cur.lessonPay)) / d0 * dim + num(cur.bonus) - num(cur.deduct) - num(cur.gov); pace(card, tgt * d0 / dim, MYP.pay.filter(x => x !== cur)); }   /* 2179: earned per day, contributions once */ if(!v.querySelector('.pm70')){ const h = [...v.querySelectorAll('h2')].find(x => /^History/.test(x.textContent.trim())); const c = chart(MYP.pay, 'm'); if(h && c) h.insertAdjacentHTML('beforebegin', c); } }
+    if(cur && card){ const d0 = Math.max(1, now.getDate()), tgt = (num(cur.base) + num(cur.lessonPay)) / d0 * dim + num(cur.bonus) - num(cur.deduct) - (MYP.govEmployer ? 0 : num(cur.gov)); pace(card, tgt * d0 / dim, MYP.pay.filter(x => x !== cur)); }   /* 2179: earned per day, contributions once */ if(!v.querySelector('.pm70')){ const h = [...v.querySelectorAll('h2')].find(x => /^History/.test(x.textContent.trim())); const c = chart(MYP.pay, 'm'); if(h && c) h.insertAdjacentHTML('beforebegin', c); } }
   const _a = window.renderPay; if(_a) window.renderPay = function(){ const r = _a.apply(this, arguments); try{ teacher(); }catch(e){ console.warn('p70', e); } return r; };
   const _b = window.renderMyPay; if(_b) window.renderMyPay = function(){ const r = _b.apply(this, arguments); try{ mine(); }catch(e){ console.warn('p70m', e); } return r; };
 })();
@@ -40553,6 +40553,45 @@ window.tg2168 = function(b){ try{
   const r0 = window.renderMToday; if(typeof r0 === 'function') window.renderMToday = function(){ const r = r0.apply(this, arguments); tidy(); return r; };
   try{ let q = 0; const v = document.getElementById('v-mtoday'); if(v) new MutationObserver(() => { if(q) return; q = 1; setTimeout(() => { q = 0; tidy(); }, 150); }).observe(v, { childList: true, subtree: true }); }catch(e){}
 })();
+</script>
+<style id="css2180">
+.at80{background:#fff;border:1px solid var(--line,#ECEAF2);border-radius:16px;padding:14px 18px;margin-top:14px}
+.at80 h3{margin:0 0 2px;font:600 18px Inter,sans-serif;color:#2B2253}.at80 .sub{font-size:14px;color:#5E5A72;margin-bottom:8px}
+.at80 table{width:100%;border-collapse:collapse;font-size:14px}.at80 th{text-align:left;font-weight:600;color:#5E5A72;font-size:13px;padding:6px 8px;border-bottom:1px solid #ECEAF2}
+.at80 td{padding:7px 8px;border-bottom:1px solid #F3F2F8;color:#2B2253}.at80 td.n{text-align:right;font-variant-numeric:tabular-nums}
+.at80 .ch{display:inline-block;font-size:12px;font-weight:600;border-radius:6px;padding:1px 7px;margin-left:6px}
+.at80 .ch.ok{background:#EEF8F3;color:#1F6E4E}.at80 .ch.late{background:#FDF1EE;color:#A6432E}.at80 .ch.rest{background:#F4F2FD;color:#45399E}.at80 .ch.open{background:#EEF8F9;color:#00737B}
+.at80 details{margin-top:10px}.at80 summary{cursor:pointer;font-weight:600;color:#00737B;font-size:14px}
+.at80 .mo{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:10px}
+.at80 .mo div{background:#F7F6FB;border-radius:10px;padding:8px 10px;font-size:13px;color:#5E5A72}.at80 .mo b{display:block;font-size:15px;color:#2B2253}
+@media(max-width:640px){.at80 .hp{display:none}}
+</style>
+<script id="x2180">
+/* 2180 · My pay › My time-ins */
+window.att2180 = function(p){ try{
+  const A = (p && p.att) || []; if(!A.length) return '';
+  const now = new Date(Date.now() + 8 * 3600e3), ym = now.toISOString().slice(0, 7), today = now.toISOString().slice(0, 10);
+  const E = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const P = v => '₱' + (Math.round((+v || 0) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const isC = /^celine$/i.test(String(p.name || '').trim());
+  const LT = {}; (p.lates || []).forEach(l => { LT[String(l.day).slice(0, 10)] = l; });
+  const row = x => { const d = new Date(x.day + 'T12:00:00+08:00'), wd = d.getUTCDay(), start = wd === 0 ? '10:00' : '13:00', tin = String(x.tin || '');
+    let ch = '';
+    const lt = LT[x.day];
+    if(lt) ch = '<span class="ch late">late ' + (+lt.mins || 0) + ' min' + (lt.waived ? ', waived' : '') + '</span>';
+    else if(isC && wd === 3) ch = '<span class="ch rest">rest day</span>';
+    else if(tin && isC && /^\d{1,2}:\d{2}$/.test(tin)) ch = '<span class="ch ok">on time</span>';
+    if(tin && !x.tout && x.day === today) ch += '<span class="ch open">working now</span>';
+    return '<tr><td>' + E(d.toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' })) + ch + '</td><td class="n">' + E(tin || '—') + '</td><td class="n">' + E(x.tout || '—') + '</td><td class="n hp">' + (+x.hours || 0) + '</td><td class="n">' + ((+x.pay || 0) + (+x.holiday || 0) ? P((+x.pay || 0) + (+x.holiday || 0)) : '—') + '</td></tr>'; };
+  const tbl = L => '<table><tr><th>Day</th><th style="text-align:right">Time in</th><th style="text-align:right">Time out</th><th class="hp" style="text-align:right">Hours</th><th style="text-align:right">Pay</th></tr>' + L.map(row).join('') + '</table>';
+  const cur = A.filter(x => String(x.day).slice(0, 7) === ym), prev = A.filter(x => String(x.day).slice(0, 7) < ym);
+  const late = cur.filter(x => LT[x.day]).length;
+  const M = (p.attMonths || []).map(m => '<div>' + E(new Date(m.m + '-15T12:00:00Z').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })) + '<b>' + m.days + ' days</b>' + (+m.hours || 0) + ' hours · ' + P(m.pay) + '</div>').join('');
+  return '<section class="at80"><h3>My time-ins</h3><div class="sub">' + cur.length + ' day' + (cur.length === 1 ? '' : 's') + ' this month' + (late ? '. ' + late + ' late time-in' + (late === 1 ? '' : 's') + ' by the contract.' : isC ? '. All on time.' : '.') + ' Pay counts up to 8 hours a day.</div>'
+    + (cur.length ? tbl(cur) : '<div class="sub">No time-ins yet this month.</div>')
+    + (prev.length ? '<details><summary>Last month (' + prev.length + ' day' + (prev.length === 1 ? '' : 's') + ')</summary>' + tbl(prev) + '</details>' : '')
+    + (M ? '<div class="mo">' + M + '</div>' : '') + '</section>';
+}catch(e){ return ''; } };
 </script>
 </body>
 </html>
