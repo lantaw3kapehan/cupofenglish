@@ -15,6 +15,9 @@
 //     → { final: false } otherwise (Google decides as before). Reveals nothing about the password; no password is sent.
 //   v5 (13 Nov): each check is logged in coe_signin_shadow (kind 'fallback', the reason) · step 2.2 shadow check.
 // v6 (13 Nov): op 'info' {token,name} = Password · has / set on / by (Google's mgmtPwInfo, from the database); the check log is capped at 300 an hour.
+// v7 (13 Nov, 2163 · sign-in steps 3–6, Misty "do all now"): op 'email' {token, name, email} = teacher e-mail in the database
+//   (docs sys:live.emailDb; off → fallback); 'off' also blocks the e-mail (Google can't add it back) and, with resign, makes the staff
+//   row inactive; 'set' unblocks; 'check' with sys:live.loginFinal answers every "no" itself (Google is no longer asked).
 //   POST { op: 'off', token, name }  → Access off in the database too (Google's mgmtAccessOff cannot remove an app-set password):
 //     coe_pw_off = password, sessions and failed tries removed. Same rules as Google's mgmtAccessOff (not yourself, not the President,
 //     a protected account needs the President). Audited.
@@ -62,7 +65,11 @@ Deno.serve(async (req: Request) => {
       : roleBad ? "wrong mode (" + mode + ")" : locked ? "locked · too many tries" : "password did not match";
     try { const { count } = await db.from("coe_signin_shadow").select("id", { count: "exact", head: true }).eq("kind", "fallback").gte("at", new Date(Date.now() - 3600e3).toISOString());
       if ((count || 0) < 300) await db.from("coe_signin_shadow").insert({ kind: "fallback", email, mode, reason: why, detail: { src: p ? p.src : null, final: !!(p && p.src === "db" && u && live && live.data && live.data.login === true) } }); } catch (_e) { /* */ }   // v6: at most 300 a hour
-    if (!(live && live.data && live.data.login === true) || !p || p.src !== "db" || !u) return out(no);
+    const fin = !!(live && live.data && live.data.loginFinal === true && live.data.login === true);   // v7: the database answers every "no"
+    if (fin && !u) { const { data: bl } = await db.from("auth_blocked").select("email").eq("email", email).maybeSingle();
+      return out({ ok: false, final: true, msg: bl ? "Your app access was removed. Please message Ops." : "This email is not registered yet. Please message Ops." }); }
+    if (fin && !p) return out({ ok: false, final: true, msg: mode === "mgmt" ? (isPres(u.role || "") ? 'No password yet. Tap "President: first time or forgot password" to set one.' : "No password yet. Please ask the President for your password.") : "No password yet. Please message Ops for your password." });
+    if (!(live && live.data && live.data.login === true) || !p || (p.src !== "db" && !fin) || !u) return out(no);
     const mgr = isMgr(u.role || ""), pres = mode === "mgmt" && isPres(u.role || "");
     const help = pres ? ', or tap "President: first time or forgot password".' : mode === "mgmt" ? ", or ask the President." : ", or message Ops.";
     if (mode === "mgmt" && !mgr) return out({ ok: false, final: true, msg: "This Gmail has teacher access only. Choose Teacher." });
@@ -71,7 +78,7 @@ Deno.serve(async (req: Request) => {
     return out({ ok: false, final: true, msg: "Wrong password. Try again" + help });
   }
 
-  if (b.op !== "set" && b.op !== "off" && b.op !== "info") return out({ ok: false, error: "unknown op" }, 400);
+  if (!/^(set|off|info|email)$/.test(String(b.op))) return out({ ok: false, error: "unknown op" }, 400);
   const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
   const { data: s } = await db.from("app_sessions").select("email,name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
   if (!s || new Date(s.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
@@ -87,6 +94,21 @@ Deno.serve(async (req: Request) => {
   if (b.email) t = (U || []).find((x: any) => String(x.email).toLowerCase() === String(b.email).trim().toLowerCase()) || null;
   else t = (U || []).find((x: any) => nm(x.name) === nm(b.name)) || null;
   const who = String(b.name || b.email || "");
+
+  if (b.op === "email") {   // v7 · = Google's setTeacherEmail, in the database (staff.email + auth_users; the password moves with the e-mail)
+    const { data: live0 } = await db.from("docs").select("data").eq("key", "sys:live").maybeSingle();
+    if (!(live0 && live0.data && live0.data.emailDb === true)) return out({ ok: false, fallback: true });
+    const em = String(b.email || "").trim().toLowerCase();
+    if (em && !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(em)) return out({ ok: false, msg: "That email does not look right." });
+    const { data: SS } = await db.from("staff").select("id,name,first_name,status,email,role");
+    const st = (SS || []).find((x: any) => /active/i.test(x.status || "") && !/inactive/i.test(x.status || "") && (nm(x.name) === nm(b.name) || nm(x.first_name) === nm(b.name)));
+    if (!st) return out({ ok: false, msg: who + " is not in the staff list." });
+    if ((/^(ops|admin)$/i.test(String(st.role || "")) || MANAGERS.includes(String(st.email || "").toLowerCase())) && !isPres(me.role)) return out({ ok: false, msg: "Only the President can change this account's e-mail." });
+    const { data: r, error } = await db.rpc("coe_auth_set_email", { p_staff: st.id, p_email: em, p_by: byEmail });
+    if (error || !r || !(r as any).ok) return out({ ok: false, msg: (r as any)?.msg || "Not saved · try again" });
+    await audit(em || String(st.email || ""), st.name, "email", "ok" + ((r as any).pwMoved ? " · password moved" : ""));
+    return out({ ok: true, note: st.name + (em ? " can sign in with " + em + ((r as any).pwMoved ? " (same password)" : "") : " removed from the app") + " · " + (me.name || "") });
+  }
 
   if (b.op === "info") {   // v6 · = Google's mgmtPwInfo, from the database (it knows app-set passwords too)
     if (!t) return out({ ok: true, has: false, msg: "No app email for " + who + " yet. Add it in the APP EMAIL column first." });
@@ -110,7 +132,7 @@ Deno.serve(async (req: Request) => {
     if (email === byEmail) return out({ ok: false, msg: "You cannot remove your own access." });
     if (isPres(t.role)) return out({ ok: false, msg: "The President account cannot be removed." });
     if ((isMgr(t.role) || MANAGERS.includes(email)) && !isPres(me.role)) return out({ ok: false, msg: "Only the President can remove this account." });
-    const { data: r, error } = await db.rpc("coe_pw_off", { p_email: email });
+    const { data: r, error } = await db.rpc("coe_pw_off", { p_email: email, p_by: byEmail, p_resign: !!b.resign });
     if (error) { await audit(email, t.name, "off", "failed"); return out({ ok: false, msg: "Not removed in the database. Try again." }, 500); }
     await audit(email, t.name, "off", "ok");
     return out({ ok: true, ...(r as any) });
@@ -120,6 +142,11 @@ Deno.serve(async (req: Request) => {
   if (!(live && live.data && live.data.pwDb === true)) return out({ ok: false, fallback: true });
   const pw = String(b.password == null ? "" : b.password), change = !!(b.change || b.current);
   if (pw.length > 200) return out({ ok: false, msg: "Too long." });
+  if (!t) {   // v7: access was removed (Google's copy then drops the person) → the staff row still has the e-mail: give access back
+    const { data: SS } = await db.from("staff").select("id,name,first_name,status,email");
+    const st = (SS || []).find((x: any) => x.email && /active/i.test(x.status || "") && !/inactive/i.test(x.status || "") && (nm(x.name) === nm(b.name) || nm(x.first_name) === nm(b.name) || String(x.email).toLowerCase() === String(b.email || "").toLowerCase()));
+    if (st) { const { data: r2 } = await db.rpc("coe_auth_set_email", { p_staff: st.id, p_email: st.email, p_by: byEmail });
+      if (r2 && (r2 as any).ok) { const { data: u2 } = await db.from("auth_users").select("email,name,role").eq("email", String(st.email).toLowerCase()).maybeSingle(); t = u2; } } }
   if (!t) { await audit("", who, "set", "refused · no app e-mail"); return out({ ok: false, msg: "No app email for " + who + " yet. Add it in the APP EMAIL column first." }); }
   const email = String(t.email).toLowerCase(), prot = isMgr(t.role) || MANAGERS.includes(email);
   if (prot && !isPres(me.role)) { await audit(email, t.name, "set", "refused · President only"); return out({ ok: false, msg: "Only the President can set this password." }); }
@@ -128,6 +155,7 @@ Deno.serve(async (req: Request) => {
   const bad = pwBad(email, pw); if (bad) { await audit(email, t.name, change ? "change" : "set", "refused · weak password"); return out({ ok: false, msg: bad }); }
   const { data: sec } = await db.from("auth_secret").select("v").eq("k", "pepper").maybeSingle();
   if (!sec || !sec.v) return out({ ok: false, fallback: true });
+  try { await db.rpc("coe_auth_unblock", { p_email: email }); } catch (_e) { /* */ }   // v7: a new password gives access back
   const salt = crypto.randomUUID(), hash = await pwHash(salt, pw, sec.v), now = new Date();
   const { error } = await db.from("auth_pw").upsert({ email, salt, hash, at: now.getTime(), updated_at: now.toISOString(), src: "db", set_at: now.toISOString(), set_by: byEmail }, { onConflict: "email" });
   if (error) { await audit(email, t.name, change ? "change" : "set", "failed · not saved"); return out({ ok: false, msg: "Not saved. Try again." }, 500); }
