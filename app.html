@@ -2166,7 +2166,8 @@ const em = $('em').value.trim().toLowerCase(), pw = $('pw').value; if(!em) retur
 if(LG_BUSY) return; LG_BUSY = true; toast('Signing in…');
 let r0 = null; try{ const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 4000) : 0;
   r0 = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'login', email: em, pw: pw, mode: MODE }), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid)); }catch(e){ r0 = null; }
-const r = r0 && r0.ok && r0.token ? r0 : await api('passwordLogin', em, pw, MODE).catch(()=>({ok:false,msg:'No connection. Check your internet and try again.'})); LG_BUSY = false;   /* 14 Oct night: database first, Google decides otherwise */
+let r1 = null; if(r0 && !r0.ok && r0.fallback){ try{ const ac1 = window.AbortController ? new AbortController() : null, t1 = ac1 ? setTimeout(() => ac1.abort(), 4000) : 0; r1 = await fetch(FAST_URL + '-pw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'check', email: em, mode: MODE }), signal: ac1 ? ac1.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(t1)); }catch(e){ r1 = null; } }   /* 2153 */
+  const r = r0 && r0.ok && r0.token ? r0 : r1 && r1.final ? { ok: false, msg: r1.msg } : await api('passwordLogin', em, pw, MODE).catch(()=>({ok:false,msg:'No connection. Check your internet and try again.'})); LG_BUSY = false;   /* 14 Oct night: database first, Google decides otherwise */
 if(!r || !r.ok) return toast(r && r.msg || 'Not signed in');
 store('set','coe.em.'+MODE, em); $('pw').value = '';
 TOKEN = r.token; store('set', KEY_T, TOKEN); hide('login'); show('app'); skeleton(); reload(false);
@@ -2188,6 +2189,8 @@ const rs = confirm('Also mark ' + who + ' as Resigned in MASTERLIST?\n\nOK = yes
 if(window._accBusy) return; window._accBusy = 1; toast('Removing access…');
 const r = await api('mgmtAccessOff', TOKEN, name, rs).catch(e => ({ ok:false, msg:String(e && e.message || e) })); window._accBusy = 0;
 if(!r || !r.ok) return toast(r && r.msg || 'Not removed');
+let dbOff = null; try{ dbOff = await fetch(FAST_URL + '-pw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'off', token: TOKEN, name: name }) }).then(x => x.json()); }catch(e){ dbOff = null; }   /* 2153 */
+  if(!dbOff || !dbOff.ok) alert('Google removed the access, but the database did not answer.\n\nPlease tap Remove access again so the app password is removed too.');
 $('sheetBody').innerHTML = `<h1>Access removed · ${esc(who)}</h1><div class="mini">Signed out on ${r.signedOut} phone${r.signedOut === 1 ? '' : 's'} · password removed${r.resigned ? ' · marked Resigned in MASTERLIST' : ''}.${r.rerr ? '<br>Could not change STATUS: ' + esc(r.rerr) + ' · please change it by hand.' : ''}</div><p class="small mute">Their history stays. To bring them back: set STATUS to active (if changed) and save a new password.</p><button class="btn ghost block" style="margin-top:10px" onclick="${mg ? 'mgPwList()' : 'closeSheet()'}">Done</button>`;
 try{ if(typeof loadMgmt === 'function') loadMgmt(true); }catch(e){}
 }
@@ -7373,7 +7376,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1848;
+const COE_V = 1849;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
