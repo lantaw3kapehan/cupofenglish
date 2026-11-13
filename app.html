@@ -7379,7 +7379,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1879;
+const COE_V = 1880;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -26653,7 +26653,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     const ord = ['home', 'monitor', 'mtoday', 'schedule', 'msgs', 'chat', 'astudents', 'trials', 'teachers', 'payroll'];
     NAV_M.sort((a, b) => { const ia = ord.indexOf(a[0]), ib = ord.indexOf(b[0]); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); }); }
   const has = v => v === 'expenses' || v === 'gov' || v === 'finov' || (v === 'wallets' && typeof isPres === 'function' && isPres()) || (v === 'forecast' && typeof isPres === 'function' && isPres()) || (v === 'finbrief' && typeof isPres === 'function' && isPres()) || KNOWN[v] || NAV_M.some(x => x[0] === v) || (v === 'mypay' && typeof MYP !== 'undefined' && MYP && MYP.has);
-  function tabs(v){ const g = GOF[v]; if(!g) return ''; const L = g.views.filter(([k]) => k === v || has(k)); if(L.length < 2) return '';
+  function tabs(v){ const g = GOF[v]; if(!g) return ''; const L = g.views.filter(([k]) => (k === v || has(k)) && !(k === 'money' && typeof isPres === 'function' && !isPres())); if(L.length < 2) return '';
     return '<div class="mo-tabs grp-tabs" data-g="' + g.nav + '">' + L.map(([k, l]) => '<button class="' + (k === v ? 'on' : '') + '" onclick="go(\'' + k + '\')">' + l + '</button>').join('') + '</div>'; }
   function strip(v){ const el = $('v-' + v); if(!el || !isM()) return; const h = tabs(v); const cur = el.querySelector(':scope > .grp-tabs');
     if(!h){ if(cur) cur.remove(); return; } if(cur){ __oh(cur, h); if(el.firstElementChild !== el.querySelector(':scope > .grp-tabs')) el.insertBefore(el.querySelector(':scope > .grp-tabs'), el.firstChild); return; }
@@ -40623,10 +40623,12 @@ window.att2180 = function(p){ try{
     return '<div class="fo81">'
       + '<div class="c pay"><div class="t">Payroll<span class="st ' + (payLeft ? 'todo' : 'ok') + '">' + (payLeft ? payLeft + ' to pay' : 'All paid') + '</span></div><div class="big">' + n(x.payPaid) + ' of ' + n(x.payPeople) + '<span>' + pm + ' pay released</span></div><p>' + n(x.payVerified) + ' teacher' + (+x.payVerified === 1 ? ' has' : 's have') + ' checked and verified their pay.</p><button type="button" onclick="go(\'payroll\')">Open Payroll</button></div>'
       + '<div class="c gov"><div class="t">Government<span class="st ' + (govPaid ? 'ok' : 'todo') + '">' + (govPaid ? 'Paid' : 'Due ' + (x.govDue || '')) + '</span></div><div class="big">' + (gov.month || ML(x.month)) + '</div><p>' + (govPaid ? 'SSS, Pag-IBIG, PhilHealth and BIR were paid' + (gov.paid_on ? ' on ' + pd(gov.paid_on) : '') + '.' : 'SSS, Pag-IBIG, PhilHealth and BIR are due on ' + (x.govDue || 'the 15th') + '. Record the payment when it is done.') + '</p><button type="button" onclick="go(\'gov\')">Open Government</button></div>'
-      + '<div class="c sal"><div class="t">Payments<span class="st ' + (fix.length ? 'todo' : 'ok') + '">' + (fix.length ? fix.length + ' to check' : 'All in order') + '</span></div><div class="big">' + n(x.sales) + '<span>recorded in ' + (x.month || '') + '</span></div><p>' + n(x.salesWeek) + ' in the last 7 days. ' + n(x.confirmations) + ' payment confirmation' + (+x.confirmations === 1 ? '' : 's') + ' issued this month.' + (fix.length ? ' ' + fix.join(' ') : '') + '</p><button type="button" onclick="go(\'money\')">Open Sales &amp; costs</button></div>'
+      + '<div class="c sal"><div class="t">Payments<span class="st ' + (fix.length ? 'todo' : 'ok') + '">' + (fix.length ? fix.length + ' to check' : 'All in order') + '</span></div><div class="big">' + n(x.sales) + '<span>recorded in ' + (x.month || '') + '</span></div><p>' + n(x.salesWeek) + ' in the last 7 days. ' + n(x.confirmations) + ' payment confirmation' + (+x.confirmations === 1 ? '' : 's') + ' issued this month.' + (fix.length ? ' ' + fix.join(' ') : '') + '</p><button type="button" onclick="go(\'expenses\');fxK(\'in\')">Open sales</button></div>'
       + '<div class="c exp"><div class="t">Expenses</div><div class="big">' + n(x.expenses) + '<span>recorded in ' + (x.month || '') + '</span></div><p>Record each expense with its receipt on the day it is paid.</p><button type="button" onclick="go(\'expenses\')">Open Transactions</button></div>'
       + '</div>';
   };
+  (function w2184(){ if(typeof window.go !== 'function' || typeof isPres !== 'function') return setTimeout(w2184, 300); if(window.go.x2184) return; const g0 = window.go;
+    const g1 = function(v){ if(v === 'money' && typeof isPres === 'function' && !isPres()){ const r = g0.apply(this, ['expenses'].concat([].slice.call(arguments, 1))); return r; } return g0.apply(this, arguments); }; g1.x2184 = 1; window.go = g1; })();
   window.fo2181Load = function(){ if(busy || (F && Date.now() - at < 120000)) return; busy = 1;
     fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-ops', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'finov' }) })
       .then(r => r.json()).then(r => { busy = 0; if(r && r.ok && r.data){ F = r.data; at = Date.now(); const v = document.getElementById('v-finov'); const box = v && v.querySelector('.fo81'); if(box) box.outerHTML = fo2181Html(); } }).catch(() => { busy = 0; }); };
