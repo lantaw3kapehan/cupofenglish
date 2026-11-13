@@ -14,6 +14,7 @@
 //       accept the OLD password. The message is the one Google would give (wrong role / too many tries / wrong password).
 //     → { final: false } otherwise (Google decides as before). Reveals nothing about the password; no password is sent.
 //   v5 (13 Nov): each check is logged in coe_signin_shadow (kind 'fallback', the reason) · step 2.2 shadow check.
+// v6 (13 Nov): op 'info' {token,name} = Password · has / set on / by (Google's mgmtPwInfo, from the database); the check log is capped at 300 an hour.
 //   POST { op: 'off', token, name }  → Access off in the database too (Google's mgmtAccessOff cannot remove an app-set password):
 //     coe_pw_off = password, sessions and failed tries removed. Same rules as Google's mgmtAccessOff (not yourself, not the President,
 //     a protected account needs the President). Audited.
@@ -59,7 +60,8 @@ Deno.serve(async (req: Request) => {
     const locked = !!(f && f.until && Date.parse(f.until) > Date.now() && f.n >= 6), roleBad = !!u && (mode === "mgmt" ? !isMgr(u.role || "") : !/teacher/i.test(u.role || ""));
     const why = !(live && live.data && live.data.login === true) ? "database sign-in off" : !u ? "e-mail not in the app list" : !p ? "no password in the database"
       : roleBad ? "wrong mode (" + mode + ")" : locked ? "locked · too many tries" : "password did not match";
-    try { await db.from("coe_signin_shadow").insert({ kind: "fallback", email, mode, reason: why, detail: { src: p ? p.src : null, final: !!(p && p.src === "db" && u && live && live.data && live.data.login === true) } }); } catch (_e) { /* */ }
+    try { const { count } = await db.from("coe_signin_shadow").select("id", { count: "exact", head: true }).eq("kind", "fallback").gte("at", new Date(Date.now() - 3600e3).toISOString());
+      if ((count || 0) < 300) await db.from("coe_signin_shadow").insert({ kind: "fallback", email, mode, reason: why, detail: { src: p ? p.src : null, final: !!(p && p.src === "db" && u && live && live.data && live.data.login === true) } }); } catch (_e) { /* */ }   // v6: at most 300 a hour
     if (!(live && live.data && live.data.login === true) || !p || p.src !== "db" || !u) return out(no);
     const mgr = isMgr(u.role || ""), pres = mode === "mgmt" && isPres(u.role || "");
     const help = pres ? ', or tap "President: first time or forgot password".' : mode === "mgmt" ? ", or ask the President." : ", or message Ops.";
@@ -69,7 +71,7 @@ Deno.serve(async (req: Request) => {
     return out({ ok: false, final: true, msg: "Wrong password. Try again" + help });
   }
 
-  if (b.op !== "set" && b.op !== "off") return out({ ok: false, error: "unknown op" }, 400);
+  if (b.op !== "set" && b.op !== "off" && b.op !== "info") return out({ ok: false, error: "unknown op" }, 400);
   const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
   const { data: s } = await db.from("app_sessions").select("email,name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
   if (!s || new Date(s.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
@@ -85,6 +87,22 @@ Deno.serve(async (req: Request) => {
   if (b.email) t = (U || []).find((x: any) => String(x.email).toLowerCase() === String(b.email).trim().toLowerCase()) || null;
   else t = (U || []).find((x: any) => nm(x.name) === nm(b.name)) || null;
   const who = String(b.name || b.email || "");
+
+  if (b.op === "info") {   // v6 · = Google's mgmtPwInfo, from the database (it knows app-set passwords too)
+    if (!t) return out({ ok: true, has: false, msg: "No app email for " + who + " yet. Add it in the APP EMAIL column first." });
+    const email = String(t.email).toLowerCase();
+    const fmt = (d: Date, time: boolean) => d.toLocaleString("en-GB", { timeZone: "Asia/Manila", day: "numeric", month: "short", year: "numeric", ...(time ? { hour: "2-digit", minute: "2-digit", hour12: false } : {}) }).replace(",", " ·").replace(/ (\d{4}) · /, " $1 · ");
+    const { data: p } = await db.from("auth_pw").select("at,set_at,set_by,src").eq("email", email).maybeSingle();
+    if (!p) {
+      const { data: off } = await db.from("coe_pw_audit").select("*").eq("for_email", email).eq("action", "off").eq("result", "ok").order("id", { ascending: false }).limit(1);
+      const o = (off || [])[0], oat = o && (o.at || o.created || o.ts);
+      return out(o ? { ok: true, has: false, msg: "Access was removed" + (oat ? " on " + fmt(new Date(oat), false) : "") + ". Saving a new password gives access back." } : { ok: false, fallback: true });
+    }
+    if (p.src !== "db") return out({ ok: false, fallback: true });   // a Google password: Google's answer (it knows who set it)
+    const when = p.set_at ? new Date(p.set_at) : p.at ? new Date(Number(p.at)) : null;
+    const byE = String(p.set_by || "").toLowerCase(), byU = byE && byE !== email ? (U || []).find((x: any) => String(x.email).toLowerCase() === byE) : null;
+    return out({ ok: true, has: true, at: when ? fmt(when, true) : "", by: byU ? byU.name : (byE && byE !== email ? byE : "") });
+  }
 
   if (b.op === "off") {   // v4 · = Google's mgmtAccessOff rules
     if (!t) { await audit("", who, "off", "nothing to remove · not in the app list"); return out({ ok: true, pw: 0, sessions: 0 }); }
