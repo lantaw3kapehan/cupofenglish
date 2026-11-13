@@ -2,6 +2,10 @@
 // Teacher:  POST { token, op: "mine" }                         → { ok, flag: { id, status, contract, src, at } | null }
 //           POST { token, op: "answer", id, how }              → how = "cable" (connected the LAN cable, new time-in picture: unlocked, Operations re-checks) | "down" / "approval" (a request: I'm in stays locked until Operations allows)
 //           POST { token, op: "browser" }                       → the browser itself says Wi-Fi (Android Chrome): flag today
+//           POST { token, op: "shots" }                         → v2: today's picture checks for me [{ at, kind, net }] (the label under time-in / I'm in)
+// v2 (13 Nov, 2157 · Misty: "we can turn the lock on now" · "only management can unlock it until they explain" · "warning as per contract …
+//   systematic and undisputable"): "recheck" (the teacher says the cable is connected) keeps I'm in LOCKED; only management unlocks
+//   (close: cleared / confirmed). "mine" also returns the picture (proof), shown to the teacher with the warning.
 // Management: POST { token, op: "flag", teacher, proof? }      → Operations saw the Wi-Fi icon in the time-in picture
 //             POST { token, op: "list" }                        → today's (and still open) flags
 //             POST { token, op: "close", id, result, note? }    → result = "confirmed" (a lesson was taught on Wi-Fi; the case is opened in the app) | "cleared" (not Wi-Fi, or allowed today: unlocks I'm in)
@@ -30,9 +34,13 @@ Deno.serve(async (req: Request) => {
   };
   if (!mgmt) {
     if (op === "mine") {
-      const { data } = await db.from("coe_wifi").select("id,status,contract,src,flagged_at,answer").ilike("teacher", me).eq("day", today()).maybeSingle();
+      const { data } = await db.from("coe_wifi").select("id,status,contract,src,flagged_at,answer,proof").ilike("teacher", me).eq("day", today()).maybeSingle();
       const { data: ct } = await db.rpc("coe_wifi_contract", { p_teacher: me });
-      return out({ ok: true, contract: ct || "2025", flag: data && (data.status === "warned" || data.status === "asked") ? { id: data.id, status: data.status, contract: data.contract, src: data.src, at: data.flagged_at } : null });
+      return out({ ok: true, contract: ct || "2025", flag: data && /^(warned|asked|recheck)$/.test(data.status) ? { id: data.id, status: data.status, contract: data.contract, src: data.src, at: data.flagged_at, answer: data.answer, proof: data.proof } : null });
+    }
+    if (op === "shots") {   // v2: my picture checks today
+      const { data } = await db.from("coe_shot_read").select("created_at,kind,net,read_at,log_id").ilike("teacher", me).eq("day", today()).order("created_at", { ascending: true }).limit(40);
+      return out({ ok: true, shots: (data || []).map((x: any) => ({ at: x.created_at, kind: x.kind, net: x.net === "error" ? null : x.net, what: String(x.log_id || "").split("|")[3] || "" })) });
     }
     if (op === "browser") {
       const { data, error } = await db.rpc("coe_wifi_flag", { p_teacher: me, p_src: "browser", p_proof: null, p_by: "System" });
@@ -46,7 +54,7 @@ Deno.serve(async (req: Request) => {
       if (!f) return out({ ok: false, error: "Not found" }, 404);
       if (how === "approval" && f.contract !== "addendum") return out({ ok: false, error: "not allowed" }, 400);
       await db.from("coe_wifi").update({ status: how === "cable" ? "recheck" : "asked", answer: how, answered_at: new Date().toISOString() }).eq("id", id);
-      const said = how === "cable" ? "connected the LAN cable and sent a new time-in picture · check it" : how === "down" ? "says the cable internet is down · asks to teach on backup (Clause 3.2A) · I'm in is locked until you allow it" : "says they have written approval for Wi-Fi today · I'm in is locked until you allow it";
+      const said = how === "cable" ? "says the LAN cable is connected and sent a new time-in picture · check it, then unlock I'm in (To do › Fix these)" : how === "down" ? "says the cable internet is down · asks to teach on backup (Clause 3.2A) · I'm in is locked until you allow it" : "says they have written approval for Wi-Fi today · I'm in is locked until you allow it";
       await pushMgmt("Wi-Fi · Teacher " + me + " answered", "Teacher " + me + " " + said + " · " + hm() + " · To do › Fix these");
       return out({ ok: true });
     }
