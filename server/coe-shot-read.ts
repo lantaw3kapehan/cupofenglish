@@ -6,6 +6,9 @@
 // Runs from the database's own queue (coe_shot_claim), so calling it needs no sign-in and can do no harm. Needs the edge-function
 // secret ANTHROPIC_API_KEY; without it, it does nothing (returns off: true). Model: Claude Haiku 5.5 (vision).
 // Trial mode until the secret COE_SHOT_LIVE = 1: a Wi-Fi reading only tells Operations (to check how accurate the reading is first).
+// v3 (13 Nov, credit on via Misty's plan): Haiku 5.5 thinks first, so max_tokens 120 gave no answer: now 1500, text blocks only,
+//   and the prompt describes the Windows LAN (monitor + cable) and Wi-Fi (arcs) icons exactly. Tested read-only on 14 of 12 Nov's
+//   pictures: 14/14 right (13 cable, 1 Wi-Fi: April 17:21). About 2,000 tokens in + 300 out = about $0.00035 a picture.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -14,23 +17,26 @@ const KEY = Deno.env.get("ANTHROPIC_API_KEY") || "", MODEL = Deno.env.get("COE_S
 const out = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json" } });
 const b64 = (u: Uint8Array) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
 const ASK = `This is a screenshot of a teacher's whole computer screen, taken when she starts an online class.
-Look ONLY at the network status icon in the system tray / taskbar (Windows, usually bottom right next to the clock) or the menu bar (Mac, top right).
-Decide how the computer is connected:
-- "wifi": a Wi-Fi icon is shown (fan/arc-shaped signal bars, Windows or Mac), or a Wi-Fi network name is visible as the active connection.
-- "cable": a wired / Ethernet / LAN icon is shown (Windows: a small monitor with a cable, or a globe with no Wi-Fi arcs), or Mac with no Wi-Fi icon in the menu bar.
-- "unclear": the taskbar / menu bar is hidden, cut off, too small to read, or you cannot see a network icon.
-Do not guess. If in doubt, answer "unclear".
+Look ONLY at the network status icon. On Windows it is in the taskbar at the bottom right, just left of the volume (speaker) icon and the clock. On a Mac it is in the menu bar at the top right.
+What the icons look like:
+- Windows LAN cable (Ethernet): a small computer monitor / screen with a short cable or plug under it (sometimes a globe). This means "cable".
+- Windows Wi-Fi: a fan of curved arcs (like a quarter circle of signal waves), no monitor. This means "wifi".
+- Mac: a fan of curved arcs in the menu bar means "wifi"; no arcs means "cable".
+Answer:
+- "cable" if you see the monitor-with-cable icon next to the speaker icon.
+- "wifi" if you see the curved-arcs Wi-Fi icon there.
+- "unclear" only if the taskbar / menu bar is hidden, cut off or covered, so you cannot see the network icon at all.
 Reply with JSON only: {"net":"wifi"|"cable"|"unclear","os":"windows"|"mac"|"other","why":"<max 15 words>"}`;
 async function readOne(bytes: Uint8Array, mime: string) {
-  const ac = new AbortController(), t = setTimeout(() => ac.abort(), 25000);
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), 40000);
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", signal: ac.signal,
       headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 120, messages: [{ role: "user", content: [
+      body: JSON.stringify({ model: MODEL, max_tokens: 1500, messages: [{ role: "user", content: [
         { type: "image", source: { type: "base64", media_type: mime, data: b64(bytes) } }, { type: "text", text: ASK }] }] }) });
     const j = await r.json();
     if (!r.ok) return { net: "error", why: String(j?.error?.message || r.status).slice(0, 160) };
-    const txt = String((j.content || []).map((c: any) => c.text || "").join("")), m = txt.match(/\{[\s\S]*\}/);
+    const txt = String((j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("")), m = txt.match(/\{[^{}]*"net"[^{}]*\}/);
     const o = m ? JSON.parse(m[0]) : {}; const net = /^(wifi|cable|unclear)$/.test(o.net) ? o.net : "unclear";
     return { net, os: String(o.os || ""), why: String(o.why || "").slice(0, 160), tokens: j.usage || null };
   } catch (e) { return { net: "error", why: String((e as Error)?.message || e).slice(0, 160) }; }
