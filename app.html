@@ -7379,7 +7379,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1870;
+const COE_V = 1871;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -22475,12 +22475,14 @@ function draw(){
   const a = document.getElementById('wlA'); if(a && !F.focused && innerWidth > 700){ a.focus(); F.focused = 1; } }
 window.wlLive = () => { keep(); const el = document.getElementById('wlAfter'); if(el) el.innerHTML = after(); };
 window.wlForm = async kind => {
-  F = { kind, wallet: 'Alipay' }; draw();
+  F = { kind, wallet: kind === 'remit' ? 'CCB' : 'Alipay' }; draw();   /* 2175 */
   try{ await load(); window.wlLive(); }catch(x){} };
 window.wlSave = async () => {
   keep(); const b = document.getElementById('wlGo'); const a = num(F.wlA);
   if(F.kind !== 'check' && !a) return msg('Type the amount in ¥.');
   if(F.kind === 'check' && (F.wlA == null || String(F.wlA).trim() === '')) return msg('Type the balance the app shows.');
+  if(!F.edit && F.kind !== 'check' && F.kind !== 'in'){ try{ const fee0 = F.kind === 'remit' ? num(F.wlFee != null ? F.wlFee : 50) : F.kind === 'transfer' ? num(F.wlFee) : 0, nb0 = (+W(F.wallet).balance || 0) - a - fee0;   /* 2175 */
+    if(nb0 < -0.005 && !confirm(F.wallet + ' would go below zero (¥' + n2(nb0) + ').\n\nIs this the right wallet? A remittance usually leaves from CCB after a transfer.\n\nOK = save anyway · Cancel = go back and change it')) return; }catch(x){} }
   b.disabled = true; b.textContent = 'Saving…';
   try{
     const r = await call('add', { kind: F.kind, wallet: F.wallet, to: F.to, day: F.wlD || today(), cny: a, fee: F.kind === 'remit' ? num(F.wlFee != null ? F.wlFee : 50) : F.kind === 'transfer' ? num(F.wlFee) : 0, php: num(F.wlP), note: F.wlN || '' });
