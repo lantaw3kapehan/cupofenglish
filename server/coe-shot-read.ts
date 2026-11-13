@@ -15,7 +15,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-const LIVE = Deno.env.get("COE_SHOT_LIVE") === "1";   // trial first: without it, a Wi-Fi reading only tells Operations (no lock)
+const LIVE0 = Deno.env.get("COE_SHOT_LIVE") === "1";   // trial first: without it, a Wi-Fi reading only tells Operations (no lock)
+// v5 (13 Nov, 2157 · Misty "we can turn the lock on now"): live = the secret OR docs sys:live.shotLive = true (switch without a deploy)
 const KEY = Deno.env.get("ANTHROPIC_API_KEY") || "", MODEL = Deno.env.get("COE_SHOT_MODEL") || "claude-haiku-5-5";
 const out = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json" } });
 const b64 = (u: Uint8Array) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
@@ -49,6 +50,8 @@ async function readOne(bytes: Uint8Array, mime: string) {
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return out({ ok: false }, 405);
   if (!KEY) return out({ ok: false, off: true });
+  const { data: SL } = await db.from("docs").select("data").eq("key", "sys:live").maybeSingle();
+  const LIVE = LIVE0 || !!(SL && (SL as any).data && (SL as any).data.shotLive === true);
   const { data: L, error } = await db.rpc("coe_shot_claim", { p_n: 6 });
   if (error) return out({ ok: false, error: "db" }, 500);
   const done: any[] = [];
