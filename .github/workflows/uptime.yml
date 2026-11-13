@@ -1,0 +1,69 @@
+name: Uptime alarm
+# 13 Nov 2026 (Misty: outage safeguards). Every 5 minutes GitHub checks, from outside our own systems:
+#   1) the app page answers, 2) the database answers (coe-health), 3) last night's backup is less than 30 hours old.
+# A failure opens ONE issue assigned to lantaw3kapehan, so GitHub emails / pushes Misty. When it works again the issue is closed with a note.
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions:
+  issues: write
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check the app and the database
+        id: c
+        run: |
+          check() {
+            app=$(curl -s -o /tmp/app.html -w '%{http_code}' --max-time 20 https://app.cupofenglishatph.com/ || echo 000)
+            grep -q 'CupOfEnglish' /tmp/app.html 2>/dev/null || app="$app (page empty)"
+            hc=$(curl -s -o /tmp/h.json -w '%{http_code}' --max-time 20 -X POST https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-health || echo 000)
+            dbok=$(jq -r '.ok // false' /tmp/h.json 2>/dev/null || echo false)
+          }
+          check
+          if [ "$app" != "200" ] || [ "$dbok" != "true" ]; then sleep 45; check; fi   # one retry so a short blip does not alarm
+          age=$(jq -r '.backupAgeHours // empty' /tmp/h.json 2>/dev/null || true)
+          echo "app=$app" >> $GITHUB_OUTPUT; echo "db=$dbok" >> $GITHUB_OUTPUT; echo "age=$age" >> $GITHUB_OUTPUT
+          echo "detail=$(head -c 300 /tmp/h.json 2>/dev/null | tr -d '\n')" >> $GITHUB_OUTPUT
+          echo "App: $app · database: $dbok · backup age: ${age:-?} h"
+      - name: Open or close the alarm
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APP: ${{ steps.c.outputs.app }}
+          DB: ${{ steps.c.outputs.db }}
+          AGE: ${{ steps.c.outputs.age }}
+          DETAIL: ${{ steps.c.outputs.detail }}
+        run: |
+          R=${{ github.repository }}
+          now=$(TZ=Asia/Manila date '+%d %b %H:%M')
+          open=$(gh issue list -R $R --state open --label outage --json number --jq '.[0].number' 2>/dev/null || true)
+          gh label create outage -R $R --color B60205 --description "Uptime alarm" 2>/dev/null || true
+          gh label create backup -R $R --color D93F0B --description "Backup alarm" 2>/dev/null || true
+          if [ "$APP" != "200" ] || [ "$DB" != "true" ]; then
+            what=""; [ "$APP" != "200" ] && what="the app page (answer: $APP)"; [ "$DB" != "true" ] && what="${what:+$what and }the database"
+            if [ -z "$open" ]; then
+              gh issue create -R $R --label outage --assignee lantaw3kapehan \
+                --title "🔴 CupOfEnglish is down: $what ($now Manila)" \
+                --body "The uptime alarm could not reach $what at $now (Manila), twice, 45 seconds apart.
+
+          If teachers cannot use the app: follow the \"If the app is down\" rule (time-in screenshot in the WeChat group, Celine enters it later).
+
+          Database check said: \`$DETAIL\`
+
+          This issue closes by itself when everything answers again."
+            fi
+          elif [ -n "$open" ]; then
+            gh issue close $open -R $R --comment "🟢 Working again at $now (Manila). App page and database both answered."
+          fi
+          bopen=$(gh issue list -R $R --state open --label backup --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -n "$AGE" ] && [ "$AGE" -gt 30 ]; then
+            [ -z "$bopen" ] && gh issue create -R $R --label backup --assignee lantaw3kapehan --title "🟠 Nightly database backup is ${AGE} hours old" \
+              --body "The nightly Drive backup should be under 26 hours old. Last one is ${AGE} hours old ($now Manila). Check the Apps Script trigger (sbDrain at 02:00) or run runBackupNow()." || true
+          elif [ -n "$bopen" ] && [ -n "$AGE" ]; then
+            gh issue close $bopen -R $R --comment "🟢 Backup is fresh again (${AGE} h old) at $now." || true
+          fi
