@@ -9,6 +9,9 @@
 // v3 (13 Nov, credit on via Misty's plan): Haiku 5.5 thinks first, so max_tokens 120 gave no answer: now 1500, text blocks only,
 //   and the prompt describes the Windows LAN (monitor + cable) and Wi-Fi (arcs) icons exactly. Tested read-only on 14 of 12 Nov's
 //   pictures: 14/14 right (13 cable, 1 Wi-Fi: April 17:21). About 2,000 tokens in + 300 out = about $0.00035 a picture.
+// v4 (13 Nov, Misty: "for macbook users, also ensure the LAN can be detected"): a Mac shows no LAN icon and keeps the Wi-Fi icon solid
+//   while Wi-Fi is on (even with a cable in), so a Mac counts as cable only when its Wi-Fi icon shows Wi-Fi OFF (outline / slash) or
+//   the Ethernet <··> symbol; no Wi-Fi icon in the menu bar = unclear. Mac teachers: Wi-Fi off during class, Wi-Fi icon kept in the menu bar.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -17,15 +20,16 @@ const KEY = Deno.env.get("ANTHROPIC_API_KEY") || "", MODEL = Deno.env.get("COE_S
 const out = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json" } });
 const b64 = (u: Uint8Array) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
 const ASK = `This is a screenshot of a teacher's whole computer screen, taken when she starts an online class.
-Look ONLY at the network status icon. On Windows it is in the taskbar at the bottom right, just left of the volume (speaker) icon and the clock. On a Mac it is in the menu bar at the top right.
+Look ONLY at the network status icon. On Windows it is in the taskbar at the bottom right, just left of the volume (speaker) icon and the clock. On a Mac it is in the menu bar at the top right (near the battery, Control Centre and the date).
 What the icons look like:
 - Windows LAN cable (Ethernet): a small computer monitor / screen with a short cable or plug under it (sometimes a globe). This means "cable".
 - Windows Wi-Fi: a fan of curved arcs (like a quarter circle of signal waves), no monitor. This means "wifi".
-- Mac: a fan of curved arcs in the menu bar means "wifi"; no arcs means "cable".
+- Mac, Wi-Fi connected: the Wi-Fi fan of arcs drawn solid / filled in the menu bar. This means "wifi" (even if a cable is also plugged in, the Mac may be using Wi-Fi).
+- Mac, Wi-Fi turned off: the Wi-Fi fan drawn as an empty outline, greyed out, or with a slash through it; or the Ethernet symbol <··> (two arrows with dots) where the Wi-Fi icon would be. The class is live, so the Mac is on the LAN cable. This means "cable".
 Answer:
-- "cable" if you see the monitor-with-cable icon next to the speaker icon.
-- "wifi" if you see the curved-arcs Wi-Fi icon there.
-- "unclear" only if the taskbar / menu bar is hidden, cut off or covered, so you cannot see the network icon at all.
+- "cable" for the Windows monitor-with-cable icon, or a Mac whose Wi-Fi icon shows Wi-Fi turned off / Ethernet.
+- "wifi" for the solid curved-arcs Wi-Fi icon (Windows or Mac).
+- "unclear" if the taskbar / menu bar is hidden, cut off or covered, or a Mac shows no Wi-Fi icon at all in the menu bar, so you cannot tell.
 Reply with JSON only: {"net":"wifi"|"cable"|"unclear","os":"windows"|"mac"|"other","why":"<max 15 words>"}`;
 async function readOne(bytes: Uint8Array, mime: string) {
   const ac = new AbortController(), t = setTimeout(() => ac.abort(), 40000);
