@@ -28,6 +28,8 @@ jobs:
           check
           if [ "$app" != "200" ] || [ "$dbok" != "true" ]; then sleep 45; check; fi   # one retry so a short blip does not alarm
           age=$(jq -r '.backupAgeHours // empty' /tmp/h.json 2>/dev/null || true)
+          bchk=$(jq -r 'if .backupCheckOk == false then "bad" else "ok" end' /tmp/h.json 2>/dev/null || echo ok)
+          echo "bchk=$bchk" >> $GITHUB_OUTPUT
           echo "app=$app" >> $GITHUB_OUTPUT; echo "db=$dbok" >> $GITHUB_OUTPUT; echo "age=$age" >> $GITHUB_OUTPUT
           echo "detail=$(head -c 300 /tmp/h.json 2>/dev/null | tr -d '\n')" >> $GITHUB_OUTPUT
           echo "App: $app · database: $dbok · backup age: ${age:-?} h"
@@ -38,6 +40,7 @@ jobs:
           DB: ${{ steps.c.outputs.db }}
           AGE: ${{ steps.c.outputs.age }}
           DETAIL: ${{ steps.c.outputs.detail }}
+          BCHK: ${{ steps.c.outputs.bchk }}
         run: |
           R=${{ github.repository }}
           now=$(TZ=Asia/Manila date '+%d %b %H:%M')
@@ -61,7 +64,10 @@ jobs:
             gh issue close $open -R $R --comment "🟢 Working again at $now (Manila). App page and database both answered."
           fi
           bopen=$(gh issue list -R $R --state open --label backup --json number --jq '.[0].number' 2>/dev/null || true)
-          if [ -n "$AGE" ] && [ "$AGE" -gt 30 ]; then
+          if [ "$BCHK" = "bad" ]; then
+            [ -z "$bopen" ] && gh issue create -R $R --label backup --assignee lantaw3kapehan --title "🟠 Last night's backup could not be read back" \
+              --body "The nightly read-back check (BACKUPCHECK in Apps Script) found a problem with the backup file ($now Manila). Database check said: \`$DETAIL\`" || true
+          elif [ -n "$AGE" ] && [ "$AGE" -gt 30 ]; then
             [ -z "$bopen" ] && gh issue create -R $R --label backup --assignee lantaw3kapehan --title "🟠 Nightly database backup is ${AGE} hours old" \
               --body "The nightly Drive backup should be under 26 hours old. Last one is ${AGE} hours old ($now Manila). Check the Apps Script trigger (sbDrain at 02:00) or run runBackupNow()." || true
           elif [ -n "$bopen" ] && [ -n "$AGE" ]; then

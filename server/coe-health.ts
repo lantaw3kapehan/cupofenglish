@@ -17,7 +17,9 @@ Deno.serve(async () => {
     const day = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
     const { count } = await db.from("classes").select("id", { count: "exact", head: true }).gte("starts_at", day + "T00:00:00+08:00").lt("starts_at", day + "T23:59:59+08:00");
     const at = data?.updated_at ? new Date(data.updated_at).getTime() : 0;
-    return out({ ok: true, db: true, at: new Date().toISOString(), ms: Date.now() - t0, backupDay: data?.data?.day || null, backupAgeHours: at ? Math.round((Date.now() - at) / 36e5) : null, classesToday: count ?? null });
+    const { data: chk } = await db.from("docs").select("data").eq("key", "sys:backupcheck").maybeSingle();   // the nightly read-back check (Apps Script BACKUPCHECK)
+    return out({ ok: true, db: true, at: new Date().toISOString(), ms: Date.now() - t0, backupDay: data?.data?.day || null, backupAgeHours: at ? Math.round((Date.now() - at) / 36e5) : null,
+      backupCheckOk: chk?.data ? chk.data.ok === true : null, backupCheckFile: chk?.data?.file || null, classesToday: count ?? null });
   } catch (e) {
     return out({ ok: false, db: false, error: String((e as Error)?.message || e).slice(0, 200), ms: Date.now() - t0 }, 503);
   }
