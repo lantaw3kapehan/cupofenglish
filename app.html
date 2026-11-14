@@ -7387,7 +7387,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1926;
+const COE_V = 1927;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -41388,7 +41388,14 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
 (function(){
   if(window.__x2225) return; window.__x2225 = 1;
   const K = 'coe.mt2225.' + new Date().toISOString().slice(0, 10);
-  const got = () => { try{ return JSON.parse(localStorage.getItem(K) || '{}') || {}; }catch(e){ return {}; } };
+  let SRV = {}, srvAt = 0;
+  const got = () => { let o = {}; try{ o = JSON.parse(localStorage.getItem(K) || '{}') || {}; }catch(e){} return Object.assign({}, SRV, o); };
+  function srv(){ if(Date.now() - srvAt < 60e3 || typeof TOKEN === 'undefined' || !TOKEN) return; srvAt = Date.now();
+    fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-cal', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'meetReminded' }) })
+      .then(r => r.json()).then(r => { if(!r || !r.ok || !r.by) return; const ch = JSON.stringify(r.by) !== JSON.stringify(SRV); SRV = r.by; if(!ch) return;
+        document.querySelectorAll('.mt14 .rw').forEach(rw => { const t = rw.dataset.t, b = rw.querySelector('.rm'); if(t && b && !b.classList.contains('ok') && SRV[t.toLowerCase()]) b.outerHTML = window.mt2225Btn(t); });
+        const ra = document.querySelector('.mt14 .ra'); if(ra){ const g = got(), T = [...new Set([...document.querySelectorAll('.mt14 .rw')].map(x => x.dataset.t).filter(Boolean))], left = T.filter(t => !g[t.toLowerCase()]); ra.disabled = !left.length; ra.textContent = left.length ? 'Remind all teachers (' + left.length + ')' : 'All teachers reminded ✓'; } }).catch(() => { srvAt = 0; }); }
+  setInterval(() => { if(document.querySelector('.mt14')) srv(); }, 5000);
   const DL = d => { const t = new Date(String(d).slice(0, 10) + 'T12:00:00'); return isNaN(t) ? String(d || '') : t.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); };
   window.mt2225Btn = t => { if(!t) return ''; const s = got()[String(t).toLowerCase()];
     return s ? '<span class="rm ok" title="Reminded in the app at ' + s + '">✓ Reminded ' + s + '</span>' : '<button type="button" class="rm" onclick="event.stopPropagation();mt2225Send([\'' + String(t).replace(/[^A-Za-z .-]/g, '') + '\'], this)">Remind</button>'; };
