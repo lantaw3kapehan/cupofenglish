@@ -7387,7 +7387,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1911;
+const COE_V = 1912;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -14501,6 +14501,7 @@ ${last && curPer() && norm(curPer()) === norm(last.period) ? `<div style="margin
       if(s.c30 >= 2){ sc += Math.min(30, 10 * s.c30); why.push(s.c30 + ' classes cancelled in 30 days'); }
       if(!s.n14 && (left == null || left > 0)){ sc += 25; why.push(s.last ? 'nothing booked · last class ' + s.last.slice(5) : 'nothing booked'); }
       if(s.since && days(s.since, t) >= 90 && s.book){ sc += 10; why.push('same book (' + s.book + ') for ' + Math.round(days(s.since, t) / 30) + ' months'); }
+      { const pz = (window.PZ2214 || {})[code]; if(pz && pz >= t){ const pd = new Date(pz + 'T12:00:00'); out.push({ code, name: r[C.name], cn: r[C.cn], teacher: r[C.teacher], left, sc: -1, why: ['On a break until ' + (isNaN(pd) ? pz : pd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })) + ' (the parent asked)'], rn }); return; } }   /* 2216 */
       if(/^(Paused|Not renewing)/.test(rn)){ out.push({ code, name: r[C.name], cn: r[C.cn], teacher: r[C.teacher], left, sc: -1, why: [rn.split(' · ')[0]], rn }); return; }
       if(sc >= 30) out.push({ code, name: r[C.name], cn: r[C.cn], teacher: r[C.teacher], left, sc, why, rn }); });
     return out.sort((a, b) => b.sc - a.sc); }
@@ -41139,10 +41140,26 @@ window.att2180 = function(p){ try{
     try{ const r = await fetch(OPS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'ok', ref: 'risk:' + String(x.code).toUpperCase() + ':pause:' + v }) }).then(y => y.json());
       if(!r || !r.ok) throw new Error((r && r.error) || 'not saved');
       const F = window.FX2214; if(F && F.items) F.items = F.items.filter(y => y.ref !== x.ref);
-      try{ closeSheet(); }catch(e){} try{ toast('✓ On a break until ' + DL(v) + '. Not counted as at risk until then.'); }catch(e){}
+      try{ closeSheet(); }catch(e){} try{ window.pz2216Set && pz2216Set(x.code, v); }catch(e){} try{ toast('✓ On a break until ' + DL(v) + '. Not counted as at risk until then.'); }catch(e){}
       try{ window.fx2214Load(); }catch(e){} }
     catch(e){ s.disabled = false; m.style.color = '#AE4D41'; m.textContent = 'Not saved: ' + (e.message || e) + '. Try again.'; }
   };
+})();
+</script>
+<script id="x2216">
+(function(){
+  if(window.__x2216) return; window.__x2216 = 1;
+  try{ window.PZ2214 = JSON.parse(localStorage.getItem('coe.pz2214') || '{}') || {}; }catch(e){ window.PZ2214 = {}; }
+  const keep = m => { window.PZ2214 = m; try{ localStorage.setItem('coe.pz2214', JSON.stringify(m)); }catch(e){} };
+  const from = L => { const m = {}; (L || []).forEach(x => { if(x && x.kind === 'riskp' && x.code && x.until) m[String(x.code).toUpperCase()] = String(x.until).slice(0, 10); }); return m; };
+  let at = 0;
+  function load(){ if(typeof D === 'undefined' || !D || !D.mgr || typeof TOKEN === 'undefined' || !TOKEN || Date.now() - at < 10 * 6e4) return; at = Date.now();
+    fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-ops', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'check' }) })
+      .then(r => r.json()).then(r => { if(r && r.ok) keep(from(r.items)); }).catch(() => { at = 0; }); }
+  setTimeout(load, 4000); setInterval(load, 60e3);
+  /* To do already has the list: use it whenever it loads */
+  let last = null; setInterval(() => { try{ const F = window.FX2214; if(F && F.items && F.items !== last){ last = F.items; keep(from(F.items)); } }catch(e){} }, 3000);
+  window.pz2216Set = function(code, until){ const m = Object.assign({}, window.PZ2214); m[String(code).toUpperCase()] = until; keep(m); };
 })();
 </script>
 </body>
