@@ -6307,7 +6307,7 @@ let h = `<h1>My schedule</h1><div class="mute small">${esc(svDate(t.from,{day:'n
 <div class="stats" style="margin-top:12px"><div class="stat"><b class="num">${live.length}</b><span>classes · ${stu} students</span></div><div class="stat"><b class="num">${(mins/60).toFixed(mins%60?1:0)}</b><span>hours teaching</span></div><div class="stat"><b class="num">${left}</b><span>still to teach</span></div></div><section class="sec" style="margin-top:12px">`;
 const row = e => { const on = !e.cancelled && now >= new Date(e.start) && now < new Date(e.end);
 return `<div class="sv-r ${e.cancelled?'cx':''} ${on?'now':''} ${now >= new Date(e.end)?'fin':''}" style="--c:${svCol(e.book || e.code)}"><i></i><span class="sv-t"><b>${tm(e.start)}</b><small>${Math.round((new Date(e.end) - new Date(e.start)) / 6e4)} min</small></span>
-<span class="sv-n"><b>${esc(e.student || e.title)}</b> <span class="mute">${esc([e.code, e.book].filter(Boolean).join(' · '))}</span>${e.type?` <span class="chip ${e.type==='Trial'?'coral':''}">${e.type}</span>`:''}${e.cancelled?' <span class="chip red">Cancelled</span>' + (e.why ? '<span class="cxi">' + cxWhy(e.why) + '</span>' : '<span class="cxi none">No reason given</span>'):''}${on?' <span class="live-b"><i></i>Live</span>':''}</span></div>`; };
+<span class="sv-n"><b>${esc(e.student || e.title)}</b> <span class="mute">${esc([e.code, e.book].filter(Boolean).join(' · '))}</span>${window.m38Link ? m38Link(e) : ''}${e.type?` <span class="chip ${e.type==='Trial'?'coral':''}">${e.type}</span>`:''}${e.cancelled?' <span class="chip red">Cancelled</span>' + (e.why ? '<span class="cxi">' + cxWhy(e.why) + '</span>' : '<span class="cxi none">No reason given</span>'):''}${on?' <span class="live-b"><i></i>Live</span>':''}</span></div>`; };
 const dayH = (d, y, L) => `<div data-y="${y}" class="sv-day ${y===today?'today':y<today?'past':''}"><div class="sv-d"><b>${d.getDate()}</b><span>${esc(d.toLocaleDateString('en-GB',{month:'short'}))} ${d.getFullYear()}, <br>${esc(d.toLocaleDateString('en-GB',{weekday:'short'}))}</span></div><div class="sv-rs">`
 + (L.length ? L.map(row).join('') : '<div class="sv-none">No classes</div>') + `</div></div>`;
 const up = [], done = [];
@@ -7387,7 +7387,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1932;
+const COE_V = 1933;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -41583,7 +41583,7 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
     const L = ((typeof TS !== 'undefined' && TS && TS.events) || []).filter(e => e.day === SEL).sort((a, b) => new Date(a.start) - new Date(b.start)); if(!L.length){ SEL = ''; return; }
     const dt = new Date(SEL + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }), n = L.filter(e => !e.cancelled).length;
     m.insertAdjacentHTML('afterend', '<div class="dd36"><h4><span>' + E(dt) + ' <small style="font-weight:500;color:#6F6B85">' + n + ' class' + (n === 1 ? '' : 'es') + '</small></span><button type="button" aria-label="Close" onclick="c36Day(\'\')">×</button></h4>' +
-      L.map(e => '<div class="r' + (e.cancelled ? ' cx' : '') + '"><span class="t">' + tm(e.start) + '–' + tm(e.end) + '</span><span class="s" style="--c:' + col(e) + '"><i></i><b>' + E(e.student || e.title || '') + '</b></span><span class="bk">' + (e.cancelled ? 'cancelled' : E(e.book || '')) + '</span></div>').join('') + '</div>'); }
+      L.map(e => '<div class="r' + (e.cancelled ? ' cx' : '') + '"><span class="t">' + tm(e.start) + '–' + tm(e.end) + '</span><span class="s" style="--c:' + col(e) + '"><i></i><b>' + E(e.student || e.title || '') + '</b>' + (window.m38Link ? m38Link(e) : '') + '</span><span class="bk">' + (e.cancelled ? 'cancelled' : E(e.book || '')) + '</span></div>').join('') + '</div>'); }
   window.c36Day = y => { SEL = SEL === y ? '' : y; paint(); };
   window.c36Cell = (L, live) => { if(!live.length) return '';
     const last = live[live.length - 1], first = n => String(n || '').trim().split(/\s+/)[0];
@@ -41591,6 +41591,31 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
       '<span class="ev36">' + live.slice(0, 4).map(e => '<i style="--c:' + col(e) + '">' + tm(e.start) + ' ' + E(first(e.student || e.title)) + '</i>').join('') + (live.length > 4 ? '<u>+' + (live.length - 4) + ' more</u>' : '') + '</span>' +
       '<span class="dt36">' + L.map(e => '<i class="' + (e.cancelled ? 'x' : '') + '" style="--c:' + col(e) + '"></i>').join('') + '</span>'; };
   new MutationObserver(() => { const v = document.getElementById('v-tsched'); if(SEL && v && v.querySelector('.c01m') && !v.querySelector('.dd36')) paint(); }).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+<style id="d2238">#v-tsched a.m38{margin-left:6px;font-size:12.5px;font-weight:600;color:#00737B;cursor:pointer;white-space:nowrap}#v-tsched a.m38.add{color:#B5531F}</style>
+<script id="x2238">
+(function(){
+  if(window.__x2238) return; window.__x2238 = 1;
+  const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const all = () => [].concat((typeof D !== 'undefined' && D && D.schedule) || [], (typeof TS !== 'undefined' && TS && TS.events) || []);
+  const known = code => { const x = all().find(e => e.code === code && e.meet); return x ? String(x.meet) : ''; };
+  window.m38Link = e => { try{ if(!e || !e.code || e.cancelled || new Date(e.end || e.start) < Date.now() || (typeof D !== 'undefined' && D && D.mgr)) return '';
+    const m = e.meet || known(e.code);
+    return ' <a class="m38' + (m ? '' : ' add') + '" onclick="event.stopPropagation();m38Sheet(\'' + E(e.code) + '\')">' + (m ? 'ID ' + E(m) + ' · Edit' : '+ Meeting ID') + '</a>'; }catch(x){ return ''; } };
+  window.m38Sheet = code => { const c = all().find(e => e.code === code) || { code: code }, m = known(code);
+    openSheet('<h1>Meeting ID</h1><div class="mute small">' + E(c.student || code) + ' · ' + E(code) + '</div>' +
+      '<label>VooV meeting ID</label><input id="mtI" class="in-t num" inputmode="numeric" placeholder="123 456 789" value="' + E(m) + '">' +
+      '<div class="small mute" style="margin-top:8px">Changes the meeting ID on all your upcoming classes with ' + E(c.student || 'this student') + '. Management sees the new ID in Schedule. Nothing else about the class changes.</div>' +
+      '<button class="btn block" id="mtGo" style="margin-top:16px" onclick="m38Send(\'' + E(code) + '\')">Save meeting ID</button>');
+    setTimeout(() => { const i = document.getElementById('mtI'); if(i){ i.focus(); i.select(); } }, 250); };
+  window.m38Send = async code => { const v = ((document.getElementById('mtI') || {}).value || '').replace(/\D/g, '');
+    if(v.length < 9 || v.length > 12) return toast('A meeting ID has 9 to 12 digits');
+    if(known(code).replace(/\D/g, '') === v){ closeSheet(); return; }
+    const L = all().filter(e => e.code === code), old = L.map(e => e.meet), b = document.getElementById('mtGo'); if(b){ b.disabled = true; b.textContent = 'Saving…'; }
+    const put = val => { L.forEach((e, i) => { e.meet = typeof val === 'function' ? val(i) : val; }); try{ store('set', KEY_D, JSON.stringify(D)); }catch(x){} try{ render(); }catch(x){} try{ if(VIEW === 'tsched') tsPaint(); }catch(x){} };
+    try{ const r = await api('tSetMeet', TOKEN, code, v); if(!r || !r.ok) throw r; closeSheet(); put(r.meet || v); toast('Meeting ID ' + (r.meet || v) + ' saved'); }
+    catch(e){ put(i => old[i]); if(b){ b.disabled = false; b.textContent = 'Save meeting ID'; } toast((e && e.msg) || 'Meeting ID not saved. Check your internet and try again.'); } };
 })();
 </script>
 </body>
