@@ -1,0 +1,21 @@
+  function grid(m, D){   /* 2220 (14 Nov · Misty: "enhance the visual look and design"): heat-tinted days, big counts, stat tiles, chips */
+    const { f, s, last } = range(m), today = ymd(new Date()), sel = SC && SC.date, mx = Math.max(1, ...Object.values(D || {}).map(x => +x.n || 0));
+    let h = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((w, i) => '<div class="dw' + (i > 4 ? ' we' : '') + '">' + w + '</div>').join(''), tot = 0, tcx = 0, nd = 0, best = null;
+    for(let i = 0; i < 42; i++){ const d = new Date(s); d.setDate(s.getDate() + i); if(i >= 35 && d > last) break;
+      const y = ymd(d), out = d.getMonth() !== f.getMonth(), x = (D || {})[y], c = cnOn(y), wd = (d.getDay() + 6) % 7;
+      if(out){ h += '<div class="d o" aria-hidden="true"></div>'; continue; }
+      if(x){ tot += +x.n || 0; tcx += +x.cx || 0; if(+x.n) nd++; if(!best || (+x.n || 0) > (+best.x.n || 0)) best = { y, x, d }; }
+      const r = x && x.n ? x.n / mx : 0;
+      h += '<button type="button" class="d' + (y === today ? ' td' : y < today ? ' past' : '') + (y === sel ? ' sel' : '') + (wd > 4 ? ' we' : '') + (c ? ' k-' + c.k : '') + '" style="--h:' + r.toFixed(3) + '" onclick="mo04Go(\'' + y + '\')" title="Open ' + E(d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })) + '">' +
+        '<span class="dt"><b>' + d.getDate() + '</b>' + (c ? '<span class="cn">' + E(short(c.n)) + '</span>' : (x && x.peak ? '<span class="pk">' + E(x.peak) + '</span>' : '')) + '</span>' +
+        (x && x.n ? '<span class="n"><b>' + x.n + '</b> classes</span><span class="sub">' + x.tch + ' teacher' + (x.tch === 1 ? '' : 's') + (c && x.peak ? ' · busiest ' + E(x.peak) : '') + '</span>' : (x ? '<span class="sub">No classes</span>' : '<span class="sub">&nbsp;</span>')) +
+        '<span class="ch">' + (x && x.cx ? '<span class="cx">' + x.cx + ' cancelled</span>' : '') + (x && x.leave && x.leave.length ? '<span class="lv">' + E(x.leave.join(', ')) + ' on leave</span>' : '') + '</span></button>'; }
+    const ml = f.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }), thisM = today.slice(0, 7) === m;
+    const tile = (l, v, s2) => '<div class="st"><span>' + l + '</span><b>' + v + '</b>' + (s2 ? '<em>' + s2 + '</em>' : '') + '</div>';
+    return '<div class="mo04"><div class="top"><div class="ttl"><b>' + E(ml) + '</b><span>' + (D ? 'Tap a day to open its classes' : 'Loading the month…') + '</span></div>' +
+      (thisM ? '' : '<button type="button" class="tdy" onclick="mo04M(0)">This month</button>') + '<div class="nav"><button type="button" aria-label="Previous month" onclick="mo04M(-1)">‹</button><button type="button" aria-label="Next month" onclick="mo04M(1)">›</button></div></div>' +
+      (D ? '<div class="sts">' + tile('Classes', tot.toLocaleString('en-US'), nd ? Math.round(tot / nd) + ' a day on average' : '') + tile('Cancelled', tcx.toLocaleString('en-US'), tot + tcx ? Math.round(tcx / (tot + tcx) * 100) + '% of booked' : '') +
+        (best ? tile('Busiest day', E(best.d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })), best.x.n + ' classes') : '') + '</div>' : '') +
+      '<div class="g">' + h + '</div>' +
+      '<div class="k"><span><i class="heat"></i>Fewer → more classes</span><span><i style="background:#FFE9E2"></i>China holiday</span><span><i style="background:#ECE9FB"></i>School exams</span><span><i style="background:#E3F4F2"></i>International holiday</span><span><i class="tdk"></i>Today</span></div></div>';
+  }
