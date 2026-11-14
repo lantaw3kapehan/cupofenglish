@@ -7387,7 +7387,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1907;
+const COE_V = 1908;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -27107,18 +27107,18 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     const L = P.filter(r => (K === 'all' || r.k === K) && (!CAT || r.k + ':' + r.c === CAT) && qok(r)); window.__fxList = L;
     const done = L.filter(r => r.d <= now), sch = L.length - done.length, tin = done.filter(r => r.k === 'in').reduce((a, r) => a + r.a, 0), tout = done.filter(r => r.k === 'out').reduce((a, r) => a + r.a, 0);
     const nin = done.filter(r => r.k === 'in').length, nout = done.filter(r => r.k === 'out').length;
-    const opt = k => Object.keys(cats).filter(c => c.indexOf(k + ':') === 0).sort((a, b) => cats[b] - cats[a]).map(c => '<option value="' + esc(c) + '"' + (CAT === c ? ' selected' : '') + '>' + esc(c.slice(k.length + 1)) + ' · ' + P0(cats[c]) + '</option>').join('');
+    const opt = k => Object.keys(cats).filter(c => c.indexOf(k + ':') === 0).sort((a, b) => cats[b] - cats[a]).map(c => '<option value="' + esc(c) + '"' + (CAT === c ? ' selected' : '') + '>' + esc(c.slice(k.length + 1)) + (SC() ? ' · ' + P0(cats[c]) : '') + '</option>').join('');
     let h = head + '<div class="fx-bar"><div class="fx-seg">' + [['all', 'All'], ['in', 'Sales'], ['out', 'Expenses']].map(([k, l]) => '<button class="' + (K === k ? 'on' : '') + '" onclick="fxK(\'' + k + '\')">' + l + '</button>').join('') + '</div>' +
       '<div class="fx-m"><button onclick="fxStep(-1)" ' + (ALLM ? 'disabled' : '') + '>‹</button><b>' + (X.m ? mL(X.m, 1) + ' ' + X.m.slice(0, 4) : 'All months') + '</b><button onclick="fxStep(1)" ' + (ALLM || X.m >= cur ? 'disabled' : '') + '>›</button></div>' +
       '<button class="fx-pill ' + (ALLM ? 'on' : '') + '" onclick="fxAll()">All months</button>' +
       '<select onchange="fxCat(this.value)" aria-label="Category or partner"><option value="">' + (K === 'in' ? 'All partners' : K === 'out' ? 'All categories' : 'All categories and partners') + '</option>' + (K !== 'out' ? (K === 'all' ? '<optgroup label="Sales · partner">' + opt('in') + '</optgroup>' : opt('in')) : '') + (K !== 'in' ? (K === 'all' ? '<optgroup label="Expenses · category">' + opt('out') + '</optgroup>' : opt('out')) : '') + '</select>' +
       '<input id="exQ" placeholder="Search name, invoice, category, amount" value="' + esc(X.q || '') + '" oninput="exQ(this.value)"></div>';
-    const kc = K === 'all' ? 4 : 2; h += '<div class="fx-k" style="grid-template-columns:repeat(' + kc + ',minmax(0,1fr))">' + (K !== 'out' ? '<div><span>Sales</span><b class="in">' + P0(tin) + '</b><small>' + nin + ' payment' + (nin === 1 ? '' : 's') + '</small></div>' : '') +
+    const kc = K === 'all' ? 4 : 2; if(SC()) h += '<div class="fx-k" style="grid-template-columns:repeat(' + kc + ',minmax(0,1fr))">' + (K !== 'out' ? '<div><span>Sales</span><b class="in">' + P0(tin) + '</b><small>' + nin + ' payment' + (nin === 1 ? '' : 's') + '</small></div>' : '') +
       (K !== 'in' ? '<div><span>Expenses</span><b class="out">' + P0(tout) + '</b><small>' + nout + ' line' + (nout === 1 ? '' : 's') + '</small></div>' : '') +
       (K === 'all' ? '<div><span>Difference</span><b class="' + (tin - tout >= 0 ? 'in' : 'out') + '">' + P0(tin - tout) + '</b><small>sales − the expense lines listed · not Net: salaries and gov dues are left out</small></div>' : '') +
       '<div><span>Lines shown</span><b>' + L.length + '</b><small>' + (sch ? sch + ' scheduled (future date, not in totals)' : (X.m ? mL(X.m) : 'all months')) + '</small></div></div>';
     const gov = K !== 'in' && !CAT ? done.filter(r => r.k === 'out' && /government contrib/i.test(r.c)).reduce((a, r) => a + r.a, 0) : 0;
-    if(gov) h += '<div class="fx-note">Expenses here include ' + P0(gov) + ' Government Contributions; Overview (money summary) counts these under Gov dues, so its Expenses figure is ' + P0(tout - gov) + '.</div>';
+    if(gov && SC()) h += '<div class="fx-note">Expenses here include ' + P0(gov) + ' Government Contributions; Overview (money summary) counts these under Gov dues, so its Expenses figure is ' + P0(tout - gov) + '.</div>';
     const vis = L.slice(0, X.n || 150);
     h += '<div class="fx-card" style="padding:4px 6px 8px"><table><thead><tr><th>Date</th><th>Name</th><th class="ref">Reference</th><th class="c">' + (K === 'in' ? 'Partner' : K === 'out' ? 'Category' : 'Category / partner') + '</th><th class="r">Amount</th></tr></thead><tbody>' +
       (vis.length ? vis.map((r, j) => { const key = r.k + '|' + r.d + '|' + r.t + '|' + r.a + '|' + j, op = OPEN === key, fut = r.d > now;
