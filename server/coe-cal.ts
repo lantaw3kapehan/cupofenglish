@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-cal (14 Nov 2026): management Schedule › Month. POST { token, from: 'YYYY-MM-DD', days } → per-day totals
+// CupOfEnglish · coe-cal v3 (14 Nov 2026: + action renewExp) ·: management Schedule › Month. POST { token, from: 'YYYY-MM-DD', days } → per-day totals
 // from the database function coe_month_overview (classes, cancelled, teachers, minutes, busiest hour, teachers on approved leave).
 // Management sessions only (same session check as coe-invoice).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -28,6 +28,13 @@ Deno.serve(async (req: Request) => {
     const { error } = await db.from("docs").upsert({ key: "sys:cndates", scope: "mgmt", data: { rows, by: s.name || "", at: new Date().toISOString() }, updated_at: new Date().toISOString() }, { onConflict: "key" });
     if (error) return out({ ok: false, error: error.message }, 500);
     return out({ ok: true, rows });
+  }
+  // 14 Nov (2227): To do › Renewals due · what each family paid last time (coe_renew_expect), for the "expected if all renew" line.
+  if (b.action === "renewExp") {
+    const codes = (Array.isArray(b.codes) ? b.codes : []).map((x: any) => String(x).toUpperCase()).filter((x: string) => /^ST-\d{4}-\d{3}$/.test(x)).slice(0, 200);
+    const { data, error } = await db.rpc("coe_renew_expect", { p_codes: codes });
+    if (error) return out({ ok: false, error: error.message }, 500);
+    return out({ ok: true, by: data || {} });
   }
   const from = String(b.from || ""); if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) return out({ ok: false, error: "from" }, 400);
   const days = Math.max(1, Math.min(62, +b.days || 42));
