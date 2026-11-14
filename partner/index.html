@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#00707A">
 <meta name="robots" content="noindex">
-<meta name="portal-version" content="1365">
+<meta name="portal-version" content="1366">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="一杯英语">
@@ -462,10 +462,15 @@ function stuHtml() {
   const V = S.view, D = V.d, x = stuAll().find(s => s.code === V.code) || { code: V.code, name: '', cn: '' }, back = backBtn('学生', 'Students', "S.view=null;nav();paint()");
   if (!(S.pc || {})[V.code] && !V.pcl) { V.pcl = 1; pcGet(V.code).then(() => { if (S.view === V) paint(); }); }
   const P = (S.pc || {})[V.code];
-  let h = back + pcHtml(V.code, x) + (P && P.card ? jlHtml(P.card.journey) : '') + lsCard(V.code);
+  const held = !!(P && P.card && P.card.checking && !P.card.nopkg);   // 2219: lessons left held → show the class record instead of the picture
+  let h = back + pcHtml(V.code, x) + (P && P.card ? jlHtml(P.card.journey) : '') + (held ? '' : lsCard(V.code));
   if (!D) return h + skel('v'); if (D.err) return h + errBox();
   const nx = P && P.card && P.card.next, up = (D.upcoming || []).filter(c => !(nx && c.day === nx.date && c.time === nx.time)), att = D.attendance || [], done = att.filter(a => a.status === 'done').length, cx = att.length - done, J = D.journey, R = D.reports || [];
   const p = (D.packages || [])[0];
+  if (held) { const st = p && p.start && /^\d{4}-\d{2}-\d{2}/.test(p.start) ? String(p.start).slice(0, 10) : '', T = att.filter(a => a.status === 'done' && (!st || a.day >= st)).sort((m, n) => (n.day + n.time).localeCompare(m.day + m.time)), old = st && att.length && att.every(a => a.day > st);
+    h += h2('上课记录', 'Classes taught') + `<div class="card"><div class="note amber" style="margin:0 0 10px"><b>${ic('clock')}剩余课时正在核对</b>先看已上的课；核对完成后会显示剩余课时和课时汇总图。${en('Lessons left is being confirmed. Here are the classes taught; the number and the summary picture come back once it is confirmed.')}</div>
+      <div class="small" style="margin-bottom:6px"><b>${st && !old ? '本期（' + esc(yCn(st)) + ' 起）已上 ' + T.length + ' 节' : '最近4个月已上 ' + T.length + ' 节'}</b>${en(st && !old ? T.length + ' classes taught in this package' : T.length + ' classes taught in the last 4 months')}</div>
+      ${T.map(a => `<div class="li"><div class="grow"><div class="t" style="font-size:15px">${esc(dCn(a.day))} ${esc(a.time)}</div><div class="m">${esc(a.book) || '—'}${a.teacher ? ' · ' + esc(tidyT(a.teacher)) + '老师' : ''}</div></div>${tag('green', 'check', '已上')}</div>`).join('') || '<div class="empty">暂无记录 · No classes yet</div>'}</div>`; }
   if (p && p.valid && p.valid < today()) h += `<div class="note" style="background:var(--redT);color:var(--red)"><b>${ic('warn')}已过期，请提醒续费</b>有效期已于 ${esc(yCn(p.valid))} 结束${en('Valid-until has passed — please remind the family to renew')}</div>`;
   else if (x.active && isDue(x)) h += `<div class="note amber"><b>${ic('bell')}${isFew(x) ? '快用完' : '快到期'}，请提醒续费</b>${p && p.valid ? '有效期至 ' + esc(yCn(p.valid)) : ''}${en('Please remind the family to renew')}</div>`;
   const cRow = c => `<div class="li"><div class="dt"><b>${+c.day.slice(8, 10)}</b><span>${+c.day.slice(5, 7)}月 周${WZ[dOf(c.day).getUTCDay()]}</span></div><div class="grow"><div class="t">${esc(c.time)}${c.day === today() ? ' ' + tag('green', '', '今天') : ''}</div><div class="m">${esc(c.book) || '—'}</div></div>${kindTag(c.kind)}</div>`;
