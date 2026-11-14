@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-cal v3 (14 Nov 2026: + action renewExp) ·: management Schedule › Month. POST { token, from: 'YYYY-MM-DD', days } → per-day totals
+// CupOfEnglish · coe-cal v4 (14 Nov 2026: + renewExp, + meetReminded) ·: management Schedule › Month. POST { token, from: 'YYYY-MM-DD', days } → per-day totals
 // from the database function coe_month_overview (classes, cancelled, teachers, minutes, busiest hour, teachers on approved leave).
 // Management sessions only (same session check as coe-invoice).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -28,6 +28,12 @@ Deno.serve(async (req: Request) => {
     const { error } = await db.from("docs").upsert({ key: "sys:cndates", scope: "mgmt", data: { rows, by: s.name || "", at: new Date().toISOString() }, updated_at: new Date().toISOString() }, { onConflict: "key" });
     if (error) return out({ ok: false, error: error.message }, 500);
     return out({ ok: true, rows });
+  }
+  // 14 Nov (2232): To do › Meeting ID missing · which teachers were already reminded today (by anyone), so "Reminded ✓" is the same on every device
+  if (b.action === "meetReminded") {
+    const { data, error } = await db.rpc("coe_meet_reminded");
+    if (error) return out({ ok: false, error: error.message }, 500);
+    return out({ ok: true, by: data || {} });
   }
   // 14 Nov (2227): To do › Renewals due · what each family paid last time (coe_renew_expect), for the "expected if all renew" line.
   if (b.action === "renewExp") {
