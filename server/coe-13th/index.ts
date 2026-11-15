@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
     db.from("coe_staff_day").select("day,name,base,pay,fixed,holiday").gte("day", from).lte("day", to).is("removed_at", null).order("day"),
     db.from("coe_13th").select("*").eq("year", year),
     db.from("docs").select("data").eq("key", "pres:mgmtActions|[]").maybeSingle(),
-    db.from("sheet_rows").select("data").eq("tab", "PAYROLL").like("data->>2", (year - 1) + "-12%")]);
+    db.from("sheet_rows").select("data").eq("tab", "PAYROLL").range(0, 4999)]);
   let names = PEOPLE.map((p) => { const d: any = (days || []).find((x: any) => String(x.name).toLowerCase() === p); const v: any = (saved || []).find((x: any) => String(x.person).toLowerCase() === p); return d ? String(d.name) : v ? String(v.person) : p.charAt(0).toUpperCase() + p.slice(1); });
   if (op === "mine") { const sv: any = (saved || []).find((x: any) => String(x.person).toLowerCase() === me.toLowerCase()); if (!sv || !sv.shared || PEOPLE.indexOf(me.toLowerCase()) < 0) return out({ ok: true, year, shown: false }); names = [sv.person]; }
   const rows: any[] = ((act && act.data && act.data.rows) || []);
@@ -63,7 +63,7 @@ Deno.serve(async (req: Request) => {
       const rates: any[] = []; M.forEach((d: any) => { const r = +d.base; let x = rates.find((z) => z.r === r); if (!x) rates.push(x = { r, d: 0, amt: 0 }); x.d = r2(x.d + (+d.pay >= r ? 1 : r ? +d.pay / r : 0)); x.amt = r2(x.amt + +d.pay); });
       let src0 = "records";
       if (!M.length && y === year - 1) {   // the month before the daily records: that month's PAYROLL row (days × rate = basic)
-        const p: any = (pr || []).map((x: any) => x.data).find((x: any) => String(x[1] || "").trim().toLowerCase() === lc);
+        const p: any = (pr || []).map((x: any) => x.data).find((x: any) => Array.isArray(x) && String(x[1] || "").trim().toLowerCase() === lc && String(x[2] || "").startsWith((year - 1) + "-12"));
         if (p && num(p[8]) > 0) { actual = r2(num(p[8])); rates.push({ r: num(p[7]) || 0, d: num(p[4]) || 0, amt: actual }); src0 = "payroll"; }
       }
       const prem = r2(M.reduce((a: number, d: any) => a + (+d.holiday || 0), 0));
