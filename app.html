@@ -7387,7 +7387,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1944;
+const COE_V = 1945;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7622,9 +7622,9 @@ function rpOther(){ RPS.pkg = ''; RPS.free = 0; document.querySelectorAll('.rpk'
 /* 680 · Renewed · paid opens at once: the form is ready immediately (package, date, method, partner, invoice); Google's check of the
    package (ACTIVE row, last payment, lessons left) fills in when it arrives, and Save waits for it. Hovering the button starts the check early. */
 const RP_PRE = {};
-function rpWarm(code, teacher){ const k = String(code).toUpperCase(), x = RP_PRE[k]; if(x && Date.now() - x.t < 120000) return x.p;
+function rpWarm(code, teacher){ const rw2249 = (window.RP_ROW || {})[String(code).toUpperCase()] || '', k = String(code).toUpperCase() + (rw2249 ? '|' + rw2249 : ''), x = RP_PRE[k]; if(x && Date.now() - x.t < 120000) return x.p;
   const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
-  const g = api('mgmtRenewPaid', TOKEN, { code, teacher, dry: true, date: today }).catch(e => ({ ok: false, msg: String(e && e.message || e), gerr: 1 })), sc = api('mgmtStuClasses', TOKEN, code).catch(() => null), d = window.pkcDb ? pkcDb('renew', { code, teacher, date: today }) : Promise.resolve(null);   /* 1290 */
+  const g = rw2249 ? Promise.resolve({ ok: false, gerr: 1 }) : api('mgmtRenewPaid', TOKEN, { code, teacher, dry: true, date: today }).catch(e => ({ ok: false, msg: String(e && e.message || e), gerr: 1 })), sc = api('mgmtStuClasses', TOKEN, code).catch(() => null), d = window.pkcDb ? pkcDb('renew', { code, teacher, date: today, row: rw2249 ? +rw2249 : undefined }) : Promise.resolve(null);   /* 1290 */
   const p = Promise.all([d.then(x => x || g), sc]); if(window.pkcVerify) pkcVerify('renew', k, d, g, sc);
   RP_PRE[k] = { t: Date.now(), p }; p.then(([r]) => { if(!r || !r.ok) delete RP_PRE[k]; }); return p; }
 async function renPaidSheet(code, name, teacher, again){ RPS = { code, name, teacher, pkg: 30, free: 3, info: null, sched: '', again: !!again, touched: false };
@@ -7665,12 +7665,13 @@ if(!RPS.touched && r.prev && r.prev.pkg){ if(RP_PK.some(x => x[0] === r.prev.pkg
 const M = $('rpM'); if(M && !M.dataset.t && r.method){ M.value = r.method; M.parentNode.querySelectorAll('.skc button').forEach(b => b.classList.toggle('on', b.textContent === r.method)); }
 const Pa = $('rpPa'); if(Pa && !Pa.dataset.t && !Pa.value && r.partner) Pa.value = r.partner;
 const H = $('rpH'); if(H) H.innerHTML = esc(code) + ' · Teacher ' + esc(r.teacher) + ' · ACTIVE row ' + r.row + (r.prev && r.prev.date ? ' · last paid ' + esc(r.prev.date) + ' (' + r.prev.pkg + (r.prev.free ? '+' + r.prev.free : '') + ')' : '');
+if(window.rp2249) rp2249(code, name, teacher, again, r);
 const F = $('rpFoot'); if(F) F.textContent = 'Same as doing it by hand: a new SALES row · ACTIVE row ' + r.row + ' keeps going with CARRY OVER = what was left, lessons counted again from ' + r.month + ' (older months stay as history) · DATABASE › RENEWAL DATE = paid date, so the deadline moves · RENEWAL STATUS = Renewed. The calendar is not changed. If the time or teacher changes: open the next class › Move · reschedule › Moving forward.';
 const S = $('rpS'); if(S){ S.disabled = false; S.textContent = 'Save renewal'; }
 rpPrev(); }
 async function renPaidSave(){ const S = RPS; if(!S || !S.info) return; const t = rpTot(); if(!(t > 0)) return toast('Choose the package');
 const b = $('rpS'); if(b){ b.disabled = true; b.textContent = 'Saving…'; }
-const f = { code: S.code, teacher: S.teacher, pkg: +S.pkg || 0, free: +S.free || 0, date: $('rpD').value, method: (() => { const v = $('rpM').value.trim(); try{ if(v) localStorage.setItem('coe.rpM', v); }catch(e){} return v; })(), partner: $('rpPa').value.trim(), invoice: $('rpI').value.trim() };
+const f = { code: S.code, teacher: S.teacher, pkg: +S.pkg || 0, free: +S.free || 0, date: $('rpD').value, method: (() => { const v = $('rpM').value.trim(); try{ if(v) localStorage.setItem('coe.rpM', v); }catch(e){} return v; })(), partner: $('rpPa').value.trim(), invoice: $('rpI').value.trim(), row: (S.info && S.info.alts && S.info.alts.length > 1) ? String(S.info.row) : '' };
 const fl = $('rpF') && $('rpF').files[0];
 if(fl){ if(fl.size > 8e6){ if(b){ b.disabled = false; b.textContent = 'Save renewal'; } return toast('The invoice file is too big (8 MB max)'); }
 f.file = await invFile(fl); }
@@ -41634,5 +41635,27 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
 })();
 </script>
 <style id="d2246">#v-schedule .mo04 .top .tdy{white-space:nowrap;flex:none;min-width:max-content;margin-right:8px;position:relative;z-index:1}#v-schedule .mo04 .top .nav{flex:none}</style>
+<style id="d2249">.rp49{margin-top:8px;padding:10px 12px;border:1px solid #F0C9A8;background:#FFF8F1;border-radius:12px}.rp49 b{color:#2B2253}.rp49 .c{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.rp49 button{border:1px solid #E3E1EC;background:#fff;border-radius:999px;padding:7px 12px;font:600 13px Inter,sans-serif;color:#2B2253;cursor:pointer}.rp49 button.on{background:#2F6F77;border-color:#2F6F77;color:#fff}</style>
+<script id="x2249">
+(function(){
+  if(window.__x2249) return; window.__x2249 = 1;
+  window.RP_ROW = window.RP_ROW || {};
+  const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const nice = c => String(c || 'Package').replace(/([a-z])([A-Z])/g, '$1 $2');
+  window.rp2249Pick = (code, row, name, teacher, again) => { const K = String(code).toUpperCase(); RP_ROW[K] = String(row);
+    Object.keys(RP_PRE).forEach(k => { if(k === K || k.indexOf(K + '|') === 0) delete RP_PRE[k]; });
+    renPaidSheet(code, name, teacher, again); };
+  window.rp2249 = (code, name, teacher, again, r) => { try{
+    const K = String(code).toUpperCase(), tl = String(r.teacher || teacher || '').toLowerCase();
+    const A = (r.alts || []).filter(a => !tl || String(a.teacher).toLowerCase() === tl); if(A.length < 2) return;
+    if(!RP_ROW[K]){ const up = (RPS.cls || []).filter(c => !c.cancelled && new Date(c.start).getTime() > Date.now()).map(c => String(c.book || '') + ' ' + String(c.title || '')).join(' ').toLowerCase();
+      const m = A.filter(a => a.course && up.indexOf(String(a.course).toLowerCase()) >= 0);
+      if(m.length === 1 && String(m[0].row) !== String(r.row)){ rp2249Pick(code, m[0].row, name, teacher, again); return; } }
+    const H = document.getElementById('rpH'); if(!H || H.parentNode.querySelector('.rp49')) return;
+    H.insertAdjacentHTML('afterend', '<div class="rp49"><b>Which package?</b> <span class="small mute">' + E(r.name || name) + ' has ' + A.length + ' packages with Teacher ' + E(r.teacher || teacher) + '. The renewal goes on the one you pick.</span><div class="c">' +
+      A.map(a => '<button type="button" class="' + (String(a.row) === String(r.row) ? 'on' : '') + '" onclick="rp2249Pick(\'' + E(code) + '\',' + (+a.row) + ',\'' + E(String(name)).replace(/'/g, '') + '\',\'' + E(String(teacher || '')).replace(/'/g, '') + '\',' + (again ? 'true' : 'false') + ')">' + E(nice(a.course)) + (a.left != null ? ' · ' + a.left + ' left' : '') + '</button>').join('') + '</div></div>');
+  }catch(e){} };
+})();
+</script>
 </body>
 </html>
