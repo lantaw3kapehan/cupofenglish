@@ -77,6 +77,14 @@ body.present #sideBt{display:none}
 body.present .pill{display:flex}
 body.present .tag{display:flex}
 body.present.idle .pill{opacity:.15}
+/* 2287: the toolbar stays out of the way: compact, can fold into one button, and fades while the teacher is not using it */
+.tools{transition:opacity .25s}.tools .tb{height:38px}.tools .sz{height:28px}
+body.idle .tools:not(:hover){opacity:.35}
+.tfold{width:44px;height:22px;border:0;background:transparent;color:var(--mute);cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center}.tfold:hover{background:var(--teal2)}
+.tmini{display:none;position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:5;flex-direction:column;align-items:center;gap:2px;background:rgba(255,255,255,.97);border-radius:14px;box-shadow:0 6px 20px rgba(30,26,60,.14);padding:6px;border:0;cursor:pointer;color:var(--ink)}
+.tmini .cur{width:36px;height:36px;border-radius:10px;background:var(--teal2);color:#0E4C52;display:flex;align-items:center;justify-content:center;font-weight:700}
+.tmini small{font-size:9.5px;color:var(--mute)}
+body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not(:hover){opacity:.35}
 .vid{position:fixed;inset:0;z-index:20;background:rgba(10,12,20,.92);display:none;align-items:center;justify-content:center;flex-direction:column;padding:16px}
 .vid.on{display:flex}
 .vid .top{width:min(1100px,100%);display:flex;align-items:center;gap:10px;color:#fff;margin-bottom:10px}
@@ -102,6 +110,7 @@ body.present.idle .pill{opacity:.15}
 <aside id="side"></aside>
 <div class="stage fit" id="stage">
 <div class="tools" id="tools">
+<button class="tfold" id="tfold" title="Hide the tools (they fold into one small button)" aria-label="Hide the tools"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
 <button class="tb on" data-t="hand" aria-label="Move and scroll" title="Move (V or Esc)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11V6a1.5 1.5 0 0 1 3 0v4"/><path d="M10 10V4.5a1.5 1.5 0 0 1 3 0V10"/><path d="M13 10V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M16 11V8.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-.5A6.5 6.5 0 0 1 6 17.5L4.3 13a1.5 1.5 0 0 1 2.7-1.3L8 14"/></svg></button>
 <button class="tb" data-t="pen" aria-label="Pen" title="Pen (P)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></svg></button>
 <button class="tb" data-t="hl" aria-label="Highlighter" title="Highlighter (H)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 11-5 5v3h3l5-5"/><path d="m12 8 4 4 5-5-4-4z"/><path d="M3 21h8"/></svg></button>
@@ -120,6 +129,7 @@ body.present.idle .pill{opacity:.15}
 <button class="tb red" id="clear" aria-label="Clear the drawings on this page" title="Clear this page (Undo brings it back)">Clear</button>
 </div>
 <div class="pagewrap" id="wrap" style="display:none"><canvas id="pdf"></canvas><canvas id="ink"></canvas></div>
+<button class="tmini" id="tmini" title="Show the tools" aria-label="Show the tools"><span class="cur" id="tcur"></span><small>Tools</small></button>
 <div class="toast" id="toast"><span id="toastT"></span><button id="toastU">Undo</button></div>
 <div class="msg" id="msg"><div class="spin"></div><div>Opening the book…</div></div>
 </div>
@@ -234,7 +244,8 @@ function soon(){ const near = FILES.filter(f => f.kind === 'pdf' && f.id !== FID
 async function render(){ if(!doc) return; const my = {}; rendering = my;
   const p = await doc.getPage(pageNo); if(rendering !== my) return;
   const st = $('stage'), v1 = p.getViewport({ scale: 1 }), pad = 48;
-  const fit = Math.min((st.clientWidth - pad - (document.body.classList.contains('present') ? 0 : 70)) / v1.width, (st.clientHeight - pad) / v1.height);
+  const tl = $('tools'), res = document.body.classList.contains('tmin') ? 64 : (tl ? tl.offsetWidth + 24 : 70); st.style.paddingLeft = (24 + res) + 'px';   /* 2287: the page sits beside the toolbar, never under it */
+  const fit = Math.min((st.clientWidth - pad - res) / v1.width, (st.clientHeight - pad) / v1.height);
   const scale = Math.max(0.2, fit * zoom), dpr = Math.min(window.devicePixelRatio || 1, 2.5), vp = p.getViewport({ scale: scale * dpr });
   const c = $('pdf'), ink = $('ink'); c.width = vp.width; c.height = vp.height; const w = vp.width / dpr, h = vp.height / dpr;
   c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = vp.width; ink.height = vp.height; ink.style.width = w + 'px'; ink.style.height = h + 'px';
@@ -318,6 +329,11 @@ function swap(from, to){ const h = from.pop(); if(!h) return false; to.push({ pg
 $('undo').onclick = () => swap(HIST, REDO); $('redo').onclick = () => swap(REDO, HIST);
 let tt = 0; function toast(t){ $('toastT').textContent = t; $('toast').classList.add('on'); clearTimeout(tt); tt = setTimeout(hideToast, 7000); } function hideToast(){ $('toast').classList.remove('on'); }
 $('toastU').onclick = () => $('undo').click();
+/* 2287: fold / unfold the toolbar (remembered); the small button shows the tool in use, and drawing still works while folded */
+function fold(on){ document.body.classList.toggle('tmin', on); shOpen && shOpen(false); try{ localStorage.setItem('coe.reader.tmin', on ? '1' : ''); }catch(e){} miniIcon(); setTimeout(render, 30); }
+function miniIcon(){ const b = document.querySelector('.tb[data-t].on'); $('tcur').innerHTML = b ? b.innerHTML : ''; $('tcur').style.color = (b && b.dataset.t !== 'hand' && b.dataset.t !== 'erase') ? color : ''; }
+$('tfold').onclick = () => fold(true); $('tmini').onclick = () => fold(false);
+try{ if(localStorage.getItem('coe.reader.tmin')) document.body.classList.add('tmin'); }catch(e){}
 $('clear').onclick = () => { const L = ANN[pageNo] || []; if(!L.length) return; rec(); ANN[pageNo] = []; drawInk(); saveAnn(); toast('This page is cleared.'); };
 /* shapes: pick one from the small panel */
 const shBt = $('shBt'), shP = $('shp'); $('stage').appendChild(shP);
@@ -325,8 +341,9 @@ const shIcon = () => { const b = shP.querySelector('[data-k="' + shp + '"] svg')
 function shOpen(on){ if(on){ const r = shBt.getBoundingClientRect(), st = $('stage').getBoundingClientRect(); shP.style.left = (r.right - st.left + $('stage').scrollLeft + 10) + 'px'; shP.style.top = (r.top - st.top + $('stage').scrollTop - 6) + 'px'; } shP.classList.toggle('on', on); }
 shP.querySelectorAll('button').forEach(b => b.onclick = () => { shp = b.dataset.k; try{ localStorage.setItem('coe.reader.shp', shp); }catch(e){} shIcon(); shOpen(false); });
 document.addEventListener('pointerdown', e => { if(shP.classList.contains('on') && !shP.contains(e.target) && !shBt.contains(e.target)) shOpen(false); }, true);
-document.querySelectorAll('.tb[data-t]').forEach(b => b.onclick = () => { if(b.dataset.t === 'shape') shOpen(tool === 'shape' ? !shP.classList.contains('on') : true); else shOpen(false); tool = b.dataset.t; document.querySelectorAll('.tb[data-t]').forEach(x => x.classList.toggle('on', x === b)); $('ink').style.cursor = tool === 'hand' ? 'default' : tool === 'text' ? 'text' : 'crosshair'; $('ink').style.pointerEvents = tool === 'hand' ? 'none' : 'auto'; });
+document.querySelectorAll('.tb[data-t]').forEach(b => b.onclick = () => { if(b.dataset.t === 'shape') shOpen(tool === 'shape' ? !shP.classList.contains('on') : true); else shOpen(false); tool = b.dataset.t; document.querySelectorAll('.tb[data-t]').forEach(x => x.classList.toggle('on', x === b)); $('ink').style.cursor = tool === 'hand' ? 'default' : tool === 'text' ? 'text' : 'crosshair'; $('ink').style.pointerEvents = tool === 'hand' ? 'none' : 'auto'; try{ miniIcon(); }catch(e){} });
 $('ink').style.pointerEvents = 'none';
+setTimeout(() => { try{ miniIcon(); }catch(e){} }, 0);
 function setSize(z){ size = Math.max(0, Math.min(2, z)); document.querySelectorAll('.sz').forEach(x => x.classList.toggle('on', +x.dataset.z === size)); try{ localStorage.setItem('coe.reader.sz', String(size)); }catch(e){} }
 document.querySelectorAll('.sz').forEach(b => b.onclick = () => { setSize(+b.dataset.z); if(tool === 'hand' || tool === 'erase') document.querySelector('.tb[data-t="text"]').click(); }); setSize(size);
 document.querySelectorAll('.dot').forEach(b => b.onclick = () => { color = b.dataset.c; document.querySelectorAll('.dot').forEach(x => x.classList.toggle('on', x === b)); if(tool === 'hand' || tool === 'erase') document.querySelector('.tb[data-t="pen"]').click(); });
