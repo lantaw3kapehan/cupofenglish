@@ -195,7 +195,7 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
     try{ if(!(meta && meta.copied && meta.size)) throw new Error('not copied'); doc = await ranged(ST(id), +meta.size, opt); }
     catch(e){ want(id); doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt, { disableRange: true, disableStream: false })).promise; }   /* 2278 */
     soon();
-    pageNo = 1; zoom = 1; $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
+    PRE.clear(); pageNo = 1; zoom = 1; $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
     if(FIRST) FIRST = false; else try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'log', token: TOKEN, kind: 'pdf', id, title: $('fl').textContent || TITLE, book: LABEL }) }); }catch(e){}
   }catch(e){ msg('This book could not open right now. Please try again, or tell Operations.<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Try again</button>'); } }
 
@@ -222,9 +222,17 @@ async function render(){ if(!doc) return; const my = {}; rendering = my;
   const c = $('pdf'), ink = $('ink'); c.width = vp.width; c.height = vp.height; const w = vp.width / dpr, h = vp.height / dpr;
   c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = vp.width; ink.height = vp.height; ink.style.width = w + 'px'; ink.style.height = h + 'px';
   st.classList.toggle('fit', zoom <= 1);
-  await p.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.catch(() => {});
+  const key = pageNo + '|' + vp.width + 'x' + vp.height, hit = PRE.get(key);
+  if(hit){ c.getContext('2d').drawImage(hit, 0, 0); }   /* 2279: drawn ahead: the page turns at once */
+  else await p.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.catch(() => {});
   if(rendering !== my) return; drawInk(); pages();
-  if(pageNo < doc.numPages) doc.getPage(pageNo + 1).catch(() => {}); }   /* the next page is fetched ahead */
+  ahead(scale * dpr); }
+/* 2279 · the next two pages (and the one before) are drawn in the background, so turning pages is instant */
+const PRE = new Map(); let AH = 0;
+function ahead(sc){ const my = ++AH, doc0 = doc; [pageNo + 1, pageNo + 2, pageNo - 1].filter(n => n >= 1 && n <= doc.numPages).reduce((pr, n) => pr.then(async () => {
+    if(my !== AH || doc0 !== doc) return; const p = await doc.getPage(n), vp = p.getViewport({ scale: sc }), key = n + '|' + vp.width + 'x' + vp.height; if(PRE.has(key)) return;
+    const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height; await p.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+    PRE.set(key, cv); if(PRE.size > 6) PRE.delete(PRE.keys().next().value); }).catch(() => {}), new Promise(r => setTimeout(r, 120))); }
 function pages(){ const t = doc ? pageNo + ' / ' + doc.numPages : '–'; $('pg').textContent = doc ? 'Page ' + pageNo + ' of ' + doc.numPages : '–'; $('pg2').textContent = t;
   $('prev').disabled = !doc || pageNo <= 1; $('next').disabled = !doc || pageNo >= doc.numPages; }
 const turn = d => { if(!doc) return; const n = Math.min(doc.numPages, Math.max(1, pageNo + d)); if(n !== pageNo){ pageNo = n; render(); $('stage').scrollTo(0, 0); } };
