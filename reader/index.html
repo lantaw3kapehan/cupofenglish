@@ -241,18 +241,22 @@ function soon(){ const near = FILES.filter(f => f.kind === 'pdf' && f.id !== FID
   near.forEach((f, i) => setTimeout(() => { fetch(ST(f.id), { method: 'HEAD' }).then(r => { if(!r.ok) want(f.id); }).catch(() => {}); }, 1500 + i * 700)); }
 
 /* ── render the page sharp, fitted, with zoom ── */
+let TASK = null;
 async function render(){ if(!doc) return; const my = {}; rendering = my;
   const p = await doc.getPage(pageNo); if(rendering !== my) return;
   const st = $('stage'), v1 = p.getViewport({ scale: 1 }), pad = 48;
   const tl = $('tools'), res = document.body.classList.contains('tmin') ? 64 : (tl ? tl.offsetWidth + 24 : 70); st.style.paddingLeft = (24 + res) + 'px';   /* 2287: the page sits beside the toolbar, never under it */
   const fit = Math.min((st.clientWidth - pad - res) / v1.width, (st.clientHeight - pad) / v1.height);
   const scale = Math.max(0.2, fit * zoom), dpr = Math.min(window.devicePixelRatio || 1, 2.5), vp = p.getViewport({ scale: scale * dpr });
-  const c = $('pdf'), ink = $('ink'); c.width = vp.width; c.height = vp.height; const w = vp.width / dpr, h = vp.height / dpr;
+  /* 2287: the page is drawn off-screen first and shown only when complete, so two quick redraws can never mix (no flipped or cut pages) */
+  const key = pageNo + '|' + vp.width + 'x' + vp.height; let src = PRE.get(key);
+  if(!src){ if(TASK){ try{ TASK.cancel(); }catch(e){} } const off = document.createElement('canvas'); off.width = vp.width; off.height = vp.height;
+    const t = TASK = p.render({ canvasContext: off.getContext('2d'), viewport: vp }); let ok = true; await t.promise.catch(() => { ok = false; }); if(TASK === t) TASK = null;
+    if(!ok || rendering !== my) return; src = off; }
+  if(rendering !== my) return;
+  const c = $('pdf'), ink = $('ink'), w = vp.width / dpr, h = vp.height / dpr; c.width = vp.width; c.height = vp.height; c.getContext('2d').drawImage(src, 0, 0);
   c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = vp.width; ink.height = vp.height; ink.style.width = w + 'px'; ink.style.height = h + 'px';
   st.classList.toggle('fit', zoom <= 1);
-  const key = pageNo + '|' + vp.width + 'x' + vp.height, hit = PRE.get(key);
-  if(hit){ c.getContext('2d').drawImage(hit, 0, 0); }   /* 2279: drawn ahead: the page turns at once */
-  else await p.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.catch(() => {});
   if(rendering !== my) return; drawInk(); pages(); try{ localStorage.setItem('coe.reader.pg.' + FID, String(pageNo)); }catch(e){}
   ahead(scale * dpr); }
 /* 2279 · the next two pages (and the one before) are drawn in the background, so turning pages is instant */
