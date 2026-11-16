@@ -90,7 +90,7 @@ body.present.idle .pill{opacity:.15}
 <button class="btn x" id="close" aria-label="Close">✕</button>
 </header>
 <div class="main">
-<aside id="side"><div class="note">Loading the book…</div></aside>
+<aside id="side"></aside>
 <div class="stage fit" id="stage">
 <div class="tools" id="tools">
 <button class="tb on" data-t="hand" aria-label="Move and scroll" title="Move"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11V6a1.5 1.5 0 0 1 3 0v4"/><path d="M10 10V4.5a1.5 1.5 0 0 1 3 0V10"/><path d="M13 10V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M16 11V8.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-.5A6.5 6.5 0 0 1 6 17.5L4.3 13a1.5 1.5 0 0 1 2.7-1.3L8 14"/></svg></button>
@@ -125,7 +125,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 const Q = new URLSearchParams(location.search);
 let FID = Q.get('id') || '', TITLE = Q.get('t') || '', BOOK = Q.get('b') || '', UNIT = Q.get('u') ? +Q.get('u') : null;
 const TOKEN = (() => { try{ return localStorage.getItem('coe.token') || ''; }catch(e){ return ''; } })();
-let FIRST = Q.get('n') === '1';   /* opened from the app: the app already noted it */
+let FIRST = Q.get('n') === '1', SQ = '';   /* opened from the app: the app already noted it */
 let doc = null, pageNo = 1, zoom = 1, rendering = null, tool = 'hand', color = '#D7263D', FILES = [], LABEL = '';
 const ANN = {}, HIST = [];
 const msg = (h, spin) => { const m = $('msg'); m.style.display = 'flex'; m.innerHTML = (spin ? '<div class="spin"></div>' : '') + '<div>' + h + '</div>'; };
@@ -149,12 +149,12 @@ const IC = { page: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" 
   play: '<svg viewBox="0 0 24 24" width="16" height="16" fill="#B4513B" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>' };
 
 /* ── the book's files, for the list on the left ── */
-async function loadBook(){ if(!BOOK){ $('side').innerHTML = '<div class="note">For CupOfEnglish classes only.</div>'; return; }
+async function loadBook(){ if(!BOOK){ $('side').innerHTML = ''; return; }
   try{ const r = await fetch(SB + '/functions/v1/coe-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'books', token: TOKEN, code: BOOK }) }).then(x => x.json());
     if(r && r.ok && r.book){ FILES = r.book.files || []; LABEL = r.book.label || ''; $('bk').textContent = LABEL || $('bk').textContent; document.title = 'CupOfEnglish · ' + (LABEL || 'Books'); }
   }catch(e){}
   const cur = FILES.find(f => f.id === FID); if(UNIT == null && cur) UNIT = unitOf(cur); paintSide(); }
-function paintSide(){ const s = $('side'); if(!FILES.length){ s.innerHTML = '<div class="note">For CupOfEnglish classes only.</div>'; return; }
+function paintSide(){ const s = $('side'); if(!FILES.length){ s.innerHTML = ''; return; }
   const M = FILES.filter(isMain), units = [...new Set(FILES.map(unitOf).filter(u => u != null && u < 200))].sort((a, b) => a - b);
   if(UNIT == null && units.length) UNIT = units[0];
   const U = FILES.filter(f => !isMain(f) && unitOf(f) === UNIT), V = U.filter(f => f.kind === 'video').sort((a, b) => nat(a.name, b.name)), P = U.filter(f => f.kind === 'pdf').sort((a, b) => nat(a.name, b.name));
@@ -165,11 +165,17 @@ function paintSide(){ const s = $('side'); if(!FILES.length){ s.innerHTML = '<di
     h += P.length ? P.map(f => it(f, pLabel(f.name, V), IC.page)).join('') : '';
     h += V.length ? '<div class="h">Videos</div>' + V.map(f => it(f, String(f.name).replace(/^Unit \d+\s*·\s*/i, ''), IC.play)).join('') : '';
     if(!P.length && !V.length) h += '<div class="note">No pages or videos for this unit.</div>'; }
-  h += '<div class="note">For CupOfEnglish classes only · not for sharing.</div>';
+  const O = FILES.filter(f => !isMain(f) && (unitOf(f) == null || unitOf(f) >= 200) && f.kind !== 'audio').sort((a, b) => nat(a.name, b.name));
+  if(O.length){ const G = {}; O.forEach(f => { const g = (String(f.group || '').split(' / ').slice(-1)[0]) || (units.length ? 'More' : 'Readers'); (G[g] = G[g] || []).push(f); });
+    if(O.length > 15) h += `<input id="sq" placeholder="Search this book" value="${esc(SQ)}" style="width:100%;height:40px;margin:10px 0 2px;border:1px solid #E3E1EA;border-radius:10px;padding:0 12px;font:inherit;font-size:14px">`;
+    Object.keys(G).sort(nat).forEach(g => { const fs = G[g].filter(f => !SQ || f.name.toLowerCase().includes(SQ.toLowerCase())); if(!fs.length) return;
+      h += '<div class="h">' + esc(g.replace(/^[A-Z0-9 &'-]+$/, w => w.charAt(0) + w.slice(1).toLowerCase())) + '</div>' + fs.map(f => it(f, pLabel(f.name, []), f.kind === 'video' ? IC.play : IC.page)).join(''); }); }
   s.innerHTML = h;
   s.querySelectorAll('.it').forEach(b => b.onclick = () => { const f = FILES.find(x => x.id === b.dataset.id); if(!f) return; if(f.kind === 'video') return playVid(f); if(f.kind === 'pdf') openFile(f.id, f.name); });
   const go = d => { const i = units.indexOf(UNIT) + d; if(units[i] != null){ UNIT = units[i]; paintSide(); } };
-  if($('uPrev')) $('uPrev').onclick = () => go(-1); if($('uNext')) $('uNext').onclick = () => go(1); }
+  if($('uPrev')) $('uPrev').onclick = () => go(-1); if($('uNext')) $('uNext').onclick = () => go(1);
+  const sq = $('sq'); if(sq) sq.oninput = () => { SQ = sq.value; const p = sq.selectionStart; paintSide(); const n = $('sq'); if(n){ n.focus(); n.setSelectionRange(p, p); } };
+  const on = s.querySelector('.it.on'); if(on && !SQ) on.scrollIntoView({ block: 'nearest' }); }
 
 /* ── open a PDF: our copy first, then the Drive stream ── */
 async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
@@ -179,10 +185,17 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
   const opt = { rangeChunkSize: 262144, disableAutoFetch: true, cMapUrl: './pdfjs/cmaps/', cMapPacked: true, standardFontDataUrl: './pdfjs/standard_fonts/' };
   try{ if(doc){ try{ doc.destroy(); }catch(e){} doc = null; }
     try{ doc = await pdfjsLib.getDocument(Object.assign({ url: ST(id) }, opt)).promise; }
-    catch(e){ doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt)).promise; }
+    catch(e){ want(id); doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt, { disableRange: true, disableStream: false })).promise; }   /* 2278 */
+    soon();
     pageNo = 1; zoom = 1; $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
     if(FIRST) FIRST = false; else try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'log', token: TOKEN, kind: 'pdf', id, title: $('fl').textContent || TITLE, book: LABEL }) }); }catch(e){}
   }catch(e){ msg('This book could not open right now. Please try again, or tell Operations.<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Try again</button>'); } }
+
+/* 2278 · a page not yet in our copy is copied now, and the other pages of this unit too, so the next opens are instant */
+const asked = new Set();
+function want(id){ if(asked.has(id)) return; asked.add(id); try{ fetch(SB + '/functions/v1/coe-media-sync', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'one', id }) }).catch(() => {}); }catch(e){} }
+function soon(){ const near = FILES.filter(f => f.kind === 'pdf' && f.id !== FID && (UNIT != null ? unitOf(f) === UNIT : true)).slice(0, 6);
+  near.forEach((f, i) => setTimeout(() => { fetch(ST(f.id), { method: 'HEAD' }).then(r => { if(!r.ok) want(f.id); }).catch(() => {}); }, 1500 + i * 700)); }
 
 /* ── render the page sharp, fitted, with zoom ── */
 async function render(){ if(!doc) return; const my = {}; rendering = my;
