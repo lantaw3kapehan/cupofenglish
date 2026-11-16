@@ -7401,7 +7401,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1972;
+const COE_V = 1973;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -42384,7 +42384,7 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
         return `<details class="b3u"><summary><span class="ar">▸</span><b>${E(g.replace(/^[A-Z0-9 &'-]+$/, w => w.charAt(0) + w.slice(1).toLowerCase()))}</b><span class="sub"></span><span class="pills"><span class="b3p${kinds.has('video') ? ' v' : kinds.has('audio') ? ' a' : ''}">${kinds.has('video') ? '▶' : kinds.has('audio') ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex:none"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>' : '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex:none"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>'} ${fs.length}</span></span></summary><div class="b3-in">${kinds.size === 1 && kinds.has('audio') ? `<details class="b3a" open><summary><b>${E(g)}</b></summary><div>${fs.map(f => a(f)).join('')}</div></details>` : fs.map(f => a(f, f.kind === 'pdf' ? pLabel(f.name, []) : '')).join('')}</div></details>`; }).join('');
     }
     if(!html) return;
-    html += `<div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap"><button class="btn ghost grow" onclick="closeSheet();go('books')">All books</button></div><div class="b3-note">Pages open in Google Drive · videos and audio play here in the app.</div>`;
+    html += `<div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap"><button class="btn ghost grow" onclick="closeSheet();go('books')">All books</button></div><div class="b3-note">Pages open in the CupOfEnglish reader tab (zoom, drawing, Present for class) · videos and audio play here in the app.</div>`;
     body.innerHTML = html; delete body.dataset.au;
     body.insertAdjacentHTML('afterbegin', '<span class="bk-um" hidden></span>');   /* 2270's extra row is not needed: the pinned unit already has everything */
     try{ window.auEnhance && auEnhance(); }catch(e){}
@@ -42447,6 +42447,26 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
       String(c.book || s.book || '').split(/\s*[,;/]\s*/).map(x => x.toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean).forEach(k => ks.add(k)); });
     [...ks].slice(0, 12).forEach((k, i) => setTimeout(() => { try{ bkGet(k).catch(() => {}); }catch(e){} }, 1500 + i * 400)); }catch(e){} }
   setTimeout(warm, 4000); setInterval(warm, 30 * 60000);
+})();
+</script>
+<script id="b2277">
+/* 16 Nov · 2277 · Book pages open in the CupOfEnglish reader (Misty 18:49–18:54): a separate CupOfEnglish tab (reader/), never
+   Google Drive, so the teacher keeps Today open in the app and shares only the book tab in class. The reader has zoom, drawing
+   tools, Present (full screen: only the CupOfEnglish header, the page and the drawings), and the unit's lessons and videos.
+   Every book page link in the app (book sheet, student's Course book card, class card) opens in the same reader tab. */
+(function(){
+  function bookOf(id){ try{ for(let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if(!/^coe\.bk3\./.test(k)) continue;
+      const c = JSON.parse(localStorage.getItem(k) || 'null'), F = (c && c.b && c.b.files) || [], f = F.find(x => x.id === id); if(f) return { code: (c.b.code || k.split('.').pop()), f }; } }catch(e){} return null; }
+  window.bkReader = function(id, title){ const hit = bookOf(id); if(hit && hit.f.kind !== 'pdf') return false;
+    const q = new URLSearchParams({ id, t: String(title || (hit && hit.f.name) || '').slice(0, 120), n: '1' }); if(hit && hit.code) q.set('b', hit.code);
+    const w = window.open('reader/?' + q.toString(), 'coeReader'); if(!w){ toast('Allow pop-ups for this site to open books'); return false; } try{ w.focus(); }catch(e){} return true; };
+  document.addEventListener('click', ev => { try{ if(ev.defaultPrevented || !D) return;
+    const a = ev.target && ev.target.closest && ev.target.closest('a[href*="drive.google.com/file/d/"]'); if(!a) return;
+    const t = (a.textContent || '').trim(); if(/^[▶♪]/.test(t)) return;
+    const id = decodeURIComponent((/\/d\/([^/]+)/.exec(a.getAttribute('href')) || [])[1] || ''); if(!id) return;
+    const inBooks = a.closest('#bkBody, #stuBk, #v-books') || a.classList.contains('bkb'), hit = bookOf(id);
+    if(!inBooks && !(hit && hit.f.kind === 'pdf')) return;
+    if(window.bkReader(id, t)) ev.preventDefault(); }catch(e){} });
 })();
 </script>
 </body>
