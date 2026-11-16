@@ -48,6 +48,11 @@ Deno.serve(async (req: Request) => {
     if (op === "meta") {   // 2279: the reader needs a file's size and whether our copy is ready (for page-by-page loading)
       const id = clip(b.id, 80); const { data: f } = await db.from("coe_book_files").select("size,mime").eq("id", id).maybeSingle();
       const { data: m } = await db.from("coe_media_mirror").select("done_at").eq("id", id).maybeSingle();
+      // 2281: not copied yet → a lighter "_APP COPIES" twin that is copied opens instead (same book, same name)
+      if (f && !(m && m.done_at)) { const { data: me } = await db.from("coe_book_files").select("path,name").eq("id", id).maybeSingle();
+        if (me) { const { data: tw } = await db.from("coe_book_files").select("id,size").eq("name", me.name).eq("path", "_APP COPIES / " + me.path).is("gone_at", null).limit(1);
+          const t = tw && tw[0]; if (t) { const { data: tm } = await db.from("coe_media_mirror").select("done_at").eq("id", t.id).maybeSingle();
+            if (tm && tm.done_at) return out({ ok: true, size: f.size, copied: false, alt: t.id, altSize: t.size }); } } }
       return out({ ok: !!f, size: f ? f.size : null, copied: !!(m && m.done_at) });
     }
     const code = clip(b.code, 20).toUpperCase(), day = clip(b.day, 10);
