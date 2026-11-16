@@ -435,7 +435,11 @@ Deno.serve(async (req: Request) => {
       tr = (T2 || []).find((x: any) => String((x.data || [])[5] || "").trim().toLowerCase() === stu); }
     const w = (W || []).find((x: any) => { const c = (x.args || [])[1] || {}; return String(c.student || "").trim().toLowerCase() === stu && String(c.date || "") === day; });
     const pk = (K || []).map((x: any) => x.data || []).find((d: any) => String(d[0] || "").toLowerCase() === day + "|" + stu);
-    return out({ ok: true, tr: tr ? { r: tr.r, data: tr.data } : null,
+    // 2280: the book the trial class was booked with (e.g. ShortVowels), so the report's starting point names that exact book
+    let book = ""; try { const { data: CL } = await db.from("classes").select("student,data").eq("day", day).limit(400);
+      const c = (CL || []).find((x: any) => String(x.student || "").trim().toLowerCase() === stu && /(-TC\b|trial|试听)/i.test(String((x.data || {}).title || ""))) || (CL || []).find((x: any) => String(x.student || "").trim().toLowerCase() === stu);
+      book = c ? String((c.data || {}).book || "") : ""; } catch (_e) { /* no book */ }
+    return out({ ok: true, book, tr: tr ? { r: tr.r, data: tr.data } : null,
       sub: w ? { id: w.id, who: w.who, at: w.created_at, status: w.status, c: (w.args || [])[1] || {}, f: (w.args || [])[2] || {} } : null,
       pick: pk ? String(pk[3] || "") : "", cefr: C ? C.map((x: any) => x.data) : null, path: P ? P.map((x: any) => x.data) : null });
   }
