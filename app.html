@@ -7399,7 +7399,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1960;
+const COE_V = 1961;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -42050,7 +42050,7 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
   const view = id => 'https://drive.google.com/file/d/' + encodeURIComponent(id) + '/view';
   /* b1_c_1_4_1_us.mp3 → unit 1, exercise 4, "1", US */
   function parse(name){ const base = String(name).replace(/\.(mp3|m4a|wav|ogg|aac)$/i, '');
-    const m = /^b\d+_[a-z]+_(\d+)_(\d+)(?:_(.*))?$/i.exec(base); if(!m) return null;
+    const m = /^b\d+_[a-z]+_(\d+)_(\d+)(?:_(.*))?$/i.exec(base); if(!m){ const q = /(?:^|_)(?:SB|WB)\d*_(\d+)\.(\d+)$/i.exec(base); return q ? { u: +q[1], x: 0, k: 'Unit ' + q[1], t: q[1] + '.' + q[2], acc: '', o: 1 } : null; }   /* 2265: ODF_SB1_1.01 */
     let rest = m[3] || '', acc = ''; const a = /(?:^|_)(usuk|uk|us)$/i.exec(rest); if(a){ acc = a[1].toUpperCase(); rest = rest.slice(0, a.index); }
     rest = rest.replace(/^_+|_+$/g, '');
     let t = rest === '' ? 'Play' : rest.replace(/^eg(?=_|$)/i, 'Example').replace(/^(\d+)_([a-z])$/i, '$1$2').replace(/_/g, ' ');
@@ -42081,14 +42081,14 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
       const items = as.map(a => { const id = decodeURIComponent((/\/d\/([^/]+)/.exec(a.getAttribute('href')) || [])[1] || ''), name = a.textContent.replace(/^♪\s*/, '').trim(); return { id, name, p: parse(name) }; });
       const box = d.querySelector('div'); if(!box) return;
       const sb = d.querySelector('summary b'), g = sb ? sb.textContent.trim() : '';
-      if(sb && /^\d+$/.test(g)) sb.textContent = 'Unit ' + g;
+      if(sb && /^\d+$/.test(g)) sb.textContent = 'Unit ' + g; else if(sb && /work[_\s-]*book[_\s-]*audio/i.test(g)) sb.textContent = 'Workbook audio'; else if(sb && /student'?s?[_\s-]*book[_\s-]*audio/i.test(g)) sb.textContent = "Student's Book audio";   /* 2265 */
       const sm = d.querySelector('summary .mute'); if(sm) sm.textContent = '· ' + items.length + ' audio';
       const X = {}, odd = [];
-      items.forEach(f => { if(!f.p) return odd.push(f); const k = f.p.u + '.' + f.p.x; (X[k] = X[k] || []).push(f); });
+      items.forEach(f => { if(!f.p) return odd.push(f); const k = f.p.k || (f.p.u + '.' + f.p.x); (X[k] = X[k] || []).push(f); });
       let html = '';
       Object.keys(X).sort(nat).forEach(k => { const fs = X[k].sort((a, b) => (a.p.o - b.p.o) || nat(a.p.t, b.p.t));
         html += `<div class="au-ex"><div class="au-n">${E(k)}</div><div class="au-ch">${fs.map(f => { const i = LIST.length;
-          LIST.push({ id: f.id, title: (book ? book.replace(/^DK English for Everyone · /i, 'DK ') + ' · ' : '') + 'Exercise ' + k + (f.p.t === 'Play' ? '' : ' · ' + f.p.t) + (f.p.acc ? ' (' + f.p.acc + ')' : '') });
+          LIST.push({ id: f.id, title: (book ? book.replace(/^DK English for Everyone · /i, 'DK ') + ' · ' : '') + (f.p.k ? 'Track ' + f.p.t : 'Exercise ' + k + (f.p.t === 'Play' ? '' : ' · ' + f.p.t)) + (f.p.acc ? ' (' + f.p.acc + ')' : '') });
           return `<button class="au-c" data-i="${i}" onclick="auPlay(${i})">▶ ${E(f.p.t)}${f.p.acc ? `<span class="ac">${E(f.p.acc)}</span>` : ''}</button>`; }).join('')}</div></div>`; });
       odd.sort((a, b) => nat(a.name, b.name)).forEach(f => { const i = LIST.length; LIST.push({ id: f.id, title: f.name });
         html += `<div class="au-ex"><div class="au-ch"><button class="au-c" data-i="${i}" onclick="auPlay(${i})">▶ ${E(f.name.replace(/\.(mp3|m4a|wav|ogg|aac)$/i, ''))}</button></div></div>`; });
