@@ -7399,7 +7399,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1955;
+const COE_V = 1956;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -41808,8 +41808,8 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
   const cap = n => { n = String(n || '').replace(/^teacher\s+/i, '').trim(); return n ? n.charAt(0).toUpperCase() + n.slice(1) : ''; };
   const isData = p => /^data:image\//.test(String(p || ''));
   let MX = [];
-  const mixParse = s => prfLines(s).map(l => { const x = l.match(/^(\d+(?:\.\d+)?)\s*%\s*(.*)$/); return x ? { p: x[1], t: x[2] } : { p: '', t: l }; });
-  const mixText = () => MX.filter(r => r.p || r.t.trim()).map(r => (r.p ? r.p + '% ' : '') + r.t.trim()).join('\n');
+  const mixParse = s => prfLines(s).filter(l => !/^※/.test(l)).map(l => { const x = l.match(/^(\d+(?:\.\d+)?)\s*%\s*(.*)$/); return x ? { p: x[1], t: x[2] } : { p: '', t: l }; });
+  const mixText = () => MX.filter(r => r.p || r.t.trim()).map(r => (r.p ? r.p + '% ' : '') + r.t.trim()).join('\n') + (window.__mxNote ? '\n※ ' + window.__mxNote : '');   /* 2260 */
   function mixPaint(){ const b = document.getElementById('prfMx'); if(!b) return;
     b.innerHTML = MX.map((r, i) => '<div class="prf2-mx"><input inputmode="numeric" value="' + esc(r.p) + '" placeholder="35" aria-label="Percent" oninput="prf2Mx(' + i + ',\'p\',this.value)"><input value="' + esc(r.t) + '" placeholder="教师示范（清晰讲解）" oninput="prf2Mx(' + i + ',\'t\',this.value)"><button type="button" title="Remove" onclick="prf2MxDel(' + i + ')">×</button></div>').join('') +
       '<button type="button" class="btn ghost sm" style="margin-top:8px" onclick="prf2MxAdd()">+ Add a line</button><div id="prfMxT" class="prf2-tot"></div>';
@@ -41820,6 +41820,7 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
   window.prf2Mx = (i, k, v) => { if(!MX[i] || !PRFE) return; MX[i][k] = k === 'p' ? String(v).replace(/[^\d.]/g, '') : v; PRFE.mix = mixText(); mixTot(); dirty(); prfLater(); };
   window.prf2MxDel = i => { MX.splice(i, 1); if(PRFE){ PRFE.mix = mixText(); } mixPaint(); dirty(); prfLater(); };
   window.prf2MxAdd = () => { MX.push({ p: '', t: '' }); mixPaint(); };
+  window.prf2MxNote = v => { window.__mxNote = String(v || '').trim(); if(PRFE){ PRFE.mix = mixText(); } dirty(); prfLater(); };   /* 2260 */
   window.prf2Set = (k, v) => { if(!PRFE) return; PRFE[k] = v; dirty(); prfLater(); };
   window.prf2Thumb = () => { const P = PRFE, a = document.getElementById('prfAv'); if(!P || !a) return;
     a.innerHTML = P.photoIm ? '<img src="' + P.photoIm.src + '" alt="">' : esc(P.teacher.charAt(0).toUpperCase());
@@ -41831,7 +41832,7 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
     try{ await prfLoad(); }catch(e){}
     const sv = PROFD && PROFD.profiles && PROFD.profiles[lc], s = sv || PROF_DEF[lc] || { sub: '专业英语教师', creds: '持证专业教师', skills: '', mix: '', style: '' };
     const P = PRFE = { teacher: name, sub: s.sub || '', creds: s.creds || '', skills: s.skills || '', mix: s.mix || '', style: s.style || '', photo: (sv && sv.photo) || '', qr: '', photoIm: null, qrIm: null, photoNew: '', qrNew: '' };
-    MX = mixParse(P.mix); if(!MX.length) MX = [{ p: '35', t: '' }, { p: '35', t: '' }, { p: '20', t: '' }, { p: '10', t: '' }];
+    MX = mixParse(P.mix); window.__mxNote = (prfLines(P.mix).find(l => /^※/.test(l)) || '').replace(/^※\s*/, '');   /* 2260 */ if(!MX.length) MX = [{ p: '35', t: '' }, { p: '35', t: '' }, { p: '20', t: '' }, { p: '10', t: '' }];
     const ta = (k, rows, ph) => '<textarea class="in-t" rows="' + rows + '" placeholder="' + esc(ph) + '" oninput="prf2Set(\'' + k + '\',this.value)">' + esc(P[k]) + '</textarea>';
     const st = sv ? '<span id="prfSt" class="prf2-st">Saved' + (sv.at ? ' · ' + esc(sv.at) : '') + '</span>' : '<span id="prfSt" class="prf2-st dirty">New card · not saved yet</span>';
     openSheet('<button type="button" class="btn ghost sm" style="margin-bottom:8px" onclick="prfList()">‹ All profile cards</button>' +
@@ -41845,6 +41846,7 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
         '<label>Qualifications</label>' + ta('creds', 4, '持证专业教师\n4年以上少儿英语教学经验') + '<div class="hint">One per line · shown in the middle of the box.</div>' +
         '<label>擅长领域 · strengths</label>' + ta('skills', 7, '自然拼读课程（Phonics）') + '<div class="hint">One per line · long lines wrap by themselves.</div>' +
         '<label>Teaching mix</label><div class="hint">Percent + what it is. Put the details in brackets （…） and the app puts them on their own line when they are long.</div><div id="prfMx"></div>' +
+        '<label>Note under the teaching mix <span class="mute small">(optional)</span></label><input class="in-t" value="' + esc(window.__mxNote || '') + '" placeholder="以上为参考安排，具体内容和比重会根据学员的水平和目标调整。" oninput="prf2MxNote(this.value)">' +
         '<label>Classroom style · the lines at the bottom</label>' + ta('style', 3, '课堂氛围轻松有趣……') + '<div class="hint">No need to write the teacher\'s name.</div>' +
       '</div><div class="prf2-p"><div class="st"><img id="prfImg" alt="Teacher profile card"><div id="prfWait" class="sk" style="height:420px"></div>' +
         '<div class="row" style="gap:8px;margin-top:10px"><button class="btn teal grow" onclick="prfCopy()">Copy picture</button><button class="btn ghost grow" onclick="prfCopy(1)">' + (navigator.share ? 'Share / save' : 'Save picture') + '</button></div>' +
@@ -41926,7 +41928,8 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
     const two = skills.length >= 5 && skills.filter(s => tw(s, skF) > colW).length <= Math.ceil(skills.length / 3);   // two columns; a long line wraps inside its column
     const skL = skills.map(s => wrap(s, skF, two ? colW : CW - 60)), skLH = 50;
     let skH = 0; if(two){ for(let i = 0; i < skL.length; i += 2) skH += Math.max(skL[i].length, (skL[i + 1] || []).length) * skLH + 18; } else skL.forEach(x => skH += x.length * skLH + 18);
-    const mix = prfLines(P.mix).map(l => { const x = l.match(/^(\d+(?:\.\d+)?)\s*%\s*(.*)$/); const t = (x ? x[2] : l).trim(), i = t.search(/[（(]/);
+    const mixNote = (prfLines(P.mix).find(l => /^※/.test(l)) || '').replace(/^※\s*/, '');   /* 2260 */
+    const mix = prfLines(P.mix).filter(l => !/^※/.test(l)).map(l => { const x = l.match(/^(\d+(?:\.\d+)?)\s*%\s*(.*)$/); const t = (x ? x[2] : l).trim(), i = t.search(/[（(]/);
       let ti = t, d = ''; if(i > 0){ ti = t.slice(0, i).trim(); let rest = t.slice(i), mm;
         while((mm = rest.match(/^[（(]([^（）()]{1,8})[）)]\s*(?=[（(])/))){ ti += '（' + mm[1] + '）'; rest = rest.slice(mm[0].length); }   // 综合能力培养（4Cs）（创造力…）
         d = rest.replace(/^[（(]/, '').replace(/[）)]$/, '').trim(); }
@@ -41944,7 +41947,8 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
     L.creds = y; y += crRows.length ? crRows.length * (crH + 14) + 40 : 0;
     const secH = 90;
     L.sk = y; y += skills.length ? secH + skH + 40 : 0;
-    L.mx = y; y += mix.length ? secH + 64 + 34 + mix.reduce((a, x) => a + x.h, 0) + 40 : 0;
+    const mnF = '400 28px ' + F, mnL = mixNote ? wrap(mixNote, mnF, CW - 20) : [];   /* 2260 */
+    L.mx = y; y += mix.length ? secH + 64 + 34 + mix.reduce((a, x) => a + x.h, 0) + 40 + (mnL.length ? mnL.length * 40 + 16 : 0) : 0;
     L.st = y; y += stL.length ? secH + stL.length * 60 + 90 + 50 : 0;
     L.cta = y; y += 190 + 60;
     const tagImgH = tag ? 380 * tag.height / tag.width : 50; L.tag = y; y += tagImgH + 70;
@@ -41996,7 +42000,8 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
       let yy = by + 64 + 34; mix.forEach((x, i) => { c.fillStyle = MIXC[i % MIXC.length]; rr(M + 6, yy + 12, 22, 22, 6); c.fill();
         c.fillStyle = NAVY; c.font = '400 56px ' + FO; c.textAlign = 'left'; c.fillText((x.p || '') + (x.p ? '%' : ''), M + 46, yy + 50);
         c.font = mxTF; x.tl.forEach((t, k) => c.fillText(t, M + 230, yy + 36 + k * 46)); c.fillStyle = INK2; c.font = mxDF; x.dl.forEach((t, k) => c.fillText(t, M + 230, yy + 36 + x.tl.length * 46 + k * 40));
-        yy += x.h; if(i < mix.length - 1){ c.strokeStyle = '#EEF0F4'; c.lineWidth = 2; c.beginPath(); c.moveTo(M + 230, yy - 12); c.lineTo(W - M, yy - 12); c.stroke(); } }); }
+        yy += x.h; if(i < mix.length - 1){ c.strokeStyle = '#EEF0F4'; c.lineWidth = 2; c.beginPath(); c.moveTo(M + 230, yy - 12); c.lineTo(W - M, yy - 12); c.stroke(); } });
+      if(mnL.length){ c.fillStyle = '#8A86A0'; c.font = mnF; c.textAlign = 'left'; mnL.forEach((t, k) => c.fillText(t, M + 6, yy + 18 + k * 40)); } }   /* 2260: note under the mix */
     // classroom style as a quote
     if(stL.length){ sec(L.st, '课堂风格', 'TEACHING STYLE'); const qy = L.st + secH + 10, qh = stL.length * 60 + 70; c.fillStyle = SOFT; rr(M, qy, CW, qh, 34); c.fill();
       c.fillStyle = 'rgba(20,179,167,.35)'; c.font = '400 170px ' + FO; c.textAlign = 'left'; c.fillText('“', M + 24, qy + 140);
