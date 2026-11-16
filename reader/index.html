@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>CupOfEnglish · Books</title>
+<link rel="icon" href="../icon-192.png">
+<!-- 16 Nov 2026 · 2277 · The CupOfEnglish book reader (Misty 18:49–18:54): book PDFs open in their own CupOfEnglish tab, never Google Drive.
+     Our own copy first (Supabase Storage, book-media), then the Drive stream (coe-audio) · zoom · drawing tools the student sees ·
+     Present (full screen, only the CupOfEnglish header, the page and the drawings) · the unit's lessons and videos on the left.
+     Opened from the app (needs the app's sign-in on this browser). PDF.js 4.10 (Apache-2.0) in ./pdfjs. -->
+<style>
+@font-face{font-family:Inter;src:url(../fonts/card-inter-var.woff2) format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Fredoka One";src:url(../fonts/card-fredoka-one.woff2) format("woff2");font-display:swap}
+:root{--ink:#2B2450;--mute:#6B6880;--line:#ECEAF2;--teal:#13636B;--teal2:#E8F3F3;--bg:#EEEDF3;--coral:#B4513B}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+.app{height:100%;display:flex;flex-direction:column}
+header{height:64px;flex:none;background:#fff;display:flex;align-items:center;gap:14px;padding:0 16px;border-bottom:1px solid var(--line)}
+header .logo{height:32px}
+header .sep{width:1px;height:30px;background:var(--line)}
+header .tt{flex:1;min-width:0}
+header .tt b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .tt span{display:block;font-size:13px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grp{display:flex;align-items:center;gap:4px;background:#F3F2F7;border-radius:12px;padding:4px}
+.ib{min-width:36px;height:36px;border:0;border-radius:9px;background:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0 8px;font-size:14px;font-weight:600}
+.ib:hover{background:#F7F7FB}.ib:disabled{opacity:.4;cursor:default}
+.num{font-size:14px;font-weight:600;padding:0 8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.btn{height:40px;padding:0 14px;border:1px solid #E3E1EA;border-radius:12px;background:#fff;cursor:pointer;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn.pr{background:var(--teal);color:#fff;border-color:var(--teal)}
+.btn.x{width:40px;padding:0;justify-content:center;border:0;background:#F3F2F7;border-radius:999px}
+.main{flex:1;display:flex;min-height:0}
+aside{width:260px;flex:none;border-right:1px solid var(--line);background:#FBFBFD;overflow:auto;padding:14px 10px}
+aside .h{font-size:12px;font-weight:700;color:var(--mute);letter-spacing:.04em;text-transform:uppercase;padding:12px 8px 6px}
+aside .it{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px;border:0;border-radius:12px;background:transparent;cursor:pointer;font-size:14px}
+aside .it:hover{background:#F1F0F6}
+aside .it.on{background:var(--teal2);color:#0E4C52;font-weight:600}
+aside .it svg{flex:none}
+aside .uh{display:flex;align-items:center;gap:6px;padding:4px 4px 2px}
+aside .uh b{flex:1;font-size:14px}
+aside .note{font-size:12px;color:var(--mute);padding:14px 8px;line-height:1.5}
+.stage{flex:1;position:relative;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:24px}
+.stage.fit{align-items:center}
+.pagewrap{position:relative;background:#fff;box-shadow:0 8px 28px rgba(30,26,60,.16);border-radius:4px;flex:none}
+.pagewrap canvas{display:block}
+#ink{position:absolute;inset:0;touch-action:none}
+.tools{position:absolute;left:16px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.97);border-radius:16px;box-shadow:0 6px 20px rgba(30,26,60,.14);padding:8px;display:flex;flex-direction:column;gap:4px;align-items:center;z-index:5}
+.tb{width:44px;height:44px;border:0;border-radius:12px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px}
+.tb.on{background:var(--teal2);color:#0E4C52}
+.tb.red{color:var(--coral);font-size:12px;font-weight:600}
+.dot{width:22px;height:22px;border-radius:999px;border:0;cursor:pointer;margin:4px 0}
+.dot.on{box-shadow:0 0 0 2px #fff,0 0 0 4px currentColor}
+.hr{width:28px;height:1px;background:var(--line);margin:4px 0}
+.msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--mute);font-size:15px;text-align:center;padding:30px}
+.spin{width:34px;height:34px;border:3px solid #DDDBE6;border-top-color:var(--teal);border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.pill{display:none;position:fixed;bottom:44px;left:50%;transform:translateX(-50%);align-items:center;gap:4px;background:rgba(43,36,80,.9);color:#fff;border-radius:999px;padding:6px 8px;z-index:6;transition:opacity .3s}
+.pill button{height:40px;min-width:40px;border:0;border-radius:999px;background:transparent;color:#fff;cursor:pointer;font-size:14px;font-weight:600;padding:0 12px}
+.tag{display:none;height:30px;flex:none;align-items:center;justify-content:center;font-size:12.5px;color:var(--mute);background:#fff;letter-spacing:.02em}
+.txtin{position:absolute;z-index:7;font:600 20px Inter,sans-serif;border:1.5px dashed var(--teal);background:rgba(255,255,255,.85);padding:2px 6px;outline:0;min-width:120px}
+/* Present: what the student sees on the shared screen */
+body.present header .grp,body.present header .btn,body.present header .sep{display:none}
+body.present header{justify-content:center;border-bottom:3px solid var(--teal)}
+body.present header .tt{text-align:center}
+body.present aside{display:none}
+body.present .pill{display:flex}
+body.present .tag{display:flex}
+body.present.idle .pill{opacity:.15}
+.vid{position:fixed;inset:0;z-index:20;background:rgba(10,12,20,.92);display:none;align-items:center;justify-content:center;flex-direction:column;padding:16px}
+.vid.on{display:flex}
+.vid .top{width:min(1100px,100%);display:flex;align-items:center;gap:10px;color:#fff;margin-bottom:10px}
+.vid .top b{flex:1;font-size:16px}
+.vid .top button{border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:999px;padding:6px 12px;cursor:pointer;font-weight:600}
+.vid video{width:min(1100px,100%);max-height:calc(100vh - 110px);background:#000;border-radius:12px}
+@media (max-width:900px){aside{display:none}body.side aside{display:block;position:absolute;z-index:8;top:64px;bottom:0;left:0;box-shadow:0 10px 30px rgba(0,0,0,.2)}header .hide-s{display:none}.tools{left:8px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+<img class="logo" src="logo.png" alt="CupOfEnglish">
+<div class="sep"></div>
+<button class="btn x hide-l" id="sideBt" aria-label="Lessons" style="display:none">≡</button>
+<div class="tt"><b id="bk">Book</b><span id="fl"></span></div>
+<div class="grp"><button class="ib" id="prev" aria-label="Previous page">‹</button><span class="num" id="pg">–</span><button class="ib" id="next" aria-label="Next page">›</button></div>
+<div class="grp hide-s"><button class="ib" id="zo" aria-label="Zoom out">−</button><button class="ib" id="zf" aria-label="Fit page">Fit</button><button class="ib" id="zi" aria-label="Zoom in">+</button></div>
+<button class="btn pr" id="present"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Present</button>
+<button class="btn x" id="close" aria-label="Close">✕</button>
+</header>
+<div class="main">
+<aside id="side"><div class="note">Loading the book…</div></aside>
+<div class="stage fit" id="stage">
+<div class="tools" id="tools">
+<button class="tb on" data-t="hand" aria-label="Move and scroll" title="Move"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11V6a1.5 1.5 0 0 1 3 0v4"/><path d="M10 10V4.5a1.5 1.5 0 0 1 3 0V10"/><path d="M13 10V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M16 11V8.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-.5A6.5 6.5 0 0 1 6 17.5L4.3 13a1.5 1.5 0 0 1 2.7-1.3L8 14"/></svg></button>
+<button class="tb" data-t="pen" aria-label="Pen" title="Pen"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></svg></button>
+<button class="tb" data-t="hl" aria-label="Highlighter" title="Highlighter"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 11-5 5v3h3l5-5"/><path d="m12 8 4 4 5-5-4-4z"/><path d="M3 21h8"/></svg></button>
+<button class="tb" data-t="text" aria-label="Text" title="Text">T</button>
+<button class="tb" data-t="erase" aria-label="Eraser" title="Eraser"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 21-4-4L14 6l6 6-9 9z"/><path d="M7 21h13"/></svg></button>
+<div class="hr"></div>
+<button class="dot on" data-c="#D7263D" style="background:#D7263D;color:#D7263D" aria-label="Red"></button>
+<button class="dot" data-c="#1F6FEB" style="background:#1F6FEB;color:#1F6FEB" aria-label="Blue"></button>
+<button class="dot" data-c="#1E9E5A" style="background:#1E9E5A;color:#1E9E5A" aria-label="Green"></button>
+<button class="dot" data-c="#2B2450" style="background:#2B2450;color:#2B2450" aria-label="Dark"></button>
+<div class="hr"></div>
+<button class="tb" id="undo" aria-label="Undo" title="Undo"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
+<button class="tb red" id="clear" aria-label="Clear the drawings on this page" title="Clear page">Clear</button>
+</div>
+<div class="pagewrap" id="wrap" style="display:none"><canvas id="pdf"></canvas><canvas id="ink"></canvas></div>
+<div class="msg" id="msg"><div class="spin"></div><div>Opening the book…</div></div>
+</div>
+</div>
+<div class="tag">Learn with the best to be the best · 与优秀者同行，遇见更好的自己</div>
+</div>
+<div class="pill" id="pill"><button id="pp" aria-label="Previous page">‹</button><span class="num" id="pg2">–</span><button id="pn" aria-label="Next page">›</button><button id="pz">Zoom</button><button id="px">Exit · Esc</button></div>
+<div class="vid" id="vid"><div class="top"><b id="vt"></b><button id="vx">✕ Close</button></div><video id="vv" controls playsinline preload="auto"></video></div>
+<script type="module">
+import * as pdfjsLib from './pdfjs/pdf.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = './pdfjs/pdf.worker.min.mjs';
+const SB = 'https://rlxkiahqjsabopmuhern.supabase.co';
+const ST = id => SB + '/storage/v1/object/public/book-media/' + encodeURIComponent(id);
+const PX = id => SB + '/functions/v1/coe-audio?id=' + encodeURIComponent(id);
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const Q = new URLSearchParams(location.search);
+let FID = Q.get('id') || '', TITLE = Q.get('t') || '', BOOK = Q.get('b') || '', UNIT = Q.get('u') ? +Q.get('u') : null;
+const TOKEN = (() => { try{ return localStorage.getItem('coe.token') || ''; }catch(e){ return ''; } })();
+let FIRST = Q.get('n') === '1';   /* opened from the app: the app already noted it */
+let doc = null, pageNo = 1, zoom = 1, rendering = null, tool = 'hand', color = '#D7263D', FILES = [], LABEL = '';
+const ANN = {}, HIST = [];
+const msg = (h, spin) => { const m = $('msg'); m.style.display = 'flex'; m.innerHTML = (spin ? '<div class="spin"></div>' : '') + '<div>' + h + '</div>'; };
+
+if(!TOKEN){ msg('Please open books from the CupOfEnglish app on this browser.<br><a href="../" style="color:#13636B;font-weight:600">Open the app</a>'); $('side').innerHTML = ''; throw new Error('no session'); }
+
+/* ── labels (same as the app's book sheet) ── */
+const aParse = n => { const b = String(n).replace(/\.(mp3|m4a|wav|ogg|aac)$/i, ''); let m = /^b\d+_[a-z]+_(\d+)_(\d+)/i.exec(b); if(m) return +m[1]; m = /(?:^|_)(?:SB|WB)\d*_(\d+)\.(\d+)$/i.exec(b); return m ? +m[1] : null; };
+function unitOf(f){ if(f.kind === 'audio'){ const u = aParse(f.name); if(u != null) return u; }
+  const g = String(f.group || ''); let m = /^(\d+)$/.exec(g.split(' / ').slice(-1)[0] || ''); if(m) return +m[1];
+  m = /\bunit\s*0?(\d+)\b/i.exec(g) || /\bunit\s*0?(\d+)\b/i.exec(f.name) || /(?:^|[^A-Z])U0?(\d+)(?=L|W|[^0-9]|$)/.exec(f.name); return m ? +m[1] : null; }
+const isMain = f => f.kind === 'pdf' && ((!f.group && /student|workbook|work book|course book|teacher|answer|\bTG\b/i.test(f.name)) || /^(student|workbook)/i.test(f.name));
+const mainLabel = n => /work\s*book/i.test(n) ? 'Workbook' : /teacher|\bTG\b/i.test(n) ? "Teacher's guide" : /answer/i.test(n) ? 'Answer key' : "Student's Book";
+function pLabel(n, V){ n = String(n || ''); let m = /U(\d+)\s*L(\d+)/i.exec(n);
+  if(m){ const L = (V || []).map(v => (/Letter (\w\w)/.exec(v.name) || [])[1]).filter(Boolean); const k = +m[2]; return 'Lesson ' + k + (L[k - 1] ? ' · ' + L[k - 1] : ''); }
+  m = /(?:^|[-\s])Unit\s*0?(\d+)\s*$/i.exec(n); if(m) return 'Unit ' + m[1] + ' pages';
+  m = /Readers?\s*-\s*(.+)$/i.exec(n); if(m) return 'Reader · ' + m[1]; return n; }
+const nat = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+const IC = { page: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>',
+  book: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/></svg>',
+  play: '<svg viewBox="0 0 24 24" width="16" height="16" fill="#B4513B" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>' };
+
+/* ── the book's files, for the list on the left ── */
+async function loadBook(){ if(!BOOK){ $('side').innerHTML = '<div class="note">For CupOfEnglish classes only.</div>'; return; }
+  try{ const r = await fetch(SB + '/functions/v1/coe-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'books', token: TOKEN, code: BOOK }) }).then(x => x.json());
+    if(r && r.ok && r.book){ FILES = r.book.files || []; LABEL = r.book.label || ''; $('bk').textContent = LABEL || $('bk').textContent; document.title = 'CupOfEnglish · ' + (LABEL || 'Books'); }
+  }catch(e){}
+  const cur = FILES.find(f => f.id === FID); if(UNIT == null && cur) UNIT = unitOf(cur); paintSide(); }
+function paintSide(){ const s = $('side'); if(!FILES.length){ s.innerHTML = '<div class="note">For CupOfEnglish classes only.</div>'; return; }
+  const M = FILES.filter(isMain), units = [...new Set(FILES.map(unitOf).filter(u => u != null && u < 200))].sort((a, b) => a - b);
+  if(UNIT == null && units.length) UNIT = units[0];
+  const U = FILES.filter(f => !isMain(f) && unitOf(f) === UNIT), V = U.filter(f => f.kind === 'video').sort((a, b) => nat(a.name, b.name)), P = U.filter(f => f.kind === 'pdf').sort((a, b) => nat(a.name, b.name));
+  const it = (f, txt, ic) => `<button class="it${f.id === FID ? ' on' : ''}" data-id="${esc(f.id)}" data-k="${f.kind}">${ic}<span>${esc(txt)}</span></button>`;
+  let h = M.length ? '<div class="h">Books</div>' + M.map(f => it(f, mainLabel(f.name), IC.book)).join('') : '';
+  if(units.length){ const i = units.indexOf(UNIT);
+    h += `<div class="h">Unit</div><div class="uh"><button class="ib" id="uPrev" aria-label="Previous unit"${i <= 0 ? ' disabled' : ''}>‹</button><b style="text-align:center">Unit ${UNIT}</b><button class="ib" id="uNext" aria-label="Next unit"${i >= units.length - 1 ? ' disabled' : ''}>›</button></div>`;
+    h += P.length ? P.map(f => it(f, pLabel(f.name, V), IC.page)).join('') : '';
+    h += V.length ? '<div class="h">Videos</div>' + V.map(f => it(f, String(f.name).replace(/^Unit \d+\s*·\s*/i, ''), IC.play)).join('') : '';
+    if(!P.length && !V.length) h += '<div class="note">No pages or videos for this unit.</div>'; }
+  h += '<div class="note">For CupOfEnglish classes only · not for sharing.</div>';
+  s.innerHTML = h;
+  s.querySelectorAll('.it').forEach(b => b.onclick = () => { const f = FILES.find(x => x.id === b.dataset.id); if(!f) return; if(f.kind === 'video') return playVid(f); if(f.kind === 'pdf') openFile(f.id, f.name); });
+  const go = d => { const i = units.indexOf(UNIT) + d; if(units[i] != null){ UNIT = units[i]; paintSide(); } };
+  if($('uPrev')) $('uPrev').onclick = () => go(-1); if($('uNext')) $('uNext').onclick = () => go(1); }
+
+/* ── open a PDF: our copy first, then the Drive stream ── */
+async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
+  const f = FILES.find(x => x.id === id); $('fl').textContent = f ? (isMain(f) ? mainLabel(f.name) : (UNIT != null ? 'Unit ' + UNIT + ' · ' : '') + pLabel(f.name, FILES.filter(v => v.kind === 'video' && unitOf(v) === UNIT))) : TITLE;
+  try{ const q = new URLSearchParams(location.search); q.set('id', id); q.set('t', TITLE); history.replaceState(null, '', '?' + q.toString()); }catch(e){}
+  paintSide(); loadAnn(); $('wrap').style.display = 'none'; msg('Opening the book…', true);
+  const opt = { rangeChunkSize: 262144, disableAutoFetch: true, cMapUrl: './pdfjs/cmaps/', cMapPacked: true, standardFontDataUrl: './pdfjs/standard_fonts/' };
+  try{ if(doc){ try{ doc.destroy(); }catch(e){} doc = null; }
+    try{ doc = await pdfjsLib.getDocument(Object.assign({ url: ST(id) }, opt)).promise; }
+    catch(e){ doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt)).promise; }
+    pageNo = 1; zoom = 1; $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
+    if(FIRST) FIRST = false; else try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'log', token: TOKEN, kind: 'pdf', id, title: $('fl').textContent || TITLE, book: LABEL }) }); }catch(e){}
+  }catch(e){ msg('This book could not open right now. Please try again, or tell Operations.<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Try again</button>'); } }
+
+/* ── render the page sharp, fitted, with zoom ── */
+async function render(){ if(!doc) return; const my = {}; rendering = my;
+  const p = await doc.getPage(pageNo); if(rendering !== my) return;
+  const st = $('stage'), v1 = p.getViewport({ scale: 1 }), pad = 48;
+  const fit = Math.min((st.clientWidth - pad - (document.body.classList.contains('present') ? 0 : 70)) / v1.width, (st.clientHeight - pad) / v1.height);
+  const scale = Math.max(0.2, fit * zoom), dpr = Math.min(window.devicePixelRatio || 1, 2.5), vp = p.getViewport({ scale: scale * dpr });
+  const c = $('pdf'), ink = $('ink'); c.width = vp.width; c.height = vp.height; const w = vp.width / dpr, h = vp.height / dpr;
+  c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = vp.width; ink.height = vp.height; ink.style.width = w + 'px'; ink.style.height = h + 'px';
+  st.classList.toggle('fit', zoom <= 1);
+  await p.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.catch(() => {});
+  if(rendering !== my) return; drawInk(); pages();
+  if(pageNo < doc.numPages) doc.getPage(pageNo + 1).catch(() => {}); }   /* the next page is fetched ahead */
+function pages(){ const t = doc ? pageNo + ' / ' + doc.numPages : '–'; $('pg').textContent = doc ? 'Page ' + pageNo + ' of ' + doc.numPages : '–'; $('pg2').textContent = t;
+  $('prev').disabled = !doc || pageNo <= 1; $('next').disabled = !doc || pageNo >= doc.numPages; }
+const turn = d => { if(!doc) return; const n = Math.min(doc.numPages, Math.max(1, pageNo + d)); if(n !== pageNo){ pageNo = n; render(); $('stage').scrollTo(0, 0); } };
+const setZoom = z => { zoom = Math.min(4, Math.max(0.5, z)); render(); };
+
+/* ── drawing: kept per page, in page proportions so zoom keeps them in place ── */
+const key = () => 'coe.ann.' + FID;
+function saveAnn(){ try{ if(FID) sessionStorage.setItem(key(), JSON.stringify(ANN)); }catch(e){} }
+function loadAnn(){ Object.keys(ANN).forEach(k => delete ANN[k]); HIST.length = 0; try{ Object.assign(ANN, JSON.parse(sessionStorage.getItem(key()) || '{}')); }catch(e){} }
+const list = () => (ANN[pageNo] = ANN[pageNo] || []);
+function drawInk(){ const ink = $('ink'), x = ink.getContext('2d'), W = ink.width, H = ink.height; x.clearRect(0, 0, W, H);
+  (ANN[pageNo] || []).forEach(a => { if(a.t === 'text'){ x.fillStyle = a.c; x.font = '600 ' + Math.round(a.s * H) + 'px Inter, sans-serif'; x.textBaseline = 'top'; x.fillText(a.v, a.x * W, a.y * H); return; }
+    x.globalAlpha = a.t === 'hl' ? 0.32 : 1; x.strokeStyle = a.c; x.lineWidth = a.w * W; x.lineCap = a.t === 'hl' ? 'butt' : 'round'; x.lineJoin = 'round';
+    x.beginPath(); a.p.forEach((q, i) => i ? x.lineTo(q[0] * W, q[1] * H) : x.moveTo(q[0] * W, q[1] * H)); if(a.p.length === 1) x.lineTo(a.p[0][0] * W + 0.1, a.p[0][1] * H); x.stroke(); x.globalAlpha = 1; }); }
+const pt = e => { const r = $('ink').getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
+let cur = null;
+$('ink').addEventListener('pointerdown', e => { if(tool === 'hand') return; e.preventDefault(); const p = pt(e);
+  if(tool === 'text') return addText(e, p);
+  $('ink').setPointerCapture(e.pointerId);
+  if(tool === 'erase'){ cur = { erase: true }; eraseAt(p); return; }
+  cur = { t: tool, c: tool === 'hl' ? (color === '#2B2450' ? '#F5B700' : color) : color, w: tool === 'hl' ? 0.022 : 0.004, p: [p] }; list().push(cur); HIST.push({ pg: pageNo, a: cur }); drawInk(); });
+$('ink').addEventListener('pointermove', e => { if(!cur) return; const p = pt(e); if(cur.erase) return eraseAt(p); cur.p.push(p); drawInk(); });
+const end = () => { if(cur){ cur = null; saveAnn(); } };
+$('ink').addEventListener('pointerup', end); $('ink').addEventListener('pointercancel', end);
+function eraseAt(p){ const L = list(), before = L.length; ANN[pageNo] = L.filter(a => a.t === 'text' ? Math.hypot(a.x - p[0], a.y - p[1]) > 0.04 : !a.p.some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < 0.015)); if(ANN[pageNo].length !== before){ HIST.push({ pg: pageNo, snap: L }); drawInk(); } }
+function addText(e, p){ const w = $('wrap'), r = w.getBoundingClientRect(), i = document.createElement('input'); i.className = 'txtin'; i.style.left = (e.clientX - r.left) + 'px'; i.style.top = (e.clientY - r.top - 14) + 'px'; i.style.color = color;
+  w.appendChild(i); setTimeout(() => i.focus(), 0);
+  const done = ok => { const v = i.value.trim(); i.remove(); if(ok && v){ const a = { t: 'text', v, x: p[0], y: p[1] - 0.012, s: 0.028, c: color }; list().push(a); HIST.push({ pg: pageNo, a }); drawInk(); saveAnn(); } };
+  i.addEventListener('keydown', ev => { ev.stopPropagation(); if(ev.key === 'Enter') done(true); if(ev.key === 'Escape') done(false); }); i.addEventListener('blur', () => done(true)); }
+$('undo').onclick = () => { const h = HIST.pop(); if(!h) return; if(h.snap) ANN[h.pg] = h.snap; else ANN[h.pg] = (ANN[h.pg] || []).filter(a => a !== h.a); if(h.pg !== pageNo){ pageNo = h.pg; render(); } else drawInk(); saveAnn(); };
+$('clear').onclick = () => { const L = ANN[pageNo] || []; if(!L.length) return; HIST.push({ pg: pageNo, snap: L }); ANN[pageNo] = []; drawInk(); saveAnn(); };
+document.querySelectorAll('.tb[data-t]').forEach(b => b.onclick = () => { tool = b.dataset.t; document.querySelectorAll('.tb[data-t]').forEach(x => x.classList.toggle('on', x === b)); $('ink').style.cursor = tool === 'hand' ? 'default' : tool === 'text' ? 'text' : 'crosshair'; $('ink').style.pointerEvents = tool === 'hand' ? 'none' : 'auto'; });
+$('ink').style.pointerEvents = 'none';
+document.querySelectorAll('.dot').forEach(b => b.onclick = () => { color = b.dataset.c; document.querySelectorAll('.dot').forEach(x => x.classList.toggle('on', x === b)); if(tool === 'hand' || tool === 'erase') document.querySelector('.tb[data-t="pen"]').click(); });
+
+/* ── video from the list: plays here ── */
+function playVid(f){ const v = $('vv'); $('vt').textContent = String(f.name); v.dataset.s = '1'; v.src = ST(f.id);
+  v.onerror = () => { if(v.dataset.s === '1'){ v.dataset.s = '2'; v.src = PX(f.id); v.play().catch(() => {}); } };
+  $('vid').classList.add('on'); v.play().catch(() => {}); }
+$('vx').onclick = () => { const v = $('vv'); v.pause(); v.removeAttribute('src'); v.load(); $('vid').classList.remove('on'); };
+
+/* ── Present: full screen, only the CupOfEnglish header, the page and the drawings ── */
+async function present(on){ document.body.classList.toggle('present', on);
+  try{ if(on && !document.fullscreenElement) await document.documentElement.requestFullscreen(); if(!on && document.fullscreenElement) await document.exitFullscreen(); }catch(e){}
+  setTimeout(render, 120); }
+document.addEventListener('fullscreenchange', () => { if(!document.fullscreenElement && document.body.classList.contains('present')){ document.body.classList.remove('present'); setTimeout(render, 120); } });
+let idle = 0; document.addEventListener('mousemove', () => { document.body.classList.remove('idle'); clearTimeout(idle); idle = setTimeout(() => document.body.classList.add('idle'), 2500); });
+
+$('prev').onclick = () => turn(-1); $('next').onclick = () => turn(1); $('pp').onclick = () => turn(-1); $('pn').onclick = () => turn(1);
+$('zi').onclick = () => setZoom(zoom * 1.25); $('zo').onclick = () => setZoom(zoom / 1.25); $('zf').onclick = () => setZoom(1);
+$('pz').onclick = () => setZoom(zoom > 1 ? 1 : 1.6);
+$('present').onclick = () => present(true); $('px').onclick = () => present(false);
+$('close').onclick = () => { saveAnn(); window.close(); setTimeout(() => { location.href = '../'; }, 200); };
+$('sideBt').onclick = () => document.body.classList.toggle('side');
+if(matchMedia('(max-width:900px)').matches) $('sideBt').style.display = '';
+document.addEventListener('keydown', e => { if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  if(e.key === 'ArrowRight' || e.key === 'PageDown') turn(1); else if(e.key === 'ArrowLeft' || e.key === 'PageUp') turn(-1);
+  else if(e.key === '+' || e.key === '=') setZoom(zoom * 1.25); else if(e.key === '-') setZoom(zoom / 1.25); else if(e.key === '0') setZoom(1); });
+let rs = 0; addEventListener('resize', () => { clearTimeout(rs); rs = setTimeout(render, 150); });
+addEventListener('pagehide', saveAnn);
+/* the app opens another book in this same tab */
+addEventListener('message', ev => { if(ev.origin !== location.origin || !ev.data || ev.data.coeBook !== 1) return; const d = ev.data; if(d.b && d.b !== BOOK){ BOOK = d.b; UNIT = d.u != null ? d.u : null; loadBook(); } else if(d.u != null){ UNIT = d.u; } openFile(d.id, d.t); window.focus(); });
+
+$('bk').textContent = 'CupOfEnglish book'; $('fl').textContent = TITLE;
+loadBook().then(() => { if(FID) openFile(FID, TITLE); else msg('Choose a page on the left.'); });
+</script>
+</body>
+</html>
