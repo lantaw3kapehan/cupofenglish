@@ -7399,7 +7399,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1959;
+const COE_V = 1960;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -42039,6 +42039,7 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
 #auBar .au-t{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--ink,#2B2450)}
 #auBar .au-t span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #auBar .au-x{border:0;background:#F1F1F4;border-radius:999px;width:28px;height:28px;cursor:pointer;font-size:14px}
+#auBar audio{display:block;width:100%;margin-top:8px}
 #auBar iframe{display:block;width:100%;height:80px;border:0;border-radius:10px;margin-top:8px;background:#2B2B2B}
 #auBar .au-b{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 #auBar .au-b button,#auBar .au-b a{border:1px solid #D8E0E6;background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;font-weight:700;color:#13636B;cursor:pointer;text-decoration:none}
@@ -42064,10 +42065,12 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
     const body = document.getElementById('bkBody'); if(!body) return;
     let bar = document.getElementById('auBar'); if(!bar){ bar = document.createElement('div'); bar.id = 'auBar'; body.appendChild(bar); }
     bar.innerHTML = `<div class="au-t"><span>♪ ${E(it.title)}</span><button class="au-x" title="Close" onclick="auStop()">✕</button></div>
-<iframe src="https://drive.google.com/file/d/${encodeURIComponent(it.id)}/preview" allow="autoplay" title="Audio player"></iframe>
+<audio id="auEl" controls autoplay preload="auto" src="https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-audio?id=${encodeURIComponent(it.id)}" onerror="auFallback('${encodeURIComponent(it.id)}')"></audio>
 <div class="au-b"><button onclick="auPlay(${i - 1})"${i > 0 ? '' : ' disabled style="opacity:.4"'}>⏮ Previous</button><button onclick="auPlay(${i + 1})"${i < LIST.length - 1 ? '' : ' disabled style="opacity:.4"'}>Next ⏭</button>
-<a href="${view(it.id)}" target="_blank" rel="noopener">Open in Drive</a><button onclick="auCopy(${i})">Copy link for student</button></div>
-<div class="au-h">Tap ▶ in the player. In an online class, share your screen with sound on so the student hears it.</div>`; };
+<button onclick="auSpeed(this)">Speed 1×</button><a href="${view(it.id)}" target="_blank" rel="noopener">Open in Drive</a><button onclick="auCopy(${i})">Copy link for student</button></div>
+<div class="au-h">Plays at once · tap again to replay. In an online class, share your screen with sound on so the student hears it.</div>`; };
+  window.auFallback = function(id){ const el = document.getElementById('auEl'); if(!el) return; const f = document.createElement('iframe'); f.src = 'https://drive.google.com/file/d/' + id + '/preview'; f.allow = 'autoplay'; f.title = 'Audio player'; el.replaceWith(f); };
+  window.auSpeed = function(b){ const el = document.getElementById('auEl'); if(!el) return; el.playbackRate = el.playbackRate === 1 ? 0.75 : 1; b.textContent = el.playbackRate === 1 ? 'Speed 1×' : 'Speed 0.75×'; };
   window.auCopy = async function(i){ const it = LIST[i]; if(!it) return; const t = it.title + '\n' + view(it.id);
     try{ await navigator.clipboard.writeText(t); toast('Link copied · paste it to the student'); }
     catch(e){ const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try{ document.execCommand('copy'); toast('Link copied · paste it to the student'); }catch(_){ toast(view(it.id)); } a.remove(); } };
