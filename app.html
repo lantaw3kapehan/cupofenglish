@@ -7388,7 +7388,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1949;
+const COE_V = 1950;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23935,6 +23935,8 @@ go();
   const readForm = () => { const r = document.querySelector('input[name="vcr"]:checked'), n = (document.getElementById('vcN') || {}).value || '';
     if(!r){ toast('Choose a reason'); return null; } if(n.trim().length < 5){ toast('Write a short explanation'); return null; } return { why: r.value, note: n.trim() }; };
   /* called by the upload (643) before anything is sent · resolves {dur, why, note} or null when the teacher cancels */
+  if(!window.__vc2254){ window.__vc2254 = 1; try{ const st = document.createElement('style'); st.textContent = 'body.vcAsk #svPills{visibility:hidden}'; document.head.appendChild(st); }catch(e){}
+    const _c2254 = window.closeSheet; if(_c2254) window.closeSheet = function(){ const p = window._vcPend; const r = _c2254.apply(this, arguments); if(p){ const sh = document.getElementById('sheet'), b = document.getElementById('sheetBody'); if(!(sh && sh.classList.contains('on') && b && /_vcRes\(1\)/.test(b.innerHTML))) p(); } return r; }; }   /* 2254 */
   window.vidPre = (c, f) => new Promise(async res => {
     const img = /^image\//.test(f.type || '') || /\.(jpe?g|png|heic|heif|webp)$/i.test(f.name), fl = [];
     const st = new Date(c.start).getTime(), len = Math.round((new Date(c.end).getTime() - st) / 6e4);
@@ -23944,7 +23946,9 @@ go();
       if(dur > 0 && len > 0 && dur / 60 < len * 0.8) fl.push('This video is ' + Math.max(1, Math.round(dur / 60)) + ' min long, the class is ' + len + ' min.');
       if(f.lastModified && f.lastModified < st - 10 * 6e4) fl.push('This video was recorded on ' + dd(f.lastModified, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) + ', before the class started.'); }
     if(!fl.length) return res({ dur });
-    window._vcRes = ok => { if(!ok){ closeSheet(); res(null); return; } const x = readForm(); if(!x) return; closeSheet(); res({ dur, why: x.why, note: x.note }); };
+    const fin = v => { window._vcPend = null; document.body.classList.remove('vcAsk'); res(v); };   /* 2254 */
+    window._vcPend = () => fin(null); document.body.classList.add('vcAsk');
+    window._vcRes = ok => { if(!ok){ window._vcPend = null; closeSheet(); fin(null); return; } const x = readForm(); if(!x) return; window._vcPend = null; closeSheet(); fin({ dur, why: x.why, note: x.note }); };
     openSheet('<h3 style="margin:0 0 6px">Please explain this upload</h3><div class="small mute">' + esc(c.student || c.code || '') + ' · ' + esc(dd(c.start, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })) + '</div>' +
       '<div style="background:#FFF6E6;border:1.5px solid #F0D29A;border-radius:14px;padding:12px 14px;margin-top:10px;color:#7A5410;line-height:1.45">' + fl.map(esc).join('<br>') +
       '<div class="small" style="margin-top:6px">It still uploads. Your explanation goes with it, and management reviews it under the contract.</div></div>' + reasonForm() +
