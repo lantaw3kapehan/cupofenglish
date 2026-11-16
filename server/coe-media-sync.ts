@@ -13,10 +13,13 @@ async function copy(f: { id: string; mime: string; size: number }) {
     const r = await fetch("https://drive.usercontent.google.com/download?id=" + encodeURIComponent(f.id) + "&export=download&confirm=t", { redirect: "follow" });
     if (!r.ok) throw new Error("drive " + r.status);
     if (/text\/html/.test(r.headers.get("content-type") || "")) throw new Error("drive page (quota or permission)");
-    const buf = new Uint8Array(await r.arrayBuffer());
-    if (buf.length < 512) throw new Error("too small");
-    const { error } = await db.storage.from("book-media").upload(f.id, buf, { contentType: f.mime || "application/octet-stream", cacheControl: "31536000", upsert: true });
-    if (error) throw new Error("storage " + error.message);
+    // 2279: streamed straight into Storage (no copy held in memory), so big books (up to 250 MB) copy too
+    const len = r.headers.get("content-length");
+    const up = await fetch(Deno.env.get("SUPABASE_URL") + "/storage/v1/object/book-media/" + encodeURIComponent(f.id), {
+      method: "POST", body: r.body, duplex: "half",
+      headers: { Authorization: "Bearer " + Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"), apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, "x-upsert": "true",
+        "Content-Type": f.mime || "application/octet-stream", "Cache-Control": "max-age=31536000", ...(len ? { "Content-Length": len } : {}) } } as any);
+    if (!up.ok) throw new Error("storage " + up.status + " " + (await up.text()).slice(0, 120));
     await db.from("coe_media_mirror").update({ obj: f.id, done_at: new Date().toISOString(), err: null, updated_at: new Date().toISOString() }).eq("id", f.id);
     return true;
   } catch (e) {
@@ -36,7 +39,7 @@ Deno.serve(async (req: Request) => {
   if (b.op === "one") {   // 2278: the reader asks for a file that is not copied yet: copy it now (course-book files only; once per 5 minutes)
     const id = String(b.id || ""); if (!/^[A-Za-z0-9_-]{10,80}$/.test(id)) return out({ ok: false, error: "id" }, 400);
     const { data: f } = await db.from("coe_book_files").select("id,mime,size").eq("id", id).is("gone_at", null).maybeSingle();
-    if (!f || !/^(audio\/|video\/|application\/pdf$)/.test(f.mime || "") || (f.size || 0) > 150000000) return out({ ok: false, error: "not a book file" }, 404);
+    if (!f || !/^(audio\/|video\/|application\/pdf$)/.test(f.mime || "") || (f.size || 0) > 260000000) return out({ ok: false, error: "not a book file" }, 404);
     const { data: m } = await db.from("coe_media_mirror").select("done_at,updated_at").eq("id", id).maybeSingle();
     if (m && m.done_at) return out({ ok: true, done: true });
     if (m && Date.now() - new Date(m.updated_at).getTime() < 5 * 60000) return out({ ok: true, busy: true });
