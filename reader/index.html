@@ -151,6 +151,12 @@ const IC = { page: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" 
 
 /* ── the book's files, for the list on the left ── */
 async function loadBook(){ if(!BOOK){ $('side').innerHTML = ''; return; }
+  /* 2279: the app already keeps this book's list on this browser: use it at once, refresh it quietly */
+  try{ for(let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if(!/^coe\.bk3\./.test(k) || k.split('.').pop() !== BOOK) continue;
+      const c = JSON.parse(localStorage.getItem(k) || 'null'); if(c && c.b && (c.b.files || []).length){ FILES = c.b.files; LABEL = c.b.label || ''; $('bk').textContent = LABEL || $('bk').textContent; document.title = 'CupOfEnglish · ' + (LABEL || 'Books'); break; } } }catch(e){}
+  if(FILES.length){ const cur = FILES.find(f => f.id === FID); if(UNIT == null && cur) UNIT = unitOf(cur); paintSide(); refreshBook(); return; }
+  await refreshBook(); }
+async function refreshBook(){
   try{ const r = await fetch(SB + '/functions/v1/coe-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'books', token: TOKEN, code: BOOK }) }).then(x => x.json());
     if(r && r.ok && r.book){ FILES = r.book.files || []; LABEL = r.book.label || ''; $('bk').textContent = LABEL || $('bk').textContent; document.title = 'CupOfEnglish · ' + (LABEL || 'Books'); }
   }catch(e){}
