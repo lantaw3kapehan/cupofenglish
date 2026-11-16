@@ -191,13 +191,22 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
   paintSide(); loadAnn(); $('wrap').style.display = 'none'; msg('Opening the book…', true);
   const opt = { rangeChunkSize: 262144, disableAutoFetch: true, cMapUrl: './pdfjs/cmaps/', cMapPacked: true, standardFontDataUrl: './pdfjs/standard_fonts/' };
   try{ if(doc){ try{ doc.destroy(); }catch(e){} doc = null; }
-    try{ doc = await pdfjsLib.getDocument(Object.assign({ url: ST(id) }, opt)).promise; }
+    let meta = null; try{ meta = await fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'meta', token: TOKEN, id }) }).then(x => x.json()); }catch(e){}
+    try{ if(!(meta && meta.copied && meta.size)) throw new Error('not copied'); doc = await ranged(ST(id), +meta.size, opt); }
     catch(e){ want(id); doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt, { disableRange: true, disableStream: false })).promise; }   /* 2278 */
     soon();
     pageNo = 1; zoom = 1; $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
     if(FIRST) FIRST = false; else try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'log', token: TOKEN, kind: 'pdf', id, title: $('fl').textContent || TITLE, book: LABEL }) }); }catch(e){}
   }catch(e){ msg('This book could not open right now. Please try again, or tell Operations.<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Try again</button>'); } }
 
+/* 2279 · our copy is read page by page (only the bytes of the pages shown), so even a 100 MB book opens at once.
+   (Storage does not let the browser see its range headers, so PDF.js would download the whole file: we ask for the ranges ourselves.) */
+async function ranged(url, length, opt){ const first = Math.min(length, 524288);
+  const r0 = await fetch(url, { headers: { Range: 'bytes=0-' + (first - 1) } }); if(r0.status !== 206 && first < length) throw new Error('no ranges');
+  const head = new Uint8Array(await r0.arrayBuffer()); if(head.length < Math.min(first, 1024)) throw new Error('short');
+  const tr = new pdfjsLib.PDFDataRangeTransport(length, head.subarray(0, first));
+  tr.requestDataRange = (b, e) => { fetch(url, { headers: { Range: 'bytes=' + b + '-' + (e - 1) } }).then(r => r.arrayBuffer()).then(buf => tr.onDataRange(b, new Uint8Array(buf))).catch(() => {}); };
+  return pdfjsLib.getDocument(Object.assign({ range: tr, length, rangeChunkSize: 262144, disableAutoFetch: true }, opt)).promise; }
 /* 2278 · a page not yet in our copy is copied now, and the other pages of this unit too, so the next opens are instant */
 const asked = new Set();
 function want(id){ if(asked.has(id)) return; asked.add(id); try{ fetch(SB + '/functions/v1/coe-media-sync', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'one', id }) }).catch(() => {}); }catch(e){} }

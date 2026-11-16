@@ -45,6 +45,11 @@ Deno.serve(async (req: Request) => {
       const { data: sc } = await db.from("coe_book_files").select("seen_at").order("seen_at", { ascending: false }).limit(1);
       return out({ ok: true, books: (c && c.data && c.data.books) || [], at: c && c.data ? c.data.at : null, scanned: sc && sc[0] ? sc[0].seen_at : null });
     }
+    if (op === "meta") {   // 2279: the reader needs a file's size and whether our copy is ready (for page-by-page loading)
+      const id = clip(b.id, 80); const { data: f } = await db.from("coe_book_files").select("size,mime").eq("id", id).maybeSingle();
+      const { data: m } = await db.from("coe_media_mirror").select("done_at").eq("id", id).maybeSingle();
+      return out({ ok: !!f, size: f ? f.size : null, copied: !!(m && m.done_at) });
+    }
     const code = clip(b.code, 20).toUpperCase(), day = clip(b.day, 10);
     if (op === "hwGet" || op === "hwSet") { if (!/^ST-\d{4}-\d{3}$/.test(code) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return out({ ok: false, error: "code/day" }, 400); }
     if (op === "hwGet") { const { data } = await db.from("coe_hw_audio").select("files,teacher,book,updated_at").eq("code", code).eq("day", day).maybeSingle(); return out({ ok: true, hw: data || null }); }
