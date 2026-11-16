@@ -7401,7 +7401,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1971;
+const COE_V = 1972;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -42067,7 +42067,7 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
     const body = document.getElementById('bkBody'); if(!body) return;
     let bar = document.getElementById('auBar'); if(!bar){ bar = document.createElement('div'); bar.id = 'auBar'; body.appendChild(bar); }
     bar.innerHTML = `<div class="au-t"><span>♪ ${E(it.title)}</span><button class="au-x" title="Close" onclick="auStop()">✕</button></div>
-<audio id="auEl" controls autoplay preload="auto" src="https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-audio?id=${encodeURIComponent(it.id)}" onerror="auFallback('${encodeURIComponent(it.id)}')"></audio>
+<audio id="auEl" controls autoplay preload="auto" data-id="${E(it.id)}" src="https://rlxkiahqjsabopmuhern.supabase.co/storage/v1/object/public/book-media/${encodeURIComponent(it.id)}" onerror="mErr(this,'${E(it.id)}','a')"></audio>
 <div class="au-b"><button onclick="auPlay(${i - 1})"${i > 0 ? '' : ' disabled style="opacity:.4"'}>⏮ Previous</button><button onclick="auPlay(${i + 1})"${i < LIST.length - 1 ? '' : ' disabled style="opacity:.4"'}>Next ⏭</button>
 <button onclick="auSpeed(this)">Speed 1×</button><a href="${view(it.id)}" target="_blank" rel="noopener">Open in Drive</a><button onclick="auCopy(${i})">Copy link for student</button></div>
 <div class="au-h">Plays at once · tap again to replay. In an online class, share your screen with sound on so the student hears it.</div>`; };
@@ -42125,13 +42125,12 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
   window.vdOpen = function(id, title){ vdClose(); try{ window.auStop && auStop(); }catch(e){}
     const view = 'https://drive.google.com/file/d/' + encodeURIComponent(id) + '/view';
     const o = document.createElement('div'); o.id = 'vdOv';
-    o.innerHTML = `<div class="vd-top"><b>▶ ${E(title)}</b><a href="${view}" target="_blank" rel="noopener">Open in Drive</a><button onclick="vdClose()">✕ Close</button></div>
-<video controls autoplay playsinline preload="auto" src="${SRC(id)}"></video><div class="vd-msg">Loading the video… a few seconds</div>`;
+    o.innerHTML = `<div class="vd-top"><b>▶ ${E(title)}</b><a href="${view}" target="_blank" rel="noopener">Open in Drive</a><button data-mini onclick="vdMini()">Minimize</button><button onclick="vdClose()">✕ Close</button></div>
+<video controls autoplay playsinline preload="auto" src="https://rlxkiahqjsabopmuhern.supabase.co/storage/v1/object/public/book-media/${encodeURIComponent(id)}" onerror="mErr(this,'${E(id)}','v')"></video><div class="vd-msg">Loading the video… a few seconds</div>`;
     document.body.appendChild(o);
     const v = o.querySelector('video'), m = o.querySelector('.vd-msg');
     v.addEventListener('canplay', () => { m.textContent = 'In an online class, share your screen with sound on so the student sees and hears it.'; }, { once: true });
-    v.addEventListener('error', () => { m.innerHTML = 'This video could not play here. <a href="' + view + '" target="_blank" rel="noopener" style="color:#9EE">Open it in Google Drive</a>.'; });
-    o.addEventListener('click', ev => { if(ev.target === o) vdClose(); }); };
+    o.addEventListener('click', ev => { if(ev.target === o && !o.classList.contains('mini')) vdMini(true); }); };
   document.addEventListener('keydown', ev => { if(ev.key === 'Escape' && document.getElementById('vdOv')) vdClose(); });
   document.addEventListener('click', ev => { try{
     if(ev.defaultPrevented) return;   /* the first-time books notice comes first */
@@ -42140,7 +42139,7 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
     const id = decodeURIComponent((/\/d\/([^/]+)/.exec(a.getAttribute('href')) || [])[1] || ''); if(!id) return;
     ev.preventDefault(); ev.stopPropagation(); vdOpen(id, t.replace(/^▶\s*/, ''));
   }catch(e){} });
-  if(typeof closeSheet === 'function'){ const c0 = closeSheet; closeSheet = function(){ vdClose(); return c0.apply(this, arguments); }; }
+  /* 2276: closing the book no longer closes the video (it can be minimised and kept open) */
 })();
 </script>
 <script id="b2270">
@@ -42191,7 +42190,7 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
   const ctx = () => ({ book: ((document.querySelector('#bkBody h2') || document.querySelector('#stuBk h2 .c') || {}).textContent || '').trim().slice(0, 80),
     student: (((document.querySelector('#sheetBody .mute.small') || {}).textContent || '').split('·')[0] || '').trim().slice(0, 80) });
   window.bkLog = function(kind, id, title){ try{ if(!TOKEN) return; const c = ctx(); call({ op: 'log', kind, id, title: String(title || '').slice(0, 160), book: c.book, student: /books library/i.test(c.student) ? '' : c.student }).catch(() => {}); }catch(e){} };
-  if(window.auPlay){ const p0 = window.auPlay; window.auPlay = function(i){ const r = p0.apply(this, arguments); try{ const t = document.querySelector('#auBar .au-t span'), a = document.getElementById('auEl'); const id = a ? decodeURIComponent((/id=([^&]+)/.exec(a.src) || [])[1] || '') : ''; if(t) bkLog('audio', id, t.textContent.replace(/^♪\s*/, '')); }catch(e){} return r; }; }
+  if(window.auPlay){ const p0 = window.auPlay; window.auPlay = function(i){ const r = p0.apply(this, arguments); try{ const t = document.querySelector('#auBar .au-t span'), a = document.getElementById('auEl'); const id = a ? (a.dataset.id || '') : ''; if(t) bkLog('audio', id, t.textContent.replace(/^♪\s*/, '')); }catch(e){} return r; }; }
   if(window.vdOpen){ const v0 = window.vdOpen; window.vdOpen = function(id, title){ bkLog('video', id, title); return v0.apply(this, arguments); }; }
   document.addEventListener('click', ev => { try{ const a = ev.target && ev.target.closest && ev.target.closest('a[href*="drive.google.com/file/d/"]'); if(!a || ev.defaultPrevented) return;
     if(!(a.closest('#bkBody, #stuBk') || a.classList.contains('bkb'))) return; const t = (a.textContent || '').trim(); if(/^[▶♪]/.test(t)) return;
@@ -42399,6 +42398,55 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
       d.querySelectorAll('a.link, .au-ex').forEach(x => { const hit = head.includes(q) || (x.textContent || '').toLowerCase().includes(q); x.style.display = hit ? '' : 'none'; if(hit) any = true; });
       d.style.display = any ? '' : 'none'; if(any && !head.includes(q)) d.open = true; }); };
   const S0 = window.bookSheet; if(S0) window.bookSheet = function(stu, evId, only){ const r = S0.apply(this, arguments); Promise.resolve(r).then(() => setTimeout(() => { render(stu, evId, only).catch(() => {}); }, 30), () => {}); return r; };
+})();
+</script>
+<script id="b2276">
+/* 16 Nov · 2276 · Books media: instant and always on (Misty 18:34 "must open instantly · no downtime in class") and
+   it stays open while the teacher moves around the app (18:36–18:37 "can they be opened in Today, Schedule, Payroll…").
+   1. Every audio and video plays from our own copy (Supabase Storage, served from the CDN · copied from Drive by coe-media-sync).
+      If a copy is missing it falls back by itself to the Drive stream (coe-audio), then to Drive's own player. No sign-in.
+   2. Audio keeps playing when the book is closed: the player moves to a small bar at the bottom-right, on every screen.
+   3. Videos have "Minimize": the video becomes a small window at the bottom-right and the app can be used behind it.
+   4. The books of today's classes are fetched in the background when the app opens, so the book sheet opens at once.
+   Book pages (PDF) open in a new browser tab (Google Drive), so a teacher can keep several open beside the app. */
+(function(){
+  try{ const st = document.createElement('style'); st.textContent = `
+#mDock{position:fixed;right:14px;bottom:14px;z-index:9998;width:min(380px,calc(100vw - 28px));display:grid;gap:8px}
+#mDock #auDock{position:static;margin:0;box-shadow:0 10px 30px rgba(20,30,50,.22)}
+#auDock .au-b button[data-nav]{display:none}
+#vdOv.mini{inset:auto;right:14px;bottom:14px;width:min(400px,calc(100vw - 28px));padding:8px;border-radius:14px;background:#111;box-shadow:0 12px 34px rgba(0,0,0,.35)}
+#vdOv.mini .vd-top{margin-bottom:6px}#vdOv.mini .vd-top b{font-size:13px}#vdOv.mini .vd-top a{display:none}
+#vdOv.mini video{max-height:none;border-radius:8px}#vdOv.mini .vd-msg{display:none}
+#mDock:has(#auDock) ~ #vdOv.mini, body:has(#mDock #auDock) #vdOv.mini{bottom:150px}
+`; document.head.appendChild(st); }catch(e){}
+  const ST = id => 'https://rlxkiahqjsabopmuhern.supabase.co/storage/v1/object/public/book-media/' + encodeURIComponent(id);
+  const PX = id => 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-audio?id=' + encodeURIComponent(id);
+  window.mST = ST;
+  /* 1 · own copy first, then Drive stream, then Drive's player */
+  window.mErr = function(el, id, kind){ const n = +(el.dataset.s || 1);
+    if(n === 1){ el.dataset.s = 2; el.src = PX(id); try{ el.play(); }catch(e){} return; }
+    if(kind === 'a' && window.auFallback) return auFallback(encodeURIComponent(id));
+    if(kind === 'v'){ const m = document.querySelector('#vdOv .vd-msg'); if(m) m.innerHTML = 'This video could not play here. <a href="https://drive.google.com/file/d/' + encodeURIComponent(id) + '/view" target="_blank" rel="noopener" style="color:#9EE">Open it in Google Drive</a>.'; } };
+  /* 2 · audio dock */
+  function dock(){ const bar = document.getElementById('auBar'), a = bar && bar.querySelector('audio'); if(!bar || !a || a.ended || (a.paused && a.currentTime < 0.3)) return;
+    let d = document.getElementById('mDock'); if(!d){ d = document.createElement('div'); d.id = 'mDock'; document.body.appendChild(d); }
+    const old = document.getElementById('auDock'); if(old) old.remove();
+    bar.id = 'auDock'; bar.querySelectorAll('.au-b button').forEach(b => { if(/Previous|Next/.test(b.textContent)) b.dataset.nav = 1; });
+    const x = bar.querySelector('.au-x'); if(x) x.setAttribute('onclick', "this.closest('#auDock').remove()");
+    const h = bar.querySelector('.au-h'); if(h) h.textContent = 'Keeps playing on every screen · ✕ to close';
+    d.appendChild(bar); }
+  window.mDockAudio = dock;
+  if(typeof closeSheet === 'function'){ const c0 = closeSheet; closeSheet = function(){ try{ dock(); }catch(e){} return c0.apply(this, arguments); }; }
+  if(window.auPlay){ const p0 = window.auPlay; window.auPlay = function(){ const d = document.getElementById('auDock'); if(d){ const a = d.querySelector('audio'); try{ a && a.pause(); }catch(e){} d.remove(); } return p0.apply(this, arguments); }; }
+  /* 3 · video minimise */
+  window.vdMini = function(on){ const o = document.getElementById('vdOv'); if(!o) return; o.classList.toggle('mini', on !== false && !o.classList.contains('mini'));
+    const b = o.querySelector('[data-mini]'); if(b) b.textContent = o.classList.contains('mini') ? 'Expand' : 'Minimize'; };
+  /* 4 · today's books ready before class */
+  function warm(){ try{ if(!D || D.mgr || !window.bkGet) return; const today = typeof ymdLocal === 'function' ? ymdLocal(new Date()) : new Date().toISOString().slice(0, 10);
+    const ks = new Set(); (D.schedule || []).filter(c => c.day === today && !c.cancelled).forEach(c => { const s = (D.students || []).find(x => x.code === c.code) || {};
+      String(c.book || s.book || '').split(/\s*[,;/]\s*/).map(x => x.toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean).forEach(k => ks.add(k)); });
+    [...ks].slice(0, 12).forEach((k, i) => setTimeout(() => { try{ bkGet(k).catch(() => {}); }catch(e){} }, 1500 + i * 400)); }catch(e){} }
+  setTimeout(warm, 4000); setInterval(warm, 30 * 60000);
 })();
 </script>
 </body>
