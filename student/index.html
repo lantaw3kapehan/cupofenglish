@@ -224,8 +224,16 @@ async function load(quiet) {   // quiet: the 60-second / back-to-the-page refres
       if (quiet && S.d && (S.d.hw || []).length > (r.hw || []).length) r.hw = (r.hw || []).concat(S.d.hw.slice((r.hw || []).length));   /* keep notes already loaded with 加载更多 */
       const wasPh = PH(); S.d = r; S.err = 0; put(LKEY, lkOf(r)); if (wasPh !== PH()) { nav(); phLang(); } try { put(DKEY, JSON.stringify(r)); } catch (e) {} if (same) { LOADING = false; return; } } else if (!S.d) S.err = 1; }
   catch (e) { if (e.message !== 'AUTH' && !S.d) S.err = 1; }
-  LOADING = false; paint();
+  LOADING = false; paint(); lsnLoad();
 }
+// 16 Nov · 2270 · listening homework the teacher picked from the course book (audio plays here, no sign-in)
+const LSN_API = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-books', LSN_AU = id => 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-audio?id=' + encodeURIComponent(id);
+let LSN_AT = 0;
+async function lsnLoad() { if (Date.now() - LSN_AT < 120000 || !get(KEY)) return; LSN_AT = Date.now();
+  try { const r = await fetch(LSN_API, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'stuHw', stoken: get(KEY) }) }).then(x => x.json());
+    if (r && r.ok) { const m = {}; (r.list || []).forEach(x => { m[x.day] = x; }); const was = JSON.stringify(S.lsn || {}); S.lsn = m; if (was !== JSON.stringify(m) && (S.tab === 'n' || PH())) paint(); } } catch (e) {} }
+function lsnSec(day, ph) { const x = S.lsn && S.lsn[day]; if (!x || !(x.files || []).length) return '';
+  return `<div class="sec"><b>🎧 ${ph ? 'Listening homework' : '听力作业 · Listening'}</b>${x.files.map(f => `<div style="margin-top:8px"><div class="m" style="margin-bottom:4px">${esc(f.title)}</div><audio controls preload="none" style="width:100%;height:40px" src="${LSN_AU(f.id)}"></audio></div>`).join('')}</div>`; }
 function head() { const d = S.d; if (!d) return; $('sname').textContent = d.student.name + (d.student.cn && !PH() ? ' · ' + d.student.cn : ''); $('scode').textContent = d.student.code; }
 const SK = { h: [46, 132, 96, 96, 140], s: [44, 70, 70, 70, 70], l: [40, 96, 96, 260], n: [96, 96, 160, 220], p: [230, 140, 160] };
 function paint() { head(); const m = $('main');
@@ -308,7 +316,7 @@ function noteCard(x) { const k = x.day + '|' + x.event, on = !!x.done, busy = S.
     + (x.obs ? `<p style="margin:10px 0 0;white-space:pre-wrap;font-size:14.5px">${esc(x.obs)}</p>` : '')
     + (x.ended ? `<div class="sec"><b>${ic('flag', 14)}本课进度 · Ended</b><p>${esc(tidyEnd(x.ended))}</p></div>` : '')
     + (x.next ? `<div class="sec"><b>${ic('next', 14)}下节课 · Next</b><p>${esc(x.next)}</p></div>` : '')
-    + (x.homework ? `<div class="sec"><b>${ic('book', 14)}作业 · Homework</b><p>${esc(x.homework)}</p></div>` : '')
+    + (x.homework ? `<div class="sec"><b>${ic('book', 14)}作业 · Homework</b><p>${esc(x.homework)}</p></div>` : '') + lsnSec(x.day, 0)
     + (x.homework && x.event ? `<button class="done ${on ? 'on' : ''}" ${busy ? 'disabled' : ''} aria-pressed="${on}" onclick="hwTick('${esc(x.day)}','${esc(x.event)}',${on ? 0 : 1})">${ic('check', 18)}${on ? '作业已完成' : '标记作业已完成'}<span class="sr"> Homework done</span></button>` : '') + '</div>'; }
 function pagesChart(P) { if (!P || P.length < 2) return ''; const W = 320, H = 90, mn = Math.min(...P.map(x => x.p)), mx = Math.max(...P.map(x => x.p)), sx = i => 12 + i * (W - 24) / (P.length - 1), sy = v => H - 16 - (mx === mn ? 0.5 : (v - mn) / (mx - mn)) * (H - 32);
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="页码进度 pages reached"><polyline fill="none" stroke="#3FA7A8" stroke-width="2.5" stroke-linejoin="round" points="${P.map((x, i) => sx(i) + ',' + sy(x.p)).join(' ')}"/>${P.map((x, i) => `<circle cx="${sx(i)}" cy="${sy(x.p)}" r="3.5" fill="#00707A"/>`).join('')}<text x="${sx(0)}" y="${H - 2}" font-size="11" fill="#5E5A76">p.${P[0].p}</text><text x="${sx(P.length - 1)}" y="${H - 2}" font-size="11" fill="#5E5A76" text-anchor="end">p.${P[P.length - 1].p}</text></svg>`; }
@@ -597,7 +605,7 @@ function phNote(x) { const k = x.day + '|' + x.event, on = !!x.done, busy = S.bu
     + (x.obs ? `<p style="margin:10px 0 0;white-space:pre-wrap;font-size:14.5px">${esc(x.obs)}</p>` : '')
     + (x.ended ? `<div class="sec"><b>${ic('flag', 14)}Where we ended</b><p>${esc(tidyEnd(x.ended))}</p></div>` : '')
     + (x.next ? `<div class="sec"><b>${ic('next', 14)}Next class</b><p>${esc(x.next)}</p></div>` : '')
-    + (x.homework ? `<div class="sec"><b>${ic('book', 14)}Homework</b><p>${esc(x.homework)}</p></div>` : '')
+    + (x.homework ? `<div class="sec"><b>${ic('book', 14)}Homework</b><p>${esc(x.homework)}</p></div>` : '') + lsnSec(x.day, 1)
     + (x.homework && x.event ? `<button class="done ${on ? 'on' : ''}" ${busy ? 'disabled' : ''} aria-pressed="${on}" onclick="hwTick('${esc(x.day)}','${esc(x.event)}',${on ? 0 : 1})">${ic('check', 18)}${on ? 'Homework done' : 'Mark homework done'}</button>` : '') + '</div>'; }
 function phNotes() { const d = S.d, L = d.hw || [], K = d.notesKpi || {};
   let h = '<div class="kpis" style="margin-top:14px">'
