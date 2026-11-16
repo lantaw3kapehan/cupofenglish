@@ -198,7 +198,7 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
       else { want(id); if(!(meta && meta.size)) throw new Error('no size'); doc = await ranged(PX(id), +meta.size, opt); } }
     catch(e){ want(id); doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt, { disableRange: true, disableStream: false })).promise; }   /* 2278 */
     soon();
-    PRE.clear(); pageNo = 1; zoom = 1; $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
+    PRE.clear(); pageNo = 1; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > 1 && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
     if(FIRST) FIRST = false; else try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'log', token: TOKEN, kind: 'pdf', id, title: $('fl').textContent || TITLE, book: LABEL }) }); }catch(e){}
   }catch(e){ msg('This book could not open right now. Please try again, or tell Operations.<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Try again</button>'); } }
 
@@ -228,7 +228,7 @@ async function render(){ if(!doc) return; const my = {}; rendering = my;
   const key = pageNo + '|' + vp.width + 'x' + vp.height, hit = PRE.get(key);
   if(hit){ c.getContext('2d').drawImage(hit, 0, 0); }   /* 2279: drawn ahead: the page turns at once */
   else await p.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.catch(() => {});
-  if(rendering !== my) return; drawInk(); pages();
+  if(rendering !== my) return; drawInk(); pages(); try{ localStorage.setItem('coe.reader.pg.' + FID, String(pageNo)); }catch(e){}
   ahead(scale * dpr); }
 /* 2279 · the next two pages (and the one before) are drawn in the background, so turning pages is instant */
 const PRE = new Map(); let AH = 0;
