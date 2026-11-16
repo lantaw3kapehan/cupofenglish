@@ -33,6 +33,15 @@ Deno.serve(async (req: Request) => {
     const { data: next } = await db.rpc("coe_media_next", { p_n: 10000 });
     return out({ ok: true, copied: done || 0, waiting: (next || []).length, failed: failed || 0 });
   }
+  if (b.op === "one") {   // 2278: the reader asks for a file that is not copied yet: copy it now (course-book files only; once per 5 minutes)
+    const id = String(b.id || ""); if (!/^[A-Za-z0-9_-]{10,80}$/.test(id)) return out({ ok: false, error: "id" }, 400);
+    const { data: f } = await db.from("coe_book_files").select("id,mime,size").eq("id", id).is("gone_at", null).maybeSingle();
+    if (!f || !/^(audio\/|video\/|application\/pdf$)/.test(f.mime || "") || (f.size || 0) > 150000000) return out({ ok: false, error: "not a book file" }, 404);
+    const { data: m } = await db.from("coe_media_mirror").select("done_at,updated_at").eq("id", id).maybeSingle();
+    if (m && m.done_at) return out({ ok: true, done: true });
+    if (m && Date.now() - new Date(m.updated_at).getTime() < 5 * 60000) return out({ ok: true, busy: true });
+    return out({ ok: await copy(f as any) });
+  }
   const { data: k } = await db.from("coe_cron_key").select("k").eq("id", 1).maybeSingle();
   if (!k || req.headers.get("x-coe-cron") !== k.k) return out({ ok: false, error: "AUTH" }, 401);
   const t0 = Date.now(), budget = 110000; let ok = 0, bad = 0, bytes = 0;
