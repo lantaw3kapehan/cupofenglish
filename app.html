@@ -7409,7 +7409,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1990;
+const COE_V = 1991;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24108,10 +24108,13 @@ go();
   window.bbOpen = async (book, en, cn) => { if(/[,→]|^\s*(pre[-\s]?)?[abc][12]\+?\s*$/i.test(String(book || ''))) book = bbPick(book) || book; CUR = { code: key(book), en: en || '', cn: cn || '' }; if(!rowOf(CUR.code)) await load(true); else load();
     if((rowOf(CUR.code) || {}).sb_cover) return bbPic();   /* 663: straight to the picture */
     sheet();
+    if(mgr() && rowOf(CUR.code) && window.bbFromCopies){ const c1 = CUR.code; toast('Drawing the cover from our copy of the book…'); bbFromCopies(c1).then(async x => { if(!x.done.length) return; await load(true); if(CUR && CUR.code === c1){ if((rowOf(c1) || {}).sb_cover) bbPic(); else sheet(); } }).catch(e => console.warn('2322', e)); }   /* 2322 */
     if(mgr() && !rowOf(CUR.code)){ toast('Taking the covers from COURSEWARE…'); try{ const r = await api('mgmtBookCovers', TOKEN, [CUR.code]); const z = r && r.list && r.list[0]; if(z && (z.sbErr || z.wbErr) && window.bbFillMissing){ toast('Drawing page 1 of the book…'); await bbFillMissing([z]); } await load(true); if(z && z.msg) toast(z.msg); if(CUR){ if((rowOf(CUR.code) || {}).sb_cover) bbPic(); else sheet(); } }catch(e){ toast(e.message); } } };
   window.bbCopy = () => { const r = rowOf(CUR.code) || {}; const t = (r.search_cn || r.title || '').trim(); try{ navigator.clipboard.writeText(t); toast('Copied · ' + t); }catch(e){ toast(t); } };
   window.bbSaveText = async () => { try{ const j = await call('book_buy_set', { code: CUR.code, f: { title: ($('bbT') || {}).value || '', search_cn: ($('bbS') || {}).value || '' } }); BB = (BB || []).filter(x => x.code !== CUR.code).concat(j.item); toast('Saved ✓'); }catch(e){ toast(e.message); } };
-  window.bbRetake = async () => { toast('Taking the covers again…'); try{ const r = await api('mgmtBookCovers', TOKEN, [CUR.code], true); const z = r && r.list && r.list[0];
+  window.bbRetake = async () => { toast('Taking the covers again…'); try{ let c0 = null; if(window.bbFromCopies){ try{ c0 = await bbFromCopies(CUR.code); }catch(e){ console.warn('2322', e); } }   /* 2322: our copies first */
+    if(c0 && c0.done.length === 2){ await load(true); toast('Covers updated ✓'); sheet(); return; }
+    const r = await api('mgmtBookCovers', TOKEN, [CUR.code], true); const z = r && r.list && r.list[0];
     if(z && (z.sbErr || z.wbErr) && window.bbFillMissing){ toast('Drawing page 1 of the book…'); const f = await bbFillMissing([z]); if(f.bad.length) toast('Not drawn: ' + f.bad.join(', ')); }   /* 657 */
     await load(true); toast(z && z.msg || 'Covers updated ✓'); sheet(); }catch(e){ toast(e.message); } };
   window.bbPut = async (side, inp) => { const f = inp.files && inp.files[0]; if(!f) return; if(f.size > 5e6) return toast('The picture must be under 5 MB');
@@ -42681,6 +42684,32 @@ window.hwOpenCE2309 = function(){ try{ const e = typeof CE !== 'undefined' && CE
   function place(){ try{ if(typeof D === 'undefined' || !D || !D.mgr) return; const fx = document.getElementById('o91fix'); if(!fx || document.getElementById('sr2320')) return;
       const box = document.createElement('div'); box.id = 'sr2320'; fx.after(box); load(false); }catch(e){} }
   let q = 0; new MutationObserver(() => { if(q) return; q = requestAnimationFrame(() => { q = 0; place(); }); }).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+<script>
+/* 17 Nov · 2322 · Book covers from our own copies of the PDFs (no Google). Management only. */
+(function(){
+  const SB = 'https://rlxkiahqjsabopmuhern.supabase.co', PUB = SB + '/storage/v1/object/public/book-media/', PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  let ready = null;
+  const lib = () => ready || (ready = new Promise((ok, no) => { if(window.pdfjsLib) return ok(window.pdfjsLib);
+    const s = document.createElement('script'); s.src = PDFJS + 'pdf.min.js'; s.onload = async () => { try{ const w = await fetch(PDFJS + 'pdf.worker.min.js').then(r => r.text());
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([w], { type: 'text/javascript' })); ok(window.pdfjsLib); }catch(e){ ready = null; no(e); } };
+    s.onerror = () => { ready = null; no(new Error('PDF reader did not load')); }; document.head.appendChild(s); }));
+  const post = (fn, o) => fetch(SB + '/functions/v1/' + fn, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, o)) }).then(r => r.json());
+  async function page1(url){ const L = await lib();
+    const doc = await L.getDocument({ url, rangeChunkSize: 1048576, disableAutoFetch: true, disableStream: true, isEvalSupported: false }).promise;
+    const pg = await doc.getPage(1), v1 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: Math.min(3, 1400 / v1.width) });
+    const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height); const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height);
+    await pg.render({ canvasContext: c, viewport: vp }).promise; try{ doc.destroy(); }catch(e){}
+    const blob = await new Promise(z => cv.toBlob(z, 'image/jpeg', 0.88));
+    return await new Promise((ok, no) => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result).split(',')[1]); rd.onerror = no; rd.readAsDataURL(blob); }); }
+  /* code: book key (e.g. "od3"); only: ['sb','wb'] or a subset → { done: ['sb',…], bad: [...] } */
+  window.bbFromCopies = async (code, only) => { const j = await post('coe-books', { op: 'coverFiles', code }); if(!j || !j.ok) throw new Error((j && j.error) || 'No copies');
+    const done = [], bad = [];
+    for(const side of (only || ['sb', 'wb'])){ const f = j[side]; if(!f || !f.obj) continue;
+      try{ const b64 = await page1(PUB + encodeURIComponent(f.obj)); const r = await post('coe-notice', { action: 'book_cover_put', code, side, type: 'image/jpeg', b64 }); if(!r || !r.ok) throw new Error((r && r.error) || 'Not saved'); done.push(side); }
+      catch(e){ bad.push(side + ': ' + (e.message || e)); } }
+    return { done, bad }; };
 })();
 </script>
 <script id="b2278">
