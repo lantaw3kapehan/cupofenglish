@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-hw v1 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
+// CupOfEnglish · coe-hw v2 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
 // correct it and share it). Used by the Homework check page (homework/index.html).
 // POST { token, op, ... }:
 //   me                       → { name, role, mgmt }
@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
       const row: any = { code, student: clean(b.student, 80), teacher: clean(b.teacher || name, 60), class_id: clean(b.class_id, 120) || null,
         day: /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? b.day : null, kind, title: clean(b.title, 160), body: clean(b.body, 20000),
         marks: Array.isArray(b.marks) ? b.marks.slice(0, 500) : [], counts: b.counts && typeof b.counts === "object" ? b.counts : {},
-        note: clean(b.note, 2000), note_zh: clean(b.note_zh, 2000), by_name: name, updated_at: new Date().toISOString() };
+        note: clean(b.note, 2000), note_zh: clean(b.note_zh, 2000), by_name: role === 'Teacher' ? 'Teacher ' + name.charAt(0).toUpperCase() + name.slice(1) : role === 'President' ? 'Management' : name, updated_at: new Date().toISOString() };
       if (b.orig) row.img_orig = await put(code, b.orig);
       if (b.marked) row.img_marked = await put(code, b.marked);
       if (b.id) {
