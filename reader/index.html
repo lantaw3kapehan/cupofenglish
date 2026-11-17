@@ -222,7 +222,7 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
       else { want(id); if(!(meta && meta.size)) throw new Error('no size'); doc = await ranged(PX(id), +meta.size, opt); } }
     catch(e){ want(id); doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt, { disableRange: true, disableStream: false })).promise; }   /* 2278 */
     soon();
-    PRE.clear(); pageNo = 1; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > 1 && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
+    PRE.clear(); CROP.clear(); pageNo = 1; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > 1 && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
     if(FIRST) FIRST = false; else try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'log', token: TOKEN, kind: 'pdf', id, title: $('fl').textContent || TITLE, book: LABEL }) }); }catch(e){}
   }catch(e){ msg('This book could not open right now. Please try again, or tell Operations.<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Try again</button>'); } }
 
@@ -242,11 +242,25 @@ function soon(){ const near = FILES.filter(f => f.kind === 'pdf' && f.id !== FID
 
 /* ── render the page sharp, fitted, with zoom ── */
 let TASK = null;
+/* 2295: our own lesson PDFs carry the CupOfEnglish logo, slogan and a teal contact bar on every page. The reader's header already has
+   the logo, so that page band is trimmed off: found by the teal bar along the bottom (only our template has it); the top is trimmed down
+   to where the page content starts. Other books are shown whole. */
+const CROP = new Map();
+function cropOf(src){ try{ const W = src.width, H = src.height, x = src.getContext('2d', { willReadFrequently: true });
+    const teal = y => { const d = x.getImageData(0, Math.round(y), W, 1).data; let n = 0, k = 0; for(let i = 0; i < W; i += Math.max(1, Math.floor(W / 60))){ const o = i * 4; k++; if(d[o] > 50 && d[o] < 140 && d[o+1] > 165 && d[o+1] < 225 && d[o+2] > 145 && d[o+2] < 210) n++; } return n / k > 0.75; };
+    const white = y => { const d = x.getImageData(0, Math.round(y), W, 1).data; let n = 0, k = 0; for(let i = Math.floor(W * 0.05); i < W * 0.95; i += Math.max(1, Math.floor(W / 80))){ const o = i * 4; k++; if(d[o] > 238 && d[o+1] > 238 && d[o+2] > 238) n++; } return n / k > 0.97; };
+    if(!teal(H * 0.975)) return null;
+    let yb = H * 0.975; while(yb > H * 0.85 && teal(yb - 2)) yb -= 2;
+    let yt = H * 0.10; while(yt < H * 0.22 && !white(yt)) yt += 2;   // below the logo
+    let y2 = yt; while(y2 < H * 0.24 && white(y2)) y2 += 2;            // first content line
+    const t = Math.max(0.08, Math.min(0.2, (y2 - H * 0.012) / H)), b = Math.max(0.02, Math.min(0.15, (H - yb + H * 0.004) / H));
+    return { t, b }; }catch(e){ return null; } }
 async function render(){ if(!doc) return; const my = {}; rendering = my;
   const p = await doc.getPage(pageNo); if(rendering !== my) return;
   const st = $('stage'), v1 = p.getViewport({ scale: 1 }), pad = 48;
   const tl = $('tools'), res = document.body.classList.contains('tmin') ? 64 : (tl ? tl.offsetWidth + 24 : 70); st.style.paddingLeft = (24 + res) + 'px';   /* 2287: the page sits beside the toolbar, never under it */
-  const fit = Math.min((st.clientWidth - pad - res) / v1.width, (st.clientHeight - pad) / v1.height);
+  const ck = CROP.get(pageNo), keep = ck ? 1 - ck.t - ck.b : 1;
+  const fit = Math.min((st.clientWidth - pad - res) / v1.width, (st.clientHeight - pad) / (v1.height * keep));
   const scale = Math.max(0.2, fit * zoom), dpr = Math.min(window.devicePixelRatio || 1, 2.5), vp = p.getViewport({ scale: scale * dpr });
   /* 2287: the page is drawn off-screen first and shown only when complete, so two quick redraws can never mix (no flipped or cut pages) */
   const key = pageNo + '|' + vp.width + 'x' + vp.height; let src = PRE.get(key);
@@ -254,8 +268,10 @@ async function render(){ if(!doc) return; const my = {}; rendering = my;
     const t = TASK = p.render({ canvasContext: off.getContext('2d'), viewport: vp }); let ok = true; await t.promise.catch(() => { ok = false; }); if(TASK === t) TASK = null;
     if(!ok || rendering !== my) return; src = off; }
   if(rendering !== my) return;
-  const c = $('pdf'), ink = $('ink'), w = vp.width / dpr, h = vp.height / dpr; c.width = vp.width; c.height = vp.height; c.getContext('2d').drawImage(src, 0, 0);
-  c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = vp.width; ink.height = vp.height; ink.style.width = w + 'px'; ink.style.height = h + 'px';
+  let cr = CROP.get(pageNo); if(cr === undefined){ cr = cropOf(src); CROP.set(pageNo, cr); if(cr && !ck){ setTimeout(render, 0); } }
+  const top = cr ? Math.round(vp.height * cr.t) : 0, hh = cr ? Math.round(vp.height * (1 - cr.t - cr.b)) : vp.height;
+  const c = $('pdf'), ink = $('ink'), w = vp.width / dpr, h = hh / dpr; c.width = vp.width; c.height = hh; c.getContext('2d').drawImage(src, 0, -top);
+  c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = vp.width; ink.height = hh; ink.style.width = w + 'px'; ink.style.height = h + 'px';
   st.classList.toggle('fit', zoom <= 1);
   if(rendering !== my) return; drawInk(); pages(); try{ localStorage.setItem('coe.reader.pg.' + FID, String(pageNo)); }catch(e){}
   ahead(scale * dpr); }
