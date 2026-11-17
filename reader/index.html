@@ -248,17 +248,25 @@ let TASK = null;
 const CROP = new Map(); let PG1 = 1;
 /* 2298: the cover pages at the start of our lesson PDFs (logo and slogan, then the book / unit title) are skipped: the reader's header
    already names the book and the unit. Pages are counted from the first real page. */
-async function findFirst(d){ try{ let k = 0; const lim = (pr, ms) => Promise.race([pr, new Promise((_, no) => setTimeout(() => no('slow'), ms))]);
-    for(let n = 1; n <= Math.min(6, d.numPages - 1); n++){ const p = await lim(d.getPage(n), 3000), v0 = p.getViewport({ scale: 1 }), vp = p.getViewport({ scale: 200 / v0.width });
-      /* 2300: our own opening pages are skipped too: the "UNIT 1 · a, am, an" title page and the CONTENT plan page (read from the page's words) */
-      let txt = ''; try{ txt = (await lim(p.getTextContent(), 2500)).items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim(); }catch(e){}
-      if(!/source\s*:/i.test(txt) && (/^content\b/i.test(txt) && /warm\s*up/i.test(txt) || /^unit\s*\d+\b/i.test(txt) && txt.split(' ').length <= 9)){ k = n; continue; }
-      const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height; try{ await lim(p.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise, 3000); }catch(e){ break; }
-      const x = cv.getContext('2d'), W = cv.width, H = cv.height, tl = y => { const r = x.getImageData(0, Math.round(y), W, 1).data; let m = 0, c = 0; for(let i = 0; i < W; i += 4){ const o = i * 4; c++; if(r[o] < 150 && r[o+1] > 160 && r[o+1] < 230 && r[o+2] > 140 && r[o+2] < 215 && r[o+1] - r[o] > 60) m++; } return m / c > 0.6; };
-      /* 2299: also our brand poster page (Oxford Discover units): the big navy CUPOFENGLISH at the top right */
-      const nv = (() => { const d = x.getImageData(Math.round(W * 0.52), Math.round(H * 0.06), Math.round(W * 0.45), Math.round(H * 0.14)).data; let m = 0; for(let i = 0; i < d.length; i += 4) if(d[i] < 80 && d[i+1] < 70 && d[i+2] > 60 && d[i+2] < 130 && d[i+2] - d[i+1] > 25) m++; return m / (d.length / 4); })();
-      const band = (() => { const r = x.getImageData(0, Math.round(H * 0.69), W, 1).data; let m = 0, c = 0; for(let q = 0; q < W; q += 2){ const o = q * 4; c++; if(r[o] < 150 && r[o+1] > 160 && r[o+1] < 230 && r[o+2] > 140 && r[o+2] < 215 && r[o+1] - r[o] > 60) m++; } return m / c; })();   /* 2299c: the poster's teal "Learn with the best" band */
-      if((tl(H * 0.9) && tl(H * 0.12)) || (nv > 0.06 && band > 0.4)) k = n; else break; } return k + 1; }catch(e){ return 1; } }
+/* 2300: pages of ours that the lesson does not need are skipped: the opening covers (logo poster, book / unit title slide), and anywhere
+   in the file the "UNIT 1 · a, am, an" title page and the CONTENT plan page. Found from the page's words (and its look for picture-only
+   covers). Page numbers count only the pages shown. */
+let SKIP = new Set(), SCAN = 0;
+const lim = (pr, ms) => Promise.race([pr, new Promise((_, no) => setTimeout(() => no('slow'), ms))]);
+const wordsOf = async p => { try{ return (await lim(p.getTextContent(), 2500)).items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim(); }catch(e){ return null; } };
+const extraPage = t => t != null && !/source\s*:/i.test(t) && ((/^content\b/i.test(t) && /warm\s*up/i.test(t)) || (/^unit\s*\d+\b/i.test(t) && t.split(' ').length <= 9));
+async function looksCover(p){ try{ const v0 = p.getViewport({ scale: 1 }), vp = p.getViewport({ scale: 200 / v0.width }), cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height;
+    await lim(p.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise, 3000);
+    const x = cv.getContext('2d'), W = cv.width, H = cv.height, frac = y => { const r = x.getImageData(0, Math.round(y), W, 1).data; let m = 0, c = 0; for(let i = 0; i < W; i += 2){ const o = i * 4; c++; if(r[o] < 150 && r[o+1] > 160 && r[o+1] < 230 && r[o+2] > 140 && r[o+2] < 215 && r[o+1] - r[o] > 60) m++; } return m / c; };
+    const nv = (() => { const d = x.getImageData(Math.round(W * 0.52), Math.round(H * 0.06), Math.round(W * 0.45), Math.round(H * 0.14)).data; let m = 0; for(let i = 0; i < d.length; i += 4) if(d[i] < 80 && d[i+1] < 70 && d[i+2] > 60 && d[i+2] < 130 && d[i+2] - d[i+1] > 25) m++; return m / (d.length / 4); })();
+    return (frac(H * 0.9) > 0.6 && frac(H * 0.12) > 0.6) || (nv > 0.06 && frac(H * 0.69) > 0.4); }catch(e){ return false; } }
+async function findFirst(d){ SKIP = new Set(); const my = ++SCAN; let k = 0;
+  try{ for(let n = 1; n <= Math.min(6, d.numPages - 1); n++){ const p = await lim(d.getPage(n), 3000), t = await wordsOf(p);
+      const cover = /cupofenglishatph/i.test(t || '') || /^\S+(\s\S+){0,3}\s+unit\s*\d+\s*:\s*lesson\s*\d+$/i.test(t || '') || (!t && await looksCover(p));
+      if(cover || extraPage(t)){ SKIP.add(n); k = n; continue; } break; } }catch(e){}
+  /* the rest of the file in the background: CONTENT / UNIT pages further in */
+  (async () => { for(let n = k + 1; n <= d.numPages; n++){ if(my !== SCAN || d !== doc) return; try{ const p = await d.getPage(n); if(extraPage(await wordsOf(p))){ SKIP.add(n); if(pageNo === n) turn(1); else pages(); } }catch(e){} } })();
+  let f = 1; while(SKIP.has(f) && f < d.numPages) f++; return f; }
 /* 2297: some unit PDFs (Oxford Discover) carry our logo at the bottom centre: found by the logo's own navy + teal on a plain background,
    and covered with that background, so only the reader's header shows the logo. */
 function logoBottom(cv){ try{ const W = cv.width, H = cv.height, x = cv.getContext('2d', { willReadFrequently: true });
@@ -322,9 +330,9 @@ function ahead(sc){ const my = ++AH, doc0 = doc; [pageNo + 1, pageNo + 2, pageNo
     if(my !== AH || doc0 !== doc) return; const p = await doc.getPage(n), vp = p.getViewport({ scale: sc }), key = n + '|' + vp.width + 'x' + vp.height; if(PRE.has(key)) return;
     const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height; await p.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
     PRE.set(key, cv); if(PRE.size > 6) PRE.delete(PRE.keys().next().value); }).catch(() => {}), new Promise(r => setTimeout(r, 120))); }
-function pages(){ const n0 = pageNo - PG1 + 1, nn = doc ? doc.numPages - PG1 + 1 : 0, t = doc ? n0 + ' / ' + nn : '–'; $('pg').textContent = doc ? 'Page ' + n0 + ' of ' + nn : '–'; $('pg2').textContent = t;
-  $('prev').disabled = !doc || pageNo <= PG1; $('next').disabled = !doc || pageNo >= doc.numPages; }
-const turn = d => { if(!doc) return; const n = Math.min(doc.numPages, Math.max(PG1, pageNo + d)); if(n !== pageNo){ pageNo = n; render(); $('stage').scrollTo(0, 0); } };
+function pages(){ let n0 = 0; for(let i = 1; i <= pageNo; i++) if(!SKIP.has(i)) n0++; const nn = doc ? doc.numPages - SKIP.size : 0, t = doc ? n0 + ' / ' + nn : '–'; $('pg').textContent = doc ? 'Page ' + n0 + ' of ' + nn : '–'; $('pg2').textContent = t;
+  $('prev').disabled = !doc || pageNo <= PG1 || n0 <= 1; $('next').disabled = !doc || pageNo >= doc.numPages; }
+const turn = d => { if(!doc) return; let n = pageNo; do{ n += d; }while(n >= 1 && n <= doc.numPages && SKIP.has(n)); if(n < 1 || n > doc.numPages) return;   /* 2300: skipped pages are stepped over */ if(n !== pageNo){ pageNo = n; render(); $('stage').scrollTo(0, 0); } };
 const setZoom = z => { zoom = Math.min(4, Math.max(0.5, z)); render(); };
 
 /* ── drawing: kept per page, in page proportions so zoom keeps them in place ── */
