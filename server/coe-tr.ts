@@ -37,7 +37,8 @@ Deno.serve(async (req: Request) => {
       const j = await r.json();
       const zh = r.ok ? String((j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("")).trim() : "";
       if (zh) return out({ ok: true, zh, by: "claude" });
-    } catch (_e) { /* fall back to Google below */ }
+    } catch (_e) { /* no answer */ }
+    return out({ ok: false, error: "no answer" });   // Misty 17 Nov: no Google for parent Chinese
   }
   const [sl, tl] = fn === "trEn" ? ["zh-CN", "en"] : ["en", "zh-CN"];
   try {
