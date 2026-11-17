@@ -211,7 +211,8 @@ Deno.serve(async (req: Request) => {
           text: w.fn === "tMsgSend" ? str(A[1], 120) : w.fn === "tMsgAck" ? str(A[2], 40) : "" }; });
       const { data: X } = await db.from("coe_activity").select("id,fn,ok,detail,dev,at").ilike("who", who).gte("at", from.toISOString()).lt("at", to.toISOString()).order("at").limit(300);
       (X || []).forEach((x: any) => { const d = (x.dev && typeof x.dev === "object") ? x.dev : {};
-        rows.push({ id: "a" + x.id, fn: x.fn, at: x.at, status: x.ok === false ? "error" : "done", error: x.ok === false ? str(x.detail, 160) : "", note: x.ok === false ? "" : str(x.detail, 160), rec: "", mins: null, proof: "", rst: "", place: "", flag: "",
+        const chk = /Check$/.test(String(x.fn || ""));   // 2321: background checks (e.g. tTrialFormCheck) are not saves: never "Not saved"
+        rows.push({ id: "a" + x.id, fn: x.fn, at: x.at, status: x.ok === false && !chk ? "error" : "done", error: x.ok === false && !chk ? str(x.detail, 160) : "", note: chk ? "Background check · nothing to save" : x.ok === false ? "" : str(x.detail, 160), rec: "", mins: null, proof: "", rst: "", place: "", flag: "",
           student: "", code: "", start: "", dev: str(d.device, 140), ip: str(d.ip, 60), net: str(d.net, 120), speed: "", ua: str(d.ua, 200), lat: null, lng: null, acc: null, text: "" } as any); });
       rows.sort((p: any, q: any) => String(p.at).localeCompare(String(q.at)));
       return out({ ok: true, who, day, rows });
