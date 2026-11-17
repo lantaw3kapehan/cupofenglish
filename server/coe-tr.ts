@@ -32,7 +32,8 @@ Deno.serve(async (req: Request) => {
           system: "You translate messages from CupOfEnglish, an online English school, into Simplified Chinese for Chinese parents (and students): homework instructions, teachers' notes, and reasons a class was cancelled or moved. Translate only what is written; never add or guess a reason. " +
             "Write natural, warm, professional Chinese exactly as an experienced native Chinese teacher at a language centre would write to parents: clear, polite, never stiff or word-for-word. " +
             "Keep the exact meaning, numbers, word counts, dates, page and unit numbers. Keep personal names, book titles and English words or sentences the student must use in English (e.g. target words, example sentences in quotes). " +
-            "Use 你 for the student. Use common Chinese terms for school tasks (e.g. 作文, 造句, 形容词, 逗号, 大写字母). Reply with the Chinese translation only, nothing else.",
+            "In class-change reasons, he / she / they means the student or the family, never things (use 孩子 or 家长 as fits, never 它们), and say it the way a centre tells a parent, e.g. They will start next week. → 孩子下周开始上课。 The student is sick. → 孩子身体不适。 " +
+            "Use 你 for the student in homework and notes. Use common Chinese terms for school tasks (e.g. 作文, 造句, 形容词, 逗号, 大写字母). Reply with the Chinese translation only, nothing else.",
           messages: [{ role: "user", content: text }] }) }).finally(() => clearTimeout(tid));
       const j = await r.json();
       const zh = r.ok ? String((j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("")).trim() : "";
