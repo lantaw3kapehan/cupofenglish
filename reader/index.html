@@ -249,17 +249,20 @@ const CROP = new Map();
 /* 2297: some unit PDFs (Oxford Discover) carry our logo at the bottom centre: found by the logo's own navy + teal on a plain background,
    and covered with that background, so only the reader's header shows the logo. */
 function logoBottom(cv){ try{ const W = cv.width, H = cv.height, x = cv.getContext('2d', { willReadFrequently: true });
-    const x0 = Math.round(W * 0.28), x1 = Math.round(W * 0.72), y0 = Math.round(H * 0.84), y1 = H - 1, d = x.getImageData(x0, y0, x1 - x0, y1 - y0).data, w = x1 - x0;
-    const bg = x.getImageData(Math.round(W * 0.2), Math.round(H * 0.95), 1, 1).data;
-    let nv = 0, tl = 0, bx0 = 1e9, bx1 = -1, by0 = 1e9, by1 = -1;
-    for(let i = 0; i < d.length; i += 4){ const r = d[i], g = d[i+1], b = d[i+2];
-      const isN = r < 80 && g < 70 && b > 60 && b < 120 && b - g > 25, isT = r < 70 && g > 150 && b > 150;
-      const diff = Math.abs(r - bg[0]) + Math.abs(g - bg[1]) + Math.abs(b - bg[2]) > 60;
-      if(isN) nv++; if(isT) tl++;
-      if(diff){ const px = (i / 4) % w, py = Math.floor(i / 4 / w); if(px < bx0) bx0 = px; if(px > bx1) bx1 = px; if(py < by0) by0 = py; if(py > by1) by1 = py; } }
-    const area = (x1 - x0) * (y1 - y0); if(nv < area * 0.01 || tl < area * 0.002 || bx1 < 0) return null;
-    const lw = (bx1 - bx0) / W, lh = (by1 - by0) / H; if(lw > 0.4 || lh > 0.15) return null;     // only a logo-sized patch, nothing else down there
-    return { x: x0 + bx0, y: y0 + by0, w: bx1 - bx0 + 1, h: by1 - by0 + 1, c: 'rgb(' + bg[0] + ',' + bg[1] + ',' + bg[2] + ')' }; }catch(e){ return null; } }
+    const x0 = Math.round(W * 0.25), x1 = Math.round(W * 0.75), y0 = Math.round(H * 0.75), w = x1 - x0, hh = H - y0, d = x.getImageData(x0, y0, w, hh).data;
+    const bg = x.getImageData(Math.round(W * 0.12), H - Math.max(2, Math.round(H * 0.03)), 1, 1).data;
+    const off = i => Math.abs(d[i] - bg[0]) + Math.abs(d[i+1] - bg[1]) + Math.abs(d[i+2] - bg[2]) > 60;
+    const row = y => { let n = 0; for(let px = 0; px < w; px += 2) if(off((y * w + px) * 4)) n++; return n; };
+    let y = hh - 1; while(y > 0 && row(y) === 0) y--; if(y <= 0) return null; const yb = y;      // bottom of the lowest block
+    let gap = 0; const need = Math.max(3, Math.round(H * 0.006));
+    while(y > 0){ if(row(y) === 0){ if(++gap >= need) break; } else gap = 0; y--; } const yt = y + gap;   // its top: a clear gap above it
+    if(y <= 0 || (yb - yt) / H > 0.13 || (yb - yt) / H < 0.02) return null;
+    let nv = 0, tl = 0, bx0 = 1e9, bx1 = -1;
+    for(let yy = yt; yy <= yb; yy++) for(let px = 0; px < w; px++){ const i = (yy * w + px) * 4, r = d[i], g = d[i+1], b = d[i+2];
+      if(r < 80 && g < 70 && b > 60 && b < 130 && b - g > 25) nv++; if(r < 90 && g > 140 && b > 140) tl++;
+      if(off(i)){ if(px < bx0) bx0 = px; if(px > bx1) bx1 = px; } }
+    const area = (bx1 - bx0 + 1) * (yb - yt + 1); if(bx1 < 0 || (bx1 - bx0) / W > 0.35 || nv < area * 0.04 || tl < area * 0.01) return null;   // navy text + teal cup = our logo
+    return { x: x0 + bx0, y: y0 + yt, w: bx1 - bx0 + 1, h: yb - yt + 1, c: 'rgb(' + bg[0] + ',' + bg[1] + ',' + bg[2] + ')' }; }catch(e){ return null; } }
 function cropOf(src){ try{ const W = src.width, H = src.height, x = src.getContext('2d', { willReadFrequently: true });
     const teal = y => { const d = x.getImageData(0, Math.round(y), W, 1).data; let n = 0, k = 0; for(let i = 0; i < W; i += Math.max(1, Math.floor(W / 60))){ const o = i * 4; k++; if(d[o] < 150 && d[o+1] > 160 && d[o+1] < 230 && d[o+2] > 140 && d[o+2] < 215 && d[o+1] - d[o] > 60) n++; } return n / k > 0.75; };
     const white = y => { const d = x.getImageData(0, Math.round(y), W, 1).data; let n = 0, k = 0; for(let i = Math.floor(W * 0.05); i < W * 0.95; i += Math.max(1, Math.floor(W / 80))){ const o = i * 4; k++; if(d[o] > 238 && d[o+1] > 238 && d[o+2] > 238) n++; } return n / k > 0.97; };
