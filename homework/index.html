@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap">
 <style>
 /* 2308 · Homework check (Misty 17 Nov 15:44): paste the homework the student sent on WeChat (text or a picture), correct it in class,
-   show it on screen, save it to the student's record and copy a bilingual picture for the parent. */
+   show it on screen, save it to the student's record and copy a bilingual picture for the parent/student. */
 @font-face{font-family:'COE Card Inter';src:url(../fonts/card-inter-var.woff2) format('woff2');font-weight:100 900;font-display:swap}
 @font-face{font-family:'COE Card Fredoka';src:url(../fonts/card-fredoka-one.woff2) format('woff2');font-weight:400;font-display:swap}
 :root{--teal:#00707A;--teal2:#00616A;--tint:#E6F5F6;--navy:#2F2753;--ink:#1F2937;--ink2:#4B5563;--line:#E5E7EB;--soft:#F4F6F8;--out:#CFCBDD}
@@ -224,14 +224,14 @@ function layout(){
     <div class="card pad">
       <label class="h2" for="ttl" style="display:block">Homework title <span class="mute xs" style="font-weight:400">(optional)</span></label>
       <input id="ttl" class="tt" placeholder="e.g. My weekend" autocomplete="off">
-      <label class="h2" for="note" style="display:block;margin-top:14px">Note to ${esc(nm)} and the parents</label>
+      <label class="h2" for="note" style="display:block;margin-top:14px">Note to ${esc(nm)} (and parents, if a child)</label>
       <textarea id="note" class="note" placeholder="What went well, and one thing to work on. Short, simple sentences translate best."></textarea>
-      <div class="xs mute" style="margin-top:6px">The parent picture shows your note in English and Chinese.</div>
+      <div class="xs mute" style="margin-top:6px">The picture shows your note in English and Chinese.</div>
       <div id="zhBox" class="zh" style="margin-top:8px;display:none"></div>
     </div>
     <div class="card pad" style="display:flex;flex-direction:column;gap:10px">
       <button class="btn pri" id="bSave" type="button">Save to ${esc(nm)}'s homework</button>
-      <button class="btn out" id="bPic" type="button">Copy picture for the parent</button>
+      <button class="btn out" id="bPic" type="button">Copy picture for the parent/student</button>
       <div class="xs mute" id="saveInfo">Saving keeps the corrected copy with ${esc(nm)}'s homework, so you can open it again later.</div>
     </div>
     <div class="card pad"><div class="h2">Earlier checks</div><div id="hist" class="hist small mute">Loading…</div></div>
@@ -527,7 +527,7 @@ function side(){
 let zT = 0; function zhLater(){ clearTimeout(zT); zT = setTimeout(() => zhNow(), 900); }
 async function zhNow(){ const v = ($('note') || {}).value || ''; const t = v.trim(), bx = $('zhBox'); if(!t){ ZH = { src: '', zh: '' }; if(bx) bx.style.display = 'none'; return ''; }
   if(ZH.src === t && ZH.zh) return ZH.zh;
-  if(bx){ bx.style.display = ''; bx.textContent = 'Chinese for the parent: translating…'; }
+  if(bx){ bx.style.display = ''; bx.textContent = 'Chinese translation: translating…'; }
   let zh = '';
   try{ const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 5000);   /* the same engine straight from this browser (as the app does, 2082) */
     const j = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=en&tl=zh-CN&q=' + encodeURIComponent(t), { signal: ac.signal }).then(x => x.json()).finally(() => clearTimeout(tid));
@@ -536,7 +536,7 @@ async function zhNow(){ const v = ($('note') || {}).value || ''; const t = v.tri
     const r = await fetch(SB + 'coe-tr', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, fn: 'trZh', text: t }), signal: ac.signal }).then(x => x.json()).finally(() => clearTimeout(tid));
     zh = (r && r.ok && r.zh) || ''; }catch(e){}
   if((($('note') || {}).value || '').trim() !== t) return zh;
-  ZH = { src: t, zh }; if(bx){ bx.style.display = ''; bx.textContent = zh ? 'Chinese for the parent: ' + zh : 'The Chinese could not be made just now. The picture will show the English only.'; } return zh; }
+  ZH = { src: t, zh }; if(bx){ bx.style.display = ''; bx.textContent = zh ? 'Chinese translation: ' + zh : 'The Chinese could not be made just now. The picture will show the English only.'; } return zh; }
 
 /* ================= save ================= */
 let SAVING = false;
@@ -571,7 +571,7 @@ async function openCheck(id){
   if(x.kind === 'text'){ setText(x.body || ''); TX.marks = Array.isArray(x.marks) ? x.marks : []; TX.stamps = Array.isArray((x.counts || {}).stamps) ? x.counts.stamps : []; MODE = 'text'; }
   else { try{ const im = await new Promise((ok, no) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = no; i.src = x.img_orig_url; }); setBase(im); }catch(e){ return toast('The picture could not be loaded'); }
     PIC.items = Array.isArray(x.marks) ? x.marks : []; PIC.origSaved = true; const c = x.counts || {}; PIC.cats = { grammar: +c.grammar || 0, spelling: +c.spelling || 0, words: +c.words || 0, punct: +c.punct || 0 }; MODE = 'picture'; }
-  DIRTY = false; clearDraft(); paintMode(); loadHist(); const bx = $('zhBox'); if(bx){ bx.style.display = ZH.zh ? '' : 'none'; bx.textContent = 'Chinese for the parent: ' + ZH.zh; } window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  DIRTY = false; clearDraft(); paintMode(); loadHist(); const bx = $('zhBox'); if(bx){ bx.style.display = ZH.zh ? '' : 'none'; bx.textContent = 'Chinese translation: ' + ZH.zh; } window.scrollTo({ top: 0, behavior: 'smooth' }); }
 function newCheck(){ if(DIRTY && hasWork() && !confirm('Start a new check? Unsaved marks on screen will be lost.')) return;
   closeEd(); TX.body = ''; TX.parts = []; TX.marks = []; TX.stamps = []; PIC.base = null; PIC.items = []; PIC.origSaved = false; PIC.cats = { grammar: 0, spelling: 0, words: 0, punct: 0 }; CUR = { id: null }; UNDO = []; REDO = []; DIRTY = false; clearDraft();
   $('note').value = ''; $('ttl').value = ''; ZH = { src: '', zh: '' }; $('zhBox').style.display = 'none'; $('saveInfo').textContent = 'Saving keeps the corrected copy with ' + (NAME || CODE) + '’s homework, so you can open it again later.'; paintMode(); loadHist(); }
@@ -649,7 +649,7 @@ async function parentPic(){
   finally{ btn.disabled = false; btn.textContent = lab; } }
 function showPic(blob, copied){
   const url = URL.createObjectURL(blob), m = document.createElement('div'); m.className = 'modal';
-  m.innerHTML = `<div class="box" role="dialog" aria-label="Picture for the parent"><div class="pad" style="padding:14px 16px;border-bottom:1px solid var(--line)"><b>${copied ? 'Picture copied · paste it in the parent’s WeChat' : 'Picture for the parent'}</b></div><div class="sc"><img src="${url}" alt="Homework feedback picture"></div>
+  m.innerHTML = `<div class="box" role="dialog" aria-label="Picture for the parent/student"><div class="pad" style="padding:14px 16px;border-bottom:1px solid var(--line)"><b>${copied ? 'Picture copied · paste it in WeChat for the parent/student' : 'Picture for the parent/student'}</b></div><div class="sc"><img src="${url}" alt="Homework feedback picture"></div>
 <div class="ft"><button type="button" class="btn" id="mX">Close</button><a class="btn" href="${url}" download="Homework-${esc(NAME || CODE)}.png">Save picture</a><button type="button" class="btn pri" id="mC">Copy picture</button></div></div>`;
   document.body.appendChild(m); const close = () => { m.remove(); URL.revokeObjectURL(url); };
   m.onclick = e => { if(e.target === m) close(); }; m.querySelector('#mX').onclick = close;
