@@ -287,7 +287,7 @@ ${['grammar', 'spelling', 'words', 'punct'].map(k => `<button type="button" clas
 <button type="button" class="ib" id="tU" aria-label="Undo" title="Undo (${UNDOK})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
 <button type="button" class="ib" id="tR" aria-label="Redo" title="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
 <button type="button" class="chip" id="tE" title="Change the student's text">Edit text</button></div>
-<div class="tools" style="padding-top:0"><span class="xs mute">Stamps:</span>${STAMPS.map(([k, n]) => `<button type="button" class="chip" data-ts="${k}" title="Add ${n}"><img src="${stampImg(k)}" alt="${n}" style="height:22px;width:auto"></button>`).join('')}</div>`; }
+<div class="tools" style="padding-top:0"><span class="xs mute">Stamps:</span>${STAMPS.map(([k, n]) => `<button type="button" class="chip" data-ts="${k}" title="Add ${n}">${k === 'own' ? '<span style="color:#6D28D9;font-weight:600">Your own words…</span>' : `<img src="${stampImg(k)}" alt="${n}" style="height:22px;width:auto">`}</button>`).join('')}</div>`; }
 function emptyHtml(kind){
   return `<div class="empty"><div class="drop"><div class="big">Paste the homework here</div>
 <div class="small mute" style="line-height:1.9">1. In WeChat, copy the student's message or picture.<br>2. Come back here and press <span class="keys">${KEY}</span> on your keyboard, or click <b>Paste</b>.<br><span class="xs">You can also drag a picture into this box.</span></div>
@@ -302,7 +302,7 @@ function paintText(){
   $('tools').innerHTML = toolsText();
   $('tools').querySelectorAll('[data-cat]').forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => addMark(b.dataset.cat); });
   $('tU').onclick = undo; $('tR').onclick = redo; $('tE').onclick = editText;
-  $('tools').querySelectorAll('[data-ts]').forEach(b => b.onclick = () => { if(TX.stamps.length >= 12) return toast('That is plenty of stamps'); TX.stamps.push(b.dataset.ts); dirty(); renderText(); side(); });
+  $('tools').querySelectorAll('[data-ts]').forEach(b => b.onclick = () => { if(TX.stamps.length >= 12) return toast('That is plenty of stamps'); let k = b.dataset.ts; if(k === 'own'){ const v = askOwn(); if(!v) return; k = 'own:' + v; } TX.stamps.push(k); dirty(); renderText(); side(); });
   $('area').innerHTML = '<div class="body" id="ebody"><div class="ttl" id="eTtl"></div><div id="tStamps" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:2px 0 6px"></div><div id="essay"></div><div class="why" id="whyL" style="display:none"></div></div>';
   const es = $('essay'); es.addEventListener('mouseup', pickSel); es.addEventListener('touchend', () => setTimeout(pickSel, 30));
   renderText(); }
@@ -329,7 +329,7 @@ function renderText(){
   const t = ($('ttl') || {}).value; $('eTtl').textContent = (NAME ? NAME + '’s homework' : 'Homework') + (t ? ' · ' + t : '');
   const W = TX.marks.map((m, k) => numOf[k] ? `<div><span class="n" style="background:${(CAT[m.c] || CAT.note).c}">${numOf[k]}</span><b>${esc(ERR.includes(m.c) && m.fix ? m.fix : TX.parts.slice(m.a, m.b + 1).join(''))}</b> · ${esc(m.why)}</div>` : '').join('');
   const wl = $('whyL'); wl.style.display = W ? '' : 'none'; wl.innerHTML = W;
-  const ts = $('tStamps'); if(ts){ ts.innerHTML = TX.stamps.map((k, i) => `<span style="position:relative;display:inline-block"><img src="${stampImg(k)}" alt="${(STAMPS.find(x => x[0] === k) || ['', 'Stamp'])[1]}" style="height:${k === 'star' || k === 'aplus' || k === 'smile' ? 54 : 48}px;width:auto"><button type="button" data-rs="${i}" aria-label="Remove this stamp" title="Remove" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:1px solid #CFCBDD;background:#fff;font-size:13px;line-height:1;padding:0;color:#4B5563">×</button></span>`).join('');
+  const ts = $('tStamps'); if(ts){ ts.innerHTML = TX.stamps.map((k, i) => `<span style="position:relative;display:inline-block"><img src="${stampImg(k)}" alt="${esc(stB(k) ? stB(k)[0] : (STAMPS.find(x => x[0] === k) || ['', 'Stamp'])[1])}" style="height:${stB(k) ? 48 : 54}px;width:auto"><button type="button" data-rs="${i}" aria-label="Remove this stamp" title="Remove" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:1px solid #CFCBDD;background:#fff;font-size:13px;line-height:1;padding:0;color:#4B5563">×</button></span>`).join('');
     ts.querySelectorAll('[data-rs]').forEach(b => b.onclick = () => { TX.stamps.splice(+b.dataset.rs, 1); dirty(); renderText(); side(); }); } }
 function prevWord(i){ for(let j = i - 1; j >= 0; j--) if(/\S/.test(TX.parts[j])) return j; return i; }
 function pickSel(){
@@ -377,8 +377,17 @@ document.addEventListener('keydown', e => {
 /* ================= PICTURE ================= */
 let TOOL = 'pen', COL = '#D92D20', DRAW = null, PK = 1, DPR = 1;
 /* 2316 · stamps (Misty 20:34): one click puts a star, A+ or a short praise badge on the picture */
-const STAMPS = [['star', 'Star'], ['aplus', 'A+'], ['excellent', 'Excellent!'], ['great', 'Great job!'], ['good', 'Good work'], ['smile', 'Smiley face'], ['again', 'Try again']];
-const STB = { excellent: ['Excellent!', '#15803D'], great: ['Great job!', '#00707A'], good: ['Good work', '#2563EB'], again: ['Try again', '#B45309'] };
+const STAMPS = [['star', 'Star'], ['aplus', 'A+'], ['hundred', '100'], ['smile', 'Smiley face'], ['heart', 'Heart'], ['trophy', 'Trophy'],
+  ['excellent', 'Excellent!'], ['great', 'Great job!'], ['good', 'Good work'], ['perfect', 'Perfect!'], ['amazing', 'Amazing!'], ['neat', 'Neat writing'], ['keepup', 'Keep it up!'], ['improve', 'Big improvement!'],
+  ['again', 'Try again'], ['spell', 'Check spelling'], ['gram', 'Check grammar'], ['own', 'Your own words…']];
+/* 2318 (Misty 20:38 "more options for the teacher that's creative"): more praise, symbols, gentle fix-it stamps and the teacher's own words */
+const STB = { excellent: ['Excellent!', '#15803D'], great: ['Great job!', '#00707A'], good: ['Good work', '#2563EB'], perfect: ['Perfect!', '#7C3AED'], amazing: ['Amazing!', '#DB2777'],
+  neat: ['Neat writing', '#0E7490'], keepup: ['Keep it up!', '#4338CA'], improve: ['Big improvement!', '#15803D'],
+  again: ['Try again', '#B45309'], spell: ['Check spelling', '#C2410C'], gram: ['Check grammar', '#1D4ED8'] };
+const FIXK = ['again', 'spell', 'gram'];
+const stOwn = k => /^own:/.test(k) ? [k.slice(4), '#6D28D9'] : null;   /* "own:<text>" = the teacher's own words */
+const stB = k => STB[k] || stOwn(k);
+let OWN = (() => { try{ return localStorage.getItem('coe.hw.own') || ''; }catch(e){ return ''; } })();
 let STAMP = (() => { try{ const v = localStorage.getItem('coe.hw.stamp'); return STAMPS.some(x => x[0] === v) ? v : 'star'; }catch(e){ return 'star'; } })();
 /* 2313 · mark sizes (Misty 18:29: the tick is small). Medium is the new default; Small is the old size. Remembered on this device. */
 const SZ = { s: { tick: 3.2, pen: .28, text: 2.2, ring: .28 }, m: { tick: 4.6, pen: .36, text: 2.7, ring: .34 }, l: { tick: 7, pen: .5, text: 3.4, ring: .45 } };   /* 2315 (Misty 20:29): 7 was too big; M is now close to the first size */
@@ -441,16 +450,17 @@ function drawItem(c, it){
   c.restore(); }
 function bbox(it){ const u = U();
   if(it.t === 'pen'){ let a = 1e9, b = 1e9, c = -1e9, d = -1e9; it.p.forEach(q => { a = Math.min(a, q[0]); b = Math.min(b, q[1]); c = Math.max(c, q[0]); d = Math.max(d, q[1]); }); return [a - u, b - u, c + u, d + u]; }
-  if(it.t === 'stamp'){ const w = STB[it.k] ? it.s * 1.7 : it.s * .6; return [it.x - w, it.y - it.s * .6, it.x + w, it.y + it.s * .6]; }
+  if(it.t === 'stamp'){ const w = stB(it.k) ? it.s * 1.9 : it.s * .6; return [it.x - w, it.y - it.s * .6, it.x + w, it.y + it.s * .6]; }
   if(it.t === 'tick' || it.t === 'cross') return [it.x - it.s * .6, it.y - it.s * .6, it.x + it.s * .6, it.y + it.s * .6];
   if(it.t === 'circle') return [it.x - Math.abs(it.rx) - u, it.y - Math.abs(it.ry) - u, it.x + Math.abs(it.rx) + u, it.y + Math.abs(it.ry) + u];
   if(it.t === 'text'){ const c = document.createElement('canvas').getContext('2d'); c.font = '600 ' + it.s + 'px Inter,sans-serif'; return [it.x, it.y, it.x + c.measureText(it.txt).width + it.s * .7, it.y + it.s * 1.45]; } return [0, 0, 0, 0]; }
 function stampBar(){ const t = $('tools'); if(!t || MODE !== 'picture' || !PIC.base){ return; }
   if(TOOL !== 'stamp'){ t.innerHTML = ''; return; }
-  t.innerHTML = '<div class="tools"><span class="xs mute">Pick a stamp, then click the picture:</span>' + STAMPS.map(([k, n]) => `<button type="button" class="chip${STAMP === k ? ' on' : ''}" data-st="${k}" title="${n}" style="${STAMP === k ? 'border-color:#00707A;background:#E6F5F6;font-weight:600' : ''}">${k === 'star' ? '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="#F5B301" stroke="#B7791F" stroke-width="1.5" stroke-linejoin="round"/></svg> Star' : k === 'aplus' ? '<b style="color:#D92D20">A+</b>' : k === 'smile' ? '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#FCD34D" stroke="#92400E" stroke-width="1.5"/><circle cx="8.5" cy="10" r="1.3" fill="#92400E"/><circle cx="15.5" cy="10" r="1.3" fill="#92400E"/><path d="M7.5 14.5q4.5 4 9 0" fill="none" stroke="#92400E" stroke-width="1.6" stroke-linecap="round"/></svg> Smiley' : `<span style="color:${STB[k][1]};font-weight:600">${STB[k][0]}</span>`}</button>`).join('') + '</div>';
-  t.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { STAMP = b.dataset.st; try{ localStorage.setItem('coe.hw.stamp', STAMP); }catch(e){} stampBar(); }); }
+  t.innerHTML = '<div class="tools"><span class="xs mute">Pick a stamp, then click the picture:</span>' + STAMPS.map(([k, n]) => { const on = STAMP === k || (k === 'own' && /^own:/.test(STAMP)); return `<button type="button" class="chip" data-st="${k}" title="${n}" style="${on ? 'border-color:#00707A;background:#E6F5F6' : ''}">${k === 'own' ? '<span style="color:#6D28D9;font-weight:600">' + (/^own:/.test(STAMP) ? esc(STAMP.slice(4)) : OWN ? esc(OWN) : 'Your own words…') + '</span>' : `<img src="${stampImg(k)}" alt="${n}" style="height:22px;width:auto">`}</button>`; }).join('') + '</div>';
+  t.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { let k = b.dataset.st; if(k === 'own'){ const v = askOwn(); if(!v) return; k = 'own:' + v; } STAMP = k; try{ localStorage.setItem('coe.hw.stamp', STAMP); }catch(e){} stampBar(); }); }
+function askOwn(){ const v = (prompt('Your own stamp words (short, e.g. "Lovely story!"):', OWN) || '').trim().slice(0, 24); if(v){ OWN = v; try{ localStorage.setItem('coe.hw.own', v); }catch(e){} } return v; }
 const SIMG = {};
-function stampImg(k){ if(SIMG[k]) return SIMG[k]; try{ const wide = !!STB[k], s = 120, cv = document.createElement('canvas'); cv.width = wide ? s * 2.4 : s * 1.2; cv.height = s * 1.2; const c = cv.getContext('2d'); drawStamp(c, { k, x: cv.width / 2, y: cv.height / 2, s }); SIMG[k] = cv.toDataURL('image/png'); }catch(e){ SIMG[k] = ''; } return SIMG[k]; }
+function stampImg(k){ if(SIMG[k]) return SIMG[k]; try{ const wide = !!stB(k), s = 120, cv = document.createElement('canvas'); cv.width = wide ? s * (1.2 + .21 * String(stB(k)[0]).length) : s * 1.2; cv.height = s * 1.2; const c = cv.getContext('2d'); drawStamp(c, { k, x: cv.width / 2, y: cv.height / 2, s }); SIMG[k] = cv.toDataURL('image/png'); }catch(e){ SIMG[k] = ''; } return SIMG[k]; }
 function drawStamp(c, it){ const s = it.s, x = it.x, y = it.y; c.save(); c.lineJoin = 'round';
   if(it.k === 'star'){ c.beginPath(); for(let i = 0; i < 10; i++){ const r = i % 2 ? s * .22 : s * .52, a = -Math.PI / 2 + i * Math.PI / 5; i ? c.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)) : c.moveTo(x + r * Math.cos(a), y + r * Math.sin(a)); } c.closePath(); c.fillStyle = '#F5B301'; c.fill(); c.lineWidth = s * .05; c.strokeStyle = '#B7791F'; c.stroke(); }
   else if(it.k === 'aplus'){ c.translate(x, y); c.rotate(-.18); c.beginPath(); c.arc(0, 0, s * .55, 0, Math.PI * 2); c.fillStyle = '#D92D20'; c.fill(); c.beginPath(); c.arc(0, 0, s * .45, 0, Math.PI * 2); c.lineWidth = s * .04; c.strokeStyle = '#fff'; c.stroke();
@@ -458,7 +468,14 @@ function drawStamp(c, it){ const s = it.s, x = it.x, y = it.y; c.save(); c.lineJ
   else if(it.k === 'smile'){ c.beginPath(); c.arc(x, y, s * .5, 0, Math.PI * 2); c.fillStyle = '#FCD34D'; c.fill(); c.lineWidth = s * .05; c.strokeStyle = '#92400E'; c.stroke();
     c.fillStyle = '#92400E'; [[-.17, -.1], [.17, -.1]].forEach(([dx, dy]) => { c.beginPath(); c.arc(x + dx * s, y + dy * s, s * .06, 0, Math.PI * 2); c.fill(); });
     c.beginPath(); c.arc(x, y + s * .02, s * .26, .15 * Math.PI, .85 * Math.PI); c.lineWidth = s * .06; c.lineCap = 'round'; c.stroke(); }
-  else { const B = STB[it.k] || STB.good; c.translate(x, y); c.rotate(-.12); c.font = '800 ' + (s * .34) + 'px "COE Card Inter",Inter,sans-serif'; const w = c.measureText(B[0]).width + s * .5, h = s * .62;
+  else if(it.k === 'hundred'){ c.translate(x, y); c.rotate(-.12); c.fillStyle = '#D92D20'; c.font = '900 ' + (s * .62) + 'px "COE Card Inter",Inter,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('100', 0, -s * .05);
+    c.lineWidth = s * .07; c.strokeStyle = '#D92D20'; c.lineCap = 'round'; [.24, .36].forEach(d => { c.beginPath(); c.moveTo(-s * .55, s * d); c.quadraticCurveTo(0, s * (d + .06), s * .55, s * d); c.stroke(); }); }
+  else if(it.k === 'heart'){ c.beginPath(); c.moveTo(x, y + s * .42); c.bezierCurveTo(x - s * .75, y - s * .05, x - s * .35, y - s * .62, x, y - s * .22); c.bezierCurveTo(x + s * .35, y - s * .62, x + s * .75, y - s * .05, x, y + s * .42); c.closePath(); c.fillStyle = '#E11D48'; c.fill(); c.lineWidth = s * .04; c.strokeStyle = '#9F1239'; c.stroke(); }
+  else if(it.k === 'trophy'){ c.fillStyle = '#F5B301'; c.strokeStyle = '#B7791F'; c.lineWidth = s * .045;
+    c.beginPath(); c.moveTo(x - s * .32, y - s * .45); c.lineTo(x + s * .32, y - s * .45); c.quadraticCurveTo(x + s * .3, y + s * .1, x, y + s * .14); c.quadraticCurveTo(x - s * .3, y + s * .1, x - s * .32, y - s * .45); c.closePath(); c.fill(); c.stroke();
+    [-1, 1].forEach(d => { c.beginPath(); c.arc(x + d * s * .34, y - s * .25, s * .13, d > 0 ? -Math.PI / 2 : Math.PI / 2, d > 0 ? Math.PI / 2 : Math.PI * 1.5, false); c.stroke(); });
+    c.fillRect(x - s * .06, y + s * .14, s * .12, s * .16); c.strokeRect(x - s * .06, y + s * .14, s * .12, s * .16); c.fillRect(x - s * .26, y + s * .3, s * .52, s * .14); c.strokeRect(x - s * .26, y + s * .3, s * .52, s * .14); }
+  else { const B = stB(it.k) || STB.good; c.translate(x, y); c.rotate(-.12); c.font = '800 ' + (s * .34) + 'px "COE Card Inter",Inter,sans-serif'; const w = c.measureText(B[0]).width + s * .5, h = s * .62;
     rr(c, -w / 2, -h / 2, w, h, h * .28); c.fillStyle = '#fff'; c.fill(); c.lineWidth = s * .07; c.strokeStyle = B[1]; c.stroke();
     rr(c, -w / 2 + s * .07, -h / 2 + s * .07, w - s * .14, h - s * .14, h * .2); c.lineWidth = s * .025; c.stroke();
     c.fillStyle = B[1]; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(B[0], 0, s * .02); }
@@ -493,8 +510,8 @@ function marked(q){ const c = document.createElement('canvas'); c.width = PIC.ba
 
 /* ================= side panel ================= */
 function counts(){
-  if(MODE === 'text'){ const o = { grammar: 0, spelling: 0, words: 0, punct: 0, good: 0, note: 0 }; TX.marks.forEach(m => o[m.c] = (o[m.c] || 0) + 1); o.stamps = TX.stamps.slice(); o.good += TX.stamps.filter(k => k !== 'again').length; return o; }
-  const red = PIC.items.filter(i => (i.t === 'stamp' && i.k === 'again') || (i.t !== 'stamp' && i.c === '#D92D20' && i.t !== 'pen' && i.t !== 'tick')).length, green = PIC.items.filter(i => (i.t === 'stamp' && i.k !== 'again') || (i.t !== 'stamp' && i.c === '#16A34A' && i.t !== 'pen')).length;
+  if(MODE === 'text'){ const o = { grammar: 0, spelling: 0, words: 0, punct: 0, good: 0, note: 0 }; TX.marks.forEach(m => o[m.c] = (o[m.c] || 0) + 1); o.stamps = TX.stamps.slice(); o.good += TX.stamps.filter(k => !FIXK.includes(k)).length; return o; }
+  const red = PIC.items.filter(i => (i.t === 'stamp' && FIXK.includes(i.k)) || (i.t !== 'stamp' && i.c === '#D92D20' && i.t !== 'pen' && i.t !== 'tick')).length, green = PIC.items.filter(i => (i.t === 'stamp' && !FIXK.includes(i.k)) || (i.t !== 'stamp' && i.c === '#16A34A' && i.t !== 'pen')).length;
   return Object.assign({ fix: red, good: green }, PIC.cats); }
 function side(){
   const b = $('cntBox'); if(!b) return; const o = counts();
@@ -583,7 +600,7 @@ async function parentPic(){
     if(title){ const L = wrap(title, '700 30px ' + F, 740); blocks.push(label('Homework', '作业')); blocks.push({ h: L.length * 40 + 22, draw: (c, y) => { c.fillStyle = '#2B2253'; c.font = '700 30px ' + F; L.forEach((t, i) => c.fillText(t, 80, y + 30 + i * 40)); } }); }
     blocks.push(label('Checked on', '批改日期')); blocks.push({ h: 40 + 34 + 22, draw: (c, y) => { c.fillStyle = '#2B2253'; c.font = '400 30px ' + F; c.fillText(dEn, 80, y + 30); c.fillStyle = '#4C4868'; c.font = '400 24px ' + Z; c.fillText(dZh + (ME.name && ME.role !== 'Operations' ? ' · ' + tName(ME.name) : ''), 80, y + 64); } });
     if(MODE === 'text'){
-      if(TX.stamps.length){ const L = TX.stamps.slice(0, 12); blocks.push({ h: 130, draw: (c, y) => { let x = 80; L.forEach(k => { const wide = !!STB[k], s = 84, w = wide ? s * 2.1 : s * 1.1; if(x + w > W - 80) return; drawStamp(c, { k, x: x + w / 2, y: y + 58, s }); x += w + 14; }); } }); }
+      if(TX.stamps.length){ const L = TX.stamps.slice(0, 12); blocks.push({ h: 130, draw: (c, y) => { let x = 80; L.forEach(k => { const wide = !!stB(k), s = 84, w = wide ? s * (1 + .2 * String(stB(k)[0]).length) : s * 1.1; if(x + w > W - 80) return; drawStamp(c, { k, x: x + w / 2, y: y + 58, s }); x += w + 14; }); } }); }
       const good = TX.marks.filter(x => x.c === 'good').map(x => TX.parts.slice(x.a, x.b + 1).join('')).slice(0, 3);
       if(good.length){ const L = [].concat(...good.map(g => wrap('“' + g + '”', '400 28px ' + F, 700))); const hh = 30 + L.length * 38 + 26;
         blocks.push({ h: hh + 22, draw: (c, y) => { rr(c, 80, y, W - 160, hh, 20); c.fillStyle = '#F0FDF4'; c.fill(); c.fillStyle = '#15803D'; c.font = '700 20px ' + F; c.fillText('Well done / 做得好', 106, y + 34); c.fillStyle = '#14532D'; c.font = '400 28px ' + F; L.forEach((t, i) => c.fillText(t, 106, y + 74 + i * 38)); } }); }
