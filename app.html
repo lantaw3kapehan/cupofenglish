@@ -7401,7 +7401,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1978;
+const COE_V = 1979;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -37172,7 +37172,8 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     if(!why){ toast('Write why (one line)'); const w = document.getElementById('ceDelWhy'); if(w) w.focus(); return; }
     if(!confirm('Delete this class?\n\n' + (e.title || '') + '\n' + when(e.start) + '\n\nOnly this one class. Undo is under Deleted classes.')) return;
     const b = document.getElementById('ceDelGo'); if(b){ b.disabled = true; b.textContent = 'Deleting…'; }
-    let r; try{ r = await apiNow('delClass', TOKEN, e.id, { start: e.start, reason: why }); }catch(x){ r = { ok: false, msg: (x && x.message) || 'No connection · nothing deleted' }; }
+    let r; try{ const st = new Date(e.start).toISOString(), rid = String(e.id).indexOf('|') > -1 ? String(e.id) : String(e.id) + '|' + st;   /* 2291: the class row in the app's calendar */
+      r = await fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-cal', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'delClassDb', id: rid, reason: why }) }).then(x => x.json()); }catch(x){ r = { ok: false, msg: (x && x.message) || 'No connection · nothing deleted' }; }
     if(!r || !r.ok){ if(b){ b.disabled = false; b.textContent = 'Delete this class'; } return toast((r && r.msg) || 'Not deleted'); }
     toast('✓ ' + (r.note || 'Deleted')); try{ SC_PEND = 1; }catch(x){} try{ Object.keys(SCC).forEach(k => { SCC[k]._t = 0; }); }catch(x){} closeSheet();
     try{ const code = e.code || (typeof STU !== 'undefined' && STU && STU.code); if(code) api('mgmtStuClasses', TOKEN, code).then(x => { if(!Array.isArray(x)) return; CLSM[code] = x; if(STU && STU.code === code){ STU.cls = x; const el = $('stuSch'); if(el) el.innerHTML = stuSched(x); } }).catch(() => {}); }catch(x){} };
@@ -37182,7 +37183,8 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
       '<div style="padding:10px 0;border-top:1px solid var(--line)"><b>' + H(x.title) + '</b><div class="small">' + when(x.starts_at) + '</div><div class="small mute">Deleted by ' + H(x.made_by) + ' · ' + when(x.made_at) + ' · ' + H(x.reason) + '</div>' +
       (x.restored_at ? '<div class="small" style="color:#1E7A55">Back in the calendar · ' + H(x.restored_by || '') + ' · ' + when(x.restored_at) + '</div>' : '<button class="btn ghost sm" style="margin-top:6px" onclick="ceUndel(' + Number(x.id) + ',this)">Undo · put back</button>') + '</div>').join('') : '<div class="empty">No deleted classes.</div>')); };
   window.ceUndel = async function(id, btn){ if(btn){ btn.disabled = true; btn.textContent = 'Putting back…'; }
-    let r; try{ r = await apiNow('undelClass', TOKEN, id); }catch(x){ r = { ok: false, msg: 'No connection' }; }
+    let r; try{ r = await fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-cal', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'undelClassDb', tid: id }) }).then(x => x.json());   /* 2291 */
+      if(r && r.notDb) r = await apiNow('undelClass', TOKEN, id); }catch(x){ r = { ok: false, msg: 'No connection' }; }
     if(!r || !r.ok){ if(btn){ btn.disabled = false; btn.textContent = 'Undo · put back'; } return toast((r && r.msg) || 'Not put back'); }
     toast('✓ ' + (r.note || 'Back in the calendar')); try{ SC_PEND = 1; Object.keys(SCC).forEach(k => { SCC[k]._t = 0; }); }catch(x){} ceTrash(); };
 })();
