@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-hw v2 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
+// CupOfEnglish · coe-hw v3 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
 // correct it and share it). Used by the Homework check page (homework/index.html).
 // POST { token, op, ... }:
 //   me                       → { name, role, mgmt }
@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
 
     if (op === "students") {
       const from = new Date(Date.now() - 30 * 864e5).toISOString(), to = new Date(Date.now() + 21 * 864e5).toISOString();
-      const { data, error } = await db.from("classes").select("code,student,teachers,starts_at,data").gte("starts_at", from).lte("starts_at", to).not("code", "is", null).order("starts_at", { ascending: false }).limit(5000);
+      const { data, error } = await db.from("classes").select("code,student,teachers,starts_at").gte("starts_at", from).lte("starts_at", to).not("code", "is", null).order("starts_at", { ascending: false }).limit(5000);
       if (error) throw new Error(error.message);
       const me = name.trim().toLowerCase(), seen = new Map<string, any>();
       for (const c of data || []) {
@@ -65,9 +65,11 @@ Deno.serve(async (req: Request) => {
 
     if (op === "list") {
       const code = String(b.code || "").toUpperCase(); if (!(await owns(code))) return out({ ok: false, error: "Not your student" }, 403);
-      const { data, error } = await db.from("coe_hw_checks").select("*").eq("code", code).is("removed_at", null).order("created_at", { ascending: false }).limit(30);
+      const { data, error } = await db.from("coe_hw_checks").select("*").eq("code", code).is("removed_at", null).order("created_at", { ascending: false }).limit(20);
       if (error) throw new Error(error.message);
-      const L = await Promise.all((data || []).map(async (r: any) => ({ ...r, img_orig_url: await link(r.img_orig), img_marked_url: await link(r.img_marked) })));
+      const paths = [...new Set((data || []).flatMap((r: any) => [r.img_orig, r.img_marked]).filter(Boolean))] as string[], U: Record<string, string> = {};
+      if (paths.length) { const { data: S } = await db.storage.from(BUCKET).createSignedUrls(paths, 3600); (S || []).forEach((x: any) => { if (x && x.path && x.signedUrl) U[x.path] = x.signedUrl; }); }   // one call for all pictures
+      const L = (data || []).map((r: any) => ({ ...r, img_orig_url: U[r.img_orig] || null, img_marked_url: U[r.img_marked] || null }));
       return out({ ok: true, checks: L });
     }
 

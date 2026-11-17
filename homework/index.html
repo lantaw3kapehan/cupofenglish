@@ -409,7 +409,8 @@ ${Object.keys(ICO).map(k => `<button type="button" class="tb${TOOL === k ? ' on'
   fit(); }
 function fit(){ const cv = $('pcv'), w = $('pwrap'); if(!cv || !PIC.base) return; const full = document.fullscreenElement === $('work');
   const maxW = w.clientWidth - 32, maxH = full ? window.innerHeight - 120 : Infinity; PK = Math.min(1.5, maxW / PIC.base.width, maxH / PIC.base.height); DPR = window.devicePixelRatio || 1;
-  cv.style.width = Math.round(PIC.base.width * PK) + 'px'; cv.style.height = Math.round(PIC.base.height * PK) + 'px'; cv.width = Math.round(PIC.base.width * PK * DPR); cv.height = Math.round(PIC.base.height * PK * DPR); draw(); }
+  cv.style.width = Math.round(PIC.base.width * PK) + 'px'; cv.style.height = Math.round(PIC.base.height * PK) + 'px'; cv.width = Math.round(PIC.base.width * PK * DPR); cv.height = Math.round(PIC.base.height * PK * DPR);
+  BG = document.createElement('canvas'); BG.width = cv.width; BG.height = cv.height; const g = BG.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(PIC.base, 0, 0, BG.width, BG.height); BGOF = PIC.base; draw(); }   /* the picture is scaled once, not on every pen move */
 window.addEventListener('resize', () => { if(MODE === 'picture') fit(); });
 function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 function drawItem(c, it){
@@ -425,7 +426,11 @@ function bbox(it){ const u = U();
   if(it.t === 'tick' || it.t === 'cross') return [it.x - it.s * .6, it.y - it.s * .6, it.x + it.s * .6, it.y + it.s * .6];
   if(it.t === 'circle') return [it.x - Math.abs(it.rx) - u, it.y - Math.abs(it.ry) - u, it.x + Math.abs(it.rx) + u, it.y + Math.abs(it.ry) + u];
   if(it.t === 'text'){ const c = document.createElement('canvas').getContext('2d'); c.font = '600 ' + it.s + 'px Inter,sans-serif'; return [it.x, it.y, it.x + c.measureText(it.txt).width + it.s * .7, it.y + it.s * 1.45]; } return [0, 0, 0, 0]; }
-function draw(){ const cv = $('pcv'); if(!cv || !PIC.base) return; const c = cv.getContext('2d'); c.setTransform(DPR * PK, 0, 0, DPR * PK, 0, 0); c.clearRect(0, 0, PIC.base.width, PIC.base.height); c.drawImage(PIC.base, 0, 0);
+let BG = null, BGOF = null, RAF = 0;
+function draw(){ if(RAF) return; RAF = requestAnimationFrame(() => { RAF = 0; drawNow(); }); }
+function drawNow(){ const cv = $('pcv'); if(!cv || !PIC.base) return; const c = cv.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0);
+  if(BG && BGOF === PIC.base && BG.width === cv.width && BG.height === cv.height) c.drawImage(BG, 0, 0); else { c.clearRect(0, 0, cv.width, cv.height); c.setTransform(DPR * PK, 0, 0, DPR * PK, 0, 0); c.drawImage(PIC.base, 0, 0); }
+  c.setTransform(DPR * PK, 0, 0, DPR * PK, 0, 0);
   PIC.items.forEach(it => drawItem(c, it)); if(DRAW && DRAW.it) drawItem(c, DRAW.it); }
 const pt = e => { const r = $('pcv').getBoundingClientRect(); return [(e.clientX - r.left) / PK, (e.clientY - r.top) / PK]; };
 function pDown(e){ if(TOOL === 'hand') return; e.preventDefault(); const [x, y] = pt(e), u = U(); closeTxt();
@@ -528,7 +533,7 @@ async function parentPic(){
   const btn = $('bPic'), lab = btn.textContent; btn.disabled = true; btn.textContent = 'Making the picture…';
   try{
     try{ await document.fonts.ready; await Promise.all(['400 40px "COE Card Fredoka"', '600 20px "COE Card Inter"', '400 20px "Noto Sans SC"', '700 20px "Noto Sans SC"'].map(f => document.fonts.load(f).catch(() => 0))); }catch(e){}
-    const note = $('note').value.trim(), zh = note ? await zhNow() : '', logo = await img('../reader/logo.png'), tag = await img('tagline.png');
+    const note = $('note').value.trim(), zh = note ? await Promise.race([zhNow(), new Promise(z => setTimeout(() => z(ZH.src === note ? ZH.zh : ''), 6000))]) : '', logo = await img('../reader/logo.png'), tag = await img('tagline.png');
     const W = 900, S = 2, F = '"COE Card Inter",Inter,"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif', Z = '"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif', B = '"COE Card Fredoka","Fredoka One",' + F;
     const m = document.createElement('canvas').getContext('2d');
     const wrap = (t, font, max) => { m.font = font; const out = []; String(t).split('\n').forEach(par => { let line = ''; for(const ch of par.split(/(\s+|(?=[　-鿿]))/).filter(Boolean)){ const tryL = line + ch; if(m.measureText(tryL).width > max && line.trim()){ out.push(line.trim()); line = ch.trim() ? ch : ''; } else line = tryL; } if(line.trim()) out.push(line.trim()); }); return out; };
