@@ -1557,7 +1557,7 @@ nav button .dot{min-width:22px;height:20px;line-height:20px;border-radius:10px;p
 .live-b i{width:7px;height:7px;border-radius:50%;background:#00B894;animation:liveP 1.6s infinite}
 @keyframes liveP{0%{box-shadow:0 0 0 0 rgba(0,184,148,.55)}70%{box-shadow:0 0 0 7px rgba(0,184,148,0)}100%{box-shadow:0 0 0 0 rgba(0,184,148,0)}}
 .cls.now{background:linear-gradient(90deg,#E3F6F6,transparent 75%);box-shadow:inset 0 0 0 1.5px rgba(0,163,173,.35)}
-.cxby{font-weight:400;font-size:11px;color:#9A8F94;margin-left:4px;white-space:nowrap}.cxby::before{content:"by "}
+.cxby{font-weight:400;font-size:11px;color:#9A8F94;margin-left:4px;white-space:nowrap}.cxby::before{content:"by "}.cxwho{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;margin-right:4px;text-decoration:none;white-space:nowrap;vertical-align:1px}
 .cxp-img{width:100%;border-radius:16px;box-shadow:0 2px 10px rgba(43,34,83,.12);margin-top:12px;display:block}
 .cxbtn{margin-top:6px;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border-radius:999px;border:1.5px solid #00A3AD;background:#fff;color:#00737B;font:inherit;font-size:13px;cursor:pointer}
 
@@ -5902,7 +5902,13 @@ const CX_ZH = [[/schedule stopped|stopped from/i,'家长停上该时段课程'],
 const cxZh = w => { const m = CX_ZH.find(x => x[0].test(String(w || ''))); return m ? m[1] : ''; };
 let CXP = null;
 const cxSplit = w => { const p = String(w || '').split(' · ').map(s => s.trim()).filter(Boolean); if(p.length >= 3 && /^([A-Z][a-z]{2} \d{1,2}|\d{1,2} [A-Z][a-z]{2}|\d{4}-\d\d-\d\d)$/.test(p[p.length - 1])) return { r: p.slice(0, -2).join(' · '), by: p.slice(-2).join(' · ') }; return { r: p.join(' · '), by: '' }; };
-const cxWhy = w => { const s = cxSplit(w), k = s.r.indexOf(' · EN: '); return (k > -1 ? esc(s.r.slice(0, k)) + `<br><span class="small">English: ${esc(s.r.slice(k + 7))}</span>` : esc(s.r)) + (s.by ? ` <span class="cxby">${esc(s.by)}</span>` : ''); };   /* 2154 */
+const cxWho2293 = r => { const re = /\s*(?:·|[-–—])\s*(from\s+(?:the\s+)?(parent|student|teacher|cupofenglish|school|management)|force majeure)\s*[.!]?\s*$/i; let m = String(r || '').match(re), k = '';
+  if(m){ const w = (m[2] || '').toLowerCase(); k = /force/i.test(m[1]) ? 'force' : (w === 'parent' || w === 'student') ? 'parent' : w === 'teacher' ? 'teacher' : 'company'; r = String(r).slice(0, m.index); }
+  return { r: String(r || ''), k }; };
+const cxWhy = w => { const s = cxSplit(w); let r = s.r, en = '', k = r.indexOf(' · EN: '); if(k > -1){ en = r.slice(k + 7); r = r.slice(0, k); }   /* 2154 · 2293 */
+  let a = cxWho2293(r), b = cxWho2293(en); r = a.r; en = b.r; const who = a.k || b.k;
+  const L = { parent: ['Parent asked', '#E8F0FB', '#2F5C9A'], teacher: ['Teacher asked', '#FCEDE7', '#A2462C'], company: ['CupOfEnglish', '#E4F3F2', '#13636B'], force: ['Force majeure', '#EEEDF3', '#5B5770'] }[who];
+  return (L ? `<span class="cxwho" style="background:${L[1]};color:${L[2]}">${L[0]}</span> ` : '') + esc(r.trim()) + (en.trim() ? `<br><span class="small">English: ${esc(en.trim())}</span>` : '') + (s.by ? ` <span class="cxby">${esc(s.by)}</span>` : ''); };
 const cxCnOf = code => { code = String(code || '').trim().toUpperCase(); if(!code) return ''; const hit = a => (Array.isArray(a) ? a : []).find(s => s && String(s.code || '').toUpperCase() === code && s.cn);
 let s = hit(Array.isArray(MS) ? MS : MS && (MS.students || MS.rows)) || hit(SL && SL.students) || hit(D && D.students); if(s) return String(s.cn);
 if(AT && AT.cols){ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const r = (AT.rows || []).find(r => String(r[C.code] || '').toUpperCase() === code && r[C.cn]); if(r) return String(r[C.cn]); } return ''; };
@@ -7401,7 +7407,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1980;
+const COE_V = 1981;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
