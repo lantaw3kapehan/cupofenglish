@@ -174,7 +174,7 @@ if(!TOKEN){ $('root').innerHTML = '<div class="card pad" style="max-width:560px;
 
 /* ---------- state ---------- */
 let MODE = 'text', DIRTY = false, CUR = { id: null }, HIST = [];
-const TX = { body: '', parts: [], marks: [] };
+const TX = { body: '', parts: [], marks: [], stamps: [] };
 const PIC = { base: null, items: [], origSaved: false, cats: { grammar: 0, spelling: 0, words: 0, punct: 0 } };
 let SEL = null, EDK = -1, UNDO = [], REDO = [], ZH = { src: '', zh: '' };
 const snap = () => JSON.stringify(MODE === 'text' ? TX.marks : PIC.items);
@@ -184,11 +184,12 @@ function redo(){ const u = REDO.pop(); if(!u || u.m !== MODE){ if(u) REDO.push(u
 function dirty(){ DIRTY = true; saveDraft(); }
 window.addEventListener('beforeunload', e => { if(DIRTY){ e.preventDefault(); e.returnValue = ''; } });
 const DK = () => 'coe.hw.draft.' + CODE;
-function saveDraft(){ try{ if(!CODE) return; if(MODE !== 'text' || !TX.body){ return; } localStorage.setItem(DK(), JSON.stringify({ at: Date.now(), id: CUR.id, body: TX.body, marks: TX.marks, note: ($('note') || {}).value || '', title: ($('ttl') || {}).value || '' })); }catch(e){} }
+function saveDraft(){ try{ if(!CODE) return; if(MODE !== 'text' || !TX.body){ return; } localStorage.setItem(DK(), JSON.stringify({ at: Date.now(), id: CUR.id, body: TX.body, marks: TX.marks, stamps: TX.stamps, note: ($('note') || {}).value || '', title: ($('ttl') || {}).value || '' })); }catch(e){} }
 function clearDraft(){ try{ localStorage.removeItem(DK()); }catch(e){} }
 
 /* ---------- start ---------- */
 (async function start(){
+  await Promise.resolve();   /* 2317: run after the whole script has loaded (the stamp and tool lists are defined further down) */
   if(CODE){ layout(); api('me').then(m => { if(m && m.ok) ME = m; else if(m && m.error) toast(m.error, 5000); }).catch(e => toast(e.message, 5000)); return; }   /* 2312: the page opens at once; who you are arrives in the background */
   try{ const m = await api('me'); if(!m.ok) throw new Error(m.error || 'No answer'); ME = m; }catch(e){ $('root').innerHTML = '<div class="card pad" style="max-width:560px;margin:40px auto">' + esc(e.message) + '</div>'; return; }
   picker();
@@ -242,7 +243,7 @@ function layout(){
   restoreDraft(); paintMode(); loadHist();
 }
 function restoreDraft(){ try{ const d = JSON.parse(localStorage.getItem(DK()) || 'null'); if(!d || !d.body || Date.now() - d.at > 3 * 864e5) return;
-  setText(d.body, true); TX.marks = d.marks || []; CUR.id = d.id || null; $('note').value = d.note || ''; $('ttl').value = d.title || ''; MODE = 'text'; DIRTY = true; toast('Your unsaved check was brought back'); }catch(e){} }
+  setText(d.body, true); TX.marks = d.marks || []; TX.stamps = Array.isArray(d.stamps) ? d.stamps : []; CUR.id = d.id || null; $('note').value = d.note || ''; $('ttl').value = d.title || ''; MODE = 'text'; DIRTY = true; toast('Your unsaved check was brought back'); }catch(e){} }
 
 function setMode(m){ if(MODE === m) return; closeEd(); MODE = m; paintMode(); }
 function paintMode(){
@@ -275,7 +276,7 @@ function okReplace(){ return !(DIRTY && hasWork()) || confirm('Replace the homew
 
 /* ================= TEXT ================= */
 function setText(t, keep){ TX.body = String(t || '').replace(/\r\n?/g, '\n').replace(/ /g, ' ').trim(); TX.parts = TX.body ? TX.body.split(/(\s+)/).filter(x => x !== '') : []; if(!keep) TX.marks = []; }
-function loadText(t){ if(!okReplace()) return; closeEd(); setText(t); CUR = { id: null }; UNDO = []; REDO = []; SEL = null; MODE = 'text'; DIRTY = true; paintMode(); saveDraft(); toast('Pasted · select words to correct them'); }
+function loadText(t){ if(!okReplace()) return; closeEd(); setText(t); TX.stamps = []; CUR = { id: null }; UNDO = []; REDO = []; SEL = null; MODE = 'text'; DIRTY = true; paintMode(); saveDraft(); toast('Pasted · select words to correct them'); }
 function toolsText(){
   return `<div class="tools"><span class="xs mute">Click a word (or drag across words), then:</span>
 ${['grammar', 'spelling', 'words', 'punct'].map(k => `<button type="button" class="chip" data-cat="${k}" style="color:${CAT[k].c};background:${CAT[k].bg};border-color:${CAT[k].bd}" title="Shortcut ${CAT[k].k}">${CAT[k].en} <kbd>${CAT[k].k}</kbd></button>`).join('')}
@@ -285,7 +286,8 @@ ${['grammar', 'spelling', 'words', 'punct'].map(k => `<button type="button" clas
 <span class="flex1"></span>
 <button type="button" class="ib" id="tU" aria-label="Undo" title="Undo (${UNDOK})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
 <button type="button" class="ib" id="tR" aria-label="Redo" title="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
-<button type="button" class="chip" id="tE" title="Change the student's text">Edit text</button></div>`; }
+<button type="button" class="chip" id="tE" title="Change the student's text">Edit text</button></div>
+<div class="tools" style="padding-top:0"><span class="xs mute">Stamps:</span>${STAMPS.map(([k, n]) => `<button type="button" class="chip" data-ts="${k}" title="Add ${n}"><img src="${stampImg(k)}" alt="${n}" style="height:22px;width:auto"></button>`).join('')}</div>`; }
 function emptyHtml(kind){
   return `<div class="empty"><div class="drop"><div class="big">Paste the homework here</div>
 <div class="small mute" style="line-height:1.9">1. In WeChat, copy the student's message or picture.<br>2. Come back here and press <span class="keys">${KEY}</span> on your keyboard, or click <b>Paste</b>.<br><span class="xs">You can also drag a picture into this box.</span></div>
@@ -300,7 +302,8 @@ function paintText(){
   $('tools').innerHTML = toolsText();
   $('tools').querySelectorAll('[data-cat]').forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => addMark(b.dataset.cat); });
   $('tU').onclick = undo; $('tR').onclick = redo; $('tE').onclick = editText;
-  $('area').innerHTML = '<div class="body" id="ebody"><div class="ttl" id="eTtl"></div><div id="essay"></div><div class="why" id="whyL" style="display:none"></div></div>';
+  $('tools').querySelectorAll('[data-ts]').forEach(b => b.onclick = () => { if(TX.stamps.length >= 12) return toast('That is plenty of stamps'); TX.stamps.push(b.dataset.ts); dirty(); renderText(); side(); });
+  $('area').innerHTML = '<div class="body" id="ebody"><div class="ttl" id="eTtl"></div><div id="tStamps" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:2px 0 6px"></div><div id="essay"></div><div class="why" id="whyL" style="display:none"></div></div>';
   const es = $('essay'); es.addEventListener('mouseup', pickSel); es.addEventListener('touchend', () => setTimeout(pickSel, 30));
   renderText(); }
 function editText(){ const old = TX.body; $('area').innerHTML = `<div class="empty"><textarea id="pasteTa">${esc(old)}</textarea><div style="display:flex;gap:8px"><button type="button" class="btn" id="eC">Cancel</button><button type="button" class="btn pri" id="eS">Use this text</button></div><div class="xs mute">Changing the text clears the marks if words were changed.</div></div>`;
@@ -325,7 +328,9 @@ function renderText(){
   es.innerHTML = h;
   const t = ($('ttl') || {}).value; $('eTtl').textContent = (NAME ? NAME + '’s homework' : 'Homework') + (t ? ' · ' + t : '');
   const W = TX.marks.map((m, k) => numOf[k] ? `<div><span class="n" style="background:${(CAT[m.c] || CAT.note).c}">${numOf[k]}</span><b>${esc(ERR.includes(m.c) && m.fix ? m.fix : TX.parts.slice(m.a, m.b + 1).join(''))}</b> · ${esc(m.why)}</div>` : '').join('');
-  const wl = $('whyL'); wl.style.display = W ? '' : 'none'; wl.innerHTML = W; }
+  const wl = $('whyL'); wl.style.display = W ? '' : 'none'; wl.innerHTML = W;
+  const ts = $('tStamps'); if(ts){ ts.innerHTML = TX.stamps.map((k, i) => `<span style="position:relative;display:inline-block"><img src="${stampImg(k)}" alt="${(STAMPS.find(x => x[0] === k) || ['', 'Stamp'])[1]}" style="height:${k === 'star' || k === 'aplus' || k === 'smile' ? 54 : 48}px;width:auto"><button type="button" data-rs="${i}" aria-label="Remove this stamp" title="Remove" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:1px solid #CFCBDD;background:#fff;font-size:13px;line-height:1;padding:0;color:#4B5563">×</button></span>`).join('');
+    ts.querySelectorAll('[data-rs]').forEach(b => b.onclick = () => { TX.stamps.splice(+b.dataset.rs, 1); dirty(); renderText(); side(); }); } }
 function prevWord(i){ for(let j = i - 1; j >= 0; j--) if(/\S/.test(TX.parts[j])) return j; return i; }
 function pickSel(){
   const s = window.getSelection(); if(!s || !s.rangeCount) return; const r = s.getRangeAt(0), es = $('essay');
@@ -444,6 +449,8 @@ function stampBar(){ const t = $('tools'); if(!t || MODE !== 'picture' || !PIC.b
   if(TOOL !== 'stamp'){ t.innerHTML = ''; return; }
   t.innerHTML = '<div class="tools"><span class="xs mute">Pick a stamp, then click the picture:</span>' + STAMPS.map(([k, n]) => `<button type="button" class="chip${STAMP === k ? ' on' : ''}" data-st="${k}" title="${n}" style="${STAMP === k ? 'border-color:#00707A;background:#E6F5F6;font-weight:600' : ''}">${k === 'star' ? '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="#F5B301" stroke="#B7791F" stroke-width="1.5" stroke-linejoin="round"/></svg> Star' : k === 'aplus' ? '<b style="color:#D92D20">A+</b>' : k === 'smile' ? '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#FCD34D" stroke="#92400E" stroke-width="1.5"/><circle cx="8.5" cy="10" r="1.3" fill="#92400E"/><circle cx="15.5" cy="10" r="1.3" fill="#92400E"/><path d="M7.5 14.5q4.5 4 9 0" fill="none" stroke="#92400E" stroke-width="1.6" stroke-linecap="round"/></svg> Smiley' : `<span style="color:${STB[k][1]};font-weight:600">${STB[k][0]}</span>`}</button>`).join('') + '</div>';
   t.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { STAMP = b.dataset.st; try{ localStorage.setItem('coe.hw.stamp', STAMP); }catch(e){} stampBar(); }); }
+const SIMG = {};
+function stampImg(k){ if(SIMG[k]) return SIMG[k]; try{ const wide = !!STB[k], s = 120, cv = document.createElement('canvas'); cv.width = wide ? s * 2.4 : s * 1.2; cv.height = s * 1.2; const c = cv.getContext('2d'); drawStamp(c, { k, x: cv.width / 2, y: cv.height / 2, s }); SIMG[k] = cv.toDataURL('image/png'); }catch(e){ SIMG[k] = ''; } return SIMG[k]; }
 function drawStamp(c, it){ const s = it.s, x = it.x, y = it.y; c.save(); c.lineJoin = 'round';
   if(it.k === 'star'){ c.beginPath(); for(let i = 0; i < 10; i++){ const r = i % 2 ? s * .22 : s * .52, a = -Math.PI / 2 + i * Math.PI / 5; i ? c.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)) : c.moveTo(x + r * Math.cos(a), y + r * Math.sin(a)); } c.closePath(); c.fillStyle = '#F5B301'; c.fill(); c.lineWidth = s * .05; c.strokeStyle = '#B7791F'; c.stroke(); }
   else if(it.k === 'aplus'){ c.translate(x, y); c.rotate(-.18); c.beginPath(); c.arc(0, 0, s * .55, 0, Math.PI * 2); c.fillStyle = '#D92D20'; c.fill(); c.beginPath(); c.arc(0, 0, s * .45, 0, Math.PI * 2); c.lineWidth = s * .04; c.strokeStyle = '#fff'; c.stroke();
@@ -486,7 +493,7 @@ function marked(q){ const c = document.createElement('canvas'); c.width = PIC.ba
 
 /* ================= side panel ================= */
 function counts(){
-  if(MODE === 'text'){ const o = { grammar: 0, spelling: 0, words: 0, punct: 0, good: 0, note: 0 }; TX.marks.forEach(m => o[m.c] = (o[m.c] || 0) + 1); return o; }
+  if(MODE === 'text'){ const o = { grammar: 0, spelling: 0, words: 0, punct: 0, good: 0, note: 0 }; TX.marks.forEach(m => o[m.c] = (o[m.c] || 0) + 1); o.stamps = TX.stamps.slice(); o.good += TX.stamps.filter(k => k !== 'again').length; return o; }
   const red = PIC.items.filter(i => (i.t === 'stamp' && i.k === 'again') || (i.t !== 'stamp' && i.c === '#D92D20' && i.t !== 'pen' && i.t !== 'tick')).length, green = PIC.items.filter(i => (i.t === 'stamp' && i.k !== 'again') || (i.t !== 'stamp' && i.c === '#16A34A' && i.t !== 'pen')).length;
   return Object.assign({ fix: red, good: green }, PIC.cats); }
 function side(){
@@ -544,12 +551,12 @@ async function loadHist(){
 async function openCheck(id){
   const x = HIST.find(r => r.id === id); if(!x) return; if(DIRTY && hasWork() && !confirm('Open this saved check? Unsaved marks on screen will be lost.')) return;
   closeEd(); UNDO = []; REDO = []; CUR = { id: x.id }; $('note').value = x.note || ''; $('ttl').value = x.title || ''; ZH = { src: (x.note || '').trim(), zh: x.note_zh || '' };
-  if(x.kind === 'text'){ setText(x.body || ''); TX.marks = Array.isArray(x.marks) ? x.marks : []; MODE = 'text'; }
+  if(x.kind === 'text'){ setText(x.body || ''); TX.marks = Array.isArray(x.marks) ? x.marks : []; TX.stamps = Array.isArray((x.counts || {}).stamps) ? x.counts.stamps : []; MODE = 'text'; }
   else { try{ const im = await new Promise((ok, no) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = no; i.src = x.img_orig_url; }); setBase(im); }catch(e){ return toast('The picture could not be loaded'); }
     PIC.items = Array.isArray(x.marks) ? x.marks : []; PIC.origSaved = true; const c = x.counts || {}; PIC.cats = { grammar: +c.grammar || 0, spelling: +c.spelling || 0, words: +c.words || 0, punct: +c.punct || 0 }; MODE = 'picture'; }
   DIRTY = false; clearDraft(); paintMode(); loadHist(); const bx = $('zhBox'); if(bx){ bx.style.display = ZH.zh ? '' : 'none'; bx.textContent = 'Chinese for the parent: ' + ZH.zh; } window.scrollTo({ top: 0, behavior: 'smooth' }); }
 function newCheck(){ if(DIRTY && hasWork() && !confirm('Start a new check? Unsaved marks on screen will be lost.')) return;
-  closeEd(); TX.body = ''; TX.parts = []; TX.marks = []; PIC.base = null; PIC.items = []; PIC.origSaved = false; PIC.cats = { grammar: 0, spelling: 0, words: 0, punct: 0 }; CUR = { id: null }; UNDO = []; REDO = []; DIRTY = false; clearDraft();
+  closeEd(); TX.body = ''; TX.parts = []; TX.marks = []; TX.stamps = []; PIC.base = null; PIC.items = []; PIC.origSaved = false; PIC.cats = { grammar: 0, spelling: 0, words: 0, punct: 0 }; CUR = { id: null }; UNDO = []; REDO = []; DIRTY = false; clearDraft();
   $('note').value = ''; $('ttl').value = ''; ZH = { src: '', zh: '' }; $('zhBox').style.display = 'none'; $('saveInfo').textContent = 'Saving keeps the corrected copy with ' + (NAME || CODE) + '’s homework, so you can open it again later.'; paintMode(); loadHist(); }
 
 /* ================= show on screen ================= */
@@ -576,6 +583,7 @@ async function parentPic(){
     if(title){ const L = wrap(title, '700 30px ' + F, 740); blocks.push(label('Homework', '作业')); blocks.push({ h: L.length * 40 + 22, draw: (c, y) => { c.fillStyle = '#2B2253'; c.font = '700 30px ' + F; L.forEach((t, i) => c.fillText(t, 80, y + 30 + i * 40)); } }); }
     blocks.push(label('Checked on', '批改日期')); blocks.push({ h: 40 + 34 + 22, draw: (c, y) => { c.fillStyle = '#2B2253'; c.font = '400 30px ' + F; c.fillText(dEn, 80, y + 30); c.fillStyle = '#4C4868'; c.font = '400 24px ' + Z; c.fillText(dZh + (ME.name && ME.role !== 'Operations' ? ' · ' + tName(ME.name) : ''), 80, y + 64); } });
     if(MODE === 'text'){
+      if(TX.stamps.length){ const L = TX.stamps.slice(0, 12); blocks.push({ h: 130, draw: (c, y) => { let x = 80; L.forEach(k => { const wide = !!STB[k], s = 84, w = wide ? s * 2.1 : s * 1.1; if(x + w > W - 80) return; drawStamp(c, { k, x: x + w / 2, y: y + 58, s }); x += w + 14; }); } }); }
       const good = TX.marks.filter(x => x.c === 'good').map(x => TX.parts.slice(x.a, x.b + 1).join('')).slice(0, 3);
       if(good.length){ const L = [].concat(...good.map(g => wrap('“' + g + '”', '400 28px ' + F, 700))); const hh = 30 + L.length * 38 + 26;
         blocks.push({ h: hh + 22, draw: (c, y) => { rr(c, 80, y, W - 160, hh, 20); c.fillStyle = '#F0FDF4'; c.fill(); c.fillStyle = '#15803D'; c.font = '700 20px ' + F; c.fillText('Well done / 做得好', 106, y + 34); c.fillStyle = '#14532D'; c.font = '400 28px ' + F; L.forEach((t, i) => c.fillText(t, 106, y + 74 + i * 38)); } }); }
