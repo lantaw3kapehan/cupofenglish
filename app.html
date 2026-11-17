@@ -2532,7 +2532,7 @@ return `<div class="cls ${c.cancelled?'x':''} ${c.type==='Trial'?'trial':c.type=
 <div class="grow"><div class="row" style="gap:8px"><span class="nm ell" ${c.code?`style="cursor:pointer" onpointerdown="stuPre('${esc(c.code)}')" onclick="openStudent('${esc(c.code)}')"`:''}>${esc(c.student || c.title)}${c.code?' <span class="mute" style="font-size:13px">›</span>':''}</span>${!D.mgr && c.code && !c.cancelled && (c.book || s.book) ? `<span class="bkchip" style="--c:${bookCol(c.book || s.book)}" onclick="bookSheet('${esc(c.code)}','${esc(c.id)}')" title="Course book">${esc(String(c.book || s.book).replace(/\s*,\s*/g, ' · '))}</span>` : ''}${typ}</div>
 <div class="small mute ell">${esc((D.mgr ? [c.code, c.book || s.book] : [c.code]).filter(Boolean).join(' · ') || c.title)}${c.meet?` · <a class="link" onclick="copyId('${esc(c.meet)}')">${esc(c.meet)}</a>`:''}${!D.mgr && c.code && !c.cancelled ? ` · <a class="link" onclick="meetSheet('${esc(c.id)}')">${c.meet?'Edit ID':'+ Meeting ID'}</a>` : ''}</div>
 ${c.cancelled ? (c.why ? `<div class="cxw">Why cancelled: ${cxWhy(c.why)}</div>` : `<div class="cxw" style="opacity:.75;font-style:italic">No reason given</div>`) : ''}${n?`<div class="note">Last class: <b>${esc(n.ended)}</b>${n.next && !(/^continue( from)?/i.test(n.next) && String(n.next).toLowerCase().replace(/[^a-z0-9]/g,'').indexOf(String(n.ended).toLowerCase().replace(/[^a-z0-9]/g,'')) > -1) ? ` · Next: ${esc(n.next)}` : ''}</div>`:''}
-<div class="cact">${!c.cancelled && c.code ? `<button class="btn sm" style="margin-top:8px" onpointerdown="stuPre('${esc(c.code)}')" onclick="classBrief('${esc(c.id)}')">Class brief</button><button class="btn ghost sm" style="margin:8px 0 0 6px" onclick="noteSheet('${esc(c.code)}','${esc(c.id)}','${c.day}')">Class note</button>${!D.mgr && window.bkBtn ? bkBtn(c, s) : ''}`:''}
+<div class="cact">${!c.cancelled && c.code ? `<button class="btn sm" style="margin-top:8px" onpointerdown="stuPre('${esc(c.code)}')" onclick="classBrief('${esc(c.id)}')">Class brief</button><button class="btn ghost sm" style="margin:8px 0 0 6px" onclick="noteSheet('${esc(c.code)}','${esc(c.id)}','${c.day}')">Class note</button>${!D.mgr && window.bkBtn ? bkBtn(c, s) : ''}${window.hwBtn2308 ? hwBtn2308(c) : ''}`:''}
 ${!c.cancelled && c.type==='Trial' ? `<button class="btn ${now && now > st ? 'teal' : 'ghost'} sm" style="margin:8px 0 0 6px" onclick="trialSheet(${trQ({code:c.code,student:c.student||c.title,date:c.day,time:tm(c.start),ie:/ielts/i.test(c.title||'')||/^(ket|pet)/i.test(c.book||''),ieW:/ielts\s*writing|^(ket|pet)\s*writing/i.test(c.book||c.title||''),ex:/^ket/i.test(c.book||'')?'ket':/^pet/i.test(c.book||'')?'pet':'ielts'})})">Trial report</button>`:''}${inBtn}</div>${hwH}${vidH}
 </div></div>`;
 }
@@ -7409,7 +7409,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1983;
+const COE_V = 1984;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -42504,6 +42504,17 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
     const inBooks = a.closest('#bkBody, #stuBk, #v-books') || a.classList.contains('bkb'), hit = bookOf(id);
     if(!inBooks && !(hit && hit.f.kind === 'pdf')) return;
     if(window.bkReader(id, t)) ev.preventDefault(); }catch(e){} });
+})();
+</script>
+<script id="b2308">
+/* 2308 · Check homework: opens homework/ for this class (same sign-in, new tab, one tab reused) */
+(function(){
+  window.hwBtn2308 = function(c){ try{ if(!c || c.cancelled || !c.code || c.type === 'Trial') return '';
+    return '<button class="btn ghost sm" style="margin:8px 0 0 6px" title="Paste the homework from WeChat, correct it and share it" onclick="hwOpen2308(\'' + esc(c.id) + '\')">Check homework</button>'; }catch(e){ return ''; } };
+  window.hwOpen2308 = function(id){ try{ const c = (D && (D.schedule || []).find(x => x.id === id)) || null; if(!c) return toast('Class not found · refresh and try again');
+    const nm = String(c.student || '').replace(/\s+X$/i, '') || c.code;
+    const u = 'homework/?code=' + encodeURIComponent(c.code) + '&n=' + encodeURIComponent(nm) + '&cls=' + encodeURIComponent(c.id) + '&day=' + encodeURIComponent(c.day || '') + '&t=' + encodeURIComponent(c.start || '') + '&e=' + encodeURIComponent(c.end || '');
+    const w = window.open(u, 'coehw'); if(!w) location.href = u; }catch(e){ toast('Could not open Homework check'); } };
 })();
 </script>
 <script id="b2278">
