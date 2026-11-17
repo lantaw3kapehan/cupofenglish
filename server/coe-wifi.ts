@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-wifi v1 (12 Nov 2026, 2135 · Misty: Wi-Fi seen at time-in → a warning as the contract says, and "I'm in" waits until the teacher answers).
+// CupOfEnglish · coe-wifi v4 (from v1 12 Nov 2026, 2135 · Misty: Wi-Fi seen at time-in → a warning as the contract says, and "I'm in" waits until the teacher answers).
 // Teacher:  POST { token, op: "mine" }                         → { ok, flag: { id, status, contract, src, at } | null }
 //           POST { token, op: "answer", id, how }              → how = "cable" (connected the LAN cable, new time-in picture: unlocked, Operations re-checks) | "down" / "approval" (a request: I'm in stays locked until Operations allows)
 //           POST { token, op: "browser" }                       → the browser itself says Wi-Fi (Android Chrome): flag today
@@ -85,6 +85,31 @@ Deno.serve(async (req: Request) => {
     const { data, error } = await db.rpc("coe_wifi_flag", { p_teacher: t, p_src: "proof", p_proof: String(b.proof || "").slice(0, 400) || null, p_by: me });
     if (error) return out({ ok: false, error: "not saved" }, 500);
     return out({ ok: true, ...(data as any) });
+  }
+  // v4 (2320 · Misty 21:16: a daily accuracy list for the picture check): the day's picture readings that need a human look
+  //   (unclear, error, the second look disagreed, or a teacher with both cable and Wi-Fi readings that day), the day's counts, and
+  //   7-day accuracy from Operations' reviews. "readReview" stores the verdict: right | misread.
+  if (op === "reads") {
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? String(b.day) : today();
+    const { data: R } = await db.from("coe_shot_read").select("log_id,url,teacher,kind,day,net,os,why,flagged,read_at,reviewed,reviewed_by").eq("day", day).limit(2000);
+    const L = R || [], by: Record<string, Set<string>> = {};
+    L.forEach((x: any) => { const k = String(x.teacher || "").toLowerCase(); (by[k] = by[k] || new Set()).add(String(x.net || "")); });
+    const look = L.filter((x: any) => !x.reviewed && (x.net === "unclear" || x.net === "error" || /^2nd look/.test(String(x.why || "")) ||
+      (by[String(x.teacher || "").toLowerCase()]?.has("cable") && by[String(x.teacher || "").toLowerCase()]?.has("wifi") && x.net === "wifi")))
+      .map((x: any) => ({ id: x.log_id, url: x.url, teacher: x.teacher, kind: x.kind, at: String(x.log_id).slice(11, 16), net: x.net, why: x.why, flagged: x.flagged }))
+      .sort((a: any, c: any) => a.at.localeCompare(c.at));
+    const n = (v: string) => L.filter((x: any) => x.net === v).length;
+    const since = new Date(Date.now() - 7 * 864e5 + 8 * 3600e3).toISOString().slice(0, 10);
+    const { data: V } = await db.from("coe_shot_read").select("reviewed").gte("day", since).not("reviewed", "is", null);
+    const rv = V || [], mis = rv.filter((x: any) => x.reviewed === "misread").length;
+    return out({ ok: true, day, total: L.length, cable: n("cable"), wifi: n("wifi"), unclear: n("unclear"), error: n("error"), pending: L.filter((x: any) => !x.net).length,
+      look, week: { reviewed: rv.length, misread: mis } });
+  }
+  if (op === "readReview") {
+    const id = String(b.id || ""), v = String(b.verdict || "");
+    if (!id || !/^(right|misread)$/.test(v)) return out({ ok: false, error: "bad request" }, 400);
+    const { error } = await db.from("coe_shot_read").update({ reviewed: v, reviewed_by: me, reviewed_at: new Date().toISOString() }).eq("log_id", id);
+    return out({ ok: !error });
   }
   if (op === "list") {
     const { data } = await db.from("coe_wifi").select("*").or("day.eq." + today() + ",status.in.(warned,asked,recheck)").order("flagged_at", { ascending: false }).limit(50);
