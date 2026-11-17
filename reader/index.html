@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex">
 <title>CupOfEnglish · Books</title>
 <link rel="icon" href="../icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+SC:wght@500&display=swap" rel="stylesheet">
 <!-- 16 Nov 2026 · 2277 · The CupOfEnglish book reader (Misty 18:49–18:54): book PDFs open in their own CupOfEnglish tab, never Google Drive.
      Our own copy first (Supabase Storage, book-media), then the Drive stream (coe-audio) · zoom · drawing tools the student sees ·
      Present (full screen, only the CupOfEnglish header, the page and the drawings) · the unit's lessons and videos on the left.
@@ -245,13 +246,48 @@ let TASK = null;
 /* 2295: our own lesson PDFs carry the CupOfEnglish logo, slogan and a teal contact bar on every page. The reader's header already has
    the logo, so that page band is trimmed off: found by the teal bar along the bottom (only our template has it); the top is trimmed down
    to where the page content starts. Other books are shown whole. */
-const CROP = new Map(); let PG1 = 1;
+const CROP = new Map();
+/* 2301: one CupOfEnglish template for our section slides (Warm up, Vocabulary …) and the closing slide, in every book. The words come
+   from the slide itself; the step number and the lesson path come from the lesson's own section slides. No logo: the header has it. */
+const ZH = /[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]+/g;
+function slideWords(t){ if(!t) return null; const zh = (t.match(ZH) || []).join('').trim(), en = t.replace(ZH, ' ').replace(/\s+/g, ' ').trim();
+  if(!en || en.length > 48 || en.split(' ').length > 7 || !/[A-Z]/.test(en) || en !== en.toUpperCase()) return null; return { en, zh }; }
+const nice = s => { const x = s.toLowerCase().replace(/\s+([!?.])/g, '$1'); return x.charAt(0).toUpperCase() + x.slice(1); };
+function lessonSections(){ const L = []; if(!doc) return L; for(let n = 1; n <= doc.numPages; n++){ if(SKIP.has(n)) continue; const w = slideWords(TXT.get(n)); if(w && !/^thank you/i.test(w.en) && (w.zh || w.en.split(' ').length <= 3)) L.push({ n, name: nice(w.en) }); } return L; }
+function tplSection(g, W, H, w, n){
+  const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#00C4AF'); gr.addColorStop(0.55, '#00B5B9'); gr.addColorStop(1, '#00ACC4'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.arc(W * 0.9, -H * 0.02, W * 0.27, 0, Math.PI * 2); g.fill();
+  const S = SCANNED ? lessonSections() : [], i = S.findIndex(x => x.n === n), N = S.length, pad = k => String(k).padStart(2, '0'), L = W * 0.07;
+  g.fillStyle = '#fff'; g.textBaseline = 'alphabetic';
+  if(i > -1 && N > 1){ g.globalAlpha = .85; g.font = '600 ' + Math.round(W * 0.032) + 'px Fredoka, Inter, sans-serif'; g.fillText(pad(i + 1) + ' / ' + pad(N), L, L + W * 0.03); g.globalAlpha = 1; }
+  let fs = W * 0.09; g.font = '700 ' + Math.round(fs) + 'px Fredoka, Inter, sans-serif'; const tt = nice(w.en); while(g.measureText(tt).width > W * 0.86 && fs > W * 0.04){ fs *= 0.92; g.font = '700 ' + Math.round(fs) + 'px Fredoka, Inter, sans-serif'; }
+  const yT = W * 0.15 + fs * 0.82; g.fillText(tt, L, yT);
+  if(w.zh){ g.font = '500 ' + Math.round(W * 0.042) + 'px "Noto Sans SC", sans-serif'; g.globalAlpha = .95; g.fillText(w.zh, L, yT + W * 0.075); g.globalAlpha = 1; }
+  if(i > -1 && N > 1){ const gap = W * 0.012, sw = (W - 2 * L - gap * (N - 1)) / N, y = H - W * 0.06 - W * 0.025;
+    S.forEach((x, k) => { const xx = L + k * (sw + gap); g.fillStyle = k === i ? '#fff' : k < i ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.28)'; const r = W * 0.0035; g.beginPath(); g.roundRect ? g.roundRect(xx, y, sw, W * 0.007, r) : g.rect(xx, y, sw, W * 0.007); g.fill();
+      g.fillStyle = '#fff'; g.globalAlpha = k === i ? 1 : .75; g.font = (k === i ? '700 ' : '500 ') + Math.round(W * 0.0155) + 'px Inter, sans-serif'; let nm = x.name; while(g.measureText(nm).width > sw && nm.length > 3) nm = nm.slice(0, -2) + '…'; g.fillText(nm, xx, y + W * 0.027); g.globalAlpha = 1; }); } }
+function tplEnd(g, W, H, w){
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); const P = W * 0.38, gr = g.createLinearGradient(0, 0, P, H); gr.addColorStop(0, '#00C4AF'); gr.addColorStop(1, '#00ACC4'); g.fillStyle = gr; g.fillRect(0, 0, P, H);
+  g.save(); g.beginPath(); g.rect(0, 0, P, H); g.clip(); g.fillStyle = 'rgba(255,255,255,.10)'; g.beginPath(); g.arc(W * 0.1, H + W * 0.06, W * 0.2, 0, Math.PI * 2); g.fill(); g.restore();
+  g.fillStyle = '#fff'; let fs = W * 0.058; g.font = '700 ' + Math.round(fs) + 'px Fredoka, Inter, sans-serif'; const words = nice(w.en).split(' '), lines = []; let ln = '';
+  words.forEach(x => { const t = ln ? ln + ' ' + x : x; if(g.measureText(t).width > P - W * 0.08 && ln){ lines.push(ln); ln = x; } else ln = t; }); if(ln) lines.push(ln);
+  lines.forEach((t, k) => g.fillText(t, W * 0.05, W * 0.09 + fs * 0.85 + k * fs * 1.05));
+  if(w.zh){ g.font = '500 ' + Math.round(W * 0.03) + 'px "Noto Sans SC", sans-serif'; g.fillText(w.zh, W * 0.05, W * 0.09 + fs * 0.85 + lines.length * fs * 1.05 + W * 0.03); }
+  const S = SCANNED ? lessonSections() : []; if(!S.length) return; const X = W * 0.43, R = W - W * 0.06;
+  g.fillStyle = '#00B5B9'; g.font = '600 ' + Math.round(W * 0.017) + 'px Inter, sans-serif'; g.fillText('TODAY WE DID', X, W * 0.08 + W * 0.017);
+  const rowH = Math.min(W * 0.048, (H - W * 0.16) / S.length); S.forEach((x, k) => { const y = W * 0.13 + k * rowH, cy = y + rowH / 2, hw = /homework/i.test(x.name);
+    g.fillStyle = hw ? '#2F2753' : '#E6F7F5'; g.beginPath(); g.arc(X + W * 0.015, cy, W * 0.015, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = hw ? '#fff' : '#00B5B9'; g.lineWidth = W * 0.003; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath();
+    if(hw){ g.moveTo(X + W * 0.009, cy + W * 0.006); g.lineTo(X + W * 0.021, cy - W * 0.006); } else { g.moveTo(X + W * 0.009, cy); g.lineTo(X + W * 0.0135, cy + W * 0.005); g.lineTo(X + W * 0.022, cy - W * 0.005); } g.stroke();
+    g.fillStyle = '#2F2753'; g.font = '500 ' + Math.round(W * 0.024) + 'px Inter, sans-serif'; g.fillText(x.name, X + W * 0.042, cy + W * 0.008);
+    g.fillStyle = '#ECEAF2'; g.fillRect(X, y + rowH - 1, R - X, Math.max(1, W * 0.0008)); }); }
+async function fontsReady(){ try{ await lim(Promise.all(['700 40px Fredoka', '600 40px Fredoka', '500 40px "Noto Sans SC"'].map(f => document.fonts.load(f, '让Aa'))), 2500); }catch(e){} } let PG1 = 1;
 /* 2298: the cover pages at the start of our lesson PDFs (logo and slogan, then the book / unit title) are skipped: the reader's header
    already names the book and the unit. Pages are counted from the first real page. */
 /* 2300: pages of ours that the lesson does not need are skipped: the opening covers (logo poster, book / unit title slide), and anywhere
    in the file the "UNIT 1 · a, am, an" title page and the CONTENT plan page. Found from the page's words (and its look for picture-only
    covers). Page numbers count only the pages shown. */
-let SKIP = new Set(), SCAN = 0;
+let SKIP = new Set(), SCAN = 0, TXT = new Map(), SCANNED = false;
 const lim = (pr, ms) => Promise.race([pr, new Promise((_, no) => setTimeout(() => no('slow'), ms))]);
 const wordsOf = async p => { try{ return (await lim(p.getTextContent(), 2500)).items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim(); }catch(e){ return null; } };
 const extraPage = t => t != null && !/source\s*:/i.test(t) && ((/^content\b/i.test(t) && /warm\s*up/i.test(t)) || (/^unit\s*\d+\b/i.test(t) && t.split(' ').length <= 9));
@@ -260,14 +296,15 @@ async function looksCover(p){ try{ const v0 = p.getViewport({ scale: 1 }), vp = 
     const x = cv.getContext('2d'), W = cv.width, H = cv.height, frac = y => { const r = x.getImageData(0, Math.round(y), W, 1).data; let m = 0, c = 0; for(let i = 0; i < W; i += 2){ const o = i * 4; c++; if(r[o] < 150 && r[o+1] > 160 && r[o+1] < 230 && r[o+2] > 140 && r[o+2] < 215 && r[o+1] - r[o] > 60) m++; } return m / c; };
     const nv = (() => { const d = x.getImageData(Math.round(W * 0.52), Math.round(H * 0.06), Math.round(W * 0.45), Math.round(H * 0.14)).data; let m = 0; for(let i = 0; i < d.length; i += 4) if(d[i] < 80 && d[i+1] < 70 && d[i+2] > 60 && d[i+2] < 130 && d[i+2] - d[i+1] > 25) m++; return m / (d.length / 4); })();
     return (frac(H * 0.9) > 0.6 && frac(H * 0.12) > 0.6) || (nv > 0.06 && frac(H * 0.69) > 0.4); }catch(e){ return false; } }
-async function findFirst(d){ SKIP = new Set(); const my = ++SCAN; let k = 0;
+async function findFirst(d){ SKIP = new Set(); TXT = new Map(); SCANNED = false; const my = ++SCAN; let k = 0;
   const ours = t => /cupofenglishatph/i.test(t || '') || /^\S+(\s\S+){0,3}\s+unit\s*\d+\s*:\s*lesson\s*\d+$/i.test(t || '');
   try{ let t2 = null; try{ if(d.numPages > 2) t2 = await wordsOf(await lim(d.getPage(2), 3000)); }catch(e){}
-    for(let n = 1; n <= Math.min(6, d.numPages - 1); n++){ const p = await lim(d.getPage(n), 3000), t = await wordsOf(p);
+    for(let n = 1; n <= Math.min(6, d.numPages - 1); n++){ const p = await lim(d.getPage(n), 3000), t = await wordsOf(p); TXT.set(n, t);
       const cover = ours(t) || (!t && ((n === 1 && ours(t2)) || await looksCover(p)));   /* a picture-only first page before our title slide is our logo cover */
       if(cover || extraPage(t)){ SKIP.add(n); k = n; continue; } break; } }catch(e){}
   /* the rest of the file in the background: CONTENT / UNIT pages further in */
-  (async () => { for(let n = k + 1; n <= d.numPages; n++){ if(my !== SCAN || d !== doc) return; try{ const p = await d.getPage(n); if(extraPage(await wordsOf(p))){ SKIP.add(n); if(pageNo === n) turn(1); else pages(); } }catch(e){} } })();
+  (async () => { for(let n = k + 1; n <= d.numPages; n++){ if(my !== SCAN || d !== doc) return; try{ const p = await d.getPage(n), t = await wordsOf(p); TXT.set(n, t); if(extraPage(t)){ SKIP.add(n); if(pageNo === n) turn(1); else pages(); } }catch(e){} }
+    if(my === SCAN && d === doc){ SCANNED = true; const c0 = CROP.get(pageNo); if(c0 && c0.tpl) render(); } })();
   let f = 1; while(SKIP.has(f) && f < d.numPages) f++; return f; }
 /* 2297: some unit PDFs (Oxford Discover) carry our logo at the bottom centre: found by the logo's own navy + teal on a plain background,
    and covered with that background, so only the reader's header shows the logo. */
@@ -299,7 +336,7 @@ function cropOf(src){ try{ const W = src.width, H = src.height, x = src.getConte
       while(y < H * 0.55 && wr(y) >= 3) y += 2; const l1 = y;                               // logo ends
       let y2 = l1; while(y2 < H * 0.8 && wr(y2) < 3) y2 += 2;                               // the title starts
       const t = l0 < H * 0.45 && l1 - l0 < H * 0.3 && y2 < H * 0.8 ? Math.max(0, (y2 - H * 0.06) / H) : 0;
-      return { t, b: 0.105 }; }   /* the email / Facebook line sits a little higher on OD slides */
+      return { t, b: 0.105, slide: true }; }   /* the email / Facebook line sits a little higher on OD slides */
     let yb = H * 0.975; while(yb > H * 0.85 && teal(yb - 2)) yb -= 2;
     /* 2296: our header band (logo, 一杯英语, slogan) ends at about 10% of the page: cut at the first fully white line after it */
     let t = 0; if(topW){ let y = H * 0.099; while(y < H * 0.135 && !white(y)) y += 1; t = y < H * 0.135 ? y / H : 0.105; }
@@ -318,10 +355,16 @@ async function render(){ if(!doc) return; const my = {}; rendering = my;
     const t = TASK = p.render({ canvasContext: off.getContext('2d'), viewport: vp }); let ok = true; await t.promise.catch(() => { ok = false; }); if(TASK === t) TASK = null;
     if(!ok || rendering !== my) return; src = off; }
   if(rendering !== my) return;
-  let cr = CROP.get(pageNo); if(cr === undefined){ cr = cropOf(src); CROP.set(pageNo, cr); if(cr && !ck){ setTimeout(render, 0); } }
+  let cr = CROP.get(pageNo); if(cr === undefined){ cr = cropOf(src); CROP.set(pageNo, cr); if(cr && !ck && !cr.slide){ setTimeout(render, 0); } }
+  /* 2301: a teal section slide of ours is drawn with the new template (full slide, no logo); without its words it stays trimmed */
+  let tplW = null; if(cr && cr.slide){ let t = TXT.get(pageNo); if(t === undefined){ t = await wordsOf(p); TXT.set(pageNo, t); } tplW = slideWords(t);
+    if(rendering !== my) return; if(tplW){ await fontsReady(); if(rendering !== my) return; if(!cr.tpl){ cr = { t: 0, b: 0, slide: true, tpl: true }; CROP.set(pageNo, cr); if(ck) { setTimeout(render, 0); } } }
+    else if(!ck) setTimeout(render, 0); }
   const top = cr ? Math.round(vp.height * cr.t) : 0, hh = cr ? Math.round(vp.height * (1 - cr.t - cr.b)) : vp.height;
-  const c = $('pdf'), ink = $('ink'), w = vp.width / dpr, h = hh / dpr; c.width = vp.width; c.height = hh; c.getContext('2d').drawImage(src, 0, -top);
-  if(!cr){ const lg = logoBottom(c); if(lg){ const g = c.getContext('2d'), m = Math.round(c.width * 0.01); g.fillStyle = lg.c; g.fillRect(lg.x - m, lg.y - m, lg.w + 2 * m, lg.h + 2 * m); } }   /* 2297 */
+  const c = $('pdf'), ink = $('ink'), w = vp.width / dpr, h = hh / dpr; c.width = vp.width; c.height = hh;
+  if(tplW){ const g = c.getContext('2d'); if(/^thank you/i.test(tplW.en)) tplEnd(g, c.width, c.height, tplW); else tplSection(g, c.width, c.height, tplW, pageNo); }
+  else c.getContext('2d').drawImage(src, 0, -top);
+  if(!cr && !tplW){ const lg = logoBottom(c); if(lg){ const g = c.getContext('2d'), m = Math.round(c.width * 0.01); g.fillStyle = lg.c; g.fillRect(lg.x - m, lg.y - m, lg.w + 2 * m, lg.h + 2 * m); } }   /* 2297 */
   c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = vp.width; ink.height = hh; ink.style.width = w + 'px'; ink.style.height = h + 'px';
   st.classList.toggle('fit', zoom <= 1);
   if(rendering !== my) return; drawInk(); pages(); try{ localStorage.setItem('coe.reader.pg.' + FID, String(pageNo)); }catch(e){}
