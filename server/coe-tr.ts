@@ -16,10 +16,29 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return out({ ok: false, error: "POST only" }, 405);
   let b: any; try { b = JSON.parse(await req.text()); } catch { return out({ ok: false, error: "bad request" }, 400); }
   const fn = String(b.fn || ""), text = String(b.text || "").trim(), token = String(b.token || "");
-  if (!/^tr(En|Zh)$/.test(fn) || !text || text.length > 2000) return out({ ok: false, error: "not allowed" }, 400);
+  if (!/^tr(En|Zh|ZhParent)$/.test(fn) || !text || text.length > 2000) return out({ ok: false, error: "not allowed" }, 400);
   if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
   const { data: s } = await db.from("app_sessions").select("name,exp").eq("token_hash", await sha(token)).maybeSingle();
   if (!s || new Date(s.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
+  // 2328 (Misty 17 Nov: "keep the Chinese, just ensure it is accurate and native"): homework and notes for Chinese parents are translated
+  // by Claude with an education-centre brief (natural Simplified Chinese a native teacher would write); Google is the fallback.
+  if (fn === "trZhParent") {
+    const KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
+    if (KEY) try {
+      const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 12000);
+      const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", signal: ac.signal,
+        headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        body: JSON.stringify({ model: Deno.env.get("COE_TR_MODEL") || "claude-haiku-5-5", max_tokens: 1200,
+          system: "You translate homework instructions and teachers' notes from CupOfEnglish, an online English school, into Simplified Chinese for Chinese parents (and students). " +
+            "Write natural, warm, professional Chinese exactly as an experienced native Chinese teacher at a language centre would write to parents: clear, polite, never stiff or word-for-word. " +
+            "Keep the exact meaning, numbers, word counts, dates, page and unit numbers. Keep personal names, book titles and English words or sentences the student must use in English (e.g. target words, example sentences in quotes). " +
+            "Use 你 for the student. Use common Chinese terms for school tasks (e.g. 作文, 造句, 形容词, 逗号, 大写字母). Reply with the Chinese translation only, nothing else.",
+          messages: [{ role: "user", content: text }] }) }).finally(() => clearTimeout(tid));
+      const j = await r.json();
+      const zh = r.ok ? String((j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("")).trim() : "";
+      if (zh) return out({ ok: true, zh, by: "claude" });
+    } catch (_e) { /* fall back to Google below */ }
+  }
   const [sl, tl] = fn === "trEn" ? ["zh-CN", "en"] : ["en", "zh-CN"];
   try {
     const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 6000);
