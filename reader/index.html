@@ -29,6 +29,15 @@ header .tt span{display:block;font-size:13px;color:var(--mute);white-space:nowra
 .ib{min-width:36px;height:36px;border:0;border-radius:9px;background:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0 8px;font-size:14px;font-weight:600}
 .ib:hover{background:#F7F7FB}.ib:disabled{opacity:.4;cursor:default}
 .num{font-size:14px;font-weight:600;padding:0 8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* 2307: go to a page */
+.pgb{border:0;background:transparent;color:inherit;font:inherit;font-weight:600;height:36px;border-radius:9px;cursor:pointer}.pgb:hover{background:#fff}
+.jump{position:fixed;z-index:30;background:#fff;border-radius:14px;box-shadow:0 12px 32px rgba(30,26,60,.18);padding:14px;width:300px;display:none}
+.jump.on{display:block}.jump h4{margin:0 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.jump form{display:flex;gap:8px;margin-bottom:12px}.jump input{flex:1;min-width:0;height:40px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;font:600 16px Inter,sans-serif;color:var(--ink)}
+.jump input:focus{outline:0;border-color:#00B5B9}.jump form button{height:40px;border:0;border-radius:10px;background:var(--teal);color:#fff;font:600 14px Inter,sans-serif;padding:0 16px;cursor:pointer}
+.jump .secs{display:flex;flex-wrap:wrap;gap:6px}.jump .secs button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:500 13px Inter,sans-serif;color:var(--ink);cursor:pointer}
+.jump .secs button:hover,.jump .secs button.on{background:var(--teal2);border-color:transparent;color:#0E4C52}
+.jump .hint{font-size:12px;color:var(--mute);margin-top:10px}
 .btn{height:40px;padding:0 14px;border:1px solid #E3E1EA;border-radius:12px;background:#fff;cursor:pointer;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .btn.pr{background:var(--teal);color:#fff;border-color:var(--teal)}
 .btn.x{width:40px;padding:0;justify-content:center;border:0;background:#F3F2F7;border-radius:999px}
@@ -102,7 +111,7 @@ body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not
 <div class="sep"></div>
 <button class="btn x" id="sideBt" aria-label="Show or hide the list of lessons" title="Show or hide the list">≡</button>
 <div class="tt"><b id="bk">Book</b><span id="fl"></span></div>
-<div class="grp"><button class="ib" id="prev" aria-label="Previous page">‹</button><span class="num" id="pg">–</span><button class="ib" id="next" aria-label="Next page">›</button></div>
+<div class="grp"><button class="ib" id="prev" aria-label="Previous page">‹</button><button class="num pgb" id="pg" title="Go to a page or a section" aria-haspopup="dialog">–</button><button class="ib" id="next" aria-label="Next page">›</button></div>
 <div class="grp hide-s"><button class="ib" id="zo" aria-label="Zoom out">−</button><button class="ib" id="zf" aria-label="Fit page">Fit</button><button class="ib" id="zi" aria-label="Zoom in">+</button></div>
 <button class="btn pr" id="present"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Present</button>
 <button class="btn x" id="close" aria-label="Close">✕</button>
@@ -388,6 +397,20 @@ function ahead(sc){ const my = ++AH, doc0 = doc; [pageNo + 1, pageNo + 2, pageNo
     PRE.set(key, cv); if(PRE.size > 6) PRE.delete(PRE.keys().next().value); }).catch(() => {}), new Promise(r => setTimeout(r, 120))); }
 function pages(){ let n0 = 0; for(let i = 1; i <= pageNo; i++) if(!SKIP.has(i)) n0++; const nn = doc ? doc.numPages - SKIP.size : 0, t = doc ? n0 + ' / ' + nn : '–'; $('pg').textContent = doc ? 'Page ' + n0 + ' of ' + nn : '–'; $('pg2').textContent = t;
   $('prev').disabled = !doc || pageNo <= PG1 || n0 <= 1; $('next').disabled = !doc || pageNo >= doc.numPages; }
+/* 2307: go straight to a page (the number teachers see, skipped pages not counted) or to a section of the lesson */
+function goShown(k){ if(!doc) return; let c = 0; for(let n = 1; n <= doc.numPages; n++){ if(SKIP.has(n)) continue; if(++c === k){ if(n !== pageNo){ pageNo = n; render(); $('stage').scrollTo(0, 0); } return true; } } return false; }
+function openJump(){ let J = document.getElementById('jump'); if(!J){ J = document.createElement('div'); J.id = 'jump'; J.className = 'jump'; J.setAttribute('role', 'dialog'); document.body.appendChild(J);
+    document.addEventListener('pointerdown', e => { if(J.classList.contains('on') && !J.contains(e.target) && e.target.id !== 'pg') J.classList.remove('on'); }, true); }
+  const nn = doc ? doc.numPages - SKIP.size : 0, S = (typeof lessonSections === 'function' && SCANNED) ? lessonSections() : [];
+  J.innerHTML = '<h4>Go to page</h4><form id="jf"><input id="ji" type="number" inputmode="numeric" min="1" max="' + nn + '" placeholder="1 – ' + nn + '" aria-label="Page number"><button>Go</button></form>'
+    + (S.length ? '<h4>Sections</h4><div class="secs">' + S.map(x => '<button data-n="' + x.n + '"' + (x.n <= pageNo && !S.some(y => y.n > x.n && y.n <= pageNo) ? ' class="on"' : '') + '>' + x.name.replace(/[<>&]/g, '') + '</button>').join('') + '</div>' : '')
+    + '<div class="hint">Shortcuts: G opens this · Home first page · End last page · ← → turn pages</div>';
+  const r = $('pg').getBoundingClientRect(); J.style.top = (r.bottom + 8) + 'px'; J.style.left = Math.max(8, Math.min(innerWidth - 308, r.left + r.width / 2 - 150)) + 'px'; J.classList.add('on');
+  const I = document.getElementById('ji'); setTimeout(() => { I.focus(); I.select(); }, 0);
+  document.getElementById('jf').onsubmit = e => { e.preventDefault(); const k = parseInt(I.value, 10); if(k >= 1 && k <= nn){ goShown(k); J.classList.remove('on'); } else { I.style.borderColor = '#D7263D'; I.focus(); } };
+  J.querySelectorAll('.secs button').forEach(b => b.onclick = () => { const n = +b.dataset.n; if(n !== pageNo){ pageNo = n; render(); $('stage').scrollTo(0, 0); } J.classList.remove('on'); });
+  I.onkeydown = e => { if(e.key === 'Escape'){ J.classList.remove('on'); e.stopPropagation(); } }; }
+document.addEventListener('click', e => { if(e.target && e.target.id === 'pg' && doc) openJump(); });
 const turn = d => { if(!doc) return; let n = pageNo; do{ n += d; }while(n >= 1 && n <= doc.numPages && SKIP.has(n)); if(n < 1 || n > doc.numPages) return;   /* 2300: skipped pages are stepped over */ if(n !== pageNo){ pageNo = n; render(); $('stage').scrollTo(0, 0); } };
 const setZoom = z => { zoom = Math.min(4, Math.max(0.5, z)); render(); };
 
@@ -501,6 +524,7 @@ document.addEventListener('keydown', e => { if(e.target && /INPUT|TEXTAREA/.test
   if(!e.ctrlKey && !e.metaKey && !e.altKey){ const T = { p: 'pen', h: 'hl', t: 'text', e: 'erase', v: 'hand', s: 'shape' }[String(e.key).toLowerCase()] || (e.key === 'Escape' && !document.fullscreenElement ? 'hand' : '');
     if(T){ const b = document.querySelector('.tb[data-t="' + T + '"]'); if(b){ b.click(); e.preventDefault(); return; } } }
   if(e.key === 'ArrowRight' || e.key === 'PageDown') turn(1); else if(e.key === 'ArrowLeft' || e.key === 'PageUp') turn(-1);
+  else if(e.key === 'Home' && doc){ goShown(1); } else if(e.key === 'End' && doc){ goShown(doc.numPages - SKIP.size); } else if((e.key === 'g' || e.key === 'G') && doc){ e.preventDefault(); openJump(); }
   else if(e.key === '+' || e.key === '=') setZoom(zoom * 1.25); else if(e.key === '-') setZoom(zoom / 1.25); else if(e.key === '0') setZoom(1); });
 let rs = 0; addEventListener('resize', () => { clearTimeout(rs); rs = setTimeout(render, 150); });
 addEventListener('pagehide', saveAnn);
