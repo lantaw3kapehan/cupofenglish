@@ -76,7 +76,7 @@ textarea.zh{min-height:90px;font-family:'Noto Sans SC','PingFang SC','Microsoft 
     <div class="main">
       <div class="card pad">
         <div class="row2">
-          <div><label class="l" for="stu">For (optional)</label><input class="tt" id="stu" placeholder="Student's name, e.g. Dario" maxlength="40"></div>
+          <div><label class="l" for="stu">For (optional)</label><input class="tt" id="stu" list="stuL" placeholder="Choose or type a name" maxlength="40" autocomplete="off"><datalist id="stuL"></datalist></div>
           <div><label class="l" for="due">Due (optional)</label><select class="tt" id="due"><option value="">No due date</option><option value="nc">Before the next class</option></select></div>
         </div>
       </div>
@@ -89,6 +89,15 @@ textarea.zh{min-height:90px;font-family:'Noto Sans SC','PingFang SC','Microsoft 
           <span class="xs mute" id="zhSt">Made for you as you type. You can change it.</span>
         </div>
         <textarea class="zh" id="zh" placeholder="中文说明会自动生成"></textarea>
+      </div>
+      <div class="card pad">
+        <div class="h2" id="ntH">A personal note (optional)</div>
+        <label class="l" for="nt">Your note (English)</label>
+        <textarea id="nt" style="min-height:90px" placeholder="e.g. You did great with commas today. This time, check your capital letters."></textarea>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 6px">
+          <label class="l" for="ntzh" style="margin:0">Chinese for the parent</label><span class="xs mute" id="ntSt"></span>
+        </div>
+        <textarea class="zh" id="ntzh" style="min-height:70px" placeholder="中文会自动生成"></textarea>
       </div>
       <div class="card pad">
         <div class="h2">Pictures (optional)</div>
@@ -149,7 +158,6 @@ function dueText(){ const v = $('due').value; if(!v) return null; if(v === 'nc')
   if(r && r.ok && r.me){ TEACHER = r.me.mgmt ? '' : tName(r.me.name); draw(); } }catch(e){} })();
 
 /* ---------- Chinese for the parent (made as the teacher types; she can change it) ---------- */
-let zhAuto = '', zT = 0, zhSrc = '';
 async function trZh(t){ let zh = '';
   try{ const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 5000);
     const j = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=en&tl=zh-CN&q=' + encodeURIComponent(t), { signal: ac.signal }).then(x => x.json()).finally(() => clearTimeout(tid));
@@ -158,15 +166,23 @@ async function trZh(t){ let zh = '';
     const r = await fetch(SB + 'coe-tr', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, fn: 'trZh', text: t }), signal: ac.signal }).then(x => x.json()).finally(() => clearTimeout(tid));
     zh = (r && r.ok && r.zh) || ''; }catch(e){}
   return zh; }
-function zhLater(){ clearTimeout(zT); zT = setTimeout(zhNow, 900); }
-async function zhNow(){ const t = $('en').value.trim(); if(!t){ if($('zh').value === zhAuto){ $('zh').value = ''; zhAuto = ''; } draw(); return; }
-  if(t === zhSrc) return; const mine = $('zh').value.trim() && $('zh').value !== zhAuto; if(mine){ $('zhSt').textContent = 'You changed the Chinese, so it is kept as you wrote it.'; return; }
-  $('zhSt').textContent = 'Translating…'; const zh = await trZh(t); if($('en').value.trim() !== t) return;
-  zhSrc = t; if(zh){ zhAuto = zh; $('zh').value = zh; $('zhSt').textContent = 'Made for you as you type. You can change it.'; } else $('zhSt').textContent = 'The Chinese could not be made just now. Type it, or the picture shows the English only.';
-  save(); draw(); }
-$('en').addEventListener('input', () => { save(); draw(); zhLater(); });
-$('zh').addEventListener('input', () => { save(); draw(); });
-$('stu').addEventListener('input', () => { save(); draw(); });
+/* an English box and its Chinese box: the Chinese is made as the teacher types, and kept as she wrote it once she changes it */
+const AUTO = { zh: '', ntzh: '' }, SRC = { zh: '', ntzh: '' };
+function pair(enId, zhId, stId, okMsg){ let t0 = 0;
+  const now = async () => { const t = $(enId).value.trim(); if(!t){ if($(zhId).value === AUTO[zhId]){ $(zhId).value = ''; AUTO[zhId] = ''; } SRC[zhId] = ''; draw(); return; }
+    if(t === SRC[zhId]) return; const mine = $(zhId).value.trim() && $(zhId).value !== AUTO[zhId]; if(mine){ $(stId).textContent = 'You changed the Chinese, so it is kept as you wrote it.'; return; }
+    $(stId).textContent = 'Translating…'; const zh = await trZh(t); if($(enId).value.trim() !== t) return;
+    SRC[zhId] = t; if(zh){ AUTO[zhId] = zh; $(zhId).value = zh; $(stId).textContent = okMsg; } else $(stId).textContent = 'The Chinese could not be made just now. Type it, or the picture shows the English only.';
+    save(); draw(); };
+  $(enId).addEventListener('input', () => { save(); draw(); clearTimeout(t0); t0 = setTimeout(now, 900); });
+  $(zhId).addEventListener('input', () => { save(); draw(); }); }
+pair('en', 'zh', 'zhSt', 'Made for you as you type. You can change it.');
+pair('nt', 'ntzh', 'ntSt', 'Made for you as you type. You can change it.');
+$('stu').addEventListener('input', () => { save(); draw(); ntHead(); });
+function ntHead(){ const n = $('stu').value.trim(); $('ntH').textContent = n ? 'A personal note for ' + n + ' (optional)' : 'A personal note (optional)'; }
+/* the teacher's own students to choose from (the same list as Check homework) */
+(async () => { if(!TOKEN) return; try{ const r = await fetch(SB + 'coe-hw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'students', token: TOKEN }) }).then(x => x.json());
+  const seen = new Set(); $('stuL').innerHTML = (r.students || []).map(x => String(x.student || '').trim()).filter(n => n && !seen.has(n.toLowerCase()) && seen.add(n.toLowerCase())).map(n => '<option value="' + n.replace(/[&<>"]/g, '') + '"></option>').join(''); }catch(e){} })();
 $('due').addEventListener('change', () => { save(); draw(); });
 
 /* ---------- pictures: paste anywhere, drop, or choose ---------- */
@@ -195,20 +211,25 @@ function wrap(g, text, maxW){ const out = []; String(text).split(/\n/).forEach(p
   toks.forEach(t => { const tryL = line + t; if(g.measureText(tryL).width > maxW && line.trim()){ out.push(line.trimEnd()); line = cjk ? t : t.trimStart(); } else line = tryL; });
   out.push(line.trimEnd()); }); return out; }
 let dT = 0; function draw(){ clearTimeout(dT); dT = setTimeout(drawNow, 60); }
-function build(){ const en = $('en').value.trim(), zh = $('zh').value.trim(), stu = $('stu').value.trim(), due = dueText();
-  const has = !!(en || PICS.length); const c = document.createElement('canvas'), g = c.getContext('2d');
+function build(){ const en = $('en').value.trim(), zh = $('zh').value.trim(), stu = $('stu').value.trim(), due = dueText(), nt = $('nt').value.trim(), ntzh = $('ntzh').value.trim();
+  const has = !!(en || PICS.length || $('nt').value.trim()); const c = document.createElement('canvas'), g = c.getContext('2d');
   const band = Math.round(W * 0.07), foot = Math.round(W * 0.06), CW = W - 2 * M;
   /* measure */
   const F_EN = '500 34px "COE Card Inter", Inter, sans-serif', F_ZH = '400 30px "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif';
   g.font = F_EN; const L1 = en ? wrap(g, en, CW) : []; g.font = F_ZH; const L2 = zh ? wrap(g, zh, CW) : [];
+  const F_N = '500 30px "COE Card Inter", Inter, sans-serif', F_NZ = '400 27px "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif', NW = CW - 60;
+  g.font = F_N; const N1 = nt ? wrap(g, nt, NW) : []; g.font = F_NZ; const N2 = ntzh ? wrap(g, ntzh, NW) : [];
+  const greet = stu && (en || nt);
   const pw = PICS.map(p => Math.min(CW, p.img.naturalWidth));
   const ph2 = PICS.map((p, i) => Math.round(p.img.naturalHeight * pw[i] / p.img.naturalWidth));
   let h = band + 46;
   if(stu || due) h += 64;
+  if(greet) h += 96;
   if(L1.length) h += L1.length * 52 + 8;
   if(L2.length) h += 18 + L2.length * 46;
   if(L1.length || L2.length) h += 34;
   ph2.forEach(x => { h += x + 28; });
+  const nh = (N1.length || N2.length) ? 40 + N1.length * 44 + (N2.length ? 14 + N2.length * 40 : 0) + 36 : 0; h += nh ? nh + 24 : 0;
   h += 20 + foot;
   c.width = W; c.height = Math.max(h, band + foot + 240);
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, c.height);
@@ -224,10 +245,16 @@ function build(){ const en = $('en').value.trim(), zh = $('zh').value.trim(), st
     if(stu) chip('For / 学生: ' + stu, '#EEF8F7', '#0E6F68');
     if(due) chip('Due / 截止: ' + due[0] + ' / ' + due[1], '#FFF6E5', '#8A5A00');
     y += 64; }
+  if(greet){ g.fillStyle = '#2B2253'; g.font = '700 36px "COE Card Inter", Inter, sans-serif'; y += 46; g.fillText('Hi ' + stu + ',', M, y - 8);
+    g.fillStyle = '#5B5675'; g.font = '500 30px "Noto Sans SC", "PingFang SC", sans-serif'; y += 44; g.fillText(stu + '，你好！', M, y - 8); y += 6; }
   if(L1.length){ g.fillStyle = '#2B2253'; g.font = F_EN; L1.forEach(t => { y += 52; g.fillText(t, M, y - 12); }); y += 8; }
   if(L2.length){ y += 18; g.fillStyle = '#5B5675'; g.font = F_ZH; L2.forEach(t => { y += 46; g.fillText(t, M, y - 10); }); }
   if(L1.length || L2.length){ y += 14; g.fillStyle = '#D5EEEB'; g.fillRect(M, y, CW, 2); y += 20; }
   PICS.forEach((p, i) => { const w = pw[i], hh = ph2[i], x = M + Math.round((CW - w) / 2); g.drawImage(p.img, x, y, w, hh); g.strokeStyle = '#E3E1EA'; g.lineWidth = 2; g.strokeRect(x, y, w, hh); y += hh + 28; });
+  /* the personal note: a soft card, English then Chinese */
+  if(nh){ g.fillStyle = '#EEF8F7'; g.beginPath(); g.roundRect ? g.roundRect(M, y, CW, nh, 20) : g.rect(M, y, CW, nh); g.fill(); g.fillStyle = '#14B3A7'; g.fillRect(M, y + 18, 6, nh - 36);
+    let ny = y + 22; g.textBaseline = 'alphabetic'; g.fillStyle = '#1F2937'; g.font = F_N; N1.forEach(t => { ny += 44; g.fillText(t, M + 34, ny - 10); });
+    if(N2.length){ ny += 14; g.fillStyle = '#5B5675'; g.font = F_NZ; N2.forEach(t => { ny += 40; g.fillText(t, M + 34, ny - 8); }); } y += nh + 24; }
   /* footer: logo and date */
   const fy = c.height - foot; g.fillStyle = '#E3E1EA'; g.fillRect(0, fy, W, 2);
   if(LOGO){ const lh = Math.round(foot * 0.56), lw = Math.round(LOGO.width * lh / LOGO.height); g.drawImage(LOGO, L, fy + Math.round((foot - lh) / 2), lw, lh); }
@@ -247,12 +274,12 @@ $('bCopy').onclick = async () => { if(!LAST) return; const b = $('bCopy'); b.dis
     catch(e2){ toast('The picture could not be copied. Please try again.'); } }
   b.textContent = was; b.disabled = false; };
 $('bClear').onclick = () => { if(($('en').value.trim() || PICS.length) && !confirm('Start a new homework? The task and pictures on screen will be cleared.')) return;
-  $('en').value = ''; $('zh').value = ''; zhAuto = ''; zhSrc = ''; $('due').value = ''; PICS.splice(0).forEach(p => URL.revokeObjectURL(p.url)); thumbs(); try{ localStorage.removeItem(DK); }catch(e){} draw(); };
+  $('en').value = ''; $('zh').value = ''; $('nt').value = ''; $('ntzh').value = ''; AUTO.zh = AUTO.ntzh = ''; SRC.zh = SRC.ntzh = ''; $('due').value = ''; PICS.splice(0).forEach(p => URL.revokeObjectURL(p.url)); thumbs(); try{ localStorage.removeItem(DK); }catch(e){} draw(); };
 
 /* the typed task is kept on this computer for 3 days (pictures are not), so a refresh never loses it */
-function save(){ try{ localStorage.setItem(DK, JSON.stringify({ at: Date.now(), en: $('en').value, zh: $('zh').value, zhAuto, stu: $('stu').value, due: $('due').value })); }catch(e){} }
-try{ const d = JSON.parse(localStorage.getItem(DK) || 'null'); if(d && Date.now() - d.at < 3 * 864e5){ $('en').value = d.en || ''; $('zh').value = d.zh || ''; zhAuto = d.zhAuto || ''; zhSrc = d.en ? d.en.trim() : ''; if(!Q.get('n')) $('stu').value = d.stu || ''; if([...$('due').options].some(o => o.value === d.due)) $('due').value = d.due; } }catch(e){}
-draw();
+function save(){ try{ localStorage.setItem(DK, JSON.stringify({ at: Date.now(), en: $('en').value, zh: $('zh').value, nt: $('nt').value, ntzh: $('ntzh').value, auto: AUTO, stu: $('stu').value, due: $('due').value })); }catch(e){} }
+try{ const d = JSON.parse(localStorage.getItem(DK) || 'null'); if(d && Date.now() - d.at < 3 * 864e5){ $('en').value = d.en || ''; $('zh').value = d.zh || ''; $('nt').value = d.nt || ''; $('ntzh').value = d.ntzh || ''; if(d.auto){ AUTO.zh = d.auto.zh || ''; AUTO.ntzh = d.auto.ntzh || ''; } SRC.zh = (d.en || '').trim(); SRC.ntzh = (d.nt || '').trim(); if(!Q.get('n')) $('stu').value = d.stu || ''; if([...$('due').options].some(o => o.value === d.due)) $('due').value = d.due; } }catch(e){}
+ntHead(); draw();
 })();
 </script>
 </body>
