@@ -42,7 +42,8 @@ Deno.serve(async (req: Request) => {
     }
     if (op === "coverFiles") { if (!mgr) return out({ ok: false, error: "management only" }, 403);   // 2321: the Student Book / Workbook PDFs of a book, from our copies (no Google)
       const code = String(b.code || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40); if (!code) return out({ ok: false, error: "no book" }, 400);
-      const { data } = await db.from("coe_book_files").select("id,name,path,size").is("gone_at", null).eq("mime", "application/pdf").limit(5000);
+      const pat = code.split("").join("%");   // the database gives at most 1000 rows: ask only for names / folders that start with the book code
+      const { data } = await db.from("coe_book_files").select("id,name,path,size").is("gone_at", null).eq("mime", "application/pdf").or(`name.ilike.${pat}%,path.ilike.%${pat}`).limit(1000);
       const n = (x: string) => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, "");
       const L = (data || []).filter((f: any) => { const nm = n(f.name), pa = n(String(f.path || "").split("/").pop() || "");
         if (/unit|test|teacher|guide|answer|key|lesson|flashcard/.test(nm)) return false;
