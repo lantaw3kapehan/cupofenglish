@@ -40,6 +40,18 @@ Deno.serve(async (req: Request) => {
       const { data } = await db.from("coe_book_opens").select("at,who,mode,kind,title,book,student").gte("at", new Date(Date.now() - days * 864e5).toISOString()).order("at", { ascending: false }).limit(2000);
       return out({ ok: true, rows: data || [] });
     }
+    if (op === "coverFiles") { if (!mgr) return out({ ok: false, error: "management only" }, 403);   // 2321: the Student Book / Workbook PDFs of a book, from our copies (no Google)
+      const code = String(b.code || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40); if (!code) return out({ ok: false, error: "no book" }, 400);
+      const { data } = await db.from("coe_book_files").select("id,name,path,size").is("gone_at", null).eq("mime", "application/pdf").limit(5000);
+      const n = (x: string) => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const L = (data || []).filter((f: any) => { const nm = n(f.name), pa = n(String(f.path || "").split("/").pop() || "");
+        if (/unit|test|teacher|guide|answer|key|lesson|flashcard/.test(nm)) return false;
+        return nm.startsWith(code) || pa === code; });
+      const ids = L.map((f: any) => f.id); const { data: M } = ids.length ? await db.from("coe_media_mirror").select("id,obj").in("id", ids).not("done_at", "is", null) : { data: [] } as any;
+      const mo: Record<string, string> = {}; (M || []).forEach((x: any) => { mo[x.id] = x.obj; });
+      const pick = (re: RegExp) => { const c = L.filter((f: any) => re.test(n(f.name)) && mo[f.id]).sort((a: any, z: any) => (a.size || 0) - (z.size || 0)); return c[0] ? { id: c[0].id, name: c[0].name, obj: mo[c[0].id] } : null; };
+      return out({ ok: true, sb: pick(/student|pupil|sb(?!x)|coursebook/), wb: pick(/workbook|activity|wb/) });
+    }
     if (op === "gaps") { if (!mgr) return out({ ok: false, error: "management only" }, 403);
       const { data: c } = await db.from("docs").select("data").eq("key", "books:gaps").maybeSingle();   // refreshed every hour (cron coe-book-gaps)
       const { data: sc } = await db.from("coe_book_files").select("seen_at").order("seen_at", { ascending: false }).limit(1);
