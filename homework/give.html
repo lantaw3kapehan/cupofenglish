@@ -79,6 +79,7 @@ textarea.zh{min-height:90px;font-family:'Noto Sans SC','PingFang SC','Microsoft 
           <div><label class="l" for="stu">For (optional)</label><input class="tt" id="stu" list="stuL" placeholder="Choose or type a name" maxlength="40" autocomplete="off"><datalist id="stuL"></datalist></div>
           <div><label class="l" for="due">Due (optional)</label><select class="tt" id="due"><option value="">No due date</option><option value="nc">Before the next class</option></select></div>
         </div>
+        <label style="display:flex;align-items:center;gap:10px;margin-top:14px;cursor:pointer;font-size:15px"><input type="checkbox" id="zhOn" checked style="width:20px;height:20px;accent-color:#00707A"> <span><b>Add Chinese for the parent</b> <span class="mute small">Turn off for advanced students. Remembered for each student.</span></span></label>
       </div>
       <div class="card pad">
         <div class="h2">The task</div>
@@ -169,6 +170,7 @@ const AUTO = { zh: '', ntzh: '' }, SRC = { zh: '', ntzh: '' };
 function pair(enId, zhId, stId, okMsg){ let t0 = 0;
   const now = async () => { const t = $(enId).value.trim(); if(!t){ if($(zhId).value === AUTO[zhId]){ $(zhId).value = ''; AUTO[zhId] = ''; } SRC[zhId] = ''; draw(); return; }
     if(t === SRC[zhId]) return; const mine = $(zhId).value.trim() && $(zhId).value !== AUTO[zhId]; if(mine){ $(stId).textContent = 'You changed the Chinese, so it is kept as you wrote it.'; return; }
+    if(!$('zhOn').checked) return;
     $(stId).textContent = 'Translating…'; const zh = await trZh(t); if($(enId).value.trim() !== t) return;
     SRC[zhId] = t; if(zh){ AUTO[zhId] = zh; $(zhId).value = zh; $(stId).textContent = okMsg; } else $(stId).textContent = 'The Chinese could not be made just now. Type it, or the picture shows the English only.';
     save(); draw(); };
@@ -176,7 +178,11 @@ function pair(enId, zhId, stId, okMsg){ let t0 = 0;
   $(zhId).addEventListener('input', () => { save(); draw(); }); }
 pair('en', 'zh', 'zhSt', 'Made for you as you type. You can change it.');
 pair('nt', 'ntzh', 'ntSt', 'Made for you as you type. You can change it.');
-$('stu').addEventListener('input', () => { save(); draw(); ntHead(); });
+$('stu').addEventListener('input', () => { zhPref(); save(); draw(); ntHead(); });
+const ZK = () => 'coe.hw.zh.' + $('stu').value.trim().toLowerCase();
+function zhPref(){ try{ const v = localStorage.getItem(ZK()); $('zhOn').checked = v !== '0'; }catch(e){} zhShow(); }
+function zhShow(){ const on = $('zhOn').checked; ['zh', 'ntzh'].forEach(id => { const el = $(id); if(el && el.parentElement){ el.style.display = on ? '' : 'none'; const hd = el.previousElementSibling; if(hd && !hd.hidden) hd.style.display = on ? 'flex' : 'none'; } }); }
+$('zhOn').addEventListener('change', () => { try{ if($('stu').value.trim()) localStorage.setItem(ZK(), $('zhOn').checked ? '1' : '0'); }catch(e){} zhShow(); draw(); if($('zhOn').checked){ ['en', 'nt'].forEach(id => $(id).dispatchEvent(new Event('input'))); } });
 function ntHead(){ const n = $('stu').value.trim(); $('ntH').textContent = n ? 'A personal note for ' + n + ' (optional)' : 'A personal note (optional)'; }
 /* the teacher's own students to choose from (the same list as Check homework) */
 (async () => { if(!TOKEN) return; try{ const r = await fetch(SB + 'coe-hw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'students', token: TOKEN }) }).then(x => x.json());
@@ -209,7 +215,7 @@ function wrap(g, text, maxW){ const out = []; String(text).split(/\n/).forEach(p
   toks.forEach(t => { const tryL = line + t; if(g.measureText(tryL).width > maxW && line.trim()){ out.push(line.trimEnd()); line = cjk ? t : t.trimStart(); } else line = tryL; });
   out.push(line.trimEnd()); }); return out; }
 let dT = 0; function draw(){ clearTimeout(dT); dT = setTimeout(drawNow, 60); }
-function build(){ const en = $('en').value.trim(), zh = $('zh').value.trim(), stu = $('stu').value.trim(), due = dueText(), nt = $('nt').value.trim(), ntzh = $('ntzh').value.trim();
+function build(){ const en = $('en').value.trim(), ZON = $('zhOn').checked, zh = ZON ? $('zh').value.trim() : '', stu = $('stu').value.trim(), due = dueText(), nt = $('nt').value.trim(), ntzh = ZON ? $('ntzh').value.trim() : '';
   const has = !!(en || PICS.length || $('nt').value.trim()); const c = document.createElement('canvas'), g = c.getContext('2d');
   const band = Math.round(W * 0.07), foot = Math.round(W * 0.06), CW = W - 2 * M;
   /* measure */
@@ -222,7 +228,7 @@ function build(){ const en = $('en').value.trim(), zh = $('zh').value.trim(), st
   const ph2 = PICS.map((p, i) => Math.round(p.img.naturalHeight * pw[i] / p.img.naturalWidth));
   let h = band + 46;
   if((stu && !greet) || due) h += 64;
-  if(greet) h += 112;
+  if(greet) h += ZON ? 112 : 68;
   if(L1.length) h += L1.length * 52 + 8;
   if(L2.length) h += 18 + L2.length * 46;
   if(L1.length || L2.length) h += 34;
@@ -234,17 +240,17 @@ function build(){ const en = $('en').value.trim(), zh = $('zh').value.trim(), st
   /* band: official teal, as on the parent cards */
   const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, '#14B3A7'); gr.addColorStop(1, '#0E8F86'); g.fillStyle = gr; g.fillRect(0, 0, W, band);
   const fs = Math.round(band * 0.42), L = Math.round(band * 0.45); g.textBaseline = 'middle'; g.fillStyle = '#fff';
-  g.font = '400 ' + fs + 'px "COE Card Fredoka", "Fredoka One", "Noto Sans SC", sans-serif'; g.fillText('Homework / 作业', L, band / 2);
+  g.font = '400 ' + fs + 'px "COE Card Fredoka", "Fredoka One", "Noto Sans SC", sans-serif'; g.fillText(ZON ? 'Homework / 作业' : 'Homework', L, band / 2);
   if(TEACHER){ g.font = '500 ' + Math.round(fs * 0.8) + 'px "COE Card Inter", Inter, sans-serif'; g.textAlign = 'right'; g.fillText(TEACHER, W - L, band / 2); g.textAlign = 'left'; }
   let y = band + 46; g.textBaseline = 'alphabetic';
   /* for · due */
   if((stu && !greet) || due){ let x = M; const chip = (t, bg, fg) => { g.font = '600 26px "COE Card Inter", Inter, "Noto Sans SC", sans-serif'; const w = g.measureText(t).width + 36;
       g.fillStyle = bg; g.beginPath(); g.roundRect ? g.roundRect(x, y - 4, w, 46, 23) : g.rect(x, y - 4, w, 46); g.fill(); g.fillStyle = fg; g.textBaseline = 'middle'; g.fillText(t, x + 18, y + 19); g.textBaseline = 'alphabetic'; x += w + 12; };
-    if(stu && !greet) chip('For / 学生: ' + stu, '#EEF8F7', '#0E6F68');
-    if(due) chip('Due / 截止: ' + due[0] + ' / ' + due[1], '#FFF6E5', '#8A5A00');
+    if(stu && !greet) chip((ZON ? 'For / 学生: ' : 'For: ') + stu, '#EEF8F7', '#0E6F68');
+    if(due) chip(ZON ? 'Due / 截止: ' + due[0] + ' / ' + due[1] : 'Due: ' + due[0], '#FFF6E5', '#8A5A00');
     y += 64; }
   if(greet){ g.fillStyle = '#2B2253'; g.font = '700 36px "COE Card Inter", Inter, sans-serif'; y += 46; g.fillText('Hi ' + stu + ',', M, y - 8);
-    g.fillStyle = '#5B5675'; g.font = '500 30px "Noto Sans SC", "PingFang SC", sans-serif'; y += 44; g.fillText(stu + '，你好！', M, y - 8); y += 22; }
+    if(ZON){ g.fillStyle = '#5B5675'; g.font = '500 30px "Noto Sans SC", "PingFang SC", sans-serif'; y += 44; g.fillText(stu + '，你好！', M, y - 8); } y += 22; }
   if(L1.length){ g.fillStyle = '#2B2253'; g.font = F_EN; L1.forEach(t => { y += 52; g.fillText(t, M, y - 12); }); y += 8; }
   if(L2.length){ y += 18; g.fillStyle = '#5B5675'; g.font = F_ZH; L2.forEach(t => { y += 46; g.fillText(t, M, y - 10); }); }
   if(L1.length || L2.length){ y += 14; g.fillStyle = '#D5EEEB'; g.fillRect(M, y, CW, 2); y += 20; }
@@ -277,7 +283,7 @@ $('bClear').onclick = () => { if(($('en').value.trim() || PICS.length) && !confi
 /* the typed task is kept on this computer for 3 days (pictures are not), so a refresh never loses it */
 function save(){ try{ localStorage.setItem(DK, JSON.stringify({ at: Date.now(), en: $('en').value, zh: $('zh').value, nt: $('nt').value, ntzh: $('ntzh').value, auto: AUTO, stu: $('stu').value, due: $('due').value })); }catch(e){} }
 try{ const d = JSON.parse(localStorage.getItem(DK) || 'null'); if(d && Date.now() - d.at < 3 * 864e5){ $('en').value = d.en || ''; $('zh').value = d.zh || ''; $('nt').value = d.nt || ''; $('ntzh').value = d.ntzh || ''; if(d.auto){ AUTO.zh = d.auto.zh || ''; AUTO.ntzh = d.auto.ntzh || ''; } SRC.zh = (d.en || '').trim(); SRC.ntzh = (d.nt || '').trim(); if(!Q.get('n')) $('stu').value = d.stu || ''; if([...$('due').options].some(o => o.value === d.due)) $('due').value = d.due; } }catch(e){}
-ntHead(); draw();
+zhPref(); ntHead(); draw();
 })();
 </script>
 </body>
