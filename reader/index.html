@@ -222,7 +222,7 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
       else { want(id); if(!(meta && meta.size)) throw new Error('no size'); doc = await ranged(PX(id), +meta.size, opt); } }
     catch(e){ want(id); doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt, { disableRange: true, disableStream: false })).promise; }   /* 2278 */
     soon();
-    PRE.clear(); CROP.clear(); FIRST = await findFirst(doc); pageNo = FIRST; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > FIRST && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
+    PRE.clear(); CROP.clear(); PG1 = await findFirst(doc); pageNo = PG1; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > PG1 && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
     if(FIRST) FIRST = false; else try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'log', token: TOKEN, kind: 'pdf', id, title: $('fl').textContent || TITLE, book: LABEL }) }); }catch(e){}
   }catch(e){ msg('This book could not open right now. Please try again, or tell Operations.<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Try again</button>'); } }
 
@@ -245,7 +245,7 @@ let TASK = null;
 /* 2295: our own lesson PDFs carry the CupOfEnglish logo, slogan and a teal contact bar on every page. The reader's header already has
    the logo, so that page band is trimmed off: found by the teal bar along the bottom (only our template has it); the top is trimmed down
    to where the page content starts. Other books are shown whole. */
-const CROP = new Map(); let FIRST = 1;
+const CROP = new Map(); let PG1 = 1;
 /* 2298: the cover pages at the start of our lesson PDFs (logo and slogan, then the book / unit title) are skipped: the reader's header
    already names the book and the unit. Pages are counted from the first real page. */
 async function findFirst(d){ try{ let k = 0; for(let n = 1; n <= Math.min(3, d.numPages - 1); n++){ const p = await d.getPage(n), v0 = p.getViewport({ scale: 1 }), vp = p.getViewport({ scale: 200 / v0.width });
@@ -314,9 +314,9 @@ function ahead(sc){ const my = ++AH, doc0 = doc; [pageNo + 1, pageNo + 2, pageNo
     if(my !== AH || doc0 !== doc) return; const p = await doc.getPage(n), vp = p.getViewport({ scale: sc }), key = n + '|' + vp.width + 'x' + vp.height; if(PRE.has(key)) return;
     const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height; await p.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
     PRE.set(key, cv); if(PRE.size > 6) PRE.delete(PRE.keys().next().value); }).catch(() => {}), new Promise(r => setTimeout(r, 120))); }
-function pages(){ const n0 = pageNo - FIRST + 1, nn = doc ? doc.numPages - FIRST + 1 : 0, t = doc ? n0 + ' / ' + nn : '–'; $('pg').textContent = doc ? 'Page ' + n0 + ' of ' + nn : '–'; $('pg2').textContent = t;
-  $('prev').disabled = !doc || pageNo <= FIRST; $('next').disabled = !doc || pageNo >= doc.numPages; }
-const turn = d => { if(!doc) return; const n = Math.min(doc.numPages, Math.max(FIRST, pageNo + d)); if(n !== pageNo){ pageNo = n; render(); $('stage').scrollTo(0, 0); } };
+function pages(){ const n0 = pageNo - PG1 + 1, nn = doc ? doc.numPages - PG1 + 1 : 0, t = doc ? n0 + ' / ' + nn : '–'; $('pg').textContent = doc ? 'Page ' + n0 + ' of ' + nn : '–'; $('pg2').textContent = t;
+  $('prev').disabled = !doc || pageNo <= PG1; $('next').disabled = !doc || pageNo >= doc.numPages; }
+const turn = d => { if(!doc) return; const n = Math.min(doc.numPages, Math.max(PG1, pageNo + d)); if(n !== pageNo){ pageNo = n; render(); $('stage').scrollTo(0, 0); } };
 const setZoom = z => { zoom = Math.min(4, Math.max(0.5, z)); render(); };
 
 /* ── drawing: kept per page, in page proportions so zoom keeps them in place ── */
