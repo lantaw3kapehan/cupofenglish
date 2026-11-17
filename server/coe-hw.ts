@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-hw v3 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
+// CupOfEnglish · coe-hw v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
 // correct it and share it). Used by the Homework check page (homework/index.html).
 // POST { token, op, ... }:
 //   me                       → { name, role, mgmt }
@@ -63,6 +63,13 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, students: L });
     }
 
+    if (op === "ids") {   // v4 (2319): which classes already have a saved check (class card shows "Homework checked")
+      const since = new Date(Date.now() - 21 * 864e5).toISOString();
+      let q = db.from("coe_hw_checks").select("class_id,code,created_at").gte("created_at", since).is("removed_at", null).not("class_id", "is", null).limit(2000);
+      if (!mgmt) q = q.ilike("teacher", name);
+      const { data, error } = await q; if (error) throw new Error(error.message);
+      return out({ ok: true, ids: [...new Set((data || []).map((r: any) => r.class_id))] });
+    }
     if (op === "list") {
       const code = String(b.code || "").toUpperCase(); if (!(await owns(code))) return out({ ok: false, error: "Not your student" }, 403);
       const { data, error } = await db.from("coe_hw_checks").select("*").eq("code", code).is("removed_at", null).order("created_at", { ascending: false }).limit(20);
