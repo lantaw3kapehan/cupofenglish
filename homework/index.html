@@ -371,6 +371,10 @@ document.addEventListener('keydown', e => {
 
 /* ================= PICTURE ================= */
 let TOOL = 'pen', COL = '#D92D20', DRAW = null, PK = 1, DPR = 1;
+/* 2313 · mark sizes (Misty 18:29: the tick is small). Medium is the new default; Small is the old size. Remembered on this device. */
+const SZ = { s: { tick: 4, pen: .32, text: 2.4, ring: .3 }, m: { tick: 7, pen: .5, text: 3.4, ring: .45 }, l: { tick: 11, pen: .8, text: 4.6, ring: .7 } };
+let SIZE = (() => { try{ const v = localStorage.getItem('coe.hw.size'); return SZ[v] ? v : 'm'; }catch(e){ return 'm'; } })();
+const SZN = () => SZ[SIZE] || SZ.m;
 const COLS = [['#D92D20', 'Red'], ['#2563EB', 'Blue'], ['#16A34A', 'Green']];
 async function loadPicture(file){
   if(!file) return; if(!okReplace()) return;
@@ -397,12 +401,14 @@ function paintPic(){
   if(!PIC.base){ $('area').innerHTML = emptyHtml('picture'); bindEmpty(); return; }
   $('area').innerHTML = `<div class="pic"><div class="rail">
 ${Object.keys(ICO).map(k => `<button type="button" class="tb${TOOL === k ? ' on' : ''}" data-t="${k}" aria-label="${TIPS[k]}" title="${TIPS[k]}">${ICO[k]}</button>`).join('')}
+<span class="ln"></span>${[['s', 'Small'], ['m', 'Medium'], ['l', 'Large']].map(([k, n]) => `<button type="button" class="tb sz${SIZE === k ? ' on' : ''}" data-z="${k}" aria-label="${n} marks" title="${n} marks" style="font-size:${k === 's' ? 12 : k === 'm' ? 15 : 19}px">${k.toUpperCase()}</button>`).join('')}
 <span class="ln"></span>${COLS.map(([c, n]) => `<button type="button" class="dot${COL === c ? ' on' : ''}" data-c="${c}" style="background:${c};color:${c}" aria-label="${n}" title="${n}"></button>`).join('')}
 <span class="ln"></span><button type="button" class="tb" id="pU" aria-label="Undo" title="Undo (${UNDOK})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
 <button type="button" class="tb" id="pR" aria-label="Redo" title="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
 </div><div id="pwrap"><canvas id="pcv"></canvas></div></div>`;
   $('area').querySelectorAll('[data-t]').forEach(b => b.onclick = () => { TOOL = b.dataset.t; $('area').querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b)); $('pcv').classList.toggle('hand', TOOL === 'hand'); });
   $('area').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { COL = b.dataset.c; $('area').querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('area').querySelectorAll('[data-z]').forEach(b => b.onclick = () => { SIZE = b.dataset.z; try{ localStorage.setItem('coe.hw.size', SIZE); }catch(e){} $('area').querySelectorAll('[data-z]').forEach(x => x.classList.toggle('on', x === b)); });
   $('pU').onclick = undo; $('pR').onclick = redo;
   const cv = $('pcv'); cv.classList.toggle('hand', TOOL === 'hand');
   cv.addEventListener('pointerdown', pDown); cv.addEventListener('pointermove', pMove); cv.addEventListener('pointerup', pUp); cv.addEventListener('pointercancel', pUp);
@@ -434,9 +440,9 @@ function drawNow(){ const cv = $('pcv'); if(!cv || !PIC.base) return; const c = 
   PIC.items.forEach(it => drawItem(c, it)); if(DRAW && DRAW.it) drawItem(c, DRAW.it); }
 const pt = e => { const r = $('pcv').getBoundingClientRect(); return [(e.clientX - r.left) / PK, (e.clientY - r.top) / PK]; };
 function pDown(e){ if(TOOL === 'hand') return; e.preventDefault(); const [x, y] = pt(e), u = U(); closeTxt();
-  if(TOOL === 'pen'){ DRAW = { it: { t: 'pen', c: COL, w: u * .32, p: [[x, y]] } }; $('pcv').setPointerCapture(e.pointerId); }
-  else if(TOOL === 'circle'){ DRAW = { x0: x, y0: y, it: { t: 'circle', c: COL, w: u * .3, x, y, rx: 1, ry: 1 } }; $('pcv').setPointerCapture(e.pointerId); }
-  else if(TOOL === 'tick' || TOOL === 'cross'){ push(); PIC.items.push({ t: TOOL, c: TOOL === 'tick' && COL === '#D92D20' ? '#16A34A' : COL, x, y, s: u * 4 }); draw(); side(); }
+  if(TOOL === 'pen'){ DRAW = { it: { t: 'pen', c: COL, w: u * SZN().pen, p: [[x, y]] } }; $('pcv').setPointerCapture(e.pointerId); }
+  else if(TOOL === 'circle'){ DRAW = { x0: x, y0: y, it: { t: 'circle', c: COL, w: u * SZN().ring, x, y, rx: 1, ry: 1 } }; $('pcv').setPointerCapture(e.pointerId); }
+  else if(TOOL === 'tick' || TOOL === 'cross'){ push(); PIC.items.push({ t: TOOL, c: TOOL === 'tick' && COL === '#D92D20' ? '#16A34A' : COL, x, y, s: u * SZN().tick }); draw(); side(); }
   else if(TOOL === 'text') openTxt(x, y, e);
   else if(TOOL === 'erase'){ for(let i = PIC.items.length - 1; i >= 0; i--){ const b = bbox(PIC.items[i]); if(x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]){ push(); PIC.items.splice(i, 1); draw(); side(); return; } } } }
 function pMove(e){ if(!DRAW) return; const [x, y] = pt(e); if(DRAW.it.t === 'pen'){ const L = DRAW.it.p[DRAW.it.p.length - 1]; if(Math.hypot(x - L[0], y - L[1]) > U() * .15) DRAW.it.p.push([x, y]); }
@@ -445,7 +451,7 @@ function pUp(){ if(!DRAW) return; const it = DRAW.it; DRAW = null; if(it.t === '
   push(); PIC.items.push(it); draw(); side(); }
 function openTxt(x, y, e){ const w = $('pwrap'), r = w.getBoundingClientRect(), inp = document.createElement('input'); inp.id = 'ptxt'; inp.placeholder = 'Type, then Enter';
   inp.style.left = (e.clientX - r.left + w.scrollLeft) + 'px'; inp.style.top = (e.clientY - r.top + w.scrollTop - 14) + 'px'; inp.style.borderColor = COL; w.appendChild(inp); setTimeout(() => inp.focus(), 10);
-  const done = () => { const v = inp.value.trim(); inp.remove(); if(v){ push(); PIC.items.push({ t: 'text', c: COL, x, y: y - U() * 1.3, s: U() * 2.4, txt: v }); draw(); side(); } };
+  const done = () => { const v = inp.value.trim(); inp.remove(); if(v){ push(); PIC.items.push({ t: 'text', c: COL, x, y: y - U() * SZN().text * .55, s: U() * SZN().text, txt: v }); draw(); side(); } };
   inp.onkeydown = ev => { if(ev.key === 'Enter'){ ev.preventDefault(); done(); } else if(ev.key === 'Escape'){ inp.remove(); } }; inp.onblur = done; }
 function closeTxt(){ const t = $('ptxt'); if(t) t.blur(); }
 function rotate(){ if(!PIC.base) return; if(PIC.items.length && !confirm('Rotating clears the marks on this picture. Rotate?')) return;
