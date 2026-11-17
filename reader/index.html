@@ -290,17 +290,20 @@ async function fontsReady(){ try{ await lim(Promise.all(['700 40px Fredoka', '60
 let SKIP = new Set(), SCAN = 0, TXT = new Map(), SCANNED = false;
 const lim = (pr, ms) => Promise.race([pr, new Promise((_, no) => setTimeout(() => no('slow'), ms))]);
 const wordsOf = async p => { try{ return (await lim(p.getTextContent(), 2500)).items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim(); }catch(e){ return null; } };
-const extraPage = t => t != null && !/source\s*:/i.test(t) && ((/^content\b/i.test(t) && /warm\s*up/i.test(t)) || (/^unit\s*\d+\b/i.test(t) && t.split(' ').length <= 9));
+/* 2302: Wonders K learners are too young for the "Summary and feedback" page: it is skipped in Wonders K lessons only */
+let WK = false;
+const extraPage = t => t != null && !/source\s*:/i.test(t) && ((WK && /^summary and feedback\b/i.test(t)) || (/^content\b/i.test(t) && /warm\s*up/i.test(t)) || (/^unit\s*\d+\b/i.test(t) && t.split(' ').length <= 9));
 async function looksCover(p){ try{ const v0 = p.getViewport({ scale: 1 }), vp = p.getViewport({ scale: 200 / v0.width }), cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height;
     await lim(p.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise, 3000);
     const x = cv.getContext('2d'), W = cv.width, H = cv.height, frac = y => { const r = x.getImageData(0, Math.round(y), W, 1).data; let m = 0, c = 0; for(let i = 0; i < W; i += 2){ const o = i * 4; c++; if(r[o] < 150 && r[o+1] > 160 && r[o+1] < 230 && r[o+2] > 140 && r[o+2] < 215 && r[o+1] - r[o] > 60) m++; } return m / c; };
     const nv = (() => { const d = x.getImageData(Math.round(W * 0.52), Math.round(H * 0.06), Math.round(W * 0.45), Math.round(H * 0.14)).data; let m = 0; for(let i = 0; i < d.length; i += 4) if(d[i] < 80 && d[i+1] < 70 && d[i+2] > 60 && d[i+2] < 130 && d[i+2] - d[i+1] > 25) m++; return m / (d.length / 4); })();
     return (frac(H * 0.9) > 0.6 && frac(H * 0.12) > 0.6) || (nv > 0.06 && frac(H * 0.69) > 0.4); }catch(e){ return false; } }
-async function findFirst(d){ SKIP = new Set(); TXT = new Map(); SCANNED = false; const my = ++SCAN; let k = 0;
+async function findFirst(d){ SKIP = new Set(); TXT = new Map(); SCANNED = false; WK = false; const my = ++SCAN; let k = 0;
   const ours = t => /cupofenglishatph/i.test(t || '') || /^\S+(\s\S+){0,3}\s+unit\s*\d+\s*:\s*lesson\s*\d+$/i.test(t || '');
   try{ let t2 = null; try{ if(d.numPages > 2) t2 = await wordsOf(await lim(d.getPage(2), 3000)); }catch(e){}
     for(let n = 1; n <= Math.min(6, d.numPages - 1); n++){ const p = await lim(d.getPage(n), 3000), t = await wordsOf(p); TXT.set(n, t);
       const cover = ours(t) || (!t && ((n === 1 && ours(t2)) || await looksCover(p)));   /* a picture-only first page before our title slide is our logo cover */
+      if(n <= 2 && /^wonders\s*k\b/i.test(t || '')) WK = true;
       if(cover || extraPage(t)){ SKIP.add(n); k = n; continue; } break; } }catch(e){}
   /* the rest of the file in the background: CONTENT / UNIT pages further in */
   (async () => { for(let n = k + 1; n <= d.numPages; n++){ if(my !== SCAN || d !== doc) return; try{ const p = await d.getPage(n), t = await wordsOf(p); TXT.set(n, t); if(extraPage(t)){ SKIP.add(n); if(pageNo === n) turn(1); else pages(); } }catch(e){} }
