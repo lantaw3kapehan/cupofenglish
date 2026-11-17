@@ -255,7 +255,7 @@ function slideWords(t){ if(!t) return null; t = t.replace(/\S+@\S+|@\S+|https?:\
   { const w = en.split(' '), h = w.length / 2; if(w.length % 2 === 0 && w.slice(0, h).join(' ') === w.slice(h).join(' ')) en = w.slice(0, h).join(' '); }   /* the same title written twice */
   if(!en || en.length > 48 || en.split(' ').length > 7 || !/[A-Z]/.test(en) || en !== en.toUpperCase()) return null; return { en, zh }; }
 const nice = s => { const x = s.toLowerCase().replace(/\s+([!?.])/g, '$1'); return x.charAt(0).toUpperCase() + x.slice(1); };
-function lessonSections(){ const L = []; if(!doc) return L; for(let n = 1; n <= doc.numPages; n++){ if(SKIP.has(n)) continue; const w = slideWords(TXT.get(n)); if(w && !/^thank you/i.test(w.en) && (w.zh || w.en.split(' ').length <= 3)) L.push({ n, name: nice(w.en) }); } return L; }
+function lessonSections(){ const L = []; if(!doc) return L; for(let n = 1; n <= doc.numPages; n++){ if(SKIP.has(n)) continue; const w = slideWords(TXT.get(n)); if(w && w.zh && !/^thank you/i.test(w.en)) L.push({ n, name: nice(w.en) });   /* 2306: only our section slides (they carry the Chinese line), never a page heading like READ */ } return L; }
 function tplSection(g, W, H, w, n){
   const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#00C4AF'); gr.addColorStop(0.55, '#00B5B9'); gr.addColorStop(1, '#00ACC4'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
   g.fillStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.arc(W * 0.9, -H * 0.02, W * 0.27, 0, Math.PI * 2); g.fill();
@@ -269,6 +269,11 @@ function tplSection(g, W, H, w, n){
     S.forEach((x, k) => { const xx = L + k * (sw + gap); g.fillStyle = k === i ? '#fff' : k < i ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.28)'; const r = W * 0.0035; g.beginPath(); g.roundRect ? g.roundRect(xx, y, sw, W * 0.007, r) : g.rect(xx, y, sw, W * 0.007); g.fill();
       g.fillStyle = '#fff'; g.globalAlpha = k === i ? 1 : .75; g.font = (k === i ? '700 ' : '500 ') + Math.round(W * 0.0155) + 'px Poppins, Inter, sans-serif'; let nm = x.name; while(g.measureText(nm).width > sw && nm.length > 3) nm = nm.slice(0, -2) + '…'; g.fillText(nm, xx, y + W * 0.027); g.globalAlpha = 1; }); } }
 function tplEnd(g, W, H, w){
+  const S0 = SCANNED ? lessonSections() : [];
+  if(!S0.length){ const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#00C4AF'); gr.addColorStop(0.55, '#00B5B9'); gr.addColorStop(1, '#00ACC4'); g.fillStyle = gr; g.fillRect(0, 0, W, H);   /* no section list: one centred thank-you */
+    g.fillStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.arc(W * 0.9, -H * 0.02, W * 0.27, 0, Math.PI * 2); g.fill(); g.fillStyle = '#fff'; g.textAlign = 'center';
+    let fs = W * 0.085; g.font = '700 ' + Math.round(fs) + 'px Fredoka, Inter, sans-serif'; const tt = nice(w.en); while(g.measureText(tt).width > W * 0.84 && fs > W * 0.04){ fs *= 0.92; g.font = '700 ' + Math.round(fs) + 'px Fredoka, Inter, sans-serif'; }
+    g.fillText(tt, W / 2, H * 0.5 + (w.zh ? 0 : fs * 0.35)); if(w.zh){ g.font = '500 ' + Math.round(W * 0.04) + 'px "Noto Sans SC", sans-serif'; g.fillText(w.zh, W / 2, H * 0.5 + W * 0.075); } g.textAlign = 'left'; return; }
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); const P = W * 0.38, gr = g.createLinearGradient(0, 0, P, H); gr.addColorStop(0, '#00C4AF'); gr.addColorStop(1, '#00ACC4'); g.fillStyle = gr; g.fillRect(0, 0, P, H);
   g.save(); g.beginPath(); g.rect(0, 0, P, H); g.clip(); g.fillStyle = 'rgba(255,255,255,.10)'; g.beginPath(); g.arc(W * 0.1, H + W * 0.06, W * 0.2, 0, Math.PI * 2); g.fill(); g.restore();
   g.fillStyle = '#fff'; let fs = W * 0.058; g.font = '700 ' + Math.round(fs) + 'px Fredoka, Inter, sans-serif'; const words = nice(w.en).split(' '), lines = []; let ln = '';
