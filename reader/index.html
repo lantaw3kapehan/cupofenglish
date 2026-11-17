@@ -222,7 +222,7 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
       else { want(id); if(!(meta && meta.size)) throw new Error('no size'); doc = await ranged(PX(id), +meta.size, opt); } }
     catch(e){ want(id); doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt, { disableRange: true, disableStream: false })).promise; }   /* 2278 */
     soon();
-    PRE.clear(); CROP.clear(); pageNo = 1; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > 1 && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
+    PRE.clear(); CROP.clear(); FIRST = await findFirst(doc); pageNo = FIRST; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > FIRST && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
     if(FIRST) FIRST = false; else try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'log', token: TOKEN, kind: 'pdf', id, title: $('fl').textContent || TITLE, book: LABEL }) }); }catch(e){}
   }catch(e){ msg('This book could not open right now. Please try again, or tell Operations.<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Try again</button>'); } }
 
@@ -245,7 +245,13 @@ let TASK = null;
 /* 2295: our own lesson PDFs carry the CupOfEnglish logo, slogan and a teal contact bar on every page. The reader's header already has
    the logo, so that page band is trimmed off: found by the teal bar along the bottom (only our template has it); the top is trimmed down
    to where the page content starts. Other books are shown whole. */
-const CROP = new Map();
+const CROP = new Map(); let FIRST = 1;
+/* 2298: the cover pages at the start of our lesson PDFs (logo and slogan, then the book / unit title) are skipped: the reader's header
+   already names the book and the unit. Pages are counted from the first real page. */
+async function findFirst(d){ try{ let k = 0; for(let n = 1; n <= Math.min(3, d.numPages - 1); n++){ const p = await d.getPage(n), v0 = p.getViewport({ scale: 1 }), vp = p.getViewport({ scale: 200 / v0.width });
+      const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height; await p.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+      const x = cv.getContext('2d'), W = cv.width, H = cv.height, tl = y => { const r = x.getImageData(0, Math.round(y), W, 1).data; let m = 0, c = 0; for(let i = 0; i < W; i += 4){ const o = i * 4; c++; if(r[o] < 150 && r[o+1] > 160 && r[o+1] < 230 && r[o+2] > 140 && r[o+2] < 215 && r[o+1] - r[o] > 60) m++; } return m / c > 0.6; };
+      if(tl(H * 0.5) && tl(H * 0.9) && tl(H * 0.12)) k = n; else break; } return k + 1; }catch(e){ return 1; } }
 /* 2297: some unit PDFs (Oxford Discover) carry our logo at the bottom centre: found by the logo's own navy + teal on a plain background,
    and covered with that background, so only the reader's header shows the logo. */
 function logoBottom(cv){ try{ const W = cv.width, H = cv.height, x = cv.getContext('2d', { willReadFrequently: true });
@@ -268,7 +274,14 @@ function cropOf(src){ try{ const W = src.width, H = src.height, x = src.getConte
     const white = y => { const d = x.getImageData(0, Math.round(y), W, 1).data; let n = 0, k = 0; for(let i = Math.floor(W * 0.05); i < W * 0.95; i += Math.max(1, Math.floor(W / 80))){ const o = i * 4; k++; if(d[o] > 238 && d[o+1] > 238 && d[o+2] > 238) n++; } return n / k > 0.97; };
     const topW = (() => { const d = x.getImageData(0, Math.round(H * 0.02), W, 1).data; let n = 0, k = 0; for(let i = 0; i < W; i += Math.max(1, Math.floor(W / 60))){ const o = i * 4; k++; if(d[o] > 235 && d[o+1] > 235 && d[o+2] > 235) n++; } return n / k > 0.5; })();
     if(!teal(H * 0.975)) return null;
-    if(teal(H * 0.90)) return teal(H * 0.5) ? { t: 0, b: 0.07 } : null;   /* 2296: a full teal title slide (Warm up, Unit …): only its email / WeChat line is trimmed */
+    if(teal(H * 0.90)){ if(!teal(H * 0.5)) return null;   /* 2296: a full teal section slide (Warm up, Vocabulary …) */
+      /* 2298: its white logo block at the top is trimmed too: the slide starts just above the section title */
+      const wr = y => { const d = x.getImageData(Math.round(W * 0.25), Math.round(y), Math.round(W * 0.5), 1).data; let n = 0; for(let i = 0; i < d.length; i += 8) if(d[i] > 235 && d[i+1] > 235 && d[i+2] > 235) n++; return n; };
+      let y = H * 0.06; while(y < H * 0.45 && wr(y) < 3) y += 2; const l0 = y;            // logo starts
+      while(y < H * 0.55 && wr(y) >= 3) y += 2; const l1 = y;                               // logo ends
+      let y2 = l1; while(y2 < H * 0.8 && wr(y2) < 3) y2 += 2;                               // the title starts
+      const t = l0 < H * 0.45 && l1 - l0 < H * 0.3 && y2 < H * 0.8 ? Math.max(0, (y2 - H * 0.06) / H) : 0;
+      return { t, b: 0.07 }; }
     let yb = H * 0.975; while(yb > H * 0.85 && teal(yb - 2)) yb -= 2;
     /* 2296: our header band (logo, 一杯英语, slogan) ends at about 10% of the page: cut at the first fully white line after it */
     let t = 0; if(topW){ let y = H * 0.099; while(y < H * 0.135 && !white(y)) y += 1; t = y < H * 0.135 ? y / H : 0.105; }
@@ -301,9 +314,9 @@ function ahead(sc){ const my = ++AH, doc0 = doc; [pageNo + 1, pageNo + 2, pageNo
     if(my !== AH || doc0 !== doc) return; const p = await doc.getPage(n), vp = p.getViewport({ scale: sc }), key = n + '|' + vp.width + 'x' + vp.height; if(PRE.has(key)) return;
     const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height; await p.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
     PRE.set(key, cv); if(PRE.size > 6) PRE.delete(PRE.keys().next().value); }).catch(() => {}), new Promise(r => setTimeout(r, 120))); }
-function pages(){ const t = doc ? pageNo + ' / ' + doc.numPages : '–'; $('pg').textContent = doc ? 'Page ' + pageNo + ' of ' + doc.numPages : '–'; $('pg2').textContent = t;
-  $('prev').disabled = !doc || pageNo <= 1; $('next').disabled = !doc || pageNo >= doc.numPages; }
-const turn = d => { if(!doc) return; const n = Math.min(doc.numPages, Math.max(1, pageNo + d)); if(n !== pageNo){ pageNo = n; render(); $('stage').scrollTo(0, 0); } };
+function pages(){ const n0 = pageNo - FIRST + 1, nn = doc ? doc.numPages - FIRST + 1 : 0, t = doc ? n0 + ' / ' + nn : '–'; $('pg').textContent = doc ? 'Page ' + n0 + ' of ' + nn : '–'; $('pg2').textContent = t;
+  $('prev').disabled = !doc || pageNo <= FIRST; $('next').disabled = !doc || pageNo >= doc.numPages; }
+const turn = d => { if(!doc) return; const n = Math.min(doc.numPages, Math.max(FIRST, pageNo + d)); if(n !== pageNo){ pageNo = n; render(); $('stage').scrollTo(0, 0); } };
 const setZoom = z => { zoom = Math.min(4, Math.max(0.5, z)); render(); };
 
 /* ── drawing: kept per page, in page proportions so zoom keeps them in place ── */
