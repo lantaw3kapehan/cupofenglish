@@ -29,7 +29,7 @@ Deno.serve(async (req: Request) => {
       const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", signal: ac.signal,
         headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
         body: JSON.stringify({ model: Deno.env.get("COE_TR_MODEL") || "claude-haiku-5-5", max_tokens: 1200,
-          system: "You translate homework instructions and teachers' notes from CupOfEnglish, an online English school, into Simplified Chinese for Chinese parents (and students). " +
+          system: "You translate messages from CupOfEnglish, an online English school, into Simplified Chinese for Chinese parents (and students): homework instructions, teachers' notes, and reasons a class was cancelled or moved. Translate only what is written; never add or guess a reason. " +
             "Write natural, warm, professional Chinese exactly as an experienced native Chinese teacher at a language centre would write to parents: clear, polite, never stiff or word-for-word. " +
             "Keep the exact meaning, numbers, word counts, dates, page and unit numbers. Keep personal names, book titles and English words or sentences the student must use in English (e.g. target words, example sentences in quotes). " +
             "Use 你 for the student. Use common Chinese terms for school tasks (e.g. 作文, 造句, 形容词, 逗号, 大写字母). Reply with the Chinese translation only, nothing else.",
