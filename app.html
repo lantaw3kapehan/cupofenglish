@@ -7409,7 +7409,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1986;
+const COE_V = 1987;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -15382,16 +15382,18 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
     const total = pts.reduce((a, b) => a + b, 0); if(LV.indexOf(cefr) < 0) cefr = rub(total);
     group = t._g || r.pick || group || t.group || '';
     if(!group){ try{ const a = window.coeAge && t.code ? coeAge(t.code) : null; if(a && a.age != null) group = a.age <= 10 ? 'Young learner (≤10)' : a.age <= 17 ? 'Teen (11–17)' : 'Adult (18+)'; }catch(x){} }
-    return { book: String(r.book || ''), student: t.student, cn: t.cn || (d && d[34]) || '', code: t.code || (d && d[33]) || c.code || '', date: t.date, time: t.time || hm(d && d[3]) || c.time || '', teacher, pts, total, cefr, comm: String(comm || '').trim(), next: String(next || '').trim(), commZh, nextZh, group, notes: t._notes || [], notesZh: t._notesZh || [], label: d ? d[0] : '' }; }
+    return { book: String(f.book || r.book || ''), rec: !!f.book, student: t.student, cn: t.cn || (d && d[34]) || '', code: t.code || (d && d[33]) || c.code || '', date: t.date, time: t.time || hm(d && d[3]) || c.time || '', teacher, pts, total, cefr, comm: String(comm || '').trim(), next: String(next || '').trim(), commZh, nextZh, group, notes: t._notes || [], notesZh: t._notesZh || [], label: d ? d[0] : '' }; }
   const prefix = g => /business/i.test(g) ? 'AdultB|' : /work/i.test(g) ? 'AdultW|' : /adult/i.test(g) ? 'Adult|' : /teen/i.test(g) ? 'Teen|' : '';
   function path(lv, g){ const P = TB.path || [], k = prefix(g) + lv; return P.find(x => x[0] === k) || P.find(x => x[0] === lv) || null; }
   function can(k, lv){ const r = (TB.cefr || []).find(x => x[0] === k + '|' + lv); return r ? [r[3], r[4]] : ['', '']; }
   /* 2280: the trial's own phonics book named in the starting point and the roadmap */
   const OPW = { thealphabet: [1, 'The Alphabet', '字母'], shortvowels: [2, 'Short Vowels', '短元音'], shorvowels: [2, 'Short Vowels', '短元音'], longvowels: [3, 'Long Vowels', '长元音'],
     consonantblends: [4, 'Consonant Blends', '辅音组合'], letterblends: [5, 'Letter Combinations', '字母组合'], lettercombination: [5, 'Letter Combinations', '字母组合'], lettercombinations: [5, 'Letter Combinations', '字母组合'] };
-  function bookPath(p, F){ try{ const k = String(F.book || '').toLowerCase().replace(/[^a-z0-9]/g, ''), b = OPW[k]; if(!b || !p.length || !/phonics/i.test(String(p[5] || ''))) return p;
+  function bookPath(p, F){ try{ const k = String(F.book || '').toLowerCase().replace(/[^a-z0-9]/g, ''), b = OPW[k];
+      if(F.rec && !b && p.length && window.BK2311 && BK2311[k]){ const x = BK2311[k], q = p.slice(); q[5] = x[0] + ' — ' + x[2]; q[6] = x[1] + '——' + x[3]; return q; }   /* 2311: the teacher's recommended book */
+      if(!b || !p.length || (!F.rec && !/phonics/i.test(String(p[5] || '')))) return p;
       const q = p.slice(), en = 'Oxford Phonics World ' + b[0] + ' · ' + b[1], zh = '《牛津自然拼读》' + b[0] + '级 · ' + b[2];
-      q[5] = en + ' — ' + (String(p[5]).split(' — ')[1] || 'sound-by-sound phonics, so your child can read new words independently');
+      q[5] = en + ' — ' + ((/phonics/i.test(String(p[5] || '')) && String(p[5]).split(' — ')[1]) || 'sound-by-sound phonics, so your child can read new words independently');
       q[6] = zh + '——' + (String(p[6] || '').split('——')[1] || '系统掌握字母与发音规律，让孩子见词能读、独立阅读');
       q[7] = String(p[7] || '').replace(/Phonics\s*\(OPW 1–3\)/, 'Phonics (from OPW ' + b[0] + ' · ' + b[1] + ')');
       q[8] = String(p[8] || '').replace(/（OPW 1–3级）/, '（从' + b[0] + '级 · ' + b[2] + '开始）');
@@ -42542,6 +42544,60 @@ window.hwOpenCE2309 = function(){ try{ const e = typeof CE !== 'undefined' && CE
     try{ if(e && e.code && !e.cancelled && e.type !== 'Trial' && !(typeof D !== 'undefined' && D && D.mgr))
       h += ' <a class="m38 hw2310" onclick="event.stopPropagation();hwOpenEv2310(\'' + E(e.id) + '\')">Check homework</a>'; }catch(x){}
     return h; };
+})();
+</script>
+<style id="d2311">#trBk .bkg{font-size:13px;font-weight:600;color:#4B5563;margin:12px 0 6px}#trBk .seg button{white-space:nowrap}</style>
+<script id="b2311">
+/* 2311 · Recommended book in the trial report (teacher) → parent PDF starting point → management's CEFR & books */
+(function(){
+  if(window.__b2311) return; window.__b2311 = 1;
+  /* key (letters and digits of the book code) → [English, Chinese, what it does (EN), (ZH)] */
+  const OD = n => ['Oxford Discover ' + n, '《牛津探索》' + n + '级', 'an inquiry-based course that builds speaking, reading and writing through big questions', '以探究式问题为主线，全面提升听说读写能力'];
+  const RE = (n, z) => ['Reading Explorer ' + n, '《Reading Explorer》' + z, 'National Geographic readings that build reading skills and vocabulary', '国家地理真实阅读材料，提升阅读技巧与词汇量'];
+  window.BK2311 = {
+    razkids: ['Raz-Kids levelled readers', 'Raz-Kids 分级阅读', 'short levelled stories that build reading fluency step by step', '循序渐进的分级小故事，逐步提升阅读流利度'],
+    wondersk: ['Wonders Kindergarten', '《Wonders》K级', 'a US reading and language course with stories, phonics and vocabulary', '美国语文课程，融合故事、自然拼读与词汇'],
+    wonders1: ['Wonders Grade 1', '《Wonders》1级', 'a US reading and language course with stories, phonics and vocabulary', '美国语文课程，融合故事、自然拼读与词汇'],
+    od1: OD(1), od2: OD(2), od3: OD(3), od4: OD(4), od5: OD(5), od6: OD(6),
+    ref: RE('Foundations', '基础级'), re1: RE(1, '1级'), re2: RE(2, '2级'), re4: RE(4, '4级'),
+    ket: ['Cambridge A2 Key (KET)', '剑桥 A2 Key（KET）', 'exam preparation for reading, writing, listening and speaking', '针对考试的听说读写全面备考'],
+    pet: ['Cambridge B1 Preliminary (PET)', '剑桥 B1 Preliminary（PET）', 'exam preparation for reading, writing, listening and speaking', '针对考试的听说读写全面备考'],
+    ieltsspeaking: ['IELTS Speaking', '雅思口语', 'test practice with feedback on fluency, vocabulary, grammar and pronunciation', '模拟练习，并就流利度、词汇、语法和发音给予反馈'],
+    ieltswriting: ['IELTS Writing', '雅思写作', 'Task 1 and Task 2 practice with detailed feedback', '小作文与大作文练习，并提供详细批改'],
+    toefl: ['TOEFL', '托福', 'test practice across all four skills', '四项技能的考试练习'],
+    dailyenglish: ['Daily English', '日常英语', 'practical English for everyday situations', '日常生活场景中的实用英语'],
+    freetalk: ['Free talk', '自由会话', 'guided conversation that builds fluency and confidence', '引导式对话，提升口语流利度与自信'],
+    businessenglish: ['Business English', '商务英语', 'English for meetings, emails and presentations', '会议、邮件与演讲等职场英语'],
+    debate: ['Debate', '辩论', 'structured speaking that builds reasoning and confidence', '结构化表达，提升逻辑思维与自信'] };
+  /* the choices teachers see: [group, [[code saved, label]]] */
+  const PH = ['Phonics', [['TheAlphabet', 'The Alphabet'], ['ShortVowels', 'Short Vowels'], ['LongVowels', 'Long Vowels'], ['ConsonantBlends', 'Consonant Blends'], ['LetterCombination', 'Letter Combinations']]];
+  const RD = ['Reading', [['Raz Kids', 'Raz-Kids'], ['Wonders K', 'Wonders K'], ['Wonders 1', 'Wonders 1'], ['RE-F', 'Reading Explorer F'], ['RE-1', 'Reading Explorer 1'], ['RE-2', 'Reading Explorer 2'], ['RE-4', 'Reading Explorer 4']]];
+  const ODG = ['Oxford Discover', [1, 2, 3, 4, 5, 6].map(n => ['OD' + n, 'OD' + n])];
+  const EX = ['Exams', [['KET', 'KET'], ['PET', 'PET'], ['IELTS Speaking', 'IELTS Speaking'], ['IELTS Writing', 'IELTS Writing'], ['TOEFL', 'TOEFL']]];
+  const AD = ['Courses', [['Daily English', 'Daily English'], ['Freetalk', 'Free talk'], ['BusinessEnglish', 'Business English'], ['Debate', 'Debate']]];
+  const order = g => /^Adult/.test(g || '') ? [AD, EX, ODG, RD, PH] : /^Teen/.test(g || '') ? [ODG, RD, EX, AD, PH] : [PH, RD, ODG, EX, AD];
+  const H = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function box(){ try{ const b = (typeof TRS !== 'undefined' && TRS && TRS.book) || '', G = order(typeof TRS !== 'undefined' && TRS ? TRS.group : '');
+    return '<section class="sec" id="trBk"><h2>Recommended book</h2><div class="small mute">The book you suggest to start with. It shows on the parent PDF as the starting point, and management sees it when the student enrols.</div>' +
+      G.map(([t, L]) => '<div class="bkg">' + t + '</div><div class="seg" style="flex-wrap:wrap;margin-top:0">' + L.map(([v, l]) => '<button type="button" class="' + (v === b ? 'on' : '') + '" onclick="trBook2311(\'' + H(v) + '\')">' + H(l) + '</button>').join('') + '</div>').join('') + '</section>'; }catch(e){ return ''; } }
+  window.trBook2311 = function(v){ try{ TRS.book = TRS.book === v ? '' : v; trSave(); const el = document.getElementById('trBk'); if(el) el.outerHTML = box(); }catch(e){} };
+  const gb = window.trGrpBox; if(typeof gb === 'function') window.trGrpBox = function(){ return gb.apply(this, arguments) + box(); };
+  const gr = window.trGrp; if(typeof gr === 'function') window.trGrp = function(){ const o = document.getElementById('trBk'); if(o) o.remove(); return gr.apply(this, arguments); };
+  const sd = window.trSend; if(typeof sd === 'function') window.trSend = function(){ try{ if(typeof TRF !== 'undefined' && TRF && typeof TRS !== 'undefined' && TRS && TRS.group && !TRS.book){ toast('Pick the recommended book'); const el = document.getElementById('trBk'); if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; } }catch(e){} return sd.apply(this, arguments); };
+  const wrap = base => { const w = function(fn, tok, ctx, body){ try{ if(fn === 'tTrialSubmit' && body && typeof body === 'object' && typeof TRS !== 'undefined' && TRS && TRS.book && !body.book) body.book = TRS.book; }catch(e){} return base.apply(this, arguments); };
+    for(const k in base) try{ w[k] = base[k]; }catch(e){} w.__2311 = 1; return w; };
+  if(typeof window.api === 'function') window.api = wrap(window.api);
+  if(typeof window.apiNow === 'function') window.apiNow = apiNow = wrap(window.apiNow);
+  /* management: the student record's CEFR & books filled from the trial report while it is still empty */
+  async function fill(){ try{ const s = document.getElementById('sCb'); if(!s || s.value || s.dataset.f2311) return; s.dataset.f2311 = '1';
+      const day = ((document.getElementById('sTd') || {}).value || '').slice(0, 10), nm = ((document.getElementById('sEn') || {}).value || '').trim(); if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || !nm) return;
+      const r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'trialData', token: TOKEN, date: day, student: nm, tables: false }) }).then(x => x.json()).catch(() => null);
+      const f = r && r.ok && r.sub && r.sub.f; if(!f || !f.book) return; const s2 = document.getElementById('sCb'); if(!s2 || s2.value) return;
+      const lv = ((document.getElementById('sTc') || {}).value || '').trim() || ((r.tr && r.tr.data && (r.tr.data[22] || r.tr.data[23] || r.tr.data[20])) || ''), v = (lv ? lv + ', ' : '') + f.book;
+      if(![...s2.options].some(o => o.value === v)){ const o = document.createElement('option'); o.value = v; o.textContent = v; s2.appendChild(o); }
+      s2.value = v; s2.dispatchEvent(new Event('change', { bubbles: true }));
+      s2.insertAdjacentHTML('afterend', '<div class="small" style="color:#00737B;margin-top:4px">From the trial report' + (r.sub.who ? ' · Teacher ' + H(r.sub.who) : '') + ' recommended ' + H(f.book) + '</div>'); }catch(e){} }
+  const sf = window.stuForm; if(typeof sf === 'function') window.stuForm = async function(){ const r = await sf.apply(this, arguments); setTimeout(fill, 60); setTimeout(fill, 1500); return r; };
 })();
 </script>
 <script id="b2278">
