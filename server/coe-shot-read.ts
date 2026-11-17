@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-shot-read v1 (12 Nov 2026, 2141) · reads every time-in / "I'm in" screen picture for the Wi-Fi icon.
+// CupOfEnglish · coe-shot-read v6 (from v1 (12 Nov 2026, 2141) · reads every time-in / "I'm in" screen picture for the Wi-Fi icon.
 // Misty 17:31–17:35: laptops can't report Wi-Fi to the browser, so the picture itself is the proof: the teacher shares the entire
 // screen (VooV + date/time + the LAN cable icon). This reads the network icon in each new picture:
 //   cable / no Wi-Fi icon → nothing · Wi-Fi icon → coe_wifi_flag(teacher, 'proof', picture, 'Picture check') = the contract warning,
@@ -14,6 +14,7 @@
 //   the Ethernet <··> symbol; no Wi-Fi icon in the menu bar = unclear. Mac teachers: Wi-Fi off during class, Wi-Fi icon kept in the menu bar.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
+import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";   // v6: crop and enlarge the taskbar for a second look
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const LIVE0 = Deno.env.get("COE_SHOT_LIVE") === "1";   // trial first: without it, a Wi-Fi reading only tells Operations (no lock)
 // v5 (13 Nov, 2157 · Misty "we can turn the lock on now"): live = the secret OR docs sys:live.shotLive = true (switch without a deploy)
@@ -31,14 +32,34 @@ Answer:
 - "cable" for the Windows monitor-with-cable icon, or a Mac whose Wi-Fi icon shows Wi-Fi turned off / Ethernet.
 - "wifi" for the solid curved-arcs Wi-Fi icon (Windows or Mac).
 - "unclear" if the taskbar / menu bar is hidden, cut off or covered, or a Mac shows no Wi-Fi icon at all in the menu bar, so you cannot tell.
+Do not confuse the network icon with other tray icons: the microphone-in-use icon, the location icon, VPN, Bluetooth, OneDrive, app icons, or the "speaking" signal bars inside VooV / Tencent Meeting.
 Reply with JSON only: {"net":"wifi"|"cable"|"unclear","os":"windows"|"mac"|"other","why":"<max 15 words>"}`;
-async function readOne(bytes: Uint8Array, mime: string) {
+// v6 (17 Nov, Misty 20:02 "Kat was using LAN but she was deducted wifi?"): a "wifi" reading is checked a second time on the taskbar
+//   (or Mac menu bar) cut out and enlarged 3×. Only when that second look also sees Wi-Fi is the teacher flagged; otherwise the reading
+//   becomes "unclear" and Operations looks at the picture (nothing locked, no contract warning). Kat 19:57 was a misread (monitor icon).
+const ASK2 = `This is the bottom-right taskbar (Windows) or top-right menu bar (Mac) of a teacher's screen, cut out and enlarged.
+Go through the small status icons one by one and find the NETWORK icon (on Windows: just left of the speaker/volume icon).
+- Windows LAN cable (Ethernet) = a small computer MONITOR / screen shape (maybe with a plug or globe). → "cable"
+- Wi-Fi = a fan of 3–4 curved ARCS widening upwards, like a quarter circle of waves. → "wifi"
+- Mac with the Wi-Fi fan as an outline / slashed, or the Ethernet <··> symbol → "cable"; Mac with a solid Wi-Fi fan → "wifi".
+The microphone-in-use icon, location pin, battery, speaker, VPN or app icons are NOT the network icon.
+If you cannot see a network icon clearly, answer "unclear".
+Reply with JSON only: {"net":"wifi"|"cable"|"unclear","why":"<max 15 words>"}`;
+async function corner(bytes: Uint8Array, mac: boolean): Promise<Uint8Array | null> {
+  try {
+    const im = await Image.decode(bytes); const W = im.width, H = im.height;
+    const c = mac ? im.crop(Math.round(W * .5), 0, Math.round(W * .5), Math.max(24, Math.round(H * .06)))
+                  : im.crop(Math.round(W * .5), Math.round(H * .9), Math.round(W * .5), Math.round(H * .1));
+    c.resize(c.width * 3, Image.RESIZE_AUTO); return await c.encode();
+  } catch (_e) { return null; }
+}
+async function readOne(bytes: Uint8Array, mime: string, ask: string = ASK) {
   const ac = new AbortController(), t = setTimeout(() => ac.abort(), 40000);
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", signal: ac.signal,
       headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({ model: MODEL, max_tokens: 1500, messages: [{ role: "user", content: [
-        { type: "image", source: { type: "base64", media_type: mime, data: b64(bytes) } }, { type: "text", text: ASK }] }] }) });
+        { type: "image", source: { type: "base64", media_type: mime, data: b64(bytes) } }, { type: "text", text: ask }] }] }) });
     const j = await r.json();
     if (!r.ok) return { net: "error", why: String(j?.error?.message || r.status).slice(0, 160) };
     const txt = String((j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("")), m = txt.match(/\{[^{}]*"net"[^{}]*\}/);
@@ -52,6 +73,13 @@ Deno.serve(async (req: Request) => {
   if (!KEY) return out({ ok: false, off: true });
   const { data: SL } = await db.from("docs").select("data").eq("key", "sys:live").maybeSingle();
   const LIVE = LIVE0 || !!(SL && (SL as any).data && (SL as any).data.shotLive === true);
+  // v6: read-only test of one stored picture (no flag, nothing saved): { test: "<proofs path>", code } with code = docs sys:shottest.code
+  try { const tb = await req.clone().json().catch(() => null) as any;
+    if (tb && tb.test) { const { data: T } = await db.from("docs").select("data").eq("key", "sys:shottest").maybeSingle();
+      if (!T || !(T as any).data || !(T as any).data.code || (T as any).data.code !== tb.code) return out({ ok: false }, 403);
+      const { data: f } = await db.storage.from("proofs").download(String(tb.test)); if (!f) return out({ ok: false, error: "no picture" });
+      const u = new Uint8Array(await f.arrayBuffer()); const r1 = await readOne(u, "image/jpeg"); const z = await corner(u, r1.os === "mac");
+      const r2 = z ? await readOne(z, "image/png", ASK2) : null; return out({ ok: true, r1, r2, crop: z ? z.length : 0 }); } } catch (_e) { /* not a test */ }
   const { data: L, error } = await db.rpc("coe_shot_claim", { p_n: 6 });
   if (error) return out({ ok: false, error: "db" }, 500);
   const done: any[] = [];
@@ -60,7 +88,11 @@ Deno.serve(async (req: Request) => {
     try {
       const path = String(x.url).split("/object/public/proofs/")[1] || "";
       const { data: f, error: fe } = path ? await db.storage.from("proofs").download(decodeURIComponent(path)) : { data: null, error: "no path" } as any;
-      if (!fe && f) { const u = new Uint8Array(await f.arrayBuffer()); res = await readOne(u, /\.png$/i.test(path) ? "image/png" : "image/jpeg"); }
+      if (!fe && f) { const u = new Uint8Array(await f.arrayBuffer()); res = await readOne(u, /\.png$/i.test(path) ? "image/png" : "image/jpeg");
+        if (res.net === "wifi") {   // v6: second look at the enlarged taskbar before anyone is flagged
+          const z = await corner(u, res.os === "mac"); const r2 = z ? await readOne(z, "image/png", ASK2) : { net: "error", why: "could not cut the taskbar" };
+          if (r2.net !== "wifi") res = { ...res, net: "unclear", why: ("2nd look: " + r2.net + " · " + (r2.why || "") + " · 1st: " + (res.why || "")).slice(0, 160) };
+          else res = { ...res, why: ("confirmed · " + (res.why || "")).slice(0, 160) }; } }
     } catch (e) { res = { net: "error", why: String((e as Error)?.message || e).slice(0, 160) }; }
     let flagged = false;
     // Operations already allowed Wi-Fi today (cable internet down / written approval) → no new lock
