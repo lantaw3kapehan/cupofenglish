@@ -523,13 +523,14 @@ async function pagePic(){ const p = await doc.getPage(pageNo), v1 = p.getViewpor
   if(!cr){ const lg = logoBottom(pg); if(lg){ const m = Math.round(pg.width * 0.01); g0.fillStyle = lg.c; g0.fillRect(lg.x - m, lg.y - m, lg.w + 2 * m, lg.h + 2 * m); } }
   drawInk(pg);
   const W = pg.width, band = Math.round(W * 0.07), foot = Math.round(W * 0.06), out = document.createElement('canvas'); out.width = W; out.height = hh + band + foot; const g = out.getContext('2d');
-  g.fillStyle = '#2F6F78'; g.fillRect(0, 0, W, band); g.drawImage(pg, 0, band);
+  { const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, '#14B3A7'); gr.addColorStop(1, '#0E8F86'); g.fillStyle = gr; g.fillRect(0, 0, W, band); }   /* 2325: official CupOfEnglish teal, as on the parent cards */
+  g.drawImage(pg, 0, band);
   /* 2324: footer · 一杯英语 CupOfEnglish logo and the date, so a forwarded or saved picture still shows where it came from */
   g.fillStyle = '#fff'; g.fillRect(0, band + hh, W, foot); g.fillStyle = '#E3E1EA'; g.fillRect(0, band + hh, W, Math.max(1, Math.round(W * 0.001)));
   try{ const lg = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = 'logo.png'; }); const lh = Math.round(foot * 0.56), lw = Math.round(lg.width * lh / lg.height); g.drawImage(lg, Math.round(band * 0.45), band + hh + Math.round((foot - lh) / 2), lw, lh); }catch(e){}
   { const d = new Date(), M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; g.fillStyle = '#6B6880'; g.font = '500 ' + Math.round(foot * 0.3) + 'px Inter, sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'right'; g.fillText(d.getDate() + ' ' + M[d.getMonth()] + ' ' + d.getFullYear(), W - Math.round(band * 0.45), band + hh + foot / 2); g.textAlign = 'left'; }
-  const fs = Math.round(band * 0.42); g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.font = '700 ' + fs + 'px Inter, "Noto Sans SC", sans-serif';
-  const L = Math.round(band * 0.45); g.fillText('Homework · 作业', L, band / 2);
+  const fs = Math.round(band * 0.42); g.textBaseline = 'middle'; g.fillStyle = '#fff'; try{ await fontsReady(); }catch(e){} g.font = '600 ' + fs + 'px Fredoka, "Noto Sans SC", sans-serif';
+  const L = Math.round(band * 0.45); g.fillText('Homework / 作业', L, band / 2);
   const bk = String(LABEL || $('bk').textContent || '').trim(), cf = FILES.find(x => x.id === FID), side = cf && isMain(cf) ? mainLabel(cf.name) : '', right = [bk, side, UNIT != null ? 'Unit ' + UNIT : ''].filter(Boolean).join(' · ');   /* 2324: Workbook / Student's Book */
   if(right){ g.font = '500 ' + Math.round(fs * 0.8) + 'px Inter, "Noto Sans SC", sans-serif'; g.textAlign = 'right'; let t = right; while(g.measureText(t).width > W * 0.55 && t.length > 4) t = t.slice(0, -2); if(t !== right) t = t.trim() + '…'; g.fillText(t, W - L, band / 2); g.textAlign = 'left'; }
   return out; }
