@@ -39,9 +39,9 @@ Deno.serve(async (req: Request) => {
             "In class-change reasons, he / she / they means the student or the family, never things (use 孩子 or 家长 as fits, never 它们), and say it the way a centre tells a parent, e.g. They will start next week. → 孩子下周开始上课。 The student is sick. → 孩子身体不适。 " +
             "Never translate or transliterate a person's name: keep every name exactly as written in English letters (e.g. Well done, Lucy! → 干得好，Lucy！, never 露西)." + (NAMES.length ? " These names must stay exactly as written: " + NAMES.join(", ") + "." : "") + " " +
             "Use 你 for the student in homework and notes. Use common Chinese terms for school tasks (e.g. 作文, 造句, 形容词, 逗号, 大写字母). The text to translate comes inside <text> tags. Reply with the Chinese translation only, inside <zh> tags: no English version, no notes, no corrections or comments about your answer.",
-          messages: [{ role: "user", content: "<text>\n" + text + "\n</text>" }, { role: "assistant", content: "<zh>" }], stop_sequences: ["</zh>"] }) }).finally(() => clearTimeout(tid));
+          messages: [{ role: "user", content: "<text>\n" + text + "\n</text>" } ] }) }).finally(() => clearTimeout(tid));
       const j = await r.json();
-      const zh0 = r.ok ? String((j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("")).replace(/<\/?zh>/g, "").trim() : "";
+      const zh0 = r.ok ? String((j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("")).replace(/^[\s\S]*?<zh>/, "").replace(/<\/zh>[\s\S]*$/, "").trim() : "";
       // 2391 (Misty 18 Nov 21:55, Penny's homework showed the English twice): a line with no Chinese in it is kept only when it is in the
       // teacher's own text (a target word or example sentence); an English rewording or a remark from the translator is dropped
       const CJK = /[\u3400-\u9fff]/, flat = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(), src = flat(text);
