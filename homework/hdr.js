@@ -4,7 +4,7 @@
    Used by homework/give.html, homework/writing.html, homework/index.html and reader/index.html (book page copy). */
 (function(){
   const FT = '"COE Card Fredoka", Fredoka, "Fredoka One", "Noto Sans SC", sans-serif', FI = '"COE Card Inter", Inter, "Noto Sans SC", "PingFang SC", sans-serif';
-  const TEAL = '#0E8F86', GREY = '#6B6880', LINE = '#E3E1EA';
+  const TEAL = '#00ACB8'   /* 18 Nov 19:58 (Misty, option 1): the cup colour of the logo */, GREY = '#6B6880', LINE = '#E3E1EA';
   const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const today = () => { const d = new Date(); return d.getDate() + ' ' + MO[d.getMonth()] + ' ' + d.getFullYear(); };
   /* shrink a large logo in halves with high-quality smoothing, so it stays crisp */
@@ -25,8 +25,14 @@
       g.drawImage(crisp(o.logo, lw), P, Math.round(top + (row - lh) / 2), lw, lh); }
     else { g.fillStyle = '#2B2253'; g.font = '600 ' + (20 * u) + 'px ' + FT; g.fillText('CupOfEnglish', P, top + 26 * u); lw = g.measureText('CupOfEnglish').width; }
     const room = W - 2 * P - lw - 20 * u;
-    g.textAlign = 'right'; g.fillStyle = TEAL;
-    const t = fit(g, o.title || 'Homework / 作业', s => '600 ' + s + 'px ' + FT, 19 * u, 13 * u, room); g.fillText(t, W - P, top + 19 * u);
+    /* the English leads: "Homework" full size, " / 作业" at 72 % (Misty 18 Nov 19:56) */
+    const title = o.title || 'Homework / 作业', cut = title.indexOf(' / '), en = cut > 0 ? title.slice(0, cut) : title, zh = cut > 0 ? title.slice(cut) : '';
+    let big = 19 * u; const wOf = b => { g.font = '600 ' + b + 'px ' + FT; const a = g.measureText(en).width; g.font = '600 ' + (b * 0.72) + 'px ' + FT; return a + (zh ? g.measureText(zh).width : 0); };
+    while(wOf(big) > room && big > 12 * u) big -= 0.5;
+    g.fillStyle = TEAL; g.textAlign = 'left'; const ty = top + 19 * u, x0 = W - P - wOf(big);
+    g.font = '600 ' + big + 'px ' + FT; const ew = g.measureText(en).width; g.fillText(en, x0, ty);
+    if(zh){ g.font = '600 ' + (big * 0.72) + 'px ' + FT; g.fillText(zh, x0 + ew, ty); }
+    g.textAlign = 'right';
     const meta = (o.meta || []).filter(Boolean).concat(o.date === false ? [] : [o.date || today()]).join('  ·  ');
     if(meta){ g.fillStyle = GREY; const m = fit(g, meta, s => '400 ' + s + 'px ' + FI, 12 * u, 9 * u, room); g.fillText(m, W - P, top + 19 * u + 3 * u + 12 * u); }
     g.textAlign = 'left';
