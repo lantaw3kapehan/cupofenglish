@@ -22,6 +22,10 @@ Deno.serve(async (req: Request) => {
   if (!s || new Date(s.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
   // 2328 (Misty 17 Nov: "keep the Chinese, just ensure it is accurate and native"): homework and notes for Chinese parents are translated
   // by Claude with an education-centre brief (natural Simplified Chinese a native teacher would write); Google is the fallback.
+  // 18 Nov (Misty: "keep their student's name as exactly it is"): names given by the caller are kept letter for letter (Lucy stays Lucy, never 露西)
+  const NAMES: string[] = (Array.isArray(b.names) ? b.names : []).map((x: unknown) => String(x || "").trim()).filter((x: string) => x.length > 1 && x.length < 40).slice(0, 8);
+  const lock = (t: string) => { let o = t; NAMES.forEach((n, i) => { o = o.replace(new RegExp("\\b" + n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "gi"), "ZQX" + i + "Q"); }); return o; };
+  const unlock = (t: string) => t.replace(/ZQX\s*(\d)\s*Q/gi, (_m, i) => NAMES[+i] || _m);
   if (fn === "trZhParent") {
     const KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
     if (KEY) try {
@@ -33,6 +37,7 @@ Deno.serve(async (req: Request) => {
             "Write natural, warm, professional Chinese exactly as an experienced native Chinese teacher at a language centre would write to parents: clear, polite, never stiff or word-for-word. " +
             "Keep the exact meaning, numbers, word counts, dates, page and unit numbers. Keep personal names, book titles and English words or sentences the student must use in English (e.g. target words, example sentences in quotes). " +
             "In class-change reasons, he / she / they means the student or the family, never things (use 孩子 or 家长 as fits, never 它们), and say it the way a centre tells a parent, e.g. They will start next week. → 孩子下周开始上课。 The student is sick. → 孩子身体不适。 " +
+            "Never translate or transliterate a person's name: keep every name exactly as written in English letters (e.g. Well done, Lucy! → 干得好，Lucy！, never 露西)." + (NAMES.length ? " These names must stay exactly as written: " + NAMES.join(", ") + "." : "") + " " +
             "Use 你 for the student in homework and notes. Use common Chinese terms for school tasks (e.g. 作文, 造句, 形容词, 逗号, 大写字母). Reply with the Chinese translation only, nothing else.",
           messages: [{ role: "user", content: text }] }) }).finally(() => clearTimeout(tid));
       const j = await r.json();
@@ -44,10 +49,10 @@ Deno.serve(async (req: Request) => {
   const [sl, tl] = fn === "trEn" ? ["zh-CN", "en"] : ["en", "zh-CN"];
   try {
     const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 6000);
-    const u = "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=" + sl + "&tl=" + tl + "&q=" + encodeURIComponent(text);
+    const u = "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=" + sl + "&tl=" + tl + "&q=" + encodeURIComponent(lock(text));   // names locked, put back below
     const x = await fetch(u, { signal: ac.signal, headers: { "User-Agent": "Mozilla/5.0 (CupOfEnglish app)" } }).finally(() => clearTimeout(tid));
     const raw = await x.text(); let r: any = null; try { r = JSON.parse(raw); } catch (_e) { /* not JSON */ }
-    const res = (Array.isArray(r) && Array.isArray(r[0]) ? r[0] : []).map((p: any) => (Array.isArray(p) ? String(p[0] || "") : "")).join("").trim();
+    const res = unlock((Array.isArray(r) && Array.isArray(r[0]) ? r[0] : []).map((p: any) => (Array.isArray(p) ? String(p[0] || "") : "")).join("").trim());
     if (!res) return out({ ok: false, error: "no answer", why: x.status + " " + raw.slice(0, 120) });
     return out(fn === "trEn" ? { ok: true, en: res } : { ok: true, zh: res });
   } catch (e) { return out({ ok: false, error: "no answer", why: String((e as Error).message || e).slice(0, 160) }); }

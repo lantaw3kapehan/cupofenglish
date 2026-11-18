@@ -533,12 +533,16 @@ async function zhNow(){ const v = ($('note') || {}).value || ''; const t = v.tri
   if(ZH.src === t && ZH.zh) return ZH.zh;
   if(bx){ bx.style.display = ''; bx.textContent = 'Chinese translation: translating…'; }
   let zh = '';
-  try{ const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 5000);   /* the same engine straight from this browser (as the app does, 2082) */
-    const j = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=en&tl=zh-CN&q=' + encodeURIComponent(t), { signal: ac.signal }).then(x => x.json()).finally(() => clearTimeout(tid));
-    zh = (Array.isArray(j) && Array.isArray(j[0]) ? j[0] : []).map(p => Array.isArray(p) ? String(p[0] || '') : '').join('').trim(); }catch(e){}
-  if(!zh) try{ const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 7000);
-    const r = await fetch(SB + 'coe-tr', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, fn: 'trZh', text: t }), signal: ac.signal }).then(x => x.json()).finally(() => clearTimeout(tid));
+  /* 18 Nov (Misty: "keep their student's name as exactly it is"): our parent translator first (natural Chinese, told the student's name),
+     then the quick engine with the name locked and put back, so Lucy stays Lucy (never 露西) */
+  const names = [NAME].concat(String(NAME || '').split(/\s+/)).map(x => String(x || '').trim()).filter(x => x.length > 1);
+  try{ const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 14000);
+    const r = await fetch(SB + 'coe-tr', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, fn: 'trZhParent', text: t, names }), signal: ac.signal }).then(x => x.json()).finally(() => clearTimeout(tid));
     zh = (r && r.ok && r.zh) || ''; }catch(e){}
+  if(!zh) try{ const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 5000), esc0 = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let q = t; names.forEach((n, i) => { q = q.replace(new RegExp('\\b' + esc0(n) + '\\b', 'gi'), 'ZQX' + i + 'Q'); });
+    const j = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=en&tl=zh-CN&q=' + encodeURIComponent(q), { signal: ac.signal }).then(x => x.json()).finally(() => clearTimeout(tid));
+    zh = (Array.isArray(j) && Array.isArray(j[0]) ? j[0] : []).map(p => Array.isArray(p) ? String(p[0] || '') : '').join('').trim().replace(/ZQX\s*(\d)\s*Q/gi, (m, i) => names[+i] || m); }catch(e){}
   if((($('note') || {}).value || '').trim() !== t) return zh;
   ZH = { src: t, zh }; if(bx){ bx.style.display = ''; bx.textContent = zh ? 'Chinese translation: ' + zh : 'The Chinese could not be made just now. The picture will show the English only.'; } return zh; }
 
