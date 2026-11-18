@@ -5,7 +5,7 @@
 //   gaps     { token }                                   management: per book, how many student books / workbooks / audio / video
 //   hwGet    { token, code, day }                        staff: the listening homework set for a class
 //   hwSet    { token, code, day, book, files:[{id,title}] }  staff: set it (empty list removes it)
-//   stuHw    { stoken }                                  student portal: the family's listening homework (last 120 days)
+//   stuHw    { stoken }                                  student portal: the family's listening homework (last 120 days) · v7 (2379): + work (writing feedback, homework pictures)
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
@@ -27,7 +27,14 @@ Deno.serve(async (req: Request) => {
       if (!ss || new Date(ss.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
       const since = new Date(Date.now() - 120 * 864e5).toISOString().slice(0, 10);
       const { data } = await db.from("coe_hw_audio").select("day,teacher,book,files").eq("code", ss.code).gte("day", since).order("day", { ascending: false });
-      return out({ ok: true, list: (data || []).filter((x: any) => (x.files || []).length) });
+      // 2379 (Misty 18 Nov, "parent portal shows writing feedback and homework pictures"): checked homework, writing feedback and homework given, with the marked picture
+      const { data: W } = await db.from("coe_hw_checks").select("id,day,kind,title,teacher,note,note_zh,counts,img_marked").eq("code", ss.code).is("removed_at", null).neq("portal", false)
+        .in("kind", ["writing", "given", "picture"]).not("img_marked", "is", null).gte("day", since).order("day", { ascending: false }).order("id", { ascending: false }).limit(30);
+      const P = [...new Set((W || []).map((x: any) => x.img_marked).filter(Boolean))] as string[], U: Record<string, string> = {};
+      if (P.length) { const { data: S } = await db.storage.from("homework").createSignedUrls(P, 6 * 3600); (S || []).forEach((x: any) => { if (x && x.path && x.signedUrl) U[x.path] = x.signedUrl; }); }
+      const work = (W || []).filter((x: any) => U[x.img_marked]).map((x: any) => { const c = x.counts || {}; return { id: x.id, day: x.day, kind: x.kind, title: x.title || "", teacher: x.teacher || "", note: x.note || "", note_zh: x.note_zh || "",
+        overall: c.overall ?? null, words: c.words ?? null, url: U[x.img_marked] }; });
+      return out({ ok: true, list: (data || []).filter((x: any) => (x.files || []).length), work });
     }
     const s = await staff(String(b.token || "")); if (!s) return out({ ok: false, error: "AUTH" }, 401);
     const mgr = s.mode === "mgmt";
