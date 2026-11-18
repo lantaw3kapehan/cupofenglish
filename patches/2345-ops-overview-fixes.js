@@ -1,0 +1,7 @@
+// 2345: her Overview fixes (white greeting, no guessed shift, other cards under her summary).
+const file = process.argv[2];
+const inc = "<script id=\"b2345\">\n/* 18 Nov · 2345 · her Overview: white greeting on the dark card, no guessed shift text, and cards other parts of the app add to the Overview\n   (e.g. Lates to decide) sit under her own summary instead of above it. */\n(function(){\n  var st = document.createElement('style'); st.textContent = '#om2344 .ov-hero h1{color:#fff!important;font-size:40px}#om2344 .ov-hero{margin-bottom:2px}#v-home>.om2345x{margin-top:14px}'; document.head.appendChild(st);\n  var tidy = function(){ try{ var v = document.getElementById('v-home'), om = document.getElementById('om2344'); if(!v || !om) return; var t = om.querySelector('.tiles'); if(!t) return;\n      [].slice.call(v.children).forEach(function(c){ if(c !== om){ c.classList.add('om2345x'); om.insertBefore(c, t.nextSibling); } }); }catch(e){} };\n  var mo = new MutationObserver(function(){ tidy(); });\n  var arm = function(){ var v = document.getElementById('v-home'); if(v && !v.__om2345){ v.__om2345 = 1; mo.observe(v, { childList: true }); } tidy(); };\n  setInterval(arm, 1500); arm();\n})();\n\n</script>\n";
+require('../tools/lib.js')(file, [
+['<script id="b2278">', inc + '<script id="b2278">'],
+["<div class=\"ov-eye\">' + E(dateTxt) + ' \u00b7 ' + shiftTxt() + (d.timein ? ' \u00b7 timed in ' + E(d.timein) : '') + '</div>", "<div class=\"ov-eye\">' + E(dateTxt) + (d.timein ? ' \u00b7 timed in ' + E(d.timein) : ' \u00b7 not timed in yet') + '</div>"]
+]);
