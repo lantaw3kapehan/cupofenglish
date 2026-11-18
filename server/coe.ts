@@ -433,9 +433,13 @@ async function teacherHomeLive(db: any, who: any, base: any) {
   trows.forEach((r) => { const d = ymdOf(cell(r, 2)); if (d) reported[d + "|" + String(cell(r, 5)).trim().toLowerCase()] = 1; });
   ((base && base.special) || []).forEach((x: any) => { if (x && x.type === "Trial" && !x.reportMissing) reported[x.date + "|" + String(x.student).trim().toLowerCase()] = 1; });
   const special: any[] = [], typeByEvent: Record<string, any> = {};
+  // 18 Nov (Misty): only the first trial (first touch) has the official trial report; a later trial with another teacher never asks for one
+  const firstTr: Record<string, string> = {};
+  tc.rows.forEach((r) => { const k = String(cell(r, 3) || cell(r, 4) || "").trim().toUpperCase(), w = String(ymdOf(cell(r, 0)) || "") + " " + hm(cell(r, 0)); if (!k || cell(r, 2) !== "Trial" || /cancel/i.test(String(cell(r, 9))) || w.length < 10) return; if (!firstTr[k] || w < firstTr[k]) firstTr[k] = w; });
+  const laterTrial = (r: any, d: string) => { const k = String(cell(r, 3) || cell(r, 4) || "").trim().toUpperCase(), f = firstTr[k]; return !!f && f < d + " " + hm(cell(r, 0)) && (Date.parse(d) - Date.parse(f.slice(0, 10))) / 864e5 <= 60; };
   tc.rows.forEach((r) => { if (cell(r, 12)) typeByEvent[String(cell(r, 12))] = cell(r, 2); const d = ymdOf(cell(r, 0)); if (!d || !nameIn(cell(r, 5), lc) || d < monthStart) return;
-    special.push({ date: d, time: hm(cell(r, 0)), type: cell(r, 2), code: cell(r, 3), student: cell(r, 4), book: cell(r, 6), cefr: cell(r, 7), units: cell(r, 8), status: cell(r, 9),
-      reportMissing: cell(r, 2) === "Trial" && !/cancel/i.test(String(cell(r, 9))) && !reported[d + "|" + String(cell(r, 4)).trim().toLowerCase()] }); });
+    special.push({ date: d, time: hm(cell(r, 0)), type: cell(r, 2), code: cell(r, 3), student: cell(r, 4), book: cell(r, 6), cefr: cell(r, 7), units: cell(r, 8), status: cell(r, 2) === "Trial" && !cell(r, 9) && laterTrial(r, d) ? "Second trial · report by the first teacher" : cell(r, 9),
+      reportMissing: cell(r, 2) === "Trial" && !/cancel/i.test(String(cell(r, 9))) && !laterTrial(r, d) && !reported[d + "|" + String(cell(r, 4)).trim().toLowerCase()] }); });
   special.sort((a, b) => b.date.localeCompare(a.date));
   const nameByCode: Record<string, string> = {}, teacherByCode: Record<string, string> = {}; students.forEach((s) => nameByCode[s.code] = s.name);
   act.rows.forEach((r) => { const c = String(cell(r, iCode)); if (!/^ST-/.test(c)) return; if (!nameByCode[c]) nameByCode[c] = String(cell(r, iName)); teacherByCode[c] = (teacherByCode[c] ? teacherByCode[c] + "," : "") + String(cell(r, iT) || ""); });
