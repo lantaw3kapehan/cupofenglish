@@ -66,6 +66,7 @@ const sv = (x: any) => isD(x) ? dateStr(x) : String(x ?? "");                   
 const manila = (d = new Date()) => new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 19);   // "yyyy-MM-ddTHH:mm:ss" now in Manila
 
 async function loadTab(db: any, tab: string) {
+  if (tab === "TC&SUB") { try { return await loadTcSub(db); } catch (_e) { /* the sheet copy below */ } }
   const v: any[][] = [];
   for (let from = 0; from < 50000; from += 1000) {   // the API returns at most 1000 rows at a time
     const { data, error } = await db.from("sheet_rows").select("r,data").eq("tab", tab).order("r", { ascending: true }).range(from, from + 999);
@@ -75,6 +76,22 @@ async function loadTab(db: any, tab: string) {
   }
   for (let i = 0; i < v.length; i++) if (!v[i]) v[i] = [];
   return v;
+}
+// 2339 (18 Nov): trials & sub classes from the records (coe_rec TC&SUB: the app's own rows + Google's), not the sheet copy, which
+// stopped at 12 Nov (Kat's Judy trial, Rose's Lehan / Anya were missing from the teachers' "Trials & sub classes"). Same 13 cells; the header
+// row from the sheet copy; one row per class (an app row and Google's row for the same class are one).
+async function loadTcSub(db: any) {
+  const H = await db.from("sheet_rows").select("data").eq("tab", "TC&SUB").eq("r", 1).maybeSingle(), R: any = { data: [] as any[] };
+  for (let from = 0; from < 20000; from += 1000) {   // at most 1000 rows per read
+    const { data, error } = await db.from("coe_rec").select("key,data,src").eq("tab", "TC&SUB").is("gone_at", null).order("key").range(from, from + 999);
+    if (error) throw new Error("db"); R.data.push(...(data || [])); if (!data || data.length < 1000) break; }
+  if (!R.data.length) throw new Error("db");
+  const seen: Record<string, number> = {}, rows: any[][] = [];
+  R.data.filter((x: any) => Array.isArray(x.data)).sort((p: any, q: any) => (p.src === "sheet" ? 0 : 1) - (q.src === "sheet" ? 0 : 1)).forEach((x: any) => {
+    const d = x.data, k = String(d[3] || "").trim().toUpperCase() + "|" + String(d[0] || "").slice(0, 16) + "|" + String(d[2] || "").replace(/[^A-Za-z]/g, "").toLowerCase() + "|" + String(d[5] || "").trim().toLowerCase();
+    if (seen[k]) return; seen[k] = 1; const c = d.slice(); if (/^\s*trial/i.test(String(c[2] || ""))) c[2] = "Trial"; else if (/^\s*sub/i.test(String(c[2] || ""))) c[2] = "Sub"; rows.push(c); });
+  rows.sort((p, q) => String(q[0] || "").localeCompare(String(p[0] || "")));
+  return [((H.data && H.data.data) || ["DATE", "TIME", "TYPE", "ST CODE", "ENGLISH NAME", "TEACHER", "BOOK", "CEFR", "UNITS", "STATUS", "", "", "EVENT"])].concat(rows);
 }
 const TABS: Record<string, Promise<any[][]>> = {};   // one read per tab per request
 const KEEP: Record<string, { t: number; p: Promise<any[][]>; v: string }> = {};   // and kept for 60 s for the next requests on this server
