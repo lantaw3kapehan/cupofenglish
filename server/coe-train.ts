@@ -184,6 +184,13 @@ Deno.serve(async (req: Request) => {
       if (f.startsWith("coach/")) n += "\n§file:" + f; else if (/^https?:\/\//.test(v)) n += "\n§video:" + v;
       const { data, error } = await db.from("coe_training_records").update({ note: n.slice(0, 4000) }).eq("id", r.id).select().single(); return out({ ok: !error, error: error && error.message, record: data });
     }
+    // 2386 (Misty 18 Nov 20:38 "the removing is slow"): Wrong file · remove happens in the database at once (coe_vid_remove: the record is kept
+    // in coe_vid_removed, the class shows no video, the teacher gets a message and a phone alert); Google's Drive clean-up follows in the background.
+    if (a === "vf_remove") {
+      need(); const id = str(b.id, 140); if (!id) return out({ ok: false, error: "Which video?" });
+      const { data, error } = await db.rpc("coe_vid_remove", { p_event: id, p_by: me, p_reason: str(b.reason, 160) });
+      if (error) return out({ ok: false, error: error.message }); return out(data || { ok: false });
+    }
     // 23 Oct · video checks: management's OK / Needs action is saved here at once (Google can take a minute); every manager sees it right away
     if (a === "vf_dec" || a === "vf_decs") {
       need(); const { data: d0 } = await db.from("docs").select("data").eq("key", "mgmt:vfdec").maybeSingle(); let dec: any = (d0 && d0.data && typeof d0.data === "object") ? d0.data : {};
