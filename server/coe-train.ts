@@ -188,7 +188,8 @@ Deno.serve(async (req: Request) => {
     // in coe_vid_removed, the class shows no video, the teacher gets a message and a phone alert); Google's Drive clean-up follows in the background.
     if (a === "vf_remove") {
       need(); const id = str(b.id, 140); if (!id) return out({ ok: false, error: "Which video?" });
-      const { data, error } = await db.rpc("coe_vid_remove", { p_event: id, p_by: me, p_reason: str(b.reason, 160) });
+      const ds = /^\d{4}-\d{2}-\d{2}$/.test(String(b.ds || "")) ? String(b.ds) : null;
+      const { data, error } = await db.rpc("coe_vid_remove", { p_event: id, p_by: me, p_reason: str(b.reason, 160), p_day: ds });
       if (error) return out({ ok: false, error: error.message }); return out(data || { ok: false });
     }
     // 23 Oct · video checks: management's OK / Needs action is saved here at once (Google can take a minute); every manager sees it right away
