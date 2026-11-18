@@ -139,7 +139,13 @@ const KEYT = MAC ? '⌘ Cmd + V' : 'Ctrl + V';
 $('keyP').innerHTML = MAC ? '<kbd>⌘ Cmd</kbd> + <kbd>V</kbd>' : '<kbd>Ctrl</kbd> + <kbd>V</kbd>';
 let tT = 0; function toast(t, ms){ const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(tT); tT = setTimeout(() => el.classList.remove('on'), ms || 4500); }
 const tName = n => { n = String(n || '').replace(/^teacher\s+/i, '').trim(); return n ? 'Teacher ' + n.charAt(0).toUpperCase() + n.slice(1) : ''; };
-let TEACHER = '';
+let TEACHER = ''; const CODES = {};
+const codeOf = () => { const n = $('stu').value.trim().toLowerCase(); return (Q.get('code') && (!Q.get('n') || Q.get('n').trim().toLowerCase() === n) ? Q.get('code') : CODES[n]) || ''; };
+/* 2373: a copied homework picture is kept on the student's record (for Management and the parent portal) */
+let GSAVED = '';
+async function keepGiven(){ try{ const code = codeOf(); if(!TOKEN || !code || !LAST) return; const pic = LAST.toDataURL('image/jpeg', .86), sig = code + '|' + pic.length + '|' + $('en').value.length; if(sig === GSAVED) return; GSAVED = sig;
+  const due = dueText();
+  await fetch(SB + 'coe-hw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'save', token: TOKEN, code, student: $('stu').value.trim(), kind: 'given', title: ($('en').value.trim() || 'Homework').slice(0, 150), body: $('en').value.trim(), note: $('nt').value.trim(), note_zh: $('ntzh').value.trim(), counts: { due: due ? due[0] : null, pictures: PICS.length }, marked: pic }) }); }catch(e){} }
 const PICS = [];   /* { img, url } */
 const DK = 'coe.hw.give';
 
@@ -186,6 +192,7 @@ $('zhOn').addEventListener('change', () => { try{ if($('stu').value.trim()) loca
 function ntHead(){ const n = $('stu').value.trim(); $('ntH').textContent = n ? 'A personal note for ' + n + ' (optional)' : 'A personal note (optional)'; }
 /* the teacher's own students to choose from (the same list as Check homework) */
 (async () => { if(!TOKEN) return; try{ const r = await fetch(SB + 'coe-hw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'students', token: TOKEN }) }).then(x => x.json());
+  (r.students || []).forEach(x => { const n = String(x.student || '').trim(); if(n && x.code) CODES[n.toLowerCase()] = x.code; });
   const seen = new Set(); $('stuL').innerHTML = (r.students || []).map(x => String(x.student || '').trim()).filter(n => n && !seen.has(n.toLowerCase()) && seen.add(n.toLowerCase())).map(n => '<option value="' + n.replace(/[&<>"]/g, '') + '"></option>').join(''); }catch(e){} })();
 $('due').addEventListener('change', () => { save(); draw(); });
 
@@ -274,7 +281,7 @@ async function drawNow(){ try{ await document.fonts.ready; }catch(e){} const { c
 $('bCopy').onclick = async () => { if(!LAST) return; const b = $('bCopy'); b.disabled = true; const was = b.textContent; b.textContent = 'Copying…';
   const blobP = new Promise(z => LAST.toBlob(z, 'image/png'));
   try{ await Promise.race([navigator.clipboard.write([new ClipboardItem({ 'image/png': blobP })]), blobP.then(() => new Promise((z, no) => setTimeout(() => no(new Error('slow')), 8000)))]);
-    toast('Picture copied. Paste it in the WeChat group (' + KEYT + ').'); }
+    toast('Picture copied. Paste it in the WeChat group (' + KEYT + ').'); keepGiven(); }
   catch(e){ try{ const bl = await blobP, a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = 'homework' + ($('stu').value.trim() ? '-' + $('stu').value.trim().replace(/[^\w-]+/g, '-') : '') + '.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('The picture was saved to your downloads. Send it in WeChat.'); }
     catch(e2){ toast('The picture could not be copied. Please try again.'); } }
   b.textContent = was; b.disabled = false; };
