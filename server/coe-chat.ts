@@ -311,10 +311,15 @@ Deno.serve(async (req: Request) => {
       const since = new Date(Date.now() - 3 * 864e5).toISOString();
       const [{ data: R }, G] = await Promise.all([db.from("chat_reads").select("mid,replied_at,confirmed_at,chat_messages!inner(id,gid,author,author_mgmt,body,kind,mentions,needs_reply,reply_by,confirm,hidden,created_at,day)").eq("name", me).eq("chat_messages.hidden", false).gte("chat_messages.created_at", since).order("mid", { ascending: false }).limit(300), groups()]);
       const gn: Record<string, string> = {}; (G || []).forEach((g: any) => { gn[g.id] = g.name; });
+      // 2350 (Misty 18 Nov): a mention that only says "Nice." / "Thanks" / "Noted" needs no reply, and a mention is answered once I wrote in that chat after it
+      const { data: MINE } = await db.from("chat_messages").select("gid,created_at").ilike("author", me).gte("created_at", since).order("created_at", { ascending: false }).limit(500);
+      const lastMine: Record<string, string> = {}; (MINE || []).forEach((x: any) => { if (!lastMine[x.gid]) lastMine[x.gid] = x.created_at; });
+      const ackOnly = (t: string) => { const v = String(t || "").replace(/@\S+/g, " ").replace(/[\s.!~,👍👏🙏❤️😊]+/gu, " ").trim().toLowerCase(); return !v || (v.length <= 30 && !/\?/.test(t) && /^(nice|very nice|good|good job|great|great job|well done|thanks|thank you|thank you so much|ty|ok|okay|noted|noted thanks|got it|perfect|excellent|awesome|amazing|yes|sure|congrats|congratulations|keep it up)$/.test(v)); };
       const items = (R || []).flatMap((x: any) => { const m = x.chat_messages; if (!m || !gn[m.gid] || lc(m.author) === lc(me) || m.kind === "system") return [];
         const named = (m.mentions || []).some((n: string) => lc(n) === lc(me));
         const base = { id: m.id, gid: m.gid, chat: gn[m.gid], author: m.author, mgmt: m.author_mgmt, body: String(m.body || (m.kind === "voice" ? "Voice message" : m.kind === "image" ? "Picture" : "")).slice(0, 140), day: m.day, at: m.created_at, by: m.reply_by };
         if (m.confirm && !x.confirmed_at) return [{ ...base, kind: "confirm" }];
+        if (!m.needs_reply && named && (ackOnly(m.body) || (lastMine[m.gid] && lastMine[m.gid] > m.created_at))) return [];
         if ((m.needs_reply || named) && !x.replied_at) return [{ ...base, kind: "reply" }];
         return []; }).slice(0, 12);
       return out({ ok: true, items });
