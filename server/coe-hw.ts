@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-hw v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
+// CupOfEnglish · coe-hw v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
 // correct it and share it). Used by the Homework check page (homework/index.html).
 // POST { token, op, ... }:
 //   me                       → { name, role, mgmt }
@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
     }
     if (op === "list") {
       const code = String(b.code || "").toUpperCase(); if (!(await owns(code))) return out({ ok: false, error: "Not your student" }, 403);
-      const { data, error } = await db.from("coe_hw_checks").select("*").eq("code", code).is("removed_at", null).order("created_at", { ascending: false }).limit(20);
+      let lq = db.from("coe_hw_checks").select("*").eq("code", code).is("removed_at", null); if (b.kind) lq = lq.eq("kind", String(b.kind)); const { data, error } = await lq.order("created_at", { ascending: false }).limit(b.kind ? 40 : 20);
       if (error) throw new Error(error.message);
       const paths = [...new Set((data || []).flatMap((r: any) => [r.img_orig, r.img_marked]).filter(Boolean))] as string[], U: Record<string, string> = {};
       if (paths.length) { const { data: S } = await db.storage.from(BUCKET).createSignedUrls(paths, 3600); (S || []).forEach((x: any) => { if (x && x.path && x.signedUrl) U[x.path] = x.signedUrl; }); }   // one call for all pictures
@@ -82,9 +82,9 @@ Deno.serve(async (req: Request) => {
 
     if (op === "save") {
       const code = String(b.code || "").toUpperCase(); if (!(await owns(code))) return out({ ok: false, error: "Not your student" }, 403);
-      const kind = b.kind === "picture" ? "picture" : "text";
+      const kind = ["picture", "writing", "given"].includes(String(b.kind)) ? String(b.kind) : "text";
       const row: any = { code, student: clean(b.student, 80), teacher: clean(b.teacher || name, 60), class_id: clean(b.class_id, 120) || null,
-        day: /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? b.day : null, kind, title: clean(b.title, 160), body: clean(b.body, 20000),
+        day: /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? b.day : null, kind, title: clean(b.title, 160), body: clean(b.body, 60000),
         marks: Array.isArray(b.marks) ? b.marks.slice(0, 500) : [], counts: b.counts && typeof b.counts === "object" ? b.counts : {},
         note: clean(b.note, 2000), note_zh: clean(b.note_zh, 2000), by_name: role === 'Teacher' ? 'Teacher ' + name.charAt(0).toUpperCase() + name.slice(1) : role === 'President' ? 'Management' : name, updated_at: new Date().toISOString() };
       if (b.orig) row.img_orig = await put(code, b.orig);

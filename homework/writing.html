@@ -143,6 +143,11 @@ textarea{width:100%;min-height:80px;border:1px solid var(--out);border-radius:10
         <textarea id="fbI" placeholder="e.g. Check subject-verb agreement. Give one example for each main idea."></textarea>
       </div>
 
+      <div class="card pad" id="histC" hidden>
+        <div class="h2">Writing history <span class="xs mute" id="histN" style="font-weight:400"></span></div>
+        <div id="trend" class="small" style="margin-bottom:8px"></div>
+        <div id="hist"></div>
+      </div>
       <div class="card pad side">
         <div class="h2">Picture for WeChat</div>
         <div class="prev"><canvas id="cv" width="10" height="10"></canvas></div>
@@ -150,6 +155,8 @@ textarea{width:100%;min-height:80px;border:1px solid var(--out);border-radius:10
           <button class="btn pri" id="bCopy" type="button" disabled>Copy picture</button>
           <button class="btn" id="bPdf" type="button" disabled>Download PDF</button>
         </div>
+        <button class="btn" id="bSave" type="button" style="width:100%;margin-top:8px" disabled>Save to the student's record</button>
+        <div class="tip" id="recSt"></div>
         <button class="btn" id="bNew" type="button" style="width:100%;margin-top:8px">Start a new correction</button>
         <div class="tip" id="hint">Type the student's writing to make the picture.</div>
       </div>
@@ -170,13 +177,15 @@ $('keyP').innerHTML = MAC ? '<kbd>⌘ Cmd</kbd> + <kbd>V</kbd>' : '<kbd>Ctrl</kb
 let tT = 0; function toast(t, ms){ const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(tT); tT = setTimeout(() => el.classList.remove('on'), ms || 4500); }
 const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const tName = n => { n = String(n || '').replace(/^teacher\s+/i, '').trim(); return n ? 'Teacher ' + n.charAt(0).toUpperCase() + n.slice(1) : ''; };
-let TEACHER = '';
+let TEACHER = ''; const CODES = {}; let RECID = 0, RECFOR = '';
+const codeOf = () => { const n = $('stu').value.trim().toLowerCase(); return (Q.get('code') && (!Q.get('n') || Q.get('n').trim().toLowerCase() === n) ? Q.get('code') : CODES[n]) || ''; };
 if(Q.get('n')) $('stu').value = Q.get('n');
 { const p = new URLSearchParams(); ['code', 'n'].forEach(k => { if(Q.get(k)) p.set(k, Q.get(k)); }); const s = p.toString() ? '?' + p : ''; $('toGive').href = 'give.html' + s; $('toCheck').href = './' + s; }
 if(TOKEN){
   fetch(SB + 'coe-hw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'me', token: TOKEN }) }).then(x => x.json()).then(r => { if(r && r.ok && r.me){ TEACHER = r.me.mgmt ? '' : tName(r.me.name); draw(); } }).catch(() => {});
   fetch(SB + 'coe-hw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'students', token: TOKEN }) }).then(x => x.json()).then(r => { const seen = new Set();
-    $('stuL').innerHTML = (r.students || []).map(x => String(x.student || '').trim()).filter(n => n && !seen.has(n.toLowerCase()) && seen.add(n.toLowerCase())).map(n => '<option value="' + n.replace(/[&<>"]/g, '') + '"></option>').join(''); }).catch(() => {});
+    (r.students || []).forEach(x => { const n = String(x.student || '').trim(); if(n && x.code) CODES[n.toLowerCase()] = x.code; });
+    $('stuL').innerHTML = (r.students || []).map(x => String(x.student || '').trim()).filter(n => n && !seen.has(n.toLowerCase()) && seen.add(n.toLowerCase())).map(n => '<option value="' + n.replace(/[&<>"]/g, '') + '"></option>').join(''); history(); }).catch(() => {});
 }
 
 /* ---------- the handwriting photos ---------- */
@@ -361,10 +370,10 @@ function build(){ const R = runs(), has = R.some(x => x.img || (x.t && x.t.trim(
   return { c, has }; }
 let LAST = null, dT = 0; function draw(){ clearTimeout(dT); dT = setTimeout(drawNow, 120); }
 async function drawNow(){ try{ await document.fonts.ready; }catch(e){} const { c, has } = build(); LAST = has ? c : null; const v = $('cv'); v.width = c.width; v.height = c.height; v.getContext('2d').drawImage(c, 0, 0);
-  $('bCopy').disabled = $('bPdf').disabled = !has; $('hint').textContent = has ? 'Copy picture, then paste it in WeChat (' + KEYT + '). Or download the PDF.' : 'Type the student\'s writing to make the picture.'; }
+  $('bCopy').disabled = $('bPdf').disabled = $('bSave').disabled = !has; $('hint').textContent = has ? 'Copy picture, then paste it in WeChat (' + KEYT + '). Or download the PDF.' : 'Type the student\'s writing to make the picture.'; }
 const fname = ext => 'writing-feedback' + ($('stu').value.trim() ? '-' + $('stu').value.trim().replace(/[^\w-]+/g, '-') : '') + '.' + ext;
 $('bCopy').onclick = async () => { if(!LAST) return; const b = $('bCopy'); b.disabled = true; const was = b.textContent; b.textContent = 'Copying…'; const bp = new Promise(z => LAST.toBlob(z, 'image/png'));
-  try{ await Promise.race([navigator.clipboard.write([new ClipboardItem({ 'image/png': bp })]), new Promise((z, no) => setTimeout(() => no(new Error('slow')), 8000))]); toast('Picture copied. Paste it in WeChat (' + KEYT + ').'); }
+  try{ await Promise.race([navigator.clipboard.write([new ClipboardItem({ 'image/png': bp })]), new Promise((z, no) => setTimeout(() => no(new Error('slow')), 8000))]); toast('Picture copied. Paste it in WeChat (' + KEYT + ').'); record(true); }
   catch(e){ const bl = await bp, a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = fname('png'); a.click(); toast('Saved as a picture file instead. Drag it into WeChat.'); }
   b.textContent = was; b.disabled = false; };
 /* PDF: A4 pages cut from the picture (a small PDF made here, no extra program) */
@@ -381,9 +390,29 @@ $('bPdf').onclick = async () => { if(!LAST) return; const pw = 595.28, ph = 841.
     obj(ct, () => put('<< /Length ' + cs.length + ' >>\nstream\n' + cs + '\nendstream')); });
   const xref = len, total = 3 + N * 3; put('xref\n0 ' + total + '\n0000000000 65535 f \n'); for(let i = 1; i < total; i++) put(String(offs[i]).padStart(10, '0') + ' 00000 n \n');
   put('trailer\n<< /Size ' + total + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF');
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(parts, { type: 'application/pdf' })); a.download = fname('pdf'); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); toast('PDF downloaded (' + N + ' page' + (N > 1 ? 's' : '') + ').'); };
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(parts, { type: 'application/pdf' })); a.download = fname('pdf'); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); toast('PDF downloaded (' + N + ' page' + (N > 1 ? 's' : '') + ').'); record(true); };
+/* ---------- 2373 · the student's record: each correction is saved with its band scores and the finished picture ---------- */
+async function record(quiet){ const code = codeOf(); if(!TOKEN || !LAST) return false; if(!code){ if(!quiet) toast('Choose the student from the list to save it to their record.'); $('recSt').textContent = 'Not saved to a record yet · choose the student from the list.'; return false; }
+  const b = $('bSave'); b.disabled = true; $('recSt').textContent = 'Saving to the record…';
+  const body = ed.innerHTML.replace(/<img[^>]*>/g, '<img class="hw">'), cn = counts();
+  const payload = { op: 'save', token: TOKEN, code, student: $('stu').value.trim(), kind: 'writing', title: $('kind').value + ($('q').value.trim() ? ' · ' + $('q').value.trim().slice(0, 100) : ''), body,
+    counts: { words: cn.n, mistakes: cn.nDel, corrections: cn.nIns, kind: $('kind').value, bands: Object.assign({}, BV), overall: ovr() || null, good: $('fbG').value.trim(), improve: $('fbI').value.trim() },
+    note: $('fbG').value.trim(), note_zh: '', marked: LAST.toDataURL('image/jpeg', .86) };
+  if(RECID && RECFOR === code) payload.id = RECID;
+  try{ const r = await fetch(SB + 'coe-hw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) }).then(x => x.json());
+    if(!r || !r.ok) throw new Error((r && r.error) || 'not saved'); RECID = r.id; RECFOR = code;
+    $('recSt').textContent = 'Saved to ' + $('stu').value.trim() + '’s record ✓ · Management and the student’s teachers can see it.'; if(!quiet) toast('Saved to the record.'); history(); b.disabled = false; return true; }
+  catch(e){ $('recSt').textContent = 'Not saved to the record (' + e.message + '). Try Save again.'; b.disabled = false; return false; } }
+$('bSave').onclick = () => record(false);
+async function history(){ const code = codeOf(); if(!TOKEN || !code){ $('histC').hidden = true; return; }
+  try{ const r = await fetch(SB + 'coe-hw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'list', token: TOKEN, code, kind: 'writing' }) }).then(x => x.json());
+    const L = (r && r.checks) || []; $('histC').hidden = !L.length; if(!L.length) return; $('histN').textContent = '· ' + L.length + ' saved';
+    const ov = L.slice().reverse().map(x => x.counts && x.counts.overall).filter(Boolean); $('trend').innerHTML = ov.length > 1 ? 'Overall band: <b>' + ov.join(' → ') + '</b>' : '';
+    const d = t => { const x = new Date(t); return x.getDate() + ' ' + MO[x.getMonth()] + ' ' + x.getFullYear(); };
+    $('hist').innerHTML = L.slice(0, 12).map(x => { const c = x.counts || {}; return '<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)"><div style="flex:1;min-width:0"><b>' + d(x.created_at) + '</b> · ' + (c.kind || 'Writing') + ' · ' + (c.words || 0) + ' words' + (c.overall ? ' · <b style="color:var(--teal2)">Band ' + c.overall + '</b>' : '') + '<div class="xs mute">' + String(x.by_name || x.teacher || '').replace(/[<>&]/g, '') + ' · ' + (c.mistakes || 0) + ' mistakes marked</div></div>' + (x.img_marked_url ? '<a class="btn sm" href="' + x.img_marked_url + '" target="_blank" rel="noopener">Picture</a>' : '') + '</div>'; }).join(''); }catch(e){} }
+$('stu').addEventListener('change', () => { RECID = 0; history(); });
 $('bNew').onclick = () => { if(ed.textContent.trim() && !confirm('Start a new correction? The writing and marks on screen will be cleared.')) return;
-  ed.innerHTML = ''; $('q').value = ''; $('fbG').value = ''; $('fbI').value = ''; Object.keys(BV).forEach(k => delete BV[k]); PH.splice(0).forEach(p => URL.revokeObjectURL(p.url)); cur = -1; photos(); bands(); try{ localStorage.removeItem(DK()); }catch(e){} draw(); };
+  RECID = 0; $('recSt').textContent = ''; ed.innerHTML = ''; $('q').value = ''; $('fbG').value = ''; $('fbI').value = ''; Object.keys(BV).forEach(k => delete BV[k]); PH.splice(0).forEach(p => URL.revokeObjectURL(p.url)); cur = -1; photos(); bands(); try{ localStorage.removeItem(DK()); }catch(e){} draw(); };
 
 /* the typed work is kept on this computer for 7 days per student, so a refresh never loses it (photos are not kept) */
 const DK = () => 'coe.wr.' + ($('stu').value.trim().toLowerCase() || '_');
