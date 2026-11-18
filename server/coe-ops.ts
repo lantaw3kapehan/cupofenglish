@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-ops v11 (18 Nov · 2375 teachers waiting, 2376 weekly summary in deskday) · v10 (18 Nov · 2360 chain of command: report types, answer, myreports, seenans, eod) · v9 (18 Nov · 2344 op me: her own Overview) · v8 (18 Nov · 2341 Ops Desk: desk, log, done, report, deskday, resolve, watch) · v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
+// CupOfEnglish · coe-ops v12 (18 Nov · 2377 System reminders on the President card) · v11 (18 Nov · 2375 teachers waiting, 2376 weekly summary in deskday) · v10 (18 Nov · 2360 chain of command: report types, answer, myreports, seenans, eod) · v9 (18 Nov · 2344 op me: her own Overview) · v8 (18 Nov · 2341 Ops Desk: desk, log, done, report, deskday, resolve, watch) · v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
 // Management only (Operations and President). Teachers get "Management only".
 // POST { token, op: "check" }                        → { ok, items: [{ kind, ref, text, go }], at }   the daily database check (coe_ops_check)
 // POST { token, op: "ok", ref }                      → { ok }   "It's correct": this item never comes back (coe_ops_ok)
@@ -14,15 +14,15 @@ async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", 
 const AG = /(?:Mr|Ms|Mrs|Dr)\.\s*([A-Za-z]+)/i;
 const invName = (s: string) => { const p = String(s || "").split("_"); const t = (p.length > 1 ? p.slice(1).join(" ") : "").replace(/\.pdf$/i, "").replace(/[^A-Za-z ]/g, " ").replace(/\s+/g, " ").trim(); return t; };
 // v10 (2360): reports with their answers · open = not resolved (Management view) / last 14 days (Operations view)
-async function thread(who: string, days: number, openOnly: boolean) {
+async function thread(who: string, days: number, openOnly: boolean, withSystem = false) {
   const since = new Date(Date.now() - days * 864e5).toISOString();
-  const { data: R } = await db.from("coe_ops_log").select("id,at,title,note,data").ilike("who", who).eq("kind", "report").gte("at", since).order("at", { ascending: false }).limit(40);
+  const { data: R } = await (withSystem ? db.from("coe_ops_log").select("id,at,title,note,data,who").or("who.ilike." + who + ",who.eq.System") : db.from("coe_ops_log").select("id,at,title,note,data,who").ilike("who", who)).eq("kind", "report").gte("at", since).order("at", { ascending: false }).limit(40);
   const ids = (R || []).map((x: any) => "rep:" + x.id); if (!ids.length) return [];
   const { data: A } = await db.from("coe_ops_log").select("id,at,kind,ref,note,data,by_name").in("ref", ids).in("kind", ["answered", "resolved", "seenans"]).order("at");
   const by: Record<string, any[]> = {}; (A || []).forEach((x: any) => { (by[x.ref] = by[x.ref] || []).push(x); });
   const rows = await Promise.all((R || []).map(async (x: any) => { const L = by["rep:" + x.id] || [], ans = L.filter((y: any) => y.kind === "answered"), res = L.find((y: any) => y.kind === "resolved"), seen = L.filter((y: any) => y.kind === "seenans").pop();
     const last = ans[ans.length - 1]; let img = null; if (x.data && x.data.img) { const { data: su } = await db.storage.from("ops").createSignedUrl(x.data.img, 3600); img = su && su.signedUrl; }
-    return { id: x.id, at: x.at, where: x.title, what: x.note, who: x.data && x.data.who, img, type: (x.data && x.data.type) || "problem", urgent: !!(x.data && x.data.urgent),
+    return { id: x.id, at: x.at, where: (x.who === "System" ? "System · " : "") + x.title, what: x.note, who: x.data && x.data.who, img, type: (x.data && x.data.type) || "problem", urgent: !!(x.data && x.data.urgent),
       answers: ans.map((y: any) => ({ at: y.at, text: y.note, decision: y.data && y.data.decision, by: y.by_name })), resolved: res ? { at: res.at, note: res.note } : null,
       unread: !!last && (!seen || seen.at < last.at) }; }));
   const rank = (x: any) => (x.urgent ? 0 : 2) + ({ decision: 0, concern: 1, problem: 2, fyi: 3 } as any)[x.type];
@@ -201,7 +201,7 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, watch: await watchOf(who) }); }
     if (op === "watch_del") { await db.from("coe_ops_watch").update({ gone_at: new Date().toISOString() }).eq("id", Number(b.id) || 0); return out({ ok: true }); }
     const who = str(b.who, 60) || await opsName(), day = /^\d{4}-\d{2}-\d{2}$/.test(str(b.day, 10)) ? str(b.day, 10) : null;
-    const [D, reports, W, E, TW, WK] = await Promise.all([db.rpc("coe_ops_day", { p_who: who, p_day: day }), thread(who, 14, true), watchOf(who),
+    const [D, reports, W, E, TW, WK] = await Promise.all([db.rpc("coe_ops_day", { p_who: who, p_day: day }), thread(who, 14, true, true), watchOf(who),
       db.from("coe_ops_log").select("id,at,note,data").ilike("who", who).eq("kind", "eod").gte("at", new Date(Date.now() - 3 * 864e5).toISOString()).order("at", { ascending: false }).limit(3),
       db.rpc("coe_teacher_waiting", { p_days: 5 }), db.rpc("coe_ops_weekly", { p_who: who })]);   // v11 (2375): teachers waiting · (2376) the week
     const eod = (E.data || []).map((x: any) => ({ id: x.id, at: x.at, note: x.note, ...(x.data || {}) }));
