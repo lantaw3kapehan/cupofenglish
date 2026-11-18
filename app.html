@@ -7409,7 +7409,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2018;
+const COE_V = 2019;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -43128,6 +43128,30 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
   var g0 = window.go; if(typeof g0 === 'function') window.go = function(v){ var r = g0.apply(this, arguments); try{ start(String(v)); }catch(e){} return r; };
   setTimeout(function(){ start('boot:' + (location.hash || '')); }, 50);
   setInterval(function(){ try{ localStorage.setItem('coe.mvlog', JSON.stringify(LOG.slice(-400))); }catch(e){} }, 3000);
+})();
+</script>
+<script id="b2363">
+/* 2363 · steady screens (Misty 18 Nov: "each screen should not auto adjust like moving, all should be stable"):
+   cards that come from the server a moment later (Ops Desk, Management card, From Operations, Lates) are drawn at once from the last copy
+   in their usual place, then updated in place, so nothing below them jumps. */
+(function(){ if(window.__b2363) return; window.__b2363 = 1;
+  var who = function(){ try{ return (D && D.me && D.me.name) || ''; }catch(e){ return ''; } };
+  var mgr = function(){ try{ return !!(D && D.mgr); }catch(e){ return false; } }, pres = function(){ try{ return !!(D && D.mgr && D.pres); }catch(e){ return false; } };
+  var afterLead = function(v, html){ var l = v.querySelector(':scope > .lead'); if(l) l.insertAdjacentHTML('afterend', html); else v.insertAdjacentHTML('afterbegin', html); };
+  var SLOTS = [
+    { id: 'od2341', ok: function(){ return mgr() && !pres(); }, host: function(){ return document.getElementById('v-mtoday'); }, put: afterLead },
+    { id: 'my2360', ok: function(){ return mgr() && !pres(); }, host: function(){ return document.getElementById('om2344'); }, find: function(h){ return h.querySelector(':scope > #my2360'); }, put: function(h, html){ var t = h.querySelector(':scope > .tiles'); if(t) t.insertAdjacentHTML('afterend', html); } },
+    { id: 'pd2360', ok: pres, host: function(){ return document.getElementById('v-home'); }, put: afterLead },
+    { id: 'lqmBox', ok: mgr, host: function(){ return document.getElementById('v-home'); }, put: function(h, html){ h.insertAdjacentHTML('afterbegin', html); } }
+  ];
+  var key = function(id){ return 'coe.slot.' + who().toLowerCase() + '.' + id; };
+  function ensure(){ if(!who()) return; SLOTS.forEach(function(s){ try{ if(!s.ok()) return; var h = s.host(); if(!h || h.offsetParent === null) return;
+      var el = s.find ? s.find(h) : document.getElementById(s.id); if(el) return; var html = localStorage.getItem(key(s.id)); if(!html) return;
+      s.put(h, html.replace('id="' + s.id + '"', 'id="' + s.id + '" data-c2363="1"')); }catch(e){} }); }
+  function save(){ if(!who()) return; SLOTS.forEach(function(s){ try{ if(!s.ok()) return; var h = s.host(); if(!h) return; var el = s.find ? s.find(h) : document.getElementById(s.id);
+      if(!el || el.getAttribute('data-c2363')) return; var x = el.outerHTML; if(x.length < 60000) localStorage.setItem(key(s.id), x); }catch(e){} }); }
+  ['go', 'renderHome', 'renderMToday'].forEach(function(n){ var f = window[n]; if(typeof f !== 'function') return; window[n] = function(){ var r = f.apply(this, arguments); try{ ensure(); }catch(e){} return r; }; });
+  setInterval(ensure, 400); setInterval(save, 3000);
 })();
 </script>
 <script id="b2278">
