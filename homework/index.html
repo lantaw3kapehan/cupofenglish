@@ -143,7 +143,6 @@ input.tt{width:100%;height:42px;border:1px solid var(--out);border-radius:10px;p
   <div id="root"></div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<script src="hdr.js"></script>
 <script>
 function crisp(im, w){ let s = im, sw = im.width, sh = im.height; while(sw / 2 >= w * 1.4){ const c2 = document.createElement('canvas'); c2.width = Math.round(sw / 2); c2.height = Math.round(sh / 2); const g2 = c2.getContext('2d'); g2.imageSmoothingEnabled = true; g2.imageSmoothingQuality = 'high'; g2.drawImage(s, 0, 0, c2.width, c2.height); s = c2; sw = c2.width; sh = c2.height; } return s; }   /* 18 Nov: logo shrunk in halves, high-quality smoothing (one big step looked pixelated) */
 (function(){
@@ -631,15 +630,17 @@ async function parentPic(){
     if(note){ const LE = wrap(note, '400 28px ' + F, 700), LZ = zh ? wrap(zh, '400 25px ' + Z, 700) : [], hh = 30 + LE.length * 38 + (LZ.length ? 12 + LZ.length * 36 : 0) + 26;
       blocks.push({ h: hh + 22, draw: (c, y) => { rr(c, 80, y, W - 160, hh, 20); c.fillStyle = '#F7F6FB'; c.fill(); c.fillStyle = '#2B2253'; c.font = '700 20px ' + F; c.fillText('Teacher’s note / 老师寄语', 106, y + 34);
         let yy = y + 74; c.font = '400 28px ' + F; LE.forEach(t => { c.fillText(t, 106, yy); yy += 38; }); if(LZ.length){ yy += 12; c.fillStyle = '#4C4868'; c.font = '400 25px ' + Z; LZ.forEach(t => { c.fillText(t, 106, yy); yy += 36; }); } } }); }
-    const idLine = CODE, H0 = coeHdr.height(W - 80, false), head = 40 + H0 + 30 + 130 + 44;   /* design A header */
+    const idLine = CODE, head = 80 + 140 + 130 + 44;
     let H = head + blocks.reduce((s, b) => s + b.h, 0) + 10 + 100 + 40;
     const cv = document.createElement('canvas'); cv.width = W * S; cv.height = H * S; const c = cv.getContext('2d'); c.scale(S, S);
     c.fillStyle = '#F3F6F7'; c.fillRect(0, 0, W, H);
     c.save(); c.shadowColor = 'rgba(43,34,83,.10)'; c.shadowBlur = 30; c.shadowOffsetY = 8; rr(c, 40, 40, W - 80, H - 80, 34); c.fillStyle = '#fff'; c.fill(); c.restore();
     c.save(); rr(c, 40, 40, W - 80, H - 80, 34); c.clip();
-    /* design A (18 Nov 19:33): the same header as every homework picture (homework/hdr.js), inside the card */
-    c.save(); c.translate(40, 40); coeHdr.draw(c, W - 80, { logo, title: 'Homework feedback / 作业反馈', meta: [] }); c.restore();
-    let y = 40 + H0 + 30;
+    let y = 80;
+    if(logo){ const lw = 300, lh = lw * logo.height / logo.width; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(crisp(logo, lw), 80, y, lw, lh); c.restore(); } else { c.font = '400 34px ' + B; c.fillStyle = '#2B2253'; c.fillText('CupOfEnglish', 80, y + 50); }
+    c.font = '700 22px ' + F; const pill = 'Homework feedback / 作业反馈', pw = c.measureText(pill).width + 44;
+    rr(c, W - 80 - pw, y + 22, pw, 48, 24); c.fillStyle = '#E3F6F6'; c.fill(); c.fillStyle = '#00737B'; c.textBaseline = 'middle'; c.fillText(pill, W - 80 - pw + 22, y + 47); c.textBaseline = 'alphabetic';
+    y += 140; c.fillStyle = '#EEF0F4'; c.fillRect(80, y - 20, W - 160, 2);
     c.fillStyle = '#6F6B85'; c.font = '400 22px ' + F; c.fillText('Student / 学生', 80, y + 22);
     c.fillStyle = '#2B2253'; { const nm = NAME || CODE; let fs = 54; c.font = '400 54px ' + B; while(fs > 26 && c.measureText(nm).width > W - 160){ fs -= 2; c.font = '400 ' + fs + 'px ' + B; } c.fillText(nm, 80, y + 82); }
     c.fillStyle = '#4C4868'; c.font = '400 28px ' + F; c.fillText(idLine, 80, y + 126);
