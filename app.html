@@ -7409,7 +7409,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2027;
+const COE_V = 2028;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -43220,6 +43220,29 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
   const b1 = window.hwBtn2308; if(b1) window.hwBtn2308 = function(c){ const h = b1(c); return h && fit(c) ? h + btn(c, 'btn ghost sm', 'margin:8px 0 0 6px') : h; };
   const b2 = window.hwStuBtn2310; if(b2) window.hwStuBtn2310 = function(s){ const h = b2(s); return h && fit(s) ? h + ' ' + btn(s, 'btn ghost sm hw2310') : h; };
   const b3 = window.m38Link; if(b3) window.m38Link = function(e){ const h = b3(e); return (h && /hwGive2327/.test(h) && fit(e)) ? h + ' <a class="m38 hw2310" onclick="event.stopPropagation();hwWrite2371(\'' + Q(e.code) + '\',\'' + Q(nmOf(e)) + '\')">Writing correction</a>' : h; };
+})();
+</script>
+<script id="b2374">
+/* 2374 · on the student page: "Writing feedback" (Writing correction, band trend, pictures) under Progress, and "Homework given" under Notes (coe-hw v5) */
+(function(){ if(window.__b2374) return; window.__b2374 = 1;
+  const HW = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-hw', C = {};
+  const E = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], dd = t => { const x = new Date(t); return x.getDate() + ' ' + MO[x.getMonth()] + ' ' + x.getFullYear(); };
+  async function get(code, kind){ const k = code + '|' + kind, c = C[k]; if(c && Date.now() - c.at < 120e3) return c.L;
+    const r = await fetch(HW, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'list', token: TOKEN, code, kind }) }).then(x => x.json()).catch(() => null);
+    const L = (r && r.ok && r.checks) || []; C[k] = { at: Date.now(), L }; return L; }
+  function put(id, html){ const b = document.getElementById('sheetBody'); if(!b || !b.querySelector('.shero')) return; let s = document.getElementById(id);
+    if(!html){ if(s) s.remove(); return; } if(!s){ s = document.createElement('section'); s.className = 'sec'; s.id = id; b.appendChild(s); } if(s.innerHTML !== html) s.innerHTML = html; }
+  async function paint(){ try{ if(typeof STU === 'undefined' || !STU || !STU.code || typeof TOKEN === 'undefined' || !TOKEN) return; const code = STU.code, nm = (STU.s && STU.s.name) || '';
+    const [W, G] = await Promise.all([get(code, 'writing'), get(code, 'given')]); if(!STU || STU.code !== code) return;
+    const ov = W.slice().reverse().map(x => x.counts && x.counts.overall).filter(Boolean);
+    put('wr2374', W.length ? '<h2>Writing feedback <span class="mute small" style="font-weight:400">· ' + W.length + ' saved' + (ov.length > 1 ? ' · band ' + E(ov.join(' → ')) : '') + '</span></h2>' +
+      W.slice(0, 8).map(x => { const c = x.counts || {}; return '<div class="li" style="align-items:center"><div class="grow"><b>' + dd(x.created_at) + '</b> · ' + E(c.kind || 'Writing') + ' · ' + (c.words || 0) + ' words' + (c.overall ? ' · <b style="color:#00616A">Band ' + E(c.overall) + '</b>' : '') + '<div class="small mute">' + E(x.by_name || x.teacher || '') + (c.improve ? ' · next: ' + E(String(c.improve).slice(0, 90)) : '') + '</div></div>' + (x.img_marked_url ? '<a class="btn ghost sm" href="' + E(x.img_marked_url) + '" target="_blank" rel="noopener">Picture</a>' : '') + '</div>'; }).join('') +
+      '<div style="margin-top:8px"><a class="link small" onclick="window.open(\'homework/writing.html?code=' + E(code) + '&n=' + encodeURIComponent(nm) + '\',\'coewr\')">New writing correction ›</a></div>' : '');
+    put('hg2374', G.length ? '<h2>Homework given <span class="mute small" style="font-weight:400">· last ' + Math.min(G.length, 6) + '</span></h2>' +
+      G.slice(0, 6).map(x => '<div class="li" style="align-items:center"><div class="grow"><b>' + dd(x.created_at) + '</b> · ' + E(String(x.title || 'Homework').slice(0, 80)) + '<div class="small mute">' + E(x.by_name || x.teacher || '') + (x.counts && x.counts.due ? ' · due ' + E(x.counts.due) : '') + '</div></div>' + (x.img_marked_url ? '<a class="btn ghost sm" href="' + E(x.img_marked_url) + '" target="_blank" rel="noopener">Picture</a>' : '') + '</div>').join('') : '');
+  }catch(e){} }
+  const r0 = window.stuRender; if(typeof r0 === 'function') window.stuRender = function(){ const r = r0.apply(this, arguments); setTimeout(paint, 60); return r; };
 })();
 </script>
 <script id="b2278">
