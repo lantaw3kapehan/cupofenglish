@@ -1,0 +1,5 @@
+// 2365 (QA): the move recorder (2362, off unless coe.mv=1) also logs cards added / removed in a screen during the first 15 s.
+const file = process.argv[2];
+require('../tools/lib.js')(file, [
+["  setTimeout(function(){ start('boot:' + (location.hash || '')); }, 50);", "  setTimeout(function(){ start('boot:' + (location.hash || '')); }, 50);\n  var T0 = Date.now(); try{ new MutationObserver(function(ms){ ms.forEach(function(m){ var t = m.target; if(!t || !t.id || !/^v-/.test(t.id) || Date.now() - T0 > 15000) return;\n      [].forEach.call(m.addedNodes, function(n){ if(n.nodeType === 1) LOG.push({ v: 'mut:' + t.id, t: Date.now() - T0, el: '+ ' + (n.id ? '#' + n.id : n.tagName + '.' + String(n.className || '').split(' ')[0]), dy: Math.round(n.getBoundingClientRect().height) }); });\n      [].forEach.call(m.removedNodes, function(n){ if(n.nodeType === 1) LOG.push({ v: 'mut:' + t.id, t: Date.now() - T0, el: '- ' + (n.id ? '#' + n.id : n.tagName + '.' + String(n.className || '').split(' ')[0]), dy: 0 }); }); }); }).observe(document.body, { childList: true, subtree: true }); }catch(e){}"]
+]);
