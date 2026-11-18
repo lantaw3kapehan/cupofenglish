@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-hw v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
+// CupOfEnglish · coe-hw v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
 // correct it and share it). Used by the Homework check page (homework/index.html).
 // POST { token, op, ... }:
 //   me                       → { name, role, mgmt }
@@ -63,6 +63,15 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, students: L });
     }
 
+    if (op === "bonuses") {   // v6 (2378, Misty 18 Nov): "My bonuses" · the signed-in teacher's own incentives (enrolment, trial and other recognition) of the last 4 months
+      const { data, error } = await db.rpc("coe_rec_rows", { p_tab: "ACTIONS" }); if (error) throw new Error(error.message);
+      const since = new Date(Date.now() - 125 * 864e5).toISOString().slice(0, 10), me = name.trim().toLowerCase();
+      const L = (data || []).map((x: any) => x.data || []).filter((d: any[]) => String(d[7] || "").trim().toLowerCase() === me && String(d[3] || "").slice(0, 10) >= since && Number(d[15]) > 0)
+        .map((d: any[]) => ({ day: String(d[3] || "").slice(0, 10), type: clean(d[6], 40), student: clean(String(d[8] || "").split("\n")[0], 60), code: (String(d[8] || "").match(/ST-\d{4}-\d{3}/) || [""])[0], amount: Number(d[15]) || 0,
+          why: clean(String(d[17] || "").replace(/^Automatic:\s*/i, "").replace(/\s*·?\s*via app by [^·]*/gi, "").replace(/\s*·\s*rule \d+/gi, "").replace(/\s*·\s*moved from[^·]*/gi, ""), 220) }))
+        .sort((a: any, b2: any) => b2.day.localeCompare(a.day));
+      return out({ ok: true, bonuses: L });
+    }
     if (op === "ids") {   // v4 (2319): which classes already have a saved check (class card shows "Homework checked")
       const since = new Date(Date.now() - 21 * 864e5).toISOString();
       let q = db.from("coe_hw_checks").select("class_id,code,created_at").gte("created_at", since).is("removed_at", null).not("class_id", "is", null).limit(2000);
