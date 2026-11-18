@@ -176,13 +176,20 @@ async function trZh(t){ let zh = '';
 const AUTO = { zh: '', ntzh: '' }, SRC = { zh: '', ntzh: '' };
 function pair(enId, zhId, stId, okMsg){ let t0 = 0;
   const now = async () => { const t = $(enId).value.trim(); if(!t){ if($(zhId).value === AUTO[zhId]){ $(zhId).value = ''; AUTO[zhId] = ''; } SRC[zhId] = ''; draw(); return; }
-    if(t === SRC[zhId]) return; const mine = $(zhId).value.trim() && $(zhId).value !== AUTO[zhId]; if(mine){ $(stId).textContent = 'You changed the Chinese, so it is kept as you wrote it.'; return; }
+    if(t === SRC[zhId]) return; const mine = $(zhId).value.trim() && $(zhId).value !== AUTO[zhId];
+    /* 2392 (Misty 18 Nov 22:28, Tony got Penny's Chinese): a Chinese the teacher changed is kept only while the English is still the same
+       task (small edits). A new task (most words different) gets a new Chinese, so an old one never goes out under a new task. */
+    const W = x => new Set(String(x || '').toLowerCase().match(/[a-z0-9]+/g) || []), A = W(SRC[zhId]), B = W(t);
+    const add = [...B].filter(w => !A.has(w)).length, cut = [...A].filter(w => !B.has(w)).length, same = A.size > 0 && add <= 1 && cut <= 1;   /* one word changed at most */
+    if(mine && same){ $(stId).innerHTML = 'You changed the Chinese, so it is kept as you wrote it. <a href="#" style="color:#00838C;font-weight:600" onclick="event.preventDefault();window.zhAgain2392(\'' + zhId + '\')">Make it again</a>'; return; }
     if(!$('zhOn').checked) return;
     $(stId).textContent = 'Translating…'; const zh = await trZh(t); if($(enId).value.trim() !== t) return;
     SRC[zhId] = t; if(zh){ AUTO[zhId] = zh; $(zhId).value = zh; $(stId).textContent = okMsg; } else $(stId).textContent = 'The Chinese could not be made just now. Type it, or the picture shows the English only.';
     save(); draw(); };
   $(enId).addEventListener('input', () => { save(); draw(); clearTimeout(t0); t0 = setTimeout(now, 1400); });
-  $(zhId).addEventListener('input', () => { save(); draw(); }); }
+  $(zhId).addEventListener('input', () => { save(); draw(); });
+  (window.ZA2392 = window.ZA2392 || {})[zhId] = () => { AUTO[zhId] = $(zhId).value; SRC[zhId] = ''; now(); }; }
+window.zhAgain2392 = id => { const f = (window.ZA2392 || {})[id]; if(f) f(); };
 pair('en', 'zh', 'zhSt', 'Made for you as you type. You can change it.');
 pair('nt', 'ntzh', 'ntSt', 'Made for you as you type. You can change it.');
 $('stu').addEventListener('input', () => { zhPref(); save(); draw(); ntHead(); });
