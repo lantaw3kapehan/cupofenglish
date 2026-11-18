@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-shot-read v6 (from v1 (12 Nov 2026, 2141) · reads every time-in / "I'm in" screen picture for the Wi-Fi icon.
+// CupOfEnglish · coe-shot-read v7 (18 Nov: battery ≠ LAN, cable readings checked too) · v6 (from v1 (12 Nov 2026, 2141) · reads every time-in / "I'm in" screen picture for the Wi-Fi icon.
 // Misty 17:31–17:35: laptops can't report Wi-Fi to the browser, so the picture itself is the proof: the teacher shares the entire
 // screen (VooV + date/time + the LAN cable icon). This reads the network icon in each new picture:
 //   cable / no Wi-Fi icon → nothing · Wi-Fi icon → coe_wifi_flag(teacher, 'proof', picture, 'Picture check') = the contract warning,
@@ -25,6 +25,7 @@ const ASK = `This is a screenshot of a teacher's whole computer screen, taken wh
 Look ONLY at the network status icon. On Windows it is in the taskbar at the bottom right, just left of the volume (speaker) icon and the clock. On a Mac it is in the menu bar at the top right (near the battery, Control Centre and the date).
 What the icons look like:
 - Windows LAN cable (Ethernet): a small computer monitor / screen with a short cable or plug under it (sometimes a globe). This means "cable".
+- A laptop BATTERY icon is a flat, wide rectangle lying on its side (often with a small nub on one end, a fill level or a plug). It is NOT the LAN monitor. A laptop shows the battery AND a network icon: still look for the network icon next to it.
 - Windows Wi-Fi: a fan of curved arcs (like a quarter circle of signal waves), no monitor. This means "wifi".
 - Mac, Wi-Fi connected: the Wi-Fi fan of arcs drawn solid / filled in the menu bar. This means "wifi" (even if a cable is also plugged in, the Mac may be using Wi-Fi).
 - Mac, Wi-Fi turned off: the Wi-Fi fan drawn as an empty outline, greyed out, or with a slash through it; or the Ethernet symbol <··> (two arrows with dots) where the Wi-Fi icon would be. The class is live, so the Mac is on the LAN cable. This means "cable".
@@ -32,19 +33,42 @@ Answer:
 - "cable" for the Windows monitor-with-cable icon, or a Mac whose Wi-Fi icon shows Wi-Fi turned off / Ethernet.
 - "wifi" for the solid curved-arcs Wi-Fi icon (Windows or Mac).
 - "unclear" if the taskbar / menu bar is hidden, cut off or covered, or a Mac shows no Wi-Fi icon at all in the menu bar, so you cannot tell.
-Do not confuse the network icon with other tray icons: the microphone-in-use icon, the location icon, VPN, Bluetooth, OneDrive, app icons, or the "speaking" signal bars inside VooV / Tencent Meeting.
+If you see curved Wi-Fi arcs anywhere among the tray icons near the speaker, the answer is "wifi", even if a battery or monitor-like icon is also there.
+Do not confuse the network icon with other tray icons: the battery icon (a flat wide rectangle), the microphone-in-use icon, the location icon, VPN, Bluetooth, OneDrive, app icons, or the "speaking" signal bars inside VooV / Tencent Meeting.
 Reply with JSON only: {"net":"wifi"|"cable"|"unclear","os":"windows"|"mac"|"other","why":"<max 15 words>"}`;
 // v6 (17 Nov, Misty 20:02 "Kat was using LAN but she was deducted wifi?"): a "wifi" reading is checked a second time on the taskbar
 //   (or Mac menu bar) cut out and enlarged 3×. Only when that second look also sees Wi-Fi is the teacher flagged; otherwise the reading
 //   becomes "unclear" and Operations looks at the picture (nothing locked, no contract warning). Kat 19:57 was a misread (monitor icon).
 const ASK2 = `This is the bottom-right taskbar (Windows) or top-right menu bar (Mac) of a teacher's screen, cut out and enlarged.
 Go through the small status icons one by one and find the NETWORK icon (on Windows: just left of the speaker/volume icon).
-- Windows LAN cable (Ethernet) = a small computer MONITOR / screen shape (maybe with a plug or globe). → "cable"
+- Windows LAN cable (Ethernet) = a small computer MONITOR / screen shape, about as tall as it is wide, with a stand, plug or cable under it (maybe a globe). → "cable"
+- A laptop BATTERY = a flat, wide rectangle lying on its side (nub on one end, maybe a fill level or plug). It is NOT the LAN monitor.
 - Wi-Fi = a fan of 3–4 curved ARCS widening upwards, like a quarter circle of waves. → "wifi"
 - Mac with the Wi-Fi fan as an outline / slashed, or the Ethernet <··> symbol → "cable"; Mac with a solid Wi-Fi fan → "wifi".
 The microphone-in-use icon, location pin, battery, speaker, VPN or app icons are NOT the network icon.
+If curved Wi-Fi arcs appear anywhere among these icons, answer "wifi" even if a battery or monitor-like icon is also there.
 If you cannot see a network icon clearly, answer "unclear".
 Reply with JSON only: {"net":"wifi"|"cable"|"unclear","why":"<max 15 words>"}`;
+// v7 (18 Nov, Misty 18:24: Teacher Dezza on Wi-Fi was read as "cable": the battery icon was taken for the LAN monitor): a Windows "cable"
+//   reading now also gets the enlarged second look; when that look sees Wi-Fi, a third yes/no look decides (2 of 3 Wi-Fi = Wi-Fi, else unclear).
+const ASK3 = `This is the enlarged bottom-right corner of a Windows taskbar. Among the small status icons, is there a Wi-Fi icon: a fan of 3–4 curved arcs widening upwards (like a quarter circle of signal waves)?
+A battery (flat wide rectangle), a monitor/screen shape, a microphone, a speaker or app icons are NOT Wi-Fi.
+Reply with JSON only: {"net":"wifi"|"cable"|"unclear","why":"<max 15 words>"} using "wifi" if you see the Wi-Fi arcs, "cable" if you clearly see a monitor-shaped LAN icon and no arcs, "unclear" otherwise.`;
+async function decide(u: Uint8Array, mime: string) {   // v6 + v7: the reading used for a picture, with the extra looks
+  const r1: any = await readOne(u, mime); let res: any = r1, r2: any = null, r3: any = null;
+  if (r1.net === "wifi") {
+    const z = await corner(u, r1.os === "mac"); r2 = z ? await readOne(z, "image/png", ASK2) : { net: "error", why: "could not cut the taskbar" };
+    if (r2.net !== "wifi") res = { ...r1, net: "unclear", why: ("2nd look: " + r2.net + " · " + (r2.why || "") + " · 1st: " + (r1.why || "")).slice(0, 160) };
+    else res = { ...r1, why: ("confirmed · " + (r1.why || "")).slice(0, 160) };
+  } else if (r1.net === "cable" && r1.os !== "mac") {
+    const z = await corner(u, false); r2 = z ? await readOne(z, "image/png", ASK2) : null;
+    if (r2 && r2.net === "wifi") { r3 = await readOne(z!, "image/png", ASK3);
+      res = r3.net === "wifi" ? { ...r1, net: "wifi", why: ("2nd and 3rd look: Wi-Fi · " + (r3.why || r2.why || "")).slice(0, 160) }
+                              : { ...r1, net: "unclear", why: ("2nd look Wi-Fi, 3rd " + r3.net + " · " + (r2.why || "")).slice(0, 160) }; }
+    else if (r2 && r2.net === "cable") res = { ...r1, why: ("checked · " + (r1.why || "")).slice(0, 160) };
+  }
+  return { res, r1, r2, r3 };
+}
 async function corner(bytes: Uint8Array, mac: boolean): Promise<Uint8Array | null> {
   try {
     const im = await Image.decode(bytes); const W = im.width, H = im.height;
@@ -78,8 +102,7 @@ Deno.serve(async (req: Request) => {
     if (tb && tb.test) { const { data: T } = await db.from("docs").select("data").eq("key", "sys:shottest").maybeSingle();
       if (!T || !(T as any).data || !(T as any).data.code || (T as any).data.code !== tb.code) return out({ ok: false }, 403);
       const { data: f } = await db.storage.from("proofs").download(String(tb.test)); if (!f) return out({ ok: false, error: "no picture" });
-      const u = new Uint8Array(await f.arrayBuffer()); const r1 = await readOne(u, "image/jpeg"); const z = await corner(u, r1.os === "mac");
-      const r2 = z ? await readOne(z, "image/png", ASK2) : null; return out({ ok: true, r1, r2, crop: z ? z.length : 0 }); } } catch (_e) { /* not a test */ }
+      const u = new Uint8Array(await f.arrayBuffer()); const d = await decide(u, "image/jpeg"); return out({ ok: true, final: d.res.net, why: d.res.why, r1: d.r1.net, r2: d.r2 && d.r2.net, r3: d.r3 && d.r3.net }); } } catch (_e) { /* not a test */ }
   const { data: L, error } = await db.rpc("coe_shot_claim", { p_n: 6 });
   if (error) return out({ ok: false, error: "db" }, 500);
   const done: any[] = [];
@@ -88,11 +111,7 @@ Deno.serve(async (req: Request) => {
     try {
       const path = String(x.url).split("/object/public/proofs/")[1] || "";
       const { data: f, error: fe } = path ? await db.storage.from("proofs").download(decodeURIComponent(path)) : { data: null, error: "no path" } as any;
-      if (!fe && f) { const u = new Uint8Array(await f.arrayBuffer()); res = await readOne(u, /\.png$/i.test(path) ? "image/png" : "image/jpeg");
-        if (res.net === "wifi") {   // v6: second look at the enlarged taskbar before anyone is flagged
-          const z = await corner(u, res.os === "mac"); const r2 = z ? await readOne(z, "image/png", ASK2) : { net: "error", why: "could not cut the taskbar" };
-          if (r2.net !== "wifi") res = { ...res, net: "unclear", why: ("2nd look: " + r2.net + " · " + (r2.why || "") + " · 1st: " + (res.why || "")).slice(0, 160) };
-          else res = { ...res, why: ("confirmed · " + (res.why || "")).slice(0, 160) }; } }
+      if (!fe && f) { const u = new Uint8Array(await f.arrayBuffer()); res = (await decide(u, /\.png$/i.test(path) ? "image/png" : "image/jpeg")).res; }   // v6 + v7: extra looks (see decide)
     } catch (e) { res = { net: "error", why: String((e as Error)?.message || e).slice(0, 160) }; }
     let flagged = false;
     // Operations already allowed Wi-Fi today (cable internet down / written approval) → no new lock
