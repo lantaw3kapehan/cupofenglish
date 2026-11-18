@@ -7410,7 +7410,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2034;
+const COE_V = 2035;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24031,7 +24031,8 @@ go();
   window.vcRemove1885 = id => { const x = (MF || []).find(y => y.id === id); if(!x) return;
     const who = typeof tName === 'function' ? tName(x.teacher) : x.teacher, when = dd(x.start, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
     window._vcRm = async () => { const b = $('vcRmGo'); if(b){ b.disabled = true; b.textContent = 'Removing…'; }
-      let r = null; try{ r = await apiNow('mgmtVidRemove', TOKEN, { id: x.id, ds: x.ds || String(x.start || '').slice(0, 10) }); }catch(e){ r = { ok: false, msg: e.message }; }
+      let r = null; try{ r = await vfCall({ action: 'vf_remove', id: x.id, reason: ((x.flags || [])[0] || {}).t || '' }); if(r && !r.ok && /already removed/i.test(r.msg || '')) r = { ok: true }; if(r && !r.ok) r.msg = r.msg || r.error; }catch(e){ r = { ok: false, msg: e.message }; }   /* 2386: the database at once */
+      if(r && r.ok){ try{ vfCall({ action: 'vf_dec', k: vfK(x), st: 'ok', note: 'Removed · wrong file' }).catch(() => {}); }catch(e){} try{ apiNow('mgmtVidRemove', TOKEN, { id: x.id, ds: x.ds || String(x.start || '').slice(0, 10) }).catch(() => {}); }catch(e){} }   /* Google's Drive clean-up in the background */
       if(!r || !r.ok){ if(b){ b.disabled = false; b.textContent = 'Remove the wrong video'; } return toast((r && r.msg) || 'Not removed · try again'); }
       closeSheet(); MF = (MF || []).filter(y => y.id !== id); try{ localStorage.setItem('coe.vflagsm', JSON.stringify(MF)); }catch(e){} mPaint();
       toast('Removed ✓ · ' + who + ' was asked to upload the right video'); };
