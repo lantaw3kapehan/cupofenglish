@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-ops v9 (18 Nov · 2344 op me: her own Overview) · v8 (18 Nov · 2341 Ops Desk: desk, log, done, report, deskday, resolve, watch) · v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
+// CupOfEnglish · coe-ops v10 (18 Nov · 2360 chain of command: report types, answer, myreports, seenans, eod) · v9 (18 Nov · 2344 op me: her own Overview) · v8 (18 Nov · 2341 Ops Desk: desk, log, done, report, deskday, resolve, watch) · v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
 // Management only (Operations and President). Teachers get "Management only".
 // POST { token, op: "check" }                        → { ok, items: [{ kind, ref, text, go }], at }   the daily database check (coe_ops_check)
 // POST { token, op: "ok", ref }                      → { ok }   "It's correct": this item never comes back (coe_ops_ok)
@@ -13,6 +13,21 @@ const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 const AG = /(?:Mr|Ms|Mrs|Dr)\.\s*([A-Za-z]+)/i;
 const invName = (s: string) => { const p = String(s || "").split("_"); const t = (p.length > 1 ? p.slice(1).join(" ") : "").replace(/\.pdf$/i, "").replace(/[^A-Za-z ]/g, " ").replace(/\s+/g, " ").trim(); return t; };
+// v10 (2360): reports with their answers · open = not resolved (Management view) / last 14 days (Operations view)
+async function thread(who: string, days: number, openOnly: boolean) {
+  const since = new Date(Date.now() - days * 864e5).toISOString();
+  const { data: R } = await db.from("coe_ops_log").select("id,at,title,note,data").ilike("who", who).eq("kind", "report").gte("at", since).order("at", { ascending: false }).limit(40);
+  const ids = (R || []).map((x: any) => "rep:" + x.id); if (!ids.length) return [];
+  const { data: A } = await db.from("coe_ops_log").select("id,at,kind,ref,note,data,by_name").in("ref", ids).in("kind", ["answered", "resolved", "seenans"]).order("at");
+  const by: Record<string, any[]> = {}; (A || []).forEach((x: any) => { (by[x.ref] = by[x.ref] || []).push(x); });
+  const rows = await Promise.all((R || []).map(async (x: any) => { const L = by["rep:" + x.id] || [], ans = L.filter((y: any) => y.kind === "answered"), res = L.find((y: any) => y.kind === "resolved"), seen = L.filter((y: any) => y.kind === "seenans").pop();
+    const last = ans[ans.length - 1]; let img = null; if (x.data && x.data.img) { const { data: su } = await db.storage.from("ops").createSignedUrl(x.data.img, 3600); img = su && su.signedUrl; }
+    return { id: x.id, at: x.at, where: x.title, what: x.note, who: x.data && x.data.who, img, type: (x.data && x.data.type) || "problem", urgent: !!(x.data && x.data.urgent),
+      answers: ans.map((y: any) => ({ at: y.at, text: y.note, decision: y.data && y.data.decision, by: y.by_name })), resolved: res ? { at: res.at, note: res.note } : null,
+      unread: !!last && (!seen || seen.at < last.at) }; }));
+  const rank = (x: any) => (x.urgent ? 0 : 2) + ({ decision: 0, concern: 1, problem: 2, fyi: 3 } as any)[x.type];
+  return (openOnly ? rows.filter((x) => !x.resolved) : rows).sort((a: any, b: any) => openOnly ? rank(a) - rank(b) || String(b.at).localeCompare(String(a.at)) : String(b.at).localeCompare(String(a.at)));
+}
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: h });
@@ -145,10 +160,36 @@ Deno.serve(async (req: Request) => {
       const { data: bk } = await db.storage.getBucket("ops"); if (!bk) await db.storage.createBucket("ops", { public: false });
       const path = today() + "/" + me.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now() + ".png";
       const { error: ue } = await db.storage.from("ops").upload(path, bin, { contentType: "image/png" }); if (!ue) img = path; } catch (_e) { /* the report still goes in */ } }
+    const type = /^(decision|concern|problem|fyi)$/.test(str(b.type, 12)) ? str(b.type, 12) : "problem";   // v10 (2360): chain of command · what kind of report
     const { data, error } = await db.from("coe_ops_log").insert({ who: me, kind: b.fixed ? "fixed" : "report", ref: "report", title: str(b.where, 120) || "App", note: what,
-      data: { who: str(b.who, 60), img: img || null, fixedByMe: !!b.fixed } }).select("id").single();
+      data: { who: str(b.who, 60), img: img || null, fixedByMe: !!b.fixed, type, urgent: !!b.urgent } }).select("id").single();
     if (error) return out({ ok: false, error: "not saved" }, 500);
     return out({ ok: true, id: data.id });
+  }
+  // v10 (2360, Misty 18 Nov "an efficient and effective chain of command"): Operations → Management and back
+  if (op === "eod") {   // Operations: end-of-shift report (her day, what is left, what needs Management)
+    const left = str(b.left, 2000), need = str(b.need, 2000), notes = str(b.notes, 2000);
+    const [D, Q] = await Promise.all([db.rpc("coe_ops_day", { p_who: me }), db.rpc("coe_ops_queue")]);
+    const q = (Q.data || []) as any[], d: any = D.data || {};
+    const summary = { done: d.done || 0, found: d.found || 0, fixed: d.fixed || 0, saves: d.saves || 0, idle: d.idle || 0, timein: d.timein || null,
+      open: q.length, urgent: q.filter((x: any) => x.tier <= 2).map((x: any) => x.title).slice(0, 8) };
+    const { data, error } = await db.from("coe_ops_log").insert({ who: me, kind: "eod", ref: "eod", title: "End of shift", note: [left && "Left for tomorrow: " + left, need && "Needs Management: " + need, notes && "Notes: " + notes].filter(Boolean).join("\n") || null,
+      data: { summary, left, need, notes } }).select("id").single();
+    if (error) return out({ ok: false, error: "not saved" }, 500);
+    return out({ ok: true, id: data.id, summary });
+  }
+  if (op === "myreports" || op === "seenans") {   // Operations: her reports and Management's answers
+    if (op === "seenans") { const id = Number(b.id) || 0; if (id) await db.from("coe_ops_log").insert({ who: me, kind: "seenans", ref: "rep:" + id }); return out({ ok: true }); }
+    return out({ ok: true, reports: await thread(me, 14, false) });
+  }
+  if (op === "answer") {   // the President answers a report: reply · approve / decline · resolve
+    if (!pres) return out({ ok: false, error: "Management only" }, 403);
+    const id = Number(b.id) || 0, text = str(b.text, 1000), dec = /^(approved|declined)$/.test(str(b.decision, 10)) ? str(b.decision, 10) : "";
+    if (!id || (!text && !dec && !b.close)) return out({ ok: false, error: "Write an answer." }, 400);
+    const { data: R } = await db.from("coe_ops_log").select("id,who").eq("id", id).maybeSingle(); if (!R) return out({ ok: false, error: "Not found" }, 404);
+    if (text || dec) await db.from("coe_ops_log").insert({ who: me, kind: "answered", ref: "rep:" + id, note: text || null, data: { decision: dec || null, to: R.who }, by_name: me });
+    if (b.close) await db.from("coe_ops_log").insert({ who: R.who, kind: "resolved", ref: "rep:" + id, note: text || null, by_name: me });
+    return out({ ok: true });
   }
   if (op === "deskday" || op === "resolve" || op === "watch_add" || op === "watch_del") {
     if (!pres) return out({ ok: false, error: "Management only" }, 403);
@@ -160,15 +201,10 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, watch: await watchOf(who) }); }
     if (op === "watch_del") { await db.from("coe_ops_watch").update({ gone_at: new Date().toISOString() }).eq("id", Number(b.id) || 0); return out({ ok: true }); }
     const who = str(b.who, 60) || await opsName(), day = /^\d{4}-\d{2}-\d{2}$/.test(str(b.day, 10)) ? str(b.day, 10) : null;
-    const [D, R, W] = await Promise.all([db.rpc("coe_ops_day", { p_who: who, p_day: day }),
-      db.from("coe_ops_log").select("id,at,title,note,data").ilike("who", who).eq("kind", "report").gte("at", new Date(Date.now() - 14 * 864e5).toISOString()).order("at", { ascending: false }).limit(30),
-      watchOf(who)]);
-    const { data: rs } = await db.from("coe_ops_log").select("ref").eq("kind", "resolved").like("ref", "rep:%");
-    const done = new Set((rs || []).map((x: any) => x.ref));
-    const reports = await Promise.all((R.data || []).filter((x: any) => !done.has("rep:" + x.id)).map(async (x: any) => {
-      let url = null; if (x.data && x.data.img) { const { data: su } = await db.storage.from("ops").createSignedUrl(x.data.img, 3600); url = su && su.signedUrl; }
-      return { id: x.id, at: x.at, where: x.title, what: x.note, who: x.data && x.data.who, img: url }; }));
-    return out({ ok: true, who, day: D.data || {}, reports, watch: W });
+    const [D, reports, W, E] = await Promise.all([db.rpc("coe_ops_day", { p_who: who, p_day: day }), thread(who, 14, true), watchOf(who),
+      db.from("coe_ops_log").select("id,at,note,data").ilike("who", who).eq("kind", "eod").gte("at", new Date(Date.now() - 3 * 864e5).toISOString()).order("at", { ascending: false }).limit(3)]);
+    const eod = (E.data || []).map((x: any) => ({ id: x.id, at: x.at, note: x.note, ...(x.data || {}) }));
+    return out({ ok: true, who, day: D.data || {}, reports, eod, watch: W });
   }
   return out({ ok: false, error: "unknown op" }, 400);
 });
