@@ -472,8 +472,14 @@ async function teacherHomeLive(db: any, who: any, base: any) {
     .sort((a, b) => String(a[0]).localeCompare(String(b[0]))).forEach((r) => { hw[String(cell(r, 6))] = { time: hm(cell(r, 0)), text: String(cell(r, 5) || "") }; });
   const { data: txd } = await db.from("docs").select("data,updated_at").eq("key", lc + ":tx").maybeSingle();
   const tx = txd && Date.now() - Date.parse(txd.updated_at) < 40 * 6e4 ? txd.data : null; if (tx) base = tx;
+  // 2388 (Misty 18 Nov 21:01, Eddie's wrong video): a video removed by Management (coe_vid_removed) no longer shows as uploaded, even while
+  // Google's copy still lists it, so the teacher can upload the right file at once
+  const vids0: Record<string, any> = Object.assign({}, (base && base.vids) || {});
+  try { const { data: RM } = await db.from("coe_vid_removed").select("row").gte("removed_at", new Date(Date.now() - 14 * 864e5).toISOString()).limit(200);
+    const gone = new Set((RM || []).map((x: any) => String((x.row || {}).file_id || "")).filter(Boolean));
+    Object.keys(vids0).forEach((k) => { const u = String((vids0[k] || {}).url || ""); for (const f of gone) if (u.includes(f)) { delete vids0[k]; break; } }); } catch (_e) { /* keep Google's list */ }
   const data: any = { me, students, moved, peer: (base && base.peer) || [], special: special.slice(0, 40), schedule, pay: pay.slice(0, 12), adj: adj.slice(0, 30), built: new Date().toISOString(), today,
-    timeIn, classIns, hw, vids: (base && base.vids) || {}, vfold: (base && base.vfold) || {}, forms: (base && base.forms) || { progress: "", trial: "" }, fix: (base && base.fix) || [] };
+    timeIn, classIns, hw, vids: vids0, vfold: (base && base.vfold) || {}, forms: (base && base.forms) || { progress: "", trial: "" }, fix: (base && base.fix) || [] };
   return { data, full: !!tx, at: tx ? Date.parse(txd.updated_at) : 0 };
 }
 
