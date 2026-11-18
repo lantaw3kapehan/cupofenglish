@@ -1,0 +1,6 @@
+// 2346 (Misty 18 Nov): Operations can time in from the laptop: a Time in button on her Overview and the Ops Desk until she has timed in today (the button was only inside Time-ins, not in her laptop menu).
+const file = process.argv[2];
+require('../tools/lib.js')(file, [
+["'<div class=\"ov-caps\"><a class=\"ov-cap\" onclick=\"go(\\'mtoday\\')\">", "'<div class=\"ov-caps\">' + (!d.timein && !(D.timeIn && D.timeIn.time) ? '<a class=\"ov-cap\" onclick=\"timeInSheet()\" title=\"Time in from this laptop or your phone\"><span class=\"ov-n\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"></circle><path d=\"M12 7v5l3 2\"></path></svg></span><span><b>Time in</b><small>from this laptop or your phone</small></span></a>' : '') + '<a class=\"ov-cap\" onclick=\"go(\\'mtoday\\')\">"],
+["'<div class=\"bb\" style=\"margin-top:10px\"><button class=\"btn teal sm\" onclick=\"od2341Next()\">Start next task</button>", "'<div class=\"bb\" style=\"margin-top:10px\">' + (!d.timein && !(D.timeIn && D.timeIn.time) ? '<button class=\"btn teal sm\" onclick=\"timeInSheet()\">Time in</button>' : '') + '<button class=\"btn teal sm\" onclick=\"od2341Next()\">Start next task</button>"]
+]);
