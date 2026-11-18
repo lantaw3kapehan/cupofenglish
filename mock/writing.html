@@ -60,6 +60,10 @@ textarea{width:100%;min-height:80px;border:1px solid var(--out);border-radius:10
 #ed .cm{color:var(--green);font-style:italic}
 .count{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin-top:8px}
 .count b{color:var(--ink)}
+.mode{display:flex;gap:4px;background:#E9ECEF;border-radius:10px;padding:4px;margin-bottom:10px}
+.mode button{flex:1;height:40px;border:1px solid transparent;border-radius:8px;background:transparent;font-weight:600;font-size:14px;color:var(--ink2)}
+.mode button.on{background:#fff;border-color:#99D5D9;color:var(--teal2)}
+#ed.trk{caret-color:var(--blue)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;margin-top:6px}
 .legend span{display:inline-flex;gap:6px;align-items:center}
 /* bands */
@@ -113,7 +117,9 @@ textarea{width:100%;min-height:80px;border:1px solid var(--out);border-radius:10
     <div class="col">
       <div class="card pad">
         <div class="h2">Type and correct</div>
-        <div class="bar" role="toolbar" aria-label="Correction tools">
+        <div class="mode" role="tablist" aria-label="Step"><button type="button" id="mT" role="tab">1 · Type the student's writing</button><button type="button" id="mC" role="tab" class="on">2 · Correct (like Track Changes)</button></div>
+        <div class="tip" id="mTip" style="margin:-4px 0 10px"></div>
+        <div class="bar"<div class="bar" role="toolbar" aria-label="Correction tools">
           <button class="btn w" type="button" id="bW" title="Select the wrong words, then click (Ctrl/Cmd + D)"><s>Wrong</s></button>
           <button class="btn c" type="button" id="bC" title="Select words to mark as correct, or click and type the correction (Ctrl/Cmd + E)">Correction</button>
           <button class="btn g" type="button" id="bG" title="Add a comment (Ctrl/Cmd + M)">Comment</button>
@@ -121,7 +127,7 @@ textarea{width:100%;min-height:80px;border:1px solid var(--out);border-radius:10
           <button class="btn" type="button" id="bX" title="Remove the marks from the selected words">Clear marks</button>
           <button class="btn" type="button" id="bU" title="Undo (Ctrl/Cmd + Z)">Undo</button>
         </div>
-        <div id="ed" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true" aria-label="The student's writing" data-ph="Type or paste the student's writing exactly as written. Then select a mistake and click Wrong: it turns red with a line through it, and you type the correction in blue right after it."></div>
+        <div id="ed" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true" aria-label="The student's writing" data-ph="Step 1: type or paste the student's writing exactly as written. Step 2: switch to Correct, delete the wrong words (they stay in red) and type the corrections (they come out blue)."></div>
         <div class="legend"><span><s style="color:var(--red);text-decoration-thickness:2px">red</s> mistake</span><span style="color:var(--blue);font-weight:600">blue correction</span><span style="color:var(--green);font-style:italic">green comment</span></div>
         <div class="count" id="count"></div>
       </div>
@@ -226,16 +232,42 @@ ed.addEventListener('keydown', e => { const k = e.key.toLowerCase(), m = e.metaK
 /* Enter inside a coloured span: leave the span first so the next line is normal text */
 ed.addEventListener('keydown', e => { if(e.key !== 'Escape') return; const x = sel(); if(!x) return; let n = x.r.startContainer; n = n.nodeType === 3 ? n.parentNode : n; const sp = n.closest && n.closest('del,ins,.cm'); if(sp){ e.preventDefault(); const t = document.createTextNode('​'); sp.after(t); caretAfter(t, x.s); } });
 ed.addEventListener('input', () => { save(); draw(); });
+/* ---------- Correct mode = Word's Track Changes: deleting keeps the word in red with a line, typing comes out blue ---------- */
+let MODE = 'C';
+function setMode(m){ MODE = m; $('mT').classList.toggle('on', m === 'T'); $('mC').classList.toggle('on', m === 'C'); ed.classList.toggle('trk', m === 'C');
+  $('mTip').textContent = m === 'T' ? 'Type or paste exactly what the student wrote. Nothing is marked in this step.' : 'Delete a wrong word (Backspace or Delete): it stays in red with a line through it. Then type: your correction comes out in blue.'; }
+$('mT').onclick = () => { setMode('T'); ed.focus(); }; $('mC').onclick = () => { setMode('C'); ed.focus(); };
+const inside = (n, sel) => { n = n && (n.nodeType === 3 ? n.parentNode : n); return n && n.closest ? n.closest(sel) : null; };
+function placeIn(node, off){ const s = window.getSelection(), r = document.createRange(); r.setStart(node, off); r.collapse(true); s.removeAllRanges(); s.addRange(r); }
+function markDel(r, back){ /* the range becomes red; text typed earlier as a correction is really removed */
+  if(inside(r.commonAncestorContainer, 'ins')){ r.deleteContents(); return; }
+  if(inside(r.startContainer, 'del') && inside(r.endContainer, 'del') && inside(r.startContainer, 'del') === inside(r.endContainer, 'del')){ const d = inside(r.startContainer, 'del'); const rr = document.createRange(); if(back) rr.setStartBefore(d); else rr.setStartAfter(d); rr.collapse(true); const s = window.getSelection(); s.removeAllRanges(); s.addRange(rr); return; }
+  const frag = r.extractContents(); frag.querySelectorAll('ins,.cm').forEach(n => n.remove()); frag.querySelectorAll('del').forEach(n => n.replaceWith(...n.childNodes));
+  if(!frag.textContent.replace(/​/g, '')) return; const d = document.createElement('del'); d.appendChild(frag); r.insertNode(d);
+  /* join with a red word right next to it */
+  [d.previousSibling, d.nextSibling].forEach(sib => { if(sib && sib.nodeType === 1 && sib.tagName === 'DEL'){ if(sib === d.previousSibling){ sib.append(...d.childNodes); d.remove(); } } });
+  const s = window.getSelection(), rr = document.createRange(), anchor = d.isConnected ? d : null; if(anchor){ if(back) rr.setStartBefore(anchor); else rr.setStartAfter(anchor); } else rr.setStart(r.startContainer, r.startOffset); rr.collapse(true); s.removeAllRanges(); s.addRange(rr); }
+ed.addEventListener('beforeinput', e => { if(MODE !== 'C') return; const s = window.getSelection(); if(!s.rangeCount) return; const r = s.getRangeAt(0); const t = e.inputType;
+  if(/^delete/.test(t)){ e.preventDefault(); let rr = r.cloneRange(); const back = /Backward/.test(t);
+    if(rr.collapsed){ const s2 = window.getSelection(); s2.modify('extend', back ? 'backward' : 'forward', /Word/.test(t) ? 'word' : 'character'); rr = s2.getRangeAt(0).cloneRange(); }
+    if(!rr.collapsed) markDel(rr, back); save(); draw(); return; }
+  if(t === 'insertText' || t === 'insertReplacementText' || t === 'insertFromPaste'){ const txt = e.data != null ? e.data : (e.dataTransfer ? e.dataTransfer.getData('text/plain') : ''); if(txt == null) return;
+    if(!r.collapsed){ e.preventDefault(); markDel(r.cloneRange(), false); const s3 = window.getSelection(); const r3 = s3.getRangeAt(0); const sp = document.createTextNode(' '); r3.insertNode(sp); placeIn(sp, 1); }
+    const s4 = window.getSelection(), r4 = s4.getRangeAt(0); if(inside(r4.startContainer, 'ins') || inside(r4.startContainer, '.cm')) return;   /* already typing blue */
+    e.preventDefault(); let at = r4; const dl = inside(at.startContainer, 'del'); if(dl){ at = document.createRange(); at.setStartAfter(dl); at.collapse(true); }
+    const n = document.createElement('ins'); n.textContent = txt; at.insertNode(n); placeIn(n.firstChild, txt.length); save(); draw(); } });
+setMode(ed.textContent.trim() ? 'C' : 'T');
+
 
 /* ---------- band scores ---------- */
 const CRIT = () => /Task 1/.test($('kind').value) ? [['TA', 'Task Achievement'], ['CC', 'Coherence & Cohesion'], ['LR', 'Lexical Resource'], ['GRA', 'Grammar']] : [['TR', 'Task Response'], ['CC', 'Coherence & Cohesion'], ['LR', 'Lexical Resource'], ['GRA', 'Grammar']];
 const BV = {};
-function bands(){ const C = CRIT(), opts = ['', ...Array.from({ length: 17 }, (_, i) => String(1 + i * .5))];
+function bands(){ const C = CRIT(), opts = ['', ...Array.from({ length: 17 }, (_, i) => (1 + i * .5).toFixed(1))];
   $('bands').innerHTML = C.map(([k, n]) => '<div><label class="l xs" for="b' + k + '" title="' + n + '">' + n + '</label><select class="tt" id="b' + k + '" data-k="' + k + '">' + opts.map(o => '<option' + (String(BV[k] || '') === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>').join('') +
     '<div><label class="l xs">Overall</label><div class="ovr" id="ovr">–</div></div>';
   $('bands').querySelectorAll('select').forEach(s => s.onchange = () => { BV[s.dataset.k] = s.value; overall(); save(); draw(); }); overall(); }
 /* IELTS: the average, rounded to the nearest half band (.25 goes up to .5, .75 up to the next whole band) */
-function ovr(){ const v = CRIT().map(([k]) => parseFloat(BV[k])).filter(x => !isNaN(x)); if(v.length < 4) return ''; const a = v.reduce((p, q) => p + q, 0) / 4; return String(Math.floor(a * 2 + .5) / 2); }
+function ovr(){ const v = CRIT().map(([k]) => parseFloat(BV[k])).filter(x => !isNaN(x)); if(v.length < 4) return ''; const a = v.reduce((p, q) => p + q, 0) / 4; return (Math.floor(a * 2 + .5) / 2).toFixed(1); }
 function overall(){ $('ovr').textContent = ovr() || '–'; }
 $('kind').onchange = () => { bands(); save(); draw(); };
 $('bandOn').onchange = () => { $('bands').style.display = $('bandOn').checked ? '' : 'none'; save(); draw(); };
@@ -343,7 +375,8 @@ $('stu').addEventListener('change', () => { if(!ed.textContent.trim()) { load();
 load(); bands(); $('bands').style.display = $('bandOn').checked ? '' : 'none'; draw();
 if(!ed.textContent.trim()){ $('stu').value = 'Sample Student'; $('q').value = 'Some people think that children should start school at a very early age. Others believe they should start school later. Discuss both views and give your opinion.';
   ed.innerHTML = 'Nowadays, many parents <del>is</del> <ins>are</ins> worried about when their children should start school. Some people <del>thinks</del> <ins>think</ins> that early school is good, <del>because</del> <ins>as</ins> children learn faster when they are young. <span class="cm">(good linking word)</span><br><br>On the other hand, others believe <del>childrens</del> <ins>children</ins> need time to play at home. In my opinion, <del>the</del> starting school at six is the best choice, because they are more ready <del>for learn</del> <ins>to learn</ins>.';
-  Object.assign(BV, { TR: '6', CC: '6.5', LR: '6', GRA: '5.5' }); $('fbG').value = 'Clear opinion and good linking words (On the other hand, In my opinion).'; $('fbI').value = 'Check subject-verb agreement (parents are, people think). Write at least 250 words and give one example for each view.'; bands(); }
+  Object.assign(BV, { TR: '6.0', CC: '6.5', LR: '6.0', GRA: '5.5' }); $('fbG').value = 'Clear opinion and good linking words (On the other hand, In my opinion).'; $('fbI').value = 'Check subject-verb agreement (parents are, people think). Write at least 250 words and give one example for each view.'; bands(); }
+setMode(ed.textContent.trim() ? 'C' : 'T');
 })();
 </script>
 </body>
