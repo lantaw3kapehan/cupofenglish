@@ -7409,7 +7409,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2015;
+const COE_V = 2016;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -42969,7 +42969,7 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
     var dateTxt = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Manila' });
     var h = '<div class="ov" id="om2344"><section class="ov-hero"><div class="ov-hi"><div class="ov-eye">' + E(dateTxt) + (d.timein ? ' · timed in ' + E(d.timein) : ' · not timed in yet') + '</div><h1>' + hi + '</h1><div class="ov-tag">Operations · your work today, your duties this month, and what to watch out for.</div></div>' +
       '<div class="ov-caps">' + (!D.pres && !(D.timeIn && D.timeIn.time) ? '<a class="ov-cap" onclick="timeInSheet()" title="Time in from this laptop or your phone"><span class="ov-n"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span><span><b>Time in</b><small>from this laptop or your phone</small></span></a>' : '') + '<a class="ov-cap" onclick="go(\'mtoday\')"><span class="ov-n' + ((d.done || 0) ? ' ok' : '') + '">' + (d.done || 0) + '</span><span><b>Open Ops Desk</b><small>' + (M ? 'done today · your queue is waiting' : 'Loading…') + '</small></span></a>' +
-      '<a class="ov-cap ghost" onclick="od2341Report && od2341Report()"><span><b>Report a problem</b><small>to Management</small></span></a></div></section>';
+      '<a class="ov-cap ghost" onclick="od2341Report && od2341Report()"><span><b>Report to Management</b><small>decision, concern, problem or update</small></span></a></div></section>';
     if(!M) return h + '<div class="cd mute small">Loading your Overview…</div></div>';
     h += '<div class="tiles"><div class="tile"><b>' + (d.done || 0) + '</b><span>done today</span></div><div class="tile"><b style="color:#A2462C">' + (m.found7 || 0) + '</b><span>problems you found this week</span></div><div class="tile"><b style="color:#1E7A4F">' + (m.fixed7 || 0) + '</b><span>problems you fixed this week</span></div>' +
       '<div class="tile"><b>' + (ti.ontime || 0) + '<span style="font-size:15px;color:#6B7280"> on time</span></b><span>time-ins in ' + E(String(m.month || '').split(' ')[0]) + (ti.late ? ' · <b style="display:inline;font:600 13.5px Inter,sans-serif;color:#A2462C">' + ti.late + ' late</b>' : '') + '</span></div></div>';
@@ -43018,6 +43018,102 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
 #om2344 > *:not(.ov-hero):not(.tiles):not(.two):not(.cd){order:0;margin-top:14px}
 #v-home > #lqmBox{margin-top:14px}
 </style>
+<script id="b2360">
+/* 2360 · chain of command (Misty 18 Nov: "aligned to Operations: her report, her concerns … efficient, effective and straightforward")
+   Operations → Management: every report has a type (needs your decision · concern · problem in the app · for your information) and can be urgent;
+   an end-of-shift report (her day + what is left + what needs Management). Management → Operations: Approve / Decline / Reply / Resolved,
+   and Celine sees each answer on her Overview and Ops Desk until she taps Got it. Server: coe-ops v10. */
+(function(){ if(window.__b2360) return; window.__b2360 = 1;
+  var OPS = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-ops';
+  var E = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var call = function(o){ return fetch(OPS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, o)) }).then(function(r){ return r.json(); }); };
+  var say = function(t){ try{ toast(t); }catch(e){} };
+  var ops = function(){ return typeof D !== 'undefined' && D && D.mgr && !D.pres; };
+  var pres = function(){ return typeof D !== 'undefined' && D && D.mgr && D.pres; };
+  var TY = { decision: ['Needs your decision', '#7A2E17', '#FCE8E1'], concern: ['Concern', '#8A4B00', '#FDF1DE'], problem: ['Problem in the app', '#2B2253', '#ECEAF5'], fyi: ['For your information', '#1E6E68', '#E3F4F2'] };
+  var when = function(at){ try{ return new Date(at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' }); }catch(e){ return ''; } };
+  var chip = function(t, urg){ var k = TY[t] || TY.problem; return '<span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;color:' + k[1] + ';background:' + k[2] + '">' + k[0] + '</span>' + (urg ? ' <span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;background:#C2412D">Urgent</span>' : ''); };
+  var st = document.createElement('style'); st.textContent = '.c2360{background:#fff;border:1px solid #E7E4EF;border-radius:18px;padding:16px 18px;margin-top:14px}.c2360 h3{margin:0;font-size:17px;color:#2B2253}.r2360{border-top:1px solid #F0EEF5;padding:12px 0}.r2360:first-of-type{border-top:0}.r2360 .ans{margin-top:8px;padding:8px 12px;border-radius:10px;background:#F4F8F8;border-left:3px solid #2D7A78;font-size:14px}.r2360 .ans.dec-declined{border-left-color:#C2412D;background:#FBEFEA}.r2360 textarea{width:100%;min-height:54px;margin-top:8px;border:1px solid #CFCBDD;border-radius:10px;padding:8px 10px;font:inherit;font-size:14px}.r2360 .bb{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.new2360{outline:2px solid #2D7A78;border-radius:12px;padding:12px!important;background:#F2FAF9}.ty2360 button{margin:0 6px 6px 0}#eod2360 label{display:block;font-weight:700;margin-top:10px;color:#2B2253}#eod2360 textarea{width:100%;min-height:60px;border:1px solid #CFCBDD;border-radius:10px;padding:8px 10px;font:inherit}#v-home > #pd2341{display:none!important}';
+  document.head.appendChild(st);
+
+  /* ── Operations: Report to Management (type + urgent) ── */
+  var _rep = window.od2341Report;
+  window.od2341Report = function(where, what){ if(typeof _rep === 'function') _rep(where, what); var box = document.getElementById('op2341'); if(!box || box.__t2360) return; box.__t2360 = 1;
+    var h2 = box.querySelector('h2'); if(h2) h2.textContent = 'Report to Management';
+    var lab = box.querySelector('label[for="op2341t"]'); if(lab) lab.textContent = 'What happened';
+    var t = document.getElementById('op2341t'); if(t) t.placeholder = 'What you saw, who it is about, and what you need from Management (if anything).';
+    var first = box.querySelector('label[for="op2341w"]');
+    if(first) first.insertAdjacentHTML('beforebegin', '<label>What is it</label><div class="ty2360" id="ty2360">' + ['decision', 'concern', 'problem', 'fyi'].map(function(k){ return '<button type="button" class="btn ' + (k === 'problem' ? 'teal' : 'ghost') + ' sm" data-t="' + k + '">' + TY[k][0] + '</button>'; }).join('') + '</div><label style="display:flex;gap:8px;align-items:center;font-weight:600"><input type="checkbox" id="urg2360"> Urgent · Management should see it now</label>');
+    var tb = document.getElementById('ty2360'); if(tb) tb.onclick = function(e){ var b = e.target.closest('button'); if(!b) return; [].forEach.call(tb.children, function(x){ x.className = 'btn ghost sm'; }); b.className = 'btn teal sm';
+      var f = document.getElementById('op2341f'); if(f) f.style.display = b.dataset.t === 'problem' ? '' : 'none'; };
+  };
+  /* send the type and urgent with the report (the 2341 sheet calls call({ op: 'report', … })) */
+  var _f = window.fetch; window.fetch = function(u, o){ try{ if(String(u) === OPS && o && o.body && /"op":"report"/.test(o.body) && document.getElementById('ty2360')){ var j = JSON.parse(o.body), t = document.querySelector('#ty2360 .teal'); j.type = (t && t.dataset.t) || 'problem'; j.urgent = !!(document.getElementById('urg2360') || {}).checked; o = Object.assign({}, o, { body: JSON.stringify(j) }); setTimeout(function(){ mload(true); }, 1500); } }catch(e){} return _f.apply(this, [u, o]); };
+
+  /* ── Operations: Management's answers + end of shift ── */
+  var MR = null, MRat = 0, MB = 0;
+  function mload(force){ if(!ops() || MB) return; if(!force && MR && Date.now() - MRat < 90e3) return; MB = 1;
+    call({ op: 'myreports' }).then(function(r){ MB = 0; if(r && r.ok){ MR = r.reports || []; MRat = Date.now(); mpaint(); } }).catch(function(){ MB = 0; }); }
+  function shiftEnd(){ var d = new Date(Date.now() + 8 * 36e5), w = d.getUTCDay(); if(w === 3) return null; var e = new Date(d); e.setUTCHours(w === 0 ? 19 : 22, 0, 0, 0); return e; }
+  function eodSent(){ var k = 'eod2360:' + new Date(Date.now() + 8 * 36e5).toISOString().slice(0, 10); try{ return !!localStorage.getItem(k); }catch(e){ return false; } }
+  function mhtml(){ var R = MR || [], un = R.filter(function(x){ return x.unread; }), open = R.filter(function(x){ return !x.resolved && !x.answers.length; }),
+      se = shiftEnd(), now = new Date(Date.now() + 8 * 36e5), mins = se ? Math.round((se - now) / 6e4) : null, eodDue = se && mins <= 45 && mins > -120 && !eodSent();
+    var h = '<div class="c2360" id="my2360"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3>Management</h3><span class="small mute">' + (un.length ? un.length + ' new answer' + (un.length > 1 ? 's' : '') : 'your reports and their answers') + '</span></div>';
+    if(eodDue) h += '<div class="r2360 new2360" style="margin-top:10px"><b>End of shift in ' + Math.max(0, mins) + ' min</b> · send your end-of-shift report before you clock out.<div class="bb"><button class="btn teal sm" onclick="eod2360()">Write end-of-shift report</button></div></div>';
+    un.forEach(function(x){ var a = x.answers[x.answers.length - 1];
+      h += '<div class="r2360 new2360" style="margin-top:10px">' + chip(x.type, x.urgent) + ' <b>' + E(x.where) + '</b> <span class="small mute">' + E(when(x.at)) + '</span><div class="small" style="margin-top:4px">' + E(x.what) + '</div>' +
+        '<div class="ans' + (a.decision === 'declined' ? ' dec-declined' : '') + '"><b>' + (a.decision === 'approved' ? 'Approved' : a.decision === 'declined' ? 'Declined' : 'Management answered') + '</b> · <span class="mute small">' + E(when(a.at)) + '</span>' + (a.text ? '<div>' + E(a.text) + '</div>' : '') + '</div>' +
+        '<div class="bb"><button class="btn teal sm" onclick="seen2360(' + (+x.id) + ')">Got it</button></div></div>'; });
+    if(open.length) h += '<div class="small" style="margin-top:10px;color:#4B5563"><b>Waiting for Management · ' + open.length + '</b> · ' + open.slice(0, 4).map(function(x){ return E((TY[x.type] || TY.problem)[0]) + ': ' + E(String(x.what).slice(0, 60)); }).join(' · ') + '</div>';
+    h += '<div class="bb" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost sm" onclick="od2341Report()">Report to Management</button>' + (se ? '<button class="btn ghost sm" onclick="eod2360()">' + (eodSent() ? 'End-of-shift report sent ✓ · send again' : 'End-of-shift report') + '</button>' : '') + '</div>';
+    return h + '</div>'; }
+  function mpaint(){ if(!ops() || !MR) return; var H = mhtml();
+    [['om2344', '.tiles'], ['od2341', null]].forEach(function(p){ var host = document.getElementById(p[0]); if(!host) return; var o = host.querySelector('#my2360');
+      if(o){ if(o.outerHTML !== H) o.outerHTML = H; return; } var after = p[1] ? host.querySelector(p[1]) : host.firstElementChild; if(after) after.insertAdjacentHTML('afterend', H); else host.insertAdjacentHTML('afterbegin', H); }); }
+  window.seen2360 = function(id){ (MR || []).forEach(function(x){ if(x.id === id) x.unread = false; }); mpaint(); call({ op: 'seenans', id: id }).catch(function(){}); };
+  window.eod2360 = function(){ var o = document.getElementById('eod2360'); if(o) o.remove();
+    document.body.insertAdjacentHTML('beforeend', '<div id="eod2360" role="dialog" aria-modal="true" aria-label="End-of-shift report" style="position:fixed;inset:0;background:rgba(20,18,40,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px"><div style="background:#fff;border-radius:18px;max-width:560px;width:100%;padding:20px 22px;max-height:90vh;overflow:auto"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-size:20px;color:#2B2253">End-of-shift report</h2><button class="btn ghost sm" onclick="document.getElementById(\'eod2360\').remove()">Close</button></div><div class="small mute" style="margin-top:4px">Your numbers for today and what is still open are added by the app. Write only what Management needs to know.</div>' +
+      '<label for="eod2360l">Left for tomorrow</label><textarea id="eod2360l" placeholder="What you started but did not finish, and why."></textarea>' +
+      '<label for="eod2360n">Needs Management</label><textarea id="eod2360n" placeholder="Decisions or problems only Management can settle. Leave empty if none."></textarea>' +
+      '<label for="eod2360o">Notes</label><textarea id="eod2360o" placeholder="Anything else (parents, teachers, the app)."></textarea>' +
+      '<div class="bb" style="justify-content:flex-end;margin-top:12px;display:flex;gap:8px"><button class="btn teal" id="eod2360s">Send to Management</button></div></div></div>');
+    document.getElementById('eod2360s').onclick = function(){ var b = this; b.disabled = true; b.textContent = 'Sending…';
+      call({ op: 'eod', left: document.getElementById('eod2360l').value, need: document.getElementById('eod2360n').value, notes: document.getElementById('eod2360o').value }).then(function(r){
+        if(!r || !r.ok){ b.disabled = false; b.textContent = 'Send to Management'; return say((r && r.error) || 'Not sent. Try again.'); }
+        try{ localStorage.setItem('eod2360:' + new Date(Date.now() + 8 * 36e5).toISOString().slice(0, 10), '1'); }catch(e){}
+        document.getElementById('eod2360').remove(); say('End-of-shift report sent ✓'); mpaint(); }).catch(function(){ b.disabled = false; b.textContent = 'Send to Management'; say('Not sent. Try again.'); }); }; };
+
+  /* ── Management (President): From Operations ── */
+  var PD = null, PDat = 0, PB = 0;
+  function pload(force){ if(!pres() || PB) return; if(!force && PD && Date.now() - PDat < 90e3) return; PB = 1;
+    call({ op: 'deskday' }).then(function(r){ PB = 0; if(r && r.ok){ PD = r; PDat = Date.now(); ppaint(); } }).catch(function(){ PB = 0; }); }
+  function phtml(){ if(!PD) return ''; var d = PD.day || {}, who = PD.who || 'Operations', R = PD.reports || [], dec = R.filter(function(x){ return x.type === 'decision'; }).length, ev = (PD.eod || [])[0];
+    var h = '<div class="c2360" id="pd2360" style="border:2px solid #2B2253"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3>From Operations · ' + E(who) + '</h3><span class="small mute">' + (d.timein ? 'Timed in ' + E(d.timein) : 'Not timed in yet') + ' · ' + (d.done || 0) + ' done · ' + (d.found || 0) + ' found · ' + (d.fixed || 0) + ' fixed · idle ' + (d.idle || 0) + ' min</span></div>';
+    h += '<div class="small" style="margin-top:4px;color:#4B5563">' + (R.length ? '<b style="color:#7A2E17">' + R.length + ' waiting for you</b>' + (dec ? ' · ' + dec + ' need a decision' : '') : 'Nothing waiting for you from Operations.') + '</div>';
+    R.forEach(function(x){ var last = x.answers[x.answers.length - 1];
+      h += '<div class="r2360">' + chip(x.type, x.urgent) + ' <b>' + E(x.where) + '</b> <span class="small mute">' + E(when(x.at)) + (x.who ? ' · affects ' + E(x.who) : '') + '</span><div style="margin-top:4px">' + E(x.what) + '</div>' + (x.img ? '<a class="link small" href="' + E(x.img) + '" target="_blank" rel="noopener">Screenshot</a>' : '') +
+        x.answers.map(function(a){ return '<div class="ans' + (a.decision === 'declined' ? ' dec-declined' : '') + '"><b>' + (a.decision === 'approved' ? 'Approved' : a.decision === 'declined' ? 'Declined' : 'You answered') + '</b> · <span class="mute small">' + E(when(a.at)) + '</span>' + (a.text ? '<div>' + E(a.text) + '</div>' : '') + '</div>'; }).join('') +
+        '<textarea id="pa2360-' + x.id + '" placeholder="Your answer to ' + E(who) + ' (she sees it on her Overview)"></textarea><div class="bb">' +
+        (x.type === 'decision' ? '<button class="btn teal sm" onclick="pans2360(' + x.id + ',\'approved\')">Approve</button><button class="btn sm" style="background:#C2412D;color:#fff" onclick="pans2360(' + x.id + ',\'declined\')">Decline</button>' : '') +
+        '<button class="btn ghost sm" onclick="pans2360(' + x.id + ',\'\')">Reply</button><button class="btn ghost sm" onclick="pans2360(' + x.id + ',\'\',1)">' + (last ? 'Close' : 'Resolved') + '</button></div></div>'; });
+    if(ev){ var sm = ev.summary || {}; h += '<details class="r2360"' + (Date.now() - Date.parse(ev.at) < 18 * 36e5 ? ' open' : '') + '><summary style="cursor:pointer"><b>End-of-shift report</b> <span class="small mute">' + E(when(ev.at)) + '</span></summary><div class="small" style="margin-top:6px">' + (sm.timein ? 'Timed in ' + E(sm.timein) + ' · ' : '') + (sm.done || 0) + ' done · ' + (sm.found || 0) + ' found · ' + (sm.fixed || 0) + ' fixed · ' + (sm.saves || 0) + ' saves · idle ' + (sm.idle || 0) + ' min · ' + (sm.open || 0) + ' still open in her queue' + ((sm.urgent || []).length ? '<div style="margin-top:4px"><b>Urgent still open:</b> ' + sm.urgent.map(E).join(' · ') + '</div>' : '') + '</div>' +
+      (ev.need ? '<div class="ans dec-declined"><b>Needs you</b><div>' + E(ev.need) + '</div></div>' : '') + (ev.left ? '<div class="ans"><b>Left for tomorrow</b><div>' + E(ev.left) + '</div></div>' : '') + (ev.notes ? '<div class="ans"><b>Notes</b><div>' + E(ev.notes) + '</div></div>' : '') + '</details>'; }
+    h += '<details class="r2360"><summary style="cursor:pointer"><b>Repeated mistakes</b> <span class="small mute">' + (PD.watch || []).length + ' · she sees these on her desk</span></summary>' + (PD.watch || []).map(function(w){ return '<div class="li"><div class="grow small">' + E(w.text) + (w.times > 1 ? ' · ' + w.times + ' times' : '') + '</div><button class="btn ghost sm" onclick="pd2341Del(' + (+w.id) + ');setTimeout(function(){pl2360(1)},800)">Remove</button></div>'; }).join('') +
+      '<div class="row" style="gap:8px;margin-top:6px;display:flex"><input id="pd2341i" class="grow" placeholder="A mistake she repeats, e.g. Check the Chinese name before sending the picture" style="flex:1;height:40px;border:1px solid #CFCBDD;border-radius:10px;padding:0 10px"><button class="btn sm" onclick="pd2341Add();setTimeout(function(){pl2360(1)},800)">Add</button></div></details>';
+    var L = (d.log || []).slice(0, 10); if(L.length) h += '<details class="r2360"><summary style="cursor:pointer"><b>Her log today</b> <span class="small mute">' + (d.log || []).length + '</span></summary>' + L.map(function(l){ return '<div class="small" style="margin-top:4px"><span class="mute">' + E(l.at) + '</span> · ' + E(l.kind) + (l.title ? ' · ' + E(l.title) : '') + (l.note ? ' · ' + E(String(l.note).slice(0, 120)) : '') + '</div>'; }).join('') + '</details>';
+    return h + '</div>'; }
+  function ppaint(){ if(!pres()) return; var v = document.getElementById('v-home'); if(!v) return; var H = phtml(); if(!H) return; var o = document.getElementById('pd2360');
+    if(o){ var a = document.activeElement; if(a && o.contains(a) && a.tagName === 'TEXTAREA') return; if(o.outerHTML !== H) o.outerHTML = H; return; }
+    var lead = v.querySelector('.lead'); if(lead) lead.insertAdjacentHTML('afterend', H); else v.insertAdjacentHTML('afterbegin', H); }
+  window.pl2360 = function(f){ pload(!!f); };
+  window.pans2360 = function(id, dec, close){ var t = ((document.getElementById('pa2360-' + id) || {}).value || '').trim();
+    if(!t && !dec && !close) return say('Write your answer first.');
+    call({ op: 'answer', id: id, text: t, decision: dec, close: !!close }).then(function(r){ if(!r || !r.ok) return say((r && r.error) || 'Not saved. Try again.');
+      say(close ? 'Closed ✓' : dec === 'approved' ? 'Approved ✓ · she sees it now' : dec === 'declined' ? 'Declined · she sees it now' : 'Sent to her ✓'); pload(true); }).catch(function(){ say('Not saved. Try again.'); }); };
+
+  setInterval(function(){ try{ if(ops()){ mload(); if(MR && !document.getElementById('my2360')) mpaint(); } if(pres() && typeof VIEW !== 'undefined' && VIEW === 'home'){ pload(); if(PD && !document.getElementById('pd2360')) ppaint(); } }catch(e){} }, 2500);
+})();
+</script>
 <script id="b2278">
 /* 2278 · warm the CupOfEnglish book reader (reader/) so the first book opens without waiting */
 (function(){ function warm(){ try{ if(!D) return; ['reader/', 'reader/pdfjs/pdf.min.mjs', 'reader/pdfjs/pdf.worker.min.mjs', 'reader/logo.png'].forEach(u => { const l = document.createElement('link'); l.rel = 'prefetch'; l.href = u; document.head.appendChild(l); }); }catch(e){} }
