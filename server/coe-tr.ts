@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-tr v1 (11 Nov 2026, 2082 · Misty: "CANCELLING A LESSON DOES NOT FEEL INSTANT" · "CAN YOU DO IT NOW INSTEAD?").
+// CupOfEnglish · coe-tr v8 (18 Nov 2026 · 2391 Chinese only, no English lines from the translator) · was v1 (11 Nov 2026, 2082 · Misty: "CANCELLING A LESSON DOES NOT FEEL INSTANT" · "CAN YOU DO IT NOW INSTEAD?").
 // The translate buttons (trEn: Chinese → English, trZh: English → Chinese) took 4–5 s through the Google Apps Script. This answers the
 // same question in well under a second with the same translation engine, called directly (no Apps Script, no sheets).
 // POST { token, fn: "trEn" | "trZh", text } → { ok: true, en } / { ok: true, zh }. Anyone signed in to the app; text up to 2000 characters.
@@ -38,10 +38,14 @@ Deno.serve(async (req: Request) => {
             "Keep the exact meaning, numbers, word counts, dates, page and unit numbers. Keep personal names, book titles and English words or sentences the student must use in English (e.g. target words, example sentences in quotes). " +
             "In class-change reasons, he / she / they means the student or the family, never things (use 孩子 or 家长 as fits, never 它们), and say it the way a centre tells a parent, e.g. They will start next week. → 孩子下周开始上课。 The student is sick. → 孩子身体不适。 " +
             "Never translate or transliterate a person's name: keep every name exactly as written in English letters (e.g. Well done, Lucy! → 干得好，Lucy！, never 露西)." + (NAMES.length ? " These names must stay exactly as written: " + NAMES.join(", ") + "." : "") + " " +
-            "Use 你 for the student in homework and notes. Use common Chinese terms for school tasks (e.g. 作文, 造句, 形容词, 逗号, 大写字母). Reply with the Chinese translation only, nothing else.",
-          messages: [{ role: "user", content: text }] }) }).finally(() => clearTimeout(tid));
+            "Use 你 for the student in homework and notes. Use common Chinese terms for school tasks (e.g. 作文, 造句, 形容词, 逗号, 大写字母). The text to translate comes inside <text> tags. Reply with the Chinese translation only, inside <zh> tags: no English version, no notes, no corrections or comments about your answer.",
+          messages: [{ role: "user", content: "<text>\n" + text + "\n</text>" }, { role: "assistant", content: "<zh>" }], stop_sequences: ["</zh>"] }) }).finally(() => clearTimeout(tid));
       const j = await r.json();
-      const zh = r.ok ? String((j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("")).trim() : "";
+      const zh0 = r.ok ? String((j.content || []).filter((c: any) => c.type === "text").map((c: any) => c.text || "").join("")).replace(/<\/?zh>/g, "").trim() : "";
+      // 2391 (Misty 18 Nov 21:55, Penny's homework showed the English twice): a line with no Chinese in it is kept only when it is in the
+      // teacher's own text (a target word or example sentence); an English rewording or a remark from the translator is dropped
+      const CJK = /[\u3400-\u9fff]/, flat = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(), src = flat(text);
+      const zh = CJK.test(zh0) ? zh0.split("\n").filter((ln) => !ln.trim() || CJK.test(ln) || (flat(ln) && src.includes(flat(ln)))).join("\n").replace(/\n{3,}/g, "\n\n").trim() : "";
       if (zh) return out({ ok: true, zh, by: "claude" });
     } catch (_e) { /* no answer */ }
     return out({ ok: false, error: "no answer" });   // Misty 17 Nov: no Google for parent Chinese
