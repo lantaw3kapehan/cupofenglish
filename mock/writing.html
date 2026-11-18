@@ -245,8 +245,11 @@ function markDel(r, back){ /* the range becomes red; text typed earlier as a cor
   const frag = r.extractContents(); frag.querySelectorAll('ins,.cm').forEach(n => n.remove()); frag.querySelectorAll('del').forEach(n => n.replaceWith(...n.childNodes));
   if(!frag.textContent.replace(/​/g, '')) return; const d = document.createElement('del'); d.appendChild(frag); r.insertNode(d);
   /* join with a red word right next to it */
-  [d.previousSibling, d.nextSibling].forEach(sib => { if(sib && sib.nodeType === 1 && sib.tagName === 'DEL'){ if(sib === d.previousSibling){ sib.append(...d.childNodes); d.remove(); } } });
-  const s = window.getSelection(), rr = document.createRange(), anchor = d.isConnected ? d : null; if(anchor){ if(back) rr.setStartBefore(anchor); else rr.setStartAfter(anchor); } else rr.setStart(r.startContainer, r.startOffset); rr.collapse(true); s.removeAllRanges(); s.addRange(rr); }
+  let keep = d; const isDel = n => n && n.nodeType === 1 && n.tagName === 'DEL';
+  const skip = (n, dir) => { while(n && n.nodeType === 3 && !n.nodeValue.replace(/\u200B/g, '')) n = n[dir]; return n; };
+  let nx = skip(d.nextSibling, 'nextSibling'); if(isDel(nx)){ d.append(...nx.childNodes); nx.remove(); }
+  let pv = skip(d.previousSibling, 'previousSibling'); if(isDel(pv)){ pv.append(...d.childNodes); d.remove(); keep = pv; }
+  const s = window.getSelection(), rr = document.createRange(), anchor = keep.isConnected ? keep : null; if(anchor){ if(back) rr.setStartBefore(anchor); else rr.setStartAfter(anchor); } else rr.setStart(r.startContainer, r.startOffset); rr.collapse(true); s.removeAllRanges(); s.addRange(rr); }
 ed.addEventListener('beforeinput', e => { if(MODE !== 'C') return; const s = window.getSelection(); if(!s.rangeCount) return; const r = s.getRangeAt(0); const t = e.inputType;
   if(/^delete/.test(t)){ e.preventDefault(); let rr = r.cloneRange(); const back = /Backward/.test(t);
     if(rr.collapsed){ const s2 = window.getSelection(); s2.modify('extend', back ? 'backward' : 'forward', /Word/.test(t) ? 'word' : 'character'); rr = s2.getRangeAt(0).cloneRange(); }
@@ -254,8 +257,14 @@ ed.addEventListener('beforeinput', e => { if(MODE !== 'C') return; const s = win
   if(t === 'insertText' || t === 'insertReplacementText' || t === 'insertFromPaste'){ const txt = e.data != null ? e.data : (e.dataTransfer ? e.dataTransfer.getData('text/plain') : ''); if(txt == null) return;
     if(!r.collapsed){ e.preventDefault(); markDel(r.cloneRange(), false); const s3 = window.getSelection(); const r3 = s3.getRangeAt(0); const sp = document.createTextNode(' '); r3.insertNode(sp); placeIn(sp, 1); }
     const s4 = window.getSelection(), r4 = s4.getRangeAt(0); if(inside(r4.startContainer, 'ins') || inside(r4.startContainer, '.cm')) return;   /* already typing blue */
-    e.preventDefault(); let at = r4; const dl = inside(at.startContainer, 'del'); if(dl){ at = document.createRange(); at.setStartAfter(dl); at.collapse(true); }
-    const n = document.createElement('ins'); n.textContent = txt; at.insertNode(n); placeIn(n.firstChild, txt.length); save(); draw(); } });
+    e.preventDefault(); let at = r4; let dl = inside(at.startContainer, 'del');
+    /* the caret just before or just after a red word: the blue correction goes after it, with a space ("go goes") */
+    if(!dl){ const c = at.startContainer, o = at.startOffset; let nxt = null, prv = null;
+      if(c.nodeType === 3){ if(o >= c.nodeValue.replace(/\u200B/g, '').length) nxt = c.nextSibling; if(o === 0) prv = c.previousSibling; } else { nxt = c.childNodes[o]; prv = c.childNodes[o - 1]; }
+      if(nxt && nxt.nodeType === 1 && nxt.tagName === 'DEL') dl = nxt; else if(prv && prv.nodeType === 1 && prv.tagName === 'DEL') dl = prv; }
+    if(dl){ at = document.createRange(); at.setStartAfter(dl); at.collapse(true); }
+    const n = document.createElement('ins'); n.textContent = txt; at.insertNode(n); if(dl && !/^\s/.test(txt)) n.before(document.createTextNode(' '));
+    placeIn(n.firstChild, txt.length); save(); draw(); } });
 setMode(ed.textContent.trim() ? 'C' : 'T');
 
 
