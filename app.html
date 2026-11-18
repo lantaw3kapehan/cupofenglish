@@ -7409,7 +7409,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 1997;
+const COE_V = 1998;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -42750,6 +42750,169 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
   const parts = []; if(en.length) parts.push('Enrolment: ' + en.map(nm).filter(Boolean).join(', '));
   oth.forEach(a => parts.push(String(a.type || a.subject || 'Recognition') + (nm(a) ? ': ' + nm(a) : '')));
   return '<span>bonus</span><span style="display:block;margin-top:4px;color:#2D6A4F;font-size:13px;line-height:1.35">' + esc(parts.join(' · ')) + '</span>'; }catch(e){ return '<span>bonus</span>'; } };
+</script>
+<script id="b2341">
+/* 18 Nov · 2341 · Ops Desk (Misty: "her time should be maximized … she should be finding problems and solving them too").
+   On To do, for Operations (management, not the President): a prioritized work queue (Critical · Urgent · Today · Routine), the day's random spot-checks,
+   "Watch out" (her repeated mistakes), her day log, a "Done" that is checked again at once ("Cleared" / "Not cleared yet"), a problem report to Management,
+   and a nudge when nothing is done for a while (30 min; none while classes are live; 20 min in the last hour of her shift; "Messaging" pauses it 30 min).
+   On the President's Overview: "Operations today" (done, found, fixed, idle, reports waiting, repeated mistakes). Server: coe-ops v8 (desk, log, done, report, deskday, resolve, watch_add, watch_del). */
+(function(){
+  if(window.__od2341) return; window.__od2341 = 1;
+  var OPS = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-ops';
+  var E = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var Q = function(s){ return String(s == null ? '' : s).replace(/[\\'"<>&]/g, ''); };
+  var call = function(o){ return fetch(OPS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, o)) }).then(function(r){ return r.json(); }); };
+  var say = function(t){ try{ toast(t); }catch(e){} };
+  var ops = function(){ return typeof D !== 'undefined' && D && D.mgr && !D.pres; };
+  var pres = function(){ return typeof D !== 'undefined' && D && D.mgr && D.pres; };
+  var DK = null, DKat = 0, BUSY = 0, HTML = '', NUDGED = 0;
+  var TIER = { 1: ['Critical', '#C2412D', '#fff', 'now'], 2: ['Urgent', '#FCE3C4', '#8A4B00', 'within 2 h'], 3: ['Today', '#E3F0FB', '#1F4E80', 'by the end of your shift'], 4: ['Routine', '#EEF0F4', '#4B5563', 'when the rest is clear'] };
+  var css = document.createElement('style'); css.textContent = [
+    '#od2341{margin:14px 0 6px;display:flex;flex-direction:column;gap:12px}',
+    '#od2341 .c{background:#fff;border:1px solid #E5E7EB;border-radius:16px;padding:14px 16px}',
+    '#od2341 h3{margin:0 0 8px;font-size:17px;color:#2B2253}',
+    '#od2341 .k{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}',
+    '#od2341 .k b{display:block;font-size:22px;color:#2B2253;font-variant-numeric:tabular-nums}#od2341 .k span{font-size:13px;color:#4B5563}',
+    '#od2341 .q{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid #EEF0F4;flex-wrap:wrap}',
+    '#od2341 .q:first-of-type{border-top:0}',
+    '#od2341 .t{min-width:72px;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}',
+    '#od2341 .g{flex:1 1 300px;min-width:0}#od2341 .g b{font-size:15px}#od2341 .g div{font-size:13px;color:#4B5563}',
+    '#od2341 .bb{display:flex;gap:6px;flex-wrap:wrap}#od2341 .bb .btn{height:38px}',
+    '#od2341 .nudge{background:#FFF6E5;border:1px solid #F3D9A4;border-radius:12px;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;color:#6B4A00}',
+    '#od2341 .watch{background:#FCEDE7;border:1px solid #F2C4B8;border-radius:12px;padding:10px 14px;color:#7A2E1C}',
+    '#od2341 .watch li{margin:3px 0}',
+    '#od2341 .ck{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}',
+    '#od2341 .ck>div{border:1px solid #EEF0F4;border-radius:12px;padding:10px 12px}',
+    '#od2341 .r{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid #F3F4F6;flex-wrap:wrap;font-size:14px}',
+    '#od2341 .ok{color:#1E7A4F;font-weight:600}#od2341 .bad{color:#A2462C;font-weight:600}',
+    '#od2341 .lg{display:grid;grid-template-columns:48px 1fr;gap:4px 10px;font-size:14px}#od2341 .lg span:nth-child(odd){color:#6B7280;font-size:13px}',
+    '@media(max-width:700px){#od2341 .k,#od2341 .ck{grid-template-columns:repeat(2,minmax(0,1fr))}}',
+    '#op2341{position:fixed;inset:0;background:rgba(43,34,83,.38);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}',
+    '#op2341>div{background:#fff;border-radius:18px;padding:20px;width:min(560px,100%);max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:12px}',
+    '#op2341 label{font-size:14px;font-weight:600}#op2341 select,#op2341 textarea{width:100%;box-sizing:border-box;border:1px solid #CFCBDD;border-radius:10px;padding:8px 10px;font:15px Inter,sans-serif}',
+    '#op2341 textarea{min-height:90px}#op2341 .pz{border:2px dashed #B8C4CC;border-radius:12px;padding:14px;text-align:center;font-size:14px;color:#4B5563}',
+    '#op2341 .pz img{max-width:100%;max-height:180px;border-radius:8px}'
+  ].join(''); document.head.appendChild(css);
+
+  /* Celine's shift (Mon–Tue 13–22, Wed off, Thu–Sat 13–22, Sun 10–19) */
+  function shiftEnd(){ var d = new Date(Date.now() + 8 * 3600e3).getUTCDay(); return d === 0 ? 19 : 22; }
+  function mh(){ var x = new Date(Date.now() + 8 * 3600e3); return x.getUTCHours() + x.getUTCMinutes() / 60; }
+  function rule(){ var h = mh(), end = shiftEnd(), sun = new Date(Date.now() + 8 * 3600e3).getUTCDay() === 0;
+    if(h >= end - 1 && h < end) return { lim: 20, why: 'last hour of your shift' };
+    if(DK && DK.live) return { lim: 0, why: 'classes are live' };
+    if(!sun && h >= 17 && h < 21) return { lim: 0, why: 'classes are live' };
+    return { lim: 30, why: '' }; }
+
+  function load(force){ if(!ops() || BUSY) return Promise.resolve(DK); if(!force && DK && Date.now() - DKat < 60e3) return Promise.resolve(DK);
+    BUSY = 1; return call({ op: 'desk' }).then(function(r){ BUSY = 0; if(r && r.ok){ DK = r; DKat = Date.now(); paint(); } return DK; }).catch(function(){ BUSY = 0; return DK; }); }
+
+  function checksLeft(){ if(!DK) return 0; var c = DK.checks || {}, done = {}; (DK.done || []).forEach(function(r){ done[r] = 1; });
+    (DK.day && DK.day.log || []).forEach(function(l){ if(l.ref) done[l.ref] = 1; });
+    var n = 0; ['summaries', 'videos', 'notes'].forEach(function(k){ (c[k] || []).forEach(function(x){ if(!done[x.ref]) n++; }); }); return n; }
+
+  function html(){ if(!DK) return '<div id="od2341"><div class="c mute small">Loading your Ops Desk…</div></div>';
+    var d = DK.day || {}, q = DK.queue || [], c = DK.checks || {}, logDone = {}; (d.log || []).forEach(function(l){ if(l.ref) logDone[l.ref] = l.kind; }); (DK.done || []).forEach(function(r){ if(!logDone[r]) logDone[r] = 'done'; });
+    var left = checksLeft(), tasks = q.length + left, h = '<div id="od2341">';
+    /* the nudge */
+    var R = rule(), last = d.last ? Date.parse(d.last) : 0, idle = last ? Math.floor((Date.now() - last) / 6e4) : 0;
+    var msg = (d.log || []).some(function(l){ return l.kind === 'messaging' && (Date.now() - Date.parse(new Date().toISOString().slice(0, 10) + 'T' + l.at + ':00+08:00')) < 30 * 6e4; });
+    if(R.lim && tasks && last && idle >= R.lim && !msg){ var nx = q[0] ? q[0].title : 'the day’s spot-checks';
+      h += '<div class="nudge"><span><b>No action for ' + idle + ' minutes' + (R.why ? ' (' + R.why + ')' : '') + '.</b> ' + tasks + ' task' + (tasks === 1 ? '' : 's') + ' waiting. Next: ' + E(nx) + '.</span><span class="bb"><button class="btn sm" onclick="od2341Next()">Open it</button><button class="btn ghost sm" onclick="od2341Log(\'messaging\',\'\',\'Messaging parents in WeChat\')">Messaging (30 min)</button></span></div>';
+      if(!NUDGED || Date.now() - NUDGED > 30 * 6e4){ NUDGED = Date.now(); call({ op: 'log', kind: 'nudge', note: idle + ' min' }).catch(function(){}); } }
+    /* stats */
+    h += '<div class="c"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3>Ops Desk</h3><span class="small mute">' + (d.timein ? 'Timed in ' + E(d.timein) + ' · ' : '') + 'checked again every minute</span></div>' +
+      '<div class="k"><div><b>' + (d.done || 0) + '</b><span>done today</span></div><div><b style="color:#A2462C">' + (d.found || 0) + '</b><span>problems found</span></div><div><b style="color:#1E7A4F">' + (d.fixed || 0) + '</b><span>fixed and cleared</span></div><div><b>' + tasks + '</b><span>still to do</span></div></div>' +
+      '<div class="bb" style="margin-top:10px"><button class="btn teal sm" onclick="od2341Next()">Start next task</button><button class="btn ghost sm" onclick="od2341Report()">Report a problem</button></div></div>';
+    /* watch out */
+    if((DK.watch || []).length) h += '<div class="watch"><b>Watch out · your repeated mistakes</b><ul style="margin:6px 0 0 18px;padding:0;font-size:14px">' + DK.watch.map(function(w){ return '<li>' + E(w.text) + (w.times > 1 ? ' <span style="opacity:.8">· ' + w.times + ' times</span>' : '') + '</li>'; }).join('') + '</ul><div class="small" style="margin-top:6px">Check these before you save or send.</div></div>';
+    /* the queue */
+    h += '<div class="c"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3>Work queue</h3><span class="small mute">Most urgent first, then the earliest due</span></div>';
+    if(!q.length) h += '<div class="small" style="color:#1E7A4F;font-weight:600">All clear. Nothing urgent. Do the spot-checks below.</div>';
+    q.forEach(function(x, i){ var T = TIER[x.tier] || TIER[3];
+      h += '<div class="q" id="odq' + i + '"><span class="t" style="background:' + T[1] + ';color:' + T[2] + '">' + T[0] + '</span><div class="g"><b>' + E(x.title) + '</b><div>' + E(x.sub || '') + '</div></div>' +
+        '<span class="small" style="color:' + (x.tier <= 2 ? '#8A4B00' : '#4B5563') + ';font-weight:600;min-width:84px">' + E(T[3]) + '</span>' +
+        '<span class="bb"><button class="btn ghost sm" onclick="od2341Go(' + i + ')">' + E(x.btn || 'Open') + '</button><button class="btn sm" onclick="od2341Done(' + i + ')">Done</button><button class="btn ghost sm" title="Not a problem today" onclick="od2341Skip(' + i + ')">Not a problem</button></span></div>'; });
+    h += '</div>';
+    /* spot-checks */
+    var row = function(k, x, label, open){ var st = logDone[x.ref];
+      return '<div class="r"><span>' + label + '</span>' + (st === 'match' ? '<span class="ok">Matches</span>' : st === 'problem' ? '<span class="bad">Problem found</span>' : st === 'fixed' ? '<span class="ok">Fixed</span>' :
+        '<span class="bb">' + (open ? '<button class="btn ghost sm" onclick="' + open + '">Open</button>' : '') + '<button class="btn ghost sm" onclick="od2341Chk(\'' + Q(x.ref) + '\',\'match\',\'' + Q(label.replace(/<[^>]+>/g, '')) + '\')">' + (k === 'notes' ? 'Good' : 'Matches') + '</button><button class="btn ghost sm" style="color:#A2462C" onclick="od2341Chk(\'' + Q(x.ref) + '\',\'problem\',\'' + Q(label.replace(/<[^>]+>/g, '')) + '\')">Problem</button></span>') + '</div>'; };
+    h += '<div class="c"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3>Spot-checks today</h3><span class="small mute">' + left + ' left · new picks every day</span></div><div class="ck">';
+    h += '<div><b>Lesson summaries</b><div class="small mute">Numbers add up, classes and payments match</div>' + (c.summaries || []).map(function(x){ return row('summaries', x, '<b>' + E(x.name) + '</b> <span class="mute small">' + E(x.code) + '</span>', "tabSheet('INDPKG','Lesson summary','" + Q(x.code) + "')"); }).join('') + '</div>';
+    h += '<div><b>Class videos</b><div class="small mute">Camera on, clean background, on time, the student talks more</div>' + (c.videos || []).map(function(x){ return row('videos', x, '<b>' + E(x.name) + '</b> <span class="mute small">Teacher ' + E(x.teacher) + ' · ' + E(String(x.day).slice(5)) + '</span>', "openStudent('" + Q(x.code) + "')"); }).join('') + '</div>';
+    h += '<div><b>Class notes from yesterday</b><div class="small mute">Clear, book · unit · page filled, homework written</div>' + (c.notes || []).map(function(x){ return row('notes', x, '<b>' + E(x.name) + '</b> <span class="mute small">Teacher ' + E(x.teacher) + '</span><div class="small mute">' + E(x.ended || '(no book · page)') + ' · ' + E(x.hw || '(no homework)') + '</div>'); }).join('') + '</div>';
+    h += '<div><b>Try one screen</b><div class="small mute">Today: ' + E(c.screen || '') + '. Anything wrong, slow or confusing? Report it.</div><div class="bb" style="margin-top:8px"><button class="btn ghost sm" onclick="od2341Report(\'' + Q(c.screen || '') + '\')">Report a problem</button></div></div>';
+    h += '</div></div>';
+    /* my day */
+    var L = (d.log || []).slice(0, 12), K = { cleared: 'Cleared', still: 'Not cleared yet', match: 'Checked · matches', problem: 'Problem found', fixed: 'Fixed', report: 'Reported to Management', messaging: 'Messaging parents', skip: 'Not a problem', done: 'Done' };
+    if(L.length) h += '<div class="c"><h3>My day</h3><div class="lg">' + L.map(function(l){ return '<span>' + E(l.at) + '</span><span><b style="color:' + (/problem|still|report/.test(l.kind) ? '#A2462C' : /cleared|fixed|match/.test(l.kind) ? '#1E7A4F' : '#2B2253') + '">' + E(K[l.kind] || l.kind) + '</b>' + (l.title ? ' · ' + E(l.title) : '') + (l.note && l.kind !== 'messaging' ? '<div class="small mute">' + E(l.note) + '</div>' : '') + '</span>'; }).join('') + '</div><div class="small mute" style="margin-top:8px">Your day goes to Management at the end of your shift.</div></div>';
+    return h + '</div>'; }
+
+  function paint(){ if(!ops()) return; HTML = html(); var v = document.getElementById('v-mtoday'); if(!v) return; var o = document.getElementById('od2341');
+    if(o){ if(o.outerHTML !== HTML) o.outerHTML = HTML; return; }
+    var lead = v.querySelector('.lead'); if(lead) lead.insertAdjacentHTML('afterend', HTML); else v.insertAdjacentHTML('afterbegin', HTML); }
+  var _r = window.renderMToday; if(typeof _r === 'function') window.renderMToday = function(){ var r = _r.apply(this, arguments); try{ if(ops()){ paint(); load(); } }catch(e){ console.warn('od2341', e); } return r; };
+  setInterval(function(){ try{ if(ops() && typeof VIEW !== 'undefined' && VIEW === 'mtoday') load(true); else if(ops()) paint(); }catch(e){} }, 60e3);
+
+  var item = function(i){ return DK && DK.queue ? DK.queue[i] : null; };
+  window.od2341Go = function(i){ var x = item(i); if(!x) return; try{ if(x.go === 'student' && x.code) openStudent(x.code); else go(x.go); }catch(e){ say('Could not open it'); } };
+  window.od2341Next = function(){ if(DK && DK.queue && DK.queue.length) return od2341Go(0); var el = document.querySelector('#od2341 .ck'); if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  window.od2341Done = function(i){ var x = item(i); if(!x) return; say('Checking it again…');
+    call({ op: 'done', ref: x.ref, title: x.title }).then(function(r){ if(!r || !r.ok) return say('Not saved. Try again.');
+      if(r.cleared){ say('Cleared ✓ · ' + x.title); DK.queue.splice(i, 1); }
+      else say('Not cleared yet · ' + (r.item ? r.item.sub || r.item.title : x.title) + '. Fix it, then press Done again.');
+      if(r.day) DK.day = r.day; paint(); }).catch(function(){ say('Not saved. Try again.'); }); };
+  window.od2341Skip = function(i){ var x = item(i); if(!x) return; var why = prompt('Why is it not a problem? (Management sees this)', ''); if(why == null) return;
+    call({ op: 'log', kind: 'skip', ref: x.ref, title: x.title, note: why }).then(function(r){ if(r && r.ok){ DK.queue.splice(i, 1); DK.day = r.day; paint(); say('Saved · hidden for today'); } }); };
+  window.od2341Log = function(kind, ref, title, note){ return call({ op: 'log', kind: kind, ref: ref || '', title: title || '', note: note || '' }).then(function(r){ if(r && r.ok){ DK.day = r.day; paint(); if(kind === 'messaging') say('Paused for 30 minutes · logged as messaging'); } return r; }); };
+  window.od2341Chk = function(ref, kind, label){ if(kind === 'match') return od2341Log('match', ref, label);
+    var what = prompt('What is wrong? (' + label + ')', ''); if(what == null || !what.trim()) return;
+    od2341Log('problem', ref, label, what).then(function(){ if(confirm('Can you fix it yourself now?\n\nOK = I will fix it (then mark it Fixed)\nCancel = send it to Management')) { setTimeout(function(){ if(confirm('Fixed it? Press OK when it is fixed.')) od2341Log('fixed', ref, label, what); }, 200); }
+      else od2341Report('', label + ': ' + what); }); };
+
+  /* report a problem */
+  window.od2341Report = function(where, what){ var o = document.getElementById('op2341'); if(o) o.remove(); var IMG = '';
+    var W = ['Teacher’s Students screen', 'Teacher’s Today screen', 'Teacher’s Pay screen', 'Schedule', 'Students', 'Trials', 'To do', 'Overview', 'Finance', 'Renewal', 'Lesson Summary picture', 'Cancel or reschedule picture', 'Monthly feedback form', 'Trial report form', 'Book reader', 'Check homework', 'Give homework', 'Time-ins', 'Something else'];
+    if(where && W.indexOf(where) < 0) W.unshift(where);
+    document.body.insertAdjacentHTML('beforeend', '<div id="op2341" role="dialog" aria-modal="true" aria-label="Report a problem"><div><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-size:20px;color:#2B2253">Report a problem</h2><button class="btn ghost sm" aria-label="Close" onclick="document.getElementById(\'op2341\').remove()">Close</button></div>' +
+      '<label for="op2341w">Where</label><select id="op2341w">' + W.map(function(x){ return '<option' + (x === where ? ' selected' : '') + '>' + E(x) + '</option>'; }).join('') + '</select>' +
+      '<label for="op2341t">What is wrong</label><textarea id="op2341t" placeholder="What you saw, the student or teacher, and what it should be.">' + E(what || '') + '</textarea>' +
+      '<div class="pz" id="op2341p">Paste a screenshot here (⌘ Cmd + V or Ctrl + V)</div>' +
+      '<label>Who it affects</label><div class="bb" id="op2341a">' + ['One teacher', 'A parent', 'Pay or money', 'Everyone'].map(function(x, i){ return '<button type="button" class="btn ' + (i ? 'ghost' : 'teal') + ' sm" onclick="[].forEach.call(this.parentNode.children,function(b){b.className=\'btn ghost sm\'});this.className=\'btn teal sm\'">' + x + '</button>'; }).join('') + '</div>' +
+      '<div class="bb" style="justify-content:flex-end"><button class="btn ghost" id="op2341f">I fixed it myself</button><button class="btn teal" id="op2341s">Send to Management</button></div></div></div>');
+    var pz = document.getElementById('op2341p');
+    var onPaste = function(e){ var it = [].slice.call((e.clipboardData && e.clipboardData.items) || []).filter(function(x){ return /^image\//.test(x.type); })[0]; if(!it) return; e.preventDefault();
+      var f = it.getAsFile(), rd = new FileReader(); rd.onload = function(){ var im = new Image(); im.onload = function(){ var k = Math.min(1, 1600 / im.width), cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); IMG = cv.toDataURL('image/png'); pz.innerHTML = '<img alt="Screenshot" src="' + IMG + '">'; }; im.src = rd.result; }; rd.readAsDataURL(f); };
+    document.addEventListener('paste', onPaste);
+    var send = function(fixed){ var t = document.getElementById('op2341t').value.trim(); if(t.length < 5) return say('Write what is wrong first.');
+      var who = (document.querySelector('#op2341a .teal') || {}).textContent || ''; var b = document.getElementById(fixed ? 'op2341f' : 'op2341s'); b.disabled = true; b.textContent = 'Saving…';
+      call({ op: 'report', where: document.getElementById('op2341w').value, what: t, who: who, img: IMG, fixed: !!fixed }).then(function(r){ if(!r || !r.ok){ b.disabled = false; b.textContent = fixed ? 'I fixed it myself' : 'Send to Management'; return say((r && r.error) || 'Not saved. Try again.'); }
+        document.removeEventListener('paste', onPaste); document.getElementById('op2341').remove(); say(fixed ? 'Saved · counted as fixed by you' : 'Sent to Management ✓'); load(true); }).catch(function(){ b.disabled = false; say('Not saved. Try again.'); }); };
+    document.getElementById('op2341s').onclick = function(){ send(false); }; document.getElementById('op2341f').onclick = function(){ send(true); }; };
+
+  /* ── the President's Overview: Operations today ── */
+  var PD = null, PDat = 0, PB = 0, PH = '';
+  function pload(force){ if(!pres() || PB) return; if(!force && PD && Date.now() - PDat < 120e3) return; PB = 1;
+    call({ op: 'deskday' }).then(function(r){ PB = 0; if(r && r.ok){ PD = r; PDat = Date.now(); ppaint(); } }).catch(function(){ PB = 0; }); }
+  function phtml(){ if(!PD) return ''; var d = PD.day || {}, who = PD.who || 'Operations', h = '<div class="card" id="pd2341" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 style="margin:0">' + E(who) + ' today</h2><span class="small mute">' + (d.timein ? 'Timed in ' + E(d.timein) : 'Not timed in yet') + ' · Ops Desk</span></div>';
+    h += '<div class="stats" style="margin-top:10px"><div class="stat"><b class="num">' + (d.done || 0) + '</b><span>done</span></div><div class="stat"><b class="num minus">' + (d.found || 0) + '</b><span>problems found</span></div><div class="stat"><b class="num plus">' + (d.fixed || 0) + '</b><span>fixed</span></div><div class="stat"><b class="num">' + (d.saves || 0) + '</b><span>saves in the app</span></div></div>';
+    h += '<div class="small" style="margin-top:8px;color:#4B5563">Idle ' + (d.idle || 0) + ' min outside class hours (longest gap ' + (d.longest || 0) + ' min) · messaging ' + (d.messaging || 0) + ' min</div>';
+    var R = PD.reports || []; if(R.length) h += '<div style="margin-top:12px"><b>Waiting for you · ' + R.length + '</b>' + R.map(function(x){ return '<div class="li" style="align-items:flex-start"><div class="grow"><b>' + E(x.where) + '</b> <span class="small mute">' + E(new Date(x.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' })) + (x.who ? ' · ' + E(x.who) : '') + '</span><div class="small">' + E(x.what) + '</div>' + (x.img ? '<a class="link small" href="' + E(x.img) + '" target="_blank" rel="noopener">Screenshot</a>' : '') + '</div><button class="btn ghost sm" onclick="pd2341Res(' + (+x.id) + ')">Resolved</button></div>'; }).join('') + '</div>';
+    h += '<div style="margin-top:12px"><b>Repeated mistakes</b> <span class="small mute">' + E(who) + ' sees these on her desk</span>' + (PD.watch || []).map(function(w){ return '<div class="li"><div class="grow small">' + E(w.text) + (w.times > 1 ? ' · ' + w.times + ' times' : '') + '</div><button class="btn ghost sm" onclick="pd2341Add(\'' + Q(w.text) + '\')">Again</button><button class="btn ghost sm" onclick="pd2341Del(' + (+w.id) + ')">Remove</button></div>'; }).join('') +
+      '<div class="row" style="gap:8px;margin-top:6px"><input id="pd2341i" class="grow" placeholder="Add a mistake she repeats, e.g. Check the Chinese name before sending the picture" style="height:40px;border:1px solid #CFCBDD;border-radius:10px;padding:0 10px"><button class="btn sm" onclick="pd2341Add()">Add</button></div></div>';
+    var L = (d.log || []).slice(0, 8); if(L.length) h += '<details style="margin-top:10px"><summary class="small" style="cursor:pointer;color:#2F6F77;font-weight:700">Her log today · ' + (d.log || []).length + '</summary>' + L.map(function(l){ return '<div class="small" style="margin-top:4px"><span class="mute">' + E(l.at) + '</span> · ' + E(l.kind) + (l.title ? ' · ' + E(l.title) : '') + (l.note ? ' · ' + E(l.note) : '') + '</div>'; }).join('') + '</details>';
+    return h + '</div>'; }
+  function ppaint(){ if(!pres()) return; PH = phtml(); var v = document.getElementById('v-home'); if(!v || !PH) return; var o = document.getElementById('pd2341');
+    if(o){ if(o.outerHTML !== PH) o.outerHTML = PH; return; } var lead = v.querySelector('.lead'); if(lead) lead.insertAdjacentHTML('afterend', PH); else v.insertAdjacentHTML('afterbegin', PH); }
+  var _h = window.renderHome; if(typeof _h === 'function') window.renderHome = function(){ var r = _h.apply(this, arguments); try{ if(pres()){ ppaint(); pload(); } }catch(e){ console.warn('pd2341', e); } return r; };
+  setInterval(function(){ try{ if(pres() && typeof VIEW !== 'undefined' && VIEW === 'home') pload(); }catch(e){} }, 120e3);
+  window.pd2341Res = function(id){ var n = prompt('What was done? (optional)', ''); if(n == null) return; call({ op: 'resolve', id: id, who: PD && PD.who, note: n }).then(function(){ say('Resolved ✓'); pload(true); }); };
+  window.pd2341Add = function(t){ var text = t || (document.getElementById('pd2341i') || {}).value || ''; if(text.trim().length < 4) return say('Write the mistake first.');
+    call({ op: 'watch_add', who: PD && PD.who, text: text.trim() }).then(function(r){ if(r && r.ok){ say('Added · she sees it on her desk'); pload(true); } else say((r && r.error) || 'Not saved'); }); };
+  window.pd2341Del = function(id){ call({ op: 'watch_del', id: id }).then(function(){ pload(true); }); };
+})();
+
 </script>
 <script id="b2278">
 /* 2278 · warm the CupOfEnglish book reader (reader/) so the first book opens without waiting */
