@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-ops v8 (18 Nov · 2341 Ops Desk: desk, log, done, report, deskday, resolve, watch) · v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
+// CupOfEnglish · coe-ops v9 (18 Nov · 2344 op me: her own Overview) · v8 (18 Nov · 2341 Ops Desk: desk, log, done, report, deskday, resolve, watch) · v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
 // Management only (Operations and President). Teachers get "Management only".
 // POST { token, op: "check" }                        → { ok, items: [{ kind, ref, text, go }], at }   the daily database check (coe_ops_check)
 // POST { token, op: "ok", ref }                      → { ok }   "It's correct": this item never comes back (coe_ops_ok)
@@ -113,6 +113,11 @@ Deno.serve(async (req: Request) => {
   const str = (x: unknown, n = 300) => String(x == null ? "" : x).trim().slice(0, n);
   const opsName = async () => { const { data } = await db.from("app_sessions").select("name").eq("mode", "mgmt").ilike("role", "operations").order("exp", { ascending: false }).limit(1); return (data && data[0] && data[0].name) || "Celine"; };
   const watchOf = async (who: string) => { const { data } = await db.from("coe_ops_watch").select("id,text,times,last_at").ilike("who", who).is("gone_at", null).order("times", { ascending: false }).limit(12); return data || []; };
+  if (op === "me") {   // 2344: Operations' own Overview
+    const [M, D, W] = await Promise.all([db.rpc("coe_ops_me", { p_who: me }), db.rpc("coe_ops_day", { p_who: me }), watchOf(me)]);
+    if (M.error) return out({ ok: false, error: "db" }, 500);
+    return out({ ok: true, me: M.data || {}, day: D.data || {}, watch: W });
+  }
   if (op === "desk") {
     const [Q, C, D, W] = await Promise.all([db.rpc("coe_ops_queue"), db.rpc("coe_ops_checks", { p_who: me }), db.rpc("coe_ops_day", { p_who: me }), watchOf(me)]);
     if (Q.error) return out({ ok: false, error: "db", why: Q.error.message }, 500);
