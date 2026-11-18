@@ -149,6 +149,7 @@ body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not
 </div>
 <div class="pill" id="pill"><button id="pp" aria-label="Previous page">‹</button><span class="num" id="pg2">–</span><button id="pn" aria-label="Next page">›</button><button id="pz">Zoom</button><button id="px">Exit · Esc</button></div>
 <div class="vid" id="vid"><div class="top"><b id="vt"></b><button id="vx">✕ Close</button></div><video id="vv" controls playsinline preload="auto"></video></div>
+<script src="../homework/hdr.js"></script>
 <script type="module">
 import * as pdfjsLib from './pdfjs/pdf.min.mjs';
 pdfjsLib.GlobalWorkerOptions.workerSrc = './pdfjs/pdf.worker.min.mjs';
@@ -523,21 +524,17 @@ async function pagePic(){ const p = await doc.getPage(pageNo), v1 = p.getViewpor
   const pg = document.createElement('canvas'); pg.width = src.width; pg.height = hh; const g0 = pg.getContext('2d'); g0.drawImage(src, 0, -top);
   if(!cr){ const lg = logoBottom(pg); if(lg){ const m = Math.round(pg.width * 0.01); g0.fillStyle = lg.c; g0.fillRect(lg.x - m, lg.y - m, lg.w + 2 * m, lg.h + 2 * m); } }
   drawInk(pg);
-  const W = pg.width, band = Math.round(W * 0.07), foot = Math.round(W * 0.06), out = document.createElement('canvas'); out.width = W; out.height = hh + band + foot; const g = out.getContext('2d');
-  { const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, '#14B3A7'); gr.addColorStop(1, '#0E8F86'); g.fillStyle = gr; g.fillRect(0, 0, W, band); }   /* 2325: official CupOfEnglish teal, as on the parent cards */
-  g.drawImage(pg, 0, band);
-  /* 2324: footer · 一杯英语 CupOfEnglish logo and the date, so a forwarded or saved picture still shows where it came from */
-  g.fillStyle = '#fff'; g.fillRect(0, band + hh, W, foot); g.fillStyle = '#E3E1EA'; g.fillRect(0, band + hh, W, Math.max(1, Math.round(W * 0.001)));
-  try{ const lg = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = 'logo.png'; }); const lh = Math.round(foot * 0.6), lw = Math.round(lg.width * lh / lg.height);   /* 18 Nov: shrink in halves with high-quality smoothing so the logo stays crisp (one big step looked pixelated) */
-    let src = lg, sw = lg.width, sh = lg.height; while(sw / 2 >= lw * 1.4){ const c2 = document.createElement('canvas'); c2.width = Math.round(sw / 2); c2.height = Math.round(sh / 2); const g2 = c2.getContext('2d'); g2.imageSmoothingEnabled = true; g2.imageSmoothingQuality = 'high'; g2.drawImage(src, 0, 0, c2.width, c2.height); src = c2; sw = c2.width; sh = c2.height; }
-    g.save(); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(src, Math.round(band * 0.45), band + hh + Math.round((foot - lh) / 2), lw, lh); g.restore(); }catch(e){}
-  { const d = new Date(), M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; g.fillStyle = '#6B6880'; g.font = '500 ' + Math.round(foot * 0.3) + 'px Inter, sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'right'; g.fillText(d.getDate() + ' ' + M[d.getMonth()] + ' ' + d.getFullYear(), W - Math.round(band * 0.45), band + hh + foot / 2); g.textAlign = 'left'; }
-  const fs = Math.round(band * 0.42); g.textBaseline = 'middle'; g.fillStyle = '#fff'; try{ await fontsReady(); }catch(e){} g.font = '600 ' + fs + 'px Fredoka, "Noto Sans SC", sans-serif';
-  const L = Math.round(band * 0.45); g.fillText('Homework / 作业', L, band / 2);
-  const bk = String(LABEL || $('bk').textContent || '').trim(), cf = FILES.find(x => x.id === FID), side = cf && isMain(cf) ? mainLabel(cf.name) : '', right = [bk, side, (UNIT != null && !(cf && isMain(cf))) ? 'Unit ' + UNIT : ''].filter(Boolean).join(' · ');   /* 18 Nov: the whole book open → no unit (the side list's unit is not the page's unit) */   /* 2324: Workbook / Student's Book */
-  if(right){ g.font = '600 ' + fs + 'px Fredoka, "Noto Sans SC", sans-serif'; const room = W - 2 * L - g.measureText('Homework / 作业').width - band * 0.5;   /* 18 Nov: shrink the book label to fit the band before anything is cut */
-    let rs = Math.round(fs * 0.8); g.font = '500 ' + rs + 'px Inter, "Noto Sans SC", sans-serif'; while(g.measureText(right).width > room && rs > fs * 0.45){ rs--; g.font = '500 ' + rs + 'px Inter, "Noto Sans SC", sans-serif'; }
-    g.textAlign = 'right'; let t = right; while(g.measureText(t).width > room && t.length > 4) t = t.slice(0, -2); if(t !== right) t = t.trim() + '…'; g.fillText(t, W - L, band / 2); g.textAlign = 'left'; }
+  /* design A (Misty 18 Nov 19:33, the same header on every homework picture: homework/hdr.js): logo · "Homework / 作业" · date · the book label; no footer */
+  const bk = String(LABEL || $('bk').textContent || '').trim(), cf = FILES.find(x => x.id === FID), side = cf && isMain(cf) ? mainLabel(cf.name) : '', label = [bk, side, (UNIT != null && !(cf && isMain(cf))) ? 'Unit ' + UNIT : ''].filter(Boolean).join(' · ');   /* the whole book open → no unit (the side list's unit is not the page's unit) */
+  const W = pg.width + 2 * Math.round(pg.width * 26 / 560), P = Math.round((W - pg.width) / 2);
+  let logo = null; try{ logo = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = 'logo.png'; }); }catch(e){}
+  try{ await fontsReady(); }catch(e){}
+  const hT = window.coeHdr ? coeHdr.height(W, !!label) : 0, out = document.createElement('canvas'); out.width = W; out.height = hT + hh + P; const g = out.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, out.height);
+  if(window.coeHdr) coeHdr.draw(g, W, { logo, title: 'Homework / 作业', meta: [], label });
+  g.drawImage(pg, P, hT); g.strokeStyle = '#E3E1EA'; g.lineWidth = Math.max(1, Math.round(W / 600)); g.strokeRect(P, hT, pg.width, hh);
+  /* Give homework recognises this page by its size and keeps only the page and its label under its own header */
+  try{ localStorage.setItem('coe.hwcard', JSON.stringify({ w: W, h: out.height, top: hT, pad: P, label, at: Date.now() })); }catch(e){}
   return out; }
 /* Writing correction (18 Nov): shown for writing books (IELTS, academic, KET / PET, Pathways, business); opens homework/writing.html */
 function wrShow(){ const t = (TITLE + ' ' + BOOK + ' ' + (document.title || '')); const b = $('wrPg'); if(b) b.hidden = !/IELTS|writ|academic|pathway|business|\bKET\b|\bPET\b|essay/i.test(t); }

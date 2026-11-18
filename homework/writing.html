@@ -164,6 +164,7 @@ textarea{width:100%;min-height:80px;border:1px solid var(--out);border-radius:10
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="hdr.js"></script>
 <script>
 (function(){
 'use strict';
@@ -328,7 +329,7 @@ function layout(g, R, maxW){ const toks = []; R.forEach(r => { if(r.img){ toks.p
     let add = 0; L.forEach(p => { p.x += add; if(/^\s+$/.test(p.t)) add += extra / gaps; }); });
   return lines; }
 function build(){ const R = runs(), has = R.some(x => x.img || (x.t && x.t.trim())), stu = $('stu').value.trim(), kind = $('kind').value, qs = $('q').value.trim(), cn = counts();
-  const c = document.createElement('canvas'), g = c.getContext('2d'), band = 88, foot = 74, LH = 58;
+  const c = document.createElement('canvas'), g = c.getContext('2d'), band = coeHdr.height(W, true), foot = 0, LH = 58;   /* design A header, no footer */
   const L = layout(g, R, CW), QL = qs ? plain(g, qs, 'italic 400 28px Georgia, serif', CW - 40) : [];
   const sOn = $('bandOn').checked && /IELTS/.test(kind), sc = CRIT().map(([k, n]) => [k, n, BV[k] || '']), ov = ovr(), showB = sOn && sc.some(x => x[2]);
   const G = plain(g, $('fbG').value.trim(), '500 28px "COE Card Inter", Inter, sans-serif', CW - 60), I = plain(g, $('fbI').value.trim(), '500 28px "COE Card Inter", Inter, sans-serif', CW - 60);
@@ -342,11 +343,9 @@ function build(){ const R = runs(), has = R.some(x => x.img || (x.t && x.t.trim(
   if(gh) h += 56 + G.length * 40 + 16; if(ih) h += 56 + I.length * 40 + 16;
   h += 30 + foot; c.width = W; c.height = Math.max(h, 700);
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, c.height);
-  const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, '#14B3A7'); gr.addColorStop(1, '#0E8F86'); g.fillStyle = gr; g.fillRect(0, 0, W, band);
-  g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.font = '400 38px "COE Card Fredoka", "Fredoka One", sans-serif'; g.fillText('Writing feedback / 写作批改', 40, band / 2);
-  if(TEACHER){ g.font = '500 28px "COE Card Inter", Inter, sans-serif'; g.textAlign = 'right'; g.fillText(TEACHER, W - 40, band / 2); g.textAlign = 'left'; }
+  coeHdr.draw(g, W, { logo: LOGO, title: 'Writing feedback / 写作批改', meta: [stu ? 'For / 学生: ' + stu : '', TEACHER], label: kind });
   let y = band + 40; g.textBaseline = 'alphabetic';
-  g.fillStyle = '#2B2253'; g.font = '700 34px "COE Card Inter", Inter, sans-serif'; g.fillText((stu ? stu + ' · ' : '') + kind, M, y + 30);
+  g.fillStyle = '#2B2253'; g.font = '700 34px "COE Card Inter", Inter, sans-serif'; /* design A: the student and the writing type are in the header */
   g.fillStyle = '#6B6880'; g.font = '500 24px "COE Card Inter", Inter, sans-serif'; g.textAlign = 'right'; g.fillText(cn.n + ' words' + (cn.min && cn.n < cn.min ? ' (under ' + cn.min + ')' : ''), W - M, y + 30); g.textAlign = 'left'; y += 60;
   if(QL.length){ y += 12; const qh = QL.length * 40 + 24; g.fillStyle = '#F4F6F8'; g.fillRect(M, y, CW, qh); g.fillStyle = '#14B3A7'; g.fillRect(M, y, 6, qh); g.fillStyle = '#374151'; g.font = 'italic 400 28px Georgia, serif'; QL.forEach((t, i) => g.fillText(t, M + 24, y + 42 + i * 40)); y += qh + 24; }
   phs.forEach(x => { const xx = M + (CW - x.w) / 2; g.save(); g.beginPath(); g.rect(xx, y, x.w, x.h); g.clip(); g.drawImage(x.p.img, xx, y, x.w, Math.round(x.p.img.naturalHeight * x.w / x.p.img.naturalWidth)); g.restore(); g.strokeStyle = '#E3E1EA'; g.lineWidth = 2; g.strokeRect(xx, y, x.w, x.h); y += x.h + 24; });
@@ -364,9 +363,7 @@ function build(){ const R = runs(), has = R.some(x => x.img || (x.t && x.t.trim(
   const box = (title, lines, col, bg) => { const bh = 56 + lines.length * 40; g.fillStyle = bg; g.beginPath(); g.roundRect ? g.roundRect(M, y, CW, bh, 18) : g.rect(M, y, CW, bh); g.fill();
     g.fillStyle = col; g.font = '700 24px "COE Card Inter", Inter, sans-serif'; g.fillText(title, M + 28, y + 40); g.fillStyle = '#1F2937'; g.font = '500 28px "COE Card Inter", Inter, sans-serif'; lines.forEach((t, i) => g.fillText(t, M + 28, y + 80 + i * 40)); y += bh + 16; };
   if(gh) box('What was good', G, '#0E6F68', '#EEF8F7'); if(ih) box('What to improve next time', I, '#8A4B00', '#FFF6E5');
-  const fy = c.height - foot; g.fillStyle = '#E3E1EA'; g.fillRect(0, fy, W, 2);
-  if(LOGO){ const lh = Math.round(foot * .6), lw = Math.round(LOGO.width * lh / LOGO.height); g.imageSmoothingQuality = 'high'; g.drawImage(crisp(LOGO, lw), 40, fy + (foot - lh) / 2, lw, lh); }
-  const d = new Date(); g.fillStyle = '#6B6880'; g.font = '500 24px "COE Card Inter", Inter, sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'right'; g.fillText(d.getDate() + ' ' + MO[d.getMonth()] + ' ' + d.getFullYear(), W - 40, fy + foot / 2); g.textAlign = 'left';
+  /* design A: no footer (the logo and the date are in the header) */
   return { c, has }; }
 let LAST = null, dT = 0; function draw(){ clearTimeout(dT); dT = setTimeout(drawNow, 120); }
 async function drawNow(){ try{ await document.fonts.ready; }catch(e){} const { c, has } = build(); LAST = has ? c : null; const v = $('cv'); v.width = c.width; v.height = c.height; v.getContext('2d').drawImage(c, 0, 0);

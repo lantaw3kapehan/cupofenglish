@@ -127,6 +127,7 @@ textarea.zh{min-height:90px;font-family:'Noto Sans SC','PingFang SC','Microsoft 
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="hdr.js"></script>
 <script>
 (function(){
 'use strict';
@@ -198,7 +199,7 @@ $('due').addEventListener('change', () => { save(); draw(); });
 
 /* ---------- pictures: paste anywhere, drop, or choose ---------- */
 function addFile(f){ if(!f || !/^image\//.test(f.type)) return; if(PICS.length >= 6) return toast('Up to 6 pictures on one homework.');
-  const url = URL.createObjectURL(f), img = new Image(); img.onload = () => { PICS.push({ img: ownCard(img), url }); thumbs(); draw(); }; img.onerror = () => toast('That picture could not be opened.'); img.src = url; }
+  const url = URL.createObjectURL(f), img = new Image(); img.onload = () => { const oc = ownCard(img); PICS.push({ img: oc, url, label: oc.__label || '' }); thumbs(); draw(); }; img.onerror = () => toast('That picture could not be opened.'); img.src = url; }
 document.addEventListener('paste', e => { const it = [...((e.clipboardData && e.clipboardData.items) || [])].filter(x => /^image\//.test(x.type));
   if(it.length){ e.preventDefault(); it.forEach(x => addFile(x.getAsFile())); toast('Picture added.'); } });
 const dp = $('drop');
@@ -220,6 +221,10 @@ const W = 1240, M = 62;
    ("Homework / 作业" + book · unit) and our footer (logo + date). This picture adds its own, so the copy keeps only the book label from
    its band (the title is painted over) and drops its footer. Any other picture is used as it is. */
 function ownCard(im){ try{ const W = im.width, H = im.height; if(W < 200 || H < 300) return im;
+    /* design A (18 Nov 19:33): the book reader leaves the size, header and label of the page it copied; that page keeps only the page and its label */
+    try{ const k = JSON.parse(localStorage.getItem('coe.hwcard') || 'null'); if(k && k.w === W && k.h === H && Date.now() - k.at < 6 * 3600e3){
+      const out = document.createElement('canvas'); out.width = W - 2 * k.pad; out.height = H - k.top - k.pad; out.getContext('2d').drawImage(im, k.pad, k.top, out.width, out.height, 0, 0, out.width, out.height);
+      return Object.assign(out, { naturalWidth: out.width, naturalHeight: out.height, __label: k.label || '' }); } }catch(e){}
     const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.drawImage(im, 0, 0); const px = (x, y) => g.getImageData(x, y, 1, 1).data;
     const teal = p => p[1] > 110 && p[1] < 200 && p[2] > 100 && p[2] < 190 && p[0] < 60 && p[1] - p[0] > 70;
     if(!teal(px(2, 2)) || !teal(px(W - 3, 2))) return im;
@@ -244,7 +249,7 @@ function wrap(g, text, maxW){ const out = []; String(text).split(/\n/).forEach(p
 let dT = 0; function draw(){ clearTimeout(dT); dT = setTimeout(drawNow, 60); }
 function build(){ const en = $('en').value.trim(), ZON = $('zhOn').checked, zh = ZON ? $('zh').value.trim() : '', stu = $('stu').value.trim(), due = dueText(), nt = $('nt').value.trim(), ntzh = ZON ? $('ntzh').value.trim() : '';
   const has = !!(en || PICS.length || $('nt').value.trim()); const c = document.createElement('canvas'), g = c.getContext('2d');
-  const band = Math.round(W * 0.07), foot = Math.round(W * 0.06), CW = W - 2 * M;
+  const LBL = (PICS.find(p => p.label) || {}).label || '', band = coeHdr.height(W, !!LBL), foot = 0, CW = W - 2 * M;   /* design A: one header, no footer */
   /* measure */
   const F_EN = '500 34px "COE Card Inter", Inter, sans-serif', F_ZH = '400 30px "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif';
   g.font = F_EN; const L1 = en ? wrap(g, en, CW) : []; g.font = F_ZH; const L2 = zh ? wrap(g, zh, CW) : [];
@@ -254,7 +259,7 @@ function build(){ const en = $('en').value.trim(), ZON = $('zhOn').checked, zh =
   const pw = PICS.map(p => Math.min(CW, p.img.naturalWidth));
   const ph2 = PICS.map((p, i) => Math.round(p.img.naturalHeight * pw[i] / p.img.naturalWidth));
   let h = band + 46;
-  if((stu && !greet) || due) h += 64;
+  if(due) h += 64;
   if(greet) h += ZON ? 112 : 68;
   if(L1.length) h += L1.length * 52 + 8;
   if(L2.length) h += 18 + L2.length * 46;
@@ -264,16 +269,12 @@ function build(){ const en = $('en').value.trim(), ZON = $('zhOn').checked, zh =
   h += 20 + foot;
   c.width = W; c.height = Math.max(h, band + foot + 240);
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, c.height);
-  /* band: official teal, as on the parent cards */
-  const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, '#14B3A7'); gr.addColorStop(1, '#0E8F86'); g.fillStyle = gr; g.fillRect(0, 0, W, band);
-  const fs = Math.round(band * 0.42), L = Math.round(band * 0.45); g.textBaseline = 'middle'; g.fillStyle = '#fff';
-  g.font = '400 ' + fs + 'px "COE Card Fredoka", "Fredoka One", "Noto Sans SC", sans-serif'; g.fillText(ZON ? 'Homework / 作业' : 'Homework', L, band / 2);
-  if(TEACHER){ g.font = '500 ' + Math.round(fs * 0.8) + 'px "COE Card Inter", Inter, sans-serif'; g.textAlign = 'right'; g.fillText(TEACHER, W - L, band / 2); g.textAlign = 'left'; }
+  /* design A header (shared homework/hdr.js): logo · title · For / 学生 · teacher · date · the book label of a copied reader page */
+  coeHdr.draw(g, W, { logo: LOGO, title: ZON ? 'Homework / 作业' : 'Homework', meta: [stu ? (ZON ? 'For / 学生: ' : 'For: ') + stu : '', TEACHER], label: LBL });
   let y = band + 46; g.textBaseline = 'alphabetic';
   /* for · due */
-  if((stu && !greet) || due){ let x = M; const chip = (t, bg, fg) => { g.font = '600 26px "COE Card Inter", Inter, "Noto Sans SC", sans-serif'; const w = g.measureText(t).width + 36;
+  if(due){ let x = M; const chip = (t, bg, fg) => { g.font = '600 26px "COE Card Inter", Inter, "Noto Sans SC", sans-serif'; const w = g.measureText(t).width + 36;
       g.fillStyle = bg; g.beginPath(); g.roundRect ? g.roundRect(x, y - 4, w, 46, 23) : g.rect(x, y - 4, w, 46); g.fill(); g.fillStyle = fg; g.textBaseline = 'middle'; g.fillText(t, x + 18, y + 19); g.textBaseline = 'alphabetic'; x += w + 12; };
-    if(stu && !greet) chip((ZON ? 'For / 学生: ' : 'For: ') + stu, '#EEF8F7', '#0E6F68');
     if(due) chip(ZON ? 'Due / 截止: ' + due[0] + ' / ' + due[1] : 'Due: ' + due[0], '#FFF6E5', '#8A5A00');
     y += 64; }
   if(greet){ g.fillStyle = '#2B2253'; g.font = '700 36px "COE Card Inter", Inter, sans-serif'; y += 46; g.fillText('Hi ' + stu + ',', M, y - 8);
@@ -286,11 +287,7 @@ function build(){ const en = $('en').value.trim(), ZON = $('zhOn').checked, zh =
   if(nh){ g.fillStyle = '#EEF8F7'; g.beginPath(); g.roundRect ? g.roundRect(M, y, CW, nh, 20) : g.rect(M, y, CW, nh); g.fill(); g.fillStyle = '#14B3A7'; g.fillRect(M, y + 18, 6, nh - 36);
     let ny = y + 22; g.textBaseline = 'alphabetic'; g.fillStyle = '#1F2937'; g.font = F_N; N1.forEach(t => { ny += 44; g.fillText(t, M + 34, ny - 10); });
     if(N2.length){ ny += 14; g.fillStyle = '#5B5675'; g.font = F_NZ; N2.forEach(t => { ny += 40; g.fillText(t, M + 34, ny - 8); }); } y += nh + 24; }
-  /* footer: logo and date */
-  const fy = c.height - foot; g.fillStyle = '#E3E1EA'; g.fillRect(0, fy, W, 2);
-  if(LOGO){ const lh = Math.round(foot * 0.6), lw = Math.round(LOGO.width * lh / LOGO.height); g.save(); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(crisp(LOGO, lw), L, fy + Math.round((foot - lh) / 2), lw, lh); g.restore(); }
-  const d = new Date(); g.fillStyle = '#6B6880'; g.font = '500 ' + Math.round(foot * 0.3) + 'px "COE Card Inter", Inter, sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'right';
-  g.fillText(d.getDate() + ' ' + MO[d.getMonth()] + ' ' + d.getFullYear(), W - L, fy + foot / 2); g.textAlign = 'left';
+  /* design A: no footer (the logo and the date are in the header) */
   return { c, has }; }
 let LAST = null;
 async function drawNow(){ try{ await document.fonts.ready; }catch(e){} const { c, has } = build(); LAST = has ? c : null;
