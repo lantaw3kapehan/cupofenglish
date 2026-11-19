@@ -92,7 +92,7 @@ h1{margin:0;font:400 28px/1.2 'COE Card Fredoka','Fredoka One',sans-serif;color:
 /* 2408 (Misty 19 Nov 12:04): the tools and the stamps stay in view while the teacher scrolls a long picture; marks can be dragged */
 #tools{position:sticky;top:0;z-index:6;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 1px 0 var(--line)}
 .rail{position:sticky;top:var(--tb,0px);align-self:flex-start;max-height:calc(100vh - var(--tb,0px));overflow-y:auto;z-index:4}
-#pcv.mv{cursor:move}#pcv.mving{cursor:grabbing}
+#pcv.mv{cursor:move}#pcv.mving{cursor:grabbing}#pcv.rs{cursor:nwse-resize}
 #selb{position:absolute;z-index:5;display:flex;gap:4px;background:#fff;border:1px solid #D7DCE2;border-radius:10px;padding:3px;box-shadow:0 4px 12px rgba(16,24,40,.12)}#selb button{border:0;background:#F4F6F8;border-radius:7px;padding:5px 9px;font:600 13px Inter,sans-serif;cursor:pointer;color:#2B2253}#selb button:hover{background:#E6F5F6}
 #tools .tools{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}#tools .tools>*{flex:none}#tools .tools>.xs{white-space:nowrap}
 #pwrap{flex:1;min-width:0;background:#EEF0F3;padding:16px;display:flex;justify-content:center;align-items:flex-start;position:relative;overflow:auto}
@@ -436,10 +436,11 @@ ${Object.keys(ICO).map(k => `<button type="button" class="tb${TOOL === k ? ' on'
 </div><div id="pwrap"><canvas id="pcv"></canvas></div></div>`;
   $('area').querySelectorAll('[data-t]').forEach(b => b.onclick = () => { TOOL = b.dataset.t; $('area').querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b)); $('pcv').classList.toggle('hand', TOOL === 'hand'); stampBar(); });
   stampBar();
-  $('area').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { COL = b.dataset.c; $('area').querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('area').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { COL = b.dataset.c; if(SELI && PIC.items.includes(SELI) && SELI.t !== 'stamp' && SELI.c !== COL){ push(); SELI.c = COL; draw(); side(); } $('area').querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b)); });
   $('area').querySelectorAll('[data-z]').forEach(b => b.onclick = () => { SIZE = b.dataset.z; try{ localStorage.setItem('coe.hw.size', SIZE); }catch(e){} $('area').querySelectorAll('[data-z]').forEach(x => x.classList.toggle('on', x === b)); });
   $('pU').onclick = undo; $('pR').onclick = redo;
   const cv = $('pcv'); cv.classList.toggle('hand', TOOL === 'hand');
+  cv.addEventListener('dblclick', e => { const [x, y] = pt(e); for(let i = PIC.items.length - 1; i >= 0; i--){ const it = PIC.items[i], b = bbox(it); if(it.t === 'text' && x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]){ e.preventDefault(); SELI = it; draw(); editTxt(it, e); return; } } });
   cv.addEventListener('pointerdown', pDown); cv.addEventListener('pointermove', pMove); cv.addEventListener('pointerup', pUp); cv.addEventListener('pointercancel', pUp);
   fit(); }
 function fit(){ const cv = $('pcv'), w = $('pwrap'); if(!cv || !PIC.base) return; const full = document.fullscreenElement === $('work');
@@ -497,10 +498,13 @@ function drawNow(){ const cv = $('pcv'); if(!cv || !PIC.base) return; const c = 
   if(BG && BGOF === PIC.base && BG.width === cv.width && BG.height === cv.height) c.drawImage(BG, 0, 0); else { c.clearRect(0, 0, cv.width, cv.height); c.setTransform(DPR * PK, 0, 0, DPR * PK, 0, 0); c.drawImage(PIC.base, 0, 0); }
   c.setTransform(DPR * PK, 0, 0, DPR * PK, 0, 0);
   PIC.items.forEach(it => drawItem(c, it)); if(DRAW && DRAW.it) drawItem(c, DRAW.it);
-  if(SELI && PIC.items.includes(SELI)){ const b = bbox(SELI), u = U(); c.save(); c.setLineDash([u * .6, u * .4]); c.lineWidth = Math.max(1, u * .12); c.strokeStyle = '#0E7C7B'; c.strokeRect(b[0] - u * .3, b[1] - u * .3, b[2] - b[0] + u * .6, b[3] - b[1] + u * .6); c.restore(); }
+  if(SELI && PIC.items.includes(SELI)){ const b = bbox(SELI), u = U(); c.save(); c.setLineDash([u * .6, u * .4]); c.lineWidth = Math.max(1, u * .12); c.strokeStyle = '#0E7C7B'; c.strokeRect(b[0] - u * .3, b[1] - u * .3, b[2] - b[0] + u * .6, b[3] - b[1] + u * .6); c.setLineDash([]); const hp = hdl(SELI); c.fillStyle = '#fff'; c.lineWidth = Math.max(1, u * .15); c.fillRect(hp[0] - u * .55, hp[1] - u * .55, u * 1.1, u * 1.1); c.strokeRect(hp[0] - u * .55, hp[1] - u * .55, u * 1.1, u * 1.1); c.restore(); }
   selBar(); }
 /* 2410 (Misty 19 Nov 12:52): the last mark placed or touched is selected · − / + resize it, ✕ or the Delete key removes it, arrows nudge, Esc lets go */
-let SELI = null;
+let SELI = null, RSZ = null;
+/* 2413 (Misty 19 Nov 13:05): drag the corner square to resize · double-click a label to change its words · a colour dot recolours the selected mark */
+const hdl = it => { const b = bbox(it), u = U(); return [b[2] + u * .3, b[3] + u * .3]; };
+const onHdl = (x, y) => { if(!SELI || !PIC.items.includes(SELI) || SELI.t === 'pen') return false; const h = hdl(SELI), u = U(); return Math.abs(x - h[0]) <= u * 1.1 && Math.abs(y - h[1]) <= u * 1.1; };
 function selBar(){ const w = $('pwrap'); if(!w) return; let b = $('selb'); if(!SELI || !PIC.items.includes(SELI)){ if(b) b.remove(); return; }
   if(!b){ b = document.createElement('div'); b.id = 'selb'; b.innerHTML = '<button type="button" data-k="-" title="Smaller ( - )">A−</button><button type="button" data-k="+" title="Bigger ( + )">A+</button><button type="button" data-k="x" title="Remove (Delete)" style="color:#B42318">✕</button>';
     b.addEventListener('pointerdown', e => e.stopPropagation()); b.querySelectorAll('button').forEach(x => x.onclick = e => { e.preventDefault(); selDo(x.dataset.k); }); w.appendChild(b); }
@@ -513,7 +517,8 @@ document.addEventListener('keydown', e => { if(!SELI || MODE !== 'picture') retu
 const pt = e => { const r = $('pcv').getBoundingClientRect(); return [(e.clientX - r.left) / PK, (e.clientY - r.top) / PK]; };
 const MOVABLE = ['stamp', 'tick', 'cross', 'text'];
 function hitMark(x, y, all){ for(let i = PIC.items.length - 1; i >= 0; i--){ const it = PIC.items[i]; if(!(MOVABLE.includes(it.t) || (all && it.t === 'circle'))) continue; const b = bbox(it); if(x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) return it; } return null; }
-function pDown(e){ { const [x0, y0] = pt(e), canMove = TOOL === 'hand' || TOOL === 'stamp' || TOOL === 'tick' || TOOL === 'cross' || TOOL === 'text', h = canMove ? hitMark(x0, y0, TOOL === 'hand') : null;   /* 2408: press on a stamp, tick, cross or label to drag it */
+function pDown(e){ { const [hx, hy] = pt(e); if(onHdl(hx, hy)){ e.preventDefault(); closeTxt(); const it = SELI, d0 = Math.max(U() * .5, Math.hypot(hx - it.x, hy - it.y)); RSZ = { it, d0, s: it.s, rx: it.rx, ry: it.ry, pushed: false }; $('pcv').setPointerCapture(e.pointerId); return; } }
+  { const [x0, y0] = pt(e), canMove = TOOL === 'hand' || TOOL === 'stamp' || TOOL === 'tick' || TOOL === 'cross' || TOOL === 'text', h = canMove ? hitMark(x0, y0, TOOL === 'hand') : null;   /* 2408: press on a stamp, tick, cross or label to drag it */
     if(h){ e.preventDefault(); closeTxt(); SELI = h; draw(); MOVE = { it: h, dx: x0 - h.x, dy: y0 - h.y, moved: false }; $('pcv').setPointerCapture(e.pointerId); $('pcv').classList.add('mving'); return; } }
   if(TOOL === 'hand'){ if(SELI){ SELI = null; draw(); } return; } e.preventDefault(); const [x, y] = pt(e), u = U(); closeTxt(); SELI = null;
   if(TOOL === 'pen'){ DRAW = { it: { t: 'pen', c: COL, w: u * SZN().pen, p: [[x, y]] } }; $('pcv').setPointerCapture(e.pointerId); }
@@ -523,16 +528,23 @@ function pDown(e){ { const [x0, y0] = pt(e), canMove = TOOL === 'hand' || TOOL =
   else if(TOOL === 'text') openTxt(x, y, e);
   else if(TOOL === 'erase'){ for(let i = PIC.items.length - 1; i >= 0; i--){ const b = bbox(PIC.items[i]); if(x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]){ push(); PIC.items.splice(i, 1); draw(); side(); return; } } } }
 let MOVE = null;
-function pMove(e){ if(MOVE){ const [x, y] = pt(e); if(!MOVE.moved){ if(Math.hypot(x - MOVE.dx - MOVE.it.x, y - MOVE.dy - MOVE.it.y) < U() * .3) return; push(); MOVE.moved = true; } MOVE.it.x = x - MOVE.dx; MOVE.it.y = y - MOVE.dy; draw(); return; }
-  if(!DRAW){ const cv = $('pcv'); if(cv && e.pointerType === 'mouse'){ const [x, y] = pt(e), on = (TOOL === 'hand' || TOOL === 'stamp' || TOOL === 'tick' || TOOL === 'cross' || TOOL === 'text') && !!hitMark(x, y, TOOL === 'hand'); cv.classList.toggle('mv', on); } return; } const [x, y] = pt(e); if(DRAW.it.t === 'pen'){ const L = DRAW.it.p[DRAW.it.p.length - 1]; if(Math.hypot(x - L[0], y - L[1]) > U() * .15) DRAW.it.p.push([x, y]); }
+function pMove(e){ if(RSZ){ const [x, y] = pt(e), it = RSZ.it, f = Math.max(.25, Math.min(6, Math.hypot(x - it.x, y - it.y) / RSZ.d0)); if(!RSZ.pushed){ push(); RSZ.pushed = true; }
+    if(it.t === 'circle'){ it.rx = RSZ.rx * f; it.ry = RSZ.ry * f; } else it.s = Math.max(U() * .5, RSZ.s * f); draw(); return; }
+  if(MOVE){ const [x, y] = pt(e); if(!MOVE.moved){ if(Math.hypot(x - MOVE.dx - MOVE.it.x, y - MOVE.dy - MOVE.it.y) < U() * .3) return; push(); MOVE.moved = true; } MOVE.it.x = x - MOVE.dx; MOVE.it.y = y - MOVE.dy; draw(); return; }
+  if(!DRAW){ const cv = $('pcv'); if(cv && e.pointerType === 'mouse'){ const [x, y] = pt(e), on = (TOOL === 'hand' || TOOL === 'stamp' || TOOL === 'tick' || TOOL === 'cross' || TOOL === 'text') && !!hitMark(x, y, TOOL === 'hand'); cv.classList.toggle('mv', on); cv.classList.toggle('rs', onHdl(x, y)); } return; } const [x, y] = pt(e); if(DRAW.it.t === 'pen'){ const L = DRAW.it.p[DRAW.it.p.length - 1]; if(Math.hypot(x - L[0], y - L[1]) > U() * .15) DRAW.it.p.push([x, y]); }
   else { DRAW.it.x = (DRAW.x0 + x) / 2; DRAW.it.y = (DRAW.y0 + y) / 2; DRAW.it.rx = (x - DRAW.x0) / 2; DRAW.it.ry = (y - DRAW.y0) / 2; } draw(); }
-function pUp(){ if(MOVE){ const m = MOVE; MOVE = null; const cv = $('pcv'); if(cv) cv.classList.remove('mving'); if(m.moved){ dirty(); draw(); side(); } return; }
+function pUp(){ if(RSZ){ const r = RSZ; RSZ = null; if(r.pushed){ dirty(); draw(); side(); } return; }
+  if(MOVE){ const m = MOVE; MOVE = null; const cv = $('pcv'); if(cv) cv.classList.remove('mving'); if(m.moved){ dirty(); draw(); side(); } return; }
   if(!DRAW) return; const it = DRAW.it; DRAW = null; if(it.t === 'circle' && Math.abs(it.rx) < U() * .6 && Math.abs(it.ry) < U() * .6){ draw(); return; }
   push(); PIC.items.push(it); draw(); side(); }
 function openTxt(x, y, e){ const w = $('pwrap'), r = w.getBoundingClientRect(), inp = document.createElement('input'); inp.id = 'ptxt'; inp.placeholder = 'Type, then Enter';
   inp.style.left = (e.clientX - r.left + w.scrollLeft) + 'px'; inp.style.top = (e.clientY - r.top + w.scrollTop - 14) + 'px'; inp.style.borderColor = COL; w.appendChild(inp); setTimeout(() => inp.focus(), 10);
   const done = () => { const v = inp.value.trim(); inp.remove(); if(v){ push(); PIC.items.push({ t: 'text', c: COL, x, y: y - U() * SZN().text * .55, s: U() * SZN().text, txt: v }); SELI = PIC.items[PIC.items.length - 1]; draw(); side(); } };
   inp.onkeydown = ev => { if(ev.key === 'Enter'){ ev.preventDefault(); done(); } else if(ev.key === 'Escape'){ inp.remove(); } }; inp.onblur = done; }
+function editTxt(it, e){ closeTxt(); const w = $('pwrap'), r = w.getBoundingClientRect(), inp = document.createElement('input'); inp.id = 'ptxt'; inp.value = it.txt;
+  inp.style.left = (e.clientX - r.left + w.scrollLeft) + 'px'; inp.style.top = (e.clientY - r.top + w.scrollTop - 14) + 'px'; inp.style.borderColor = it.c; w.appendChild(inp); setTimeout(() => { inp.focus(); inp.select(); }, 10);
+  let gone = false; const done = () => { if(gone) return; gone = true; const v = inp.value.trim(); inp.remove(); if(v && v !== it.txt){ push(); it.txt = v; draw(); side(); } };
+  inp.onkeydown = ev => { if(ev.key === 'Enter'){ ev.preventDefault(); done(); } else if(ev.key === 'Escape'){ gone = true; inp.remove(); } }; inp.onblur = done; }
 function closeTxt(){ const t = $('ptxt'); if(t) t.blur(); }
 function rotate(){ if(!PIC.base) return; if(PIC.items.length && !confirm('Rotating clears the marks on this picture. Rotate?')) return;
   const b = PIC.base, c = document.createElement('canvas'); c.width = b.height; c.height = b.width; const x = c.getContext('2d'); x.translate(c.width, 0); x.rotate(Math.PI / 2); x.drawImage(b, 0, 0);
