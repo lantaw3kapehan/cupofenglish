@@ -51,8 +51,13 @@ h1{font-family:'COE Card Fredoka',Fredoka,sans-serif;font-weight:400;font-size:3
 .tc .zh{font-size:12px;color:#8A869C}
 .tc .ft{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--mute);margin-top:2px}
 .tc .ft .used{color:#1E6F5C}
-.tc .ft .cnt{color:#2B2253;font-weight:600}
+.tc .ft .ucnt{color:#2B2253;font-weight:600}
 .sect{margin:22px 0 10px;display:flex;align-items:center;gap:10px}
+.upc{background:#fff;border:1px solid #ECEAF2;border-radius:16px;padding:14px 18px;margin:18px 0 16px}.upc .uh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.upc .uh>b{font-size:17px;color:#2B2253}
+.upc .ul{margin-top:8px}.upc .ur{display:grid;grid-template-columns:96px auto minmax(0,1fr) auto 16px;gap:12px;align-items:center;padding:10px 4px;border-top:1px solid #F1F0F6;cursor:pointer;border-radius:8px}
+.upc .ur:hover{background:#F7F6FA}.upc .ud{font-size:14px;color:#2B2253;font-weight:600;font-variant-numeric:tabular-nums}.upc .ut{min-width:0;display:flex;align-items:baseline;gap:10px;overflow:hidden}.upc .ut b{font-size:15px;color:#2B2253;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.upc .ut .zh{font-size:12.5px;color:#8A879C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.upc .ua{color:#9A97AC}
+@media (max-width:760px){.upc .ur{grid-template-columns:80px minmax(0,1fr) 16px}.upc .ur>.lb,.upc .ur>.chip,.upc .ur>span:nth-child(4){display:none}}
 .sect b{font-size:17px}
 .cnt{background:var(--coral);color:#fff;border-radius:999px;padding:1px 10px;font-weight:700;font-size:13px}
 .empty{color:var(--mute);font-size:14px;padding:18px 0}
@@ -260,22 +265,32 @@ async function copyPic(t, lv, who){ try{ await document.fonts.ready; }catch(e){}
 
 /* ── Library ── */
 function useLine(id, U){ const c = (D.counts || {})[id] || { n: 0, t: 0 };   /* 2448: classes used in, all teachers */
-  const all = c.n ? '<span class="cnt">Used in ' + c.n + ' class' + (c.n === 1 ? '' : 'es') + (D.mgmt ? ' · ' + c.t + ' teacher' + (c.t === 1 ? '' : 's') : '') + '</span>' : '<span>Not used yet</span>';
+  const all = c.n ? '<span class="ucnt">Used in ' + c.n + ' class' + (c.n === 1 ? '' : 'es') + (D.mgmt ? ' · ' + c.t + ' teacher' + (c.t === 1 ? '' : 's') : '') + '</span>' : '<span>Not used yet</span>';
   if(D.mgmt || !U.length) return all;
   return '<span><span class="used">You: ' + esc(U.slice(0, 3).map(u => u.student || u.code).join(', ')) + (U.length > 3 ? ' +' + (U.length - 3) : '') + '</span> · ' + all.replace(/^<span[^>]*>|<\/span>$/g, '') + '</span>'; }
 function usedOf(id){ return (D.used || []).filter(u => u.topic === id); }
+function nextBatch(){ const t = new Date(mnl() + 'T00:00:00Z'), d = t.getUTCDay(), sun = new Date(t.getTime() + ((7 - d) % 7) * 864e5), mon = new Date(sun.getTime() + 864e5), fri = new Date(sun.getTime() + 5 * 864e5), f = x => x.toISOString().slice(0, 10);
+  return 'Next drafts arrive ' + dShort(f(sun)) + ' at 17:47, for ' + dShort(f(mon)) + ' to ' + dShort(f(fri)) + '.'; }
+function upHtml(up, dr){   /* 2454 (Misty 19 Nov): management sees what is coming · teachers only ever see today's and earlier topics */
+  const rows = up.map(t => '<div class="ur tc" data-id="' + t.id + '" tabindex="0" role="button" aria-label="Open ' + esc(t.title) + '"><span class="ud">' + dShort(t.day) + '</span>'
+    + (t.status === 'draft' ? '<span class="lb" style="background:#FFF1D6;color:#8A5A00;font-weight:700">Draft</span>' : '<span class="lb" style="background:#E6EEFB;color:#2B4C8C;font-weight:700">Approved</span>')
+    + '<span class="ut"><b>' + esc(t.title) + '</b>' + (t.title_zh ? '<span class="zh">' + esc(t.title_zh) + '</span>' : '') + '</span>' + stChip(t.strand) + '<span class="ua">›</span></div>').join('');
+  return '<section class="upc"><div class="uh"><b>Coming up</b><span class="sub" style="margin:0">' + (up.length ? up.length + ' topic' + (up.length === 1 ? '' : 's') + ' · teachers see each one only on its own day' : 'Nothing drafted yet · ' + nextBatch()) + '</span>'
+    + (D.pres && dr.length ? '<button class="btn pr sm" id="bApAll" type="button" style="margin-left:auto">Approve all ' + dr.length + '</button>' : '') + '</div>' + (up.length ? '<div class="ul">' + rows + '</div>' : '') + '</section>'; }
 function libHtml(){
   const T = D.topics || [], ap = T.filter(t => t.status !== 'draft' && t.status !== 'retired'), dr = T.filter(t => t.status === 'draft'), rt = T.filter(t => t.status === 'retired');
   const ceOk = t => { if(!F.ce) return true; const i = CE.indexOf(F.ce); return (t.levels || []).some(k => { const r = ceRange(ceOf(t, k)); return r && i >= r[0] && i <= r[1]; }); };
   const match = t => ceOk(t) && (!F.lv || (t.levels || []).includes(F.lv)) && (!F.st || t.strand === F.st) && (!F.q || (t.title + ' ' + t.title_zh + ' ' + t.story).toLowerCase().includes(F.q.toLowerCase()));
-  const n = k => ap.filter(t => fresh(t.day) === k && match(t)).length, L = ap.filter(t => fresh(t.day) === F.fresh && match(t));
+  const up = T.filter(t => (t.status === 'draft' || (t.status !== 'retired' && age(t.day) < 0))).sort((a, b) => String(a.day).localeCompare(String(b.day)));   /* 2454: management · coming up */
+  const vis = D.mgmt ? ap.filter(t => age(t.day) >= 0) : ap;
+  const n = k => vis.filter(t => fresh(t.day) === k && match(t)).length, L = vis.filter(t => fresh(t.day) === F.fresh && match(t));
   const card = t => { const U = usedOf(t.id); return '<article class="card tc" data-id="' + t.id + '" tabindex="0" role="button" aria-label="Open ' + esc(t.title) + '">'
     + '<div class="row">' + (t.status === 'draft' ? '<span class="lb" style="background:#FFF1D6;color:#8A5A00;font-weight:700">DRAFT · for ' + dShort(t.day) + '</span>' : age(t.day) < 0 ? '<span class="lb" style="background:#E6EEFB;color:#2B4C8C;font-weight:700">SCHEDULED · ' + dShort(t.day) + '</span>' : age(t.day) <= 7 ? '<span class="lb new">NEW</span>' : '') + stChip(t.strand) + lvChips(t.levels, t) + '<span class="dt">' + dShort(t.day) + '</span></div>'
     + '<b class="t">' + esc(t.title) + '</b>' + (t.title_zh ? '<span class="zh">' + esc(t.title_zh) + '</span>' : '')
     + '<div class="ft">' + useLine(t.id, U)
     + '<span style="margin-left:auto">Source: ' + esc((t.sources || []).map(s => s.outlet.split(' · ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 2).join(', ')) + '</span></div></article>'; };
   return '<main><div class="libh"><div><h1>Talk library</h1><p class="sub">Open each class with one of these instead of "How are you?" · 3–5 minutes · topics stay here · every fact has a source</p></div>' + '<label class="search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6B6880" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="fq" type="search" placeholder="Search a topic" aria-label="Search a topic" value="' + esc(F.q) + '"></label></div>'
-    + (D.mgmt && dr.length ? '<div class="sect"><b>To approve</b><span class="cnt">' + dr.length + '</span><span class="sub" style="margin:0">each one shows to teachers on its own day once approved</span>' + (D.pres ? '<button class="btn pr sm" id="bApAll" type="button" style="margin-left:auto">Approve all ' + dr.length + '</button>' : '') + '</div><div class="grid">' + dr.map(card).join('') + '</div>' : '')
+    + (D.mgmt ? upHtml(up, dr) : '')
     + '<div class="bar"><div class="seg" role="tablist" aria-label="How new">' + [['week', 'This week'], ['month', 'This month'], ['earlier', 'Earlier']].map(([k, l]) => '<button type="button" role="tab" data-f="' + k + '" class="' + (F.fresh === k ? 'on' : '') + '" aria-selected="' + (F.fresh === k) + '">' + l + ' · ' + n(k) + '</button>').join('') + '</div>'
     + '<span class="vr"></span>' + [['', 'All levels'], ['early', 'Early years'], ['yle', 'YLE'], ['teens', 'Teens'], ['adults', 'Adults']].map(([k, l]) => '<button type="button" class="chipb' + (F.lv === k ? ' on' : '') + '" data-lv="' + k + '">' + l + '</button>').join('')
     + '<select id="fce" aria-label="CEFR level"><option value="">Any CEFR</option>' + CE.slice(0, 6).map(k => '<option' + (F.ce === k ? ' selected' : '') + '>' + k + '</option>').join('') + '</select>'
