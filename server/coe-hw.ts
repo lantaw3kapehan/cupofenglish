@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-hw v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
+// CupOfEnglish · coe-hw v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
 // correct it and share it). Used by the Homework check page (homework/index.html).
 // POST { token, op, ... }:
 //   me                       → { name, role, mgmt }
@@ -71,6 +71,20 @@ Deno.serve(async (req: Request) => {
           why: clean(String(d[17] || "").replace(/^Automatic:\s*/i, "").replace(/\s*·?\s*via app by [^·]*/gi, "").replace(/\s*·\s*rule \d+/gi, "").replace(/\s*·\s*moved from[^·]*/gi, ""), 220) }))
         .sort((a: any, b2: any) => b2.day.localeCompare(a.day));
       return out({ ok: true, bonuses: L });
+    }
+    if (op === "trialSteps") {   // v7 (2401, Misty 19 Nov): trial steps ticked from what is recorded (package, classes, email) + shared marks
+      if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
+      const codes = (Array.isArray(b.codes) ? b.codes : []).map((x: unknown) => clean(x, 20)).slice(0, 300), labels = (Array.isArray(b.labels) ? b.labels : []).map((x: unknown) => clean(x, 120)).slice(0, 300);
+      const { data, error } = await db.rpc("coe_trial_steps", { p_codes: codes, p_labels: labels }); if (error) throw new Error(error.message);
+      return out({ ok: true, data });
+    }
+    if (op === "trialMark") {   // v7 (2401): course plan, CEFR picture, price, welcome copied (on) or "Not sent" (off) · who and when kept
+      if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
+      const label = clean(b.label, 120), k = clean(b.k, 20); if (!label || !/^(plan|cefr|price|welcome)$/.test(k)) return out({ ok: false, error: "bad request" }, 400);
+      if (b.on === false) { await db.from("coe_trial_marks").delete().eq("label", label).eq("k", k); return out({ ok: true }); }
+      const row: any = { label, k, by: name }; if (b.at && !isNaN(Date.parse(String(b.at)))) row.at = new Date(String(b.at)).toISOString();
+      const { error } = await db.from("coe_trial_marks").upsert(row, { onConflict: "label,k", ignoreDuplicates: !!b.keep }); if (error) throw new Error(error.message);
+      return out({ ok: true });
     }
     if (op === "ids") {   // v4 (2319): which classes already have a saved check (class card shows "Homework checked")
       const since = new Date(Date.now() - 21 * 864e5).toISOString();
