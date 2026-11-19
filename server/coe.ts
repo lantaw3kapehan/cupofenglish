@@ -234,6 +234,15 @@ async function weeklyAll(db: any) {
 }
 async function studentsLive(db: any) {
   const [L, G, W] = await Promise.all([studentsFromTables(db), liveGap(db), weeklyAll(db).catch(() => ({} as Record<string, any>))]);
+  // 2396 (Misty 19 Nov 10:57, Elowen "no classes on record"): a student with no past months yet gets "a week" from the classes booked in
+  // the next 4 weeks (trials left out), marked plan: true
+  try { const need = L.filter((s: any) => s && s.code && !W[s.code]).map((s: any) => String(s.code).toUpperCase());
+    if (need.length) { const now = new Date(), to = new Date(now.getTime() + 28 * 864e5);
+      const { data: C } = await db.from("classes").select("code,starts_at,ends_at,data").in("code", need.slice(0, 400)).eq("cancelled", false).gte("starts_at", now.toISOString()).lt("starts_at", to.toISOString()).limit(3000);
+      const by: Record<string, { n: number; m: number }> = {};
+      (C || []).forEach((c: any) => { const d = c.data || {}; if (/trial/i.test(String(d.type || "")) || /-TC(\s+X)?$/i.test(String(d.title || ""))) return;
+        const m = Math.max(0, (Date.parse(c.ends_at) - Date.parse(c.starts_at)) / 6e4) || 25; const o = by[c.code] || (by[c.code] = { n: 0, m: 0 }); o.n++; o.m += m; });
+      Object.keys(by).forEach((k) => { const o = by[k], u = o.m / 50 / 4; W[k] = { v: Math.max(0.5, Math.round(u * 2) / 2), cw: Math.max(1, Math.round(o.n / 4)), mins: Math.round(o.m / o.n / 5) * 5, n: 0, plan: true }; }); } } catch (_e) { /* keep as is */ }
   return L.map((s: any) => { const g = G[s.code], w = W[s.code]; const x = w ? Object.assign({}, s, { wk: w }) : s; if (!g || s.left == null || s.shared) return x; return Object.assign({}, x, { left: Math.max(0, Math.round((s.left - g) * 10) / 10), today: g }); });
 }
 
