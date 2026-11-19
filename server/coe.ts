@@ -980,11 +980,14 @@ function fixOut(fn: string, data: any, F: Record<string, any>) {
     const yms = data.months.map((lab: string) => { const m = String(lab).match(/^([A-Za-z]{3})\w* (\d{2})$/); const k = m ? MON.findIndex((x: string) => x.slice(0, 3).toLowerCase() === m[1].toLowerCase()) : -1; return k < 0 ? "" : "20" + m![2] + "-" + String(k + 1).padStart(2, "0"); });
     const rows = data.rows.slice(), fixes: any[] = [];
     keys.forEach((k) => { const [code, ym] = k.split("|"), f = F[k], j = yms.indexOf(ym); if (!f || typeof f.v !== "number" || j < 0) return;
-      const up = (x: any) => String(x || "").trim().toUpperCase();
-      let i = rows.findIndex((r: any[]) => up(r[C.code]) === code && Number((r[C.months] || [])[j]) > 0); if (i < 0) i = rows.findIndex((r: any[]) => up(r[C.code]) === code); if (i < 0) return;
-      const r = rows[i].slice(), M = (r[C.months] || []).slice(), old = Number(M[j]) || 0, d = r1(f.v - old);
-      if (d) { M[j] = f.v; r[C.months] = M; if (r[C.finished] !== "" && r[C.finished] != null) r[C.finished] = r1(Number(r[C.finished]) + d); if (r[C.available] !== "" && r[C.available] != null) r[C.available] = r1(Number(r[C.available]) - d); rows[i] = r; }
-      fixes.push({ code, ym, v: f.v, was: d ? old : (typeof f.was === "number" ? f.was : old), note: f.note || "", by: f.by || "", at: f.at || "" }); });
+      const up = (x: any) => String(x || "").trim().toUpperCase(), idx: number[] = []; rows.forEach((r: any[], i: number) => { if (up(r[C.code]) === code) idx.push(i); }); if (!idx.length) return;
+      const val = (i: number) => Number((rows[i][C.months] || [])[j]) || 0, old = r1(idx.reduce((a, i) => a + val(i), 0)); let d = r1(f.v - old);   // the month for the whole student (all her teachers' rows), as on the summary
+      const set = (i: number, dv: number) => { const r = rows[i].slice(), M = (r[C.months] || []).slice(); M[j] = r1((Number(M[j]) || 0) + dv); r[C.months] = M; if (r[C.finished] !== "" && r[C.finished] != null) r[C.finished] = r1(Number(r[C.finished]) + dv); rows[i] = r; };
+      if (d) { const D0 = d; const by = idx.slice().sort((a, b) => val(b) - val(a));
+        if (d < 0) { for (const i of by) { if (d >= 0) break; const t = Math.max(d, -val(i)); if (t) { set(i, t); d = r1(d - t); } } } else set(by[0], d);
+        const used = r1(D0 - d), ai = idx.find((i) => rows[i][C.available] !== "" && rows[i][C.available] != null);   // remaining sits on the package row
+        if (ai != null && used) { const r = rows[ai].slice(); r[C.available] = r1(Number(r[C.available]) - used); rows[ai] = r; } }
+      fixes.push({ code, ym, v: f.v, was: old !== f.v ? old : (typeof f.was === "number" ? f.was : old), note: f.note || "", by: f.by || "", at: f.at || "" }); });
     return Object.assign({}, data, { rows, fixes });
   }
   if (fn === "mgmtStudents" && Array.isArray(data)) {
