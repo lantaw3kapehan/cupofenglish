@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-talk v6 (19 Nov: picture words for Early years) · v5 (19 Nov: Early years · Pre-A1 level and phonics sound) · v4 (19 Nov: teachers also get the facts list) · v3 (19 Nov: CEFR band per level) · v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
+// CupOfEnglish · coe-talk v7 (19 Nov: word photos for Early years · mirror op) · v6 (19 Nov: picture words for Early years) · v5 (19 Nov: Early years · Pre-A1 level and phonics sound) · v4 (19 Nov: teachers also get the facts list) · v3 (19 Nov: CEFR band per level) · v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
 //   factual and sourced, approved by the President, kept so teachers can go back to them). Used by talk/index.html and the teacher Today card.
 // POST { op, ... }:
 //   pub     { id }                         → one approved topic (no sign-in: the page a student or parent opens)
@@ -26,7 +26,8 @@ function shape(t: any) {
   for (const k of LV) { q[k] = arr(t.q && t.q[k], 4, 300); th[k] = cl(t.think && t.think[k], 300); const c = cl(t.cefr && t.cefr[k], 20).replace(/-/g, "–"); if (/^(Pre-A1|A1|A2|B1|B2|C1|C2)(–(A1|A2|B1|B2|C1|C2))?$/.test(c.replace("Pre–A1", "Pre-A1"))) ce[k] = c.replace("Pre–A1", "Pre-A1"); }
   const sources = (Array.isArray(t.sources) ? t.sources : []).slice(0, 8).map((s: any) => ({ outlet: cl(s && s.outlet, 80), title: cl(s && s.title, 200), url: cl(s && s.url, 500), date: cl(s && s.date, 20) }));
   const facts = (Array.isArray(t.facts) ? t.facts : []).slice(0, 12).map((f: any) => ({ fact: cl(f && f.fact, 300), src: Number.isInteger(f && f.src) ? f.src : -1 })).filter((f: any) => f.fact);
-  const wl = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 8).map((w: any) => ({ en: cl(w && w.en, 40), zh: cl(w && w.zh, 40) })).filter((w: any) => w.en);
+  const IMG = /^https:\/\/rlxkiahqjsabopmuhern\.supabase\.co\/storage\/v1\/object\/public\/talk\//;
+  const wl = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 8).map((w: any) => { const o: any = { en: cl(w && w.en, 40), zh: cl(w && w.zh, 40) }; if (w && IMG.test(String(w.img || ""))) { o.img = cl(w.img, 300); o.credit = cl(w.credit, 160); } return o; }).filter((w: any) => w.en);
   const words = wl(t.words), words_early = wl(t.words_early);
   return { day: /^\d{4}-\d{2}-\d{2}$/.test(String(t.day || "")) ? t.day : undefined, strand: ST.includes(String(t.strand)) ? t.strand : "china", levels: lv.length ? lv : LV,
     title: cl(t.title, 160), title_zh: cl(t.title_zh, 160), story: cl(t.story, 1200), story_zh: cl(t.story_zh, 1200), words, words_early, q, think: th, cefr: ce,
@@ -81,6 +82,17 @@ Deno.serve(async (req: Request) => {
       if (UUID.test(id)) { const { error } = await db.from("coe_talk").update(row).eq("id", id); if (error) throw new Error(error.message); return out({ ok: true, id }); }
       row.drafted_by = name; const { data, error } = await db.from("coe_talk").insert(row).select("id").single(); if (error) throw new Error(error.message);
       return out({ ok: true, id: data.id });
+    }
+    if (op === "mirror") {   // copy an openly licensed photo into our own storage (loads in China)
+      if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
+      const u = cl(b.url, 600); let host = ""; try { host = new URL(u).hostname; } catch { /* */ }
+      if (!/^(commons\.wikimedia\.org|upload\.wikimedia\.org|images\.pexels\.com|images\.unsplash\.com)$/.test(host)) return out({ ok: false, error: "Only Wikimedia Commons, Pexels or Unsplash photos." }, 400);
+      const r = await fetch(u, { headers: { "User-Agent": "CupOfEnglish-TalkOfTheDay/1.0 (https://app.cupofenglishatph.com; operations@cupofenglishatph.com)" }, redirect: "follow" });
+      const type = (r.headers.get("content-type") || "").split(";")[0]; if (!r.ok || !/^image\/(jpeg|png|webp)$/.test(type)) return out({ ok: false, error: "Could not get the photo (" + r.status + ")." }, 400);
+      const buf = new Uint8Array(await r.arrayBuffer()); if (buf.length > 6 * 1024 * 1024) return out({ ok: false, error: "The photo is too big." }, 400);
+      const path = "w/" + crypto.randomUUID() + (type === "image/png" ? ".png" : type === "image/webp" ? ".webp" : ".jpg");
+      const { error } = await db.storage.from("talk").upload(path, buf, { contentType: type, upsert: false }); if (error) throw new Error(error.message);
+      return out({ ok: true, url: Deno.env.get("SUPABASE_URL") + "/storage/v1/object/public/talk/" + path });
     }
     if (op === "approve" || op === "retire" || op === "reopen") {
       if (!pres) return out({ ok: false, error: "Only the President approves topics." }, 403);
