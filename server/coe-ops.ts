@@ -28,6 +28,11 @@ async function thread(who: string, days: number, openOnly: boolean, withSystem =
   const rank = (x: any) => (x.urgent ? 0 : 2) + ({ decision: 0, concern: 1, problem: 2, fyi: 3 } as any)[x.type];
   return (openOnly ? rows.filter((x) => !x.resolved) : rows).sort((a: any, b: any) => openOnly ? rank(a) - rank(b) || String(b.at).localeCompare(String(a.at)) : String(b.at).localeCompare(String(a.at)));
 }
+// v17 (2482): coe_ops_queue (0.85 s) and coe_ops_checks (1.36 s) were run on every Ops Desk / From Operations refresh (every 20 s, two screens).
+//   The same answer is reused for 15 s inside this server; what she has done is still read fresh each time (coe_ops_log), so a Done shows at once.
+const MEMO = new Map<string, { at: number; p: Promise<any> }>();
+function memo(k: string, f: () => Promise<any>, ttl = 15000) { const h = MEMO.get(k); if (h && Date.now() - h.at < ttl) return h.p;
+  const p = f().then((r: any) => { if (r && r.error) MEMO.delete(k); return r; }, (e: any) => { MEMO.delete(k); throw e; }); MEMO.set(k, { at: Date.now(), p }); return p; }
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: h });
@@ -134,7 +139,7 @@ Deno.serve(async (req: Request) => {
     return out({ ok: true, me: M.data || {}, day: D.data || {}, watch: W });
   }
   if (op === "desk") {
-    const [Q, C, D, W] = await Promise.all([db.rpc("coe_ops_queue"), db.rpc("coe_ops_checks", { p_who: me }), db.rpc("coe_ops_day", { p_who: me }), watchOf(me)]);
+    const [Q, C, D, W] = await Promise.all([memo("q", () => db.rpc("coe_ops_queue")), memo("c:" + me.toLowerCase(), () => db.rpc("coe_ops_checks", { p_who: me })), db.rpc("coe_ops_day", { p_who: me }), watchOf(me)]);
     if (Q.error) return out({ ok: false, error: "db", why: Q.error.message }, 500);
     const { data: sk } = await db.from("coe_ops_log").select("ref").ilike("who", me).eq("day", today()).in("kind", ["skip", "cleared", "match", "fixed"]);
     const hide = new Set((sk || []).map((x: any) => x.ref));
@@ -221,7 +226,7 @@ Deno.serve(async (req: Request) => {
     const eod = (E.data || []).map((x: any) => ({ id: x.id, at: x.at, note: x.note, ...(x.data || {}) }));
     let todo: number | null = null;   // v16 (2474): her list still to do today, counted the same way as her Ops Desk (queue + spot-checks left)
     if (!day) { try {
-      const [Q, C, S] = await Promise.all([db.rpc("coe_ops_queue"), db.rpc("coe_ops_checks", { p_who: who }),
+      const [Q, C, S] = await Promise.all([memo("q", () => db.rpc("coe_ops_queue")), memo("c:" + who.toLowerCase(), () => db.rpc("coe_ops_checks", { p_who: who })),
         db.from("coe_ops_log").select("ref").ilike("who", who).eq("day", today()).in("kind", ["skip", "cleared", "match", "fixed"])]);
       const sk = new Set((S.data || []).map((x: any) => x.ref)), hide = new Set(sk); ((D.data || {}).log || []).forEach((l: any) => { if (l.ref) hide.add(l.ref); });
       const c: any = C.data || {}; let left = 0; for (const k of ["summaries", "videos", "notes"]) for (const x of (c[k] || [])) if (!hide.has(x.ref)) left++;
