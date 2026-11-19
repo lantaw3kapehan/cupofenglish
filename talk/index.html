@@ -62,14 +62,15 @@ h1{font-family:'COE Card Fredoka',Fredoka,sans-serif;font-weight:400;font-size:3
 .zhw{color:#8A869C;font-weight:400;font-size:.85em}
 .words{display:flex;gap:8px;flex-wrap:wrap}
 .words>span,.wch{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;background:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;color:var(--ink)}
-.phr{border:1px solid #E6EEFB;background:#F5F8FE;border-radius:12px;padding:5px 12px;font-size:14px}.st .phr{font-size:17px}
+.wch.phr{border:1px solid #E6EEFB;background:#F5F8FE;border-radius:12px;padding:5px 12px;font-size:14px}.wch.phr:hover{border-color:#B9CCF2;background:#EEF3FD}.st .phr{font-size:17px}
 .wch:hover{border-color:#9AD3D6;background:#F6FBFB}
 .wch.ph{padding:4px 14px 4px 4px}.wch img{width:34px;height:34px;border-radius:999px;object-fit:cover}
 .st .wch{font-size:18px}.st .wch.ph img{width:44px;height:44px}
 .fl{position:fixed;inset:0;z-index:60;background:rgba(30,26,60,.55);display:flex;align-items:center;justify-content:center;padding:20px}
 .flc{background:#fff;border-radius:24px;padding:22px;max-width:640px;width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 30px 60px -20px rgba(30,26,60,.5)}
 .flc img{width:100%;max-height:52vh;object-fit:contain;border-radius:16px;background:#F7F6FA}
-.flc b{font-family:'COE Card Fredoka',Fredoka,sans-serif;font-weight:400;font-size:64px;line-height:1.1;margin-top:6px}
+.flc b{font-family:'COE Card Fredoka',Fredoka,sans-serif;font-weight:400;font-size:64px;line-height:1.1;margin-top:6px;text-align:center}
+.flc b.long{font-size:44px}
 .flc .zhw{font-size:22px}.flc small{font-size:9.5px;color:#B9B6C6;letter-spacing:.01em}
 .fln{display:flex;gap:8px;align-items:center;margin-top:8px}.fln span{font-size:13px;color:var(--mute);min-width:44px;text-align:center}
 .lvg{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px;background:#F4F2F8;border-radius:16px;padding:4px}
@@ -141,16 +142,17 @@ const CE = ['Pre-A1','A1','A2','B1','B2','C1','C2'];
 const ceRange = c => { const p = String(c || '').split('–').map(x => CE.indexOf(x.trim())).filter(i => i >= 0); return p.length ? [Math.min(...p), Math.max(...p)] : null; };
 const ceOf = (t, k) => (t.cefr && t.cefr[k]) || '';
 const phOf = (t, L) => L === 'early' ? (t.phrases_early || []) : (t.phrases || []);
-const phrHtml = (t, L) => !phOf(t, L).length ? '' : '<div class="k">' + (L === 'early' ? 'SAY IT TOGETHER · 一起说' : 'USEFUL PHRASES · 常用短语') + '</div><div class="words">' + phOf(t, L).map(w => '<span class="phr"><b>' + esc(w.en) + '</b>' + (w.zh ? ' <span class="zhw">' + esc(w.zh) + '</span>' : '') + '</span>').join('') + '</div>';
+const phrHtml = (t, L) => !phOf(t, L).length ? '' : '<div class="k">' + (L === 'early' ? 'SAY IT TOGETHER · 一起说' : 'USEFUL PHRASES · 常用短语') + '</div><div class="words">' + phOf(t, L).map((w, i) => '<button type="button" class="wch phr" data-pi="' + i + '" aria-label="Show ' + esc(w.en) + '"><b>' + esc(w.en) + '</b>' + (w.zh ? ' <span class="zhw">' + esc(w.zh) + '</span>' : '') + '</button>').join('') + '</div>';
 const chipsHtml = (t, L) => wordsOf(t, L).map((w, i) => '<button type="button" class="wch' + (w.img ? ' ph' : '') + '" data-wi="' + i + '" aria-label="Show ' + esc(w.en) + '">' + (w.img ? '<img src="' + esc(w.img) + '" alt="" loading="lazy">' : '') + '<b>' + esc(w.en) + '</b>' + (w.zh ? ' <span class="zhw">' + esc(w.zh) + '</span>' : '') + '</button>').join('');
 function flash(L0, i){ let k = i; const box = document.createElement('div'); box.className = 'fl'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); document.body.appendChild(box);
-  const paint = () => { const w = L0[k]; box.innerHTML = '<div class="flc">' + (w.img ? '<img src="' + esc(w.img) + '" alt="' + esc(w.en) + '">' : '') + '<b>' + esc(w.en) + '</b>' + (w.zh ? '<span class="zhw">' + esc(w.zh) + '</span>' : '') + (w.credit ? '<small>' + esc(w.credit) + '</small>' : '')
+  const paint = () => { const w = L0[k]; box.innerHTML = '<div class="flc">' + (w.img ? '<img src="' + esc(w.img) + '" alt="' + esc(w.en) + '">' : '') + '<b' + (w.en.length > 12 ? ' class="long"' : '') + '>' + esc(w.en) + '</b>' + (w.zh ? '<span class="zhw">' + esc(w.zh) + '</span>' : '') + (w.credit ? '<small>' + esc(w.credit) + '</small>' : '')
     + '<div class="fln"><button type="button" class="btn sm" data-m="-1"' + (k ? '' : ' disabled') + '>‹ Back</button><span>' + (k + 1) + ' / ' + L0.length + '</span><button type="button" class="btn sm" data-m="1"' + (k < L0.length - 1 ? '' : ' disabled') + '>Next ›</button><button type="button" class="btn sm pr" data-x="1">Close</button></div></div>';
     box.querySelectorAll('[data-m]').forEach(b => b.onclick = e => { e.stopPropagation(); k = Math.max(0, Math.min(L0.length - 1, k + +b.dataset.m)); paint(); }); box.querySelector('[data-x]').onclick = close; };
   const key = e => { if(e.key === 'Escape') close(); else if(e.key === 'ArrowRight' && k < L0.length - 1){ k++; paint(); } else if(e.key === 'ArrowLeft' && k){ k--; paint(); } };
   function close(){ box.remove(); document.removeEventListener('keydown', key, true); }
   box.onclick = e => { if(e.target === box) close(); }; document.addEventListener('keydown', key, true); paint(); }
-function bindChips(root, t, L){ root.querySelectorAll('.wch').forEach(b => b.onclick = () => flash(wordsOf(t, L), +b.dataset.wi)); }
+function phCards(t, L){ const W = [...wordsOf(t, L), ...(t.words_early || [])].filter(w => w.img); return phOf(t, L).map(p => { const m = W.find(w => new RegExp('\\b' + w.en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(p.en)); return Object.assign({}, p, m ? { img: m.img, credit: m.credit } : {}); }); }
+function bindChips(root, t, L){ root.querySelectorAll('.wch[data-wi]').forEach(b => b.onclick = () => flash(wordsOf(t, L), +b.dataset.wi)); root.querySelectorAll('.wch[data-pi]').forEach(b => b.onclick = () => flash(phCards(t, L), +b.dataset.pi)); }
 const wordsOf = (t, k) => (k === 'early' && (t.words_early || []).length) ? t.words_early : (t.words || []);
 const lvChips = (L, t) => (L || []).map(k => '<span class="lb l-' + k + '">' + LV[k] + (t && ceOf(t, k) ? ' · ' + esc(ceOf(t, k)) : '') + '</span>').join('');
 const stChip = s => '<span class="lb s-' + esc(s) + '">' + esc(ST[s] || s) + '</span>';
