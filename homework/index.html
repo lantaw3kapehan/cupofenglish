@@ -93,6 +93,7 @@ h1{margin:0;font:400 28px/1.2 'COE Card Fredoka','Fredoka One',sans-serif;color:
 #tools{position:sticky;top:0;z-index:6;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 1px 0 var(--line)}
 .rail{position:sticky;top:var(--tb,0px);align-self:flex-start;max-height:calc(100vh - var(--tb,0px));overflow-y:auto;z-index:4}
 #pcv.mv{cursor:move}#pcv.mving{cursor:grabbing}
+#selb{position:absolute;z-index:5;display:flex;gap:4px;background:#fff;border:1px solid #D7DCE2;border-radius:10px;padding:3px;box-shadow:0 4px 12px rgba(16,24,40,.12)}#selb button{border:0;background:#F4F6F8;border-radius:7px;padding:5px 9px;font:600 13px Inter,sans-serif;cursor:pointer;color:#2B2253}#selb button:hover{background:#E6F5F6}
 #tools .tools{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}#tools .tools>*{flex:none}#tools .tools>.xs{white-space:nowrap}
 #pwrap{flex:1;min-width:0;background:#EEF0F3;padding:16px;display:flex;justify-content:center;align-items:flex-start;position:relative;overflow:auto}
 #pcv{display:block;background:#fff;box-shadow:0 6px 18px rgba(16,24,40,.18);touch-action:none}
@@ -495,17 +496,30 @@ function draw(){ if(RAF) return; RAF = requestAnimationFrame(() => { RAF = 0; dr
 function drawNow(){ const cv = $('pcv'); if(!cv || !PIC.base) return; const c = cv.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0);
   if(BG && BGOF === PIC.base && BG.width === cv.width && BG.height === cv.height) c.drawImage(BG, 0, 0); else { c.clearRect(0, 0, cv.width, cv.height); c.setTransform(DPR * PK, 0, 0, DPR * PK, 0, 0); c.drawImage(PIC.base, 0, 0); }
   c.setTransform(DPR * PK, 0, 0, DPR * PK, 0, 0);
-  PIC.items.forEach(it => drawItem(c, it)); if(DRAW && DRAW.it) drawItem(c, DRAW.it); }
+  PIC.items.forEach(it => drawItem(c, it)); if(DRAW && DRAW.it) drawItem(c, DRAW.it);
+  if(SELI && PIC.items.includes(SELI)){ const b = bbox(SELI), u = U(); c.save(); c.setLineDash([u * .6, u * .4]); c.lineWidth = Math.max(1, u * .12); c.strokeStyle = '#0E7C7B'; c.strokeRect(b[0] - u * .3, b[1] - u * .3, b[2] - b[0] + u * .6, b[3] - b[1] + u * .6); c.restore(); }
+  selBar(); }
+/* 2410 (Misty 19 Nov 12:52): the last mark placed or touched is selected · − / + resize it, ✕ or the Delete key removes it, arrows nudge, Esc lets go */
+let SELI = null;
+function selBar(){ const w = $('pwrap'); if(!w) return; let b = $('selb'); if(!SELI || !PIC.items.includes(SELI)){ if(b) b.remove(); return; }
+  if(!b){ b = document.createElement('div'); b.id = 'selb'; b.innerHTML = '<button type="button" data-k="-" title="Smaller ( - )">A−</button><button type="button" data-k="+" title="Bigger ( + )">A+</button><button type="button" data-k="x" title="Remove (Delete)" style="color:#B42318">✕</button>';
+    b.addEventListener('pointerdown', e => e.stopPropagation()); b.querySelectorAll('button').forEach(x => x.onclick = e => { e.preventDefault(); selDo(x.dataset.k); }); w.appendChild(b); }
+  const cv = $('pcv'), bx = bbox(SELI), u = U(); b.style.left = (cv.offsetLeft + (bx[2] + u * .3) * PK + 6) + 'px'; b.style.top = Math.max(0, cv.offsetTop + (bx[1] - u * .3) * PK - 4) + 'px'; }
+function selDo(k){ const it = SELI; if(!it || !PIC.items.includes(it)) return; if(k === 'x'){ push(); PIC.items.splice(PIC.items.indexOf(it), 1); SELI = null; draw(); side(); return; }
+  const f = k === '+' ? 1.18 : 1 / 1.18; push(); if(it.t === 'circle'){ it.rx *= f; it.ry *= f; } else if(it.t === 'text'){ const ox = it.x; it.s = Math.max(U() * .6, it.s * f); it.x = ox; } else if(it.s) it.s = Math.max(U() * .5, it.s * f); draw(); }
+document.addEventListener('keydown', e => { if(!SELI || MODE !== 'picture') return; const a = document.activeElement; if(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)) return;
+  if(e.key === 'Delete' || e.key === 'Backspace'){ e.preventDefault(); selDo('x'); } else if(e.key === '+' || e.key === '='){ e.preventDefault(); selDo('+'); } else if(e.key === '-' || e.key === '_'){ e.preventDefault(); selDo('-'); }
+  else if(e.key === 'Escape'){ SELI = null; draw(); } else if(/^Arrow/.test(e.key) && SELI.t !== 'pen'){ e.preventDefault(); const d = U() * (e.shiftKey ? 2 : .5); push(); if(e.key === 'ArrowLeft') SELI.x -= d; if(e.key === 'ArrowRight') SELI.x += d; if(e.key === 'ArrowUp') SELI.y -= d; if(e.key === 'ArrowDown') SELI.y += d; draw(); } });
 const pt = e => { const r = $('pcv').getBoundingClientRect(); return [(e.clientX - r.left) / PK, (e.clientY - r.top) / PK]; };
 const MOVABLE = ['stamp', 'tick', 'cross', 'text'];
 function hitMark(x, y, all){ for(let i = PIC.items.length - 1; i >= 0; i--){ const it = PIC.items[i]; if(!(MOVABLE.includes(it.t) || (all && it.t === 'circle'))) continue; const b = bbox(it); if(x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) return it; } return null; }
 function pDown(e){ { const [x0, y0] = pt(e), canMove = TOOL === 'hand' || TOOL === 'stamp' || TOOL === 'tick' || TOOL === 'cross' || TOOL === 'text', h = canMove ? hitMark(x0, y0, TOOL === 'hand') : null;   /* 2408: press on a stamp, tick, cross or label to drag it */
-    if(h){ e.preventDefault(); closeTxt(); MOVE = { it: h, dx: x0 - h.x, dy: y0 - h.y, moved: false }; $('pcv').setPointerCapture(e.pointerId); $('pcv').classList.add('mving'); return; } }
-  if(TOOL === 'hand') return; e.preventDefault(); const [x, y] = pt(e), u = U(); closeTxt();
+    if(h){ e.preventDefault(); closeTxt(); SELI = h; draw(); MOVE = { it: h, dx: x0 - h.x, dy: y0 - h.y, moved: false }; $('pcv').setPointerCapture(e.pointerId); $('pcv').classList.add('mving'); return; } }
+  if(TOOL === 'hand'){ if(SELI){ SELI = null; draw(); } return; } e.preventDefault(); const [x, y] = pt(e), u = U(); closeTxt(); SELI = null;
   if(TOOL === 'pen'){ DRAW = { it: { t: 'pen', c: COL, w: u * SZN().pen, p: [[x, y]] } }; $('pcv').setPointerCapture(e.pointerId); }
   else if(TOOL === 'circle'){ DRAW = { x0: x, y0: y, it: { t: 'circle', c: COL, w: u * SZN().ring, x, y, rx: 1, ry: 1 } }; $('pcv').setPointerCapture(e.pointerId); }
-  else if(TOOL === 'tick' || TOOL === 'cross'){ push(); PIC.items.push({ t: TOOL, c: TOOL === 'tick' && COL === '#D92D20' ? '#16A34A' : COL, x, y, s: u * SZN().tick }); draw(); side(); }
-  else if(TOOL === 'stamp'){ push(); PIC.items.push({ t: 'stamp', k: STAMP, x, y, s: u * SZN().tick * 1.6 }); draw(); side(); }
+  else if(TOOL === 'tick' || TOOL === 'cross'){ push(); PIC.items.push({ t: TOOL, c: TOOL === 'tick' && COL === '#D92D20' ? '#16A34A' : COL, x, y, s: u * SZN().tick }); SELI = PIC.items[PIC.items.length - 1]; draw(); side(); }
+  else if(TOOL === 'stamp'){ push(); PIC.items.push({ t: 'stamp', k: STAMP, x, y, s: u * SZN().tick * 1.6 }); SELI = PIC.items[PIC.items.length - 1]; draw(); side(); }
   else if(TOOL === 'text') openTxt(x, y, e);
   else if(TOOL === 'erase'){ for(let i = PIC.items.length - 1; i >= 0; i--){ const b = bbox(PIC.items[i]); if(x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]){ push(); PIC.items.splice(i, 1); draw(); side(); return; } } } }
 let MOVE = null;
@@ -517,7 +531,7 @@ function pUp(){ if(MOVE){ const m = MOVE; MOVE = null; const cv = $('pcv'); if(c
   push(); PIC.items.push(it); draw(); side(); }
 function openTxt(x, y, e){ const w = $('pwrap'), r = w.getBoundingClientRect(), inp = document.createElement('input'); inp.id = 'ptxt'; inp.placeholder = 'Type, then Enter';
   inp.style.left = (e.clientX - r.left + w.scrollLeft) + 'px'; inp.style.top = (e.clientY - r.top + w.scrollTop - 14) + 'px'; inp.style.borderColor = COL; w.appendChild(inp); setTimeout(() => inp.focus(), 10);
-  const done = () => { const v = inp.value.trim(); inp.remove(); if(v){ push(); PIC.items.push({ t: 'text', c: COL, x, y: y - U() * SZN().text * .55, s: U() * SZN().text, txt: v }); draw(); side(); } };
+  const done = () => { const v = inp.value.trim(); inp.remove(); if(v){ push(); PIC.items.push({ t: 'text', c: COL, x, y: y - U() * SZN().text * .55, s: U() * SZN().text, txt: v }); SELI = PIC.items[PIC.items.length - 1]; draw(); side(); } };
   inp.onkeydown = ev => { if(ev.key === 'Enter'){ ev.preventDefault(); done(); } else if(ev.key === 'Escape'){ inp.remove(); } }; inp.onblur = done; }
 function closeTxt(){ const t = $('ptxt'); if(t) t.blur(); }
 function rotate(){ if(!PIC.base) return; if(PIC.items.length && !confirm('Rotating clears the marks on this picture. Rotate?')) return;
