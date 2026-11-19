@@ -158,12 +158,16 @@ Deno.serve(async (req: Request) => {
     const { data: D } = await db.rpc("coe_ops_day", { p_who: me });
     return out({ ok: true, cleared: !still, item: still || null, day: D });
   }
+  if (op === "firstmonth") {   // v18 (2484): packages whose first month also counts lessons from before the start (payment) date · Operations checks each and saves it with lessonfix
+    const { data, error } = await memo("fm", () => db.rpc("coe_firstmonth_check"), 60000); if (error) return out({ ok: false, error: "db" }, 500);
+    return out({ ok: true, rows: data || [] });
+  }
   if (op === "lessonfix") {   // v14 (2456): management sets a student's lesson count for one month (Chenyu March 1.5) · v null = back to the sheet's count
     const code = str(b.code, 20).toUpperCase(), ym = str(b.ym, 7); if (!/^ST-\d{4}-\d{3}$/.test(code) || !/^\d{4}-\d{2}$/.test(ym)) return out({ ok: false, error: "bad student or month" }, 400);
     const v = b.v === null || b.v === "" ? null : Number(b.v); if (v !== null && (!isFinite(v) || v < 0 || v > 60 || Math.round(v * 2) !== v * 2)) return out({ ok: false, error: "Use halves only, e.g. 1.5" }, 400);
     const was = Number(b.was), note = str(b.note, 300); if (v !== null && note.length < 4) return out({ ok: false, error: "Write why (e.g. only count from 15 Mar)." }, 400);
     const { data: d0 } = await db.from("docs").select("data").eq("key", "sys:lessonfix").maybeSingle(); const D = (d0 && d0.data) || { fix: {}, log: [] }; D.fix = D.fix || {}; D.log = D.log || [];
-    const k = code + "|" + ym, at = new Date().toISOString();
+    MEMO.delete("fm"); const k = code + "|" + ym, at = new Date().toISOString();
     if (v === null) delete D.fix[k]; else D.fix[k] = { v, was: isFinite(was) ? was : (D.fix[k] && D.fix[k].was), note, by: me, at };
     D.log.unshift({ k, v, was: isFinite(was) ? was : null, note, by: me, at }); D.log = D.log.slice(0, 300);
     const { error } = await db.from("docs").upsert({ key: "sys:lessonfix", scope: "mgmt", data: D, updated_at: at }, { onConflict: "key" }); if (error) return out({ ok: false, error: "not saved" }, 500);
