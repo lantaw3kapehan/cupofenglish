@@ -7415,7 +7415,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2081;
+const COE_V = 2082;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -42893,7 +42893,7 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
     h += '<div><b>Try one screen</b><div class="small mute">Today: ' + E(c.screen || '') + '. Anything wrong, slow or confusing? Report it.</div><div class="bb" style="margin-top:8px"><button class="btn ghost sm" onclick="od2341Report(\'' + Q(c.screen || '') + '\')">Report a problem</button></div></div>';
     h += '</div></div>';
     /* my day */
-    window.__od2447 = d; var L = (d.log || []).slice(0, 12), K = { cleared: 'Cleared', still: 'Not cleared yet', match: 'Checked · matches', problem: 'Problem found', fixed: 'Fixed', report: 'Reported to Management', messaging: 'Messaging parents', skip: 'Not a problem', done: 'Done' };
+    window.__od2447 = d; var L = (d.log || []).slice(0, 12), K = { cleared: 'Cleared', still: 'Not cleared yet', match: 'Checked · matches', problem: 'Problem found', fixed: 'Fixed', report: 'Reported to Management', messaging: 'Messaging parents', skip: 'Not a problem', done: 'Done', resolved: 'Solved by Management' };
     if(L.length) h += '<div class="c"><h3>My day</h3><div class="lg">' + L.map(function(l){ return '<span>' + E(l.at) + '</span><span><b style="color:' + (/problem|still|report/.test(l.kind) ? '#A2462C' : /cleared|fixed|match/.test(l.kind) ? '#1E7A4F' : '#2B2253') + '">' + E(K[l.kind] || l.kind) + '</b>' + (l.title ? ' · ' + E(l.title) : '') + (l.note && l.kind !== 'messaging' ? '<div class="small mute">' + E(l.note) + '</div>' : '') + '</span>'; }).join('') + '</div><div class="small mute" style="margin-top:8px">Your day goes to Management at the end of your shift.</div></div>';
     return h + '</div>'; }
 
@@ -43138,8 +43138,11 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
   function phtml(){ if(!PD) return ''; var d = PD.day || {}, who = PD.who || 'Operations', R = PD.reports || [], dec = R.filter(function(x){ return x.type === 'decision'; }).length, ev = (PD.eod || [])[0];
     var h = '<div class="c2360" id="pd2360" style="border:2px solid #2B2253"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3>From Operations · ' + E(who) + '</h3><span class="small mute">' + (d.timein ? 'Timed in ' + E(d.timein) : 'Not timed in yet') + ' · ' + (d.done || 0) + ' done · ' + (d.found || 0) + ' found · ' + (d.fixed || 0) + ' fixed · idle ' + (d.idle || 0) + ' min</span></div>';
     h += '<div class="small" style="margin-top:4px;color:#4B5563">' + (R.length ? '<b style="color:#7A2E17">' + R.length + ' waiting for you</b>' + (dec ? ' · ' + dec + ' need a decision' : '') : 'Nothing waiting for you from Operations.') + '</div>';
-    (function(){ var P = ((d.log) || []).filter(function(l){ return l.kind === 'problem' || l.kind === 'still'; });   /* 2452 */
-      if(P.length) h += '<div class="p2452"><b>Problems ' + E(who) + ' found today · ' + P.length + '</b>' + P.map(function(l){ return '<div class="pr"><span class="t">' + E(l.at) + '</span><span><span class="lb">' + (l.kind === 'still' ? 'Not cleared yet' : 'Problem found') + '</span>' + E(l.title || '') + (l.note ? '<div class="small mute" style="margin-top:2px">' + E(l.note) + '</div>' : '') + '</span></div>'; }).join('') + '</div>'; })();
+    (function(){ var LG = (d.log) || [], seen = {}, P = LG.filter(function(l, i){ if(l.kind !== 'problem' && l.kind !== 'still') return false;   /* 2452 · 2453 */
+        if(LG.some(function(y){ return y.kind === 'resolved' && y.ref === 'log:' + l.id; })) return false;
+        if(l.ref){ if(seen[l.ref]) return false; seen[l.ref] = 1; if(LG.slice(0, i).some(function(y){ return y.ref === l.ref && /^(skip|match|fixed|cleared|done)$/.test(y.kind); })) return false; if(LG.some(function(y){ return y.kind === 'resolved' && LG.some(function(z){ return z.ref === l.ref && y.ref === 'log:' + z.id; }); })) return false; }
+        return true; });
+      if(P.length) h += '<div class="p2452"><b>Problems ' + E(who) + ' found today · ' + P.length + '</b>' + P.map(function(l){ return '<div class="pr"><span class="t">' + E(l.at) + '</span><span><span class="lb">' + (l.kind === 'still' ? 'Not cleared yet' : 'Problem found') + '</span>' + E(l.title || '') + (l.note ? '<div class="small mute" style="margin-top:2px">' + E(l.note) + '</div>' : '') + '</span><button class="btn teal sm" onclick="psol2453(' + (+l.id) + ',this)">Solved</button></div>'; }).join('') + '</div>'; })();
     R.forEach(function(x){ var last = x.answers[x.answers.length - 1];
       h += '<div class="r2360">' + chip(x.type, x.urgent) + ' <b>' + E(x.where) + '</b> <span class="small mute">' + E(when(x.at)) + (x.who ? ' · affects ' + E(x.who) : '') + '</span><div style="margin-top:4px">' + E(x.what) + '</div>' + (x.img ? '<a class="link small" href="' + E(x.img) + '" target="_blank" rel="noopener">Screenshot</a>' : '') +
         x.answers.map(function(a){ return '<div class="ans' + (a.decision === 'declined' ? ' dec-declined' : '') + '"><b>' + (a.decision === 'approved' ? 'Approved' : a.decision === 'declined' ? 'Declined' : 'You answered') + '</b> · <span class="mute small">' + E(when(a.at)) + '</span>' + (a.text ? '<div>' + E(a.text) + '</div>' : '') + '</div>'; }).join('') +
@@ -43162,6 +43165,9 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
     if(o){ var a = document.activeElement; if(a && o.contains(a) && a.tagName === 'TEXTAREA') return; if(o.outerHTML !== H) o.outerHTML = H; return; }
     var lead = v.querySelector('.lead'); if(lead) lead.insertAdjacentHTML('afterend', H); else v.insertAdjacentHTML('afterbegin', H); }
   window.pl2360 = function(f){ pload(!!f); };
+  window.psol2453 = function(id, el){ if(el){ el.disabled = true; el.textContent = 'Saving…'; }   /* 2453 */
+    call({ op: 'resolve', lid: id, who: (PD && PD.who) || '' }).then(function(r){ if(!r || !r.ok){ if(el){ el.disabled = false; el.textContent = 'Solved'; } return say((r && r.error) || 'Not saved. Try again.'); }
+      var row = el && el.closest('.pr'); if(row) row.remove(); say('Solved ✓ · she sees it in her day'); pload(true); }).catch(function(){ if(el){ el.disabled = false; el.textContent = 'Solved'; } say('Not saved. Try again.'); }); };
   window.pans2360 = function(id, dec, close){ var t = ((document.getElementById('pa2360-' + id) || {}).value || '').trim();
     if(!t && !dec && !close) return say('Write your answer first.');
     call({ op: 'answer', id: id, text: t, decision: dec, close: !!close || !!dec }).then(function(r){ if(!r || !r.ok) return say((r && r.error) || 'Not saved. Try again.');
@@ -43618,7 +43624,7 @@ body.role-t #navIn>button[data-v="talk"]{order:4}</style>
 window.od2447Show = function(k){ try{
   if(k === 'todo'){ var w = [].slice.call(document.querySelectorAll('#od2341 h3')).find(function(h){ return /Work queue/.test(h.textContent); }); if(w) w.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   var d = window.__od2447 || {}, L = (d.log || []).filter(function(l){ return l.kind !== 'nudge'; });
-  var K = { cleared: ['Cleared', 'g'], still: ['Not cleared yet', 'r'], match: ['Checked · matches', 'g'], problem: ['Problem found', 'r'], fixed: ['Fixed', 'g'], report: ['Reported to Management', 'r'], messaging: ['Messaging parents', 'b'], skip: ['Not a problem', 'n'], done: ['Done', 'g'] };
+  var K = { cleared: ['Cleared', 'g'], still: ['Not cleared yet', 'r'], match: ['Checked · matches', 'g'], problem: ['Problem found', 'r'], fixed: ['Fixed', 'g'], report: ['Reported to Management', 'r'], messaging: ['Messaging parents', 'b'], skip: ['Not a problem', 'n'], done: ['Done', 'g'], resolved: ['Solved by Management', 'g'] };
   var F = k === 'found' ? function(l){ return /problem|still|report/.test(l.kind); } : k === 'fixed' ? function(l){ return /fixed|cleared|match/.test(l.kind); } : function(){ return true; };
   var R = L.filter(F), T = k === 'found' ? 'Problems found today' : k === 'fixed' ? 'Fixed and cleared today' : 'Done today';
   var E = function(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
@@ -43657,6 +43663,7 @@ body.role-t.tw #v-today:not(.hide)>[hidden],body.role-t.tw #v-today:not(.hide)>i
 </style>
 <style id="u2451">#v-mtoday #od2341>.c:first-of-type .k b.kr{color:#A2462C!important}#v-mtoday #od2341>.c:first-of-type .k b.kg{color:#1E7A4F!important}#v-mtoday #od2341 .k>.kt>b{flex:none!important}</style>
 <style id="u2452">.p2452{margin-top:10px;padding-top:10px;border-top:1px solid #F1F0F6}.p2452>b{font-size:14px;color:#2B2253}.p2452 .pr{display:grid;grid-template-columns:48px 1fr;gap:10px;padding:8px 0;border-top:1px solid #F6F5F9;font-size:14px}.p2452 .pr:first-of-type{border-top:0}.p2452 .t{color:#6B6880;font-variant-numeric:tabular-nums}.p2452 .lb{display:inline-block;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700;margin-right:6px;background:#FCEDE8;color:#B5432C}</style>
+<style id="u2453">.p2452 .pr{grid-template-columns:48px 1fr auto!important;align-items:start}.p2452 .pr .btn{white-space:nowrap}</style>
 <script id="b2278">
 /* 2278 · warm the CupOfEnglish book reader (reader/) so the first book opens without waiting */
 (function(){ function warm(){ try{ if(!D) return; ['reader/', 'reader/pdfjs/pdf.min.mjs', 'reader/pdfjs/pdf.worker.min.mjs', 'reader/logo.png'].forEach(u => { const l = document.createElement('link'); l.rel = 'prefetch'; l.href = u; document.head.appendChild(l); }); }catch(e){} }
