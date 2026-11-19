@@ -150,30 +150,52 @@ function mediaHtml(t){ const u = t.media_url; if(/\.(mp4|webm)(\?|$)/i.test(u)) 
 
 /* ── Picture for WeChat: same letterhead as the homework pictures ── */
 let LOGO = null; { const im = new Image(); im.onload = () => { LOGO = im; }; im.src = '../reader/logo.png'; }
-function wrap(g, text, maxW){ const out = []; String(text || '').split(/\n/).forEach(par => { const cjk = /[㐀-鿿]/.test(par), toks = cjk ? [...par] : par.split(/(\s+)/); let line = '';
-  toks.forEach(tk => { const t2 = line + tk; if(g.measureText(t2).width > maxW && line.trim()){ out.push(line.trim()); line = tk.trimStart ? tk.trimStart() : tk; } else line = t2; }); if(line.trim()) out.push(line.trim()); }); return out; }
+function wrap(g, text, maxW){ const out = []; String(text || '').split(/\n/).forEach(par => { const toks = par.match(/[㐀-鿿　-〿＀-￯]|[^\s㐀-鿿　-〿＀-￯]+|\s+/g) || []; let line = '';
+  toks.forEach(tk => { const t2 = line + tk; if(g.measureText(t2).width > maxW && line.trim()){ out.push(line.trim()); line = /^\s+$/.test(tk) ? '' : tk; } else line = t2; }); if(line.trim()) out.push(line.trim()); }); return out; }
+const PC = { china: ['#E4F4F1', '#1E6F5C'], stem: ['#E6EEFB', '#2B4C8C'], ai: ['#F0E8FB', '#5B3A8C'], think: ['#FCEDE8', '#B5432C'], world: ['#FFF1D6', '#8A5A00'], culture: ['#FDECEF', '#9C2F52'], education: ['#E9F1E4', '#3B6326'], travel: ['#E3F1FA', '#1D5A80'], daily: ['#F3EFE6', '#5E4F27'], food: ['#FFEDE0', '#8F4310'], sport: ['#E3F4EA', '#1F6236'], nature: ['#EDF6E4', '#3A6420'] };
+const LC = { yle: ['#E4F4F1', '#1E6F5C'], teens: ['#E6EEFB', '#2B4C8C'], adults: ['#F0E8FB', '#5B3A8C'] };
 function picture(t, lv, who){
-  const W = 1080, P = coeHdr.pad(W), FT = '"COE Card Fredoka", Fredoka, "Noto Sans SC", sans-serif', FI = '"COE Card Inter", Inter, "Noto Sans SC", "PingFang SC", sans-serif';
-  const L = (t.levels || []).includes(lv) ? lv : (t.levels || ['yle'])[0], qs = (t.q && t.q[L]) || [], th = t.think && t.think[L];
-  const label = (ST[t.strand] || '') + '  ·  ' + LV[L] + ' · ' + LVZ[L] + (ceOf(t, L) ? '  ·  CEFR ' + ceOf(t, L) : '');
-  const run = (g, draw) => { let y = coeHdr.height(W, true) + 34; const room = W - 2 * P;
-    const para = (txt, font, size, color, lh, gap) => { g.font = font.replace('#', size); const ls = wrap(g, txt, room); ls.forEach(l => { y += size * lh; if(draw){ g.fillStyle = color; g.fillText(l, P, y); } }); y += gap; };
-    para(t.title, '400 #px ' + FT, 52, '#2B2253', 1.15, 8);
-    if(t.title_zh) para(t.title_zh, '400 #px ' + FI, 20, '#8A869C', 1.4, 18);
-    para(t.story, '400 #px ' + FI, 30, '#2B2253', 1.5, 10);
-    if(t.story_zh) para(t.story_zh, '400 #px ' + FI, 20, '#8A869C', 1.6, 22);
-    if((t.words || []).length){ para('New words · 新单词', '700 #px ' + FI, 22, '#6B6880', 1.4, 6); para(t.words.map(w => w.en + (w.zh ? ' ' + w.zh : '')).join('   ·   '), '600 #px ' + FI, 26, '#2B2253', 1.5, 22); }
-    if(qs.length){ para("Let's talk · 一起聊聊", '700 #px ' + FI, 22, '#6B6880', 1.4, 6); qs.forEach((x, i) => para((i + 1) + '.  ' + x, '500 #px ' + FI, 28, '#2B2253', 1.5, 6)); y += 16; }
-    if(th){ const y0 = y; g.font = '500 28px ' + FI; const n = wrap(g, th, room - 40).length, hgt = 22 * 1.4 + 6 + n * 28 * 1.5 + 34;
-      if(draw){ g.fillStyle = '#FDF5F2'; g.beginPath(); g.roundRect(P, y0, room, hgt, 18); g.fill(); }
-      y = y0 + 14; const P0 = P; const sx = (txt, font, size, color, lh) => { g.font = font.replace('#', size); wrap(g, txt, room - 40).forEach(l => { y += size * lh; if(draw){ g.fillStyle = color; g.fillText(l, P0 + 20, y); } }); };
-      sx('THINK · 想一想', '700 #px ' + FI, 22, '#B5432C', 1.4); y += 6; sx(th, '500 #px ' + FI, 28, '#2B2253', 1.5); y = y0 + hgt + 22; }
-    if(t.try_home){ para('Try at home · 在家试试', '700 #px ' + FI, 22, '#2E6E77', 1.4, 6); para(t.try_home, '400 #px ' + FI, 26, '#2B2253', 1.5, 4); if(t.try_home_zh) para(t.try_home_zh, '400 #px ' + FI, 20, '#8A869C', 1.5, 22); else y += 18; }
-    para('Source / 来源: ' + (t.sources || []).map(s => s.outlet + (s.date ? ' (' + s.date + ')' : '')).join('; '), '400 #px ' + FI, 18, '#6B6880', 1.5, 0);
-    return y + 44; };
+  const W = 1080, P = coeHdr.pad(W), room = W - 2 * P, FT = '"COE Card Fredoka", Fredoka, "Noto Sans SC", sans-serif', FI = '"COE Card Inter", Inter, "Noto Sans SC", "PingFang SC", sans-serif';
+  const L = (t.levels || []).includes(lv) ? lv : (t.levels || ['yle'])[0], qs = (t.q && t.q[L]) || [], th = t.think && t.think[L], ce = ceOf(t, L);
+  const INK = '#2B2253', ZH = '#8A869C', MUTE = '#6B6880';
+  const run = (g, draw) => { let y = coeHdr.height(W, false) + 30;
+    const rr = (x, yy, w, h, r, fill, stroke) => { if(!draw) return; g.beginPath(); g.roundRect(x, yy, w, h, r); if(fill){ g.fillStyle = fill; g.fill(); } if(stroke){ g.strokeStyle = stroke; g.lineWidth = 2; g.stroke(); } };
+    const lines = (txt, font, size, color, lh, x, w) => { g.font = font.replace('#', size); const ls = wrap(g, txt, w); ls.forEach(l => { y += size * lh; if(draw){ g.fillStyle = color; g.fillText(l, x, y - size * (lh - 1) / 2 - size * 0.12); } }); return ls.length; };
+    const measure = (txt, font, size, lh, w) => { g.font = font.replace('#', size); return wrap(g, txt, w).length * size * lh; };
+    const chip = (txt, x, yy, c, size) => { g.font = '700 ' + size + 'px ' + FI; const w = g.measureText(txt).width + 28; rr(x, yy, w, size + 18, 10, c[0]); if(draw){ g.fillStyle = c[1]; g.fillText(txt, x + 14, yy + size + 4); } return w; };
+    const head = (en, zh, color) => { g.font = '700 22px ' + FI; if(draw){ g.fillStyle = color; g.fillText(en.toUpperCase(), P, y + 22); } const ew = g.measureText(en.toUpperCase()).width; if(zh){ g.font = '400 19px ' + FI; if(draw){ g.fillStyle = ZH; g.fillText('  ' + zh, P + ew, y + 22); } } y += 38; };
+    /* labels */
+    let x = P; x += chip(ST[t.strand] || '', x, y, PC[t.strand] || PC.china, 22) + 10; chip(LV[L] + (ce ? ' · CEFR ' + ce : ''), x, y, LC[L], 22); y += 62;
+    /* title */
+    lines(t.title, '400 #px ' + FT, 54, INK, 1.15, P, room); y += 6;
+    if(t.title_zh){ lines(t.title_zh, '400 #px ' + FI, 22, ZH, 1.4, P, room); } y += 26;
+    /* story card */
+    const pad = 32, iw = room - 2 * pad, sh = measure(t.story, '400 #px ' + FI, 31, 1.5, iw) + (t.story_zh ? 14 + measure(t.story_zh, '400 #px ' + FI, 20, 1.6, iw) : 0) + 2 * pad - 6;
+    rr(P, y, room, sh, 24, '#F5F9F9'); const y0 = y; y += pad - 6; lines(t.story, '400 #px ' + FI, 31, INK, 1.5, P + pad, iw); if(t.story_zh){ y += 14; lines(t.story_zh, '400 #px ' + FI, 20, ZH, 1.6, P + pad, iw); } y = y0 + sh + 34;
+    /* words */
+    if((t.words || []).length){ head('New words', '新单词', MUTE); let wx = P, wy = y;
+      t.words.forEach(w => { g.font = '600 26px ' + FI; const a = g.measureText(w.en).width; g.font = '400 20px ' + FI; const b = w.zh ? g.measureText(w.zh).width + 12 : 0, cw = a + b + 40;
+        if(wx + cw > P + room){ wx = P; wy += 66; } rr(wx, wy, cw, 54, 27, '#fff', '#E3E1EA');
+        if(draw){ g.font = '600 26px ' + FI; g.fillStyle = INK; g.fillText(w.en, wx + 20, wy + 36); if(w.zh){ g.font = '400 20px ' + FI; g.fillStyle = ZH; g.fillText(w.zh, wx + 20 + a + 12, wy + 35); } } wx += cw + 12; });
+      y = wy + 54 + 36; }
+    /* questions */
+    if(qs.length){ head("Let's talk", '一起聊聊', MUTE); qs.forEach((q, i) => { const cy = y; if(draw){ g.fillStyle = '#E4F4F1'; g.beginPath(); g.arc(P + 22, cy + 22, 22, 0, 7); g.fill(); g.fillStyle = '#1E6F5C'; g.font = '700 22px ' + FI; g.textAlign = 'center'; g.fillText(String(i + 1), P + 22, cy + 30); g.textAlign = 'left'; }
+      y -= 4; lines(q, '500 #px ' + FI, 29, INK, 1.45, P + 64, room - 64); y = Math.max(y, cy + 44) + 16; }); y += 14; }
+    /* think */
+    if(th){ const h = 30 + 38 + measure(th, '500 #px ' + FI, 29, 1.45, room - 64) + 24; rr(P, y, room, h, 22, '#FDF5F2', '#F1D9D2'); const y1 = y; y += 28; g.font = '700 21px ' + FI; if(draw){ g.fillStyle = '#B5432C'; g.fillText('THINK', P + 32, y + 18); g.font = '400 19px ' + FI; g.fillStyle = '#C98A7C'; g.fillText('  想一想', P + 32 + g.measureText('THINK').width + 10, y + 18); } y += 30;
+      lines(th, '500 #px ' + FI, 29, INK, 1.45, P + 32, room - 64); y = y1 + h + 22; }
+    /* try at home */
+    if(t.try_home){ const h = 30 + 38 + measure(t.try_home, '400 #px ' + FI, 27, 1.45, room - 64) + (t.try_home_zh ? 8 + measure(t.try_home_zh, '400 #px ' + FI, 19, 1.5, room - 64) : 0) + 24;
+      rr(P, y, room, h, 22, '#EEF6F7'); const y1 = y; y += 28; if(draw){ g.font = '700 21px ' + FI; g.fillStyle = '#2E6E77'; g.fillText('TRY AT HOME', P + 32, y + 18); const tw = g.measureText('TRY AT HOME').width; g.font = '400 19px ' + FI; g.fillStyle = '#7FA6AB'; g.fillText('  在家试试', P + 32 + tw + 10, y + 18); } y += 30;
+      lines(t.try_home, '400 #px ' + FI, 27, INK, 1.45, P + 32, room - 64); if(t.try_home_zh){ y += 8; lines(t.try_home_zh, '400 #px ' + FI, 19, ZH, 1.5, P + 32, room - 64); } y = y1 + h + 30; }
+    /* sources: one short line, each outlet once */
+    const outs = []; (t.sources || []).forEach(s => { const o = String(s.outlet || '').split(' · ')[0].trim(); if(o && !outs.includes(o)) outs.push(o); });
+    if(draw){ g.fillStyle = '#ECEAF2'; g.fillRect(P, y, room, 2); } y += 12;
+    if(outs.length) lines('Sources / 来源:  ' + outs.join('  ·  '), '400 #px ' + FI, 18, MUTE, 1.5, P, room);
+    return y + 40; };
   const m = document.createElement('canvas').getContext('2d'), H = Math.ceil(run(m, false));
   const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
-  coeHdr.draw(g, W, { logo: LOGO, title: 'Talk of the Day / 今日话题', meta: [who ? 'For / 学生: ' + who : ''], label }); run(g, true); return c; }
+  coeHdr.draw(g, W, { logo: LOGO, title: 'Talk of the Day / 今日话题', meta: [who ? 'For / 学生: ' + who : ''] }); run(g, true); return c; }
 async function copyPic(t, lv, who){ try{ await document.fonts.ready; }catch(e){}
   const c = picture(t, lv, who), blobP = new Promise(z => c.toBlob(z, 'image/png'));
   try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobP })]); toast('Picture copied. Paste it in the WeChat group.'); }
