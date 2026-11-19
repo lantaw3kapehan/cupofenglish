@@ -219,7 +219,14 @@ Deno.serve(async (req: Request) => {
       db.from("coe_ops_log").select("id,at,note,data").ilike("who", who).eq("kind", "eod").gte("at", new Date(Date.now() - 3 * 864e5).toISOString()).order("at", { ascending: false }).limit(3),
       db.rpc("coe_teacher_waiting", { p_days: 5 }), db.rpc("coe_ops_weekly", { p_who: who })]);   // v11 (2375): teachers waiting · (2376) the week
     const eod = (E.data || []).map((x: any) => ({ id: x.id, at: x.at, note: x.note, ...(x.data || {}) }));
-    return out({ ok: true, who, day: D.data || {}, reports, eod, watch: W, waiting: TW.data || [], week: WK.error ? null : WK.data });
+    let todo: number | null = null;   // v16 (2474): her list still to do today, counted the same way as her Ops Desk (queue + spot-checks left)
+    if (!day) { try {
+      const [Q, C, S] = await Promise.all([db.rpc("coe_ops_queue"), db.rpc("coe_ops_checks", { p_who: who }),
+        db.from("coe_ops_log").select("ref").ilike("who", who).eq("day", today()).in("kind", ["skip", "cleared", "match", "fixed"])]);
+      const sk = new Set((S.data || []).map((x: any) => x.ref)), hide = new Set(sk); ((D.data || {}).log || []).forEach((l: any) => { if (l.ref) hide.add(l.ref); });
+      const c: any = C.data || {}; let left = 0; for (const k of ["summaries", "videos", "notes"]) for (const x of (c[k] || [])) if (!hide.has(x.ref)) left++;
+      todo = (Q.data || []).filter((x: any) => !sk.has(x.ref)).length + left; } catch (_e) { todo = null; } }
+    return out({ ok: true, who, day: D.data || {}, reports, eod, watch: W, waiting: TW.data || [], week: WK.error ? null : WK.data, todo });
   }
   return out({ ok: false, error: "unknown op" }, 400);
 });
