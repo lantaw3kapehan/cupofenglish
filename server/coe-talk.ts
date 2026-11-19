@@ -78,7 +78,16 @@ Deno.serve(async (req: Request) => {
       const { data: A } = await db.from("coe_talk_use").select("topic,teacher").limit(20000);   // 2448: how many classes used each topic, by all teachers
       const counts: Record<string, { n: number; t: number }> = {}, tt: Record<string, Set<string>> = {};
       for (const r of (A || []) as any[]) { const c = counts[r.topic] || (counts[r.topic] = { n: 0, t: 0 }); c.n++; (tt[r.topic] ||= new Set()).add(r.teacher); c.t = tt[r.topic].size; }
-      return out({ ok: true, me: name, role, pres, mgmt, topics: data || [], used: U || [], counts });
+      // 2460 dashboards: a teacher's classes today · management's uses this week and who teaches this week
+      const mn = new Date(Date.now() + 8 * 3600e3), today = mn.toISOString().slice(0, 10), dow = (mn.getUTCDay() + 6) % 7, mon = new Date(mn.getTime() - dow * 864e5).toISOString().slice(0, 10), sun = new Date(mn.getTime() + (6 - dow) * 864e5).toISOString().slice(0, 10);
+      let extra: any = {};
+      if (!mgmt) { const { data: C } = await db.from("classes").select("starts_at,code,student,cancelled").eq("day", today).contains("teachers", JSON.stringify([name.trim().toLowerCase()])).order("starts_at");
+        extra.today = (C || []).filter((c: any) => !c.cancelled && c.code).map((c: any) => ({ at: new Date(new Date(c.starts_at).getTime() + 8 * 3600e3).toISOString().slice(11, 16), code: c.code, student: c.student || "" })); }
+      else { const [W, S] = await Promise.all([db.from("coe_talk_use").select("teacher,topic,student,code,at").gte("at", mon + "T00:00:00+08:00").order("at", { ascending: false }).limit(2000),
+          db.from("classes").select("teachers").gte("day", mon).lte("day", sun).eq("cancelled", false).limit(5000)]);
+        const st: Record<string, 1> = {}; ((S.data || []) as any[]).forEach((c) => (c.teachers || []).forEach((t: string) => { t = String(t || "").trim(); if (t) st[t.toLowerCase()] = 1; }));
+        extra = { week: W.data || [], staff: Object.keys(st), today, mon }; }
+      return out(Object.assign({ ok: true, me: name, role, pres, mgmt, topics: data || [], used: U || [], counts }, extra));
     }
     if (op === "use") {
       const id = cl(b.id, 40); if (!UUID.test(id)) return out({ ok: false, error: "bad request" }, 400);
