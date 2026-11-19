@@ -7410,7 +7410,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2048;
+const COE_V = 2049;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -43331,6 +43331,7 @@ window.pass2375 = function(i){ try{ var x = (window.DK2341q || [])[i] || null; i
   const E = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const cap = s => { s = String(s || ''); return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; };
   const LK = { plan: 'plan', cefr: 'cefr', price: 'price', notice: 'welcome' };
+  const dm = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m[2] - 1] : String(s || ''); };
   function migrate(t){ try{ const o = JSON.parse(localStorage.getItem('coe.tl4.' + String(t.label || (t.date + '|' + t.student))) || '{}') || {}, m = M[t.label] || {};
       Object.keys(LK).forEach(k => { if(o[k] && !m[LK[k]]) call({ op: 'trialMark', label: t.label, k: LK[k], at: new Date(+o[k]).toISOString(), keep: true }).catch(() => {}); }); }catch(e){} }
   async function load(rows, force){
@@ -43361,7 +43362,7 @@ window.pass2375 = function(i){ try{ var x = (window.DK2341q || [])[i] || null; i
       { k: 'details', title: 'Student details', done: !!f.email, sub: f.email ? 'Parent email ' + f.email : '' },
       { k: 'paid', title: 'Paid', done: !!paid, sub: paid ? ((+paid.pkg ? paid.pkg + ' + ' + (+paid.free || 0) + ' lessons' : (paid.lessons || '?') + ' lessons') + (paid.inv ? ' · ' + String(paid.inv).replace(/^PaymentConfirmation(\d+).*$/, 'Payment Confirmation $1') : '') + ' · recorded ' + paid.at + (paid.by ? ' · ' + paid.by : '')) : '' },
       { k: 'sched', title: 'Class schedule', done: !!sch, warn: !!paid && !sch, sub: sch ? sch.n + ' classes · ' + (sch.slots || []).slice().sort((a, b) => ('MonTueWedThuFriSatSun'.indexOf(a.slice(0, 3)) - 'MonTueWedThuFriSatSun'.indexOf(b.slice(0, 3))) || a.localeCompare(b)).join(' + ') + (sch.teacher ? ' · Teacher ' + cap(sch.teacher) : '') + ' · from ' + sch.first : (paid ? 'Paid ' + paid.at + ' · no classes booked yet · book the classes' : '') },
-      { k: 'agree', title: 'Agreement', done: !!(ag && ag.how !== 'Sent'), half: !!(ag && ag.how === 'Sent'), sub: ag ? (ag.how === 'Sent' ? 'Sent ' + String(ag.at || '').slice(0, 10) + ' · waiting for the signature' : 'Signed ' + String(ag.at || '').slice(0, 10)) : '' },
+      { k: 'agree', title: 'Agreement', done: !!(ag && ag.how !== 'Sent'), half: !!(ag && ag.how === 'Sent'), sub: ag ? (ag.how === 'Sent' ? 'Sent ' + dm(ag.at) + ' · waiting for the signature' : 'Signed ' + dm(ag.at)) : '' },
       { k: 'welcome', title: 'Welcome message', done: !!m.welcome, sub: mk('welcome'), undo: 1 }
     ];
     const n = L.filter(s => s.done).length, ld = L.map(s => s.done).lastIndexOf(true), nx = L.find((s, i) => !s.done && i > ld) || L.find(s => !s.done);
@@ -43399,6 +43400,8 @@ window.pass2375 = function(i){ try{ var x = (window.DK2341q || [])[i] || null; i
         if(!r.querySelector('.st01v')){ const v = document.createElement('button'); v.className = 'btn ghost st01v'; v.textContent = 'View package'; v.onclick = () => { closeSheet(); openStudent(t.code); }; r.querySelector('.tl4-a').appendChild(v);
           const d = document.createElement('div'); d.className = 'st01u'; d.textContent = 'Already recorded · Enrolled · paid is hidden so it cannot be saved twice · a new package goes in Renewals'; r.appendChild(d); } }
       if(s.k === 'sched'){ const b = r.querySelector('.tl4-a button'); if(b){ if(s.done){ b.textContent = 'View calendar'; b.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); closeSheet(); openStudent(t.code); }; } else if(s.warn){ b.textContent = 'Book the classes'; b.classList.add('teal'); } } } });
+    { const pg = [...el.querySelectorAll('.tl4-r')].find(r => /^Student page$/.test((r.querySelector('.tl4-t b') || {}).textContent || '')); if(pg){ const n = pg.querySelector('.tl4-n'); if(n) n.textContent = '·'; pg.classList.remove('next', 'done'); } }
+    { const w = [...el.querySelectorAll('.tl4-r')].find(r => /^Welcome message$/.test((r.querySelector('.tl4-t b') || {}).textContent || '')); const b = w && w.querySelector('.tl4-a button'); if(b && /Class notice/.test(b.textContent)) b.textContent = 'Open'; }
     let p = el.querySelector('.st01p'); if(!p){ p = document.createElement('div'); p.className = 'st01p'; el.querySelector('.tl4').prepend(p); }
     p.innerHTML = '<div class="h"><b>' + st.n + ' of 10 done</b>' + (st.nx ? '<span>Next: ' + E(st.nx.title) + '</span>' : '<span>All done ✓</span>') + '</div><div class="bar"><i style="width:' + (st.n * 10) + '%"></i></div>'; }
   async function mark(t, k, on){ const m = M[t.label] = M[t.label] || {}, me = ((typeof D !== 'undefined' && D && D.me) || {}).name || '';
