@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-talk v4 (19 Nov: teachers also get the facts list) · v3 (19 Nov: CEFR band per level) · v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
+// CupOfEnglish · coe-talk v5 (19 Nov: Early years · Pre-A1 level and phonics sound) · v4 (19 Nov: teachers also get the facts list) · v3 (19 Nov: CEFR band per level) · v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
 //   factual and sourced, approved by the President, kept so teachers can go back to them). Used by talk/index.html and the teacher Today card.
 // POST { op, ... }:
 //   pub     { id }                         → one approved topic (no sign-in: the page a student or parent opens)
@@ -14,14 +14,14 @@ const ORIGINS = ["https://app.cupofenglishatph.com"];
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 const cl = (s: unknown, n: number) => String(s == null ? "" : s).trim().slice(0, n);
-const LV = ["yle", "teens", "adults"], ST = ["china", "stem", "ai", "think", "world", "culture", "education", "travel", "daily", "food", "sport", "nature"];
-const PUB = "id,day,strand,levels,cefr,title,title_zh,story,story_zh,words,q,think,try_home,try_home_zh,media_url,media_kind,facts,sources,approved_at";
+const LV = ["early", "yle", "teens", "adults"], ST = ["china", "stem", "ai", "think", "world", "culture", "education", "travel", "daily", "food", "sport", "nature"];
+const PUB = "id,day,strand,levels,cefr,phonics,title,title_zh,story,story_zh,words,q,think,try_home,try_home_zh,media_url,media_kind,facts,sources,approved_at";
 const ALL = PUB + ",status,drafted_by,approved_by,note,updated_at";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function shape(t: any) {
   const arr = (v: unknown, n: number, m: number) => (Array.isArray(v) ? v : []).map((x) => cl(x, m)).filter(Boolean).slice(0, n);
-  const lv = arr(t.levels, 3, 10).filter((x) => LV.includes(x));
+  const lv = arr(t.levels, 4, 10).filter((x) => LV.includes(x));
   const q: any = {}, th: any = {}, ce: any = {};
   for (const k of LV) { q[k] = arr(t.q && t.q[k], 4, 300); th[k] = cl(t.think && t.think[k], 300); const c = cl(t.cefr && t.cefr[k], 20).replace(/-/g, "–"); if (/^(Pre-A1|A1|A2|B1|B2|C1|C2)(–(A1|A2|B1|B2|C1|C2))?$/.test(c.replace("Pre–A1", "Pre-A1"))) ce[k] = c.replace("Pre–A1", "Pre-A1"); }
   const sources = (Array.isArray(t.sources) ? t.sources : []).slice(0, 8).map((s: any) => ({ outlet: cl(s && s.outlet, 80), title: cl(s && s.title, 200), url: cl(s && s.url, 500), date: cl(s && s.date, 20) }));
@@ -29,7 +29,7 @@ function shape(t: any) {
   const words = (Array.isArray(t.words) ? t.words : []).slice(0, 8).map((w: any) => ({ en: cl(w && w.en, 40), zh: cl(w && w.zh, 40) })).filter((w: any) => w.en);
   return { day: /^\d{4}-\d{2}-\d{2}$/.test(String(t.day || "")) ? t.day : undefined, strand: ST.includes(String(t.strand)) ? t.strand : "china", levels: lv.length ? lv : LV,
     title: cl(t.title, 160), title_zh: cl(t.title_zh, 160), story: cl(t.story, 1200), story_zh: cl(t.story_zh, 1200), words, q, think: th, cefr: ce,
-    try_home: cl(t.try_home, 300), try_home_zh: cl(t.try_home_zh, 300), media_url: /^https:\/\//.test(String(t.media_url || "")) ? cl(t.media_url, 500) : "", media_kind: cl(t.media_kind, 20),
+    phonics: cl(t.phonics, 80), try_home: cl(t.try_home, 300), try_home_zh: cl(t.try_home_zh, 300), media_url: /^https:\/\//.test(String(t.media_url || "")) ? cl(t.media_url, 500) : "", media_kind: cl(t.media_kind, 20),
     facts, sources, note: cl(t.note, 500) };
 }
 function sourced(t: any) {   // every fact points to a source with a real link
