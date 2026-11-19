@@ -206,7 +206,7 @@ Deno.serve(async (req: Request) => {
     if (!pres) return out({ ok: false, error: "Management only" }, 403);
     if (op === "resolve" && Number(b.lid)) { const lid = Number(b.lid);   // v13 (2453): the President marks a problem Operations found as solved
       const { data: L } = await db.from("coe_ops_log").select("who,title").eq("id", lid).maybeSingle(); if (!L) return out({ ok: false, error: "Not found." }, 404);
-      await db.from("coe_ops_log").insert({ who: L.who, kind: "resolved", ref: "log:" + lid, title: L.title, note: str(b.note, 500) || null, by_name: me }); return out({ ok: true }); }
+      const { error: re } = await db.from("coe_ops_log").insert({ who: L.who, kind: "resolved", ref: "log:" + lid, title: L.title, note: str(b.note, 500) || null, by_name: me }); if (re) return out({ ok: false, error: "Not saved. Try again." }, 500); return out({ ok: true }); }
     if (op === "resolve") { const id = Number(b.id) || 0; await db.from("coe_ops_log").insert({ who: str(b.who, 60) || "Operations", kind: "resolved", ref: "rep:" + id, note: str(b.note, 500) || null, by_name: me }); return out({ ok: true }); }
     if (op === "watch_add") { const who = str(b.who, 60) || await opsName(), text = str(b.text, 300); if (text.length < 4) return out({ ok: false, error: "Write the mistake." }, 400);
       const { data: ex } = await db.from("coe_ops_watch").select("id,times").ilike("who", who).ilike("text", text).is("gone_at", null).maybeSingle();
