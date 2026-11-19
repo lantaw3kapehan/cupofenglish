@@ -56,12 +56,27 @@ h1{font-family:'COE Card Fredoka',Fredoka,sans-serif;font-weight:400;font-size:3
 .cnt{background:var(--coral);color:#fff;border-radius:999px;padding:1px 10px;font-weight:700;font-size:13px}
 .empty{color:var(--mute);font-size:14px;padding:18px 0}
 /* topic */
-.tp{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:22px;align-items:start;margin-top:16px}
+.tp{display:grid;grid-template-columns:minmax(0,1fr) 460px;gap:22px;align-items:start;margin-top:16px}
 .story{font-size:19px;line-height:1.65;margin:0}
 .storyzh{font-size:14px;line-height:1.7;color:#7A7690;margin:0}
 .zhw{color:#8A869C;font-weight:400;font-size:.85em}
 .words{display:flex;gap:8px;flex-wrap:wrap}
-.words>span{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;background:#fff}
+.words>span,.wch{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;background:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;color:var(--ink)}
+.wch:hover{border-color:#9AD3D6;background:#F6FBFB}
+.wch.ph{padding:4px 14px 4px 4px}.wch img{width:34px;height:34px;border-radius:999px;object-fit:cover}
+.st .wch{font-size:18px}.st .wch.ph img{width:44px;height:44px}
+.fl{position:fixed;inset:0;z-index:60;background:rgba(30,26,60,.55);display:flex;align-items:center;justify-content:center;padding:20px}
+.flc{background:#fff;border-radius:24px;padding:22px;max-width:640px;width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 30px 60px -20px rgba(30,26,60,.5)}
+.flc img{width:100%;max-height:52vh;object-fit:contain;border-radius:16px;background:#F7F6FA}
+.flc b{font-family:'COE Card Fredoka',Fredoka,sans-serif;font-weight:400;font-size:64px;line-height:1.1;margin-top:6px}
+.flc .zhw{font-size:22px}.flc small{font-size:11px;color:#8A869C}
+.fln{display:flex;gap:8px;align-items:center;margin-top:8px}.fln span{font-size:13px;color:var(--mute);min-width:44px;text-align:center}
+.lvg{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px;background:#F4F2F8;border-radius:16px;padding:4px}
+.lvg button{border:0;border-radius:12px;background:transparent;padding:7px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;font-weight:700;font-size:14px;color:var(--ink)}
+.lvg button small{font-weight:500;font-size:11.5px;opacity:.7}
+.lvg button.on{background:var(--ink);color:#fff}
+.use{display:grid;grid-template-columns:1fr 1fr;gap:8px}.use .full{grid-column:1/-1}.use select{max-width:none;width:100%}.use .btn{justify-content:center;width:100%}
+.libh{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}.libh .search{margin-left:auto}
 .qs{display:flex;flex-direction:column;gap:10px}
 .q{display:flex;gap:10px;align-items:flex-start;font-size:17px;line-height:1.5}
 .q i{flex:none;width:26px;height:26px;border-radius:999px;background:#E4F4F1;color:#1E6F5C;font-size:13px;font-weight:700;font-style:normal;display:flex;align-items:center;justify-content:center}
@@ -120,9 +135,19 @@ const age = d => Math.round((Date.parse(mnl() + 'T00:00:00Z') - Date.parse(d + '
 const fresh = d => { const a = age(d); return a <= 7 ? 'week' : a <= 30 ? 'month' : 'earlier'; };
 function toast(t){ const e = $('toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('on'), 3200); }
 async function call(fn, body){ const r = await fetch(API + fn, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({ ok: false, error: 'No answer. Try again.' })); if(!j.ok) throw new Error(j.error || 'Not saved'); return j; }
+const AGE = { early: 'ages 3–7', yle: 'ages 7–12' };
 const CE = ['Pre-A1','A1','A2','B1','B2','C1','C2'];
 const ceRange = c => { const p = String(c || '').split('–').map(x => CE.indexOf(x.trim())).filter(i => i >= 0); return p.length ? [Math.min(...p), Math.max(...p)] : null; };
 const ceOf = (t, k) => (t.cefr && t.cefr[k]) || '';
+const chipsHtml = (t, L) => wordsOf(t, L).map((w, i) => '<button type="button" class="wch' + (w.img ? ' ph' : '') + '" data-wi="' + i + '" aria-label="Show ' + esc(w.en) + '">' + (w.img ? '<img src="' + esc(w.img) + '" alt="" loading="lazy">' : '') + '<b>' + esc(w.en) + '</b>' + (w.zh ? ' <span class="zhw">' + esc(w.zh) + '</span>' : '') + '</button>').join('');
+function flash(L0, i){ let k = i; const box = document.createElement('div'); box.className = 'fl'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); document.body.appendChild(box);
+  const paint = () => { const w = L0[k]; box.innerHTML = '<div class="flc">' + (w.img ? '<img src="' + esc(w.img) + '" alt="' + esc(w.en) + '">' : '') + '<b>' + esc(w.en) + '</b>' + (w.zh ? '<span class="zhw">' + esc(w.zh) + '</span>' : '') + (w.credit ? '<small>' + esc(w.credit) + '</small>' : '')
+    + '<div class="fln"><button type="button" class="btn sm" data-m="-1"' + (k ? '' : ' disabled') + '>‹ Back</button><span>' + (k + 1) + ' / ' + L0.length + '</span><button type="button" class="btn sm" data-m="1"' + (k < L0.length - 1 ? '' : ' disabled') + '>Next ›</button><button type="button" class="btn sm pr" data-x="1">Close</button></div></div>';
+    box.querySelectorAll('[data-m]').forEach(b => b.onclick = e => { e.stopPropagation(); k = Math.max(0, Math.min(L0.length - 1, k + +b.dataset.m)); paint(); }); box.querySelector('[data-x]').onclick = close; };
+  const key = e => { if(e.key === 'Escape') close(); else if(e.key === 'ArrowRight' && k < L0.length - 1){ k++; paint(); } else if(e.key === 'ArrowLeft' && k){ k--; paint(); } };
+  function close(){ box.remove(); document.removeEventListener('keydown', key, true); }
+  box.onclick = e => { if(e.target === box) close(); }; document.addEventListener('keydown', key, true); paint(); }
+function bindChips(root, t, L){ root.querySelectorAll('.wch').forEach(b => b.onclick = () => flash(wordsOf(t, L), +b.dataset.wi)); }
 const wordsOf = (t, k) => (k === 'early' && (t.words_early || []).length) ? t.words_early : (t.words || []);
 const lvChips = (L, t) => (L || []).map(k => '<span class="lb l-' + k + '">' + LV[k] + (t && ceOf(t, k) ? ' · ' + esc(ceOf(t, k)) : '') + '</span>').join('');
 const stChip = s => '<span class="lb s-' + esc(s) + '">' + esc(ST[s] || s) + '</span>';
@@ -138,7 +163,7 @@ function studentHtml(t, lv, who){
     + '<div class="cols"><div class="card" style="display:flex;flex-direction:column;gap:14px;padding:22px 26px">'
     + (t.media_url ? mediaHtml(t) : '')
     + (L === 'early' ? (t.phonics ? '<div class="k">SOUND OF THE DAY · 今日发音</div><div style="font-size:30px;font-weight:700">' + esc(t.phonics) + '</div>' : '') : '<p class="story">' + esc(t.story) + '</p>' + (t.story_zh ? '<p class="storyzh">' + esc(t.story_zh) + '</p>' : ''))
-    + (wordsOf(t, L).length ? '<div class="k">' + (L === 'early' ? 'SAY IT · 跟我说' : 'NEW WORDS · 新单词') + '</div><div class="words">' + wordsOf(t, L).map(w => '<span><b>' + esc(w.en) + '</b>' + (w.zh ? ' <span class="zhw">' + esc(w.zh) + '</span>' : '') + '</span>').join('') + '</div>' : '')
+    + (wordsOf(t, L).length ? '<div class="k">' + (L === 'early' ? 'SAY IT · 跟我说' : 'NEW WORDS · 新单词') + '</div><div class="words">' + chipsHtml(t, L) + '</div>' : '')
     + '</div><div style="display:flex;flex-direction:column;gap:14px">'
     + (qs.length ? '<div class="card qs"><b style="font-size:18px">' + (L === 'early' ? 'Point and say · 指一指，说一说' : 'Let\'s talk · 一起聊聊') + '</b>' + qs.map((x, i) => '<div class="q"><i>' + (i + 1) + '</i><span>' + esc(x) + '</span></div>').join('') + '</div>' : '')
     + (th ? '<div class="think"><span class="lb s-think" style="align-self:flex-start;font-weight:700">THINK · 想一想</span><span>' + esc(th) + '</span></div>' : '')
@@ -175,7 +200,12 @@ function picture(t, lv, who){
     if(L !== 'early'){ rr(P, y, room, sh, 24, '#F5F9F9'); const y0 = y; y += pad - 6; lines(t.story, '400 #px ' + FI, 31, INK, 1.5, P + pad, iw); if(t.story_zh){ y += 14; lines(t.story_zh, '400 #px ' + FI, 20, ZH, 1.6, P + pad, iw); } y = y0 + sh + 34; }
     else if(t.phonics){ head('Sound of the day', '今日发音', MUTE); rr(P, y, room, 96, 24, '#FDEDE6'); g.font = '700 40px ' + FI; if(draw){ g.fillStyle = '#9A4528'; g.fillText(t.phonics, P + 32, y + 62); } y += 96 + 34; }
     /* words */
-    if(wordsOf(t, L).length){ head(L === 'early' ? 'Say it' : 'New words', L === 'early' ? '跟我说' : '新单词', MUTE); let wx = P, wy = y;
+    const PH = wordsOf(t, L).filter(w => w.img && PIMG[w.img]);
+    if(L === 'early' && PH.length){ head('Say it', '跟我说', MUTE); const cw = (room - 24) / 2, ph = 250; PH.forEach((w, i) => { const cx = P + (i % 2) * (cw + 24), cy = y + Math.floor(i / 2) * (ph + 96);
+        rr(cx, cy, cw, ph + 80, 22, '#fff', '#E3E1EA'); if(draw){ const im = PIMG[w.img], r0 = Math.max(cw / im.width, ph / im.height), sw = cw / r0, sh2 = ph / r0; g.save(); g.beginPath(); g.roundRect(cx, cy, cw, ph, [22, 22, 0, 0]); g.clip(); g.drawImage(im, (im.width - sw) / 2, (im.height - sh2) / 2, sw, sh2, cx, cy, cw, ph); g.restore();
+          g.font = '400 40px ' + FT; g.fillStyle = INK; g.textAlign = 'center'; g.fillText(w.en, cx + cw / 2 - (w.zh ? 30 : 0), cy + ph + 54); if(w.zh){ const ew = g.measureText(w.en).width; g.font = '400 20px ' + FI; g.fillStyle = ZH; g.textAlign = 'left'; g.fillText(w.zh, cx + cw / 2 - 30 + ew / 2 + 10, cy + ph + 52); } g.textAlign = 'left'; } });
+      y += Math.ceil(PH.length / 2) * (ph + 96) + 20; }
+    else if(wordsOf(t, L).length){ head(L === 'early' ? 'Say it' : 'New words', L === 'early' ? '跟我说' : '新单词', MUTE); let wx = P, wy = y;
       wordsOf(t, L).forEach(w => { g.font = '600 26px ' + FI; const a = g.measureText(w.en).width; g.font = '400 20px ' + FI; const b = w.zh ? g.measureText(w.zh).width + 12 : 0, cw = a + b + 40;
         if(wx + cw > P + room){ wx = P; wy += 66; } rr(wx, wy, cw, 54, 27, '#fff', '#E3E1EA');
         if(draw){ g.font = '600 26px ' + FI; g.fillStyle = INK; g.fillText(w.en, wx + 20, wy + 36); if(w.zh){ g.font = '400 20px ' + FI; g.fillStyle = ZH; g.fillText(w.zh, wx + 20 + a + 12, wy + 35); } } wx += cw + 12; });
@@ -194,12 +224,16 @@ function picture(t, lv, who){
     const outs = []; (t.sources || []).forEach(s => { const o = String(s.outlet || '').split(' · ')[0].trim(); if(o && !outs.includes(o)) outs.push(o); });
     if(draw){ g.fillStyle = '#ECEAF2'; g.fillRect(P, y, room, 2); } y += 12;
     if(outs.length) lines('Sources / 来源:  ' + outs.join('  ·  '), '400 #px ' + FI, 18, MUTE, 1.5, P, room);
+    if(PH.length){ const cr = [...new Set(PH.map(w => (w.credit || '').replace(/^Photo:\s*/, '')).filter(Boolean))]; if(cr.length) lines('Photos: ' + cr.join('  ·  '), '400 #px ' + FI, 15, ZH, 1.5, P, room); }
     return y + 40; };
   const m = document.createElement('canvas').getContext('2d'), H = Math.ceil(run(m, false));
   const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
   coeHdr.draw(g, W, { logo: LOGO, title: 'Talk of the Day / 今日话题', meta: [who ? 'For / 学生: ' + who : ''] }); run(g, true); return c; }
-window.talkPreview = (lv, who) => { if(!CUR) return null; return picture(CUR, lv || CLV, who || '').toDataURL('image/png'); };
+window.talkPreview = async (lv, who) => { if(!CUR) return null; const L1 = lv || CLV; await Promise.all(wordsOf(CUR, L1).filter(w => w.img).map(w => loadImg(w.img))); return picture(CUR, L1, who || '').toDataURL('image/png'); };
+const PIMG = {};
+function loadImg(u){ return PIMG[u] ? Promise.resolve() : new Promise(z => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => { PIMG[u] = im; z(); }; im.onerror = () => z(); im.src = u; }); }
 async function copyPic(t, lv, who){ try{ await document.fonts.ready; }catch(e){}
+  const Lr = (t.levels || []).includes(lv) ? lv : (t.levels || ['yle'])[0]; await Promise.all(wordsOf(t, Lr).filter(w => w.img).map(w => loadImg(w.img)));
   const c = picture(t, lv, who), blobP = new Promise(z => c.toBlob(z, 'image/png'));
   try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobP })]); toast('Picture copied. Paste it in the WeChat group.'); }
   catch(e){ const bl = await blobP, a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = 'talk-of-the-day.png'; a.click(); toast('Saved the picture as a file (copy was blocked).'); } }
@@ -216,17 +250,16 @@ function libHtml(){
     + '<b class="t">' + esc(t.title) + '</b>' + (t.title_zh ? '<span class="zh">' + esc(t.title_zh) + '</span>' : '')
     + '<div class="ft">' + (U.length ? '<span class="used">Used with ' + esc(U.slice(0, 3).map(u => u.student || u.code).join(', ')) + (U.length > 3 ? ' +' + (U.length - 3) : '') + '</span>' : '<span>Not used yet</span>')
     + '<span style="margin-left:auto">Source: ' + esc((t.sources || []).map(s => s.outlet.split(' · ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 2).join(', ')) + '</span></div></article>'; };
-  return '<main><h1>Talk library</h1><p class="sub">Open each class with one of these instead of "How are you?" · 3–5 minutes · topics stay here · every fact has a source</p>'
+  return '<main><div class="libh"><div><h1>Talk library</h1><p class="sub">Open each class with one of these instead of "How are you?" · 3–5 minutes · topics stay here · every fact has a source</p></div>' + '<label class="search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6B6880" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="fq" type="search" placeholder="Search a topic" aria-label="Search a topic" value="' + esc(F.q) + '"></label></div>'
     + (D.mgmt && dr.length ? '<div class="sect"><b>To approve</b><span class="cnt">' + dr.length + '</span><span class="sub" style="margin:0">teachers do not see these until the President approves</span></div><div class="grid">' + dr.map(card).join('') + '</div>' : '')
     + '<div class="bar"><div class="seg" role="tablist" aria-label="How new">' + [['week', 'This week'], ['month', 'This month'], ['earlier', 'Earlier']].map(([k, l]) => '<button type="button" role="tab" data-f="' + k + '" class="' + (F.fresh === k ? 'on' : '') + '" aria-selected="' + (F.fresh === k) + '">' + l + ' · ' + n(k) + '</button>').join('') + '</div>'
     + '<span class="vr"></span>' + [['', 'All levels'], ['early', 'Early years'], ['yle', 'YLE'], ['teens', 'Teens'], ['adults', 'Adults']].map(([k, l]) => '<button type="button" class="chipb' + (F.lv === k ? ' on' : '') + '" data-lv="' + k + '">' + l + '</button>').join('')
     + '<select id="fce" aria-label="CEFR level"><option value="">Any CEFR</option>' + CE.slice(0, 6).map(k => '<option' + (F.ce === k ? ' selected' : '') + '>' + k + '</option>').join('') + '</select>'
-    + '<span class="vr"></span><select id="fst" aria-label="Topic"><option value="">All topics</option>' + Object.keys(ST).map(k => '<option value="' + k + '"' + (F.st === k ? ' selected' : '') + '>' + ST[k] + '</option>').join('') + '</select>'
-    + '<label class="search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6B6880" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="fq" type="search" placeholder="Search a topic" aria-label="Search a topic" value="' + esc(F.q) + '"></label></div>'
+    + '<span class="vr"></span><select id="fst" aria-label="Topic"><option value="">All topics</option>' + Object.keys(ST).map(k => '<option value="' + k + '"' + (F.st === k ? ' selected' : '') + '>' + ST[k] + '</option>').join('') + '</select></div>'
     + (L.length ? '<div class="grid">' + L.map(card).join('') + '</div>' : '<div class="empty">' + (ap.length ? 'Nothing here with these filters. Try "This month" or "Earlier".' : 'The first topics are being prepared. They appear here once approved.') + '</div>')
     + '<p class="sub" style="margin-top:18px">News moves from This week to This month after 7 days, and to Earlier after 30. Timeless topics (science, AI, animals) stay useful in Earlier.</p></main>';
 }
-function paintLib(){ $('hS').textContent = 'Class openers for YLE, Teens and Adults'; $('hBtns').innerHTML = '<a class="btn sm" href="../app.html">‹ Back to the app</a>'; app.innerHTML = libHtml();
+function paintLib(){ $('hS').textContent = 'Class openers for YLE, Teens and Adults'; $('hBtns').innerHTML = window.opener ? '<button class="btn sm" type="button" onclick="window.close()">Close · back to the app</button>' : '<a class="btn sm" href="../app.html" style="text-decoration:none">‹ Back to the app</a>'; app.innerHTML = libHtml();
   app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { F.fresh = b.dataset.f; paintLib(); });
   app.querySelectorAll('[data-lv]').forEach(b => b.onclick = () => { F.lv = b.dataset.lv; paintLib(); });
   const fst = $('fst'); if(fst) fst.onchange = () => { F.st = fst.value; paintLib(); };
@@ -254,24 +287,25 @@ function paintTopic(){ const t = CUR, L = CLV, qs = (t.q && t.q[L]) || [], th = 
     + '<div class="tp"><div style="display:flex;flex-direction:column;gap:14px"><div class="card" style="display:flex;flex-direction:column;gap:12px">'
     + (t.media_url ? mediaHtml(t) : '')
     + (L === 'early' ? '<div class="k">EARLY YEARS · PICTURE AND WORDS · NO STORY</div>' + (t.phonics ? '<div><span class="k">SOUND OF THE DAY</span><div style="font-size:26px;font-weight:700;color:#9A4528;margin-top:4px">' + esc(t.phonics) + '</div></div>' : '') : '<p class="story" style="font-size:17px">' + esc(t.story) + '</p>' + (t.story_zh ? '<p class="storyzh">' + esc(t.story_zh) + '</p>' : ''))
-    + (wordsOf(t, L).length ? '<div class="words">' + wordsOf(t, L).map(w => '<span><b>' + esc(w.en) + '</b>' + (w.zh ? ' <span class="zhw">' + esc(w.zh) + '</span>' : '') + '</span>').join('') + '</div>' : '') + '</div>'
+    + (wordsOf(t, L).length ? '<div class="words">' + chipsHtml(t, L) + '</div>' : '') + '</div>'
     + '<details class="card fs"' + (t.status === 'draft' ? ' open' : '') + ' style="padding:12px 18px"><summary><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#1E6F5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' + (Fx.length ? 'Facts checked · ' + Fx.length + ' fact' + (Fx.length === 1 ? '' : 's') + ' from ' + S.length + ' source' + (S.length === 1 ? '' : 's') : 'Sources · ' + S.length) + '<span class="chev">›</span></summary><div class="facts">'
     + (Fx.length ? '' : S.map(s => '<div class="f"><span class="src"><a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.outlet) + '</a>' + (s.date ? ' · ' + esc(s.date) : '') + '</span></div>').join(''))
     + Fx.map(f => { const s = S[f.src]; return '<div class="f' + (s ? '' : ' bad') + '"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="' + (s ? '#1E6F5C' : '#B5432C') + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:2px">' + (s ? '<path d="M5 12.5l4.5 4.5L19 7.5"/>' : '<path d="M12 7v6M12 17h.01"/>') + '</svg><span>' + esc(f.fact) + '<br><span class="src">' + (s ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.outlet) + '</a>' + (s.date ? ' · ' + esc(s.date) : '') : 'No source · cannot be approved') + '</span></span></div>'; }).join('')
     + '</div></details></div>'
     + '<div style="display:flex;flex-direction:column;gap:14px"><div class="card" style="display:flex;flex-direction:column;gap:14px">'
-    + '<div class="seg" role="tablist" aria-label="Level" style="align-self:flex-start">' + (t.levels || []).map(k => '<button type="button" role="tab" data-l="' + k + '" class="' + (k === L ? 'on' : '') + '" aria-selected="' + (k === L) + '">' + LV[k] + (ceOf(t, k) ? '<small>' + esc(ceOf(t, k)) + '</small>' : '') + '</button>').join('') + '</div>'
+    + '<div class="lvg" role="tablist" aria-label="Level">' + (t.levels || []).map(k => '<button type="button" role="tab" data-l="' + k + '" class="' + (k === L ? 'on' : '') + '" aria-selected="' + (k === L) + '">' + LV[k] + (ceOf(t, k) ? '<small>' + esc(ceOf(t, k)) + (AGE[k] ? ' · ' + AGE[k] : '') + '</small>' : '') + '</button>').join('') + '</div>'
     + '<div class="k">CLASS OPENER · FIRST 3–5 MINUTES</div>'
     + '<div class="qs">' + qs.map((x, i) => '<div class="q"><i>' + (i + 1) + '</i><span>' + esc(x) + '</span></div>').join('') + '</div>'
     + (th ? '<div class="think"><span class="lb s-think" style="align-self:flex-start;font-weight:700">THINK</span><span>' + esc(th) + '</span></div>' : '')
     + '</div>'
     + (t.status !== 'draft' ? '<div class="card" style="display:flex;flex-direction:column;gap:10px"><b style="font-size:17px">Use it with</b>'
-      + '<select id="stuSel" aria-label="Student"><option value="">Choose your student</option></select>'
-      + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bPres" type="button">Open in class · full screen</button><button class="btn pr" id="bCopy" type="button">Copy picture for student</button><button class="btn sm" id="bLink" type="button">Copy link</button></div>'
+      + '<div class="use"><select id="stuSel" class="full" aria-label="Student"><option value="">Choose your student</option></select>'
+      + '<button class="btn pr full" id="bCopy" type="button">Copy picture for student</button><button class="btn" id="bPres" type="button">Open in class</button><button class="btn" id="bLink" type="button">Copy link</button></div>'
       + '<span class="src">The picture and the link show our letterhead, the student\'s name, the level you chose and the sources.</span></div>' : '')
     + (D.pres && t.status !== 'draft' ? '<button class="btn sm" id="bRet" type="button" style="align-self:flex-start">Take it out of the library</button>' : '')
     + '</div></div></main>';
   app.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { CLV = b.dataset.l; paintTopic(); });
+  bindChips(app, t, L);
   if($('bAp')) $('bAp').onclick = async () => { const b = $('bAp'); b.disabled = true; try{ await call('coe-talk', { token: TOKEN, op: 'approve', id: t.id }); t.status = 'approved'; toast('Approved. Teachers see it now.'); paintTopic(); }catch(e){ b.disabled = false; toast(e.message); } };
   if($('bRet')) $('bRet').onclick = async () => { if(!confirm('Take this topic out of the library? It is kept, not deleted.')) return; try{ await call('coe-talk', { token: TOKEN, op: 'retire', id: t.id }); D.topics = D.topics.filter(x => x.id !== t.id); toast('Taken out of the library.'); history.pushState({}, '', location.pathname); paintLib(); }catch(e){ toast(e.message); } };
   if($('stuSel')){ students().then(L2 => { const s = $('stuSel'); if(!s) return; s.innerHTML = '<option value="">Choose your student</option>' + L2.map(x => '<option value="' + esc(x.code) + '">' + esc(x.student) + ' · ' + esc(x.code) + '</option>').join(''); const k = sessionStorage.getItem('coe.talk.stu'); if(k) s.value = k; s.onchange = () => sessionStorage.setItem('coe.talk.stu', s.value); }); }
@@ -283,7 +317,7 @@ function paintTopic(){ const t = CUR, L = CLV, qs = (t.q && t.q[L]) || [], th = 
   if($('bPres')) $('bPres').onclick = () => { const p = pick(); mark(p); present(t, CLV, p.nm); };
 }
 function present(t, lv, who){ document.body.classList.add('present'); $('hT').textContent = 'Talk of the Day / 今日话题'; $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + dShort(t.day);
-  $('hBtns').innerHTML = '<button class="btn sm" id="bX" type="button">Close</button>'; app.innerHTML = studentHtml(t, lv, who);
+  $('hBtns').innerHTML = '<button class="btn sm" id="bX" type="button">Close</button>'; app.innerHTML = studentHtml(t, lv, who); bindChips(app, t, (t.levels || []).includes(lv) ? lv : (t.levels || ['yle'])[0]);
   try{ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }catch(e){}
   const close = () => { document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintTopic(); document.removeEventListener('keydown', esc1); };
   const esc1 = e => { if(e.key === 'Escape') close(); }; document.addEventListener('keydown', esc1); $('bX').onclick = close; }
@@ -292,7 +326,7 @@ function present(t, lv, who){ document.body.classList.add('present'); $('hT').te
 async function start(){
   const pid = Q.get('id');
   if(pid){ document.body.classList.add('present');
-    try{ const j = await call('coe-talk', { op: 'pub', id: pid }), t = j.topic, who = Q.get('s') || ''; $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + dShort(t.day); app.innerHTML = studentHtml(t, Q.get('lv') || 'yle', who); document.title = t.title + ' · CupOfEnglish'; }
+    try{ const j = await call('coe-talk', { op: 'pub', id: pid }), t = j.topic, who = Q.get('s') || ''; $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + dShort(t.day); const lv0 = Q.get('lv') || 'yle'; app.innerHTML = studentHtml(t, lv0, who); bindChips(app, t, (t.levels || []).includes(lv0) ? lv0 : (t.levels || ['yle'])[0]); document.title = t.title + ' · CupOfEnglish'; }
     catch(e){ app.innerHTML = '<main><div class="empty">This topic is not available.</div></main>'; } return; }
   if(!TOKEN){ app.innerHTML = '<main><h1>Talk library</h1><p class="sub">Open it from the CupOfEnglish app (you need to be signed in).</p><p><a class="btn pr" href="../app.html">Open the app</a></p></main>'; return; }
   app.innerHTML = '<main><div class="empty">Loading…</div></main>';
