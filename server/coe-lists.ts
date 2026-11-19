@@ -679,6 +679,38 @@ async function check(only?: string) {
   return res;
 }
 
+const MON2456 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+// 2456 (Misty 19 Nov 17:40 · Chenyu's March counted 2.5, should be 1.5: classes before the renewal payment were counted in that month):
+// Management's own lesson count per student and month (docs "sys:lessonfix", saved by coe-ops op lessonfix) replaces that month on every
+// copy of ACTIVE the app gets (Google's or the database's); done goes down / up and remaining up / down by the same amount.
+async function lessonFixes(db: any): Promise<Record<string, any>> {
+  try { const { data } = await db.from("docs").select("data").eq("key", "sys:lessonfix").maybeSingle(); return (data && data.data && data.data.fix) || {}; } catch (_e) { return {}; }
+}
+function fixOut(fn: string, data: any, F: Record<string, any>) {
+  const keys = Object.keys(F || {}); if (!data || !keys.length) return data;
+  const r1 = (x: number) => Math.round(x * 10) / 10;
+  if (fn === "mgmtActive" && Array.isArray(data.rows) && Array.isArray(data.months) && Array.isArray(data.cols)) {
+    const C: Record<string, number> = {}; data.cols.forEach((c: string, i: number) => C[c] = i);
+    const yms = data.months.map((lab: string) => { const m = String(lab).match(/^([A-Za-z]{3})\w* (\d{2})$/); const k = m ? MON2456.findIndex((x: string) => x.slice(0, 3).toLowerCase() === m[1].toLowerCase()) : -1; return k < 0 ? "" : "20" + m![2] + "-" + String(k + 1).padStart(2, "0"); });
+    const rows = data.rows.slice(), fixes: any[] = [];
+    keys.forEach((k) => { const [code, ym] = k.split("|"), f = F[k], j = yms.indexOf(ym); if (!f || typeof f.v !== "number" || j < 0) return;
+      const up = (x: any) => String(x || "").trim().toUpperCase(), idx: number[] = []; rows.forEach((r: any[], i: number) => { if (up(r[C.code]) === code) idx.push(i); }); if (!idx.length) return;
+      const val = (i: number) => Number((rows[i][C.months] || [])[j]) || 0, old = r1(idx.reduce((a, i) => a + val(i), 0)); let d = r1(f.v - old);   // the month for the whole student (all her teachers' rows), as on the summary
+      const set = (i: number, dv: number) => { const r = rows[i].slice(), M = (r[C.months] || []).slice(); M[j] = r1((Number(M[j]) || 0) + dv); r[C.months] = M; if (r[C.finished] !== "" && r[C.finished] != null) r[C.finished] = r1(Number(r[C.finished]) + dv); rows[i] = r; };
+      if (d) { const D0 = d; const by = idx.slice().sort((a, b) => val(b) - val(a));
+        if (d < 0) { for (const i of by) { if (d >= 0) break; const t = Math.max(d, -val(i)); if (t) { set(i, t); d = r1(d - t); } } } else set(by[0], d);
+        const used = r1(D0 - d), ai = idx.find((i) => rows[i][C.available] !== "" && rows[i][C.available] != null);   // remaining sits on the package row
+        if (ai != null && used) { const r = rows[ai].slice(); r[C.available] = r1(Number(r[C.available]) - used); rows[ai] = r; } }
+      fixes.push({ code, ym, v: f.v, was: old !== f.v ? old : (typeof f.was === "number" ? f.was : old), note: f.note || "", by: f.by || "", at: f.at || "" }); });
+    return Object.assign({}, data, { rows, fixes });
+  }
+  if (fn === "mgmtStudents" && Array.isArray(data)) {
+    const D: Record<string, number> = {}; keys.forEach((k) => { const f = F[k]; if (f && typeof f.v === "number" && typeof f.was === "number") { const c = k.split("|")[0]; D[c] = r1((D[c] || 0) + f.v - f.was); } });
+    return data.map((x: any) => x && D[x.code] && typeof x.left === "number" ? Object.assign({}, x, { left: r1(x.left - D[x.code]) }) : x);
+  }
+  return data;
+}
+
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: h });
@@ -705,7 +737,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await db.rpc("coe_lists_tmsgs", { p_name: who, p_sheet_only: !!b.sheetOnly }); if (error) throw new Error(error.message);
       return ans({ data, src: { messages: "coe_msgs", sheetOnly: !!b.sheetOnly } }); }
     if (b.op === "active") { if (!mgmt) return NO(); const { data, error } = await db.rpc("coe_lists_active"); if (error) throw new Error(error.message);
-      return ans({ data, src: { rows: "ACTIVE copy + class table (coe_lists_active = coe_active_screen)" } }); }
+      return ans({ data: fixOut("mgmtActive", data, await lessonFixes(db)), src: { rows: "ACTIVE copy + class table (coe_lists_active = coe_active_screen)" } }); }
     if (b.op === "shadow") { if (!mgmt) return NO(); return out(await shadow(s, String(b.fn || ""), b.google)); }
     if (b.op === "classinfo") { if (!mgmt) return NO(); return ans(await classInfo(b.ev)); }
     if (b.op === "leave") { if (!mgmt) return NO(); return ans(await mgmtLeave()); }
