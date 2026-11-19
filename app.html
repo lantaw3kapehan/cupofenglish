@@ -7416,7 +7416,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2101;
+const COE_V = 2102;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -16230,7 +16230,8 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
       + (x.late ? ' · <span style="color:#B54708;font-weight:600">' + x.late + ' late</span>' : '')
       + '<div class="small mute">' + esc(mon) + ' so far: ' + x.monthMissing + ' missing · ' + x.monthLate + ' late upload' + (x.monthLate === 1 ? '' : 's') + '</div>' + lateCases(x.teacher, ym) + '</div>';
     const html = '<div class="card" id="vid1882" style="margin:0 0 14px"><b><svg class="u-ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#00838C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/></svg>Class videos</b> <span class="small mute">· yesterday ' + esc(dl) + ' and ' + esc(mon) + ' so far</span>'
-      + L.map(row).join('') + '<div class="small mute" style="margin-top:6px">Missing = class held, no video or screen proof · late = uploaded after the class day. Teachers get a reminder at 22:30 for classes without a video.</div></div>';
+      + (function(){ const lc = x => { try{ return lateCases(x.teacher, ym) || ''; }catch(e){ return ''; } }, keep = x => x.missing || x.late || lc(x), A = L.filter(x => !keep(x)), K = L.filter(keep);   /* 2475 */
+        return (A.length ? '<div class="vd2475"><span style="color:#0E6B5C;font-weight:600">All in yesterday</span> · ' + A.map(x => '<a onclick="vid1939Open(\'' + esc(String(x.teacher)).replace(/'/g, '') + '\',\'' + ym + '\')">' + esc(x.teacher) + '</a>' + ((+x.monthMissing || +x.monthLate) ? ' <small>(' + [x.monthMissing ? x.monthMissing + ' missing' : '', x.monthLate ? x.monthLate + ' late' : ''].filter(Boolean).join(', ') + ' in ' + esc(mon) + ')</small>' : '')).join(', ') + '</div>' : '') + K.map(row).join(''); })() + '<div class="small mute" style="margin-top:6px">Missing = class held, no video or screen proof · late = uploaded after the class day. Teachers get a reminder at 22:30 for classes without a video.</div></div>';
     if(el) el.outerHTML = html; else { const ld2053 = v.querySelector(':scope > .lead'); if(ld2053) ld2053.insertAdjacentHTML('afterend', html); else v.insertAdjacentHTML('afterbegin', html); } }   /* 2053: under the To do title */
   const rt = window.renderMToday; if(rt) window.renderMToday = function(){ const r = rt.apply(this, arguments); try{ card(); load(); }catch(e){} return r; };
   setTimeout(load, 4000); setInterval(() => { at = 0; load(); }, 30 * 6e4);
@@ -41235,7 +41236,8 @@ window.att2180 = function(p){ try{
       if(x && x.kind === 'meet' && Array.isArray(x.list)){ const L = x.list, n = L.length;
         return '<div class="o91-tx mt14"><div class="fx-hd"><span class="fx-nm">Meeting ID missing</span><span class="fx-tag">' + n + ' student' + (n === 1 ? '' : 's') + '</span></div>' +
           '<div class="sub">Classes in the next 7 days with no Tencent Meeting ID. Add it on the class in Schedule; until then the teacher\'s evening email shows a blank.</div>' + (window.mt2225Top ? window.mt2225Top(L) : '') +
-          L.slice(0, 6).map(row).join('') + (n > 6 ? '<details><summary>Show ' + (n - 6) + ' more</summary>' + L.slice(6).map(row).join('') + '</details>' : '') + '</div>'; }
+          (window.mt2225Top && /All teachers reminded/.test(window.mt2225Top(L)) ? '<details class="mt2475"><summary>Show list · ' + n + '</summary>' + L.map(row).join('') + '</details>' :
+          L.slice(0, 6).map(row).join('') + (n > 6 ? '<details><summary>Show ' + (n - 6) + ' more</summary>' + L.slice(6).map(row).join('') + '</details>' : '')) + '</div>'; }
     }catch(e){}
     return h0 ? h0(x) : '<div class="o91-tx">' + E(x && x.text) + '</div>';
   };
@@ -43140,7 +43142,7 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
   function pload(force){ if(!pres() || PB) return; if(!force && PD && Date.now() - PDat < 20e3) return; PB = 1;
     call({ op: 'deskday' }).then(function(r){ PB = 0; if(r && r.ok){ PD = r; PDat = Date.now(); ppaint(); } }).catch(function(){ PB = 0; }); }
   function phtml(){ if(!PD) return ''; var d = PD.day || {}, who = PD.who || 'Operations', R = PD.reports || [], dec = R.filter(function(x){ return x.type === 'decision'; }).length, ev = (PD.eod || [])[0];
-    var h = '<div class="c2360" id="pd2360"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3>From Operations · ' + E(who) + '</h3><span class="small mute">' + (d.timein ? 'Timed in ' + E(d.timein) : 'Not timed in yet') + ' · idle ' + (d.idle || 0) + ' min · <a class="link" href="#" onclick="return pd2469(\'all\')">all she did</a>' + (window.__pd2469 = d, '') + '</span></div>'
+    var h = '<div class="c2360" id="pd2360"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3>From Operations · ' + E(who) + '</h3><span class="small mute">' + (d.timein ? 'Timed in ' + E(d.timein) : 'Not timed in yet') + ' · idle ' + ((d.idle || 0) >= 60 ? Math.floor(d.idle / 60) + ' h ' + (d.idle % 60) + ' min' : (d.idle || 0) + ' min') + ' · <a class="link" href="#" onclick="return pd2469(\'all\')">all she did</a>' + (window.__pd2469 = d, '') + '</span></div>'
       + '<div class="k2474"><div role="button" tabindex="0" onclick="pd2469(\'done\')"><b>' + (d.done || 0) + '</b><span>done ›</span></div>'
       + '<div role="button" tabindex="0" onclick="pd2469(\'found\')"><b class="r">' + (d.found || 0) + '</b><span>found' + ((d.solved || 0) ? ' · ' + d.solved + ' solved' : '') + ' ›</span></div>'
       + '<div role="button" tabindex="0" onclick="pd2469(\'fixed\')"><b class="g">' + (d.fixed || 0) + '</b><span>fixed ›</span></div>'
@@ -43796,6 +43798,10 @@ window.dots2471 = function(done, total, label){ try{ done = Math.max(0, +done ||
 #pd2360 .wk2474{border-collapse:collapse;font-size:13.5px;margin-top:6px;width:100%;max-width:520px}#pd2360 .wk2474 td,#pd2360 .wk2474 th{padding:5px 10px 5px 0;text-align:left;font-variant-numeric:tabular-nums}
 #pd2360 .wk2474 th{font-weight:500;color:#8A86A0;font-size:12px}#pd2360 .wk2474 td:first-child{font-weight:600;color:#2B2253}
 @media(max-width:760px){#pd2360 .k2474{grid-template-columns:repeat(2,minmax(0,1fr))}}</style>
+<style id="u2475">#pd2360 .wk2474{width:auto!important}#pd2360 .wk2474 td:not(:first-child),#pd2360 .wk2474 th{text-align:right!important;padding:5px 0 5px 22px!important;min-width:44px}
+#pd2360 .wk2474 td:first-child{padding-right:6px!important}
+.mt2475>summary{cursor:pointer;display:inline-block;margin-top:8px;border:1px solid #CFCBDD;border-radius:999px;padding:3px 12px;font-size:13px;color:#2B2253;list-style:none}.mt2475>summary::-webkit-details-marker{display:none}
+.vd2475{padding:8px 0;border-top:1px solid #EFEDF4;font-size:14px;line-height:1.6}.vd2475 a{cursor:pointer;color:#2B2253;font-weight:600}.vd2475 small{color:#8A86A0}</style>
 <script id="b2278">
 /* 2278 · warm the CupOfEnglish book reader (reader/) so the first book opens without waiting */
 (function(){ function warm(){ try{ if(!D) return; ['reader/', 'reader/pdfjs/pdf.min.mjs', 'reader/pdfjs/pdf.worker.min.mjs', 'reader/logo.png'].forEach(u => { const l = document.createElement('link'); l.rel = 'prefetch'; l.href = u; document.head.appendChild(l); }); }catch(e){} }
