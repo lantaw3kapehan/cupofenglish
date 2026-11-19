@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-talk v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
+// CupOfEnglish · coe-talk v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
 //   factual and sourced, approved by the President, kept so teachers can go back to them). Used by talk/index.html and the teacher Today card.
 // POST { op, ... }:
 //   pub     { id }                         → one approved topic (no sign-in: the page a student or parent opens)
@@ -14,7 +14,7 @@ const ORIGINS = ["https://app.cupofenglishatph.com"];
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 const cl = (s: unknown, n: number) => String(s == null ? "" : s).trim().slice(0, n);
-const LV = ["yle", "teens", "adults"], ST = ["china", "stem", "ai", "think", "world"];
+const LV = ["yle", "teens", "adults"], ST = ["china", "stem", "ai", "think", "world", "culture", "education", "travel", "daily", "food", "sport", "nature"];
 const PUB = "id,day,strand,levels,title,title_zh,story,story_zh,words,q,think,try_home,try_home_zh,media_url,media_kind,sources,approved_at";
 const ALL = PUB + ",facts,status,drafted_by,approved_by,note,updated_at";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
