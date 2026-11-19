@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-talk v11 (19 Nov: President sees taken-out topics and can put them back) · v10 (19 Nov: Early years picture phrases) · v9 (19 Nov: useful phrases) · v8 (19 Nov: morning-draft photos copied on approval) · v7 (19 Nov: word photos for Early years · mirror op) · v6 (19 Nov: picture words for Early years) · v5 (19 Nov: Early years · Pre-A1 level and phonics sound) · v4 (19 Nov: teachers also get the facts list) · v3 (19 Nov: CEFR band per level) · v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
+// CupOfEnglish · coe-talk v12 (19 Nov: a week of topics approved at once · teachers see each topic from its own day) · v11 (19 Nov: President sees taken-out topics and can put them back) · v10 (19 Nov: Early years picture phrases) · v9 (19 Nov: useful phrases) · v8 (19 Nov: morning-draft photos copied on approval) · v7 (19 Nov: word photos for Early years · mirror op) · v6 (19 Nov: picture words for Early years) · v5 (19 Nov: Early years · Pre-A1 level and phonics sound) · v4 (19 Nov: teachers also get the facts list) · v3 (19 Nov: CEFR band per level) · v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
 //   factual and sourced, approved by the President, kept so teachers can go back to them). Used by talk/index.html and the teacher Today card.
 // POST { op, ... }:
 //   pub     { id }                         → one approved topic (no sign-in: the page a student or parent opens)
@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
 
     if (op === "list") {
       let qy = db.from("coe_talk").select(mgmt ? ALL : PUB).order("day", { ascending: false }).order("created_at", { ascending: false }).limit(400);
-      qy = pres ? qy.in("status", ["approved", "draft", "retired"]) : mgmt ? qy.in("status", ["approved", "draft"]) : qy.eq("status", "approved");
+      qy = pres ? qy.in("status", ["approved", "draft", "retired"]) : mgmt ? qy.in("status", ["approved", "draft"]) : qy.eq("status", "approved").lte("day", new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10));   // teachers see a topic from its own day
       const { data, error } = await qy; if (error) throw new Error(error.message);
       const { data: U } = await db.from("coe_talk_use").select("topic,code,student,at").eq("teacher", name).order("at", { ascending: false }).limit(2000);
       return out({ ok: true, me: name, role, pres, mgmt, topics: data || [], used: U || [] });
@@ -104,19 +104,30 @@ Deno.serve(async (req: Request) => {
       const { error } = await db.from("coe_talk").update({ status: "approved", approved_by: name, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", id).eq("status", "retired");
       if (error) throw new Error(error.message); return out({ ok: true });
     }
+    const approveOne = async (id: string): Promise<string> => {
+      const { data: t } = await db.from("coe_talk").select("facts,sources,title,story,q,words_early,status").eq("id", id).maybeSingle();
+      if (!t) return "not found";
+      if (Array.isArray(t.words_early) && t.words_early.some((w: any) => w && w.src && !w.img)) {   // photos chosen by the draft → our storage (loads in China)
+        const WE = []; for (const w of t.words_early) { const o = { ...w }; if (o.src && !o.img) { try { o.img = await mirrorUrl(String(o.src).includes("Special:FilePath") && !/width=/.test(o.src) ? o.src + "?width=800" : o.src); } catch { /* keep the word without a photo */ } } WE.push(o); }
+        await db.from("coe_talk").update({ words_early: WE }).eq("id", id);
+      }
+      const why = sourced(t); if (why) return why;
+      const { error } = await db.from("coe_talk").update({ status: "approved", approved_by: name, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", id);
+      return error ? error.message : "";
+    };
+    if (op === "approveAll") {   // President: approve every draft at once (the week's topics)
+      if (!pres) return out({ ok: false, error: "Only the President approves topics." }, 403);
+      const ids = (Array.isArray(b.ids) ? b.ids : []).map((x: unknown) => cl(x, 40)).filter((x: string) => UUID.test(x)).slice(0, 20);
+      const done: string[] = [], held: { id: string; why: string }[] = [];
+      for (const id of ids) { const why = await approveOne(id); if (why) held.push({ id, why }); else done.push(id); }
+      return out({ ok: true, done, held });
+    }
     if (op === "approve" || op === "retire" || op === "reopen") {
       if (!pres) return out({ ok: false, error: "Only the President approves topics." }, 403);
       const id = cl(b.id, 40); if (!UUID.test(id)) return out({ ok: false, error: "bad request" }, 400);
       if (op === "approve") {
-        const { data: t } = await db.from("coe_talk").select("facts,sources,title,story,q,words_early").eq("id", id).maybeSingle();
-        if (t && Array.isArray(t.words_early) && t.words_early.some((w: any) => w && w.src && !w.img)) {   // photos chosen by the morning draft → our storage (loads in China)
-          const WE = []; for (const w of t.words_early) { const o = { ...w }; if (o.src && !o.img) { try { o.img = await mirrorUrl(String(o.src).includes("Special:FilePath") && !/width=/.test(o.src) ? o.src + "?width=800" : o.src); } catch { /* keep the word without a photo */ } } WE.push(o); }
-          await db.from("coe_talk").update({ words_early: WE }).eq("id", id);
-        }
-        if (!t) return out({ ok: false, error: "not found" }, 404);
-        const why = sourced(t); if (why) return out({ ok: false, error: why }, 400);
-        const { error } = await db.from("coe_talk").update({ status: "approved", approved_by: name, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", id);
-        if (error) throw new Error(error.message); return out({ ok: true });
+        const why = await approveOne(id); if (why) return out({ ok: false, error: why }, why === "not found" ? 404 : 400);
+        return out({ ok: true });
       }
       const { error } = await db.from("coe_talk").update({ status: op === "retire" ? "retired" : "draft", approved_by: null, approved_at: null, updated_at: new Date().toISOString() }).eq("id", id);
       if (error) throw new Error(error.message); return out({ ok: true });
