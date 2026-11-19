@@ -260,7 +260,7 @@ async function copyPic(t, lv, who){ try{ await document.fonts.ready; }catch(e){}
 /* ── Library ── */
 function usedOf(id){ return (D.used || []).filter(u => u.topic === id); }
 function libHtml(){
-  const T = D.topics || [], ap = T.filter(t => t.status !== 'draft'), dr = T.filter(t => t.status === 'draft');
+  const T = D.topics || [], ap = T.filter(t => t.status !== 'draft' && t.status !== 'retired'), dr = T.filter(t => t.status === 'draft'), rt = T.filter(t => t.status === 'retired');
   const ceOk = t => { if(!F.ce) return true; const i = CE.indexOf(F.ce); return (t.levels || []).some(k => { const r = ceRange(ceOf(t, k)); return r && i >= r[0] && i <= r[1]; }); };
   const match = t => ceOk(t) && (!F.lv || (t.levels || []).includes(F.lv)) && (!F.st || t.strand === F.st) && (!F.q || (t.title + ' ' + t.title_zh + ' ' + t.story).toLowerCase().includes(F.q.toLowerCase()));
   const n = k => ap.filter(t => fresh(t.day) === k && match(t)).length, L = ap.filter(t => fresh(t.day) === F.fresh && match(t));
@@ -276,6 +276,7 @@ function libHtml(){
     + '<select id="fce" aria-label="CEFR level"><option value="">Any CEFR</option>' + CE.slice(0, 6).map(k => '<option' + (F.ce === k ? ' selected' : '') + '>' + k + '</option>').join('') + '</select>'
     + '<span class="vr"></span><select id="fst" aria-label="Topic"><option value="">All topics</option>' + Object.keys(ST).map(k => '<option value="' + k + '"' + (F.st === k ? ' selected' : '') + '>' + ST[k] + '</option>').join('') + '</select></div>'
     + (L.length ? '<div class="grid">' + L.map(card).join('') + '</div>' : '<div class="empty">' + (ap.length ? 'Nothing here with these filters. Try "This month" or "Earlier".' : 'The first topics are being prepared. They appear here once approved.') + '</div>')
+    + (D.pres && rt.length ? '<div class="sect"><b>Taken out</b><span class="sub" style="margin:0">teachers do not see these · put one back if it was a mistake</span></div><div class="grid">' + rt.map(t => '<div class="card" style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b>' + esc(t.title) + '</b><div class="sub" style="margin:2px 0 0">' + dShort(t.day) + '</div></div><button class="btn sm pr" type="button" data-rs="' + t.id + '">Put back</button></div>').join('') + '</div>' : '')
     + '<p class="sub" style="margin-top:18px">News moves from This week to This month after 7 days, and to Earlier after 30. Timeless topics (science, AI, animals) stay useful in Earlier.</p></main>';
 }
 function paintLib(){ $('hS').textContent = 'Class openers for YLE, Teens and Adults'; $('hBtns').innerHTML = window.opener ? '<button class="btn sm" type="button" onclick="window.close()">Close · back to the app</button>' : '<a class="btn sm" href="../app.html" style="text-decoration:none">‹ Back to the app</a>'; app.innerHTML = libHtml();
@@ -284,8 +285,9 @@ function paintLib(){ $('hS').textContent = 'Class openers for YLE, Teens and Adu
   const fst = $('fst'); if(fst) fst.onchange = () => { F.st = fst.value; paintLib(); };
   const fce = $('fce'); if(fce) fce.onchange = () => { F.ce = fce.value; paintLib(); };
   const fq = $('fq'); fq.oninput = () => { F.q = fq.value; clearTimeout(paintLib.t); paintLib.t = setTimeout(() => { paintLib(); const e = $('fq'); e.focus(); e.setSelectionRange(e.value.length, e.value.length); }, 250); };
+  app.querySelectorAll('[data-rs]').forEach(b => b.onclick = async () => { b.disabled = true; try{ await call('coe-talk', { token: TOKEN, op: 'restore', id: b.dataset.rs }); const t = D.topics.find(x => x.id === b.dataset.rs); if(t) t.status = 'approved'; toast('Back in the library.'); paintLib(); }catch(e){ b.disabled = false; toast(e.message); } });
   app.querySelectorAll('.tc').forEach(c => { c.onclick = () => openTopic(c.dataset.id); c.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openTopic(c.dataset.id); } }; });
-  const AP = (D.topics || []).filter(t => t.status !== 'draft');
+  const AP = (D.topics || []).filter(t => t.status !== 'draft' && t.status !== 'retired');
   if(!paintLib.auto && F.fresh === 'week' && AP.length && !AP.some(t => fresh(t.day) === 'week')){ paintLib.auto = 1; F.fresh = AP.some(t => fresh(t.day) === 'month') ? 'month' : 'earlier'; paintLib(); } }
 
 /* ── One topic (teacher) ── */
@@ -321,12 +323,12 @@ function paintTopic(){ const t = CUR, L = CLV, qs = (t.q && t.q[L]) || [], th = 
       + '<div class="use"><select id="stuSel" class="full" aria-label="Student"><option value="">Choose your student</option></select>'
       + '<button class="btn pr full" id="bCopy" type="button">Copy picture for student</button><button class="btn" id="bPres" type="button">Open in class</button><button class="btn" id="bLink" type="button">Copy link</button></div>'
       + '<span class="src">The picture and the link show our letterhead, the student\'s name, the level you chose and the sources.</span></div>' : '')
-    + (D.pres && t.status !== 'draft' ? '<button class="btn sm" id="bRet" type="button" style="align-self:flex-start">Take it out of the library</button>' : '')
+    + (D.pres && t.status !== 'draft' ? '<button id="bRet" type="button" style="align-self:flex-end;border:0;background:none;color:#8A869C;font-size:12px;text-decoration:underline;cursor:pointer">Take it out of the library</button>' : '')
     + '</div></div></main>';
   app.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { CLV = b.dataset.l; paintTopic(); });
   bindChips(app, t, L);
   if($('bAp')) $('bAp').onclick = async () => { const b = $('bAp'); b.disabled = true; try{ await call('coe-talk', { token: TOKEN, op: 'approve', id: t.id }); t.status = 'approved'; toast('Approved. Teachers see it now.'); paintTopic(); }catch(e){ b.disabled = false; toast(e.message); } };
-  if($('bRet')) $('bRet').onclick = async () => { if(!confirm('Take this topic out of the library? It is kept, not deleted.')) return; try{ await call('coe-talk', { token: TOKEN, op: 'retire', id: t.id }); D.topics = D.topics.filter(x => x.id !== t.id); toast('Taken out of the library.'); history.pushState({}, '', location.pathname); paintLib(); }catch(e){ toast(e.message); } };
+  if($('bRet')) $('bRet').onclick = async () => { if(!confirm('Take this topic out of the library?\n\nTeachers will no longer see it. You can put it back from "Taken out" at the bottom of the library.')) return; try{ await call('coe-talk', { token: TOKEN, op: 'retire', id: t.id }); t.status = 'retired'; toast('Taken out of the library.'); history.pushState({}, '', location.pathname); paintLib(); }catch(e){ toast(e.message); } };
   if($('stuSel')){ students().then(L2 => { const s = $('stuSel'); if(!s) return; s.innerHTML = '<option value="">Choose your student</option>' + L2.map(x => '<option value="' + esc(x.code) + '">' + esc(x.student) + ' · ' + esc(x.code) + '</option>').join(''); const k = sessionStorage.getItem('coe.talk.stu'); if(k) s.value = k; s.onchange = () => sessionStorage.setItem('coe.talk.stu', s.value); }); }
   const pick = () => { const s = $('stuSel'), code = s ? s.value : '', nm = s && s.value ? s.options[s.selectedIndex].text.split(' · ')[0] : ''; return { code, nm }; };
   const mark = p => { if(!p.code) return; call('coe-talk', { token: TOKEN, op: 'use', id: t.id, code: p.code, student: p.nm }).then(() => { D.used = (D.used || []).filter(u => !(u.topic === t.id && u.code === p.code)).concat([{ topic: t.id, code: p.code, student: p.nm, at: new Date().toISOString() }]); }).catch(() => {}); };

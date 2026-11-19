@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-talk v10 (19 Nov: Early years picture phrases) · v9 (19 Nov: useful phrases) · v8 (19 Nov: morning-draft photos copied on approval) · v7 (19 Nov: word photos for Early years · mirror op) · v6 (19 Nov: picture words for Early years) · v5 (19 Nov: Early years · Pre-A1 level and phonics sound) · v4 (19 Nov: teachers also get the facts list) · v3 (19 Nov: CEFR band per level) · v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
+// CupOfEnglish · coe-talk v11 (19 Nov: President sees taken-out topics and can put them back) · v10 (19 Nov: Early years picture phrases) · v9 (19 Nov: useful phrases) · v8 (19 Nov: morning-draft photos copied on approval) · v7 (19 Nov: word photos for Early years · mirror op) · v6 (19 Nov: picture words for Early years) · v5 (19 Nov: Early years · Pre-A1 level and phonics sound) · v4 (19 Nov: teachers also get the facts list) · v3 (19 Nov: CEFR band per level) · v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
 //   factual and sourced, approved by the President, kept so teachers can go back to them). Used by talk/index.html and the teacher Today card.
 // POST { op, ... }:
 //   pub     { id }                         → one approved topic (no sign-in: the page a student or parent opens)
@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
 
     if (op === "list") {
       let qy = db.from("coe_talk").select(mgmt ? ALL : PUB).order("day", { ascending: false }).order("created_at", { ascending: false }).limit(400);
-      qy = mgmt ? qy.in("status", ["approved", "draft"]) : qy.eq("status", "approved");
+      qy = pres ? qy.in("status", ["approved", "draft", "retired"]) : mgmt ? qy.in("status", ["approved", "draft"]) : qy.eq("status", "approved");
       const { data, error } = await qy; if (error) throw new Error(error.message);
       const { data: U } = await db.from("coe_talk_use").select("topic,code,student,at").eq("teacher", name).order("at", { ascending: false }).limit(2000);
       return out({ ok: true, me: name, role, pres, mgmt, topics: data || [], used: U || [] });
@@ -97,6 +97,12 @@ Deno.serve(async (req: Request) => {
       const u = cl(b.url, 600); let host = ""; try { host = new URL(u).hostname; } catch { /* */ }
       if (!/^(commons\.wikimedia\.org|upload\.wikimedia\.org|images\.pexels\.com|images\.unsplash\.com)$/.test(host)) return out({ ok: false, error: "Only Wikimedia Commons, Pexels or Unsplash photos." }, 400);
       try { return out({ ok: true, url: await mirrorUrl(u) }); } catch (e) { return out({ ok: false, error: String((e as Error).message) }, 400); }
+    }
+    if (op === "restore") {   // President: put a topic that was taken out back in the library, approved as before
+      if (!pres) return out({ ok: false, error: "Only the President can do this." }, 403);
+      const id = cl(b.id, 40); if (!UUID.test(id)) return out({ ok: false, error: "bad request" }, 400);
+      const { error } = await db.from("coe_talk").update({ status: "approved", approved_by: name, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", id).eq("status", "retired");
+      if (error) throw new Error(error.message); return out({ ok: true });
     }
     if (op === "approve" || op === "retire" || op === "reopen") {
       if (!pres) return out({ ok: false, error: "Only the President approves topics." }, 403);
