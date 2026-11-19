@@ -53,6 +53,11 @@ textarea{width:100%;min-height:80px;border:1px solid var(--out);border-radius:10
 .bar .c{color:var(--blue);border-color:#C5D8F2;font-weight:600}
 .bar .g{color:var(--green);border-color:#C9E3CB}
 .bar .sep{width:1px;height:26px;background:var(--line);margin:0 2px}
+/* 2414 (Misty 19 Nov 13:13): Type and correct in full screen for class · bigger writing, tools stay at the top */
+#tcCard:fullscreen,#tcCard.fs{overflow:auto;background:#fff;border-radius:0;padding:20px max(24px,calc((100vw - 1180px)/2))}
+#tcCard.fs{position:fixed;inset:0;z-index:50}
+#tcCard:fullscreen .bar,#tcCard.fs .bar{position:sticky;top:-20px;z-index:3;background:#fff}
+#tcCard:fullscreen #ed,#tcCard.fs #ed{font-size:24px;min-height:calc(100vh - 230px)}
 #ed{min-height:340px;text-align:justify;border:1px solid var(--line);border-radius:0 0 12px 12px;padding:16px 18px;font:18px/1.9 'Times New Roman',Georgia,serif;background:#fff;outline:none;white-space:pre-wrap;word-wrap:break-word}
 #ed:empty:before{content:attr(data-ph);color:#9CA3AF;font-family:'COE Card Inter',sans-serif;font-size:15px}
 #ed del{color:var(--red);text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:var(--red)}
@@ -116,11 +121,11 @@ textarea{width:100%;min-height:80px;border:1px solid var(--out);border-radius:10
     </div>
 
     <div class="col">
-      <div class="card pad">
-        <div class="h2">Type and correct</div>
+      <div class="card pad" id="tcCard">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div class="h2" style="margin:0">Type and correct</div><button class="btn" type="button" id="bFs" title="Full screen for class (Esc to leave)">⛶ Full screen</button></div>
         <div class="mode" role="tablist" aria-label="Step"><button type="button" id="mT" role="tab">1 · Type the student's writing</button><button type="button" id="mC" role="tab" class="on">2 · Correct (like Track Changes)</button></div>
         <div class="tip" id="mTip" style="margin:-4px 0 10px"></div>
-        <div class="bar"<div class="bar" role="toolbar" aria-label="Correction tools">
+        <div class="bar" role="toolbar" aria-label="Correction tools">
           <button class="btn w" type="button" id="bW" title="Select the wrong words, then click (Ctrl/Cmd + D)"><s>Wrong</s></button>
           <button class="btn c" type="button" id="bC" title="Select words to mark as correct, or click and type the correction (Ctrl/Cmd + E)">Correction</button>
           <button class="btn g" type="button" id="bG" title="Add a comment (Ctrl/Cmd + M)">Comment</button>
@@ -422,5 +427,14 @@ setMode(ed.textContent.trim() ? 'C' : 'T');
 })();
 </script>
 <script src="fresh.js"></script>
+<script>
+/* 2414: Full screen for Type and correct (falls back to filling the window where full screen is not allowed) */
+(function(){ const c = document.getElementById('tcCard'), b = document.getElementById('bFs'); if(!c || !b) return;
+  const on = () => document.fullscreenElement === c || c.classList.contains('fs'), lab = () => { b.textContent = on() ? '✕ Exit full screen' : '⛶ Full screen'; };
+  b.onclick = async () => { if(on()){ if(document.fullscreenElement) await document.exitFullscreen().catch(() => {}); c.classList.remove('fs'); lab(); return; }
+    try{ await c.requestFullscreen(); }catch(e){ c.classList.add('fs'); } lab(); const ed = document.getElementById('ed'); if(ed) ed.focus(); };
+  document.addEventListener('fullscreenchange', lab);
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && c.classList.contains('fs')){ c.classList.remove('fs'); lab(); } }); })();
+</script>
 </body>
 </html>
