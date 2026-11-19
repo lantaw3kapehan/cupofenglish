@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-talk v9 (19 Nov: useful phrases) · v8 (19 Nov: morning-draft photos copied on approval) · v7 (19 Nov: word photos for Early years · mirror op) · v6 (19 Nov: picture words for Early years) · v5 (19 Nov: Early years · Pre-A1 level and phonics sound) · v4 (19 Nov: teachers also get the facts list) · v3 (19 Nov: CEFR band per level) · v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
+// CupOfEnglish · coe-talk v10 (19 Nov: Early years picture phrases) · v9 (19 Nov: useful phrases) · v8 (19 Nov: morning-draft photos copied on approval) · v7 (19 Nov: word photos for Early years · mirror op) · v6 (19 Nov: picture words for Early years) · v5 (19 Nov: Early years · Pre-A1 level and phonics sound) · v4 (19 Nov: teachers also get the facts list) · v3 (19 Nov: CEFR band per level) · v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
 //   factual and sourced, approved by the President, kept so teachers can go back to them). Used by talk/index.html and the teacher Today card.
 // POST { op, ... }:
 //   pub     { id }                         → one approved topic (no sign-in: the page a student or parent opens)
@@ -15,7 +15,7 @@ const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 const cl = (s: unknown, n: number) => String(s == null ? "" : s).trim().slice(0, n);
 const LV = ["early", "yle", "teens", "adults"], ST = ["china", "stem", "ai", "think", "world", "culture", "education", "travel", "daily", "food", "sport", "nature"];
-const PUB = "id,day,strand,levels,cefr,phonics,words_early,phrases,title,title_zh,story,story_zh,words,q,think,try_home,try_home_zh,media_url,media_kind,facts,sources,approved_at";
+const PUB = "id,day,strand,levels,cefr,phonics,words_early,phrases,phrases_early,title,title_zh,story,story_zh,words,q,think,try_home,try_home_zh,media_url,media_kind,facts,sources,approved_at";
 const ALL = PUB + ",status,drafted_by,approved_by,note,updated_at";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -29,9 +29,9 @@ function shape(t: any) {
   const WM = /^https:\/\/(commons|upload)\.wikimedia\.org\//;
   const IMG = /^https:\/\/rlxkiahqjsabopmuhern\.supabase\.co\/storage\/v1\/object\/public\/talk\//;
   const wl = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 8).map((w: any) => { const o: any = { en: cl(w && w.en, 40), zh: cl(w && w.zh, 40) }; if (w && IMG.test(String(w.img || ""))) o.img = cl(w.img, 300); if (w && WM.test(String(w.src || ""))) o.src = cl(w.src, 400); if (o.img || o.src) o.credit = cl(w && w.credit, 160); return o; }).filter((w: any) => w.en);
-  const words = wl(t.words), words_early = wl(t.words_early), phrases = (Array.isArray(t.phrases) ? t.phrases : []).slice(0, 6).map((w: any) => ({ en: cl(w && w.en, 60), zh: cl(w && w.zh, 60) })).filter((w: any) => w.en);
+  const words = wl(t.words), words_early = wl(t.words_early), ph = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 6).map((w: any) => ({ en: cl(w && w.en, 60), zh: cl(w && w.zh, 60) })).filter((w: any) => w.en), phrases = ph(t.phrases), phrases_early = ph(t.phrases_early);
   return { day: /^\d{4}-\d{2}-\d{2}$/.test(String(t.day || "")) ? t.day : undefined, strand: ST.includes(String(t.strand)) ? t.strand : "china", levels: lv.length ? lv : LV,
-    title: cl(t.title, 160), title_zh: cl(t.title_zh, 160), story: cl(t.story, 1200), story_zh: cl(t.story_zh, 1200), words, words_early, phrases, q, think: th, cefr: ce,
+    title: cl(t.title, 160), title_zh: cl(t.title_zh, 160), story: cl(t.story, 1200), story_zh: cl(t.story_zh, 1200), words, words_early, phrases, phrases_early, q, think: th, cefr: ce,
     phonics: cl(t.phonics, 80), try_home: cl(t.try_home, 300), try_home_zh: cl(t.try_home_zh, 300), media_url: /^https:\/\//.test(String(t.media_url || "")) ? cl(t.media_url, 500) : "", media_kind: cl(t.media_kind, 20),
     facts, sources, note: cl(t.note, 500) };
 }
