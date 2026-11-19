@@ -597,14 +597,19 @@ async function loadHist(){
   const dt = s => { const d = new Date(s); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   h.innerHTML = HIST.map(x => { const c = x.counts || {}, err = ERR.reduce((s, k) => s + (+c[k] || 0), 0) + (+c.fix || 0);
     return `<div class="it"><div class="g"><div style="color:var(--ink)"><b>${esc(x.title || (x.kind === 'picture' ? 'Picture' : String(x.body || '').split(/\s+/).slice(0, 6).join(' ') + '…'))}</b></div>
-<div class="xs mute">${dt(x.created_at)} · ${esc(x.by_name)} · ${err} to fix${+c.good ? ' · ' + c.good + ' well done' : ''}</div></div><span class="kd">${x.kind === 'picture' ? 'Picture' : 'Text'}</span>
-<button type="button" class="btn sm" data-o="${x.id}">${CUR.id === x.id ? 'Open now' : 'Open'}</button></div>`; }).join('');
+<div class="xs mute">${dt(x.created_at)} · ${esc(x.by_name)} · ${err} to fix${+c.good ? ' · ' + c.good + ' well done' : ''}</div></div><span class="kd">${x.kind === 'picture' ? 'Picture' : x.kind === 'given' ? 'Given' : x.kind === 'writing' ? 'Writing' : 'Text'}</span>
+<button type="button" class="btn sm" data-o="${x.id}">${/^(given|writing)$/.test(x.kind) ? 'View' : CUR.id === x.id ? 'Open now' : 'Open'}</button></div>`; }).join('');
   h.querySelectorAll('[data-o]').forEach(b => b.onclick = () => openCheck(+b.dataset.o)); }
+/* 2412 (Misty 19 Nov 12:59, "Earlier checks · Open cannot be opened"): homework given on Give homework and Writing correction pictures are
+   in the same list; they open as their picture (they are not checks to mark again) */
+function viewPic(x){ const u = x.img_marked_url || x.img_orig_url; if(!u) return toast('The picture is not available'); const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = '<div class="box"><div class="sc"><img alt=""></div><div class="ft"><span class="small mute" style="margin-right:auto">' + esc(x.title || (x.kind === 'given' ? 'Homework given' : 'Writing')) + '</span><button type="button" class="btn sm">Close</button></div></div>';
+  m.querySelector('img').src = u; m.onclick = e => { if(e.target === m || e.target.tagName === 'BUTTON') m.remove(); }; document.body.appendChild(m); }
 async function openCheck(id){
-  const x = HIST.find(r => r.id === id); if(!x) return; if(DIRTY && hasWork() && !confirm('Open this saved check? Unsaved marks on screen will be lost.')) return;
+  const x = HIST.find(r => r.id === id); if(!x) return; if(/^(given|writing)$/.test(x.kind)) return viewPic(x); if(DIRTY && hasWork() && !confirm('Open this saved check? Unsaved marks on screen will be lost.')) return;
   closeEd(); UNDO = []; REDO = []; CUR = { id: x.id }; $('note').value = x.note || ''; $('ttl').value = x.title || ''; ZH = { src: (x.note || '').trim(), zh: x.note_zh || '' };
   if(x.kind === 'text'){ setText(x.body || ''); TX.marks = Array.isArray(x.marks) ? x.marks : []; TX.stamps = Array.isArray((x.counts || {}).stamps) ? x.counts.stamps : []; MODE = 'text'; }
-  else { try{ const im = await new Promise((ok, no) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = no; i.src = x.img_orig_url; }); setBase(im); }catch(e){ return toast('The picture could not be loaded'); }
+  else { try{ const im = await new Promise((ok, no) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = no; i.src = x.img_orig_url || x.img_marked_url; }); setBase(im); }catch(e){ return toast('The picture could not be loaded'); }
     PIC.items = Array.isArray(x.marks) ? x.marks : []; PIC.origSaved = true; const c = x.counts || {}; PIC.cats = { grammar: +c.grammar || 0, spelling: +c.spelling || 0, words: +c.words || 0, punct: +c.punct || 0 }; MODE = 'picture'; }
   DIRTY = false; clearDraft(); paintMode(); loadHist(); const bx = $('zhBox'); if(bx){ bx.style.display = ZH.zh ? '' : 'none'; bx.textContent = 'Chinese translation: ' + ZH.zh; } window.scrollTo({ top: 0, behavior: 'smooth' }); }
 function newCheck(){ if(DIRTY && hasWork() && !confirm('Start a new check? Unsaved marks on screen will be lost.')) return;
