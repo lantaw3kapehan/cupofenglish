@@ -89,6 +89,10 @@ h1{margin:0;font:400 28px/1.2 'COE Card Fredoka','Fredoka One',sans-serif;color:
 .dot{width:26px;height:26px;border-radius:50%;border:0;padding:0}
 .dot.on{box-shadow:0 0 0 2px #fff,0 0 0 4px currentColor}
 .rail .ln{width:24px;height:1px;background:var(--line);margin:3px 0}
+/* 2408 (Misty 19 Nov 12:04): the tools and the stamps stay in view while the teacher scrolls a long picture; marks can be dragged */
+#tools{position:sticky;top:0;z-index:6;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 1px 0 var(--line)}
+.rail{position:sticky;top:var(--tb,0px);align-self:flex-start;max-height:calc(100vh - var(--tb,0px));overflow-y:auto;z-index:4}
+#pcv.mv{cursor:move}#pcv.mving{cursor:grabbing}
 #pwrap{flex:1;min-width:0;background:#EEF0F3;padding:16px;display:flex;justify-content:center;align-items:flex-start;position:relative;overflow:auto}
 #pcv{display:block;background:#fff;box-shadow:0 6px 18px rgba(16,24,40,.18);touch-action:none}
 #pcv.hand{touch-action:auto;cursor:grab}
@@ -457,7 +461,9 @@ function bbox(it){ const u = U();
   if(it.t === 'tick' || it.t === 'cross') return [it.x - it.s * .6, it.y - it.s * .6, it.x + it.s * .6, it.y + it.s * .6];
   if(it.t === 'circle') return [it.x - Math.abs(it.rx) - u, it.y - Math.abs(it.ry) - u, it.x + Math.abs(it.rx) + u, it.y + Math.abs(it.ry) + u];
   if(it.t === 'text'){ const c = document.createElement('canvas').getContext('2d'); c.font = '600 ' + it.s + 'px Inter,sans-serif'; return [it.x, it.y, it.x + c.measureText(it.txt).width + it.s * .7, it.y + it.s * 1.45]; } return [0, 0, 0, 0]; }
-function stampBar(){ const t = $('tools'); if(!t || MODE !== 'picture' || !PIC.base){ return; }
+function tbSync(){ try{ const t = $('tools'); document.documentElement.style.setProperty('--tb', (t ? t.offsetHeight : 0) + 'px'); }catch(e){} }
+window.addEventListener('resize', tbSync);
+function stampBar(){ setTimeout(tbSync, 0); const t = $('tools'); if(!t || MODE !== 'picture' || !PIC.base){ return; }
   if(TOOL !== 'stamp'){ t.innerHTML = ''; return; }
   t.innerHTML = '<div class="tools"><span class="xs mute">Pick a stamp, then click the picture:</span>' + STAMPS.map(([k, n]) => { const on = STAMP === k || (k === 'own' && /^own:/.test(STAMP)); return `<button type="button" class="chip" data-st="${k}" title="${n}" style="${on ? 'border-color:#00707A;background:#E6F5F6' : ''}">${k === 'own' ? '<span style="color:#6D28D9;font-weight:600">' + (/^own:/.test(STAMP) ? esc(STAMP.slice(4)) : OWN ? esc(OWN) : 'Your own words…') + '</span>' : `<img src="${stampImg(k)}" alt="${n}" style="height:22px;width:auto">`}</button>`; }).join('') + '</div>';
   t.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { let k = b.dataset.st; if(k === 'own'){ const v = askOwn(); if(!v) return; k = 'own:' + v; } STAMP = k; try{ localStorage.setItem('coe.hw.stamp', STAMP); }catch(e){} stampBar(); }); }
@@ -490,16 +496,23 @@ function drawNow(){ const cv = $('pcv'); if(!cv || !PIC.base) return; const c = 
   c.setTransform(DPR * PK, 0, 0, DPR * PK, 0, 0);
   PIC.items.forEach(it => drawItem(c, it)); if(DRAW && DRAW.it) drawItem(c, DRAW.it); }
 const pt = e => { const r = $('pcv').getBoundingClientRect(); return [(e.clientX - r.left) / PK, (e.clientY - r.top) / PK]; };
-function pDown(e){ if(TOOL === 'hand') return; e.preventDefault(); const [x, y] = pt(e), u = U(); closeTxt();
+const MOVABLE = ['stamp', 'tick', 'cross', 'text'];
+function hitMark(x, y, all){ for(let i = PIC.items.length - 1; i >= 0; i--){ const it = PIC.items[i]; if(!(MOVABLE.includes(it.t) || (all && it.t === 'circle'))) continue; const b = bbox(it); if(x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) return it; } return null; }
+function pDown(e){ { const [x0, y0] = pt(e), canMove = TOOL === 'hand' || TOOL === 'stamp' || TOOL === 'tick' || TOOL === 'cross' || TOOL === 'text', h = canMove ? hitMark(x0, y0, TOOL === 'hand') : null;   /* 2408: press on a stamp, tick, cross or label to drag it */
+    if(h){ e.preventDefault(); closeTxt(); MOVE = { it: h, dx: x0 - h.x, dy: y0 - h.y, moved: false }; $('pcv').setPointerCapture(e.pointerId); $('pcv').classList.add('mving'); return; } }
+  if(TOOL === 'hand') return; e.preventDefault(); const [x, y] = pt(e), u = U(); closeTxt();
   if(TOOL === 'pen'){ DRAW = { it: { t: 'pen', c: COL, w: u * SZN().pen, p: [[x, y]] } }; $('pcv').setPointerCapture(e.pointerId); }
   else if(TOOL === 'circle'){ DRAW = { x0: x, y0: y, it: { t: 'circle', c: COL, w: u * SZN().ring, x, y, rx: 1, ry: 1 } }; $('pcv').setPointerCapture(e.pointerId); }
   else if(TOOL === 'tick' || TOOL === 'cross'){ push(); PIC.items.push({ t: TOOL, c: TOOL === 'tick' && COL === '#D92D20' ? '#16A34A' : COL, x, y, s: u * SZN().tick }); draw(); side(); }
   else if(TOOL === 'stamp'){ push(); PIC.items.push({ t: 'stamp', k: STAMP, x, y, s: u * SZN().tick * 1.6 }); draw(); side(); }
   else if(TOOL === 'text') openTxt(x, y, e);
   else if(TOOL === 'erase'){ for(let i = PIC.items.length - 1; i >= 0; i--){ const b = bbox(PIC.items[i]); if(x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]){ push(); PIC.items.splice(i, 1); draw(); side(); return; } } } }
-function pMove(e){ if(!DRAW) return; const [x, y] = pt(e); if(DRAW.it.t === 'pen'){ const L = DRAW.it.p[DRAW.it.p.length - 1]; if(Math.hypot(x - L[0], y - L[1]) > U() * .15) DRAW.it.p.push([x, y]); }
+let MOVE = null;
+function pMove(e){ if(MOVE){ const [x, y] = pt(e); if(!MOVE.moved){ if(Math.hypot(x - MOVE.dx - MOVE.it.x, y - MOVE.dy - MOVE.it.y) < U() * .3) return; push(); MOVE.moved = true; } MOVE.it.x = x - MOVE.dx; MOVE.it.y = y - MOVE.dy; draw(); return; }
+  if(!DRAW){ const cv = $('pcv'); if(cv && e.pointerType === 'mouse'){ const [x, y] = pt(e), on = (TOOL === 'hand' || TOOL === 'stamp' || TOOL === 'tick' || TOOL === 'cross' || TOOL === 'text') && !!hitMark(x, y, TOOL === 'hand'); cv.classList.toggle('mv', on); } return; } const [x, y] = pt(e); if(DRAW.it.t === 'pen'){ const L = DRAW.it.p[DRAW.it.p.length - 1]; if(Math.hypot(x - L[0], y - L[1]) > U() * .15) DRAW.it.p.push([x, y]); }
   else { DRAW.it.x = (DRAW.x0 + x) / 2; DRAW.it.y = (DRAW.y0 + y) / 2; DRAW.it.rx = (x - DRAW.x0) / 2; DRAW.it.ry = (y - DRAW.y0) / 2; } draw(); }
-function pUp(){ if(!DRAW) return; const it = DRAW.it; DRAW = null; if(it.t === 'circle' && Math.abs(it.rx) < U() * .6 && Math.abs(it.ry) < U() * .6){ draw(); return; }
+function pUp(){ if(MOVE){ const m = MOVE; MOVE = null; const cv = $('pcv'); if(cv) cv.classList.remove('mving'); if(m.moved){ dirty(); draw(); side(); } return; }
+  if(!DRAW) return; const it = DRAW.it; DRAW = null; if(it.t === 'circle' && Math.abs(it.rx) < U() * .6 && Math.abs(it.ry) < U() * .6){ draw(); return; }
   push(); PIC.items.push(it); draw(); side(); }
 function openTxt(x, y, e){ const w = $('pwrap'), r = w.getBoundingClientRect(), inp = document.createElement('input'); inp.id = 'ptxt'; inp.placeholder = 'Type, then Enter';
   inp.style.left = (e.clientX - r.left + w.scrollLeft) + 'px'; inp.style.top = (e.clientY - r.top + w.scrollTop - 14) + 'px'; inp.style.borderColor = COL; w.appendChild(inp); setTimeout(() => inp.focus(), 10);
