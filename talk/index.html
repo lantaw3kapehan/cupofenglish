@@ -123,6 +123,7 @@ async function call(fn, body){ const r = await fetch(API + fn, { method: 'POST',
 const CE = ['Pre-A1','A1','A2','B1','B2','C1','C2'];
 const ceRange = c => { const p = String(c || '').split('–').map(x => CE.indexOf(x.trim())).filter(i => i >= 0); return p.length ? [Math.min(...p), Math.max(...p)] : null; };
 const ceOf = (t, k) => (t.cefr && t.cefr[k]) || '';
+const wordsOf = (t, k) => (k === 'early' && (t.words_early || []).length) ? t.words_early : (t.words || []);
 const lvChips = (L, t) => (L || []).map(k => '<span class="lb l-' + k + '">' + LV[k] + (t && ceOf(t, k) ? ' · ' + esc(ceOf(t, k)) : '') + '</span>').join('');
 const stChip = s => '<span class="lb s-' + esc(s) + '">' + esc(ST[s] || s) + '</span>';
 const srcLine = S => (S || []).map(s => '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.outlet) + (s.date ? ', ' + esc(s.date) : '') + '</a>').join(' · ');
@@ -137,7 +138,7 @@ function studentHtml(t, lv, who){
     + '<div class="cols"><div class="card" style="display:flex;flex-direction:column;gap:14px;padding:22px 26px">'
     + (t.media_url ? mediaHtml(t) : '')
     + (L === 'early' ? (t.phonics ? '<div class="k">SOUND OF THE DAY · 今日发音</div><div style="font-size:30px;font-weight:700">' + esc(t.phonics) + '</div>' : '') : '<p class="story">' + esc(t.story) + '</p>' + (t.story_zh ? '<p class="storyzh">' + esc(t.story_zh) + '</p>' : ''))
-    + ((t.words || []).length ? '<div class="k">' + (L === 'early' ? 'SAY IT · 跟我说' : 'NEW WORDS · 新单词') + '</div><div class="words">' + t.words.map(w => '<span><b>' + esc(w.en) + '</b>' + (w.zh ? ' <span class="zhw">' + esc(w.zh) + '</span>' : '') + '</span>').join('') + '</div>' : '')
+    + (wordsOf(t, L).length ? '<div class="k">' + (L === 'early' ? 'SAY IT · 跟我说' : 'NEW WORDS · 新单词') + '</div><div class="words">' + wordsOf(t, L).map(w => '<span><b>' + esc(w.en) + '</b>' + (w.zh ? ' <span class="zhw">' + esc(w.zh) + '</span>' : '') + '</span>').join('') + '</div>' : '')
     + '</div><div style="display:flex;flex-direction:column;gap:14px">'
     + (qs.length ? '<div class="card qs"><b style="font-size:18px">' + (L === 'early' ? 'Point and say · 指一指，说一说' : 'Let\'s talk · 一起聊聊') + '</b>' + qs.map((x, i) => '<div class="q"><i>' + (i + 1) + '</i><span>' + esc(x) + '</span></div>').join('') + '</div>' : '')
     + (th ? '<div class="think"><span class="lb s-think" style="align-self:flex-start;font-weight:700">THINK · 想一想</span><span>' + esc(th) + '</span></div>' : '')
@@ -174,8 +175,8 @@ function picture(t, lv, who){
     if(L !== 'early'){ rr(P, y, room, sh, 24, '#F5F9F9'); const y0 = y; y += pad - 6; lines(t.story, '400 #px ' + FI, 31, INK, 1.5, P + pad, iw); if(t.story_zh){ y += 14; lines(t.story_zh, '400 #px ' + FI, 20, ZH, 1.6, P + pad, iw); } y = y0 + sh + 34; }
     else if(t.phonics){ head('Sound of the day', '今日发音', MUTE); rr(P, y, room, 96, 24, '#FDEDE6'); g.font = '700 40px ' + FI; if(draw){ g.fillStyle = '#9A4528'; g.fillText(t.phonics, P + 32, y + 62); } y += 96 + 34; }
     /* words */
-    if((t.words || []).length){ head(L === 'early' ? 'Say it' : 'New words', L === 'early' ? '跟我说' : '新单词', MUTE); let wx = P, wy = y;
-      t.words.forEach(w => { g.font = '600 26px ' + FI; const a = g.measureText(w.en).width; g.font = '400 20px ' + FI; const b = w.zh ? g.measureText(w.zh).width + 12 : 0, cw = a + b + 40;
+    if(wordsOf(t, L).length){ head(L === 'early' ? 'Say it' : 'New words', L === 'early' ? '跟我说' : '新单词', MUTE); let wx = P, wy = y;
+      wordsOf(t, L).forEach(w => { g.font = '600 26px ' + FI; const a = g.measureText(w.en).width; g.font = '400 20px ' + FI; const b = w.zh ? g.measureText(w.zh).width + 12 : 0, cw = a + b + 40;
         if(wx + cw > P + room){ wx = P; wy += 66; } rr(wx, wy, cw, 54, 27, '#fff', '#E3E1EA');
         if(draw){ g.font = '600 26px ' + FI; g.fillStyle = INK; g.fillText(w.en, wx + 20, wy + 36); if(w.zh){ g.font = '400 20px ' + FI; g.fillStyle = ZH; g.fillText(w.zh, wx + 20 + a + 12, wy + 35); } } wx += cw + 12; });
       y = wy + 54 + 36; }
@@ -252,8 +253,8 @@ function paintTopic(){ const t = CUR, L = CLV, qs = (t.q && t.q[L]) || [], th = 
     + '<h1 style="margin-top:10px">' + esc(t.title) + '</h1>' + (t.title_zh ? '<p class="sub" style="font-size:14px;color:#8A869C">' + esc(t.title_zh) + '</p>' : '')
     + '<div class="tp"><div style="display:flex;flex-direction:column;gap:14px"><div class="card" style="display:flex;flex-direction:column;gap:12px">'
     + (t.media_url ? mediaHtml(t) : '')
-    + '<p class="story" style="font-size:17px">' + esc(t.story) + '</p>' + (t.story_zh ? '<p class="storyzh">' + esc(t.story_zh) + '</p>' : '')
-    + ((t.words || []).length ? '<div class="words">' + t.words.map(w => '<span><b>' + esc(w.en) + '</b>' + (w.zh ? ' <span class="zhw">' + esc(w.zh) + '</span>' : '') + '</span>').join('') + '</div>' : '') + '</div>'
+    + (L === 'early' ? '<div class="k">EARLY YEARS · PICTURE AND WORDS · NO STORY</div>' + (t.phonics ? '<div><span class="k">SOUND OF THE DAY</span><div style="font-size:26px;font-weight:700;color:#9A4528;margin-top:4px">' + esc(t.phonics) + '</div></div>' : '') : '<p class="story" style="font-size:17px">' + esc(t.story) + '</p>' + (t.story_zh ? '<p class="storyzh">' + esc(t.story_zh) + '</p>' : ''))
+    + (wordsOf(t, L).length ? '<div class="words">' + wordsOf(t, L).map(w => '<span><b>' + esc(w.en) + '</b>' + (w.zh ? ' <span class="zhw">' + esc(w.zh) + '</span>' : '') + '</span>').join('') + '</div>' : '') + '</div>'
     + '<details class="card fs"' + (t.status === 'draft' ? ' open' : '') + ' style="padding:12px 18px"><summary><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#1E6F5C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' + (Fx.length ? 'Facts checked · ' + Fx.length + ' fact' + (Fx.length === 1 ? '' : 's') + ' from ' + S.length + ' source' + (S.length === 1 ? '' : 's') : 'Sources · ' + S.length) + '<span class="chev">›</span></summary><div class="facts">'
     + (Fx.length ? '' : S.map(s => '<div class="f"><span class="src"><a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.outlet) + '</a>' + (s.date ? ' · ' + esc(s.date) : '') + '</span></div>').join(''))
     + Fx.map(f => { const s = S[f.src]; return '<div class="f' + (s ? '' : ' bad') + '"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="' + (s ? '#1E6F5C' : '#B5432C') + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:2px">' + (s ? '<path d="M5 12.5l4.5 4.5L19 7.5"/>' : '<path d="M12 7v6M12 17h.01"/>') + '</svg><span>' + esc(f.fact) + '<br><span class="src">' + (s ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.outlet) + '</a>' + (s.date ? ' · ' + esc(s.date) : '') : 'No source · cannot be approved') + '</span></span></div>'; }).join('')
