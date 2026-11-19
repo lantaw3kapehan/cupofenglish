@@ -75,7 +75,10 @@ Deno.serve(async (req: Request) => {
       qy = pres ? qy.in("status", ["approved", "draft", "retired"]) : mgmt ? qy.in("status", ["approved", "draft"]) : qy.eq("status", "approved").lte("day", new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10));   // teachers see a topic from its own day
       const { data, error } = await qy; if (error) throw new Error(error.message);
       const { data: U } = await db.from("coe_talk_use").select("topic,code,student,at").eq("teacher", name).order("at", { ascending: false }).limit(2000);
-      return out({ ok: true, me: name, role, pres, mgmt, topics: data || [], used: U || [] });
+      const { data: A } = await db.from("coe_talk_use").select("topic,teacher").limit(20000);   // 2448: how many classes used each topic, by all teachers
+      const counts: Record<string, { n: number; t: number }> = {}, tt: Record<string, Set<string>> = {};
+      for (const r of (A || []) as any[]) { const c = counts[r.topic] || (counts[r.topic] = { n: 0, t: 0 }); c.n++; (tt[r.topic] ||= new Set()).add(r.teacher); c.t = tt[r.topic].size; }
+      return out({ ok: true, me: name, role, pres, mgmt, topics: data || [], used: U || [], counts });
     }
     if (op === "use") {
       const id = cl(b.id, 40); if (!UUID.test(id)) return out({ ok: false, error: "bad request" }, 400);
