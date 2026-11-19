@@ -15,7 +15,7 @@ const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 const cl = (s: unknown, n: number) => String(s == null ? "" : s).trim().slice(0, n);
 const LV = ["early", "yle", "teens", "adults"], ST = ["china", "stem", "ai", "think", "world", "culture", "education", "travel", "daily", "food", "sport", "nature"];
-const PUB = "id,day,strand,tags,levels,cefr,phonics,words_early,phrases,phrases_early,title,title_zh,story,story_zh,words,q,think,try_home,try_home_zh,media_url,media_kind,facts,sources,approved_at";
+const PUB = "id,day,strand,tags,photo,levels,cefr,phonics,words_early,phrases,phrases_early,title,title_zh,story,story_zh,words,q,think,try_home,try_home_zh,media_url,media_kind,facts,sources,approved_at";
 const ALL = PUB + ",status,drafted_by,approved_by,note,updated_at";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -29,12 +29,18 @@ function shape(t: any) {
   const WM = /^https:\/\/(commons|upload)\.wikimedia\.org\//;
   const IMG = /^https:\/\/rlxkiahqjsabopmuhern\.supabase\.co\/storage\/v1\/object\/public\/talk\//;
   const wl = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 8).map((w: any) => { const o: any = { en: cl(w && w.en, 40), zh: cl(w && w.zh, 40) }; if (w && IMG.test(String(w.img || ""))) o.img = cl(w.img, 300); if (w && WM.test(String(w.src || ""))) o.src = cl(w.src, 400); if (o.img || o.src) o.credit = cl(w && w.credit, 160); return o; }).filter((w: any) => w.en);
+  const PH = /^https:\/\/((commons|upload)\.wikimedia\.org|images\.pexels\.com|images\.unsplash\.com)\//, p0: any = t.photo || {}, photo: any = {};   // 2477: the topic's main photo (openly licensed, with credit)
+  if (IMG.test(String(p0.img || ""))) photo.img = cl(p0.img, 300); if (PH.test(String(p0.src || ""))) photo.src = cl(p0.src, 400);
+  if (photo.img || photo.src) { photo.credit = cl(p0.credit, 200); photo.alt = cl(p0.alt, 160); photo.page = /^https:\/\//.test(String(p0.page || "")) ? cl(p0.page, 400) : ""; }
   const words = wl(t.words), words_early = wl(t.words_early), ph = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 6).map((w: any) => ({ en: cl(w && w.en, 60), zh: cl(w && w.zh, 60) })).filter((w: any) => w.en), phrases = ph(t.phrases), phrases_early = ph(t.phrases_early);
   return { day: /^\d{4}-\d{2}-\d{2}$/.test(String(t.day || "")) ? t.day : undefined, strand: ST.includes(String(t.strand)) ? t.strand : "china", tags: (Array.isArray(t.tags) ? t.tags : []).map(String).filter((x: string, i: number, A: string[]) => ST.includes(x) && x !== t.strand && A.indexOf(x) === i).slice(0, 3), levels: lv.length ? lv : LV,
-    title: cl(t.title, 160), title_zh: cl(t.title_zh, 160), story: cl(t.story, 1200), story_zh: cl(t.story_zh, 1200), words, words_early, phrases, phrases_early, q, think: th, cefr: ce,
+    title: cl(t.title, 160), title_zh: cl(t.title_zh, 160), story: cl(t.story, 1200), story_zh: cl(t.story_zh, 1200), words, words_early, phrases, phrases_early, q, think: th, cefr: ce, photo: (photo.img || photo.src) ? photo : null,
     phonics: cl(t.phonics, 80), try_home: cl(t.try_home, 300), try_home_zh: cl(t.try_home_zh, 300), media_url: /^https:\/\//.test(String(t.media_url || "")) ? cl(t.media_url, 500) : "", media_kind: cl(t.media_kind, 20),
     facts, sources, note: cl(t.note, 500) };
 }
+const wmW = (u: string) => String(u).includes("Special:FilePath") && !/width=/.test(u) ? u + (u.includes("?") ? "&" : "?") + "width=1280" : u;
+async function mirrorPhoto(id: string, p: any) {   // 2477: the main photo into our storage (loads in China); keep the topic as it is if it fails
+  if (!p || !p.src || p.img) return; try { const img = await mirrorUrl(wmW(p.src)); await db.from("coe_talk").update({ photo: { ...p, img } }).eq("id", id); } catch { /* shown from its source until it is copied */ } }
 async function mirrorUrl(u: string): Promise<string> {
   const r = await fetch(u, { headers: { "User-Agent": "CupOfEnglish-TalkOfTheDay/1.0 (https://app.cupofenglishatph.com; operations@cupofenglishatph.com)" }, redirect: "follow" });
   const type = (r.headers.get("content-type") || "").split(";")[0]; if (!r.ok || !/^image\/(jpeg|png|webp)$/.test(type)) throw new Error("Could not get the photo (" + r.status + ").");
@@ -100,15 +106,26 @@ Deno.serve(async (req: Request) => {
       const t = shape(b.topic || {}); if (!t.title) return out({ ok: false, error: "The topic needs a title." }, 400);
       const id = cl(b.topic && b.topic.id, 40), row: any = { ...t, status: "draft", approved_by: null, approved_at: null, updated_at: new Date().toISOString() };
       if (!row.day) delete row.day;
-      if (UUID.test(id)) { const { error } = await db.from("coe_talk").update(row).eq("id", id); if (error) throw new Error(error.message); return out({ ok: true, id }); }
+      if (UUID.test(id)) { const { error } = await db.from("coe_talk").update(row).eq("id", id); if (error) throw new Error(error.message); await mirrorPhoto(id, row.photo); return out({ ok: true, id }); }
       row.drafted_by = name; const { data, error } = await db.from("coe_talk").insert(row).select("id").single(); if (error) throw new Error(error.message);
-      return out({ ok: true, id: data.id });
+      await mirrorPhoto(data.id, row.photo); return out({ ok: true, id: data.id });
     }
     if (op === "mirror") {   // copy an openly licensed photo into our own storage (loads in China)
       if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
       const u = cl(b.url, 600); let host = ""; try { host = new URL(u).hostname; } catch { /* */ }
       if (!/^(commons\.wikimedia\.org|upload\.wikimedia\.org|images\.pexels\.com|images\.unsplash\.com)$/.test(host)) return out({ ok: false, error: "Only Wikimedia Commons, Pexels or Unsplash photos." }, 400);
       try { return out({ ok: true, url: await mirrorUrl(u) }); } catch (e) { return out({ ok: false, error: String((e as Error).message) }, 400); }
+    }
+    if (op === "photo") {   // 2477 · Management: change or remove a topic's main photo (Wikimedia Commons, Pexels or Unsplash, with credit)
+      if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
+      const id = cl(b.id, 40); if (!UUID.test(id)) return out({ ok: false, error: "bad request" }, 400);
+      if (b.remove) { const { error } = await db.from("coe_talk").update({ photo: null, updated_at: new Date().toISOString() }).eq("id", id); if (error) throw new Error(error.message); return out({ ok: true }); }
+      const u = cl(b.url, 600); let host = ""; try { host = new URL(u).hostname; } catch { /* */ }
+      if (!/^(commons\.wikimedia\.org|upload\.wikimedia\.org|images\.pexels\.com|images\.unsplash\.com)$/.test(host)) return out({ ok: false, error: "Only Wikimedia Commons, Pexels or Unsplash photos." }, 400);
+      const credit = cl(b.credit, 200); if (credit.length < 3) return out({ ok: false, error: "Write the credit (photographer · site · licence)." }, 400);
+      let img = ""; try { img = await mirrorUrl(wmW(u)); } catch (e) { return out({ ok: false, error: String((e as Error).message) }, 400); }
+      const { error } = await db.from("coe_talk").update({ photo: { src: u, img, credit, alt: cl(b.alt, 160), page: /^https:\/\//.test(String(b.page || "")) ? cl(b.page, 400) : "" }, updated_at: new Date().toISOString() }).eq("id", id);
+      if (error) throw new Error(error.message); return out({ ok: true, img });
     }
     if (op === "restore") {   // President: put a topic that was taken out back in the library, approved as before
       if (!pres) return out({ ok: false, error: "Only the President can do this." }, 403);
@@ -117,8 +134,8 @@ Deno.serve(async (req: Request) => {
       if (error) throw new Error(error.message); return out({ ok: true });
     }
     const approveOne = async (id: string): Promise<string> => {
-      const { data: t } = await db.from("coe_talk").select("facts,sources,title,story,q,words_early,status").eq("id", id).maybeSingle();
-      if (!t) return "not found";
+      const { data: t } = await db.from("coe_talk").select("facts,sources,title,story,q,words_early,status,photo").eq("id", id).maybeSingle();
+      if (!t) return "not found"; await mirrorPhoto(id, t.photo);
       if (Array.isArray(t.words_early) && t.words_early.some((w: any) => w && w.src && !w.img)) {   // photos chosen by the draft → our storage (loads in China)
         const WE = []; for (const w of t.words_early) { const o = { ...w }; if (o.src && !o.img) { try { o.img = await mirrorUrl(String(o.src).includes("Special:FilePath") && !/width=/.test(o.src) ? o.src + "?width=800" : o.src); } catch { /* keep the word without a photo */ } } WE.push(o); }
         await db.from("coe_talk").update({ words_early: WE }).eq("id", id);

@@ -117,6 +117,11 @@ details.fs[open] summary .chev{transform:rotate(90deg)}
 select{height:40px;border:1px solid var(--line);border-radius:12px;padding:0 12px;background:#fff;font-size:14px;max-width:240px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:12px;padding:12px 18px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50}
 .toast.on{opacity:1}
+/* 2477 · topic photo: sits above the story, caption small and under the photo (never on top of it), so text stays easy to read */
+.tph{margin:0}.tph img{width:100%;aspect-ratio:16/9;max-height:320px;object-fit:cover;border-radius:14px;display:block;background:#F1F0F6}
+.tph figcaption{font-size:11px;line-height:1.3;color:#A3A0B3;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tph figcaption a{color:inherit}
+body.present .tph img{max-height:34vh}body.present .tph figcaption{font-size:11px;color:#B3B0C2}
+.dash .dbx .dth{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:#F1F0F6;display:block}
 /* student page and class (full screen) */
 .st{max-width:1180px;margin:0 auto;padding:26px 28px 40px}
 .st h2{font-family:'COE Card Fredoka',Fredoka,sans-serif;font-weight:400;font-size:38px;line-height:1.15;margin:8px 0 4px}
@@ -199,7 +204,7 @@ function studentHtml(t, lv, who){
   return '<div class="st"><div style="display:flex;gap:6px;flex-wrap:wrap">' + stChips(t) + '<span class="lb l-' + L + '">' + LV[L] + ' · ' + LVZ[L] + (ceOf(t, L) ? ' · CEFR ' + esc(ceOf(t, L)) : '') + '</span></div>'
     + '<h2>' + esc(t.title) + '</h2>' + (t.title_zh ? '<p class="zt">' + esc(t.title_zh) + '</p>' : '')
     + '<div class="cols"><div class="card" style="display:flex;flex-direction:column;gap:14px;padding:22px 26px">'
-    + (t.media_url ? mediaHtml(t) : '')
+    + photoHtml(t) + (t.media_url ? mediaHtml(t) : '')
     + (L === 'early' ? (t.phonics ? '<div class="k">SOUND OF THE DAY · 今日发音</div><div style="font-size:30px;font-weight:700">' + esc(t.phonics) + '</div>' : '') : '<p class="story">' + esc(t.story) + '</p>' + (t.story_zh ? '<p class="storyzh">' + esc(t.story_zh) + '</p>' : ''))
     + (wordsOf(t, L).length ? '<div class="k">' + (L === 'early' ? 'SAY IT · 跟我说' : 'NEW WORDS · 新单词') + '</div><div class="words">' + chipsHtml(t, L) + '</div>' + phrHtml(t, L) : '')
     + '</div><div style="display:flex;flex-direction:column;gap:14px">'
@@ -209,6 +214,9 @@ function studentHtml(t, lv, who){
     + '</div></div></div>'
     + '<div class="foot"><span>Source / 来源: ' + srcLine(t.sources) + '</span></div>';
 }
+function photoSrc(t){ const p = t && t.photo; return p ? (p.img || p.src || '') : ''; }
+function photoHtml(t){ const p = t && t.photo, u = photoSrc(t); if(!u) return '';   /* 2477 */
+  return '<figure class="tph"><img src="' + esc(u) + '" alt="' + esc(p.alt || t.title) + '" loading="lazy" onerror="this.closest(\'figure\').remove()"><figcaption>Photo: ' + (p.page ? '<a href="' + esc(p.page) + '" target="_blank" rel="noopener">' + esc(p.credit || 'source') + '</a>' : esc(p.credit || '')) + '</figcaption></figure>'; }
 function mediaHtml(t){ const u = t.media_url; if(/\.(mp4|webm)(\?|$)/i.test(u)) return '<div class="media"><video src="' + esc(u) + '" controls playsinline preload="metadata"></video></div>';
   return '<a class="btn" href="' + esc(u) + '" target="_blank" rel="noopener" style="align-self:flex-start"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/></svg>Watch the video</a>'; }
 
@@ -305,7 +313,7 @@ function dayBox(d){ const td = mnl(), T = (D.topics || []).filter(t => t.day ===
   const lab = WD[x.getUTCDay()] + ' ' + x.getUTCDate(), uses = t ? (D.week || []).filter(u => u.topic === t.id).length : 0;
   if(!t) return '<div class="dbx empty"><b>' + lab + '</b><span class="sub" style="margin:2px 0 0">' + (past ? 'No topic' : 'Nothing yet') + '</span></div>';
   const st = t.status === 'draft' ? '<span class="lb" style="background:#FFF1D6;color:#8A5A00;font-weight:700">Draft</span>' : d === td ? '<span class="lb" style="background:#E4F4F1;color:#1E6F5C;font-weight:700">Today</span>' : past ? '<span class="lb" style="background:#F1F0F6;color:#4A4566;font-weight:700">Done</span>' : '<span class="lb" style="background:#E6EEFB;color:#2B4C8C;font-weight:700">Approved</span>';
-  return '<div class="dbx dgo" data-id="' + t.id + '" tabindex="0" role="button" aria-label="Open ' + esc(t.title) + '"><b>' + lab + '</b>' + st + '<span class="tt">' + esc(t.title) + '</span><span class="sub" style="margin:0">' + esc(stText(t)) + ((d <= td && t.status !== 'draft') ? ' · ' + pl(uses, 'class') : '') + '</span></div>'; }
+  return '<div class="dbx dgo" data-id="' + t.id + '" tabindex="0" role="button" aria-label="Open ' + esc(t.title) + '">' + (photoSrc(t) ? '<img class="dth" src="' + esc(photoSrc(t)) + '" alt="" loading="lazy" onerror="this.remove()">' : '') + '<b>' + lab + '</b>' + st + '<span class="tt">' + esc(t.title) + '</span><span class="sub" style="margin:0">' + esc(stText(t)) + ((d <= td && t.status !== 'draft') ? ' · ' + pl(uses, 'class') : '') + '</span></div>'; }
 function mgmtDash(){ const td = mnl(), m0 = monOf(td), m1 = addD(m0, 7), dr = (D.topics || []).filter(t => t.status === 'draft');
   const next = [0, 1, 2, 3, 4].map(i => addD(m1, i)), ready = next.filter(d => APT().some(t => t.day === d)).length;
   const W = D.week || [], usedToday = W.filter(u => mDay(u.at) === td), by = {};
@@ -390,6 +398,7 @@ function paintTopic(){ const t = CUR, L = CLV, qs = (t.q && t.q[L]) || [], th = 
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:16px">' + stChips(t) + lvChips(t.levels, t) + '</div>'
     + '<h1 style="margin-top:10px">' + esc(t.title) + '</h1>' + (t.title_zh ? '<p class="sub" style="font-size:14px;color:#8A869C">' + esc(t.title_zh) + '</p>' : '')
     + '<div class="tp"><div style="display:flex;flex-direction:column;gap:14px"><div class="card" style="display:flex;flex-direction:column;gap:12px">'
+    + photoHtml(t) + ((D.pres || D.mgmt) ? '<div style="display:flex;gap:10px;margin-top:-6px"><button type="button" id="bPh" style="border:0;background:none;color:#4A4566;font-size:12px;text-decoration:underline;cursor:pointer;padding:0">' + (photoSrc(t) ? 'Change photo' : 'Add a photo') + '</button>' + (photoSrc(t) ? '<button type="button" id="bPhX" style="border:0;background:none;color:#8A869C;font-size:12px;text-decoration:underline;cursor:pointer;padding:0">Remove photo</button>' : '') + '</div>' : '')
     + (t.media_url ? mediaHtml(t) : '')
     + (L === 'early' ? '<div class="k">EARLY YEARS · TAP A WORD TO SHOW ITS PHOTO</div>' + (t.phonics ? '<div><span class="k">SOUND OF THE DAY</span><div style="font-size:26px;font-weight:700;color:#9A4528;margin-top:4px">' + esc(t.phonics) + '</div></div>' : '') : '<p class="story" style="font-size:17px">' + esc(t.story) + '</p>' + (t.story_zh ? '<p class="storyzh">' + esc(t.story_zh) + '</p>' : ''))
     + (wordsOf(t, L).length ? '<div class="words">' + chipsHtml(t, L) + '</div>' + phrHtml(t, L) : '') + '</div>'
@@ -411,6 +420,10 @@ function paintTopic(){ const t = CUR, L = CLV, qs = (t.q && t.q[L]) || [], th = 
     + '</div></div></main>';
   app.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { CLV = b.dataset.l; paintTopic(); });
   bindChips(app, t, L);
+  if($('bPh')) $('bPh').onclick = async () => { const url = prompt('Photo link from Wikimedia Commons, Pexels or Unsplash\n(Wikimedia: open the file page, right-click the photo, copy the image address)', ''); if(!url) return;
+    const credit = prompt('Credit, as the site asks for it\n(e.g. Jane Lee · Wikimedia Commons · CC BY-SA 4.0)', ''); if(!credit) return; const page = prompt('Link to the photo\'s page (optional, for the credit)', '') || '';
+    try{ const r = await call('coe-talk', { token: TOKEN, op: 'photo', id: t.id, url, credit, page, alt: t.title }); t.photo = { src: url, img: r.img, credit, page }; toast('Photo saved'); paintTopic(); }catch(e){ toast(String(e.message || e)); } };
+  if($('bPhX')) $('bPhX').onclick = async () => { if(!confirm('Remove the photo from this topic?')) return; try{ await call('coe-talk', { token: TOKEN, op: 'photo', id: t.id, remove: true }); t.photo = null; toast('Photo removed'); paintTopic(); }catch(e){ toast(String(e.message || e)); } };
   if($('bAp')) $('bAp').onclick = async () => { const b = $('bAp'); b.disabled = true; try{ await call('coe-talk', { token: TOKEN, op: 'approve', id: t.id }); t.status = 'approved'; toast('Approved. Teachers see it now.'); paintTopic(); }catch(e){ b.disabled = false; toast(e.message); } };
   if($('bRet')) $('bRet').onclick = async () => { if(!confirm('Take this topic out of the library?\n\nTeachers will no longer see it. You can put it back from "Taken out" at the bottom of the library.')) return; try{ await call('coe-talk', { token: TOKEN, op: 'retire', id: t.id }); t.status = 'retired'; toast('Taken out of the library.'); history.pushState({}, '', location.pathname); paintLib(); }catch(e){ toast(e.message); } };
   if($('stuSel')){ students().then(L2 => { const s = $('stuSel'); if(!s) return; s.innerHTML = '<option value="">Choose your student</option>' + L2.map(x => '<option value="' + esc(x.code) + '">' + esc(x.student) + ' · ' + esc(x.code) + '</option>').join(''); const k = sessionStorage.getItem('coe.talk.stu'); if(k) s.value = k; s.onchange = () => sessionStorage.setItem('coe.talk.stu', s.value); }); }
