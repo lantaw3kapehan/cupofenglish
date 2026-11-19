@@ -966,6 +966,33 @@ async function calc(db: any, fn: string, args: any[], base?: any, ctx?: any) {
   if (fn === "moneyLists" || fn === "mgmtUrls") return ctx && ctx.mode === "mgmt" && base && typeof base === "object" ? { data: base, at: Date.now(), full: true } : null;
   return null;
 }
+// 2456 (Misty 19 Nov 17:40 · Chenyu's March counted 2.5, should be 1.5: classes before the renewal payment were counted in that month):
+// Management's own lesson count per student and month (docs "sys:lessonfix", saved by coe-ops op lessonfix) replaces that month on every
+// copy of ACTIVE the app gets (Google's or the database's); done goes down / up and remaining up / down by the same amount.
+async function lessonFixes(db: any): Promise<Record<string, any>> {
+  try { const { data } = await db.from("docs").select("data").eq("key", "sys:lessonfix").maybeSingle(); return (data && data.data && data.data.fix) || {}; } catch (_e) { return {}; }
+}
+function fixOut(fn: string, data: any, F: Record<string, any>) {
+  const keys = Object.keys(F || {}); if (!data || !keys.length) return data;
+  const r1 = (x: number) => Math.round(x * 10) / 10;
+  if (fn === "mgmtActive" && Array.isArray(data.rows) && Array.isArray(data.months) && Array.isArray(data.cols)) {
+    const C: Record<string, number> = {}; data.cols.forEach((c: string, i: number) => C[c] = i);
+    const yms = data.months.map((lab: string) => { const m = String(lab).match(/^([A-Za-z]{3})\w* (\d{2})$/); const k = m ? MON.findIndex((x: string) => x.slice(0, 3).toLowerCase() === m[1].toLowerCase()) : -1; return k < 0 ? "" : "20" + m![2] + "-" + String(k + 1).padStart(2, "0"); });
+    const rows = data.rows.slice(), fixes: any[] = [];
+    keys.forEach((k) => { const [code, ym] = k.split("|"), f = F[k], j = yms.indexOf(ym); if (!f || typeof f.v !== "number" || j < 0) return;
+      const up = (x: any) => String(x || "").trim().toUpperCase();
+      let i = rows.findIndex((r: any[]) => up(r[C.code]) === code && Number((r[C.months] || [])[j]) > 0); if (i < 0) i = rows.findIndex((r: any[]) => up(r[C.code]) === code); if (i < 0) return;
+      const r = rows[i].slice(), M = (r[C.months] || []).slice(), old = Number(M[j]) || 0, d = r1(f.v - old);
+      if (d) { M[j] = f.v; r[C.months] = M; if (r[C.finished] !== "" && r[C.finished] != null) r[C.finished] = r1(Number(r[C.finished]) + d); if (r[C.available] !== "" && r[C.available] != null) r[C.available] = r1(Number(r[C.available]) - d); rows[i] = r; }
+      fixes.push({ code, ym, v: f.v, was: d ? old : (typeof f.was === "number" ? f.was : old), note: f.note || "", by: f.by || "", at: f.at || "" }); });
+    return Object.assign({}, data, { rows, fixes });
+  }
+  if (fn === "mgmtStudents" && Array.isArray(data)) {
+    const D: Record<string, number> = {}; keys.forEach((k) => { const f = F[k]; if (f && typeof f.v === "number" && typeof f.was === "number") { const c = k.split("|")[0]; D[c] = r1((D[c] || 0) + f.v - f.was); } });
+    return data.map((x: any) => x && D[x.code] && typeof x.left === "number" ? Object.assign({}, x, { left: r1(x.left - D[x.code]) }) : x);
+  }
+  return data;
+}
 const SAME_FOR_ALL = /^(mgmt|pres):(mgmtTab\|\["(TODAY|ACTIVE|DATABASE)"\]|mgmtTrialFus\|\[\]|mgmtFixIgnored\|\[\]|mgmtDatabase\|\[\]|dbLists\|\[\]|dbRecord\||mgmtStudents\|\[\]|mgmtStudent\||mgmtStuClasses\|)/;
 const FN_TABS: Record<string, string[]> = { mgmtActive: ["ACTIVE", "S-MONTHLY"], mgmtStudents: ["ACTIVE", "DATABASE", "PR-DATA", "S-MONTHLY"], mgmtStudent: ["PR-DATA", "S-NOTES", "TR-DATA", "S-MONTHLY"], mgmtStuClasses: [] };
 
@@ -1055,7 +1082,8 @@ Deno.serve(async (req: Request) => {
       if (!mayRead(s, scope) && (scope === "pres" || scope === "mgmt")) return out({ ok: false, error: "AUTH" }, 403);   // 9 Nov · a President-only copy is read only by the President (Operations asked for scope "pres" and got its base)
       if (/^(mgmtStudent|mgmtStuClasses|tStudent|mgmtSchedule|tSchedule|mgmtTeacherWeek|mgmtActions|mgmtPayroll|mgmtLeave|tMyVisits|tMyComments|mgmtTab|mgmtMsgs|mgmtDatabase|dbLists)$/.test(fn) && !b.nobase) { const { data: d } = await db.from("docs").select("data").eq("key", scope + ":" + fn + "|" + JSON.stringify(args)).maybeSingle(); base = d ? d.data : null; }
       const t0 = Date.now(), r = await calc(db, fn, args, base, (fn === "tStudent" || fn === "tSchedule" || fn === "tMyComments" || fn === "tMyVisits" || fn === "tLeave" || fn === "tMsgs") ? { name: b.as } : (fn === "getBootstrap" || fn === "tFbStatus") ? { as: b.as, mode: "mgmt" } : s);
-      return out({ ok: true, data: r ? r.data : null, full: r ? r.full : false, ms: Date.now() - t0, at: r && r.at ? new Date(r.at).toISOString() : null });
+      const LF = (fn === "mgmtActive" || fn === "mgmtStudents") ? await lessonFixes(db) : {};   // 2456
+      return out({ ok: true, data: r ? fixOut(fn, r.data, LF) : null, full: r ? r.full : false, ms: Date.now() - t0, at: r && r.at ? new Date(r.at).toISOString() : null });
     } catch (e) { return out({ ok: false, error: "db", why: String((e as Error).message || e) }, 500); }
   }
 
@@ -1085,6 +1113,7 @@ Deno.serve(async (req: Request) => {
         docs[k] = { data: r.data, at: new Date(at).toISOString(), live: !!r.full };
       } catch (_e) { /* keep the stored copy */ }
     }));
+    { const fk = Object.keys(docs).filter((k) => /^(mgmt|pres):(mgmtActive|mgmtStudents)\|/.test(k) && docs[k] && docs[k].data); if (fk.length) { const LF = await lessonFixes(db); fk.forEach((k) => { docs[k].data = fixOut(k.split(":")[1].split("|")[0], docs[k].data, LF); }); } }   // 2456
     if (s.mode !== "mgmt") for (const k of Object.keys(docs)) if (/:tStudent\|/.test(k) && docs[k]) docs[k].data = teacherSafe(docs[k].data);   // every route to a teacher's student page
     return out({ ok: true, docs });
   }

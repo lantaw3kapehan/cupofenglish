@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-ops v13 (19 Nov · 2453 resolve {lid}: President solves a problem from her log) · v12 (18 Nov · 2377 System reminders on the President card) · v11 (18 Nov · 2375 teachers waiting, 2376 weekly summary in deskday) · v10 (18 Nov · 2360 chain of command: report types, answer, myreports, seenans, eod) · v9 (18 Nov · 2344 op me: her own Overview) · v8 (18 Nov · 2341 Ops Desk: desk, log, done, report, deskday, resolve, watch) · v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
+// CupOfEnglish · coe-ops v14 (19 Nov · 2456 lessonfix: management's lesson count for one month) · v13 (19 Nov · 2453 resolve {lid}: President solves a problem from her log) · v12 (18 Nov · 2377 System reminders on the President card) · v11 (18 Nov · 2375 teachers waiting, 2376 weekly summary in deskday) · v10 (18 Nov · 2360 chain of command: report types, answer, myreports, seenans, eod) · v9 (18 Nov · 2344 op me: her own Overview) · v8 (18 Nov · 2341 Ops Desk: desk, log, done, report, deskday, resolve, watch) · v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
 // Management only (Operations and President). Teachers get "Management only".
 // POST { token, op: "check" }                        → { ok, items: [{ kind, ref, text, go }], at }   the daily database check (coe_ops_check)
 // POST { token, op: "ok", ref }                      → { ok }   "It's correct": this item never comes back (coe_ops_ok)
@@ -152,6 +152,17 @@ Deno.serve(async (req: Request) => {
     await db.from("coe_ops_log").insert({ who: me, kind: still ? "still" : "cleared", ref, title: str(b.title, 200) || (still && still.title) || null, note: still ? str(still.sub, 300) : null });
     const { data: D } = await db.rpc("coe_ops_day", { p_who: me });
     return out({ ok: true, cleared: !still, item: still || null, day: D });
+  }
+  if (op === "lessonfix") {   // v14 (2456): management sets a student's lesson count for one month (Chenyu March 1.5) · v null = back to the sheet's count
+    const code = str(b.code, 20).toUpperCase(), ym = str(b.ym, 7); if (!/^ST-\d{4}-\d{3}$/.test(code) || !/^\d{4}-\d{2}$/.test(ym)) return out({ ok: false, error: "bad student or month" }, 400);
+    const v = b.v === null || b.v === "" ? null : Number(b.v); if (v !== null && (!isFinite(v) || v < 0 || v > 60 || Math.round(v * 2) !== v * 2)) return out({ ok: false, error: "Use halves only, e.g. 1.5" }, 400);
+    const was = Number(b.was), note = str(b.note, 300); if (v !== null && note.length < 4) return out({ ok: false, error: "Write why (e.g. only count from 15 Mar)." }, 400);
+    const { data: d0 } = await db.from("docs").select("data").eq("key", "sys:lessonfix").maybeSingle(); const D = (d0 && d0.data) || { fix: {}, log: [] }; D.fix = D.fix || {}; D.log = D.log || [];
+    const k = code + "|" + ym, at = new Date().toISOString();
+    if (v === null) delete D.fix[k]; else D.fix[k] = { v, was: isFinite(was) ? was : (D.fix[k] && D.fix[k].was), note, by: me, at };
+    D.log.unshift({ k, v, was: isFinite(was) ? was : null, note, by: me, at }); D.log = D.log.slice(0, 300);
+    const { error } = await db.from("docs").upsert({ key: "sys:lessonfix", scope: "mgmt", data: D, updated_at: at }, { onConflict: "key" }); if (error) return out({ ok: false, error: "not saved" }, 500);
+    return out({ ok: true, fix: D.fix[k] || null });
   }
   if (op === "report") {
     const what = str(b.what, 2000); if (what.length < 5) return out({ ok: false, error: "Write what is wrong." }, 400);
