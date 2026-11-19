@@ -113,16 +113,19 @@ const age = d => Math.round((Date.parse(mnl() + 'T00:00:00Z') - Date.parse(d + '
 const fresh = d => { const a = age(d); return a <= 7 ? 'week' : a <= 30 ? 'month' : 'earlier'; };
 function toast(t){ const e = $('toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('on'), 3200); }
 async function call(fn, body){ const r = await fetch(API + fn, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({ ok: false, error: 'No answer. Try again.' })); if(!j.ok) throw new Error(j.error || 'Not saved'); return j; }
-const lvChips = L => (L || []).map(k => '<span class="lb l-' + k + '">' + LV[k] + '</span>').join('');
+const CE = ['Pre-A1','A1','A2','B1','B2','C1','C2'];
+const ceRange = c => { const p = String(c || '').split('–').map(x => CE.indexOf(x.trim())).filter(i => i >= 0); return p.length ? [Math.min(...p), Math.max(...p)] : null; };
+const ceOf = (t, k) => (t.cefr && t.cefr[k]) || '';
+const lvChips = (L, t) => (L || []).map(k => '<span class="lb l-' + k + '">' + LV[k] + (t && ceOf(t, k) ? ' · ' + esc(ceOf(t, k)) : '') + '</span>').join('');
 const stChip = s => '<span class="lb s-' + esc(s) + '">' + esc(ST[s] || s) + '</span>';
 const srcLine = S => (S || []).map(s => '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.outlet) + (s.date ? ', ' + esc(s.date) : '') + '</a>').join(' · ');
 
-let D = null, F = { fresh: 'week', lv: '', st: '', q: '' }, STU = null;
+let D = null, F = { fresh: 'week', lv: '', st: '', q: '', ce: '' }, STU = null;
 
 /* ── Student page (shared link) and class view: no sign-in needed ── */
 function studentHtml(t, lv, who){
   const L = (t.levels || []).includes(lv) ? lv : (t.levels || ['yle'])[0], qs = (t.q && t.q[L]) || [], th = t.think && t.think[L];
-  return '<div class="st"><div style="display:flex;gap:6px;flex-wrap:wrap">' + stChip(t.strand) + '<span class="lb l-' + L + '">' + LV[L] + ' · ' + LVZ[L] + '</span></div>'
+  return '<div class="st"><div style="display:flex;gap:6px;flex-wrap:wrap">' + stChip(t.strand) + '<span class="lb l-' + L + '">' + LV[L] + ' · ' + LVZ[L] + (ceOf(t, L) ? ' · CEFR ' + esc(ceOf(t, L)) : '') + '</span></div>'
     + '<h2>' + esc(t.title) + '</h2>' + (t.title_zh ? '<p class="zt">' + esc(t.title_zh) + '</p>' : '')
     + '<div class="cols"><div class="card" style="display:flex;flex-direction:column;gap:14px;padding:22px 26px">'
     + (t.media_url ? mediaHtml(t) : '')
@@ -145,7 +148,7 @@ function wrap(g, text, maxW){ const out = []; String(text || '').split(/\n/).for
 function picture(t, lv, who){
   const W = 1080, P = coeHdr.pad(W), FT = '"COE Card Fredoka", Fredoka, "Noto Sans SC", sans-serif', FI = '"COE Card Inter", Inter, "Noto Sans SC", "PingFang SC", sans-serif';
   const L = (t.levels || []).includes(lv) ? lv : (t.levels || ['yle'])[0], qs = (t.q && t.q[L]) || [], th = t.think && t.think[L];
-  const label = (ST[t.strand] || '') + '  ·  ' + LV[L] + ' · ' + LVZ[L];
+  const label = (ST[t.strand] || '') + '  ·  ' + LV[L] + ' · ' + LVZ[L] + (ceOf(t, L) ? '  ·  CEFR ' + ceOf(t, L) : '');
   const run = (g, draw) => { let y = coeHdr.height(W, true) + 34; const room = W - 2 * P;
     const para = (txt, font, size, color, lh, gap) => { g.font = font.replace('#', size); const ls = wrap(g, txt, room); ls.forEach(l => { y += size * lh; if(draw){ g.fillStyle = color; g.fillText(l, P, y); } }); y += gap; };
     para(t.title, '400 #px ' + FT, 52, '#2B2253', 1.15, 8);
@@ -173,10 +176,11 @@ async function copyPic(t, lv, who){ try{ await document.fonts.ready; }catch(e){}
 function usedOf(id){ return (D.used || []).filter(u => u.topic === id); }
 function libHtml(){
   const T = D.topics || [], ap = T.filter(t => t.status !== 'draft'), dr = T.filter(t => t.status === 'draft');
-  const match = t => (!F.lv || (t.levels || []).includes(F.lv)) && (!F.st || t.strand === F.st) && (!F.q || (t.title + ' ' + t.title_zh + ' ' + t.story).toLowerCase().includes(F.q.toLowerCase()));
+  const ceOk = t => { if(!F.ce) return true; const i = CE.indexOf(F.ce); return (t.levels || []).some(k => { const r = ceRange(ceOf(t, k)); return r && i >= r[0] && i <= r[1]; }); };
+  const match = t => ceOk(t) && (!F.lv || (t.levels || []).includes(F.lv)) && (!F.st || t.strand === F.st) && (!F.q || (t.title + ' ' + t.title_zh + ' ' + t.story).toLowerCase().includes(F.q.toLowerCase()));
   const n = k => ap.filter(t => fresh(t.day) === k && match(t)).length, L = ap.filter(t => fresh(t.day) === F.fresh && match(t));
   const card = t => { const U = usedOf(t.id); return '<article class="card tc" data-id="' + t.id + '" tabindex="0" role="button" aria-label="Open ' + esc(t.title) + '">'
-    + '<div class="row">' + (t.status === 'draft' ? '<span class="lb" style="background:#FFF1D6;color:#8A5A00;font-weight:700">DRAFT</span>' : age(t.day) <= 7 ? '<span class="lb new">NEW</span>' : '') + stChip(t.strand) + lvChips(t.levels) + '<span class="dt">' + dShort(t.day) + '</span></div>'
+    + '<div class="row">' + (t.status === 'draft' ? '<span class="lb" style="background:#FFF1D6;color:#8A5A00;font-weight:700">DRAFT</span>' : age(t.day) <= 7 ? '<span class="lb new">NEW</span>' : '') + stChip(t.strand) + lvChips(t.levels, t) + '<span class="dt">' + dShort(t.day) + '</span></div>'
     + '<b class="t">' + esc(t.title) + '</b>' + (t.title_zh ? '<span class="zh">' + esc(t.title_zh) + '</span>' : '')
     + '<div class="ft">' + (U.length ? '<span class="used">Used with ' + esc(U.slice(0, 3).map(u => u.student || u.code).join(', ')) + (U.length > 3 ? ' +' + (U.length - 3) : '') + '</span>' : '<span>Not used yet</span>')
     + '<span style="margin-left:auto">Source: ' + esc((t.sources || []).map(s => s.outlet.split(' · ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 2).join(', ')) + '</span></div></article>'; };
@@ -184,6 +188,7 @@ function libHtml(){
     + (D.mgmt && dr.length ? '<div class="sect"><b>To approve</b><span class="cnt">' + dr.length + '</span><span class="sub" style="margin:0">teachers do not see these until the President approves</span></div><div class="grid">' + dr.map(card).join('') + '</div>' : '')
     + '<div class="bar"><div class="seg" role="tablist" aria-label="How new">' + [['week', 'This week'], ['month', 'This month'], ['earlier', 'Earlier']].map(([k, l]) => '<button type="button" role="tab" data-f="' + k + '" class="' + (F.fresh === k ? 'on' : '') + '" aria-selected="' + (F.fresh === k) + '">' + l + ' · ' + n(k) + '</button>').join('') + '</div>'
     + '<span class="vr"></span>' + [['', 'All levels'], ['yle', 'YLE'], ['teens', 'Teens'], ['adults', 'Adults']].map(([k, l]) => '<button type="button" class="chipb' + (F.lv === k ? ' on' : '') + '" data-lv="' + k + '">' + l + '</button>').join('')
+    + '<select id="fce" aria-label="CEFR level"><option value="">Any CEFR</option>' + CE.slice(0, 6).map(k => '<option' + (F.ce === k ? ' selected' : '') + '>' + k + '</option>').join('') + '</select>'
     + '<span class="vr"></span><select id="fst" aria-label="Topic"><option value="">All topics</option>' + Object.keys(ST).map(k => '<option value="' + k + '"' + (F.st === k ? ' selected' : '') + '>' + ST[k] + '</option>').join('') + '</select>'
     + '<label class="search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6B6880" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="fq" type="search" placeholder="Search a topic" aria-label="Search a topic" value="' + esc(F.q) + '"></label></div>'
     + (L.length ? '<div class="grid">' + L.map(card).join('') + '</div>' : '<div class="empty">' + (ap.length ? 'Nothing here with these filters. Try "This month" or "Earlier".' : 'The first topics are being prepared. They appear here once approved.') + '</div>')
@@ -193,6 +198,7 @@ function paintLib(){ $('hS').textContent = 'Class openers for YLE, Teens and Adu
   app.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { F.fresh = b.dataset.f; paintLib(); });
   app.querySelectorAll('[data-lv]').forEach(b => b.onclick = () => { F.lv = b.dataset.lv; paintLib(); });
   const fst = $('fst'); if(fst) fst.onchange = () => { F.st = fst.value; paintLib(); };
+  const fce = $('fce'); if(fce) fce.onchange = () => { F.ce = fce.value; paintLib(); };
   const fq = $('fq'); fq.oninput = () => { F.q = fq.value; clearTimeout(paintLib.t); paintLib.t = setTimeout(() => { paintLib(); const e = $('fq'); e.focus(); e.setSelectionRange(e.value.length, e.value.length); }, 250); };
   app.querySelectorAll('.tc').forEach(c => { c.onclick = () => openTopic(c.dataset.id); c.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openTopic(c.dataset.id); } }; });
   const AP = (D.topics || []).filter(t => t.status !== 'draft');
@@ -211,7 +217,7 @@ function paintTopic(){ const t = CUR, L = CLV, qs = (t.q && t.q[L]) || [], th = 
   app.innerHTML = '<main>'
     + (t.status === 'draft' ? '<div class="draftbar"><span class="lb" style="background:#FFF1D6;color:#8A5A00;font-weight:700">DRAFT</span><span style="flex:1;min-width:240px;font-size:14px">Teachers do not see this yet. Check each fact against its source below' + (D.pres ? ', then approve.' : '. The President approves.') + '</span>'
       + (D.pres ? '<button class="btn pr" id="bAp" type="button">Approve</button>' : '') + '</div>' : '')
-    + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:16px">' + stChip(t.strand) + lvChips(t.levels) + '<span class="lb" style="background:#F1F0F6;color:#6B6880">' + dShort(t.day) + '</span></div>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:16px">' + stChip(t.strand) + lvChips(t.levels, t) + '<span class="lb" style="background:#F1F0F6;color:#6B6880">' + dShort(t.day) + '</span></div>'
     + '<h1 style="margin-top:10px">' + esc(t.title) + '</h1>' + (t.title_zh ? '<p class="sub" style="font-size:16px">' + esc(t.title_zh) + '</p>' : '')
     + '<div class="tp"><div style="display:flex;flex-direction:column;gap:14px"><div class="card" style="display:flex;flex-direction:column;gap:12px">'
     + (t.media_url ? mediaHtml(t) : '')
@@ -221,8 +227,8 @@ function paintTopic(){ const t = CUR, L = CLV, qs = (t.q && t.q[L]) || [], th = 
     + Fx.map(f => { const s = S[f.src]; return '<div class="f' + (s ? '' : ' bad') + '"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="' + (s ? '#1E6F5C' : '#B5432C') + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:3px">' + (s ? '<path d="M5 12.5l4.5 4.5L19 7.5"/>' : '<path d="M12 7v6M12 17h.01"/>') + '</svg><span>' + esc(f.fact) + '<br><span class="src">' + (s ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.outlet) + ' · ' + esc(s.title) + '</a>' + (s.date ? ' · ' + esc(s.date) : '') : 'No source · cannot be approved') + '</span></span></div>'; }).join('')
     + '</div></div></div>'
     + '<div style="display:flex;flex-direction:column;gap:14px"><div class="card" style="display:flex;flex-direction:column;gap:14px">'
-    + '<div class="seg" role="tablist" aria-label="Level" style="align-self:flex-start">' + (t.levels || []).map(k => '<button type="button" role="tab" data-l="' + k + '" class="' + (k === L ? 'on' : '') + '" aria-selected="' + (k === L) + '">' + LV[k] + '</button>').join('') + '</div>'
-    + '<div class="k">OPEN THE CLASS WITH THIS · INSTEAD OF "HOW ARE YOU?"</div>'
+    + '<div class="seg" role="tablist" aria-label="Level" style="align-self:flex-start">' + (t.levels || []).map(k => '<button type="button" role="tab" data-l="' + k + '" class="' + (k === L ? 'on' : '') + '" aria-selected="' + (k === L) + '">' + LV[k] + (ceOf(t, k) ? ' · ' + esc(ceOf(t, k)) : '') + '</button>').join('') + '</div>'
+    + '<div class="k">OPEN THE CLASS WITH THIS · INSTEAD OF "HOW ARE YOU?"' + (ceOf(t, L) ? ' · CEFR ' + esc(ceOf(t, L)) : '') + '</div>'
     + '<div class="qs">' + qs.map((x, i) => '<div class="q"><i>' + (i + 1) + '</i><span>' + esc(x) + '</span></div>').join('') + '</div>'
     + (th ? '<div class="think"><span class="lb s-think" style="align-self:flex-start;font-weight:700">THINK</span><span>' + esc(th) + '</span></div>' : '')
     + '</div>'
