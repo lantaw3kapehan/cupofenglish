@@ -7410,7 +7410,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2050;
+const COE_V = 2051;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -42511,7 +42511,13 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
       const c = JSON.parse(localStorage.getItem(k) || 'null'), F = (c && c.b && c.b.files) || [], f = F.find(x => x.id === id); if(f) return { code: (c.b.code || k.split('.').pop()), f }; } }catch(e){} return null; }
   window.bkReader = function(id, title){ const hit = bookOf(id); if(hit && hit.f.kind !== 'pdf') return false;
     const q = new URLSearchParams({ id, t: String(title || (hit && hit.f.name) || '').slice(0, 120), n: '1' }); if(hit && hit.code) q.set('b', hit.code);
+    try{ const cx = window._bkStu2407; if(cx && Date.now() - cx.t < 15 * 6e4 && cx.name) q.set('s', cx.name); }catch(e){}   /* 2407 */
     const w = window.open('reader/?' + q.toString(), 'coeReader'); if(!w){ toast('Allow pop-ups for this site to open books'); return false; } try{ w.focus(); }catch(e){} return true; };
+  /* 2407: the student of the class card or student page a book is opened from */
+  document.addEventListener('click', ev => { try{ if(!D || !ev.target || !ev.target.closest) return; let nm = '';
+      if(typeof STU !== 'undefined' && STU && STU.s && ev.target.closest('#sheetBody, #v-student')) nm = STU.s.name || '';
+      if(!nm){ let el = ev.target; for(let i = 0; i < 8 && el && el !== document.body; i++, el = el.parentElement){ const m = String(el.textContent || '').match(/ST-\d{4}-\d{3}/g); if(m && m.length){ if(new Set(m).size > 1) break; const c = (D.schedule || []).find(x => String(x.code || '').toUpperCase() === m[0].toUpperCase()); nm = c ? String(c.student || '').replace(/\s+X$/i, '') : ''; break; } } }
+      if(nm && !/^ST-/.test(nm)) window._bkStu2407 = { name: nm, t: Date.now() }; }catch(e){} }, true);
   document.addEventListener('click', ev => { try{ if(ev.defaultPrevented || !D) return;
     const a = ev.target && ev.target.closest && ev.target.closest('a[href*="drive.google.com/file/d/"]'); if(!a) return;
     const t = (a.textContent || '').trim(); if(/^[▶♪]/.test(t)) return;
@@ -43326,7 +43332,7 @@ window.pass2375 = function(i){ try{ var x = (window.DK2341q || [])[i] || null; i
 (function(){
   if(window.__2401) return; window.__2401 = 1;
   const HW = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-hw';
-  const F = {}, M = {}; let AG = false, busy = null, at = 0;
+  const F = {}, M = {}, PEND = {}; let AG = false, busy = null, at = 0;
   try{ const c = JSON.parse(localStorage.getItem('coe.st01') || 'null'); if(c && Date.now() - c.t < 3 * 864e5){ Object.assign(F, c.F || {}); Object.assign(M, c.M || {}); } }catch(e){}
   const keep = () => { try{ localStorage.setItem('coe.st01', JSON.stringify({ t: Date.now(), F, M })); }catch(e){} };
   const call = o => fetch(HW, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, o)) }).then(x => x.json());
@@ -43343,7 +43349,7 @@ window.pass2375 = function(i){ try{ var x = (window.DK2341q || [])[i] || null; i
     busy = (async () => { try{
         if(!AG && typeof agrMap === 'function'){ AG = true; try{ await agrMap(); }catch(e){} }
         const r = await call({ op: 'trialSteps', codes, labels: R.map(t => t.label) });
-        if(r && r.ok && r.data){ Object.assign(F, r.data.codes || {}); R.forEach(t => { M[t.label] = (r.data.marks || {})[t.label] || {}; }); at = Date.now(); R.forEach(migrate); keep(); }
+        if(r && r.ok && r.data){ Object.assign(F, r.data.codes || {}); R.forEach(t => { const s = Object.assign({}, (r.data.marks || {})[t.label] || {}), o = M[t.label] || {}; Object.keys(PEND).forEach(pk => { const [lb, k] = pk.split('\u0001'); if(lb !== t.label || Date.now() - PEND[pk].t > 120000){ if(Date.now() - PEND[pk].t > 120000) delete PEND[pk]; return; } if(PEND[pk].on){ if(!s[k] && o[k]) s[k] = o[k]; } else delete s[k]; }); M[t.label] = s; }); at = Date.now(); R.forEach(migrate); keep(); }
       }catch(e){} finally{ busy = null; } })();
     return busy; }
   /* the 10 steps of one trial */
@@ -43407,6 +43413,7 @@ window.pass2375 = function(i){ try{ var x = (window.DK2341q || [])[i] || null; i
     let p = el.querySelector('.st01p'); if(!p){ p = document.createElement('div'); p.className = 'st01p'; el.querySelector('.tl4').prepend(p); }
     p.innerHTML = '<div class="h"><b>' + st.n + ' of 10 done</b>' + (st.nx ? '<span>Next: ' + E(st.nx.title) + '</span>' : '<span>All done ✓</span>') + '</div><div class="bar"><i style="width:' + (st.n * 10) + '%"></i></div>'; }
   async function mark(t, k, on){ const m = M[t.label] = M[t.label] || {}, me = ((typeof D !== 'undefined' && D && D.me) || {}).name || '';
+    PEND[t.label + '\u0001' + k] = { on: !!on, t: Date.now() };
     if(on){ if(m[k]) return; const d = new Date(Date.now() + 8 * 3600e3); m[k] = { at: d.getUTCDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()] + ' ' + d.toISOString().slice(11, 16), by: me }; }
     else { delete m[k]; try{ const key = 'coe.tl4.' + t.label, o = JSON.parse(localStorage.getItem(key) || '{}') || {}; Object.keys(LK).forEach(x => { if(LK[x] === k) delete o[x]; }); localStorage.setItem(key, JSON.stringify(o)); }catch(e){} }
     setTimeout(deco, 0); try{ paintList(); }catch(e){}
