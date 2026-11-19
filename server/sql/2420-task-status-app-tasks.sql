@@ -1,0 +1,4 @@
+-- 2420 (19 Nov): "Mark done / Carry over / Need help" on a task sent from the app (id APP-…) failed with "Not found":
+-- coe_dbf_h_msgs only accepted tasks that came from the Google sheet (src = 'sheet'), so app tasks fell through to Google.
+-- Applied live by replacing both  m.src = 'sheet'  with  m.src in ('sheet', 'app')  in coe_dbf_h_msgs (mgmtTaskStatus and mgmtShiftClose).
+-- Rollback: same replace in reverse.
