@@ -7410,7 +7410,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2042;
+const COE_V = 2043;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -15391,7 +15391,13 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
   const OPW = { thealphabet: [1, 'The Alphabet', '字母'], shortvowels: [2, 'Short Vowels', '短元音'], shorvowels: [2, 'Short Vowels', '短元音'], longvowels: [3, 'Long Vowels', '长元音'],
     consonantblends: [4, 'Consonant Blends', '辅音组合'], letterblends: [5, 'Letter Combinations', '字母组合'], lettercombination: [5, 'Letter Combinations', '字母组合'], lettercombinations: [5, 'Letter Combinations', '字母组合'] };
   function bookPath(p, F){ try{ const k = String(F.book || '').toLowerCase().replace(/[^a-z0-9]/g, ''), b = OPW[k];
-      if(F.rec && !b && p.length && window.BK2311 && BK2311[k]){ const x = BK2311[k], q = p.slice(); q[5] = x[0] + ' — ' + x[2]; q[6] = x[1] + '——' + x[3]; return q; }   /* 2311: the teacher's recommended book */
+      if(F.rec && !b && p.length && window.BK2311 && BK2311[k]){ const x = BK2311[k], q = p.slice(); q[5] = x[0] + ' — ' + x[2]; q[6] = x[1] + '——' + x[3];
+        const od = k.match(/^od(\d)$/); if(od && !new RegExp('◆\\s*Oxford Discover ' + od[1]).test(String(q[7] || ''))){ const n = +od[1];   /* 2398 */
+          const E = n <= 2 ? ['Oxford Discover 1', 'Oxford Discover 2', 'Reading Explorer Foundation', 'Reading Explorer 1–3', 'IELTS'].slice(n - 1) : ['Oxford Discover ' + n, 'Reading Explorer 1–3', 'IELTS'];
+          const Z = n <= 2 ? ['《牛津探索》1', '《牛津探索》2', '《阅读探索》基础级', '《阅读探索》1–3级', '雅思'].slice(n - 1) : ['《牛津探索》' + n, '《阅读探索》1–3级', '雅思'];
+          q[7] = '◆ ' + E.join(' → '); q[8] = '◆ ' + Z.join(' → ');
+          if(/KET/.test(String(q[19] || ''))){ const g = path(F.cefr, '') || []; if(g[19] && !/KET/.test(String(g[19]))){ q[19] = g[19]; q[20] = g[20]; } else { q[19] = String(q[19]).replace(/about the length of the KET foundation stage \(CEFR A1 → A2\)/, 'about what most learners need to reach the next Oxford Discover level'); q[20] = String(q[20] || '').replace(/与KET基础阶段（CEFR A1 → A2）所需课时相当/, '大多数学生通常可在此课时内升入下一级《牛津探索》'); } } }
+        return q; }   /* 2311: the teacher's recommended book */
       if(!b || !p.length || (!F.rec && !/phonics/i.test(String(p[5] || '')))) return p;
       const q = p.slice(), en = 'Oxford Phonics World ' + b[0] + ' · ' + b[1], zh = '《牛津自然拼读》' + b[0] + '级 · ' + b[2];
       q[5] = en + ' — ' + ((/phonics/i.test(String(p[5] || '')) && String(p[5]).split(' — ')[1]) || 'sound-by-sound phonics, so your child can read new words independently');
