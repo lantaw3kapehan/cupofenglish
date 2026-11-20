@@ -6,7 +6,7 @@ window.KITS = {
     free25: [['warm', 'Warm-up', 3], ['talk', 'Talk', 17], ['fb', 'Feedback', 5]],
     free50: [['warm', 'Warm-up', 5], ['talk', 'Talk', 20], ['role', 'Role-play', 20], ['fb', 'Feedback', 5]],
     ielts25: [['p1', 'Part 1', 5], ['p2', 'Part 2', 10], ['p3', 'Part 3', 8], ['fb', 'Feedback', 2]],
-    ielts50: [['warm', 'Warm-up', 5], ['p1', 'Part 1', 10], ['p2', 'Part 2', 15], ['p3', 'Part 3', 15], ['fb', 'Feedback', 5]]
+    ielts50: [['warm', 'Format', 5], ['p1', 'Part 1', 10], ['p2', 'Part 2', 15], ['p3', 'Part 3', 15], ['fb', 'Feedback', 5]]
   },
   free: [
     // ── Adults
