@@ -43,6 +43,16 @@ Deno.serve(async (req: Request) => {
       await db.from("coe_book_opens").insert({ who: clip(s.name, 60), mode: clip(s.mode, 20), kind: clip(b.kind, 10), file_id: clip(b.id, 80), title: clip(b.title, 160), book: clip(b.book, 80), student: clip(b.student, 80) });
       return out({ ok: true });
     }
+    if (op === "fail") {   // v9 (2547): a book that did not open, or opened only after a slow fallback → kept for Operations
+      const n = clip(b.outcome, 20); if (!["failed", "fallback", "slow"].includes(n)) return out({ ok: false, error: "outcome" }, 400);
+      await db.from("coe_book_fail").insert({ who: clip(s.name, 60), mode: clip(s.mode, 20), file_id: clip(b.id, 80), book: clip(b.book, 80), title: clip(b.title, 160), outcome: n, step: clip(b.step, 40), error: clip(b.error, 200), secs: Math.min(9999, Math.max(0, +b.secs || 0)), net: clip(b.net, 60) });
+      return out({ ok: true });
+    }
+    if (op === "fails") { if (!mgr) return out({ ok: false, error: "management only" }, 403);
+      const h = Math.min(168, Math.max(1, +b.hours || 24));
+      const { data } = await db.from("coe_book_fail").select("at,who,book,title,outcome,step,error,secs").gte("at", new Date(Date.now() - h * 36e5).toISOString()).order("at", { ascending: false }).limit(200);
+      return out({ ok: true, rows: data || [] });
+    }
     if (op === "opens") { if (!mgr) return out({ ok: false, error: "management only" }, 403);
       const days = Math.min(60, Math.max(1, +b.days || 14));
       const { data } = await db.from("coe_book_opens").select("at,who,mode,kind,title,book,student").gte("at", new Date(Date.now() - days * 864e5).toISOString()).order("at", { ascending: false }).limit(2000);
