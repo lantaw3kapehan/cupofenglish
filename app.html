@@ -7416,7 +7416,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2107;
+const COE_V = 2108;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -43818,7 +43818,8 @@ window.dots2471 = function(done, total, label){ try{ done = Math.max(0, +done ||
     var codes = {}; L.forEach(function(f){ codes[f.code] = 1; }); var R = AT.rows.filter(function(r){ return codes[String(r[C.code] || '').toUpperCase()]; });
     var sum = function(r){ return (r[C.months] || []).reduce(function(a, x){ return a + (+x || 0); }, 0); }, before = R.map(sum), keep = AT.fixes;
     AT.fixes = L; window.lf2466(AT); AT.fixes = keep && keep.length ? keep : L;
-    R.forEach(function(r, i){ var d = Math.round((sum(r) - before[i]) * 10) / 10; if(d && C.finished != null && r[C.finished] !== '' && r[C.finished] != null) r[C.finished] = Math.round((+r[C.finished] + d) * 10) / 10; }); }catch(e){ console.warn('2483', e); } }
+    var tot = {}; R.forEach(function(r, i){ var d = Math.round((sum(r) - before[i]) * 10) / 10, cd = String(r[C.code] || '').toUpperCase(); tot[cd] = (tot[cd] || 0) + d; if(d && C.finished != null && r[C.finished] !== '' && r[C.finished] != null) r[C.finished] = Math.round((+r[C.finished] + d) * 10) / 10; });   /* 2486: remaining moves the other way, on the package row (as the server does) */
+    if(C.available != null) R.forEach(function(r){ var cd = String(r[C.code] || '').toUpperCase(), t = tot[cd]; if(t && r[C.available] !== '' && r[C.available] != null && !isNaN(+r[C.available])){ r[C.available] = Math.round((+r[C.available] - t) * 10) / 10; tot[cd] = 0; } }); }catch(e){ console.warn('2483', e); } }
   ['lsHtml', 'shHtml'].forEach(function(n){ var f = window[n]; if(typeof f === 'function') window[n] = function(){ fixAT(); return f.apply(this, arguments); }; });
   var s0 = window.lf2456; if(typeof s0 === 'function') window.lf2456 = function(){ var p = s0.apply(this, arguments); try{ Promise.resolve(p).then(function(){ setTimeout(load, 1500); }); }catch(e){} return p; };
   setTimeout(load, 3000); setInterval(load, 10 * 6e4);
@@ -43838,20 +43839,20 @@ window.dots2471 = function(done, total, label){ try{ done = Math.max(0, +done ||
   function load(f){ if(!mgr() || busy || (!f && R && Date.now() - at < 5 * 6e4)) return; busy = 1;
     fetch(OPS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'firstmonth' }) }).then(function(r){ return r.json(); })
       .then(function(r){ busy = 0; if(r && r.ok){ R = r.rows || []; at = Date.now(); paint(); } }).catch(function(){ busy = 0; }); }
-  function html(){ var L = (R || []).filter(function(x){ return !done[x.code + '|' + x.ym]; }); if(!L.length) return '';
+  function html(){ var A = (R || []).filter(function(x){ return !done[x.code + '|' + x.ym]; }), SH = A.filter(function(x){ return x.kind === 'shown'; }).length, L = A.filter(function(x){ return x.kind !== 'shown'; }); if(!L.length) return '';
     var C = L.filter(function(x){ return x.clear; }).length, S = open ? L : L.slice(0, 6);
-    return '<section id="fm2484"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3>First month to check · ' + L.length + '</h3><span class="small mute">' + C + ' ready to correct · ' + (L.length - C) + ' to check by hand</span></div>'
-      + '<div class="small mute" style="margin:4px 0 6px">The package started after the 1st, but its first month also counts lessons from before the start date. Those belong to the previous package.</div>'
+    return '<section id="fm2484"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3>First month to check · ' + L.length + '</h3><span class="small mute">' + C + ' ready to correct · ' + (L.length - C) + ' to check by hand' + (SH ? ' · ' + SH + ' already right (only the month history shows the earlier lessons)' : '') + '</span></div>'
+      + '<div class="small mute" style="margin:4px 0 6px">The package started after the 1st, and its completed lessons also count lessons from before the start date. Those belong to the previous package, so the lessons remaining are too low.</div>'
       + S.map(function(x){ var k = x.code + '|' + x.ym;
-        return '<div class="r"><div class="n"><b>' + E(x.name) + '</b> <span class="mute small">' + E(x.code) + ' · ' + E(x.teachers) + '</span> ' + (x.clear ? '<span class="k c">Records match</span>' : '<span class="k u">Check by hand</span>')
-          + '<small>Started ' + E(dl(x.start)) + ' · ' + E(ml(x.ym)) + ' counts <b>' + x.sheet + '</b> · class records: ' + x.before + ' before the start, ' + x['from'] + ' from the start</small></div>'
+        return '<div class="r"><div class="n"><b>' + E(x.name) + '</b> <span class="mute small">' + E(x.code) + ' · ' + E(x.teachers) + '</span> ' + (x.clear ? '<span class="k c">Remaining ' + x.before + ' too low</span>' : '<span class="k u">Check by hand</span>')
+          + '<small>Started ' + E(dl(x.start)) + ' · ' + E(ml(x.ym)) + ' counts <b>' + x.sheet + '</b> · class records: ' + x.before + ' before the start, ' + x['from'] + ' from the start' + (x.finished != null ? ' · completed now ' + x.finished : '') + '</small></div>'
           + '<div class="bb">' + (x.clear ? '<button class="btn teal sm" onclick="fm2484Fix(\'' + E(k) + '\')">Correct to ' + x.suggest + '</button>' : '') + '<button class="btn ghost sm" onclick="openStudent(\'' + E(x.code) + '\')">Open</button></div></div>'; }).join('')
       + (L.length > S.length ? '<div style="padding-top:8px"><button class="btn ghost sm" onclick="fm2484All()">Show all ' + L.length + '</button></div>' : '') + '</section>'; }
   function paint(){ var v = document.getElementById('v-mtoday'); if(!v) return; var o = document.getElementById('fm2484'), h = html();
     if(!h){ if(o) o.remove(); return; } if(o){ if(o.outerHTML !== h) o.outerHTML = h; } else v.insertAdjacentHTML('beforeend', h); }
   window.fm2484All = function(){ open = 1; paint(); };
   window.fm2484Fix = function(k){ var x = (R || []).find(function(y){ return y.code + '|' + y.ym === k; }); if(!x || !x.clear) return;
-    if(!confirm(x.name + ' · ' + ml(x.ym) + ': change ' + x.sheet + ' to ' + x.suggest + '?\n\nOnly the lessons from ' + dl(x.start) + ' count for this package. You can undo it in the Lesson Summary.')) return;
+    if(!confirm(x.name + ' · ' + ml(x.ym) + ': change ' + x.sheet + ' to ' + x.suggest + '?\n\nOnly the lessons from ' + dl(x.start) + ' count for this package: completed goes down by ' + x.before + ' and remaining goes up by ' + x.before + '. You can undo it in the Lesson Summary.')) return;
     fetch(OPS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'lessonfix', code: x.code, ym: x.ym, v: x.suggest, was: x.sheet, note: 'First month counted from the start date ' + dl(x.start) + ' (earlier lessons belong to the previous package)' }) })
       .then(function(r){ return r.json(); }).then(function(r){ if(r && r.ok){ done[k] = 1; paint(); try{ toast('Saved · ' + x.name + ' ' + ml(x.ym) + ' = ' + x.suggest); }catch(e){} setTimeout(function(){ load(1); }, 1500); } else { try{ toast((r && r.error) || 'Not saved. Try again.'); }catch(e){} } })
       .catch(function(){ try{ toast('Not saved. Try again.'); }catch(e){} }); };
