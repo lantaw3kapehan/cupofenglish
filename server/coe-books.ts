@@ -20,6 +20,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return out({ ok: false, error: "POST only" }, 405);
   let b: any; try { b = JSON.parse(await req.text()); } catch { return out({ ok: false, error: "bad request" }, 400); }
   const op = String(b.op || "");
+  if (op === "ping") return out({ ok: true });   // v8 (20 Nov): the app's 9 s warm-up ping got 400 (~500 a day)
   try {
     if (op === "stuHw") {
       const t = String(b.stoken || ""); if (t.length < 16) return out({ ok: false, error: "AUTH" }, 401);
