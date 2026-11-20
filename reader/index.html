@@ -259,11 +259,16 @@ async function kOpen(url, opt){ try{ if(!('caches' in window)) return null; cons
     return await pdfjsLib.getDocument(Object.assign({ data: new Uint8Array(buf) }, opt)).promise; }catch(e){ return null; } }
 let KQ = Promise.resolve();   /* 2550: one saved book at a time */
 function kKeep(url, length, src){ const c = navigator.connection || {}; if(c.saveData || /(^|-)2g|3g/.test(c.effectiveType || '')) return; KQ = KQ.then(() => kKeep1(url, length, src)).catch(() => {}); }
-async function kKeep1(url, length, src){ src = src || url; if(!('caches' in window) || !length || length > KMAX || KSEEN.has(url)) return; KSEEN.add(url);
+/* 2551: between classes only. The app writes today's class times (coe.today.cls); 3 minutes before a class until it ends counts as class time.
+   A save waits for a free moment and pauses the moment a class begins, so back-to-back lessons keep all of their internet. */
+function kFree(){ try{ const o = JSON.parse(localStorage.getItem('coe.today.cls') || 'null'); if(!o || !o.cls || Date.now() - (o.at || 0) > 6 * 3600e3) return true;
+    const t = Date.now(); return !o.cls.some(c => t >= c[0] - 3 * 6e4 && t <= c[1]); }catch(e){ return true; } }
+async function kWait(){ while(!kFree()) await new Promise(r => setTimeout(r, 60e3)); }
+async function kKeep1(url, length, src){ src = src || url; await kWait(); if(!('caches' in window) || !length || length > KMAX || KSEEN.has(url)) return; KSEEN.add(url);
   try{ const c = await caches.open(KC); if(await c.match(url)) return; await new Promise(r => setTimeout(r, 4000));
     const out = new Uint8Array(length), step = 262144; let pos = 0;   /* 2550: small pieces, about 1.5 Mbps at most, so VooV keeps the internet */
-    while(pos < length){ const e = Math.min(length, pos + step); const r = await fetch(src, { headers: { Range: 'bytes=' + pos + '-' + (e - 1) } }); if(r.status !== 206 && !(r.ok && pos === 0 && e === length)) return;
-      const b = new Uint8Array(await r.arrayBuffer()); out.set(b.subarray(0, e - pos), pos); pos = e; await new Promise(z => setTimeout(z, 1200)); }
+    while(pos < length){ const e = Math.min(length, pos + step); const r = await fetch(src, { cache: 'no-store', headers: { Range: 'bytes=' + pos + '-' + (e - 1) } }); if(r.status !== 206 && !(r.ok && pos === 0 && e === length)) return;
+      const b = new Uint8Array(await r.arrayBuffer()); out.set(b.subarray(0, e - pos), pos); pos = e; await new Promise(z => setTimeout(z, 1200)); if(!kFree()) await kWait(); }
     await c.put(url, new Response(out, { headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(length) } }));
     let L = kIdx().filter(x => x.u !== url); L.unshift({ u: url, n: length, at: Date.now() }); let tot = 0; const keep = [];
     for(const x of L){ if(tot + x.n <= KALL){ keep.push(x); tot += x.n; } else { try{ await c.delete(x.u); }catch(e){} } } kSave(keep); }catch(e){} }
