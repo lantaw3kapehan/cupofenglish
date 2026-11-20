@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
     return out({ ok: true, items: (data && data.items) || [], at: data && data.at });
   }
   if (op === "ok") {
-    const ref = String(b.ref || "").slice(0, 120); if (!/^(sale|dbl|nt|shot|renew|risk|tfu|tagain):/.test(ref)) return out({ ok: false, error: "not allowed" }, 400);
+    const ref = String(b.ref || "").slice(0, 120); if (!/^(sale|dbl|nt|shot|renew|risk|tfu|tagain|vidkeep):/.test(ref))   /* v21 (2539): vidkeep = a late-video case reviewed, penalty kept */ return out({ ok: false, error: "not allowed" }, 400);
     const { error } = await db.from("coe_ops_ok").upsert({ ref, by_name: me, at: new Date().toISOString() }, { onConflict: "ref" });
     if (error) return out({ ok: false, error: "not saved" }, 500);
     return out({ ok: true });
