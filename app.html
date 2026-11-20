@@ -97,7 +97,7 @@
       const note = ((document.getElementById('x27n') || {}).value || '').trim(); let r = null;
       try{ r = await call({ action: 'excuse', kind, ref, note }); }catch(e){ r = { ok: false, error: e.message }; }
       if(!r || !r.ok){ if(btn){ btn.disabled = false; btn.textContent = 'Confirm · excuse'; } toast((r && (r.msg || r.error)) || 'Not saved · try again'); return; }
-      try{ if(kind === 'timein' && typeof MO !== 'undefined' && MO && MO.late){ const t = ms(x.at); MO.late = MO.late.filter(l => Math.abs(+l.row - t) >= 1000); try{ store('set', 'coe.mo', JSON.stringify(MO)); }catch(e){} } }catch(e){}
+      try{ if(kind === 'timein' && typeof MO !== 'undefined' && MO && MO.late){ const t = ms(x.at); try{ MO.late.filter(l => Math.abs(+l.row - t) < 1000).forEach(l => dec2538.add(dec2538.late(l.row))); }catch(e){} MO.late = MO.late.filter(l => Math.abs(+l.row - t) >= 1000); try{ store('set', 'coe.mo', JSON.stringify(MO)); }catch(e){} } }catch(e){}
       toast(r.dup ? 'Already excused' : 'Excused ✓ · ' + (typeof tName === 'function' ? tName(r.teacher || x.teacher) : (r.teacher || x.teacher)) + (r.caseId ? ' · case ' + r.caseId + ' waived' : '') + ' · counts as on time');
       EX = null; exOpen2027(); try{ if(window.lqPaint2027) lqPaint2027(); }catch(e){} };
     openSheet('<h2 style="margin:0 0 4px">Excuse · system issue?</h2><div class="small mute">' + what + '</div>'
@@ -3384,7 +3384,7 @@ openSheet(`<h1>${cond==='Waive'?'Waive':'Mark '+cond}?</h1><div class="mute smal
 }
 async function sendDecide(row, cond){
 const prev = MO.late.slice(); MO.late = MO.late.filter(l => l.row !== row); store('set','coe.mo', JSON.stringify(MO)); closeSheet(); renderTeam(); toast('Saved · ' + cond);
-try{ const r = await api('decideLate', TOKEN, row, cond); if(!r.ok) throw r; if(r.caseId) toast(r.note + ' · ' + r.caseId); }
+try{ const r = await api('decideLate', TOKEN, row, cond); if(!r.ok) throw r; try{ dec2538.add(dec2538.late(row)); }catch(e){} if(r.caseId) toast(r.note + ' · ' + r.caseId); }
 catch(e){ MO.late = prev; store('set','coe.mo', JSON.stringify(MO)); renderTeam(); toast((e && e.msg) || 'Not saved · the late class is back on the list. Try again.'); }
 }
 
@@ -7439,7 +7439,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2142;
+const COE_V = 2143;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24112,7 +24112,7 @@ go();
   /* 720: Lates to decide on Overview */
   let LQS = '';
   function lqPaint(force){ const root = document.getElementById('v-home'); if(!root || typeof D === 'undefined' || !D || !D.mgr || typeof MO === 'undefined' || !MO) return;
-    const L = (MO.late || []).filter(x => !(+x.row > 1e9 && Date.now() - +x.row > 36 * 36e5)), sig = JSON.stringify(L.map(x => x.row));   /* 2354: past the 24 h rule it is already decided */ let box = document.getElementById('lqmBox');
+    if(window.dec2538 && MO.late && MO.late.some(x => dec2538.has(dec2538.late(x.row)))) MO.late = MO.late.filter(x => !dec2538.has(dec2538.late(x.row))); const L = (MO.late || []).filter(x => !(+x.row > 1e9 && Date.now() - +x.row > 36 * 36e5)), sig = JSON.stringify(L.map(x => x.row));   /* 2354: past the 24 h rule it is already decided */ let box = document.getElementById('lqmBox');
     if(!L.length && window.LATE_OFF1943){ const s1943 = 'off' + window.LATE_OFF1943; if(box && root.contains(box) && LQS === s1943 && !force) return; LQS = s1943;   /* 1943 */
       if(!box || !root.contains(box)){ box = document.createElement('section'); box.id = 'lqmBox'; box.style.cssText = 'margin:0 0 16px'; root.insertBefore(box, root.firstChild); }
       box.innerHTML = '<div class="lqm" style="background:#F7F5FC;border-color:#E2DEEE"><b><svg class="u-ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#B5432C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>Lates to decide</b><div class="small mute" style="margin-top:2px">Could not check the database just now · tap ↻ in a minute. Lates are never decided twice, and the 24 h rule still runs.</div></div>'; return; }
@@ -40166,9 +40166,9 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
   window.wf2135Flag = async function(teacher, proof){ if(!confirm('Mark Wi-Fi in Teacher ' + teacher + '’s time-in picture?\n\nThe teacher gets the contract warning, and I’m in is locked until the LAN cable is connected (or you allow it).')) return;
     const r = await call('flag', { teacher, proof: proof || '' }); say(r && r.ok ? '✓ Warning sent to Teacher ' + teacher : 'Not saved · try again'); try{ if(window.o2091load) o2091load(true); }catch(e){} };
   window.wf2135Close = async function(id, result, teacher){
-    if(result === 'confirmed'){ const r = await call('close', { id, result }); if(!r || !r.ok) return say('Not saved · try again'); say('Opening the Wi-Fi case'); setTimeout(() => { try{ window.wfFill2159 && wfFill2159(r.info, teacher); }catch(e){} }, 450);   /* 2159 */ try{ if(typeof wifiCase === 'function'){ wifiCase(); setTimeout(() => { const s = document.getElementById('cT') || document.querySelector('#sheetBody select'); if(s && teacher){ const o = [...(s.options || [])].find(x => x.value === teacher || x.text.replace(/^Teacher\s+/i, '') === teacher); if(o){ s.value = o.value; s.dispatchEvent(new Event('change', { bubbles: true })); } } }, 300); } }catch(e){} return; }
+    if(result === 'confirmed'){ const r = await call('close', { id, result }); if(!r || !r.ok) return say('Not saved · try again'); say('Opening the Wi-Fi case'); try{ if(window.o2091load) o2091load(true); }catch(e){} setTimeout(() => { try{ window.wfFill2159 && wfFill2159(r.info, teacher); }catch(e){} }, 450);   /* 2159 */ try{ if(typeof wifiCase === 'function'){ wifiCase(); setTimeout(() => { const s = document.getElementById('cT') || document.querySelector('#sheetBody select'); if(s && teacher){ const o = [...(s.options || [])].find(x => x.value === teacher || x.text.replace(/^Teacher\s+/i, '') === teacher); if(o){ s.value = o.value; s.dispatchEvent(new Event('change', { bubbles: true })); } } }, 300); } }catch(e){} return; }
     if(!confirm('Allow Teacher ' + teacher + ' today? (not Wi-Fi, or teaching on backup / with written approval)\n\nI’m in opens for the teacher.')) return;
-    const r = await call('close', { id, result: 'cleared' }); say(r && r.ok ? '✓ Teacher ' + teacher + ' can tap I’m in' : 'Not saved · try again'); };
+    const r = await call('close', { id, result: 'cleared' }); say(r && r.ok ? '✓ Teacher ' + teacher + ' can tap I’m in' : 'Not saved · try again'); try{ if(r && r.ok && window.o2091load) o2091load(true); }catch(e){} };
 
   /* Team Chat › Time-in pictures: "Wi-Fi in this picture" for management */
   function chatBtns(){ try{ if(!(typeof D !== 'undefined' && D && D.mgr)) return; const v = document.getElementById('v-chat'); if(!v) return;
@@ -40450,7 +40450,7 @@ window.pr2059 = function(){ try{ const P = (typeof D !== 'undefined' && D && !D.
     say('Case filled in · check it and tap Add'); };
   window.wf2159Decided = async function(id, btn){ if(btn) btn.disabled = true;
     try{ const r = await fetch(U(), { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'decided', id }) }).then(x => x.json());
-      if(!r || !r.ok) throw 0; say('✓ Off the list'); try{ if(window.o2091load) o2091load(true); }catch(e){} }catch(e){ if(btn) btn.disabled = false; say('Not saved · try again'); } };
+      if(!r || !r.ok) throw 0; try{ const F = window.FX2214; if(F && F.items) F.items = F.items.filter(y => !(y.kind === 'wifi5' && +y.id === +id)); const it = btn && btn.closest('.o91-it'); if(it) it.remove(); }catch(e){} say('✓ Off the list'); try{ if(window.o2091load) o2091load(true); }catch(e){} }catch(e){ if(btn) btn.disabled = false; say('Not saved · try again'); } };
   document.head.insertAdjacentHTML('beforeend', '<style id="d2159">.wf2135 .wf-ex{margin:12px 0;padding:12px;border-radius:12px;background:#F7F6FB;border:1px solid #E6E3F0}.wf2135 .wf-ex textarea{margin-top:8px;width:100%;box-sizing:border-box}.wf2135 .wf-sent{margin-top:6px;font-size:13px;color:#4A4660;line-height:1.45}</style>');
 })();
 </script>
@@ -44391,6 +44391,14 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
   const mo = new MutationObserver(() => { if(busy || q) return; q = requestAnimationFrame(() => { q = 0; run(); }); });
   function start(){ const v = document.getElementById('v-home') || document.body; mo.observe(v, { childList: true, subtree: true }); run(); }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+<script id="b2538">
+(function(){ const K = 'coe.dec2538';
+  const get = () => { try{ const o = JSON.parse(localStorage.getItem(K) || '{}'), n = Date.now(); for(const k in o) if(o[k] < n) delete o[k]; return o; }catch(e){ return {}; } };
+  window.dec2538 = { add: k => { try{ const o = get(); o[k] = Date.now() + 36 * 36e5; localStorage.setItem(K, JSON.stringify(o)); }catch(e){} }, has: k => !!get()[k],
+    late: row => 'late:' + Math.floor(+row / 1000) };
+  if(!window.o2091load) window.o2091load = function(){ try{ if(window.fx2214Load) window.fx2214Load(); }catch(e){} };
 })();
 </script>
 <script id="b2278">
