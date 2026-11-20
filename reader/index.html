@@ -228,11 +228,12 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
   paintSide(); loadAnn(); $('wrap').style.display = 'none'; msg('Opening the book…', true);
   const opt = { rangeChunkSize: 262144, disableAutoFetch: true, cMapUrl: './pdfjs/cmaps/', cMapPacked: true, standardFontDataUrl: './pdfjs/standard_fonts/' };
   try{ if(doc){ try{ doc.destroy(); }catch(e){} doc = null; }
-    let meta = null; try{ meta = await fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'meta', token: TOKEN, id }) }).then(x => x.json()); }catch(e){}
+    let meta = null; for(let k = 0; k < 2 && !meta; k++){ try{ meta = await fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'meta', token: TOKEN, id }) }).then(x => x.json()); }catch(e){ if(!k) await new Promise(r => setTimeout(r, 800)); } }   /* 2543: one retry on a WiFi blip */
     /* 2281: our copy page by page → else a lighter copy of the same book → else Drive page by page (never the whole file first) */
     try{ if(meta && meta.copied && meta.size) doc = await ranged(ST(id), +meta.size, opt);
       else if(meta && meta.alt && meta.altSize){ want(id); doc = await ranged(ST(meta.alt), +meta.altSize, opt); }
-      else { want(id); if(!(meta && meta.size)) throw new Error('no size'); doc = await ranged(PX(id), +meta.size, opt); } }
+      else { let hs = 0; if(!(meta && meta.ok !== false && meta.size)){ try{ const hd = await fetch(ST(id), { method: 'HEAD', cache: 'no-store' }); if(hd.ok) hs = +hd.headers.get('content-length') || 0; }catch(e){} }   /* 2543: the check failed → our own copy, page by page, before the slow Drive stream */
+        if(hs) doc = await ranged(ST(id), hs, opt); else { want(id); if(!(meta && meta.size)) throw new Error('no size'); doc = await ranged(PX(id), +meta.size, opt); } } }
     catch(e){ want(id); doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt, { disableRange: true, disableStream: false })).promise; }   /* 2278 */
     soon();
     PRE.clear(); CROP.clear(); PG1 = await findFirst(doc); pageNo = PG1; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > PG1 && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
