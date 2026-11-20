@@ -153,6 +153,17 @@ body.present .tph img{max-height:26vh}body.present .tph figcaption{font-size:11p
 .krow4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.krow4>div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
 .krow4 b{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}.krow4 p{margin:0 0 6px;color:#4A4566;font-size:15px;line-height:1.45}
 @media (max-width:999px){.krow4{grid-template-columns:1fr 1fr}.kfmt{grid-template-columns:1fr}}
+.kfl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:20px 0 4px}
+.kfl input{flex:1 1 260px;min-width:200px;height:40px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font:inherit;font-size:15px;background:#fff;box-sizing:border-box}
+.kfc{font:inherit;font-size:14px;cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;color:#4A4566}
+.kfc.on{background:var(--c1,var(--ink));color:var(--c2,#fff);border-color:var(--c2,var(--ink));font-weight:700}
+.kgx{margin:18px 0 0}.kgx .kch{margin:0 0 8px}
+.kl{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.kr{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 16px;border-top:1px solid #F0EEF5;cursor:pointer}
+.kr:first-child{border-top:0}.kr:hover{background:#FAFAFD}.kr:focus-visible{outline:2px solid #0E7C6E;outline-offset:-2px}
+.kr .kno{width:26px;height:26px;font-size:13px}
+.krt{line-height:1.4}.krt b{color:var(--ink);font-size:16px}.krt .zh{font-size:13px;color:#8A86A0}.krs{color:#6B6884;font-size:14px}
+.kru{font-size:12.5px;color:#8A86A0;white-space:nowrap}.kru.u{color:#1F6236;font-weight:700}
 .kcat{margin:0 0 22px}.kcat:first-of-type{margin-top:20px}.kch{display:flex;align-items:baseline;gap:10px;margin:0 0 10px}.kch b{font-size:19px;color:var(--ink)}.kch .zt{margin:0;font-size:13px;color:#8A86A0}.kch .sub{margin:0}
 .kno{flex:none;width:30px;height:30px;border-radius:50%;background:#EEEDFE;color:#3C3489;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .kpc{font:inherit;cursor:pointer;background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:clamp(16px,1.3vw,22px);color:var(--ink);display:inline-flex;align-items:center;gap:8px}
@@ -587,27 +598,43 @@ function paintKit(kind){ const K = window.KITS; if(!K){ app.innerHTML = '<main><
   const len = KS('len') === '25' ? '25' : '50', lv = KS('lv') === 'adults' ? 'adults' : 'teens';
   const seg = (name, cur, opts) => '<div class="seg">' + opts.map(o => '<button type="button" class="chipb' + (o[0] === cur ? ' on' : '') + '" style="' + (o[0] === cur ? 'background:var(--ink);color:#fff;border-color:var(--ink)' : '') + '" data-' + name + '="' + o[0] + '">' + o[1] + '</button>').join('') + '</div>';
   const plan = K.plans[kind + len] || [], planTxt = plan.map(p => (kind === 'ielts' && p[0] === 'warm' ? 'Format' : p[1]) + ' ' + p[2]).join(' · ');
-  let cards = '';
+  /* 2513 (Misty: option A) · one line per topic, grouped and numbered, with search and category chips; "Used" for the chosen student */
+  const GR = [];
   if(kind === 'free'){ const FL = K.free.filter(t => t.lv === lv);
-    cards = Object.keys(ST).map(k => { const L = FL.filter(t => t.strand === k); if(!L.length) return '';
-      const cc = PC[k] || PC.daily;
-      return '<section class="kcat"><div class="kch"><b class="kcl" style="background:' + cc[0] + ';color:' + cc[1] + '">' + esc(ST[k]) + '</b><span class="sub">' + L.length + (L.length > 1 ? ' topics' : ' topic') + '</span></div><div class="kg">'
-        + L.map((t, n) => '<div class="kc" data-k="' + t.id + '" tabindex="0" role="button" style="flex-direction:row;gap:12px;align-items:flex-start;border-left:4px solid ' + cc[1] + '"><span class="kno" style="background:' + cc[0] + ';color:' + cc[1] + '">' + (n + 1) + '</span><span style="display:flex;flex-direction:column;gap:6px;min-width:0"><b>' + esc(t.title) + '</b><span class="zh">' + esc(t.zh) + '</span><span class="sub" style="margin:0">' + esc(t.q[0]) + '</span></span></div>').join('') + '</div></section>'; }).join(''); }
+    Object.keys(ST).forEach(k => { const L = FL.filter(t => t.strand === k); if(L.length) GR.push({ k, name: ST[k], zh: '', cc: PC[k] || PC.daily, items: L.map(t => ({ id: t.id, title: t.title, zh: t.zh || '', sub: t.q[0] || '' })) }); }); }
   else { const CAT = [['people', 'People', '人物', ['#FDECEF', '#9C2F52']], ['places', 'Places', '地点', ['#E3F1FA', '#1D5A80']], ['objects', 'Objects', '物品', ['#FFF1D6', '#8A5A00']], ['events', 'Events and experiences', '经历与事件', ['#F0E8FB', '#5B3A8C']], ['activities', 'Activities', '活动', ['#E3F4EA', '#1F6236']]];
-    cards = CAT.map(c => { const CM = { 'i-talent': 'objects', 'i-places': 'places', 'i-people': 'people', 'i-objects': 'objects', 'i-events': 'events', 'i-study': 'activities', 'i-tech': 'objects', 'i-nature': 'places', 'i-media': 'events' }; const L = (K.ielts2 || []).filter(t => (t.cat || CM[t.id] || 'events') === c[0]); if(!L.length) return '';
-      const cc = c[3];
-      return '<section class="kcat"><div class="kch"><b class="kcl" style="background:' + cc[0] + ';color:' + cc[1] + '">' + esc(c[1]) + '</b><span class="zt">' + esc(c[2]) + '</span><span class="sub">' + L.length + (L.length > 1 ? ' sets' : ' set') + '</span></div><div class="kg">'
-        + L.map((t, n) => '<div class="kc" data-k="' + t.id + '" tabindex="0" role="button" style="flex-direction:row;gap:12px;align-items:flex-start;border-left:4px solid ' + cc[1] + '"><span class="kno" style="background:' + cc[0] + ';color:' + cc[1] + '">' + (n + 1) + '</span><span style="display:flex;flex-direction:column;gap:6px;min-width:0"><b>' + esc(t.p2[0].task.replace(/^Describe /, '').replace(/^./, x => x.toUpperCase()).replace(/\.$/, '')) + '</b><span class="sub" style="margin:0">' + esc(t.theme) + ' · Part 1: ' + esc(t.p1.map(x => x.t).join(', ')) + '</span></span></div>').join('') + '</div></section>'; }).join(''); }
+    const CM = { 'i-talent': 'objects', 'i-places': 'places', 'i-people': 'people', 'i-objects': 'objects', 'i-events': 'events', 'i-study': 'activities', 'i-tech': 'objects', 'i-nature': 'places', 'i-media': 'events' };
+    CAT.forEach(c => { const L = (K.ielts2 || []).filter(t => (t.cat || CM[t.id] || 'events') === c[0]); if(L.length) GR.push({ k: c[0], name: c[1], zh: c[2], cc: c[3], items: L.map(t => ({ id: t.id, title: t.p2[0].task.replace(/^Describe /, '').replace(/^./, x => x.toUpperCase()).replace(/\.$/, ''), zh: '', sub: t.theme + ' · Part 1: ' + t.p1.map(x => x.t).join(', ') })) }); }); }
+  const total = GR.reduce((a, g) => a + g.items.length, 0), cf0 = KS('cf.' + kind) || '';
+  const tools = '<div class="kfl"><input id="kQ" type="search" placeholder="Search topics or words" aria-label="Search topics" autocomplete="off"><button type="button" class="kfc" data-cf="">All ' + total + '</button>'
+    + GR.map(g => '<button type="button" class="kfc" data-cf="' + g.k + '" style="--c1:' + g.cc[0] + ';--c2:' + g.cc[1] + '">' + esc(g.name) + ' ' + g.items.length + '</button>').join('') + '</div>';
+  const cards = GR.map(g => '<section class="kgx" data-g="' + g.k + '"><div class="kch"><b class="kcl" style="background:' + g.cc[0] + ';color:' + g.cc[1] + '">' + esc(g.name) + '</b>' + (g.zh ? '<span class="zt">' + esc(g.zh) + '</span>' : '') + '<span class="sub">' + g.items.length + '</span></div><div class="kl">'
+      + g.items.map((t, n) => '<div class="kr" data-k="' + t.id + '" data-s="' + esc((t.title + ' ' + t.zh + ' ' + t.sub).toLowerCase()) + '" tabindex="0" role="button"><span class="kno" style="background:' + g.cc[0] + ';color:' + g.cc[1] + '">' + (n + 1) + '</span><span class="krt"><b>' + esc(t.title) + '</b>' + (t.zh ? ' <span class="zh">' + esc(t.zh) + '</span>' : '') + '<span class="krs"> · ' + esc(t.sub) + '</span></span><span class="kru" data-u="' + t.id + '"></span></div>').join('') + '</div></section>').join('')
+    + '<div class="empty" id="kNone" style="display:none">No topic matches. Try another word.</div>';
   app.innerHTML = '<main class="dash">' + KN() + '<div class="libh"><div><h1>' + (kind === 'ielts' ? 'IELTS Speaking' : 'Free talk') + '</h1><p class="sub">' + (kind === 'ielts' ? 'Part 1 with A–R–E · Part 2 cue card with P–P–F (1 min to prepare, up to 2 min to speak) · Part 3 with P–R–E–L. Words and phrases for every question; model answers stay hidden until you show them.' : 'For Teens and Adults who want to practise speaking. Open one in class and share your screen.') + '</p></div></div>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><label class="sub" for="kStu" style="margin:0">Student</label><select id="kStu" style="min-width:340px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff"><option value="">Choose the student</option></select><span class="sub" style="margin:0">Teacher notes go to this student\'s Speaking history</span></div>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">' + (kind === 'free' ? seg('lv', lv, [['teens', 'Teens · A2–B2'], ['adults', 'Adults · A2–B2']]) : '') + seg('len', len, [['25', '25 minutes'], ['50', '50 minutes']]) + '<span class="sub" style="margin:0">' + esc(planTxt) + '</span></div>'
-    + cards + '</main>';
+    + tools + cards + '</main>';
   bindKN(kind);
   app.querySelectorAll('[data-lv]').forEach(b => b.onclick = () => { KS('lv', b.dataset.lv); paintKit(kind); });
   students().then(L2 => { const s0 = $('kStu'); if(!s0) return; const cur = kitStu(); s0.innerHTML = '<option value="">Choose the student</option>' + (L2 || []).map(x => '<option value="' + esc(x.code) + '"' + (cur && cur.code === x.code ? ' selected' : '') + '>' + esc(x.student) + ' · ' + esc(x.code) + '</option>').join('');
-    s0.onchange = () => { const o = s0.options[s0.selectedIndex]; try{ if(s0.value) sessionStorage.setItem('coe.kit.stu', JSON.stringify({ code: s0.value, name: o.text.split(' · ')[0] })); else sessionStorage.removeItem('coe.kit.stu'); }catch(e){} }; });
+    s0.onchange = () => { const o = s0.options[s0.selectedIndex]; try{ if(s0.value) sessionStorage.setItem('coe.kit.stu', JSON.stringify({ code: s0.value, name: o.text.split(' · ')[0] })); else sessionStorage.removeItem('coe.kit.stu'); }catch(e){} usedFor(kind); }; });
   app.querySelectorAll('[data-len]').forEach(b => b.onclick = () => { KS('len', b.dataset.len); paintKit(kind); });
-  app.querySelectorAll('.kc').forEach(c => { const go = () => kind === 'ielts' && window.KITS.ielts2 ? openIelts(c.dataset.k, len) : openKit(kind, c.dataset.k, len); c.onclick = go; c.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } }; }); }
+  app.querySelectorAll('.kc,.kr').forEach(c => { const go = () => kind === 'ielts' && window.KITS.ielts2 ? openIelts(c.dataset.k, len) : openKit(kind, c.dataset.k, len); c.onclick = go; c.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } }; });
+  let cf = GR.some(g => g.k === cf0) ? cf0 : '';
+  const filt = () => { const q = ((($('kQ') || {}).value) || '').trim().toLowerCase(); let any = 0;
+    app.querySelectorAll('.kfc').forEach(b => b.classList.toggle('on', b.dataset.cf === cf));
+    app.querySelectorAll('.kgx').forEach(sec => { let n = 0; const okG = !cf || sec.dataset.g === cf;
+      sec.querySelectorAll('.kr').forEach(r => { const ok = okG && (!q || r.dataset.s.indexOf(q) > -1); r.style.display = ok ? '' : 'none'; if(ok) n++; }); sec.style.display = n ? '' : 'none'; any += n; });
+    const no = $('kNone'); if(no) no.style.display = any ? 'none' : ''; };
+  app.querySelectorAll('.kfc').forEach(b => b.onclick = () => { cf = b.dataset.cf; KS('cf.' + kind, cf); filt(); });
+  if($('kQ')) $('kQ').oninput = filt; filt();
+  usedFor(kind); }
+/* 2513 · "Used · 12 Nov" on each topic the chosen student already did (from their Speaking history) */
+async function usedFor(kind){ const st = kitStu(); app.querySelectorAll('.kru').forEach(x => { x.textContent = ''; x.classList.remove('u'); }); if(!st) return;
+  try{ const j = await call('coe-talk', { token: TOKEN, op: 'speakList', code: st.code }); const seen = {};
+    (j.rows || []).forEach(r => { if(r.set_id && !seen[r.set_id]) seen[r.set_id] = r; });
+    app.querySelectorAll('.kru').forEach(x => { const r = seen[x.dataset.u]; if(!r) return; const d = new Date(r.created_at); x.textContent = 'Used · ' + d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]; x.classList.add('u'); x.title = 'With ' + (r.teacher ? 'Teacher ' + r.teacher : 'a teacher'); }); }catch(e){} }
 function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? K.ielts : K.free).find(x => x.id === id); if(!t) return;
   const plan = K.plans[kind + len] || []; let step = 0, left = plan.length ? plan[0][2] * 60 : 0, run = true, tick = null, mini = null, notes = false, open = -1, cmt = ''; const marks = {}, used = {};
   const who = (kitStu() || {}).name || '';
