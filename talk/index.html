@@ -153,6 +153,8 @@ body.present .tph img{max-height:26vh}body.present .tph figcaption{font-size:11p
 .krow4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.krow4>div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
 .krow4 b{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}.krow4 p{margin:0 0 6px;color:#4A4566;font-size:15px;line-height:1.45}
 @media (max-width:999px){.krow4{grid-template-columns:1fr 1fr}}
+.kcat{margin:0 0 22px}.kch{display:flex;align-items:baseline;gap:10px;margin:0 0 10px}.kch b{font-size:19px;color:var(--ink)}.kch .zt{margin:0;font-size:13px;color:#8A86A0}.kch .sub{margin:0}
+.kno{flex:none;width:30px;height:30px;border-radius:50%;background:#EEEDFE;color:#3C3489;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
 /* student page and class (full screen) */
 .st{max-width:1180px;margin:0 auto;padding:26px 28px 40px}
 .st h2{font-family:'COE Card Fredoka',Fredoka,sans-serif;font-weight:400;font-size:38px;line-height:1.15;margin:8px 0 4px}
@@ -188,7 +190,7 @@ body.present .st .think,body.present .st .tryh{font-size:clamp(17px,1.35vw,21px)
 <div class="toast" id="toast"></div>
 <script src="../homework/hdr.js"></script>
 <script src="kits.js?v=2487"></script>
-<script src="ielts.js?v=2487"></script>
+<script src="ielts.js?v=2488"></script>
 <script>
 (function(){
 const API = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/';
@@ -486,10 +488,13 @@ function paintKit(kind){ const K = window.KITS; if(!K){ app.innerHTML = '<main><
   const plan = K.plans[kind + len] || [], planTxt = plan.map(p => p[1] + ' ' + p[2]).join(' · ');
   let cards = '';
   if(kind === 'free') cards = K.free.filter(t => t.lv === lv).map(t => '<div class="kc" data-k="' + t.id + '" tabindex="0" role="button"><span class="lb" style="align-self:flex-start;background:#F1F0F6;color:#4A4566">' + esc(ST[t.strand] || t.strand) + '</span><b>' + esc(t.title) + '</b><span class="zh">' + esc(t.zh) + '</span><span class="sub">' + esc(t.q[0]) + '</span></div>').join('');
-  else cards = (K.ielts2 || []).map(t => '<div class="kc" data-k="' + t.id + '" tabindex="0" role="button"><span class="lb" style="align-self:flex-start;background:#E6EEFB;color:#2B4C8C">' + esc(t.theme) + ' · ' + esc(t.zh) + '</span><b>' + esc(t.p2[0].task) + '</b><span class="sub">Part 1: ' + esc(t.p1.map(x => x.t).join(', ')) + ' · Part 3: ' + t.p3.length + ' questions</span></div>').join('');
+  else { const CAT = [['people', 'People', '人物'], ['places', 'Places', '地点'], ['objects', 'Objects', '物品'], ['events', 'Events and experiences', '经历与事件'], ['activities', 'Activities', '活动']];
+    cards = CAT.map(c => { const L = (K.ielts2 || []).filter(t => t.cat === c[0]); if(!L.length) return '';
+      return '<section class="kcat"><div class="kch"><b>' + esc(c[1]) + '</b><span class="zt">' + esc(c[2]) + '</span><span class="sub">' + L.length + (L.length > 1 ? ' sets' : ' set') + '</span></div><div class="kg">'
+        + L.map((t, n) => '<div class="kc" data-k="' + t.id + '" tabindex="0" role="button" style="flex-direction:row;gap:12px;align-items:flex-start"><span class="kno">' + (n + 1) + '</span><span style="display:flex;flex-direction:column;gap:6px;min-width:0"><b>' + esc(t.p2[0].task.replace(/^Describe /, '').replace(/^./, x => x.toUpperCase()).replace(/\.$/, '')) + '</b><span class="sub" style="margin:0">' + esc(t.theme) + ' · Part 1: ' + esc(t.p1.map(x => x.t).join(', ')) + '</span></span></div>').join('') + '</div></section>'; }).join(''); }
   app.innerHTML = '<main class="dash">' + KN() + '<div class="libh"><div><h1>' + (kind === 'ielts' ? 'IELTS Speaking' : 'Free talk') + '</h1><p class="sub">' + (kind === 'ielts' ? 'Part 1 with A–R–E · Part 2 cue card with P–P–F (1 min to prepare, up to 2 min to speak) · Part 3 with P–R–E–L. Words and phrases for every question; model answers stay hidden until you show them.' : 'For Teens and Adults who want to practise speaking. Open one in class and share your screen.') + '</p></div></div>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">' + (kind === 'free' ? seg('lv', lv, [['teens', 'Teens · A2–B2'], ['adults', 'Adults · A2–B2']]) : '') + seg('len', len, [['25', '25 minutes'], ['50', '50 minutes']]) + '<span class="sub" style="margin:0">' + esc(planTxt) + '</span></div>'
-    + '<div class="kg">' + cards + '</div></main>';
+    + (kind === 'ielts' ? cards : '<div class="kg">' + cards + '</div>') + '</main>';
   bindKN(kind);
   app.querySelectorAll('[data-lv]').forEach(b => b.onclick = () => { KS('lv', b.dataset.lv); paintKit(kind); });
   app.querySelectorAll('[data-len]').forEach(b => b.onclick = () => { KS('len', b.dataset.len); paintKit(kind); });

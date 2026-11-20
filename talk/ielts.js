@@ -8,7 +8,7 @@
   const q3 = (q, ph, p, r, e, l) => ({ q, ph, m: [p, r, e, l] });
   window.KITS = window.KITS || {};
   window.KITS.ielts2 = [
-    { id: 'i-talent', theme: 'Talent', zh: '才能', from: 'CupOfEnglish deck',
+    { id: 'i-talent', cat: 'objects', theme: 'Talent', zh: '才能', from: 'CupOfEnglish deck',
       p1: [{ t: 'Talent', q: [
         q1('Do you have a talent or something you are good at?', ['I\'m quite good at…', 'a natural talent for', 'For instance,…'],
           'Yes, I\'d say I\'m [[quite good at]] drawing.', 'I think it\'s because I [[practise]] almost every day.', '[[For instance]], last month I designed the poster for our school event.'),
@@ -32,7 +32,7 @@
         q3('Is it expensive to decorate a house or an apartment where you live?', ['It depends on your budget', 'affordable', 'without breaking the bank', 'lavish'],
           '[[It depends on your budget]].', 'Simple decorations can be quite [[affordable]], while designer furniture is costly.', 'For example, some families repaint old furniture and decorate [[without breaking the bank]].', 'So it can be cheap or [[lavish]], depending on what people want.')
       ] },
-    { id: 'i-places', theme: 'Places', zh: '地点',
+    { id: 'i-places', cat: 'places', theme: 'Places', zh: '地点',
       p1: [{ t: 'Your home town', q: [
         q1('Where is your home town?', ['I come from…', 'It\'s located in…', 'It\'s known for…'], 'I [[come from]] a city in the east of China.', 'It\'s [[located]] near the coast, so the weather is mild.', 'It\'s [[known for]] its seafood and its old harbour.'),
         q1('What do you like about it?', ['What I like most is…', 'friendly and welcoming', 'There\'s always something to do'], '[[What I like most is]] the food.', 'The local dishes are simple but delicious.', 'For example, my favourite noodle shop has been open for thirty years.'),
@@ -53,7 +53,7 @@
         q3('Should cities spend more on parks or on sports centres?', ['On balance', 'accessible to everyone', 'public health'], '[[On balance]], I think parks are a better investment.', 'Parks are free and [[accessible to everyone]], including older people.', 'A park near my home is busy from early morning until night.', 'So parks do more for [[public health]] than sports centres.'),
         q3('How might tourism change a quiet place?', ['bring in money', 'overcrowded', 'lose its character'], 'Tourism can change a place a lot.', 'It can [[bring in money]], but it can also make a place [[overcrowded]].', 'A small village near my city became famous online and now has traffic jams.', 'If it is not managed well, a quiet place may [[lose its character]].')
       ] },
-    { id: 'i-people', theme: 'People', zh: '人物',
+    { id: 'i-people', cat: 'people', theme: 'People', zh: '人物',
       p1: [{ t: 'Family', q: [
         q1('Do you have a big family?', ['a fairly small family', 'There are … of us', 'extended family'], 'No, I have [[a fairly small family]].', '[[There are]] three [[of us]] at home.', 'But my [[extended family]] is big, and we all meet at Spring Festival.'),
         q1('Who are you closest to in your family?', ['I\'m closest to…', 'get along well', 'confide in'], '[[I\'m closest to]] my older sister.', 'We [[get along well]] because we have similar interests.', 'When I have a problem at school, I always [[confide in]] her first.'),
@@ -74,7 +74,7 @@
         q3('Should schools teach children to help others?', ['Absolutely', 'empathy', 'volunteer'], '[[Absolutely]], they should.', 'Helping others builds [[empathy]], which is as important as grades.', 'Some schools ask students to [[volunteer]] at elderly homes once a term.', 'Lessons like this prepare children to be good members of society.'),
         q3('How has technology changed the way people help each other?', ['online fundraising', 'reach more people', 'face-to-face'], 'Technology has made helping much faster.', 'People can [[reach more people]] in minutes.', 'For example, [[online fundraising]] can pay for someone\'s hospital bills in a day.', 'Still, [[face-to-face]] help is important, especially for older people.')
       ] },
-    { id: 'i-objects', theme: 'Objects', zh: '物品',
+    { id: 'i-objects', cat: 'objects', theme: 'Objects', zh: '物品',
       p1: [{ t: 'Phones', q: [
         q1('How often do you use your phone?', ['all the time', 'more than I should', 'check messages'], 'Honestly, [[more than I should]].', 'I use it for study, chatting and paying for things.', 'This morning I [[checked messages]] before I even got up.'),
         q1('What do you use it for most?', ['mainly for', 'keep in touch', 'look things up'], 'I use it [[mainly for]] messaging.', 'It\'s the easiest way to [[keep in touch]] with friends.', 'I also [[look things up]] when I find a new English word.'),
@@ -95,7 +95,7 @@
         q3('Are expensive things always better?', ['Not necessarily', 'paying for the brand', 'quality'], '[[Not necessarily]].', 'Often you are [[paying for the brand]], not better [[quality]].', 'My cheap phone case has lasted longer than an expensive one I had.', 'So price is only one thing to think about.'),
         q3('Should products be made to last longer?', ['reduce waste', 'repairable', 'in the long term'], 'Yes, I strongly believe they should.', 'Longer-lasting products [[reduce waste]] and save money [[in the long term]].', 'Some phones are now designed to be [[repairable]] at home.', 'That\'s better for both customers and the environment.')
       ] },
-    { id: 'i-events', theme: 'Events', zh: '经历与事件',
+    { id: 'i-events', cat: 'events', theme: 'Events', zh: '经历与事件',
       p1: [{ t: 'Birthdays', q: [
         q1('How do you usually celebrate your birthday?', ['keep it simple', 'have a meal with', 'make a wish'], 'I usually [[keep it simple]].', 'I prefer spending time with close family.', 'Last year we [[had a meal with]] my grandparents and I [[made a wish]] over the cake.'),
         q1('Is your birthday important to you?', ['not a big deal', 'a chance to', 'look back on'], 'It\'s [[not a big deal]], but I like it.', 'It\'s [[a chance to]] see people I care about.', 'I also [[look back on]] what I learned that year.'),
@@ -116,7 +116,7 @@
         q3('Do people spend too much money on celebrations?', ['go overboard', 'social pressure', 'meaningful'], 'Some people do [[go overboard]].', 'There is [[social pressure]] to have big weddings.', 'I know families who borrowed money for a wedding banquet.', 'A smaller celebration can be just as [[meaningful]].'),
         q3('Should schools celebrate festivals from other countries?', ['broaden their horizons', 'cultural awareness', 'as long as'], 'Yes, I think they should.', 'It helps students [[broaden their horizons]].', 'My school had an international day with food from different countries.', 'It builds [[cultural awareness]], [[as long as]] local festivals are celebrated too.')
       ] },
-    { id: 'i-study', theme: 'Study and work', zh: '学习与工作',
+    { id: 'i-study', cat: 'activities', theme: 'Study and work', zh: '学习与工作',
       p1: [{ t: 'Work or study', q: [
         q1('Do you work or are you a student?', ['I\'m currently…', 'majoring in', 'in my final year'], '[[I\'m currently]] a student.', 'I\'m [[majoring in]] business at university.', 'I\'m [[in my final year]], so I\'m busy with my graduation project.'),
         q1('What do you like about it?', ['What I enjoy most is…', 'hands-on', 'like-minded people'], '[[What I enjoy most is]] the group projects.', 'I meet [[like-minded people]] and learn from them.', 'Last term our team made a [[hands-on]] marketing plan for a real café.'),
@@ -137,7 +137,7 @@
         q3('Should adults keep learning new skills?', ['lifelong learning', 'stay competitive', 'keeps the mind active'], 'Yes, [[lifelong learning]] is important.', 'Jobs change, so adults need to [[stay competitive]].', 'My father learned to use design software in his fifties.', 'It also [[keeps the mind active]] as people get older.'),
         q3('How can schools prepare students for work?', ['real-world experience', 'internships', 'soft skills'], 'Schools should give more [[real-world experience]].', 'Students learn faster when they apply knowledge.', 'Short [[internships]] let students see how companies work.', 'This builds [[soft skills]] that exams cannot measure.')
       ] },
-    { id: 'i-tech', theme: 'Technology', zh: '科技',
+    { id: 'i-tech', cat: 'objects', theme: 'Technology', zh: '科技',
       p1: [{ t: 'The internet', q: [
         q1('How much time do you spend online each day?', ['roughly', 'a few hours', 'lose track of time'], '[[Roughly]] four hours a day.', 'Most of it is for study and messages.', 'At weekends I sometimes [[lose track of time]] watching videos.'),
         q1('What websites or apps do you use most?', ['I mostly use…', 'handy', 'keep up with'], '[[I mostly use]] a video app and a dictionary app.', 'The dictionary is very [[handy]] for English.', 'I also use news apps to [[keep up with]] current events.'),
@@ -158,7 +158,7 @@
         q3('Should children have their own phones?', ['at a certain age', 'with limits', 'safety'], 'Children should have phones [[at a certain age]], maybe twelve.', 'Phones help with [[safety]] when they travel alone.', 'My younger brother uses his phone to tell my parents when he leaves school.', 'But they should be used [[with limits]] on games and social media.'),
         q3('What are the risks of relying on AI tools?', ['make mistakes', 'double-check', 'think for yourself'], 'The main risk is trusting AI too much.', 'AI tools can [[make mistakes]] that sound correct.', 'A classmate copied an AI answer with a wrong date in his essay.', 'So people should [[double-check]] facts and still [[think for yourself]].')
       ] },
-    { id: 'i-nature', theme: 'Nature', zh: '自然',
+    { id: 'i-nature', cat: 'places', theme: 'Nature', zh: '自然',
       p1: [{ t: 'Animals', q: [
         q1('Do you like animals?', ['I\'m an animal lover', 'especially', 'fascinated by'], 'Yes, [[I\'m an animal lover]], [[especially]] of dogs.', 'They are loyal and friendly.', 'I volunteer at an animal shelter once a month.'),
         q1('Did you have a pet as a child?', ['I used to have…', 'look after', 'responsibility'], 'Yes, [[I used to have]] a goldfish.', 'My parents wanted me to learn [[responsibility]].', 'I had to [[look after]] it and clean the tank every week.'),
@@ -179,7 +179,7 @@
         q3('Who should protect wild animals: governments or individuals?', ['both have a role', 'enforce laws', 'raise awareness'], 'I believe [[both have a role]].', 'Governments can [[enforce laws]], while individuals change daily habits.', 'For example, people can refuse to buy products made from wild animals.', 'Working together is the only way to protect wildlife.'),
         q3('How might cities become greener?', ['plant more trees', 'rooftop gardens', 'public transport'], 'Cities can become greener in several ways.', 'They can [[plant more trees]] and build [[rooftop gardens]].', 'Some cities have turned old railways into long parks.', 'Better [[public transport]] would also reduce pollution.')
       ] },
-    { id: 'i-media', theme: 'Media and news', zh: '媒体与新闻',
+    { id: 'i-media', cat: 'events', theme: 'Media and news', zh: '媒体与新闻',
       p1: [{ t: 'TV and music', q: [
         q1('Do you watch much TV?', ['not much', 'streaming', 'binge-watch'], '[[Not much]] TV, but I watch shows online.', '[[Streaming]] lets me watch when I want.', 'Sometimes I [[binge-watch]] a whole series at the weekend.'),
         q1('What kind of music do you like?', ['I\'m really into…', 'catchy', 'it depends on my mood'], '[[I\'m really into]] pop music.', 'The songs are [[catchy]] and easy to sing.', 'But [[it depends on my mood]]; I listen to piano music when I study.'),
@@ -199,6 +199,132 @@
         q3('How can people check if a news story is true?', ['check the source', 'compare with', 'reliable'], 'People should [[check the source]] first.', '[[Reliable]] news comes from known outlets with named reporters.', 'If a story seems shocking, [[compare with]] two or three other sites.', 'This simple habit stops people sharing false information.'),
         q3('Should news always be free?', ['quality journalism', 'subscriptions', 'accessible'], 'Basic news should be [[accessible]] to everyone.', 'But [[quality journalism]] costs money to produce.', 'Many newspapers use [[subscriptions]] for long reports.', 'So a mix of free and paid news seems fair.'),
         q3('Is local news as important as international news?', ['directly affects', 'community', 'equally'], 'I think they are [[equally]] important.', 'Local news [[directly affects]] our daily lives.', 'For example, road works or school changes matter to my [[community]].', 'International news, on the other hand, helps us understand the wider world.')
+      ] },
+    { id: 'i-friend', cat: 'people', theme: 'Friends', zh: '朋友',
+      p1: [{ t: 'Friends', q: [
+        q1('Do you have many friends?', ['a small circle of', 'close friends', 'acquaintances'], 'I have [[a small circle of]] [[close friends]].', 'I prefer a few good friends to many [[acquaintances]].', 'My three best friends and I have known each other since primary school.'),
+        q1('How do you usually spend time with your friends?', ['hang out', 'grab a bite', 'chat online'], 'We usually [[hang out]] at weekends.', 'During the week we are all too busy, so we [[chat online]].', 'Last Saturday we went to [[grab a bite]] and then watched a film.'),
+        q1('Is it easy to make new friends?', ['It depends', 'break the ice', 'in common'], '[[It depends]] on the situation.', 'It is easier when you have something [[in common]].', 'At university clubs, a shared hobby helps people [[break the ice]].') ] },
+        { t: 'Being polite', q: [
+        q1('Is being polite important in your culture?', ['very important', 'show respect', 'elders'], 'Yes, it is [[very important]].', 'Politeness is a way to [[show respect]], especially to [[elders]].', 'For example, children should greet older relatives first at family dinners.'),
+        q1('Who taught you to be polite?', ['mainly my parents', 'set an example', 'remind'], '[[Mainly my parents]].', 'They always [[set an example]] for me at home.', 'When I was small, my mother would [[remind]] me to say thank you to shop assistants.'),
+        q1('Are people less polite now than before?', ['in some ways', 'in a hurry', 'on the whole'], '[[In some ways]], yes.', 'People are often [[in a hurry]] and looking at their phones.', 'But [[on the whole]], most people I meet are still kind and polite.') ] }],
+      p2: [
+        card('Describe a friend you have known for a long time.', ['who this person is', 'how you met', 'what you do together'], 'and explain why you are still friends.',
+          ['how and when you met', 'what you do together now', 'how you see the friendship in future'], ['We first met at…', 'we hit it off', 'we have a lot in common', 'stood by me', 'I can always count on her/him']),
+        card('Describe a person who is good at their job.', ['who this person is', 'what their job is', 'how you know them'], 'and explain why you think they are good at it.',
+          ['how you got to know them', 'what they do well now', 'what you can learn from them'], ['She/He works as…', 'goes the extra mile', 'patient and professional', 'I really admire'])
+      ],
+      p3: [
+        q3('What makes a good friend?', ['trustworthy', 'be there for you', 'honest'], 'A good friend is above all [[trustworthy]].', 'You need someone who will [[be there for you]] in hard times.', 'When I failed an exam, my best friend helped me study for the retake.', 'So trust and support matter more than having fun together.'),
+        q3('Do people today have fewer close friends than before?', ['busier lives', 'online friends', 'quality over quantity'], 'I think many people do.', 'People have [[busier lives]] and spend more time with [[online friends]].', 'Some of my classmates have hundreds of followers but few people to talk to.', 'Still, [[quality over quantity]] is what really matters in friendship.'),
+        q3('Is it important for children to have friends of different ages?', ['learn from', 'look up to', 'responsibility'], 'Yes, I think it is useful.', 'Children [[learn from]] older friends and take [[responsibility]] for younger ones.', 'My cousin [[looks up to]] an older neighbour who helps him with homework.', 'So mixed-age friendships help children grow in different ways.'),
+        q3('Why do some people prefer to work alone?', ['concentrate', 'at their own pace', 'teamwork'], 'Some people simply work better alone.', 'They can [[concentrate]] and work [[at their own pace]].', 'Many writers and programmers say they do their best work in a quiet room.', 'However, most jobs still need some [[teamwork]].')
+      ] },
+    { id: 'i-family2', cat: 'people', theme: 'Older and younger people', zh: '长辈与晚辈',
+      p1: [{ t: 'Grandparents', q: [
+        q1('Do you often see your grandparents?', ['as often as I can', 'live nearby', 'during holidays'], 'I see them [[as often as I can]].', 'They [[live nearby]], so I visit most weekends.', '[[During holidays]] we also cook a big family meal at their home.'),
+        q1('What do you like doing with them?', ['listen to their stories', 'learn from them', 'go for walks'], 'I love to [[listen to their stories]].', 'They tell me what life was like when they were young.', 'My grandfather once told me how he walked an hour to school every day.'),
+        q1('What have you learned from them?', ['the value of', 'hard work', 'be patient'], 'I\'ve learned [[the value of]] [[hard work]].', 'They grew up with very little.', 'My grandmother taught me to [[be patient]] when I learn something new.') ] },
+        { t: 'Children', q: [
+        q1('Do you like spending time with children?', ['full of energy', 'it can be tiring', 'fun'], 'Yes, they are [[full of energy]] and [[fun]].', 'But [[it can be tiring]] after a few hours.', 'I sometimes look after my little cousin, and we play board games.'),
+        q1('What games did you play as a child?', ['I used to play…', 'hide and seek', 'outdoors'], '[[I used to play]] [[hide and seek]].', 'We played [[outdoors]] almost every evening.', 'All the children in my building joined in after dinner.'),
+        q1('Is childhood today different from your childhood?', ['quite different', 'screens', 'more pressure'], 'Yes, it\'s [[quite different]].', 'Children now spend more time on [[screens]].', 'They also have [[more pressure]] from after-school classes.') ] }],
+      p2: [
+        card('Describe an older person you respect.', ['who this person is', 'how you know them', 'what they are like'], 'and explain why you respect them.',
+          ['how you know them and what they did', 'your relationship now', 'what you hope to learn from them'], ['I\'d like to talk about…', 'wise', 'has been through a lot', 'I look up to her/him']),
+        card('Describe a child you know.', ['who the child is', 'how you know them', 'what they like doing'], 'and explain how you feel about them.',
+          ['when you first met them', 'what they are like now', 'what they might become'], ['She/He is … years old', 'curious', 'always asking questions', 'makes me laugh'])
+      ],
+      p3: [
+        q3('What can young people learn from older people?', ['life experience', 'wisdom', 'pass on'], 'Young people can learn a great deal.', 'Older people have [[life experience]] and [[wisdom]].', 'My grandmother taught me how to manage money carefully.', 'If we listen, they can [[pass on]] lessons that books can\'t.'),
+        q3('Should older people live with their adult children?', ['It depends on', 'take care of', 'independence'], '[[It depends on]] the family.', 'Living together lets children [[take care of]] their parents.', 'In my family, my grandparents live with my uncle and help with cooking.', 'But some older people prefer their [[independence]].'),
+        q3('Do children today grow up too fast?', ['exposed to', 'pressure to', 'carefree'], 'In some ways, I think they do.', 'They are [[exposed to]] adult content online and feel [[pressure to]] succeed.', 'Some primary school pupils already study until late at night.', 'Children need more time to be [[carefree]].'),
+        q3('How can families keep in touch when they live far apart?', ['video calls', 'family group chat', 'visit regularly'], 'Technology makes it much easier.', 'Families can use [[video calls]] and a [[family group chat]].', 'My aunt in Australia shares photos with us every day.', 'Even so, it is important to [[visit regularly]] when possible.')
+      ] },
+    { id: 'i-travel', cat: 'places', theme: 'Travel', zh: '旅行',
+      p1: [{ t: 'Travel', q: [
+        q1('Do you like travelling?', ['I love travelling', 'see new places', 'try local food'], 'Yes, [[I love travelling]].', 'I enjoy the chance to [[see new places]].', 'My favourite part is to [[try local food]], like the noodles I had in Xi\'an.'),
+        q1('Do you prefer travelling alone or with others?', ['I\'d rather…', 'share the experience', 'more flexible'], '[[I\'d rather]] travel with friends.', 'It\'s nice to [[share the experience]].', 'But travelling alone is [[more flexible]], so I might try it one day.'),
+        q1('Where did you go on your last trip?', ['The last place I went to was…', 'for a few days', 'sightseeing'], '[[The last place I went to was]] Hangzhou.', 'I went [[for a few days]] during the summer holiday.', 'We spent most of our time [[sightseeing]] around West Lake.') ] },
+        { t: 'Weather', q: [
+        q1('What is the weather like where you live?', ['mild', 'humid', 'four distinct seasons'], 'We have [[four distinct seasons]].', 'Summer is hot and [[humid]], but spring is [[mild]].', 'In winter it sometimes snows for a few days.'),
+        q1('What is your favourite season?', ['My favourite season is…', 'pleasant', 'outdoor activities'], '[[My favourite season is]] autumn.', 'The weather is [[pleasant]], neither too hot nor too cold.', 'It\'s perfect for [[outdoor activities]] like hiking.'),
+        q1('Does the weather affect your mood?', ['Definitely', 'gloomy', 'cheer me up'], '[[Definitely]].', 'Rainy, [[gloomy]] days make me feel tired.', 'A sunny morning always seems to [[cheer me up]].') ] }],
+      p2: [
+        card('Describe a city you would like to visit.', ['which city it is', 'how you know about it', 'what you would do there'], 'and explain why you want to visit it.',
+          ['how you first heard about it', 'what you know about it now', 'when and how you plan to go'], ['I\'ve always wanted to go to…', 'it\'s famous for', 'I\'d love to explore', 'it\'s on my bucket list']),
+        card('Describe a trip you enjoyed.', ['where you went', 'who you went with', 'what you did'], 'and explain why you enjoyed it.',
+          ['when and where you went', 'how you remember it now', 'whether you would go again'], ['We set off…', 'the highlight was', 'unforgettable', 'I\'d go back in a heartbeat'])
+      ],
+      p3: [
+        q3('Why do people like to travel?', ['broaden their horizons', 'a break from routine', 'different cultures'], 'People travel for many reasons.', 'It gives them [[a break from routine]] and helps them [[broaden their horizons]].', 'When I visited Yunnan, I learned about [[different cultures]] in China.', 'So travel is both relaxing and educational.'),
+        q3('Is it better to travel with a tour group or independently?', ['convenient', 'freedom', 'It depends on'], '[[It depends on]] the traveller.', 'Tour groups are [[convenient]], while independent travel gives more [[freedom]].', 'My parents prefer tours abroad because they don\'t speak the language.', 'Young people, however, often enjoy planning their own trips.'),
+        q3('How does tourism affect local people?', ['create jobs', 'rising prices', 'on the other hand'], 'Tourism has both good and bad effects.', 'It can [[create jobs]], but it can also cause [[rising prices]].', 'In some old towns, rent became too expensive for local families.', '[[On the other hand]], many small businesses depend on visitors.'),
+        q3('Will people travel more or less in the future?', ['more affordable', 'environmental concerns', 'virtual tours'], 'I think people will travel more.', 'Travel is becoming [[more affordable]] for many families.', 'Even so, [[environmental concerns]] may make some people fly less.', 'Some might also choose [[virtual tours]] instead of long trips.')
+      ] },
+    { id: 'i-journey', cat: 'events', theme: 'Journeys and plans', zh: '出行与计划',
+      p1: [{ t: 'Transport', q: [
+        q1('How do you usually get to school or work?', ['I usually take…', 'it takes about', 'rush hour'], '[[I usually take]] the subway.', 'It\'s fast and [[it takes about]] twenty minutes.', 'During [[rush hour]] it\'s very crowded, so I leave early.'),
+        q1('Do you prefer buses or trains?', ['I prefer…', 'more reliable', 'traffic jams'], '[[I prefer]] trains.', 'They are [[more reliable]] because there are no [[traffic jams]].', 'Last month my bus was stuck in traffic and I was late for class.'),
+        q1('Would you like to have your own car?', ['Someday', 'expensive to run', 'parking'], '[[Someday]], maybe.', 'Cars are [[expensive to run]] and [[parking]] is difficult in my city.', 'For now, public transport works well for me.') ] },
+        { t: 'Being on time', q: [
+        q1('Are you usually on time?', ['I try to be', 'punctual', 'run late'], '[[I try to be]] [[punctual]].', 'Being late feels disrespectful.', 'But I sometimes [[run late]] when the subway is delayed.'),
+        q1('How do you feel when others are late?', ['a bit annoyed', 'understand', 'let me know'], 'I feel [[a bit annoyed]].', 'But I [[understand]] if there is a good reason.', 'I just hope they [[let me know]] with a quick message.'),
+        q1('How do you make sure you are on time?', ['set an alarm', 'plan ahead', 'leave early'], 'I always [[set an alarm]].', 'I also [[plan ahead]] the night before.', 'For important events I [[leave early]] in case of traffic.') ] }],
+      p2: [
+        card('Describe a journey you remember well.', ['where you went', 'how you travelled', 'who you were with'], 'and explain why you remember it.',
+          ['when it happened and what you saw', 'how you remember it now', 'if you would make the same journey again'], ['It was a long journey', 'we travelled by', 'along the way', 'it stuck in my memory']),
+        card('Describe a plan you made that did not go as expected.', ['what the plan was', 'what happened', 'what you did'], 'and explain how you felt about it.',
+          ['what you planned', 'what you think about it now', 'what you would do differently'], ['Things didn\'t go to plan', 'at the last minute', 'make the best of it', 'a blessing in disguise'])
+      ],
+      p3: [
+        q3('How can cities reduce traffic?', ['public transport', 'cycle lanes', 'car-sharing'], 'Cities need to give people better choices.', 'Good [[public transport]] and safe [[cycle lanes]] reduce the number of cars.', 'My city added bike lanes, and now many students cycle to school.', '[[Car-sharing]] could help even more in the future.'),
+        q3('Is punctuality equally important in every culture?', ['attitudes vary', 'business', 'social events'], 'No, [[attitudes vary]] between cultures.', 'Some cultures are strict about time, others are more relaxed.', 'For example, being late for [[business]] meetings is rude in many countries, but less so for [[social events]].', 'So it\'s useful to learn local customs before travelling.'),
+        q3('Why do some people find it hard to plan ahead?', ['unpredictable', 'spontaneous', 'procrastinate'], 'Some people simply prefer to be [[spontaneous]].', 'Others [[procrastinate]] or feel life is too [[unpredictable]].', 'One of my friends never books anything until the day before.', 'Still, planning ahead usually saves time and money.'),
+        q3('Will people travel to work less in the future?', ['work from home', 'commute', 'face-to-face'], 'I think many people will.', 'More jobs let people [[work from home]], so they don\'t need to [[commute]].', 'My uncle now goes to his office only two days a week.', 'But some jobs will always need [[face-to-face]] contact.')
+      ] },
+    { id: 'i-sport', cat: 'activities', theme: 'Sport and exercise', zh: '运动',
+      p1: [{ t: 'Sport', q: [
+        q1('Do you like sport?', ['I\'m keen on', 'stay fit', 'team sports'], 'Yes, [[I\'m keen on]] basketball.', 'It helps me [[stay fit]], and I enjoy [[team sports]].', 'I play with classmates twice a week after school.'),
+        q1('Did you do any sport when you were a child?', ['I used to…', 'swimming lessons', 'took part in'], '[[I used to]] take [[swimming lessons]].', 'My parents thought it was an important skill.', 'I even [[took part in]] a small race when I was ten.'),
+        q1('What sport would you like to try?', ['I\'d like to have a go at…', 'challenging', 'looks fun'], '[[I\'d like to have a go at]] rock climbing.', 'It [[looks fun]] and [[challenging]].', 'A new climbing gym opened near my home, so I may try it soon.') ] },
+        { t: 'Weekends', q: [
+        q1('What do you usually do at weekends?', ['catch up on', 'have a lie-in', 'see friends'], 'I usually [[have a lie-in]] on Saturday.', 'I need to [[catch up on]] sleep after a busy week.', 'Then I [[see friends]] or go shopping in the afternoon.'),
+        q1('Are your weekends busy or relaxing?', ['a bit of both', 'homework', 'unwind'], 'They are [[a bit of both]].', 'I have [[homework]] to do, but I also need time to [[unwind]].', 'Last weekend I studied in the morning and watched a film in the evening.'),
+        q1('What did you do last weekend?', ['I spent most of…', 'went for a', 'it was relaxing'], '[[I spent most of]] the weekend at home.', 'The weather was bad, so I stayed in.', 'On Sunday I [[went for a]] short walk, and [[it was relaxing]].') ] }],
+      p2: [
+        card('Describe a sport or exercise you enjoy.', ['what it is', 'when and where you do it', 'who you do it with'], 'and explain why you enjoy it.',
+          ['how you started', 'how often you do it now', 'whether you will keep doing it'], ['I got into it when…', 'I do it … times a week', 'it keeps me in shape', 'it clears my head']),
+        card('Describe a hobby you enjoyed as a child.', ['what the hobby was', 'when you started it', 'how often you did it'], 'and explain why you enjoyed it.',
+          ['how you started it', 'whether you still do it now', 'if you would like to start again'], ['When I was little,…', 'I spent hours', 'I grew out of it', 'it brings back good memories'])
+      ],
+      p3: [
+        q3('Why do some people not exercise enough?', ['lack of time', 'sedentary', 'motivation'], 'The main reason is [[lack of time]].', 'Many people have [[sedentary]] jobs and feel too tired after work.', 'My father sits at a desk all day and rarely goes to the gym.', 'Finding [[motivation]] is often harder than finding time.'),
+        q3('Should schools give children more time for sport?', ['Absolutely', 'physical and mental health', 'balance'], '[[Absolutely]].', 'Sport is good for both [[physical and mental health]].', 'Students who play sport at my school often seem less stressed before exams.', 'Schools need a better [[balance]] between study and activity.'),
+        q3('Why are professional athletes paid so much?', ['entertainment industry', 'sponsorship', 'short careers'], 'Athletes are part of the [[entertainment industry]].', 'Millions watch them, so [[sponsorship]] brings in huge amounts of money.', 'Famous football players earn more from adverts than from playing.', 'Also, they have [[short careers]], so high pay is understandable.'),
+        q3('How have hobbies changed compared with the past?', ['screen-based', 'hands-on', 'come back into fashion'], 'Many hobbies are now [[screen-based]].', 'Games and videos are easy to access anywhere.', 'However, [[hands-on]] hobbies like baking and knitting have [[come back into fashion]] online.', 'So technology changes hobbies but also helps old ones survive.')
+      ] },
+    { id: 'i-learn', cat: 'activities', theme: 'Learning and languages', zh: '学习与语言',
+      p1: [{ t: 'Learning English', q: [
+        q1('How long have you been learning English?', ['I\'ve been learning … for', 'since primary school', 'on and off'], '[[I\'ve been learning]] English [[since primary school]].', 'It\'s a required subject in my country.', 'I\'ve studied [[on and off]] for about ten years.'),
+        q1('What is the most difficult part of English for you?', ['The hardest part is…', 'pronunciation', 'speaking fluently'], '[[The hardest part is]] [[speaking fluently]].', 'I know the grammar, but I hesitate when I speak.', 'In class, I sometimes forget simple words because I\'m nervous.'),
+        q1('How do you practise English outside class?', ['watch … with subtitles', 'keep a vocabulary notebook', 'practise speaking'], 'I [[watch]] American shows [[with subtitles]].', 'It helps me hear natural expressions.', 'I also [[keep a vocabulary notebook]] for new phrases.') ] },
+        { t: 'Handwriting', q: [
+        q1('Do you write much by hand?', ['not as much as before', 'type', 'take notes'], '[[Not as much as before]].', 'I [[type]] most things on my laptop.', 'But I still [[take notes]] by hand in class because it helps me remember.'),
+        q1('Is your handwriting easy to read?', ['fairly neat', 'messy when I rush', 'improve'], 'It\'s [[fairly neat]].', 'But it gets [[messy when I rush]].', 'My teacher once asked me to [[improve]] it before my exam.'),
+        q1('Is handwriting still important today?', ['I believe so', 'exams', 'personal touch'], '[[I believe so]].', 'Many [[exams]] are still handwritten.', 'A handwritten card also has a [[personal touch]].') ] }],
+      p2: [
+        card('Describe a time you learned something new.', ['what you learned', 'when and where you learned it', 'how you learned it'], 'and explain how you felt about it.',
+          ['when and how you learned it', 'how you use it now', 'what you want to learn next'], ['I picked up…', 'it took a while', 'practice makes perfect', 'I felt proud of myself']),
+        card('Describe a language you would like to learn.', ['which language it is', 'how you would learn it', 'how difficult it might be'], 'and explain why you want to learn it.',
+          ['why you became interested', 'what you know of it now', 'how you would use it'], ['I\'ve always been fascinated by…', 'I\'d sign up for', 'it would be useful for', 'open up opportunities'])
+      ],
+      p3: [
+        q3('Why do people learn foreign languages?', ['career opportunities', 'communicate', 'cultural understanding'], 'People learn languages for many reasons.', 'Languages bring [[career opportunities]] and help people [[communicate]] with others.', 'Many of my classmates learn English so they can study abroad.', 'Learning a language also builds [[cultural understanding]].'),
+        q3('Is it better to start learning a language as a child?', ['pick up', 'accent', 'never too late'], 'Starting young is usually easier.', 'Children [[pick up]] sounds naturally and often have a better [[accent]].', 'My younger cousin learned English songs faster than I did.', 'But it is [[never too late]]; adults can learn with effort.'),
+        q3('Will translation apps replace language learning?', ['convenient', 'nuance', 'human connection'], 'I don\'t think so.', 'Apps are [[convenient]], but they often miss [[nuance]] and humour.', 'When my aunt used an app abroad, the waiter misunderstood her order.', 'Speaking a language yourself creates a real [[human connection]].'),
+        q3('What makes a good language teacher?', ['patient', 'encouraging', 'feedback'], 'A good teacher is [[patient]] and [[encouraging]].', 'Students need to feel safe to make mistakes.', 'My best teacher gave clear [[feedback]] after every speaking task.', 'That kind of support helps students improve faster.')
       ] }
   ];
 })();
