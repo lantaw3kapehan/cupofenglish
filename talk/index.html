@@ -160,7 +160,7 @@ body.present .tph img{max-height:26vh}body.present .tph figcaption{font-size:11p
 .kpt{font-size:12px;font-weight:700;background:#3C3489;color:#fff;border-radius:6px;padding:1px 6px}
 .kpx{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px;display:grid;grid-template-columns:110px 1fr;gap:10px 14px;font-size:clamp(17px,1.35vw,23px);line-height:1.45;color:var(--ink)}
 .kpx .l{color:#8A86A0;font-size:14px;padding-top:4px}.kzh{color:#8A86A0;font-size:.8em}.kipa{color:#2B4C8C}.kox{font-size:13px;color:#2E6B73;margin-left:6px}
-.flx{margin-top:10px;display:flex;flex-direction:column;gap:6px;font-size:clamp(16px,1.4vw,22px);color:var(--ink);max-width:640px;text-align:center}.flx .fli{color:#4A4566}.flx .fle{color:#4A4566;font-style:italic}
+.flc .flx b{font:inherit;font-weight:700;font-size:1em;color:var(--ink);line-height:inherit}.flx{margin-top:10px;display:flex;flex-direction:column;gap:6px;font-size:clamp(16px,1.4vw,22px);color:var(--ink);max-width:640px;text-align:center}.flx .fli{color:#4A4566}.flx .fle{color:#4A4566;font-style:italic}
 .kno.sm{display:inline-flex;width:24px;height:24px;font-size:12px;margin-right:8px;vertical-align:2px}
 /* student page and class (full screen) */
 .st{max-width:1180px;margin:0 auto;padding:26px 28px 40px}
@@ -236,7 +236,9 @@ function phPanel(p, v, zh, ex, turn){ const z = zh || v.zh, e = ex || v.ex || ''
   return '<div class="kpx">' + (v.m ? '<span class="l">Meaning</span><span>' + esc(v.m) + (z ? ' <span class="kzh">· ' + esc(z) + '</span>' : '') + '</span>' : '')
     + (v.ipa || v.u ? '<span class="l">' + (v.ipa ? 'Say it' : 'Dictionary') + '</span><span><b>' + esc(v.w || p) + '</b>' + (v.ipa ? ' <span class="kipa">' + esc(v.ipa) + '</span>' : '') + (v.u ? ' <a class="kox" href="https://www.oxfordlearnersdictionaries.com' + esc(v.u) + '" target="_blank" rel="noopener">Oxford</a>' : '') + '</span>' : '')
     + (e ? '<span class="l">Example</span><span>' + esc(e) + '</span>' : '') + (turn ? '<span class="l">Your turn</span><span>' + esc(turn) + '</span>' : '') + '</div>'; }
-const exFrom = (story, en) => { const k = String(en || '').toLowerCase().replace(/^(a|an|the) /, ''); return (String(story || '').match(/[^.!?]+[.!?]/g) || []).map(x => x.trim()).find(x => x.toLowerCase().includes(k)) || ''; };
+const exFrom = (story, en) => { const k = String(en || '').toLowerCase().replace(/^(a|an|the) /, ''), S = (String(story || '').match(/[^.!?]+[.!?]/g) || []).map(x => x.trim());
+  const re = new RegExp('\\b' + k.split(/\s+/).map(w => w.replace(/[^a-z0-9'-]/g, '')).filter(Boolean).map(w => w.slice(0, Math.max(3, w.length - 2)) + '\\w*').join('\\s+'), 'i');
+  return S.find(x => x.toLowerCase().includes(k)) || S.find(x => re.test(x)) || ''; };
 function phCards(t, L){ const W = [...wordsOf(t, L), ...(t.words_early || [])].filter(w => w.img); return phOf(t, L).map(p => { const m = W.find(w => new RegExp('\\b' + w.en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(p.en)); return Object.assign({}, p, m ? { img: m.img, credit: m.credit } : {}); }); }
 const withEx = (t, A) => A.map(w => Object.assign({}, w, { ex: w.ex || exFrom(t.story, w.en) }));
 function bindChips(root, t, L){ root.querySelectorAll('.wch[data-wi]').forEach(b => b.onclick = () => flash(withEx(t, wordsOf(t, L)), +b.dataset.wi)); root.querySelectorAll('.wch[data-pi]').forEach(b => b.onclick = () => flash(withEx(t, phCards(t, L)), +b.dataset.pi)); }
