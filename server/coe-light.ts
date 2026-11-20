@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-light v1 (20 Nov 2026 · 2548 · Misty 23:03 "let us do 1 and 2 now"): lighter book copies made overnight on GitHub.
+// CupOfEnglish · coe-light v2 (20 Nov: todo by id) · v1 (20 Nov 2026 · 2548 · Misty 23:03 "let us do 1 and 2 now"): lighter book copies made overnight on GitHub.
 // Only the repository's own "Book light copies" workflow can call this: the caller sends its GitHub OIDC token, checked here
 // against GitHub's public keys (repository lantaw3kapehan/cupofenglish, workflow book-light.yml, branch main). No shared secret.
 // POST { oidc, op, ... }
@@ -22,10 +22,11 @@ Deno.serve(async (req: Request) => {
   try {
     if (op === "todo") {
       const lim = Math.min(200, Math.max(1, +b.limit || 20));
-      const { data: L } = await db.from("coe_book_light").select("id"); const have = new Set((L || []).map((x: any) => x.id));
-      const { data: M } = await db.from("coe_media_mirror").select("id").not("done_at", "is", null).limit(20000); const cp = new Set((M || []).map((x: any) => x.id));
-      const { data: F } = await db.from("coe_book_files").select("id,name,size,path").is("gone_at", null).ilike("name", "%.pdf").gt("size", 20 * 1048576).order("size", { ascending: false }).limit(2000);
-      const rows = (F || []).filter((f: any) => cp.has(f.id) && !have.has(f.id) && !String(f.path || "").startsWith("_APP COPIES") && f.size <= 250 * 1048576).slice(0, lim).map((f: any) => ({ id: f.id, size: f.size, name: f.name }));
+      const { data: L } = await db.from("coe_book_light").select("id").limit(5000); const have = new Set((L || []).map((x: any) => x.id));
+      const { data: F } = await db.from("coe_book_files").select("id,name,size,path").is("gone_at", null).ilike("name", "%.pdf").gt("size", 20 * 1048576).lte("size", 250 * 1048576).order("size", { ascending: false }).limit(1000);
+      const C = (F || []).filter((f: any) => !have.has(f.id) && !String(f.path || "").startsWith("_APP COPIES")), cp = new Set<string>();
+      for (let i = 0; i < C.length; i += 200) { const { data: M } = await db.from("coe_media_mirror").select("id").in("id", C.slice(i, i + 200).map((f: any) => f.id)).not("done_at", "is", null); (M || []).forEach((x: any) => cp.add(x.id)); }   // v2: by id (a plain list stops at 1000 rows)
+      const rows = C.filter((f: any) => cp.has(f.id)).slice(0, lim).map((f: any) => ({ id: f.id, size: f.size, name: f.name }));
       return out({ ok: true, rows });
     }
     const id = String(b.id || ""); if (!ID.test(id)) return out({ ok: false, error: "id" }, 400);
