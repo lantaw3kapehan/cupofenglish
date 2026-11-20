@@ -165,6 +165,9 @@ body.present .tph img{max-height:26vh}body.present .tph figcaption{font-size:11p
 .ksay{display:inline-flex;gap:6px;flex-wrap:wrap}.ksay button{font:inherit;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:#fff;color:#2E6B73;cursor:pointer}.ksay button:hover{border-color:#9AD3D6;background:#F7FBFB}
 .flsay{margin-top:10px;display:flex;justify-content:center}
 .kch .kcl{font-size:17px;border-radius:10px;padding:4px 12px}
+.kpop{position:fixed;right:24px;bottom:96px;width:min(620px,46vw);max-height:calc(100vh - 220px);overflow:auto;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 50px rgba(30,26,60,.22);padding:16px 20px;z-index:55}
+.kpop .kpx{margin-top:4px;border-top:0;padding-top:4px}.kpoph{display:flex;align-items:center;justify-content:space-between;gap:12px}.kpoph b{font-size:clamp(20px,1.6vw,28px);color:var(--ink)}
+@media (max-width:820px){.kpop{left:12px;right:12px;width:auto;bottom:84px}}
 /* student page and class (full screen) */
 .st{max-width:1180px;margin:0 auto;padding:26px 28px 40px}
 .st h2{font-family:'COE Card Fredoka',Fredoka,sans-serif;font-weight:400;font-size:38px;line-height:1.15;margin:8px 0 4px}
@@ -361,10 +364,21 @@ function notesHtml(RUB, marks, cmt){ const st = kitStu();
     + '<div class="sub" style="margin:0 0 8px">' + (st ? 'Saved to <b>' + esc(st.name) + '</b>\'s Speaking history when you close or finish · only teachers and management see it' : 'Not saved: choose the student on the list page to keep these in the Speaking history') + '</div>'
     + '<div class="krub">' + RUB.map((r, i) => '<span>' + esc(r[0]) + '</span><span>' + [[1, 'Needs work'], [2, 'OK'], [3, 'Good'], [4, 'Strong']].map(o => '<button type="button" style="width:auto;padding:0 10px" data-rb="' + i + ':' + o[0] + '" class="' + ((marks[i] || 0) === o[0] ? 'on' : '') + '">' + o[1] + '</button>').join(' ') + '</span>').join('') + '</div>'
     + '<label class="sub" style="display:block;margin:10px 0 4px">One short comment (optional)</label><textarea id="kCm" rows="2" maxlength="600" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;font-size:15px" placeholder="e.g. Link ideas with P–R–E–L; good use of examples">' + esc(cmt || '') + '</textarea></div>'; }
-async function saveSpeak(o){ const st = kitStu(); if(!st) return; const m = {}; MK.forEach((k, i) => { if(o.marks[i]) m[k] = LVK[o.marks[i]]; });
+async function saveSpeak(o){ const m = {}; MK.forEach((k, i) => { if(o.marks[i]) m[k] = LVK[o.marks[i]]; });
   if(!Object.keys(m).length && !o.used.length && !String(o.comment || '').trim()) return;
+  const st = kitStu(); if(!st) return askStu(o);
   try{ const j = await call('coe-talk', { token: TOKEN, op: 'speak', code: st.code, student: st.name, kind: o.kind, set_id: o.id, set_title: o.title, minutes: o.len, marks: m, used: o.used, practise: o.practise, comment: o.comment });
     if(j.saved) toast('Saved to ' + st.name + '\'s Speaking history.'); }catch(e){ toast('Speaking history not saved: ' + e.message); } }
+/* 2498 · notes were made but no student was chosen: ask once, so they are not lost */
+function askStu(o){ const box = document.createElement('div'); box.className = 'fl'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+  box.innerHTML = '<div class="flc" style="max-width:520px;text-align:left;align-items:stretch"><b style="font-size:24px">Who was this class with?</b><div class="sub" style="margin:6px 0 12px">You made Teacher notes in <b>' + esc(o.title) + '</b>. Choose the student to save them in the Speaking history.</div>'
+    + '<select id="askS" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit"><option value="">Loading your students…</option></select>'
+    + '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px"><button type="button" class="btn" id="askNo">Don\'t save</button><button type="button" class="btn pr" id="askOk">Save</button></div></div>';
+  document.body.appendChild(box); const done = () => box.remove();
+  students().then(L2 => { const s0 = document.getElementById('askS'); if(s0) s0.innerHTML = '<option value="">Choose the student</option>' + (L2 || []).map(x => '<option value="' + esc(x.code) + '">' + esc(x.student) + ' · ' + esc(x.code) + '</option>').join(''); });
+  document.getElementById('askNo').onclick = done;
+  document.getElementById('askOk').onclick = () => { const s0 = document.getElementById('askS'); if(!s0 || !s0.value){ toast('Choose the student first.'); return; } const op = s0.options[s0.selectedIndex];
+    try{ sessionStorage.setItem('coe.kit.stu', JSON.stringify({ code: s0.value, name: op.text.split(' · ')[0] })); }catch(e){} done(); saveSpeak(o); const k = document.getElementById('kStu'); if(k) k.value = s0.value; }; }
 /* 2491 · Copy picture for Free talk and IELTS Speaking (same letterhead as Talk of the Day), to paste in the students' WeChat groups */
 function kitPicture(sp, who){
   const W = 1080, P = coeHdr.pad(W), room = W - 2 * P, FT = '"COE Card Fredoka", Fredoka, "Noto Sans SC", sans-serif', FI = '"COE Card Inter", Inter, "Noto Sans SC", "PingFang SC", sans-serif', INK = '#2B2253', ZH = '#8A869C', MUTE = '#6B6880';
@@ -606,7 +620,7 @@ function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? 
   const VB = (window.KITS && window.KITS.vocab) || {};
   const ph = (L, turn) => { if(kind !== 'free') return '<div class="kph">' + L.map(p => '<span>' + esc(p[0]) + (p[1] ? '<small>' + esc(p[1]) + '</small>' : '') + '</span>').join('') + '</div>';
     let h = '<div class="kph">' + L.map((p, i) => '<button type="button" class="kpc' + (open === i ? ' on' : '') + (used[p[0]] ? ' used' : '') + '" data-pi="' + i + '">' + (used[p[0]] ? '<span class="kpt">Used</span>' : '') + esc(p[0]) + '</button>').join('') + '</div>';
-    if(open >= 0 && L[open]) h += phPanel(L[open][0], VB[L[open][0]] || {}, L[open][1], '', turn || 'Use it in your answer.') + '<button class="btn" type="button" id="kUsed" style="margin-top:10px">' + (used[L[open][0]] ? 'Not used yet' : 'Student used it') + '</button>';
+    if(open >= 0 && L[open]){ const P0 = L[open][0]; h += '<div class="kpop" role="dialog" aria-label="Explain"><div class="kpoph"><b>' + esc(P0) + '</b><button type="button" class="btn sm" data-pclose="1" aria-label="Close">Close</button></div>' + phPanel(L[open][0], VB[L[open][0]] || {}, L[open][1], '', turn || 'Use it in your answer.') + '<button class="btn" type="button" id="kUsed" style="margin-top:10px">' + (used[L[open][0]] ? 'Not used yet' : 'Student used it') + '</button></div>'; }
     return h; };
   const RUB = [['Fluency and coherence', 'speak without long pauses; link ideas'], ['Vocabulary', 'use a range of words; paraphrase'], ['Grammar', 'mix simple and complex sentences'], ['Pronunciation', 'clear sounds, stress and intonation']];
   function body(){ const k = (plan[step] || [])[0];
@@ -638,6 +652,7 @@ function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? 
     app.querySelectorAll('[data-rb]').forEach(b => b.onclick = () => { const [i, n] = b.dataset.rb.split(':').map(Number); marks[i] = marks[i] === n ? 0 : n; paint(); });
     if($('kCm')) $('kCm').oninput = e => { cmt = e.target.value; };
     app.querySelectorAll('[data-pi]').forEach(b => b.onclick = () => { const i = +b.dataset.pi; open = open === i ? -1 : i; paint(); });
+    app.querySelectorAll('[data-pclose]').forEach(b => b.onclick = () => { open = -1; paint(); });
     if($('kUsed')) $('kUsed').onclick = () => { const p = t.phrases[open][0]; used[p] = !used[p]; paint(); };
     if($('kPic')) $('kPic').onclick = () => copyKitPic(freeSpec(t), 'free-talk');
     try{ window.CoeInk && CoeInk.page(app.querySelector('.kv'), kind + ':' + t.id + ':' + step); }catch(e){}
@@ -677,12 +692,12 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
   const ph = (L, x) => { L.forEach(p => seen[p] = 1);
     let h = '<div class="kph">' + L.map((p, i) => '<button type="button" class="kpc' + (open === i ? ' on' : '') + (used[p] ? ' used' : '') + '" data-pi="' + i + '">' + (used[p] ? '<span class="kpt">Used</span>' : '') + esc(p) + '</button>').join('') + '</div>';
     if(open >= 0 && L[open]){ const p = L[open], v = VB[p] || {}, ex = exFor(x, p);
-      h += '<div class="kpx"><span class="l">Listen</span><span>' + sayBtns(p) + '</span>'
+      const P0 = p; h += '<div class="kpop" role="dialog" aria-label="Explain"><div class="kpoph"><b>' + esc(P0) + '</b><button type="button" class="btn sm" data-pclose="1" aria-label="Close">Close</button></div>' + '<div class="kpx"><span class="l">Listen</span><span>' + sayBtns(p) + '</span>'
         + (v.m ? '<span class="l">Meaning</span><span>' + esc(v.m) + (v.zh ? ' <span class="kzh">· ' + esc(v.zh) + '</span>' : '') + '</span>' : '')
         + (v.ipa || v.u ? '<span class="l">' + (v.ipa ? 'Say it' : 'Dictionary') + '</span><span><b>' + esc(v.w || p) + '</b>' + (v.ipa ? ' <span class="kipa">' + esc(v.ipa) + '</span>' : '') + (v.u ? ' <a class="kox" href="https://www.oxfordlearnersdictionaries.com' + esc(v.u) + '" target="_blank" rel="noopener">Oxford</a>' : '') + '</span>' : '')
         + (ex ? '<span class="l">Example</span><span>' + hl(ex) + '</span>' : '')
         + '<span class="l">Your turn</span><span>' + esc(turnFor(x)) + '</span></div>'
-        + '<button class="btn" type="button" id="kUsed" style="margin-top:10px">' + (used[p] ? 'Not used yet' : 'Student used it') + '</button>'; }
+        + '<button class="btn" type="button" id="kUsed" style="margin-top:10px">' + (used[p] ? 'Not used yet' : 'Student used it') + '</button></div>'; }
     return h; };
   const usedLine = L => { const n = L.filter(p => used[p]).length; return '<div class="sub" style="margin:0">Phrases used: <b style="color:#3C3489">' + n + ' of ' + L.length + '</b></div>'; };
   const RUB = [['Fluency and coherence', ['Are the answers an appropriate length for the task?', 'Does the speaker speak too slowly, hesitate, repeat or make corrections?']],
@@ -720,6 +735,7 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
     try{ window.CoeInk && CoeInk.page(app.querySelector('.kv'), 'ielts:' + t.id + ':' + si); }catch(e){}
     if($('kShow')) $('kShow').onclick = () => { show = !show; paint(); };
     app.querySelectorAll('[data-pi]').forEach(b => b.onclick = () => { const i = +b.dataset.pi; open = open === i ? -1 : i; paint(); });
+    app.querySelectorAll('[data-pclose]').forEach(b => b.onclick = () => { open = -1; paint(); });
     if($('kUsed')) $('kUsed').onclick = () => { const p = S[si].it.ph[open]; used[p] = !used[p]; paint(); };
     app.querySelectorAll('[data-rb]').forEach(b => b.onclick = () => { const [i, n] = b.dataset.rb.split(':').map(Number); marks[i] = marks[i] === n ? 0 : n; paint(); });
     if($('kPrep')) $('kPrep').onclick = () => miniRun(60, 'Speak now');
