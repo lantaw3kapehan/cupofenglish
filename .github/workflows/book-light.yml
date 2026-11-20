@@ -27,8 +27,10 @@ jobs:
         env:
           SAT: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          K=$(curl -sf -H "Authorization: Bearer $SAT" "https://api.supabase.com/v1/projects/rlxkiahqjsabopmuhern/api-keys?reveal=true" | python3 -c 'import sys,json; print([k["api_key"] for k in json.load(sys.stdin) if k.get("name")=="service_role"][0])')
-          echo "::add-mask::$K"; echo "SRK=$K" >> "$GITHUB_ENV"
+          code=$(curl -s -o /tmp/k.json -w '%{http_code}' -H "Authorization: Bearer $SAT" "https://api.supabase.com/v1/projects/rlxkiahqjsabopmuhern/api-keys?reveal=true")
+          echo "keys answer: $code"
+          K=$(python3 -c 'import json; d=json.load(open("/tmp/k.json")); print([k.get("api_key","") for k in d if k.get("name")=="service_role"][0])' 2>/dev/null || true); rm -f /tmp/k.json
+          if [ -n "$K" ]; then echo "::add-mask::$K"; echo "SRK=$K" >> "$GITHUB_ENV"; else echo "no storage key: light copies are not uploaded this run"; fi
       - name: Make light copies and pictures
         env:
           IDS: ${{ inputs.ids }}

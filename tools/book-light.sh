@@ -21,7 +21,7 @@ for n in "${!I[@]}"; do id="${I[$n]}"; pg="${P[$n]}"
   convert "work/$n-screen-original.png" "work/$n-screen-light.png" -append -resize 1600x "out/$n-screen.png"
   convert "work/$n-zoom-original.png" "work/$n-zoom-light.png" +append -resize 2400x "out/$n-zoom.png"
   # the light copy goes next to ours (not used by the reader yet)
-  curl -sf -X POST -H "Authorization: Bearer $SRK" -H "apikey: $SRK" -H "Content-Type: application/pdf" -H "x-upsert: true" \
-    --data-binary "@work/$id.light.pdf" "$SB/storage/v1/object/book-media/light-2548/$id" >/dev/null && echo "$id uploaded" || echo "$id upload failed"
+  [ -n "${SRK:-}" ] && curl -sf -X POST -H "Authorization: Bearer $SRK" -H "apikey: $SRK" -H "Content-Type: application/pdf" -H "x-upsert: true" \
+    --data-binary "@work/$id.light.pdf" "$SB/storage/v1/object/book-media/light-2548/$id" >/dev/null && echo "$id uploaded" || echo "$id not uploaded"
 done
 cat out/sizes.txt
