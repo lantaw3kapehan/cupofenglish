@@ -155,6 +155,11 @@ body.present .tph img{max-height:26vh}body.present .tph figcaption{font-size:11p
 @media (max-width:999px){.krow4{grid-template-columns:1fr 1fr}}
 .kcat{margin:0 0 22px}.kcat:first-of-type{margin-top:20px}.kch{display:flex;align-items:baseline;gap:10px;margin:0 0 10px}.kch b{font-size:19px;color:var(--ink)}.kch .zt{margin:0;font-size:13px;color:#8A86A0}.kch .sub{margin:0}
 .kno{flex:none;width:30px;height:30px;border-radius:50%;background:#EEEDFE;color:#3C3489;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.kpc{font:inherit;cursor:pointer;background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:clamp(16px,1.3vw,22px);color:var(--ink);display:inline-flex;align-items:center;gap:8px}
+.kpc:hover{border-color:#9AD3D6}.kpc.on{border:2px solid #0E7C6E;background:#E4F4F1;color:#0B5A50}.kpc.used{background:#EEEDFE;border-color:#AFA9EC;color:#3C3489}
+.kpt{font-size:12px;font-weight:700;background:#3C3489;color:#fff;border-radius:6px;padding:1px 6px}
+.kpx{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px;display:grid;grid-template-columns:110px 1fr;gap:10px 14px;font-size:clamp(17px,1.35vw,23px);line-height:1.45;color:var(--ink)}
+.kpx .l{color:#8A86A0;font-size:14px;padding-top:4px}.kzh{color:#8A86A0;font-size:.8em}.kipa{color:#2B4C8C}.kox{font-size:13px;color:#2E6B73;margin-left:6px}
 /* student page and class (full screen) */
 .st{max-width:1180px;margin:0 auto;padding:26px 28px 40px}
 .st h2{font-family:'COE Card Fredoka',Fredoka,sans-serif;font-weight:400;font-size:38px;line-height:1.15;margin:8px 0 4px}
@@ -191,6 +196,7 @@ body.present .st .think,body.present .st .tryh{font-size:clamp(17px,1.35vw,21px)
 <script src="../homework/hdr.js"></script>
 <script src="kits.js?v=2489"></script>
 <script src="ielts-2489.js"></script>
+<script src="vocab-2490.js"></script>
 <script>
 (function(){
 const API = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/';
@@ -550,17 +556,31 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
   const S = []; P.forEach((p, i) => { const k = p[0];
     if(k === 'fmt'){ S.push({ ph: i, k: 'format' }); S.push({ ph: i, k: 'assess' }); }
     else if(k === 'p1') (len === '25' ? Q1.slice(0, 3) : Q1).forEach((q, n, a) => S.push({ ph: i, k, it: q, n, of: a.length }));
-    else if(k === 'p2') (len === '25' ? t.p2.slice(0, 1) : t.p2).forEach((c, n, a) => S.push({ ph: i, k, it: c, n, of: a.length }));
+    else if(k === 'p2') t.p2.slice(0, 1).forEach((c, n, a) => S.push({ ph: i, k, it: c, n, of: a.length }));
     else if(k === 'p3') (len === '25' ? t.p3.slice(0, 2) : t.p3).forEach((q, n, a) => S.push({ ph: i, k, it: q, n, of: a.length }));
     else S.push({ ph: i, k: 'fb' }); });
-  let si = 0, left = P[0][2] * 60, run = true, show = false, notes = false, mini = null; const marks = {};
+  let si = 0, left = P[0][2] * 60, run = true, show = false, notes = false, mini = null, open = -1; const marks = {}, used = {}, seen = {};
   const who = (() => { try{ const x = JSON.parse(sessionStorage.getItem('coe.talk.stu') || 'null'); return x && x.name ? x.name : ''; }catch(e){ return ''; } })();
   document.body.classList.add('present'); $('hT').textContent = 'IELTS Speaking / 雅思口语'; $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + len + ' minutes · ' + t.theme;
   $('hBtns').innerHTML = '<button class="btn sm" id="bX" type="button">Close</button>';
   try{ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }catch(e){}
   const mm = s => (s < 0 ? '−' : '') + String(Math.floor(Math.abs(s) / 60)).padStart(2, '0') + ':' + String(Math.abs(s) % 60).padStart(2, '0');
   const hl = x => esc(x).replace(/\[\[(.+?)\]\]/g, '<span class="khl">$1</span>');
-  const ph = L => '<div class="kph">' + L.map(p => '<span>' + esc(p) + '</span>').join('') + '</div>';
+  const VB = (window.KITS && window.KITS.vocab) || {};
+  const norm = z => String(z).toLowerCase().replace(/[…\.]/g, '').replace(/\s+/g, ' ').trim();
+  const exFor = (x, p) => { const lines = (x.it && x.it.m) || []; const hit = lines.find(l => norm(l.replace(/\[\[|\]\]/g, '')).includes(norm(p))); return hit || (VB[p] && VB[p].ex) || ''; };
+  const turnFor = x => x.k === 'p2' ? 'Use it in your 2-minute talk.' : 'Use it in your answer: ' + x.it.q;
+  const ph = (L, x) => { L.forEach(p => seen[p] = 1);
+    let h = '<div class="kph">' + L.map((p, i) => '<button type="button" class="kpc' + (open === i ? ' on' : '') + (used[p] ? ' used' : '') + '" data-pi="' + i + '">' + (used[p] ? '<span class="kpt">Used</span>' : '') + esc(p) + '</button>').join('') + '</div>';
+    if(open >= 0 && L[open]){ const p = L[open], v = VB[p] || {}, ex = exFor(x, p);
+      h += '<div class="kpx">'
+        + (v.m ? '<span class="l">Meaning</span><span>' + esc(v.m) + (v.zh ? ' <span class="kzh">· ' + esc(v.zh) + '</span>' : '') + '</span>' : '')
+        + (v.ipa || v.u ? '<span class="l">' + (v.ipa ? 'Say it' : 'Dictionary') + '</span><span><b>' + esc(v.w || p) + '</b>' + (v.ipa ? ' <span class="kipa">' + esc(v.ipa) + '</span>' : '') + (v.u ? ' <a class="kox" href="https://www.oxfordlearnersdictionaries.com' + esc(v.u) + '" target="_blank" rel="noopener">Oxford</a>' : '') + '</span>' : '')
+        + (ex ? '<span class="l">Example</span><span>' + hl(ex) + '</span>' : '')
+        + '<span class="l">Your turn</span><span>' + esc(turnFor(x)) + '</span></div>'
+        + '<button class="btn" type="button" id="kUsed" style="margin-top:10px">' + (used[p] ? 'Not used yet' : 'Student used it') + '</button>'; }
+    return h; };
+  const usedLine = L => { const n = L.filter(p => used[p]).length; return '<div class="sub" style="margin:0">Phrases used: <b style="color:#3C3489">' + n + ' of ' + L.length + '</b></div>'; };
   const RUB = [['Fluency and coherence', ['Are the answers an appropriate length for the task?', 'Does the speaker speak too slowly, hesitate, repeat or make corrections?']],
     ['Lexical resource', ['Does the speaker use a range of vocabulary (everyday, less common, colloquial)?', 'Is the vocabulary used appropriately (word form, collocation)?']],
     ['Grammatical range and accuracy', ['Does the speaker use simple forms with control?', 'Does the speaker use complex structures accurately?']],
@@ -575,11 +595,12 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
       + '<div>' + str('f') + '</div><div><b>Part 2 · 1 minute to prepare, up to 2 minutes to speak</b><br>Talk about the topic on the cue card. The examiner may ask one or two questions on the same topic.</div>'
       + '<div>' + str('p') + '</div><div><b>Part 3 · 4–5 minutes</b><br>A discussion of more abstract ideas linked to the topic in Part 2.</div></div></div>';
     if(x.k === 'assess') return '<div style="grid-column:1/-1"><div class="kk" style="margin-bottom:8px">Assessment · 评分标准</div><div class="krow4">' + RUB.map(r => '<div><b>' + esc(r[0]) + '</b>' + r[1].map(q => '<p>' + esc(q) + '</p>').join('') + '</div>').join('') + '</div></div>';
-    if(x.k === 'p1') return '<div class="kpanel"><div class="kk">Part 1 · ' + esc(x.it.topic) + ' · question ' + (x.n + 1) + ' of ' + x.of + '</div><div class="kq"><span style="font-size:clamp(24px,2vw,34px);font-weight:600">' + esc(x.it.q) + '</span></div>' + str('a') + mbtn() + model('a', x.it.m) + '</div><div class="kpanel"><div class="kk">Words and phrases to use · 可用表达</div>' + ph(x.it.ph) + '</div>';
+    if(x.k === 'p1') return '<div class="kpanel"><div class="kk">Part 1 · ' + esc(x.it.topic) + ' · question ' + (x.n + 1) + ' of ' + x.of + '</div><div class="kq"><span style="font-size:clamp(24px,2vw,34px);font-weight:600">' + esc(x.it.q) + '</span></div>' + str('a') + usedLine(x.it.ph) + mbtn() + model('a', x.it.m) + '</div><div class="kpanel"><div class="kk">Words and phrases to use · 可用表达 <span style="text-transform:none;letter-spacing:0;font-weight:400">· tap one to explain</span></div>' + ph(x.it.ph, x) + '</div>';
     if(x.k === 'p2') return '<div class="kpanel"><div class="kk">Part 2 · cue card' + (x.of > 1 ? ' ' + (x.n + 1) + ' of ' + x.of + (x.n ? ' · spare card' : '') : '') + ' · 1 min to prepare, up to 2 min to speak</div><div class="kcue"><b>' + esc(x.it.task) + '</b><div style="margin-top:8px">You should say:</div><ul>' + x.it.points.map(p => '<li>' + esc(p) + '</li>').join('') + '</ul><div>' + esc(x.it.explain) + '</div></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="btn pr" type="button" id="kPrep">1 min to prepare</button><button class="btn" type="button" id="kSpeak">Speak · 2 min</button><span class="ktm" id="kMini"></span></div></div>'
-      + '<div class="kpanel"><div class="kk">Plan your 2 minutes · P–P–F</div><div class="kmod f" style="border:0;padding:0"><b style="color:#3C3489">P</b><span><b>Past</b> · ' + esc(x.it.ppf[0]) + '</span><b style="color:#3C3489">P</b><span><b>Present</b> · ' + esc(x.it.ppf[1]) + '</span><b style="color:#3C3489">F</b><span><b>Future</b> · ' + esc(x.it.ppf[2]) + '</span></div><div class="kk" style="margin-top:6px">Useful language · 可用表达</div>' + ph(x.it.ph) + '</div>';
-    if(x.k === 'p3') return '<div class="kpanel"><div class="kk">Part 3 · discussion · question ' + (x.n + 1) + ' of ' + x.of + '</div><div class="kq"><span style="font-size:clamp(24px,2vw,34px);font-weight:600">' + esc(x.it.q) + '</span></div>' + str('p') + mbtn() + model('p', x.it.m) + '</div><div class="kpanel"><div class="kk">Words and phrases to use · 可用表达</div>' + ph(x.it.ph) + '</div>';
-    return '<div style="grid-column:1/-1"><div class="kk" style="margin-bottom:8px">Feedback · 课堂反馈</div><div class="krow4">' + RUB.map(r => '<div><b>' + esc(r[0]) + '</b>' + r[1].map(q => '<p>' + esc(q) + '</p>').join('') + '</div>').join('') + '</div><div class="kpanel" style="margin-top:12px">' + ['One thing you did well today:', 'One structure to use more (A–R–E, P–P–F or P–R–E–L):', 'One thing to practise before next class:'].map((q, i) => '<div class="kq"><i>' + (i + 1) + '</i><span>' + esc(q) + '</span></div>').join('') + '</div></div>'; }
+      + '<div class="kpanel"><div class="kk">Plan your 2 minutes · P–P–F</div><div class="kmod f" style="border:0;padding:0"><b style="color:#3C3489">P</b><span><b>Past</b> · ' + esc(x.it.ppf[0]) + '</span><b style="color:#3C3489">P</b><span><b>Present</b> · ' + esc(x.it.ppf[1]) + '</span><b style="color:#3C3489">F</b><span><b>Future</b> · ' + esc(x.it.ppf[2]) + '</span></div><div class="kk" style="margin-top:6px">Useful language · 可用表达 <span style="text-transform:none;letter-spacing:0;font-weight:400">· tap one to explain</span></div>' + ph(x.it.ph, x) + '</div>';
+    if(x.k === 'p3') return '<div class="kpanel"><div class="kk">Part 3 · discussion · question ' + (x.n + 1) + ' of ' + x.of + '</div><div class="kq"><span style="font-size:clamp(24px,2vw,34px);font-weight:600">' + esc(x.it.q) + '</span></div>' + str('p') + usedLine(x.it.ph) + mbtn() + model('p', x.it.m) + '</div><div class="kpanel"><div class="kk">Words and phrases to use · 可用表达 <span style="text-transform:none;letter-spacing:0;font-weight:400">· tap one to explain</span></div>' + ph(x.it.ph, x) + '</div>';
+    return '<div style="grid-column:1/-1"><div class="kk" style="margin-bottom:8px">Feedback · 课堂反馈</div><div class="krow4">' + RUB.map(r => '<div><b>' + esc(r[0]) + '</b>' + r[1].map(q => '<p>' + esc(q) + '</p>').join('') + '</div>').join('') + '</div><div class="kpanel" style="margin-top:12px">' + ['One thing you did well today:', 'One structure to use more (A–R–E, P–P–F or P–R–E–L):', 'One thing to practise before next class:'].map((q, i) => '<div class="kq"><i>' + (i + 1) + '</i><span>' + esc(q) + '</span></div>').join('') + '</div>'
+      + (() => { const U = Object.keys(used).filter(p => used[p]), T = Object.keys(seen).filter(p => !used[p]); if(!U.length && !T.length) return ''; return '<div class="kpanel" style="margin-top:12px"><div class="kk">Words and phrases today</div>' + (U.length ? '<div class="sub" style="margin:0">Used well</div><div class="kph">' + U.map(p => '<span class="kpc used">' + esc(p) + '</span>').join('') + '</div>' : '') + (T.length ? '<div class="sub" style="margin:6px 0 0">Practise next class</div><div class="kph">' + T.slice(0, 12).map(p => '<span class="kpc">' + esc(p) + '</span>').join('') + '</div>' : '') + '</div>'; })() + '</div>'; }
   function teacher(){ if(!notes) return ''; return '<div class="kpanel" style="margin-top:16px"><div class="kk">Teacher notes · not saved · hide them before sharing</div><div class="krub">' + RUB.map((r, i) => '<span>' + esc(r[0]) + '</span><span>' + [[1, 'Needs work'], [2, 'OK'], [3, 'Good'], [4, 'Strong']].map(o => '<button type="button" style="width:auto;padding:0 10px" data-rb="' + i + ':' + o[0] + '" class="' + ((marks[i] || 0) === o[0] ? 'on' : '') + '">' + o[1] + '</button>').join(' ') + '</span>').join('') + '</div></div>'; }
   function paint(){ const x = S[si], phn = x.ph;
     app.innerHTML = '<div class="kv"><div class="khd"><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="lb" style="background:#E6EEFB;color:#2B4C8C">IELTS Speaking · ' + esc(t.theme) + ' · ' + esc(t.zh) + '</span></div><div style="display:flex;align-items:center;gap:10px"><span class="ktm" id="kT">' + mm(left) + '</span><button class="btn sm" type="button" id="kRun">' + (run ? 'Pause' : 'Start') + '</button></div></div>'
@@ -591,12 +612,14 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
     $('kB').onclick = () => go(si - 1); $('kN').onclick = () => { if(si < S.length - 1) go(si + 1); else close(); };
     $('kNotes').onclick = () => { notes = !notes; paint(); };
     if($('kShow')) $('kShow').onclick = () => { show = !show; paint(); };
+    app.querySelectorAll('[data-pi]').forEach(b => b.onclick = () => { const i = +b.dataset.pi; open = open === i ? -1 : i; paint(); });
+    if($('kUsed')) $('kUsed').onclick = () => { const p = S[si].it.ph[open]; used[p] = !used[p]; paint(); };
     app.querySelectorAll('[data-rb]').forEach(b => b.onclick = () => { const [i, n] = b.dataset.rb.split(':').map(Number); marks[i] = marks[i] === n ? 0 : n; paint(); });
     if($('kPrep')) $('kPrep').onclick = () => miniRun(60, 'Speak now');
     if($('kSpeak')) $('kSpeak').onclick = () => miniRun(120, 'Time');
     const el = $('kT'); if(el) el.style.color = left < 0 ? '#B5432C' : ''; }
   function miniRun(sec, endTxt){ clearInterval(mini); let s = sec; const sh = () => { const el = $('kMini'); if(el) el.textContent = s > 0 ? mm(s) : endTxt; }; sh(); mini = setInterval(() => { s--; sh(); if(s <= 0) clearInterval(mini); }, 1000); }
-  function go(i){ if(i < 0 || i >= S.length) return; const ch = S[i].ph !== S[si].ph; si = i; show = false; if(ch) left = P[S[i].ph][2] * 60; clearInterval(mini); paint(); window.scrollTo(0, 0); }
+  function go(i){ if(i < 0 || i >= S.length) return; const ch = S[i].ph !== S[si].ph; si = i; show = false; open = -1; if(ch) left = P[S[i].ph][2] * 60; clearInterval(mini); paint(); window.scrollTo(0, 0); }
   const tick = setInterval(() => { if(!run) return; left--; const el = $('kT'); if(el){ el.textContent = mm(left); el.style.color = left < 0 ? '#B5432C' : ''; } }, 1000);
   const key = e => { if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; if(e.key === 'ArrowRight') go(si + 1); else if(e.key === 'ArrowLeft') go(si - 1); else if(e.key === 'Escape') close(); };
   document.addEventListener('keydown', key);
