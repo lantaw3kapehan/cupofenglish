@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
     return out({ ok: true, items: (data && data.items) || [], at: data && data.at });
   }
   if (op === "ok") {
-    const ref = String(b.ref || "").slice(0, 120); if (!/^(sale|dbl|nt|shot|renew|risk|tfu|tagain|vidkeep):/.test(ref))   /* v21 (2539): vidkeep = a late-video case reviewed, penalty kept */ return out({ ok: false, error: "not allowed" }, 400);
+    const ref = String(b.ref || "").slice(0, 120); if (!/^(sale|dbl|nt|shot|renew|risk|tfu|tagain|vidkeep|fm):/.test(ref))   /* v21 (2539): vidkeep = a late-video case reviewed, penalty kept */ return out({ ok: false, error: "not allowed" }, 400);
     const { error } = await db.from("coe_ops_ok").upsert({ ref, by_name: me, at: new Date().toISOString() }, { onConflict: "ref" });
     if (error) return out({ ok: false, error: "not saved" }, 500);
     return out({ ok: true });
@@ -161,7 +161,9 @@ Deno.serve(async (req: Request) => {
   }
   if (op === "firstmonth") {   // v18 (2484): packages whose first month also counts lessons from before the start (payment) date · Operations checks each and saves it with lessonfix
     const { data, error } = await memo("fm", () => db.rpc("coe_firstmonth_check"), 60000); if (error) return out({ ok: false, error: "db" }, 500);
-    return out({ ok: true, rows: data || [] });
+    // v22 (2544, Misty 19:59 "these are all correct but no option"): rows management marked "It's right" (coe_ops_ok ref fm:<code>|<yyyy-mm>) leave the list
+    const { data: okd } = await db.from("coe_ops_ok").select("ref").like("ref", "fm:%"); const OK = new Set((okd || []).map((x: any) => String(x.ref).slice(3)));
+    return out({ ok: true, rows: (data || []).filter((x: any) => !OK.has(String(x.code) + "|" + String(x.ym))) });
   }
   if (op === "lessonfix") {   // v14 (2456): management sets a student's lesson count for one month (Chenyu March 1.5) · v null = back to the sheet's count
     const code = str(b.code, 20).toUpperCase(), ym = str(b.ym, 7); if (!/^ST-\d{4}-\d{3}$/.test(code) || !/^\d{4}-\d{2}$/.test(ym)) return out({ ok: false, error: "bad student or month" }, 400);
