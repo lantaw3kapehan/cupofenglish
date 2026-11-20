@@ -7439,7 +7439,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2137;
+const COE_V = 2138;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -12363,7 +12363,7 @@ function paintRows(){
   const rows = P.map((x, i) => ({ x, i })).filter(o => ok(o.x));
   box.innerHTML = rows.map(({ x, i }) => { const s = stOf(x), r = rdyOf(x.name), ck = (l, a) => `<span class="pr-c ${!r ? '' : a && a.length ? 'no' : 'ok'}">${r && !(a && a.length) ? '✓ ' : ''}${l}${a && a.length ? ' · ' + a.length : ''}</span>`;
     return `<div class="py-row ${s}" onclick="payRow(${i})"><span class="py-av">${esc(String(x.name || '?').replace(/^teacher\s+/i, '').slice(0, 2).toUpperCase())}</span>
-      <div class="py-n"><b>${hi(tName(x.name), q)}</b><small>${x.units} unit${x.units === 1 ? '' : 's'}${x.rate && Math.abs(x.units * x.rate - (x.lessonPay || 0)) < 1 ? ' × ' + peso(x.rate) : ''}</small></div>
+      <div class="py-n"><b>${hi(tName(x.name), q)}</b><small>${!+x.units && !+(x.lessonPay || 0) ? 'office staff · daily rate' : x.units + ' unit' + (x.units === 1 ? '' : 's') + (x.rate && Math.abs(x.units * x.rate - (x.lessonPay || 0)) < 1 ? ' × ' + peso(x.rate) : '')}</small></div>
       <span class="py-net">${peso(x.net)}</span>
       <div class="py-cks">${x.paid ? '' : ck('Feedback', r && r.fb) + ck('Peer review', r && r.peer) + ck('Videos', r && r.vid)}${pchkChip(x)}</div>
       <div class="py-st"><span class="${s}">${x.paid ? '✓ Paid' : s === 'ready' ? 'Ready to release' : r ? rdyN(x.name) + ' to finish' : 'Checking…'}</span></div></div>`; }).join('')
@@ -27281,13 +27281,13 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     if(C){ const t = C.rows.reduce((a, x) => a + x.net, 0), L = C.rows.slice().sort((a, b) => b.net - a.net)[0];
       cells = ['<div><span>' + esc(C.label) + ' · accrued so far</span><b>' + peso(t) + '</b><small>' + C.rows.length + ' teachers · <span class="t824 ac">Not paid yet</span> paid after month end</small></div>',
         '<div><span>' + esc(pm) + ' pay · disbursed</span><b>' + peso(tot - owed) + '</b><small><span class="t824 ok">✓ All ' + P.length + ' paid</span></small></div>',
-        '<div><span>Still to pay</span><b>' + peso(owed) + '</b><small>' + (owed ? (P.length - paid.length) + ' teachers' : 'nothing owed for ' + esc(pm)) + '</small></div>'];
+        '<div><span>Still to pay</span><b>' + peso(owed) + '</b><small>' + (owed ? (P.length - paid.length) + ((P.length - paid.length) === 1 ? ' teacher' : ' teachers') : 'nothing owed for ' + esc(pm)) + '</small></div>'];
       v.dataset.lg = L ? peso(L.net) + '|' + tName(L.name) + '|' + C.label : ''; }
     else { const RD = typeof RDY !== 'undefined' && RDY ? P.filter(x => !x.paid && rdyN(x.name) === 0) : null;
       cells = ['<div><span>' + esc(pm) + ' pay · total net pay</span><b>' + peso(tot) + '</b><small>' + P.length + ' teachers · ' + P.reduce((a, x) => a + x.units, 0) + ' units · after deductions and gov contributions</small></div>',
         '<div><span>Disbursed</span><b>' + peso(tot - owed) + '</b><small><span class="t824 ' + (paid.length === P.length ? 'ok' : 'ac') + '">' + paid.length + ' of ' + P.length + ' paid</span></small></div>',
         '<div><span>Ready to release</span><b>' + (RD ? peso(RD.reduce((a, x) => a + x.net, 0)) : '—') + '</b><small>' + (RD ? RD.length + (RD.length === 1 ? ' teacher' : ' teachers') + ', all checks done' : 'checking…') + '</small></div>',
-        '<div><span>Still to pay</span><b>' + peso(owed) + '</b><small>' + (owed ? '<span class="t824 no">' + (P.length - paid.length) + ' teachers</span>' : 'all paid') + '</small></div>'];
+        '<div><span>Still to pay</span><b>' + peso(owed) + '</b><small>' + (owed ? '<span class="t824 no">' + (P.length - paid.length) + ((P.length - paid.length) === 1 ? ' teacher' : ' teachers') + '</span>' : 'all paid') + '</small></div>'];
       v.dataset.lg = ''; }
     const html = '<div class="k824" style="--n:' + cells.length + '">' + cells.join('') + '</div>';
     const bd = v.querySelector('.bd63') || v.querySelector('.pm60') || v.querySelector('.py-hero'); if(!bd) return;
