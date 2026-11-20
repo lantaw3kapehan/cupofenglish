@@ -45,7 +45,8 @@ Deno.serve(async (req: Request) => {
     }
     if (op === "fail") {   // v9 (2547): a book that did not open, or opened only after a slow fallback → kept for Operations
       const n = clip(b.outcome, 20); if (!["failed", "fallback", "slow"].includes(n)) return out({ ok: false, error: "outcome" }, 400);
-      await db.from("coe_book_fail").insert({ who: clip(s.name, 60), mode: clip(s.mode, 20), file_id: clip(b.id, 80), book: clip(b.book, 80), title: clip(b.title, 160), outcome: n, step: clip(b.step, 40), error: clip(b.error, 200), secs: Math.min(9999, Math.max(0, +b.secs || 0)), net: clip(b.net, 60) });
+      const { error: fe } = await db.from("coe_book_fail").insert({ who: clip(s.name, 60), mode: clip(s.mode, 20), file_id: clip(b.id, 80), book: clip(b.book, 80), title: clip(b.title, 160), outcome: n, step: clip(b.step, 40), error: clip(b.error, 200), secs: Math.min(9999, Math.max(0, +b.secs || 0)), net: clip(b.net, 60) });
+      if (fe) throw new Error(fe.message);
       return out({ ok: true });
     }
     if (op === "fails") { if (!mgr) return out({ ok: false, error: "management only" }, 403);
