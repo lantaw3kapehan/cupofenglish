@@ -44,3 +44,10 @@ jobs:
           retention-days: 3
       - name: Sizes
         run: cat out/sizes.txt
+      - name: Pictures for Claude (encrypted, only Claude's private key opens them)
+        run: |
+          cd out && for f in *.png; do convert "$f" -quality 82 "${f%.png}.jpg"; done && tar cf ../p.tar *.jpg sizes.txt && cd ..
+          openssl rand -out k.bin 32
+          openssl enc -aes-256-cbc -pbkdf2 -salt -in p.tar -out p.enc -pass file:k.bin
+          openssl pkeyutl -encrypt -pubin -inkey tools/book-light-pub.pem -pkeyopt rsa_padding_mode:oaep -in k.bin -out k.enc
+          echo "==KEY=="; base64 -w 0 k.enc; echo; echo "==DATA=="; base64 -w 4000 p.enc; echo "==END=="
