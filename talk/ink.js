@@ -27,7 +27,8 @@
 .ink-m{position:fixed;left:12px;top:50%;transform:translateY(-50%);z-index:60;display:none;flex-direction:column;align-items:center;gap:2px;border:0;border-radius:14px;background:rgba(255,255,255,.97);box-shadow:0 6px 20px rgba(30,26,60,.14);padding:8px 6px;cursor:pointer;font:600 11px Inter,sans-serif;color:#2B2253}
 .ink-m i{width:14px;height:14px;border-radius:50%;display:block}body.ink-min .ink-t{display:none}body.ink-min .ink-m{display:flex}
 .ink-in{position:absolute;z-index:5;border:1.5px dashed #9AD3D6;background:rgba(255,255,255,.85);border-radius:6px;padding:2px 6px;outline:0;font-family:Inter,sans-serif;font-weight:600}
-body.ink-draw .kv{cursor:crosshair}`;
+body.ink-draw .kv{cursor:crosshair}
+body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{padding-left:58px}@media (min-width:1500px){body.ink-on #app{padding-left:0}}`;
   function styles(){ if(document.getElementById('ink-css')) return; const s = document.createElement('style'); s.id = 'ink-css'; s.textContent = css; document.head.appendChild(s); }
   const W = () => cv ? cv.clientWidth : 1;
   const list = () => (ANN[key] = ANN[key] || []);
@@ -105,11 +106,11 @@ body.ink-draw .kv{cursor:crosshair}`;
       if(!bar){ bar = document.createElement('div'); bar.className = 'ink-t'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Drawing tools'); bar.addEventListener('click', onBar); document.body.appendChild(bar);
         mini = document.createElement('button'); mini.className = 'ink-m'; mini.type = 'button'; mini.title = 'Show the tools'; mini.onclick = () => document.body.classList.remove('ink-min'); document.body.appendChild(mini);
         document.addEventListener('keydown', onKey, true); }
-      bar.style.display = ''; mini.style.display = ''; document.body.classList.remove('ink-min'); paintBar(); },
+      bar.style.display = ''; mini.style.display = ''; document.body.classList.remove('ink-min'); document.body.classList.add('ink-on'); paintBar(); },
     /* after each repaint: put the drawing layer over this screen (k = which screen, so each keeps its own drawings) */
     page(el, k){ if(!on || !el) return; host = el; key = String(k); if(getComputedStyle(host).position === 'static') host.style.position = 'relative';
       cv = document.createElement('canvas'); cv.className = 'ink-c' + (tool === 'hand' ? ' off' : ''); host.appendChild(cv); bindCanvas();
       if(ro) ro.disconnect(); ro = new ResizeObserver(() => fit()); ro.observe(host); fit(); },
-    close(){ on = false; if(ro) ro.disconnect(); ro = null; cv = null; host = null; if(bar) bar.style.display = 'none'; if(mini) mini.style.display = 'none'; document.body.classList.remove('ink-draw', 'ink-min'); }
+    close(){ on = false; if(ro) ro.disconnect(); ro = null; cv = null; host = null; if(bar) bar.style.display = 'none'; if(mini) mini.style.display = 'none'; document.body.classList.remove('ink-draw', 'ink-min', 'ink-on'); }
   };
 })();
