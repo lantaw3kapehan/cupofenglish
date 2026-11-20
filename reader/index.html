@@ -251,26 +251,29 @@ function bookFail(outcome, id, step, error, secs){ try{ const c = navigator.conn
    (Cache Storage "coe-books-pre", files up to 80 MB, up to 1.2 GB in all, the least recently opened leaves first). It is fetched
    quietly in small pieces with pauses, so a live class keeps its internet. The next open reads it from the computer: instant, even offline. */
 let STEP0 = '';
-const KC = 'coe-books-pre', KMAX = 80 * 1048576, KALL = 1200 * 1048576, KSEEN = new Set();
+const KC = 'coe-books-pre', KMAX = 50 * 1048576, KALL = 1200 * 1048576, KSEEN = new Set();
 function kIdx(){ try{ return JSON.parse(localStorage.getItem('coe.bk.pre') || '[]'); }catch(e){ return []; } }
 function kSave(L){ try{ localStorage.setItem('coe.bk.pre', JSON.stringify(L.slice(0, 200))); }catch(e){} }
 async function kOpen(url, opt){ try{ if(!('caches' in window)) return null; const c = await caches.open(KC), r = await c.match(url); if(!r) return null;
     const buf = await r.arrayBuffer(); const L = kIdx().filter(x => x.u !== url); L.unshift({ u: url, n: buf.byteLength, at: Date.now() }); kSave(L);
     return await pdfjsLib.getDocument(Object.assign({ data: new Uint8Array(buf) }, opt)).promise; }catch(e){ return null; } }
-async function kKeep(url, length){ if(!('caches' in window) || !length || length > KMAX || KSEEN.has(url)) return; KSEEN.add(url);
+let KQ = Promise.resolve();   /* 2550: one saved book at a time */
+function kKeep(url, length, src){ const c = navigator.connection || {}; if(c.saveData || /(^|-)2g|3g/.test(c.effectiveType || '')) return; KQ = KQ.then(() => kKeep1(url, length, src)).catch(() => {}); }
+async function kKeep1(url, length, src){ src = src || url; if(!('caches' in window) || !length || length > KMAX || KSEEN.has(url)) return; KSEEN.add(url);
   try{ const c = await caches.open(KC); if(await c.match(url)) return; await new Promise(r => setTimeout(r, 4000));
-    const out = new Uint8Array(length), step = 1048576; let pos = 0;
-    while(pos < length){ const e = Math.min(length, pos + step); const r = await fetch(url, { headers: { Range: 'bytes=' + pos + '-' + (e - 1) } }); if(r.status !== 206 && !(r.ok && pos === 0 && e === length)) return;
-      const b = new Uint8Array(await r.arrayBuffer()); out.set(b.subarray(0, e - pos), pos); pos = e; await new Promise(z => setTimeout(z, document.hidden ? 150 : 400)); }
+    const out = new Uint8Array(length), step = 262144; let pos = 0;   /* 2550: small pieces, about 1.5 Mbps at most, so VooV keeps the internet */
+    while(pos < length){ const e = Math.min(length, pos + step); const r = await fetch(src, { headers: { Range: 'bytes=' + pos + '-' + (e - 1) } }); if(r.status !== 206 && !(r.ok && pos === 0 && e === length)) return;
+      const b = new Uint8Array(await r.arrayBuffer()); out.set(b.subarray(0, e - pos), pos); pos = e; await new Promise(z => setTimeout(z, 1200)); }
     await c.put(url, new Response(out, { headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(length) } }));
     let L = kIdx().filter(x => x.u !== url); L.unshift({ u: url, n: length, at: Date.now() }); let tot = 0; const keep = [];
     for(const x of L){ if(tot + x.n <= KALL){ keep.push(x); tot += x.n; } else { try{ await c.delete(x.u); }catch(e){} } } kSave(keep); }catch(e){} }
-async function ranged(url, length, opt){ { const k = await kOpen(url, opt); if(k){ STEP0 = 'on this computer'; return k; } } setTimeout(() => kKeep(url, length), 0);
+async function ranged(url0, length, opt){ const url = url0 + (url0.indexOf('?') < 0 ? '?n=' : '&n=') + length;   /* 2550: the saved copy is matched by size too */
+  { const k = await kOpen(url, opt); if(k){ STEP0 = 'on this computer'; return k; } } setTimeout(() => kKeep(url, length, url0), 0);
   const first = Math.min(length, 524288);
-  const r0 = await fetch(url, { headers: { Range: 'bytes=0-' + (first - 1) } }); if(r0.status !== 206 && first < length) throw new Error('no ranges');
+  const r0 = await fetch(url0, { headers: { Range: 'bytes=0-' + (first - 1) } }); if(r0.status !== 206 && first < length) throw new Error('no ranges');
   const head = new Uint8Array(await r0.arrayBuffer()); if(head.length < Math.min(first, 1024)) throw new Error('short');
   const tr = new pdfjsLib.PDFDataRangeTransport(length, head.subarray(0, first));
-  tr.requestDataRange = (b, e) => { fetch(url, { headers: { Range: 'bytes=' + b + '-' + (e - 1) } }).then(r => r.arrayBuffer()).then(buf => tr.onDataRange(b, new Uint8Array(buf))).catch(() => {}); };
+  tr.requestDataRange = (b, e) => { fetch(url0, { headers: { Range: 'bytes=' + b + '-' + (e - 1) } }).then(r => r.arrayBuffer()).then(buf => tr.onDataRange(b, new Uint8Array(buf))).catch(() => {}); };
   return pdfjsLib.getDocument(Object.assign({ range: tr, length, rangeChunkSize: 262144, disableAutoFetch: true }, opt)).promise; }
 /* 2278 · a page not yet in our copy is copied now, and the other pages of this unit too, so the next opens are instant */
 const asked = new Set();
