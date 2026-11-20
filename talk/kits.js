@@ -148,7 +148,13 @@ window.KITS = {
       q: ['What is your favourite food?', 'Can you cook anything?', 'What food from another country do you like?', 'What do students eat at your school?', 'Describe a special family meal.'],
       phrases: [['It tastes…', '它尝起来……'], ['My mum makes the best…', '我妈妈做的……最好吃。'], ['It\'s a bit spicy.', '有点辣。'], ['Have a snack', '吃点零食']],
       think: 'Should schools sell snacks and sweet drinks? Give one reason for each side.',
-      role: { scene: 'Ordering lunch with a friend.', a: 'Friend A: suggest a place and a dish.', b: 'Friend B: agree or suggest something else, then order.' } }
+      role: { scene: 'Ordering lunch with a friend.', a: 'Friend A: suggest a place and a dish.', b: 'Friend B: agree or suggest something else, then order.' } },
+    { id: 't-english', lv: 'teens', strand: 'education', title: 'Learning English', zh: '学习英语',
+      warm: ['When did you start learning English?', 'What English word do you like?'],
+      q: ['Why are you learning English?', 'What is easy and what is hard for you?', 'Where do you use English outside class?', 'Which helps you more: films, songs or games?', 'What would you like to do in English one day?'],
+      phrases: [['I\'m trying to improve my…', '我正在努力提高我的……'], ['It\'s hard to…', '……很难。'], ['Little by little', '一点一点地'], ['Make mistakes', '犯错']],
+      think: 'Is it better to speak with mistakes or to wait until you are sure? Why?',
+      role: { scene: 'Helping a new learner.', a: 'New learner: ask for three tips to learn English.', b: 'You: give tips with an example each.' } }
   ],
   ielts: [
     { id: 'i-places', theme: 'Places', zh: '地点',
