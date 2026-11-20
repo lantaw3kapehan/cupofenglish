@@ -5732,9 +5732,9 @@ try{ schedShow(k, await schedGet(k)); schedAhead(d); }
 catch(e){ if(!quiet && !old) toast('Could not load the calendar'); }
 }
 async function schedAhead(d){ const run = ++SCA;
-for(const o of [1,-1,2,3,4,5,6,7]){ if(run !== SCA || !TOKEN) return; while(document.hidden) await new Promise(r => setTimeout(r, 5000));
+for(const o of [1,-1,2,3,4,5,6,7,-2,-3]){ if(run !== SCA || !TOKEN) return; while(document.hidden) await new Promise(r => setTimeout(r, 5000));
 const n = new Date(d); n.setDate(n.getDate()+o); const nk = ymdLocal(n), c = SCC[nk];
-if(c && c._t && Date.now() - c._t < 5*60000) continue; try{ await schedGet(nk); }catch(e){} await new Promise(r => setTimeout(r, 250)); } }
+if(c && c._t && (Date.now() - c._t < 5*60000 || (o < -1 && nk < ymdLocal(new Date())))) continue; if(o < -1 && !c && (x => x && x.date === nk)(kept('sched.' + nk))) continue; try{ await schedGet(nk); }catch(e){} await new Promise(r => setTimeout(r, 250)); } }
 setInterval(() => { if(D && D.mgr && VIEW === 'schedule' && !document.hidden && SC) loadSchedule(0, true); }, 300000);
 let SL = null;
 async function classForm(code){
@@ -7439,7 +7439,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2139;
+const COE_V = 2140;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -11229,7 +11229,7 @@ ${pr && pr[1] ? `<a class="ov-ql" onclick="go('perf')"><div class="ov-th"><span>
     const base = new Date(); base.setHours(12, 0, 0, 0);
     const start = SC_OFF - 3, out = [];
     for(let o = start; o < start + 7; o++){
-      const d = new Date(base); d.setDate(d.getDate() + o); const k = ymdLocal(d), c = SCC[k] || null;
+      const d = new Date(base); d.setDate(d.getDate() + o); const k = ymdLocal(d), c = SCC[k] || (o !== SC_OFF ? (x => x && x.date === k ? x : null)(kept('sched.' + k)) : null) || null;
       const n = o === SC_OFF && SC ? SC.events.filter(e => !e.cancelled).length : c && c.events ? c.events.filter(e => !e.cancelled).length : null;
       out.push(`<a class="s2-d ${o === SC_OFF ? 'on' : ''} ${o === 0 ? 'td' : ''}" onclick="${o === SC_OFF ? '' : 'loadSchedule(' + (o - SC_OFF) + ')'}"><span>${o === 0 ? 'Today' : DW[d.getDay()]}</span><b>${d.getDate()}</b><em>${n == null ? '·' : n + '<s> class' + (n === 1 ? '' : 'es') + '</s>'}</em></a>`);
     }
@@ -11536,7 +11536,7 @@ ${scDueBox()}${bookKey()}<div class="fl"><span class="lbl">Teacher</span><button
     const base = new Date(); base.setHours(12, 0, 0, 0);
     const start = SC_OFF - 3, out = [];
     for(let o = start; o < start + 7; o++){
-      const d = new Date(base); d.setDate(d.getDate() + o); const k = ymdLocal(d), c = SCC[k] || null;
+      const d = new Date(base); d.setDate(d.getDate() + o); const k = ymdLocal(d), c = SCC[k] || (o !== SC_OFF ? (x => x && x.date === k ? x : null)(kept('sched.' + k)) : null) || null;
       const n = o === SC_OFF && SC ? SC.events.filter(e => !e.cancelled).length : c && c.events ? c.events.filter(e => !e.cancelled).length : null;
       out.push(`<a class="s2-d ${o === SC_OFF ? 'on' : ''} ${o === 0 ? 'td' : ''}" onclick="${o === SC_OFF ? '' : 'loadSchedule(' + (o - SC_OFF) + ')'}"><span>${o === 0 ? 'Today' : DW[d.getDay()]}</span><b>${d.getDate()}</b><em>${n == null ? '·' : n + '<s> class' + (n === 1 ? '' : 'es') + '</s>'}</em></a>`);
     }
