@@ -7439,7 +7439,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2131;
+const COE_V = 2132;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -44157,6 +44157,66 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
   if(!L.length) return chk; var d = Math.round(L.reduce(function(a, x){ return a + x; }, 0) * 10) / 10; if(!d) return chk;
   return Object.assign({}, chk, { now: Math.round((+chk.now - d) * 10) / 10 }); }catch(e){ return chk; } };
 </script>
+<style id="s2524">
+#sc2524{border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:13.5px;line-height:1.5}
+#sc2524.ok{background:#EAF5EC;border:1px solid #B9DEC2;color:#1F5A2E}#sc2524.bad{background:#FFF6E5;border:1px solid #F0D29A;color:#6B4400}
+#sc2524 b{display:block;font-size:14.5px;margin-bottom:4px}
+#sc2524 .r{display:grid;grid-template-columns:18px 1fr;gap:6px}
+#sc2524 .r i{font-style:normal;font-weight:700}
+#sc2524 .m{font-size:12.5px;opacity:.85;margin-top:4px}
+</style>
+<script id="b2524">
+/* 2524 (Misty 15:21): before a Lesson Summary goes to a parent (management: President and Operations), the numbers are checked on the summary itself:
+   carried + new (+ compensation) = completed + remaining · the months add up to the total · the total is what "completed" says · no month after this one
+   counts lessons · each corrected month is listed. All good: green "Checked · safe to share", and Copy / Save / PDF ask once and record who sent it.
+   Anything off: amber with what is off, and Copy / Save / PDF stay off until it agrees. */
+(function(){
+  const MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const n = s => { const v = parseFloat(String(s).replace(/[^\d.\-]/g, '')); return isFinite(v) ? v : NaN; }, r1 = x => Math.round(x * 10) / 10, eq = (a, b) => Math.abs(a - b) < 0.05;
+  const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const BTN = 'button[onclick^="docPic"],button[onclick^="docPrint"]';
+  let LAST = null;
+  function check(code){ const sb = document.getElementById('sheetBody'); if(!sb) return null; const txt = sb.innerText || '';
+    const sm = txt.match(/completed ([\d.]+) of ([\d.]+) lessons[^\n]*?with ([\d.]+) lessons? remaining/); if(!sm) return null;
+    const X = +sm[1], Y = +sm[2], Z = +sm[3], now = new Date(Date.now() + 8 * 3600e3), cur = now.getUTCFullYear() * 12 + now.getUTCMonth();
+    let sum = 0, total = NaN, months = 0, future = []; const rows = sb.querySelectorAll('tr');
+    rows.forEach(tr => { const c = [...tr.cells]; if(c.length < 2) return; const first = (c[0].innerText || '').trim(), nums = c.slice(1).map(x => n(x.innerText)).filter(x => !isNaN(x)); if(!nums.length) return;
+      const v = nums.length > 1 ? nums[nums.length - 1] : nums[0];
+      if(/^Total/.test(first)){ total = v; return; }
+      if(/^Other-teacher/.test(first)){ sum += v; return; }
+      const mm = first.match(new RegExp('^(' + MN.join('|') + ')\\b[\\s\\S]*?(\\d{4})')); if(!mm) return;
+      months++; sum += v; const k = +mm[2] * 12 + MN.indexOf(mm[1]); if(k > cur && v > 0) future.push(mm[1] + ' ' + mm[2]); });
+    const L = []; const add = (ok, t) => L.push({ ok, t });
+    add(eq(X + Z, Y), (X + Z !== Y ? '' : '') + r1(X) + ' completed + ' + r1(Z) + ' remaining = ' + r1(X + Z) + (eq(X + Z, Y) ? ', the package total ' : ' · the package total is ') + r1(Y));
+    if(months) add(eq(sum, isNaN(total) ? X : total), 'The months add up to ' + r1(sum) + (isNaN(total) ? '' : (eq(sum, total) ? ', the same as the total' : ' · the Total line says ' + r1(total))));
+    if(!isNaN(total)) add(eq(total, X), 'Total ' + r1(total) + (eq(total, X) ? ' = completed' : ' · completed says ' + r1(X)));
+    add(!future.length, future.length ? 'Lessons counted in a month that has not come yet: ' + future.join(', ') : 'No lessons counted after this month');
+    const codes = (txt.match(/ST-\d{4}-\d{3}/g) || [code]).map(x => x.toUpperCase()).filter((x, i, a) => a.indexOf(x) === i);
+    let F = []; try{ const ls = JSON.parse(localStorage.getItem('coe.lf2483') || 'null'); F = (ls && ls.length ? ls : ((typeof AT !== 'undefined' && AT && AT.fixes) || [])).filter(f => codes.indexOf(String(f.code).toUpperCase()) > -1); }catch(x){}
+    return { ok: L.every(x => x.ok), L, F, X, Y, Z, at: new Date() }; }
+  function hm(d){ return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  function paint(code){ try{ if(!(typeof D !== 'undefined' && D && D.mgr)) return; const sb = document.getElementById('sheetBody'); if(!sb) return; const old = document.getElementById('sc2524'); if(old) old.remove();
+      if(/Numbers don.t agree yet/.test(sb.innerText || '')) { LAST = null; return; }   /* the older check already holds it */
+      const c = check(code); LAST = c ? Object.assign(c, { code }) : null; if(!c) return;
+      const ML = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const h = '<div id="sc2524" class="noprint ' + (c.ok ? 'ok' : 'bad') + '"><b>' + (c.ok ? 'Checked · safe to share' : 'Not safe to share yet · please check') + '</b>'
+        + c.L.map(x => '<div class="r"><i>' + (x.ok ? '✓' : '!') + '</i><span>' + e(x.t) + '</span></div>').join('')
+        + c.F.map(f => '<div class="r"><i>✎</i><span>Corrected: ' + e(ML[+String(f.ym).slice(5, 7) - 1] + ' ' + String(f.ym).slice(0, 4)) + ' = ' + e(f.v) + (f.was != null ? ' (was ' + e(f.was) + ')' : '') + (f.code ? ' · ' + e(f.code) : '') + '</span></div>').join('')
+        + '<div class="m">Checked ' + hm(c.at) + (c.ok ? ' · Copy, Save and PDF ask once and record who sent it.' : ' · Copy, Save and PDF stay off until the numbers agree. Fix it in Correct a month, or tell Management.') + '</div></div>';
+      sb.insertAdjacentHTML('afterbegin', h);
+      sb.querySelectorAll(BTN).forEach(b => { b.disabled = !c.ok; b.title = c.ok ? '' : 'The numbers do not agree yet'; }); }catch(x){ console.warn('2524', x); } }
+  const _s = window.shSummary; if(typeof _s === 'function') window.shSummary = async function(code){ const r = await _s.apply(this, arguments); setTimeout(() => paint(code), 60); return r; };
+  /* Copy / Save / PDF: ask once per summary, then record it */
+  document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest(BTN); if(!b || !b.closest('#sheetBody') || !LAST) return;
+    if(!LAST.ok){ ev.stopImmediatePropagation(); ev.preventDefault(); try{ toast('The numbers do not agree yet. Check the amber box first.'); }catch(x){} return; }
+    if(LAST.confirmed) return;
+    const what = /docPrint/.test(b.getAttribute('onclick')) ? 'PDF' : /docPic\(1\)/.test(b.getAttribute('onclick')) ? 'Save picture' : 'Copy picture';
+    if(!confirm('Share this Lesson Summary with the parent?\n\n' + LAST.X + ' completed of ' + LAST.Y + ', ' + LAST.Z + ' remaining. Numbers checked at ' + hm(LAST.at) + '.\nYour name and the time are recorded.')){ ev.stopImmediatePropagation(); ev.preventDefault(); return; }
+    LAST.confirmed = true;
+    try{ fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-ops', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'log', kind: 'sent', ref: 'ls:' + LAST.code, title: 'Lesson summary · ' + LAST.code, note: what + ' · ' + LAST.X + ' of ' + LAST.Y + ', ' + LAST.Z + ' left · numbers checked' }) }).catch(() => {}); }catch(x){} }, true);
+})();
+</script>
+
 <script id="b2278">
 /* 2278 · warm the CupOfEnglish book reader (reader/) so the first book opens without waiting */
 (function(){ function warm(){ try{ if(!D) return; ['reader/', 'reader/pdfjs/pdf.min.mjs', 'reader/pdfjs/pdf.worker.min.mjs', 'reader/logo.png'].forEach(u => { const l = document.createElement('link'); l.rel = 'prefetch'; l.href = u; document.head.appendChild(l); }); }catch(e){} }
