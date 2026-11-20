@@ -1,0 +1,83 @@
+<style id="s2540">
+#pm2540{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+#pm2540 button{font:inherit;font-size:14px;padding:8px 14px;border-radius:12px;border:1px solid #DCD9E6;background:#fff;color:#4A4660;cursor:pointer}
+#pm2540 button.on{background:#E7F3F2;border-color:#2D7A78;color:#1E5D5B;font-weight:600}
+#pm2540 button small{font-size:12.5px;color:#6B6880;font-weight:400;margin-left:4px}
+#v-payroll.nso2540 > :not(.py-top):not(.mo-tabs):not(#pm2540):not(#ns2540){display:none!important}
+#v-payroll:not(.nso2540) > #ns2540{display:none}
+#ns2540 .nt{font-size:13.5px;background:#F5F4FA;border-radius:12px;padding:9px 13px;color:#4A4660;margin-bottom:12px}
+#ns2540 .tl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
+#ns2540 .tl > div{background:#fff;border:1px solid #ECEAF2;border-radius:14px;padding:12px 14px}
+#ns2540 .tl small{display:block;font-size:12.5px;color:#6B6880}
+#ns2540 .tl b{display:block;font-size:22px;color:#2B2253;margin:2px 0}
+#ns2540 .tl b.g{color:#1E7A4F}
+#ns2540 .ls{background:#fff;border:1px solid #ECEAF2;border-radius:14px;padding:4px 16px}
+#ns2540 .r{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #F0EEF5}
+#ns2540 .r:first-child{border-top:0}
+#ns2540 .av{width:34px;height:34px;border-radius:50%;background:#E7F3F2;color:#1E5D5B;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;flex:none}
+#ns2540 .n{flex:1;min-width:0}
+#ns2540 .n b{color:#2B2253}
+#ns2540 .n div{font-size:13px;color:#6B6880}
+#ns2540 .a{text-align:right;font-weight:700;color:#2B2253;font-variant-numeric:tabular-nums}
+#ns2540 .a div{font-size:12px;font-weight:400;color:#6B6880}
+#ns2540 .mo{display:block;font-size:13.5px;color:#2D7A78;cursor:pointer;padding:10px 0;border-top:1px solid #F0EEF5;background:none;border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left;font-family:inherit}
+@media(max-width:640px){#ns2540 .tl{grid-template-columns:1fr}}
+</style>
+<script id="b2540">
+/* 2540 (Misty 18:09–18:11, mock approved "YES 2 is better · or both · place it best fitting"): Payroll has two views.
+   "October 2026 pay · paid in November" (the month being paid now, as before) and "November so far" (this month's pay as it builds up,
+   from coe-payedit op month; preview only, Mark paid opens when the month ends). The screen opens on the month being paid until everyone
+   is paid, then on "so far". The month still in progress is no longer listed under Payroll history. */
+(function(){
+  const S = { view: '', at: 0, cur: null, prev: null, busy: 0, all: 0 };
+  const MN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const ph = () => new Date(Date.now() + 8 * 3600e3);
+  const ymOf = d => d.toISOString().slice(0, 7), lab = ym => MN[+ym.slice(5, 7) - 1] + ' ' + ym.slice(0, 4);
+  const curYM = () => ymOf(ph()), prevYM = () => { const d = ph(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 1); return ymOf(d); };
+  const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const peso = n => '₱' + (Math.round((+n || 0) * 100) / 100).toLocaleString('en-US', { maximumFractionDigits: 2 });
+  const num = x => +x || 0;
+  async function load(){ if(S.busy || typeof TOKEN === 'undefined' || !TOKEN) return; if(S.cur && Date.now() - S.at < 3 * 6e4) return; S.busy = 1;
+    try{ const U = (typeof FAST_URL !== 'undefined' ? FAST_URL : 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe') + '-payedit';
+      const q = m => fetch(U, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'month', month: m }) }).then(r => r.json());
+      const [c, p] = await Promise.all([q(curYM()), q(prevYM())]); if(c && c.ok){ S.cur = c; S.at = Date.now(); } if(p && p.ok) S.prev = p; }catch(e){} finally{ S.busy = 0; } paint(); }
+  const pay = r => num(r.base) + num(r.lesson_pay) > 0;
+  function prevLeft(){ const L = ((S.prev && S.prev.rows) || []).filter(pay); return { n: L.length, left: L.filter(r => !r.paid) }; }
+  function panel(){ const ym = curYM(), L = ((S.cur && S.cur.rows) || []).filter(pay).sort((a, b) => num(b.net) - num(a.net));
+    if(!S.cur) return '<div class="nt">Loading ' + E(lab(ym)) + ' so far…</div>';
+    const units = r => num(r.reg) + num(r.sub) + num(r.trial), tot = L.reduce((a, r) => a + num(r.net), 0), tu = L.reduce((a, r) => a + units(r), 0);
+    const d = ph(), last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)), left = last.getUTCDate() - d.getUTCDate();
+    const pl = prevLeft(), pv = lab(prevYM());
+    const tile3 = !pl.n ? '<small>' + E(pv) + ' pay</small><b>—</b>' : pl.left.length ? '<small>' + E(pv) + ' pay</small><b>' + pl.left.length + ' left</b><small>' + pl.left.slice(0, 3).map(r => E(r.teacher) + ' · ' + peso(r.net)).join(', ') + '</small>' : '<small>' + E(pv) + ' pay</small><b class="g">All paid</b><small>' + pl.n + ' people</small>';
+    const row = r => { const u = units(r), off = !u && num(r.base) > 0, nm = String(r.teacher || ''), t = /^(Celine|Katherine|Misty)$/i.test(nm) || off ? nm : 'Teacher ' + nm;
+      const bits = [off ? 'office staff · daily rate' : (Math.round(u * 10) / 10) + ' units' + (num(r.rate) ? ' × ' + peso(r.rate) : '')];
+      if(num(r.bonus)) bits.push('+' + peso(r.bonus) + ' bonus'); if(num(r.deduct)) bits.push('−' + peso(r.deduct) + ' deduction');
+      return '<div class="r"><div class="av">' + E(nm.slice(0, 2).toUpperCase()) + '</div><div class="n"><b>' + E(t) + '</b><div>' + bits.join(' · ') + '</div></div><div class="a">' + peso(r.net) + '<div>so far</div></div></div>'; };
+    const show = S.all ? L : L.slice(0, 6);
+    return '<div class="nt">Preview only. The numbers grow as classes finish. Checks, payslips and Mark paid open on 1 ' + E(MN[(d.getUTCMonth() + 1) % 12].slice(0, 3)) + ', when ' + E(MN[d.getUTCMonth()]) + ' ends.</div>'
+      + '<div class="tl"><div><small>Net pay so far</small><b>' + peso(tot) + '</b><small>' + L.length + ' people · ' + (Math.round(tu * 10) / 10) + ' units</small></div>'
+      + '<div><small>Days left in ' + E(MN[d.getUTCMonth()]) + '</small><b>' + left + '</b><small>ends ' + last.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }) + '</small></div>'
+      + '<div>' + tile3 + '</div></div>'
+      + '<div class="ls">' + (show.length ? show.map(row).join('') : '<div class="r">No pay yet this month.</div>') + (L.length > 6 ? '<button type="button" class="mo" onclick="pm2540all()">' + (S.all ? 'Show fewer' : 'Show all ' + L.length) + '</button>' : '') + '</div>'
+      + '<div class="small mute" style="margin-top:10px">Same numbers as the payslip will use: lessons held so far, bonuses and cases dated this month, office staff days worked. Updated ' + new Date(S.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' }) + '.</div>'; }
+  window.pm2540all = function(){ S.all = !S.all; paint(true); };
+  window.pm2540 = function(vw){ S.view = vw; try{ sessionStorage.setItem('coe.pm2540', vw); }catch(e){} paint(true); if(vw === 'so') load(); };
+  let busyP = 0;
+  function paint(force){ if(busyP) return; const v = document.getElementById('v-payroll'); if(!v || !(typeof D !== 'undefined' && D && D.mgr)) return; const top = v.querySelector(':scope > .py-top'); if(!top) return;
+    busyP = 1; try{
+      const pl = prevLeft(); if(!S.view){ let k = ''; try{ k = sessionStorage.getItem('coe.pm2540') || ''; }catch(e){} S.view = k || (S.prev && pl.n && !pl.left.length ? 'so' : 'pay'); }
+      const pv = lab(prevYM()), cu = lab(curYM()), cm = MN[+curYM().slice(5, 7) - 1];
+      const segH = '<button type="button" class="' + (S.view === 'pay' ? 'on' : '') + '" onclick="pm2540(\'pay\')">' + E(pv) + ' pay<small>for ' + E(pv.split(' ')[0]) + ' classes · paid in ' + E(cm) + (S.prev && pl.n ? ' · ' + (pl.n - pl.left.length) + ' of ' + pl.n + ' paid' : '') + '</small></button>'
+        + '<button type="button" class="' + (S.view === 'so' ? 'on' : '') + '" onclick="pm2540(\'so\')">' + E(cm) + ' so far<small>preview</small></button>';
+      let seg = v.querySelector(':scope > #pm2540'); if(!seg){ seg = document.createElement('div'); seg.id = 'pm2540'; } if(seg.previousElementSibling !== top) top.after(seg); if(seg.innerHTML !== segH) seg.innerHTML = segH;
+      let pn = v.querySelector(':scope > #ns2540'); if(!pn){ pn = document.createElement('div'); pn.id = 'ns2540'; } if(pn.previousElementSibling !== seg) seg.after(pn);
+      if(S.view === 'so'){ const h = panel(); if(force || pn.innerHTML !== h) pn.innerHTML = h; }
+      v.classList.toggle('nso2540', S.view === 'so');
+      const sub = top.querySelector('.sub'); if(sub && /^\w+ \d{4} pay · from the PAY tab$/.test(sub.textContent)) sub.textContent = pv + ' pay · for ' + pv.split(' ')[0] + ' classes, paid in ' + cm;
+      const hl = document.getElementById('plList'); if(hl) [...hl.children].forEach(c => { const s = (c.querySelector('summary') || c).textContent.trim(); if(s.indexOf(cu) === 0) c.style.display = 'none'; });
+    }catch(e){ console.warn('2540', e); } finally{ busyP = 0; } }
+  let q2540 = 0; try{ const v = document.getElementById('v-payroll'); if(v) new MutationObserver(() => { if(busyP || q2540) return; q2540 = setTimeout(() => { q2540 = 0; paint(); }, 30); }).observe(v, { childList: true }); }catch(e){}
+  const go0 = window.go; if(typeof go0 === 'function') window.go = function(x){ const r = go0.apply(this, arguments); try{ if(x === 'payroll'){ setTimeout(paint, 0); load(); } }catch(e){} return r; };
+  setTimeout(() => { try{ if(typeof VIEW !== 'undefined' && VIEW === 'payroll'){ paint(); load(); } }catch(e){} }, 3000);
+})();
+</script>
