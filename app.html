@@ -7439,7 +7439,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2129;
+const COE_V = 2130;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -43742,13 +43742,14 @@ body.role-t.tw #v-today:not(.hide)>[hidden],body.role-t.tw #v-today:not(.hide)>i
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px"><select id="lfM" style="min-height:36px;border-radius:10px;border:1px solid #DDD9E8;padding:0 10px">' + opts.map(function(x){ return '<option value="' + x.ym + '" data-v="' + x.v + '">' + E(nice(x.ym)) + ' · now ' + x.v + '</option>'; }).join('') + '</select>'
       + '<input id="lfV" type="number" min="0" max="60" step="0.5" placeholder="Right count" style="width:120px;min-height:36px;border-radius:10px;border:1px solid #DDD9E8;padding:0 10px">'
       + '<input id="lfN" type="text" maxlength="300" placeholder="Why (e.g. only count from 21 Mar, after the renewal payment)" style="flex:1;min-width:220px;min-height:36px;border-radius:10px;border:1px solid #DDD9E8;padding:0 10px">'
+      + '<label class="small" style="display:flex;gap:6px;align-items:center;flex-basis:100%;color:#4A4566"><input type="checkbox" id="lfL"> These lessons were never counted anywhere (missing classes): also take them off Lessons left</label>'
       + '<button class="btn teal sm" onclick="lf2456(\'' + E(U) + '\')">Save</button></div></div>';
     sb.insertAdjacentHTML('beforeend', h); }
   window.lf2456 = async function(code, ym, v){ var undo = v === null, sel = $('lfM'), o = sel && sel.options[sel.selectedIndex];
     if(!undo){ ym = sel && sel.value; v = (($('lfV') || {}).value || '').trim(); var note = (($('lfN') || {}).value || '').trim(); if(!ym) return toast('Pick the month'); if(v === '' || isNaN(+v)) return toast('Type the right count, e.g. 1.5'); if(note.length < 4) return toast('Write why, so the parent question is clear later'); }
     else if(!confirm('Undo this correction?\n\nThe month goes back to the count from the class records.')) return;
     var f = (AT.fixes || []).find(function(x){ return x.code === code && x.ym === ym; }), was = f ? f.was : (o ? +o.getAttribute('data-v') || 0 : 0);
-    try{ var r = await fetch(OPS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'lessonfix', code: code, ym: ym, v: undo ? null : +v, was: was, note: undo ? 'undo' : note }) }).then(function(y){ return y.json(); });
+    try{ var r = await fetch(OPS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'lessonfix', code: code, ym: ym, v: undo ? null : +v, was: was, note: undo ? 'undo' : note, left: !undo && !!(($('lfL') || {}).checked) }) }).then(function(y){ return y.json(); });
       if(!r || !r.ok) return toast((r && r.error) || 'Not saved. Try again.');
       toast(undo ? 'Back to the class records' : 'Saved · ' + nice(ym) + ' is now ' + v); await loadActive(true); shSummary(code, false, 1); }catch(e){ toast('Not saved. Try again.'); } };
   var _s = shSummary; shSummary = async function(code){ var r = await _s.apply(this, arguments); try{ box(code); }catch(e){ console.warn('2456', e); } return r; };
@@ -43784,6 +43785,7 @@ window.lf2466 = function(v){ try{ var F = v && v.fixes; if(!F || !F.length || !A
   var Y = (v.months || []).map(function(l){ return window.coeMonYm ? window.coeMonYm(l) : ''; }), r1 = function(x){ return Math.round(x * 10) / 10; };
   F.forEach(function(f){ var j = Y.indexOf(f.ym); if(j < 0 || typeof f.v !== 'number') return; var R = v.rows.filter(function(r){ return String(r[C.code] || '').toUpperCase() === f.code; }); if(!R.length) return;
     var val = function(r){ return +((r[C.months] || [])[j]) || 0; }, tot = r1(R.reduce(function(a, r){ return a + val(r); }, 0)), d = r1(f.v - tot); if(!d) return;
+    if(f.left){ var ar = R.filter(function(r){ return r[C.available] !== '' && r[C.available] != null; })[0]; if(ar) ar[C.available] = r1((+ar[C.available] || 0) - d); }   /* 2522 */
     var by = R.slice().sort(function(a, b){ return val(b) - val(a); });
     var set = function(r, dv){ var M = (r[C.months] || []).slice(); M[j] = r1((+M[j] || 0) + dv); r[C.months] = M; };
     if(d < 0){ by.forEach(function(r){ if(d >= 0) return; var t = Math.max(d, -val(r)); if(t){ set(r, t); d = r1(d - t); } }); } else set(by[0], d); }); }catch(e){ console.warn('2466', e); } };
@@ -43836,7 +43838,7 @@ window.dots2471 = function(done, total, label){ try{ done = Math.max(0, +done ||
 <style id="u2479">#nd37 .wh2479{display:block;font-size:12px;color:#6B6880;margin-top:1px;font-weight:400}</style>
 <script id="b2483">
 (function(){ var K = 'coe.lf2483', F = null; try{ F = JSON.parse(localStorage.getItem(K) || 'null'); }catch(e){}
-  function conv(fix){ return Object.keys(fix || {}).map(function(k){ var p = k.split('|'), x = fix[k] || {}; return { code: String(p[0] || '').toUpperCase(), ym: p[1], v: x.v, was: x.was }; }).filter(function(f){ return typeof f.v === 'number' && /^\d{4}-\d{2}$/.test(f.ym); }); }
+  function conv(fix){ return Object.keys(fix || {}).map(function(k){ var p = k.split('|'), x = fix[k] || {}; return { code: String(p[0] || '').toUpperCase(), ym: p[1], v: x.v, was: x.was, left: !!x.left }; }).filter(function(f){ return typeof f.v === 'number' && /^\d{4}-\d{2}$/.test(f.ym); }); }
   function load(){ try{ if(!(typeof D !== 'undefined' && D && D.mgr && typeof TOKEN !== 'undefined' && TOKEN)) return;
     fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: ['sys:lessonfix'] }) }).then(function(r){ return r.json(); })
       .then(function(r){ var d = r && r.ok && r.docs && r.docs['sys:lessonfix']; if(r && r.ok){ F = d && d.data ? conv(d.data.fix) : []; try{ localStorage.setItem(K, JSON.stringify(F)); }catch(e){} } }).catch(function(){}); }catch(e){} }
