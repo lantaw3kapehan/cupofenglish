@@ -9,7 +9,7 @@ for n in "${!I[@]}"; do id="${I[$n]}"; pg="${P[$n]}"
      -dDownsampleColorImages=true -dColorImageDownsampleType=/Bicubic -dColorImageResolution=$DPI -dColorImageDownsampleThreshold=1.2 \
      -dDownsampleGrayImages=true -dGrayImageDownsampleType=/Bicubic -dGrayImageResolution=$DPI -dGrayImageDownsampleThreshold=1.2 \
      -dDownsampleMonoImages=true -dMonoImageResolution=300 \
-     -dAutoFilterColorImages=false -sColorImageFilter=/DCTEncode -dAutoFilterGrayImages=false -sGrayImageFilter=/DCTEncode \
+     -dAutoFilterColorImages=false -dColorImageFilter=/DCTEncode -dAutoFilterGrayImages=false -dGrayImageFilter=/DCTEncode \
      -dJPEGQ=85 -dDetectDuplicateImages=true -dCompressFonts=true -dSubsetFonts=true \
      -sOutputFile="work/$id.light.pdf" "work/$id.pdf"
   a=$(stat -c%s "work/$id.pdf"); b=$(stat -c%s "work/$id.light.pdf")
