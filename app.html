@@ -7439,7 +7439,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2128;
+const COE_V = 2129;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -8011,8 +8011,10 @@ async function lvOpen1878(code){   /* 1878: lessons with their class videos */
     + '<div class="stat"><b class="num' + (r.missing ? ' minus' : '') + '">' + r.missing + '</b><span>missing</span></div></div>'
     + '<div class="small mute" style="margin-top:6px">Videos are tallied from 22 Oct 2026 (the app\'s upload record): ' + r.tracked + ' lessons since then. Earlier lessons show "before app record" · their videos are in the student\'s folder in STUDENT CLASS VIDEOS.</div>';
   if(!rows.length) h += '<div class="empty">No lessons held yet.</div>';
-  ord.forEach(k => { const L = M[k], d = new Date(k + '-15T12:00:00'), u = n1(L.reduce((a, x) => a + (+x.u || 0), 0)), miss = L.filter(x => !x.url && x.rec).length;
-    h += '<h2>' + d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) + ' <span class="c">' + L.length + ' lessons · ' + u + ' units' + (miss ? ' · ' + miss + ' missing' : '') + '</span></h2>'
+  const FX = {}; (r.fixes || []).forEach(f => { FX[f.ym] = f; });
+  ord.forEach(k => { const L = M[k], d = new Date(k + '-15T12:00:00'), u = n1(L.reduce((a, x) => a + (x.kind === 'trial' ? 0 : (+x.u || 0)), 0)), nt = L.filter(x => x.kind === 'trial').length, miss = L.filter(x => !x.url && x.rec).length, fx = FX[k];
+    h += '<h2>' + d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) + ' <span class="c">' + L.length + ' lessons · ' + u + ' units' + (nt ? ' · trial not counted' : '') + (miss ? ' · ' + miss + ' missing' : '') + '</span></h2>'
+      + (fx ? '<div class="small" style="margin:-2px 0 8px;padding:8px 10px;border-radius:10px;background:#FFF6E5;color:#5C3D00"><b>Corrected count for this month: ' + n1(+fx.v) + ' units</b> · ' + esc(fx.by || 'Management') + (fx.at ? ' · ' + esc(String(fx.at).slice(0, 10)) : '') + (fx.note ? '<br>' + esc(fx.note) : '') + '</div>' : '')
       + '<table>' + L.map(x => '<tr><td>' + esc(day(x.start)) + '<div class="small mute">' + esc(x.teacher || '') + (book(x.title) ? ' · ' + esc(book(x.title)) : '') + kind(x.kind) + '</div></td><td class="num" style="text-align:right">' + n1(+x.u || 0) + '</td><td style="text-align:right">' + st(x) + '</td></tr>').join('') + '</table>'; });
   $('sheetBody').innerHTML = h; }
 function lsHtml(code){ const S = lsRows(code); if(!S) return ''; const { C, r, G } = S, o = G.owner || r, n1 = x => Math.round(x * 10) / 10, up = s => String(s || '').trim().toUpperCase();
