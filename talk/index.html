@@ -201,6 +201,7 @@ body.present .st .think,body.present .st .tryh{font-size:clamp(17px,1.35vw,21px)
 <script src="kits.js?v=2489"></script>
 <script src="ielts-2489.js"></script>
 <script src="vocab-2491.js"></script>
+<script src="ink.js?v=2494"></script>
 <script>
 (function(){
 const API = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/';
@@ -543,8 +544,9 @@ function paintTopic(){ const t = CUR, L = CLV, qs = (t.q && t.q[L]) || [], th = 
 }
 function present(t, lv, who){ document.body.classList.add('present'); $('hT').textContent = 'Talk of the Day / 今日话题'; $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + dShort(t.day);
   $('hBtns').innerHTML = '<button class="btn sm" id="bX" type="button">Close</button>'; app.innerHTML = studentHtml(t, lv, who); bindChips(app, t, (t.levels || []).includes(lv) ? lv : (t.levels || ['yle'])[0]);
+  try{ if(window.CoeInk){ CoeInk.open(); CoeInk.page(app.firstElementChild, 'talk:' + t.id + ':' + lv); } }catch(e){}
   try{ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }catch(e){}
-  const close = () => { document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintTopic(); document.removeEventListener('keydown', esc1); };
+  const close = () => { try{ window.CoeInk && CoeInk.close(); }catch(e){} document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintTopic(); document.removeEventListener('keydown', esc1); };
   const esc1 = e => { if(e.key === 'Escape') close(); }; document.addEventListener('keydown', esc1); $('bX').onclick = close; }
 
 
@@ -619,6 +621,7 @@ function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? 
     app.querySelectorAll('[data-pi]').forEach(b => b.onclick = () => { const i = +b.dataset.pi; open = open === i ? -1 : i; paint(); });
     if($('kUsed')) $('kUsed').onclick = () => { const p = t.phrases[open][0]; used[p] = !used[p]; paint(); };
     if($('kPic')) $('kPic').onclick = () => copyKitPic(freeSpec(t), 'free-talk');
+    try{ window.CoeInk && CoeInk.page(app.querySelector('.kv'), kind + ':' + t.id + ':' + step); }catch(e){}
     if($('kPrep')) $('kPrep').onclick = () => miniRun(60, 'Speak now');
     if($('kSpeak')) $('kSpeak').onclick = () => miniRun(120, 'Time');
   }
@@ -627,8 +630,8 @@ function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? 
   tick = setInterval(() => { if(!run) return; left--; const el = $('kT'); if(el){ el.textContent = mm(left); el.style.color = left < 0 ? '#B5432C' : ''; } }, 1000);
   const key = e => { if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; if(e.key === 'ArrowRight') go(step + 1); else if(e.key === 'ArrowLeft') go(step - 1); else if(e.key === 'Escape') close(); };
   document.addEventListener('keydown', key);
-  function close(){ clearInterval(tick); clearInterval(mini); document.removeEventListener('keydown', key); document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintKit(kind); }
-  paint(); $('bX').onclick = close; }
+  function close(){ try{ window.CoeInk && CoeInk.close(); }catch(e){} clearInterval(tick); clearInterval(mini); document.removeEventListener('keydown', key); document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintKit(kind); }
+  try{ window.CoeInk && CoeInk.open(); }catch(e){} paint(); $('bX').onclick = close; }
 
 /* 2487 · IELTS Speaking in CupOfEnglish's lesson template: Format → Assessment → Part 1 (A–R–E) → Part 2 (P–P–F) → Part 3 (P–R–E–L) → Feedback */
 function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id === id); if(!t) return;
@@ -682,7 +685,7 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
     if(x.k === 'p3') return '<div class="kpanel"><div class="kk">Part 3 · discussion · question ' + (x.n + 1) + ' of ' + x.of + '</div><div class="kq"><span style="font-size:clamp(24px,2vw,34px);font-weight:600">' + esc(x.it.q) + '</span></div>' + str('p') + usedLine(x.it.ph) + mbtn() + model('p', x.it.m) + '</div><div class="kpanel"><div class="kk">Words and phrases to use · 可用表达 <span style="text-transform:none;letter-spacing:0;font-weight:400">· tap one to explain</span></div>' + ph(x.it.ph, x) + '</div>';
     return '<div style="grid-column:1/-1"><div class="kk" style="margin-bottom:8px">Feedback · 课堂反馈</div><div class="krow4">' + RUB.map(r => '<div><b>' + esc(r[0]) + '</b>' + r[1].map(q => '<p>' + esc(q) + '</p>').join('') + '</div>').join('') + '</div><div class="kpanel" style="margin-top:12px">' + ['One thing you did well today:', 'One structure to use more (A–R–E, P–P–F or P–R–E–L):', 'One thing to practise before next class:'].map((q, i) => '<div class="kq"><i>' + (i + 1) + '</i><span>' + esc(q) + '</span></div>').join('') + '</div>'
       + (() => { const U = Object.keys(used).filter(p => used[p]), T = Object.keys(seen).filter(p => !used[p]); if(!U.length && !T.length) return ''; return '<div class="kpanel" style="margin-top:12px"><div class="kk">Words and phrases today</div>' + (U.length ? '<div class="sub" style="margin:0">Used well</div><div class="kph">' + U.map(p => '<span class="kpc used">' + esc(p) + '</span>').join('') + '</div>' : '') + (T.length ? '<div class="sub" style="margin:6px 0 0">Practise next class</div><div class="kph">' + T.slice(0, 12).map(p => '<span class="kpc">' + esc(p) + '</span>').join('') + '</div>' : '') + '</div>'; })() + '</div>'; }
-  function teacher(){ if(!notes) return ''; return '<div class="kpanel" style="margin-top:16px"><div class="kk">Teacher notes · not saved · hide them before sharing</div><div class="krub">' + RUB.map((r, i) => '<span>' + esc(r[0]) + '</span><span>' + [[1, 'Needs work'], [2, 'OK'], [3, 'Good'], [4, 'Strong']].map(o => '<button type="button" style="width:auto;padding:0 10px" data-rb="' + i + ':' + o[0] + '" class="' + ((marks[i] || 0) === o[0] ? 'on' : '') + '">' + o[1] + '</button>').join(' ') + '</span>').join('') + '</div></div>'; }
+  function teacher(){ if(!notes) return ''; return '<div class="kpanel" id="kNotesP" style="margin-top:16px"><div class="kk">Teacher notes · tap a level for each skill as the student speaks, to guide your feedback · only on this screen, not saved · hide them before you share your screen</div><div class="krub">' + RUB.map((r, i) => '<span>' + esc(r[0]) + '</span><span>' + [[1, 'Needs work'], [2, 'OK'], [3, 'Good'], [4, 'Strong']].map(o => '<button type="button" style="width:auto;padding:0 10px" data-rb="' + i + ':' + o[0] + '" class="' + ((marks[i] || 0) === o[0] ? 'on' : '') + '">' + o[1] + '</button>').join(' ') + '</span>').join('') + '</div></div>'; }
   function paint(){ const x = S[si], phn = x.ph;
     app.innerHTML = '<div class="kv"><div class="khd"><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="lb" style="background:#E6EEFB;color:#2B4C8C">IELTS Speaking · ' + esc(t.theme) + ' · ' + esc(t.zh) + '</span></div><div style="display:flex;align-items:center;gap:10px"><span class="ktm" id="kT">' + mm(left) + '</span><button class="btn sm" type="button" id="kRun">' + (run ? 'Pause' : 'Start') + '</button></div></div>'
       + '<div class="kbar">' + P.map((p, i) => '<i class="' + (i < phn ? 'd' : i === phn ? 'c' : '') + '" style="flex:' + p[2] + '"></i>').join('') + '</div><div class="klab">' + P.map(p => '<span style="flex:' + p[2] + '">' + esc(p[1]) + ' · ' + p[2] + '</span>').join('') + '</div>'
@@ -691,8 +694,9 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
       + '<div class="knav"><button class="btn" type="button" id="kB"' + (si ? '' : ' disabled') + '>‹ Back</button><span class="sub" style="margin:0;align-self:center">' + (si + 1) + ' of ' + S.length + '</span><button class="btn pr" type="button" id="kN">' + (si < S.length - 1 ? 'Next ›' : 'Finish') + '</button><button class="btn" type="button" id="kNotes">' + (notes ? 'Hide teacher notes' : 'Teacher notes') + '</button><button class="btn" type="button" id="kPic">Copy picture</button></div>';
     $('kRun').onclick = () => { run = !run; paint(); };
     $('kB').onclick = () => go(si - 1); $('kN').onclick = () => { if(si < S.length - 1) go(si + 1); else close(); };
-    $('kNotes').onclick = () => { notes = !notes; paint(); };
+    $('kNotes').onclick = () => { notes = !notes; paint(); if(notes){ const n = $('kNotesP'); if(n) n.scrollIntoView({ behavior: 'smooth', block: 'center' }); } };
     $('kPic').onclick = () => copyKitPic(ieltsSpec(t), 'ielts-speaking');
+    try{ window.CoeInk && CoeInk.page(app.querySelector('.kv'), 'ielts:' + t.id + ':' + si); }catch(e){}
     if($('kShow')) $('kShow').onclick = () => { show = !show; paint(); };
     app.querySelectorAll('[data-pi]').forEach(b => b.onclick = () => { const i = +b.dataset.pi; open = open === i ? -1 : i; paint(); });
     if($('kUsed')) $('kUsed').onclick = () => { const p = S[si].it.ph[open]; used[p] = !used[p]; paint(); };
@@ -705,8 +709,8 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
   const tick = setInterval(() => { if(!run) return; left--; const el = $('kT'); if(el){ el.textContent = mm(left); el.style.color = left < 0 ? '#B5432C' : ''; } }, 1000);
   const key = e => { if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; if(e.key === 'ArrowRight') go(si + 1); else if(e.key === 'ArrowLeft') go(si - 1); else if(e.key === 'Escape') close(); };
   document.addEventListener('keydown', key);
-  function close(){ clearInterval(tick); clearInterval(mini); document.removeEventListener('keydown', key); document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintKit('ielts'); }
-  paint(); $('bX').onclick = close; }
+  function close(){ try{ window.CoeInk && CoeInk.close(); }catch(e){} clearInterval(tick); clearInterval(mini); document.removeEventListener('keydown', key); document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintKit('ielts'); }
+  try{ window.CoeInk && CoeInk.open(); }catch(e){} paint(); $('bX').onclick = close; }
 
 /* ── start ── */
 async function start(){
