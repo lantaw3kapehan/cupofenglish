@@ -47,7 +47,7 @@
         q1('Has it changed much since you were a child?', ['It has changed a lot', 'There used to be…', 'new developments'], 'Yes, [[it has changed a lot]].', 'Many [[new developments]] have been built.', '[[There used to be]] a small market near my school, but now it\'s a shopping centre.') ] },
         { t: 'Parks', q: [
         q1('How often do you go to a park?', ['once or twice a week', 'whenever I have time', 'to get some fresh air'], 'I go [[once or twice a week]].', 'I like [[to get some fresh air]] after studying.', 'Last Sunday I went for a long walk around the lake.'),
-        q1('What do people do in parks in your city?', ['go jogging', 'do tai chi', 'have a picnic'], 'People do all kinds of things.', 'Parks are free and close to most homes.', 'In the morning, older people [[do tai chi]], and at weekends families [[have a picnic]].'),
+        q1('What do people do in parks in your city?', ['go jogging', 'do tai chi', 'have a picnic'], 'People do all kinds of things.', 'Parks are free and close to most homes.', 'In the morning, older people [[do tai chi]], and at weekends many families [[have a picnic]] together.'),
         q1('Were there parks near your home when you were young?', ['There was a small park…', 'I used to play…', 'not as many as now'], 'Yes, [[there was a small park]] near my flat.', 'My parents liked it because it was safe.', '[[I used to play]] football there with my neighbours every evening.') ] }],
       p2: [
         card('Describe a place you like to visit in your free time.', ['where it is', 'how often you go there', 'what you do there'], 'and explain why you like going there.',
@@ -77,20 +77,20 @@
           ['when they taught you', 'what you still use from their lessons', 'what you would say to them now'], ['strict but fair', 'brought the subject to life', 'had a big influence on me', 'looking back'])
       ],
       p3: [
-        q3('What kinds of help do people usually give their neighbours?', ['lend a hand', 'look after', 'practical help'], 'Most help is small and [[practical help]].', 'Neighbours are close by, so they can act quickly.', 'For example, they [[look after]] pets or collect parcels.', 'These small favours make a building feel friendlier.'),
+        q3('What kinds of help do people usually give their neighbours?', ['lend a hand', 'look after', 'practical help'], 'Most of it is small, [[practical help]].', 'Neighbours are close by, so they can act quickly.', 'For example, they [[look after]] pets or collect parcels.', 'These small favours make a building feel friendlier.'),
         q3('Is it easier to ask family or friends for help?', ['It depends on', 'more comfortable', 'feel judged'], 'For most people, it\'s easier to ask family.', 'People feel [[more comfortable]] and don\'t [[feel judged]].', 'When I needed money for a course, I asked my parents first.', 'However, [[it depends on]] the problem; friends understand some things better.'),
-        q3('Should schools teach children to help others?', ['Absolutely', 'empathy', 'volunteer'], '[[Absolutely]], they should.', 'Helping others builds [[empathy]], which is as important as grades.', 'Some schools ask students to [[volunteer]] at elderly homes once a term.', 'Lessons like this prepare children to be good members of society.'),
-        q3('How has technology changed the way people help each other?', ['online fundraising', 'reach more people', 'face-to-face'], 'Technology has made helping much faster.', 'People can [[reach more people]] in minutes.', 'For example, [[online fundraising]] can pay for someone\'s hospital bills in a day.', 'Still, [[face-to-face]] help is important, especially for older people.')
+        q3('Should schools teach children to help others?', ['Absolutely', 'empathy', 'volunteer'], '[[Absolutely]], they should.', 'Helping others builds [[empathy]], which is as important as grades.', 'Some schools ask students to [[volunteer]] at care homes once a term.', 'Lessons like this prepare children to be good members of society.'),
+        q3('How has technology changed the way people help each other?', ['online fundraising', 'reach more people', 'face-to-face'], 'Technology has made helping much faster.', 'A request for help can [[reach more people]] in minutes.', 'For example, [[online fundraising]] can pay for someone\'s hospital bills in a day.', 'Still, [[face-to-face]] help is important, especially for older people.')
       ] },
     { id: 'i-objects', cat: 'objects', theme: 'Objects', zh: '物品',
       p1: [{ t: 'Phones', q: [
-        q1('How often do you use your phone?', ['all the time', 'more than I should', 'check messages'], 'Honestly, [[more than I should]].', 'I use it for study, chatting and paying for things.', 'This morning I [[checked messages]] before I even got up.'),
+        q1('How often do you use your phone?', ['all the time', 'more than I should', 'check messages'], 'Honestly, [[more than I should]].', 'I use it for studying, chatting and paying for things.', 'This morning I [[checked messages]] before I even got up.'),
         q1('What do you use it for most?', ['mainly for', 'keep in touch', 'look things up'], 'I use it [[mainly for]] messaging.', 'It\'s the easiest way to [[keep in touch]] with friends.', 'I also [[look things up]] when I find a new English word.'),
         q1('Could you live without it for a week?', ['It would be tough', 'get used to it', 'switch off'], '[[It would be tough]], but I think I could.', 'At first I would miss my friends, but I would [[get used to it]].', 'Last summer on a camping trip, I had no signal for three days and enjoyed it.') ] },
         { t: 'Gifts', q: [
-        q1('Do you like giving gifts?', ['I love…', 'see their reaction', 'thoughtful'], 'Yes, [[I love]] giving gifts.', 'It\'s nice to [[see their reaction]].', 'For my friend\'s birthday, I made a photo album of our trips.'),
+        q1('Do you like giving gifts?', ['I love…', 'see their reaction', 'thoughtful'], 'Yes, [[I love]] giving gifts.', 'It\'s nice to give someone a present and [[see their reaction]].', 'For my friend\'s birthday, I made a photo album of our trips.'),
         q1('What was the last gift you received?', ['The last thing I got was…', 'really useful', 'came as a surprise'], '[[The last thing I got was]] a pair of headphones.', 'They are [[really useful]] for my English listening.', 'My cousin gave them to me, and it [[came as a surprise]].'),
-        q1('Is it difficult to choose a gift?', ['It can be tricky', 'what they would like', 'play it safe'], 'Yes, [[it can be tricky]].', 'It\'s hard to know [[what they would like]].', 'When I\'m not sure, I [[play it safe]] and buy a book or a gift card.') ] }],
+        q1('Is it difficult to choose a gift?', ['It can be tricky', 'what they would like', 'play it safe'], 'Yes, [[it can be tricky]].', 'When you buy for someone, it\'s hard to know [[what they would like]].', 'When I\'m not sure, I [[play it safe]] and buy a book or a gift card.') ] }],
       p2: [
         card('Describe something you own that is important to you.', ['what it is', 'how you got it', 'how often you use it'], 'and explain why it is important to you.',
           ['how you got it', 'how you use it now', 'whether you will keep it'], ['One thing I treasure is…', 'It was given to me by…', 'I use it almost every day', 'sentimental value', 'I keep it in a safe place']),
@@ -109,7 +109,7 @@
         q1('Is your birthday important to you?', ['not a big deal', 'a chance to', 'look back on'], 'It\'s [[not a big deal]], but I like it.', 'It\'s [[a chance to]] see people I care about.', 'I also [[look back on]] what I learned that year.'),
         q1('What did you do on your last birthday?', ['I spent the day…', 'went out for', 'it was memorable'], '[[I spent the day]] with friends.', 'It was a weekend, so everyone was free.', 'We [[went out for]] karaoke, and [[it was memorable]] because we sang badly together.') ] },
         { t: 'Festivals', q: [
-        q1('What is your favourite festival?', ['My favourite has to be…', 'family reunion', 'festive atmosphere'], '[[My favourite has to be]] Spring Festival.', 'It\'s a time for [[family reunion]].', 'I love the [[festive atmosphere]] when the streets are full of red lanterns.'),
+        q1('What is your favourite festival?', ['My favourite has to be…', 'family reunion', 'festive atmosphere'], '[[My favourite has to be]] Spring Festival.', 'It\'s a time of [[family reunion]].', 'I love the [[festive atmosphere]] when the streets are full of red lanterns.'),
         q1('What do people eat during it?', ['traditionally', 'symbolises', 'dumplings'], '[[Traditionally]], people eat [[dumplings]] in the north.', 'Their shape [[symbolises]] wealth.', 'In my family, we make them together on New Year\'s Eve.'),
         q1('Has the way people celebrate changed?', ['quite a lot', 'send red envelopes online', 'still'], 'Yes, [[quite a lot]].', 'Technology has changed some customs.', 'Many people now [[send red envelopes online]], but families [[still]] eat together.') ] }],
       p2: [
@@ -127,7 +127,7 @@
     { id: 'i-study', cat: 'activities', theme: 'Study and work', zh: '学习与工作',
       p1: [{ t: 'Work or study', q: [
         q1('Do you work or are you a student?', ['I\'m currently…', 'majoring in', 'in my final year'], '[[I\'m currently]] a student.', 'I\'m [[majoring in]] business at university.', 'I\'m [[in my final year]], so I\'m busy with my graduation project.'),
-        q1('What do you like about it?', ['What I enjoy most is…', 'hands-on', 'like-minded people'], '[[What I enjoy most is]] the group projects.', 'I meet [[like-minded people]] and learn from them.', 'Last term our team made a [[hands-on]] marketing plan for a real café.'),
+        q1('What do you like about it?', ['What I enjoy most is…', 'hands-on', 'like-minded people'], '[[What I enjoy most is]] working on group projects.', 'I meet [[like-minded people]] and learn from them.', 'Last term our team made a [[hands-on]] marketing plan for a real café.'),
         q1('What would you like to change?', ['If I could change one thing,…', 'workload', 'more practical'], '[[If I could change one thing]], it would be the [[workload]].', 'We often have several deadlines in the same week.', 'I\'d also like classes to be [[more practical]].') ] },
         { t: 'Reading', q: [
         q1('Do you enjoy reading?', ['I\'m a keen reader', 'whenever I can', 'page-turner'], 'Yes, [[I\'m a keen reader]].', 'Reading helps me relax and learn new words.', 'I just finished a mystery novel that was a real [[page-turner]].'),
@@ -140,7 +140,7 @@
           ['how the project started', 'what you think of it now', 'how it will help you in future'], ['I was responsible for…', 'we ran into problems', 'meet the deadline', 'a valuable lesson'])
       ],
       p3: [
-        q3('What skills are most useful for young people today?', ['communication skills', 'adaptability', 'digital literacy'], 'I\'d say [[communication skills]] are the most useful.', 'Almost every job needs teamwork and clear explanation.', 'In interviews, companies often test this with group tasks.', 'Together with [[digital literacy]] and [[adaptability]], they prepare young people for change.'),
+        q3('What skills are most useful for young people today?', ['communication skills', 'adaptability', 'digital literacy'], 'I\'d say [[communication skills]] are the most useful.', 'Almost every job needs teamwork and clear explanations.', 'In interviews, companies often test this with group tasks.', 'Together with [[digital literacy]] and [[adaptability]], they prepare young people for change.'),
         q3('Is it better to learn from a teacher or from the internet?', ['a combination of both', 'feedback', 'self-paced'], 'I think [[a combination of both]] is best.', 'Teachers give personal [[feedback]], while the internet is [[self-paced]].', 'I learn grammar online, then practise speaking with my teacher.', 'Each one covers what the other cannot.'),
         q3('Should adults keep learning new skills?', ['lifelong learning', 'stay competitive', 'keeps the mind active'], 'Yes, [[lifelong learning]] is important.', 'Jobs change, so adults need to [[stay competitive]].', 'My father learned to use design software in his fifties.', 'It also [[keeps the mind active]] as people get older.'),
         q3('How can schools prepare students for work?', ['real-world experience', 'internships', 'soft skills'], 'Schools should give more [[real-world experience]].', 'Students learn faster when they apply knowledge.', 'Short [[internships]] let students see how companies work.', 'This builds [[soft skills]] that exams cannot measure.')
@@ -163,18 +163,18 @@
       p3: [
         q3('How has technology changed the way people communicate?', ['instant messaging', 'stay connected', 'less face-to-face'], 'Technology has made communication faster.', '[[Instant messaging]] lets people [[stay connected]] across countries.', 'I video-call my cousin in Canada every week.', 'The downside is that there is [[less face-to-face]] conversation.'),
         q3('Do older people find new technology difficult?', ['tend to', 'not tech-savvy', 'with a little help'], 'Many older people [[tend to]] find it hard.', 'They did not grow up with smartphones, so they are [[not tech-savvy]].', 'My grandmother learned to pay by phone [[with a little help]] from me.', 'So it is difficult at first, but they can learn.'),
-        q3('Should children have their own phones?', ['at a certain age', 'with limits', 'safety'], 'Children should have phones [[at a certain age]], maybe twelve.', 'Phones help with [[safety]] when they travel alone.', 'My younger brother uses his phone to tell my parents when he leaves school.', 'But they should be used [[with limits]] on games and social media.'),
-        q3('What are the risks of relying on AI tools?', ['make mistakes', 'double-check', 'think for yourself'], 'The main risk is trusting AI too much.', 'AI tools can [[make mistakes]] that sound correct.', 'A classmate copied an AI answer with a wrong date in his essay.', 'So people should [[double-check]] facts and still [[think for yourself]].')
+        q3('Should children have their own phones?', ['at a certain age', 'with limits', 'safety'], 'Children should get their own phones [[at a certain age]], maybe twelve.', 'Phones help with [[safety]] when they travel alone.', 'My younger brother uses his phone to tell my parents when he leaves school.', 'But they should be used [[with limits]] on games and social media.'),
+        q3('What are the risks of relying on AI tools?', ['make mistakes', 'double-check', 'think for yourself'], 'The main risk is trusting AI too much.', 'AI tools can [[make mistakes]] that sound correct.', 'A classmate copied an AI answer with a wrong date in his essay.', 'So you should [[double-check]] facts and still [[think for yourself]].')
       ] },
     { id: 'i-nature', cat: 'places', theme: 'Nature', zh: '自然',
       p1: [{ t: 'Animals', q: [
-        q1('Do you like animals?', ['I\'m an animal lover', 'especially', 'fascinated by'], 'Yes, [[I\'m an animal lover]], [[especially]] of dogs.', 'They are loyal and friendly.', 'I volunteer at an animal shelter once a month.'),
+        q1('Do you like animals?', ['I\'m an animal lover', 'especially', 'fascinated by'], 'Yes, [[I\'m an animal lover]], [[especially]] dogs.', 'They are loyal and friendly.', 'I volunteer at an animal shelter once a month.'),
         q1('Did you have a pet as a child?', ['I used to have…', 'look after', 'responsibility'], 'Yes, [[I used to have]] a goldfish.', 'My parents wanted me to learn [[responsibility]].', 'I had to [[look after]] it and clean the tank every week.'),
         q1('What animal would you like to see in the wild?', ['I\'d love to see…', 'natural habitat', 'endangered'], '[[I\'d love to see]] a panda in its [[natural habitat]].', 'They are rare and beautiful.', 'I read that some reserves in Sichuan let visitors watch them from a distance.') ] },
         { t: 'Plants', q: [
         q1('Do you have plants at home?', ['a few', 'easy to look after', 'brighten up'], 'Yes, I have [[a few]].', 'They [[brighten up]] my room.', 'I chose cactus plants because they are [[easy to look after]].'),
         q1('Who looks after them?', ['mainly', 'water them', 'remember to'], '[[Mainly]] my mother.', 'She is more careful than me.', 'I sometimes forget to [[water them]] when I\'m busy with exams.'),
-        q1('Do you like gardens?', ['peaceful', 'take a stroll', 'well kept'], 'Yes, I find them [[peaceful]].', 'They are a good place to rest.', 'I like to [[take a stroll]] in the [[well kept]] gardens near my university.') ] }],
+        q1('Do you like gardens?', ['peaceful', 'take a stroll', 'well-kept'], 'Yes, I find them [[peaceful]].', 'They are a good place to rest.', 'I like to [[take a stroll]] in the [[well-kept]] gardens near my university.') ] }],
       p2: [
         card('Describe a time you spent outdoors in nature.', ['where you were', 'who you were with', 'what you did'], 'and explain how you felt about it.',
           ['when and where it happened', 'how you feel about it now', 'whether you will go again'], ['We set off early', 'breathtaking views', 'fresh air', 'it was well worth it', 'it was so peaceful']),
@@ -203,8 +203,8 @@
           ['when you watched it', 'what you think of it now', 'if you would recommend it'], ['It\'s set in…', 'the plot', 'the acting was', 'it\'s worth watching'])
       ],
       p3: [
-        q3('Where do young people get their news today?', ['social media', 'short videos', 'traditional media'], 'Most young people get news from [[social media]].', 'It\'s fast and free on their phones.', 'Many of my friends learn about events from [[short videos]].', 'As a result, [[traditional media]] like newspapers is less popular with them.'),
-        q3('How can people check if a news story is true?', ['check the source', 'compare with', 'reliable'], 'People should [[check the source]] first.', '[[Reliable]] news comes from known outlets with named reporters.', 'If a story seems shocking, [[compare with]] two or three other sites.', 'This simple habit stops people sharing false information.'),
+        q3('Where do young people get their news today?', ['social media', 'short videos', 'traditional media'], 'Most young people get news from [[social media]].', 'It\'s fast and free on their phones.', 'Many of my friends learn about events from [[short videos]].', 'As a result, [[traditional media]] like newspapers are less popular with them.'),
+        q3('How can people check if a news story is true?', ['check the source', 'compare it with', 'reliable'], 'People should [[check the source]] first.', '[[Reliable]] news comes from known outlets with named reporters.', 'If a story seems shocking, [[compare it with]] two or three other sites.', 'This simple habit stops people sharing false information.'),
         q3('Should news always be free?', ['quality journalism', 'subscriptions', 'accessible'], 'Basic news should be [[accessible]] to everyone.', 'But [[quality journalism]] costs money to produce.', 'Many newspapers use [[subscriptions]] for long reports.', 'So a mix of free and paid news seems fair.'),
         q3('Is local news as important as international news?', ['directly affects', 'community', 'equally'], 'I think they are [[equally]] important.', 'Local news [[directly affects]] our daily lives.', 'For example, road works or school changes matter to my [[community]].', 'International news, on the other hand, helps us understand the wider world.')
       ] },
@@ -252,7 +252,7 @@
       ] },
     { id: 'i-travel', cat: 'places', theme: 'Travel', zh: '旅行',
       p1: [{ t: 'Travel', q: [
-        q1('Do you like travelling?', ['I love travelling', 'see new places', 'try local food'], 'Yes, [[I love travelling]].', 'I enjoy the chance to [[see new places]].', 'My favourite part is to [[try local food]], like the noodles I had in Xi\'an.'),
+        q1('Do you like travelling?', ['I love travelling', 'see new places', 'try local food'], 'Yes, [[I love travelling]].', 'I enjoy the chance to [[see new places]].', 'My favourite part is the chance to [[try local food]], like the noodles I had in Xi\'an.'),
         q1('Do you prefer travelling alone or with others?', ['I\'d rather…', 'share the experience', 'more flexible'], '[[I\'d rather]] travel with friends.', 'It\'s nice to [[share the experience]].', 'But travelling alone is [[more flexible]], so I might try it one day.'),
         q1('Where did you go on your last trip?', ['The last place I went to was…', 'for a few days', 'sightseeing'], '[[The last place I went to was]] Hangzhou.', 'I went [[for a few days]] during the summer holiday.', 'We spent most of our time [[sightseeing]] around West Lake.') ] },
         { t: 'Weather', q: [
@@ -273,7 +273,7 @@
       ] },
     { id: 'i-journey', cat: 'events', theme: 'Journeys and plans', zh: '出行与计划',
       p1: [{ t: 'Transport', q: [
-        q1('How do you usually get to school or work?', ['I usually take…', 'it takes about', 'rush hour'], '[[I usually take]] the subway.', 'It\'s fast and [[it takes about]] twenty minutes.', 'During [[rush hour]] it\'s very crowded, so I leave early.'),
+        q1('How do you usually get to school or work?', ['I usually take…', 'it takes about', 'rush hour'], '[[I usually take]] the subway.', 'It\'s fast, and [[it takes about]] twenty minutes to get there.', 'During [[rush hour]] it\'s very crowded, so I leave early.'),
         q1('Do you prefer buses or trains?', ['I prefer…', 'more reliable', 'traffic jams'], '[[I prefer]] trains.', 'They are [[more reliable]] because there are no [[traffic jams]].', 'Last month my bus was stuck in traffic and I was late for class.'),
         q1('Would you like to have your own car?', ['Someday', 'expensive to run', 'parking'], '[[Someday]], maybe.', 'Cars are [[expensive to run]] and [[parking]] is difficult in my city.', 'For now, public transport works well for me.') ] },
         { t: 'Being on time', q: [
@@ -288,7 +288,7 @@
       ],
       p3: [
         q3('How can cities reduce traffic?', ['public transport', 'cycle lanes', 'car-sharing'], 'Cities need to give people better choices.', 'Good [[public transport]] and safe [[cycle lanes]] reduce the number of cars.', 'My city added bike lanes, and now many students cycle to school.', '[[Car-sharing]] could help even more in the future.'),
-        q3('Is punctuality equally important in every culture?', ['attitudes vary', 'business', 'social events'], 'No, [[attitudes vary]] between cultures.', 'Some cultures are strict about time, others are more relaxed.', 'For example, being late for [[business]] meetings is rude in many countries, but less so for [[social events]].', 'So it\'s useful to learn local customs before travelling.'),
+        q3('Is punctuality equally important in every culture?', ['attitudes vary', 'business', 'social events'], 'No, [[attitudes vary]] between cultures.', 'Some cultures are strict about time; others are more relaxed.', 'For example, being late for [[business]] meetings is rude in many countries, but less so for [[social events]].', 'So it\'s useful to learn local customs before travelling.'),
         q3('Why do some people find it hard to plan ahead?', ['unpredictable', 'spontaneous', 'procrastinate'], 'Some people simply prefer to be [[spontaneous]].', 'Others [[procrastinate]] or feel life is too [[unpredictable]].', 'One of my friends never books anything until the day before.', 'Still, planning ahead usually saves time and money.'),
         q3('Will people travel to work less in the future?', ['work from home', 'commute', 'face-to-face'], 'I think many people will.', 'More jobs let people [[work from home]], so they don\'t need to [[commute]].', 'My uncle now goes to his office only two days a week.', 'But some jobs will always need [[face-to-face]] contact.')
       ] },

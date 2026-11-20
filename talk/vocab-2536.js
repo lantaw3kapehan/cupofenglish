@@ -321,7 +321,7 @@ window.KITS.vocab = {
 "zh": "过度拥挤的",
 "u": "/us/definition/english/overcrowded",
 "w": "overcrowded",
-"ipa": "UK /ˌəʊvəˈkraʊdɪd/  ·  US /ˌəʊvərˈkraʊdɪd/"
+"ipa": "UK /ˌəʊvəˈkraʊdɪd/  ·  US /ˌoʊvərˈkraʊdɪd/"
 },
 "lose its character": {
 "m": "stop being special or different",
@@ -940,7 +940,7 @@ window.KITS.vocab = {
 "zh": "做得过头",
 "u": "/us/definition/english/overboard",
 "w": "overboard",
-"ipa": "UK /ˈəʊvəbɔːd/  ·  US /ˈəʊvərbɔːrd/"
+"ipa": "UK /ˈəʊvəbɔːd/  ·  US /ˈoʊvərbɔːrd/"
 },
 "social pressure": {
 "m": "pressure to do what others expect",
@@ -1010,7 +1010,7 @@ window.KITS.vocab = {
 "zh": "工作量；学习负担",
 "u": "/us/definition/english/workload",
 "w": "workload",
-"ipa": "UK /ˈwɜːkləʊd/  ·  US /ˈwɜːrkləʊd/"
+"ipa": "UK /ˈwɜːkləʊd/  ·  US /ˈwɜːrkloʊd/"
 },
 "more practical": {
 "m": "more useful in real life",
@@ -1505,11 +1505,11 @@ window.KITS.vocab = {
 "w": "stroll",
 "ipa": "/strəʊl/"
 },
-"well kept": {
+"well-kept": {
 "m": "neat and well cared for",
 "zh": "维护得很好的",
 "u": "/us/definition/english/well-kept",
-"w": "well kept",
+"w": "well-kept",
 "ipa": "/ˌwel ˈkept/"
 },
 "breathtaking views": {
@@ -1808,7 +1808,7 @@ window.KITS.vocab = {
 "w": "source",
 "ipa": "UK /sɔːs/  ·  US /sɔːrs/"
 },
-"compare with": {
+"compare it with": {
 "m": "look at the differences between",
 "zh": "与……比较",
 "u": "/us/definition/english/compare_1",
@@ -2817,7 +2817,7 @@ window.KITS.vocab = {
 "zh": "作业",
 "u": "/us/definition/english/homework",
 "w": "homework",
-"ipa": "UK /ˈhəʊmwɜːk/  ·  US /ˈhəʊmwɜːrk/"
+"ipa": "UK /ˈhəʊmwɜːk/  ·  US /ˈhoʊmwɜːrk/"
 },
 "unwind": {
 "m": "relax after stress",
@@ -3240,7 +3240,7 @@ window.KITS.vocab = {
 "ex": "It's located in the south of the city.",
 "u": "/us/definition/english/located",
 "w": "located",
-"ipa": "UK /ləʊˈkeɪtɪd/  ·  US /ˈləʊkeɪtɪd/"
+"ipa": "UK /ləʊˈkeɪtɪd/  ·  US /ˈloʊkeɪtɪd/"
 },
 "It's known for…": {
 "m": "to say what a place is famous for",
