@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-talk v17 (20 Nov: words and phrases keep a short meaning and Oxford IPA; IPA filled on approve and by op ipa) · v12 (19 Nov: a week of topics approved at once · teachers see each topic from its own day) · v11 (19 Nov: President sees taken-out topics and can put them back) · v10 (19 Nov: Early years picture phrases) · v9 (19 Nov: useful phrases) · v8 (19 Nov: morning-draft photos copied on approval) · v7 (19 Nov: word photos for Early years · mirror op) · v6 (19 Nov: picture words for Early years) · v5 (19 Nov: Early years · Pre-A1 level and phonics sound) · v4 (19 Nov: teachers also get the facts list) · v3 (19 Nov: CEFR band per level) · v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
+// CupOfEnglish · coe-talk v18 (20 Nov: Speaking history ops speak / speakList, internal) · v17 (20 Nov: words and phrases keep a short meaning and Oxford IPA; IPA filled on approve and by op ipa) · v12 (19 Nov: a week of topics approved at once · teachers see each topic from its own day) · v11 (19 Nov: President sees taken-out topics and can put them back) · v10 (19 Nov: Early years picture phrases) · v9 (19 Nov: useful phrases) · v8 (19 Nov: morning-draft photos copied on approval) · v7 (19 Nov: word photos for Early years · mirror op) · v6 (19 Nov: picture words for Early years) · v5 (19 Nov: Early years · Pre-A1 level and phonics sound) · v4 (19 Nov: teachers also get the facts list) · v3 (19 Nov: CEFR band per level) · v2 (19 Nov: topics also Culture, Education, Travel, Daily life, Food, Sport, Nature) · v1 (19 Nov 2026 · 2425, Misty 14:33–14:40: "Talk of the Day" · class openers for YLE, Teens and Adults instead of "How are you?",
 //   factual and sourced, approved by the President, kept so teachers can go back to them). Used by talk/index.html and the teacher Today card.
 // POST { op, ... }:
 //   pub     { id }                         → one approved topic (no sign-in: the page a student or parent opens)
@@ -100,6 +100,30 @@ Deno.serve(async (req: Request) => {
     if (!s || new Date(s.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
     const name = String(s.name || ""), role = String(s.role || ""), pres = role === "President", mgmt = pres || role === "Operations";
 
+    /* 2495 · Speaking history (Teacher notes from IELTS Speaking and Free talk). Internal: teachers and management only. */
+    const staff = pres || role === "pres" || role === "Operations" || role === "Teacher";
+    const teaches = async (code: string) => { if (mgmt || role === "pres") return true;
+      const from = new Date(Date.now() - 120 * 864e5).toISOString(), to = new Date(Date.now() + 60 * 864e5).toISOString(), me = name.trim().toLowerCase();
+      const { data } = await db.from("classes").select("teachers").eq("code", code).gte("starts_at", from).lte("starts_at", to).limit(400);
+      return (data || []).some((c: any) => (Array.isArray(c.teachers) ? c.teachers : []).some((x: any) => String(x).trim().toLowerCase() === me)); };
+    if (op === "speak") {
+      if (!staff) return out({ ok: false, error: "Not allowed." }, 403);
+      const code = cl(b.code, 20).toUpperCase(); if (!/^ST-\d{4}-\d{3}$/.test(code)) return out({ ok: false, error: "Choose the student first." }, 400);
+      const kind = ["ielts", "free", "talk"].includes(String(b.kind)) ? String(b.kind) : "free", LV = ["needs", "ok", "good", "strong"], m: any = {};
+      for (const k of ["fluency", "lexical", "grammar", "pron"]) { const v = String((b.marks || {})[k] || ""); if (LV.includes(v)) m[k] = v; }
+      const arr = (v: unknown) => (Array.isArray(v) ? v : []).map((x) => cl(x, 80)).filter(Boolean).slice(0, 40);
+      const row = { code, student: cl(b.student, 80), teacher: name, kind, set_id: cl(b.set_id, 40), set_title: cl(b.set_title, 160), minutes: [25, 50].includes(+b.minutes) ? +b.minutes : null, marks: m, used: arr(b.used), practise: arr(b.practise), comment: cl(b.comment, 600) };
+      if (!Object.keys(m).length && !row.used.length && !row.comment) return out({ ok: true, saved: false });
+      const { error } = await db.from("coe_speak").insert(row); if (error) throw new Error(error.message);
+      return out({ ok: true, saved: true });
+    }
+    if (op === "speakList") {
+      if (!staff) return out({ ok: false, error: "Not allowed." }, 403);
+      const code = cl(b.code, 20).toUpperCase(); if (!/^ST-\d{4}-\d{3}$/.test(code)) return out({ ok: false, error: "bad request" }, 400);
+      if (!(await teaches(code))) return out({ ok: true, rows: [] });
+      const { data, error } = await db.from("coe_speak").select("id,kind,set_title,minutes,teacher,marks,used,practise,comment,created_at").eq("code", code).order("created_at", { ascending: false }).limit(60);
+      if (error) throw new Error(error.message); return out({ ok: true, rows: data || [] });
+    }
     if (op === "list") {
       let qy = db.from("coe_talk").select(mgmt ? ALL : PUB).order("day", { ascending: false }).order("created_at", { ascending: false }).limit(400);
       qy = pres ? qy.in("status", ["approved", "draft", "retired"]) : mgmt ? qy.in("status", ["approved", "draft"]) : qy.eq("status", "approved").lte("day", new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10));   // teachers see a topic from its own day
