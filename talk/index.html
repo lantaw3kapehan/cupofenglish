@@ -392,13 +392,14 @@ function notesHtml(RUB, marks, cmt){ const st = kitStu();
     + '<div class="krub">' + RUB.map((r, i) => '<span>' + esc(r[0]) + '</span><span>' + [[1, 'Needs work'], [2, 'OK'], [3, 'Good'], [4, 'Strong']].map(o => '<button type="button" style="width:auto;padding:0 10px" data-rb="' + i + ':' + o[0] + '" class="' + ((marks[i] || 0) === o[0] ? 'on' : '') + '">' + o[1] + '</button>').join(' ') + '</span>').join('') + '</div>'
     + '<label class="sub" style="display:block;margin:10px 0 4px">One short comment (optional)</label><textarea id="kCm" rows="2" maxlength="600" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;font-size:15px" placeholder="e.g. Link ideas with P–R–E–L; good use of examples">' + esc(cmt || '') + '</textarea></div>'; }
 async function saveSpeak(o){ const m = {}; MK.forEach((k, i) => { if(o.marks[i]) m[k] = LVK[o.marks[i]]; });
-  if(!Object.keys(m).length && !o.used.length && !String(o.comment || '').trim()) return;
+  const ran = o.ran != null ? o.ran : (window.__kitT0 && Date.now() - window.__kitT0 >= 3 * 6e4); o.ran = ran;   /* 2516: a class that ran 3+ minutes counts as used, notes or not */
+  const notes = Object.keys(m).length || o.used.length || String(o.comment || '').trim(); if(!notes && !ran) return;
   const st = kitStu(); if(!st) return askStu(o);
-  try{ const j = await call('coe-talk', { token: TOKEN, op: 'speak', code: st.code, student: st.name, kind: o.kind, set_id: o.id, set_title: o.title, minutes: o.len, marks: m, used: o.used, practise: o.practise, comment: o.comment });
-    if(j.saved) toast('Saved to ' + st.name + '\'s Speaking history.'); }catch(e){ toast('Speaking history not saved: ' + e.message); } }
+  try{ const j = await call('coe-talk', { token: TOKEN, op: 'speak', code: st.code, student: st.name, kind: o.kind, set_id: o.id, set_title: o.title, minutes: o.len, marks: m, used: o.used, practise: o.practise, comment: o.comment, ran: !!ran });
+    if(j.saved) toast(notes ? 'Saved to ' + st.name + '\'s Speaking history.' : 'Marked as used with ' + st.name + '.'); if(j.saved && app.querySelector('.kru')) usedFor(o.kind); }catch(e){ toast('Speaking history not saved: ' + e.message); } }
 /* 2498 · notes were made but no student was chosen: ask once, so they are not lost */
 function askStu(o){ const box = document.createElement('div'); box.className = 'fl'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
-  box.innerHTML = '<div class="flc" style="max-width:520px;text-align:left;align-items:stretch"><b style="font-size:24px">Who was this class with?</b><div class="sub" style="margin:6px 0 12px">You made Teacher notes in <b>' + esc(o.title) + '</b>. Choose the student to save them in the Speaking history.</div>'
+  box.innerHTML = '<div class="flc" style="max-width:520px;text-align:left;align-items:stretch"><b style="font-size:24px">Who was this class with?</b><div class="sub" style="margin:6px 0 12px">You taught <b>' + esc(o.title) + '</b>. Choose the student so it shows as used and is not repeated by mistake' + (Object.keys(o.marks || {}).length || (o.used || []).length || String(o.comment || '').trim() ? ', and your Teacher notes go to their Speaking history' : '') + '.</div>'
     + '<select id="askS" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit"><option value="">Loading your students…</option></select>'
     + '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px"><button type="button" class="btn" id="askNo">Don\'t save</button><button type="button" class="btn pr" id="askOk">Save</button></div></div>';
   document.body.appendChild(box); const done = () => box.remove();
@@ -638,24 +639,35 @@ function paintKit(kind){ const K = window.KITS; if(!K){ app.innerHTML = '<main><
   students().then(L2 => { const s0 = $('kStu'); if(!s0) return; const cur = kitStu(); s0.innerHTML = '<option value="">Student: choose</option>' + (L2 || []).map(x => '<option value="' + esc(x.code) + '"' + (cur && cur.code === x.code ? ' selected' : '') + '>' + esc(x.student) + ' · ' + esc(x.code) + '</option>').join('');
     s0.onchange = () => { const o = s0.options[s0.selectedIndex]; try{ if(s0.value) sessionStorage.setItem('coe.kit.stu', JSON.stringify({ code: s0.value, name: o.text.split(' · ')[0] })); else sessionStorage.removeItem('coe.kit.stu'); }catch(e){} usedFor(kind); }; });
   app.querySelectorAll('[data-len]').forEach(b => b.onclick = () => { KS('len', b.dataset.len); paintKit(kind); });
-  app.querySelectorAll('.kc,.kr').forEach(c => { const go = () => kind === 'ielts' && window.KITS.ielts2 ? openIelts(c.dataset.k, len) : openKit(kind, c.dataset.k, len); c.onclick = go; c.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } }; });
+  app.querySelectorAll('.kc,.kr').forEach(c => { const go0 = () => kind === 'ielts' && window.KITS.ielts2 ? openIelts(c.dataset.k, len) : openKit(kind, c.dataset.k, len);
+    const go = () => { const u = c.querySelector('.kru.u'), st = kitStu(); if(!u || !st) return go0(); usedAsk(st.name, u.dataset.when || u.textContent.replace(/^Used · /, ''), u.title, c.querySelector('.krt b').textContent, go0); }; c.onclick = go; c.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } }; });
   let cf = GR.some(g => g.k === cf0) ? cf0 : '';
   let more = hid.indexOf(cf) > -1;
   const filt = () => { const q = ((($('kQ') || {}).value) || '').trim().toLowerCase(); let any = 0;
     app.querySelectorAll('.kfc[data-cf]').forEach(b => { b.classList.toggle('on', b.dataset.cf === cf); if(b.classList.contains('kfx')) b.style.display = more ? '' : 'none'; });
     const mb = app.querySelector('.kfm'); if(mb) mb.textContent = more ? 'Fewer' : 'More ' + hid.length;
-    app.querySelectorAll('.kr').forEach(r => { const ok = (!cf || r.dataset.g === cf) && (!q || r.dataset.s.indexOf(q) > -1); r.style.display = ok ? '' : 'none'; if(ok) any++; });
+    app.querySelectorAll('.kr').forEach(r => { const ok = (!cf || r.dataset.g === cf) && (!q || r.dataset.s.indexOf(q) > -1) && !(window.__kitNew && r.querySelector('.kru.u')); r.style.display = ok ? '' : 'none'; if(ok) any++; });
     const L0 = $('kList'); if(L0) L0.style.display = any ? '' : 'none'; const no = $('kNone'); if(no) no.style.display = any ? 'none' : ''; };
   if(app.querySelector('.kfm')) app.querySelector('.kfm').onclick = () => { more = !more; filt(); };
   app.querySelectorAll('.kfc[data-cf]').forEach(b => b.onclick = () => { cf = b.dataset.cf; KS('cf.' + kind, cf); filt(); });
-  if($('kQ')) $('kQ').oninput = filt; filt();
+  if($('kQ')) $('kQ').oninput = filt; window.__kitFilt = filt; filt();
   usedFor(kind); }
 /* 2513 · "Used · 12 Nov" on each topic the chosen student already did (from their Speaking history) */
 async function usedFor(kind){ const st = kitStu(); app.querySelectorAll('.kru').forEach(x => { x.textContent = ''; x.classList.remove('u'); }); if(!st) return;
   try{ const j = await call('coe-talk', { token: TOKEN, op: 'speakList', code: st.code }); const seen = {};
     (j.rows || []).forEach(r => { if(r.set_id && !seen[r.set_id]) seen[r.set_id] = r; });
-    app.querySelectorAll('.kru').forEach(x => { const r = seen[x.dataset.u]; if(!r) return; const d = new Date(r.created_at); x.textContent = 'Used · ' + d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]; x.classList.add('u'); x.title = 'With ' + (r.teacher ? 'Teacher ' + r.teacher : 'a teacher'); }); }catch(e){} }
-function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? K.ielts : K.free).find(x => x.id === id); if(!t) return;
+    let nu = 0, nn = 0; app.querySelectorAll('.kru').forEach(x => { const r = seen[x.dataset.u]; if(!r){ nn++; return; } nu++; const d = new Date(r.created_at); x.textContent = 'Used · ' + d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]; x.classList.add('u'); x.title = 'With ' + (r.teacher ? 'Teacher ' + r.teacher : 'a teacher'); });
+    const fl = app.querySelector('.kfl'); let b = app.querySelector('.kfn'); if(b) b.remove();
+    if(fl && nu){ b = document.createElement('button'); b.type = 'button'; b.className = 'kfc kfn' + (window.__kitNew ? ' on' : ''); b.textContent = 'Not used with ' + st.name + ' · ' + nn; b.onclick = () => { window.__kitNew = !window.__kitNew; b.classList.toggle('on', window.__kitNew); window.__kitFilt && window.__kitFilt(); }; fl.insertBefore(b, fl.children[1]); }
+    window.__kitFilt && window.__kitFilt(); }catch(e){} }
+/* 2516 · opening a topic this student already did asks first (fine for review) */
+function usedAsk(who, when, by, title, go){ const box = document.createElement('div'); box.className = 'fl'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+  box.innerHTML = '<div class="flc" style="max-width:520px;text-align:left;align-items:stretch"><b style="font-size:22px">Already used with ' + esc(who) + '</b><div class="sub" style="margin:6px 0 14px"><b>' + esc(title) + '</b> was used on ' + esc(when) + (by ? ' · ' + esc(by.replace(/^With /, 'with ')) : '') + '. Use it again only for review, or choose a topic that is new for ' + esc(who) + '.</div>'
+    + '<div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="btn" id="uaNo">Choose another</button><button type="button" class="btn pr" id="uaOk">Open for review</button></div></div>';
+  document.body.appendChild(box); const done = () => box.remove();
+  document.getElementById('uaNo').onclick = () => { done(); if(!window.__kitNew){ const b = app.querySelector('.kfn'); if(b) b.click(); } };
+  document.getElementById('uaOk').onclick = () => { done(); go(); }; }
+function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? K.ielts : K.free).find(x => x.id === id); if(!t) return; window.__kitT0 = Date.now();
   const plan = K.plans[kind + len] || []; let step = 0, left = plan.length ? plan[0][2] * 60 : 0, run = true, tick = null, mini = null, notes = false, open = -1, cmt = ''; const marks = {}, used = {};
   const who = (kitStu() || {}).name || '';
   document.body.classList.add('present'); $('hT').textContent = (kind === 'ielts' ? 'IELTS Speaking' : 'Free talk') + ' / ' + (kind === 'ielts' ? '雅思口语' : '自由会话');
@@ -716,7 +728,7 @@ function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? 
   try{ window.CoeInk && CoeInk.open(); }catch(e){} paint(); $('bX').onclick = close; }
 
 /* 2487 · IELTS Speaking in CupOfEnglish's lesson template: Format → Assessment → Part 1 (A–R–E) → Part 2 (P–P–F) → Part 3 (P–R–E–L) → Feedback */
-function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id === id); if(!t) return;
+function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id === id); if(!t) return; window.__kitT0 = Date.now();
   const P = len === '25' ? [['p1', 'Part 1', 5], ['p2', 'Part 2', 10], ['p3', 'Part 3', 8], ['fb', 'Feedback', 2]] : [['fmt', 'Format', 5], ['p1', 'Part 1', 10], ['p2', 'Part 2', 15], ['p3', 'Part 3', 15], ['fb', 'Feedback', 5]];
   const Q1 = []; t.p1.forEach(g => g.q.forEach(q => Q1.push({ topic: g.t, ...q })));
   const S = []; P.forEach((p, i) => { const k = p[0];
