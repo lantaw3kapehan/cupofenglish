@@ -153,6 +153,21 @@ body.present .tph img{max-height:26vh}body.present .tph figcaption{font-size:11p
 .krow4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.krow4>div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
 .krow4 b{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}.krow4 p{margin:0 0 6px;color:#4A4566;font-size:15px;line-height:1.45}
 @media (max-width:999px){.krow4{grid-template-columns:1fr 1fr}.kfmt{grid-template-columns:1fr}}
+.ktb{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:4px 0 0}
+.ktb select{height:40px;min-width:240px;max-width:340px;padding:0 10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:15px;background:#fff;color:var(--ink)}
+.ktb .ktp{margin:0;flex-basis:100%}
+@media (min-width:1100px){.ktb .ktp{flex-basis:auto}}
+.ktg{font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.kr{grid-template-columns:28px minmax(0,1fr) auto auto!important}
+.kr .kno{background:#F1F0F6!important;color:#4A4566!important}
+.kfm{border-style:dashed!important}
+main.dash{max-width:1080px}
+.tod2{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px;align-items:start}
+.tod2>.card{margin:0!important}
+.tod2 .dsr{padding:8px 0!important;gap:10px}
+.tod2 .btn.sm{padding:4px 12px;min-height:30px;font-size:13px}
+@media (max-width:899px){.tod2{grid-template-columns:1fr}}
+@media (max-width:640px){.kr{grid-template-columns:28px minmax(0,1fr) auto!important}.kr .ktg{display:none}}
 .kfl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:20px 0 4px}
 .kfl input{flex:1 1 260px;min-width:200px;height:40px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font:inherit;font-size:15px;background:#fff;box-sizing:border-box}
 .kfc{font:inherit;font-size:14px;cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;color:#4A4566}
@@ -386,7 +401,7 @@ function askStu(o){ const box = document.createElement('div'); box.className = '
     + '<select id="askS" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit"><option value="">Loading your students…</option></select>'
     + '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px"><button type="button" class="btn" id="askNo">Don\'t save</button><button type="button" class="btn pr" id="askOk">Save</button></div></div>';
   document.body.appendChild(box); const done = () => box.remove();
-  students().then(L2 => { const s0 = document.getElementById('askS'); if(s0) s0.innerHTML = '<option value="">Choose the student</option>' + (L2 || []).map(x => '<option value="' + esc(x.code) + '">' + esc(x.student) + ' · ' + esc(x.code) + '</option>').join(''); });
+  students().then(L2 => { const s0 = document.getElementById('askS'); if(s0) s0.innerHTML = '<option value="">Student: choose</option>' + (L2 || []).map(x => '<option value="' + esc(x.code) + '">' + esc(x.student) + ' · ' + esc(x.code) + '</option>').join(''); });
   document.getElementById('askNo').onclick = done;
   document.getElementById('askOk').onclick = () => { const s0 = document.getElementById('askS'); if(!s0 || !s0.value){ toast('Choose the student first.'); return; } const op = s0.options[s0.selectedIndex];
     try{ sessionStorage.setItem('coe.kit.stu', JSON.stringify({ code: s0.value, name: op.text.split(' · ')[0] })); }catch(e){} done(); saveSpeak(o); const k = document.getElementById('kStu'); if(k) k.value = s0.value; }; }
@@ -479,8 +494,8 @@ function teacherDash(){ const t = todayT(), U = D.used || [], td = mnl(), C = D.
   const mine = APT().filter(x => usedT[x.id]).sort((a, b) => String(b.day).localeCompare(String(a.day))), not = APT().filter(x => !usedT[x.id] && (!t || x.id !== t.id)).sort((a, b) => String(b.day).localeCompare(String(a.day))).slice(0, 8);
   const row = x => '<div class="dsr dgo" data-id="' + x.id + '" tabindex="0" role="button"><span><b>' + esc(x.title) + '</b><span class="sub" style="display:block;margin:2px 0 0">' + dShort(x.day) + (usedT[x.id] ? ' · ' + esc([...new Set(usedT[x.id].map(u => u.student || u.code))].join(', ')) : ' · ' + esc((x.levels || []).map(k => LV[k]).join(' · '))) + '</span></span><span class="ar">›</span></div>';
   return '<main class="dash"><div class="libh"><div><h1>Talk of the Day</h1><p class="sub">' + dShort(td) + ' · the first 3–5 minutes of class, instead of "How are you?"</p></div><button class="btn" id="bLib" type="button">All topics ›</button></div>'
-    + (t ? '<section class="card tday"><div class="row">' + (t.day === td ? '<span class="lb" style="background:#E4F4F1;color:#1E6F5C;font-weight:700">Today</span>' : '<span class="lb" style="background:#F1F0F6;color:#4A4566;font-weight:700">Latest · ' + dShort(t.day) + '</span>') + stChips(t) + lvChips(t.levels, t) + '</div><b class="t">' + esc(t.title) + '</b>' + (t.title_zh ? '<span class="zh">' + esc(t.title_zh) + '</span>' : '') + '<p class="sum">' + esc(String(t.story || '').slice(0, 220)) + (String(t.story || '').length > 220 ? '…' : '') + '</p><div class="row"><button class="btn pr" id="bOpenT" type="button">Open the topic</button><span class="sub" style="margin:0">Pick the level and the student there · Open in class · Copy picture</span></div></section>' : '<div class="empty">The first topic is coming. It shows here on its day.</div>')
-    + (t ? '<section class="card"><div class="wh"><b>Your classes today</b><span class="sub" style="margin:0">' + (C.length ? pl(C.length, 'class') : '') + '</span></div>' + (C.length ? C.map(c => { const u = (usedT[t.id] || []).some(x => x.code === c.code); return '<div class="dsr"><span class="tm">' + esc(c.at) + '</span><span style="flex:1;min-width:0"><b>' + esc(c.student || c.code) + '</b></span>' + (u ? '<span class="lb" style="background:#E4F4F1;color:#1E6F5C;font-weight:700">Used</span>' : '<button class="btn sm" type="button" data-use="' + esc(c.code) + '">Use with ' + esc(c.student || c.code) + '</button>') + '</div>'; }).join('') : '<p class="sub">No classes on your calendar today.</p>') + '</section>' : '')
+    + (t ? '<div class="tod2">' : '') + (t ? '<section class="card tday"><div class="row">' + (t.day === td ? '<span class="lb" style="background:#E4F4F1;color:#1E6F5C;font-weight:700">Today</span>' : '<span class="lb" style="background:#F1F0F6;color:#4A4566;font-weight:700">Latest · ' + dShort(t.day) + '</span>') + stChips(t) + lvChips(t.levels, t) + '</div><b class="t">' + esc(t.title) + '</b>' + (t.title_zh ? '<span class="zh">' + esc(t.title_zh) + '</span>' : '') + '<p class="sum">' + esc(String(t.story || '').slice(0, 220)) + (String(t.story || '').length > 220 ? '…' : '') + '</p><div class="row"><button class="btn pr" id="bOpenT" type="button">Open the topic</button><span class="sub" style="margin:0">Pick the level and the student there · Open in class · Copy picture</span></div></section>' : '<div class="empty">The first topic is coming. It shows here on its day.</div>')
+    + (t ? '<section class="card"><div class="wh"><b>Your classes today</b><span class="sub" style="margin:0">' + (C.length ? pl(C.length, 'class') : '') + '</span></div>' + (C.length ? C.map(c => { const u = (usedT[t.id] || []).some(x => x.code === c.code); return '<div class="dsr"><span class="tm">' + esc(c.at) + '</span><span style="flex:1;min-width:0"><b>' + esc(c.student || c.code) + '</b></span>' + (u ? '<span class="lb" style="background:#E4F4F1;color:#1E6F5C;font-weight:700">Used</span>' : '<button class="btn sm" type="button" data-use="' + esc(c.code) + '" aria-label="Use with ' + esc(c.student || c.code) + '">Use</button>') + '</div>'; }).join('') : '<p class="sub">No classes on your calendar today.</p>') + '</section></div>' : '')
     + '<div class="two"><section class="card"><div class="wh"><b>You used</b><span class="sub" style="margin:0">' + mine.length + '</span></div>' + (mine.length ? mine.slice(0, 8).map(row).join('') : '<p class="sub">Nothing yet. Once you use a topic with a student it shows here.</p>') + '</section>'
     + '<section class="card"><div class="wh"><b>Not used yet</b><span class="sub" style="margin:0">' + not.length + '</span></div>' + (not.length ? not.map(row).join('') : '<p class="sub">You have used every topic so far.</p>') + '</section></div></main>'; }
 function paintDash(){ FROM = 'dash'; $('hS').textContent = D.mgmt ? 'Week ahead, drafts and who uses it' : 'Today, your classes and the topics you used';
@@ -606,28 +621,32 @@ function paintKit(kind){ const K = window.KITS; if(!K){ app.innerHTML = '<main><
     const CM = { 'i-talent': 'objects', 'i-places': 'places', 'i-people': 'people', 'i-objects': 'objects', 'i-events': 'events', 'i-study': 'activities', 'i-tech': 'objects', 'i-nature': 'places', 'i-media': 'events' };
     CAT.forEach(c => { const L = (K.ielts2 || []).filter(t => (t.cat || CM[t.id] || 'events') === c[0]); if(L.length) GR.push({ k: c[0], name: c[1], zh: c[2], cc: c[3], items: L.map(t => ({ id: t.id, title: t.p2[0].task.replace(/^Describe /, '').replace(/^./, x => x.toUpperCase()).replace(/\.$/, ''), zh: '', sub: t.theme + ' · Part 1: ' + t.p1.map(x => x.t).join(', ') })) }); }); }
   const total = GR.reduce((a, g) => a + g.items.length, 0), cf0 = KS('cf.' + kind) || '';
+  /* 2514 · one flat list in category order; the category is a tag on each row; after 6 chips the rest sit under More */
+  const GS = GR.slice().sort((a, b) => b.items.length - a.items.length), MAXC = 6, hid = GS.length > MAXC ? GS.slice(MAXC - 1).map(g => g.k) : [];
   const tools = '<div class="kfl"><input id="kQ" type="search" placeholder="Search topics or words" aria-label="Search topics" autocomplete="off"><button type="button" class="kfc" data-cf="">All ' + total + '</button>'
-    + GR.map(g => '<button type="button" class="kfc" data-cf="' + g.k + '" style="--c1:' + g.cc[0] + ';--c2:' + g.cc[1] + '">' + esc(g.name) + ' ' + g.items.length + '</button>').join('') + '</div>';
-  const cards = GR.map(g => '<section class="kgx" data-g="' + g.k + '"><div class="kch"><b class="kcl" style="background:' + g.cc[0] + ';color:' + g.cc[1] + '">' + esc(g.name) + '</b>' + (g.zh ? '<span class="zt">' + esc(g.zh) + '</span>' : '') + '<span class="sub">' + g.items.length + '</span></div><div class="kl">'
-      + g.items.map((t, n) => '<div class="kr" data-k="' + t.id + '" data-s="' + esc((t.title + ' ' + t.zh + ' ' + t.sub).toLowerCase()) + '" tabindex="0" role="button"><span class="kno" style="background:' + g.cc[0] + ';color:' + g.cc[1] + '">' + (n + 1) + '</span><span class="krt"><b>' + esc(t.title) + '</b>' + (t.zh ? ' <span class="zh">' + esc(t.zh) + '</span>' : '') + '<span class="krs"> · ' + esc(t.sub) + '</span></span><span class="kru" data-u="' + t.id + '"></span></div>').join('') + '</div></section>').join('')
+    + GS.map(g => '<button type="button" class="kfc' + (hid.indexOf(g.k) > -1 ? ' kfx' : '') + '" data-cf="' + g.k + '" style="--c1:' + g.cc[0] + ';--c2:' + g.cc[1] + '">' + esc(g.name) + ' ' + g.items.length + '</button>').join('')
+    + (hid.length ? '<button type="button" class="kfc kfm" data-more="1">More ' + hid.length + '</button>' : '') + '</div>';
+  let no = 0;
+  const cards = '<div class="kl" id="kList">' + GR.map(g => g.items.map(t => '<div class="kr" data-g="' + g.k + '" data-k="' + t.id + '" data-s="' + esc((t.title + ' ' + t.zh + ' ' + t.sub + ' ' + g.name).toLowerCase()) + '" tabindex="0" role="button"><span class="kno">' + (++no) + '</span><span class="krt"><b>' + esc(t.title) + '</b>' + (t.zh ? ' <span class="zh">' + esc(t.zh) + '</span>' : '') + '<span class="krs"> · ' + esc(t.sub) + '</span></span><span class="ktg" style="background:' + g.cc[0] + ';color:' + g.cc[1] + '">' + esc(g.name) + '</span><span class="kru" data-u="' + t.id + '"></span></div>').join('')).join('') + '</div>'
     + '<div class="empty" id="kNone" style="display:none">No topic matches. Try another word.</div>';
-  app.innerHTML = '<main class="dash">' + KN() + '<div class="libh"><div><h1>' + (kind === 'ielts' ? 'IELTS Speaking' : 'Free talk') + '</h1><p class="sub">' + (kind === 'ielts' ? 'Part 1 with A–R–E · Part 2 cue card with P–P–F (1 min to prepare, up to 2 min to speak) · Part 3 with P–R–E–L. Words and phrases for every question; model answers stay hidden until you show them.' : 'For Teens and Adults who want to practise speaking. Open one in class and share your screen.') + '</p></div></div>'
-    + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><label class="sub" for="kStu" style="margin:0">Student</label><select id="kStu" style="min-width:340px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff"><option value="">Choose the student</option></select><span class="sub" style="margin:0">Teacher notes go to this student\'s Speaking history</span></div>'
-    + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">' + (kind === 'free' ? seg('lv', lv, [['teens', 'Teens · A2–B2'], ['adults', 'Adults · A2–B2']]) : '') + seg('len', len, [['25', '25 minutes'], ['50', '50 minutes']]) + '<span class="sub" style="margin:0">' + esc(planTxt) + '</span></div>'
+  app.innerHTML = '<main class="dash">' + KN() + '<div class="libh"><div><h1>' + (kind === 'ielts' ? 'IELTS Speaking' : 'Free talk') + '</h1><p class="sub">' + (kind === 'ielts' ? 'Part 1 A–R–E · Part 2 cue card P–P–F · Part 3 P–R–E–L · model answers stay hidden until you show them' : 'Speaking practice for Teens and Adults · open one in class and share your screen') + '</p></div></div>'
+    + '<div class="ktb"><select id="kStu" aria-label="Student" title="Teacher notes go to this student\'s Speaking history"><option value="">Student: choose</option></select>' + (kind === 'free' ? seg('lv', lv, [['teens', 'Teens · A2–B2'], ['adults', 'Adults · A2–B2']]) : '') + seg('len', len, [['25', '25 min'], ['50', '50 min']]) + '<span class="sub ktp">' + esc(planTxt) + '</span></div>'
     + tools + cards + '</main>';
   bindKN(kind);
   app.querySelectorAll('[data-lv]').forEach(b => b.onclick = () => { KS('lv', b.dataset.lv); paintKit(kind); });
-  students().then(L2 => { const s0 = $('kStu'); if(!s0) return; const cur = kitStu(); s0.innerHTML = '<option value="">Choose the student</option>' + (L2 || []).map(x => '<option value="' + esc(x.code) + '"' + (cur && cur.code === x.code ? ' selected' : '') + '>' + esc(x.student) + ' · ' + esc(x.code) + '</option>').join('');
+  students().then(L2 => { const s0 = $('kStu'); if(!s0) return; const cur = kitStu(); s0.innerHTML = '<option value="">Student: choose</option>' + (L2 || []).map(x => '<option value="' + esc(x.code) + '"' + (cur && cur.code === x.code ? ' selected' : '') + '>' + esc(x.student) + ' · ' + esc(x.code) + '</option>').join('');
     s0.onchange = () => { const o = s0.options[s0.selectedIndex]; try{ if(s0.value) sessionStorage.setItem('coe.kit.stu', JSON.stringify({ code: s0.value, name: o.text.split(' · ')[0] })); else sessionStorage.removeItem('coe.kit.stu'); }catch(e){} usedFor(kind); }; });
   app.querySelectorAll('[data-len]').forEach(b => b.onclick = () => { KS('len', b.dataset.len); paintKit(kind); });
   app.querySelectorAll('.kc,.kr').forEach(c => { const go = () => kind === 'ielts' && window.KITS.ielts2 ? openIelts(c.dataset.k, len) : openKit(kind, c.dataset.k, len); c.onclick = go; c.onkeydown = e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } }; });
   let cf = GR.some(g => g.k === cf0) ? cf0 : '';
+  let more = hid.indexOf(cf) > -1;
   const filt = () => { const q = ((($('kQ') || {}).value) || '').trim().toLowerCase(); let any = 0;
-    app.querySelectorAll('.kfc').forEach(b => b.classList.toggle('on', b.dataset.cf === cf));
-    app.querySelectorAll('.kgx').forEach(sec => { let n = 0; const okG = !cf || sec.dataset.g === cf;
-      sec.querySelectorAll('.kr').forEach(r => { const ok = okG && (!q || r.dataset.s.indexOf(q) > -1); r.style.display = ok ? '' : 'none'; if(ok) n++; }); sec.style.display = n ? '' : 'none'; any += n; });
-    const no = $('kNone'); if(no) no.style.display = any ? 'none' : ''; };
-  app.querySelectorAll('.kfc').forEach(b => b.onclick = () => { cf = b.dataset.cf; KS('cf.' + kind, cf); filt(); });
+    app.querySelectorAll('.kfc[data-cf]').forEach(b => { b.classList.toggle('on', b.dataset.cf === cf); if(b.classList.contains('kfx')) b.style.display = more ? '' : 'none'; });
+    const mb = app.querySelector('.kfm'); if(mb) mb.textContent = more ? 'Fewer' : 'More ' + hid.length;
+    app.querySelectorAll('.kr').forEach(r => { const ok = (!cf || r.dataset.g === cf) && (!q || r.dataset.s.indexOf(q) > -1); r.style.display = ok ? '' : 'none'; if(ok) any++; });
+    const L0 = $('kList'); if(L0) L0.style.display = any ? '' : 'none'; const no = $('kNone'); if(no) no.style.display = any ? 'none' : ''; };
+  if(app.querySelector('.kfm')) app.querySelector('.kfm').onclick = () => { more = !more; filt(); };
+  app.querySelectorAll('.kfc[data-cf]').forEach(b => b.onclick = () => { cf = b.dataset.cf; KS('cf.' + kind, cf); filt(); });
   if($('kQ')) $('kQ').oninput = filt; filt();
   usedFor(kind); }
 /* 2513 · "Used · 12 Nov" on each topic the chosen student already did (from their Speaking history) */
