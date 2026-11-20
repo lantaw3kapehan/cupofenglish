@@ -45,6 +45,8 @@ Deno.serve(async (req: Request) => {
       const outBytes = await doc.save({ useObjectStreams: false });
       const { error } = await db.storage.from("book-media").upload(id, outBytes, { contentType: "application/pdf", upsert: true, cacheControl: "60" });
       if (error) throw new Error(error.message);
+      // v2 (2553): the light copy (2548) was made from the old page → removed; the reader opens this corrected copy and tonight's run makes a new light copy
+      await db.from("coe_book_light").delete().eq("id", id); await db.storage.from("book-media").remove(["light-2548/" + id]);
       return out({ ok: true, size: outBytes.length, backup: bak });
     }
     return out({ ok: false, error: "unknown op" }, 400);

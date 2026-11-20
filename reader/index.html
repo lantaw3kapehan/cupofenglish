@@ -237,8 +237,10 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
       else if(meta && meta.alt && meta.altSize){ STEP = 'lighter copy'; want(id); doc = await ranged(ST(meta.alt), +meta.altSize, opt); }
       else { let hs = 0; if(!(meta && meta.ok !== false && meta.size)){ try{ const hd = await fetch(ST(id), { method: 'HEAD', cache: 'no-store' }); if(hd.ok) hs = +hd.headers.get('content-length') || 0; }catch(e){} }   /* 2543: the check failed → our own copy, page by page, before the slow Drive stream */
         if(hs){ STEP = 'our copy (no check)'; doc = await ranged(ST(id), hs, opt); } else { STEP = 'Drive pages'; want(id); if(!(meta && meta.size)) throw new Error('no size'); doc = await ranged(PX(id), +meta.size, opt); } } }
-    catch(e){ ERR = (ERR ? ERR + ' · ' : '') + STEP + ': ' + String((e && e.message) || e).slice(0, 80); STEP = 'Drive whole file'; want(id); doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt, { disableRange: true, disableStream: false })).promise; }   /* 2278 */
-    soon(); { const sec = (Date.now() - T0) / 1000; if(STEP === 'Drive whole file') bookFail('fallback', id, STEP, ERR, sec); else if(sec >= 15) bookFail('slow', id, STEP, ERR, sec); }
+    catch(e){ ERR = (ERR ? ERR + ' · ' : '') + STEP + ': ' + String((e && e.message) || e).slice(0, 80);
+      if(STEP === 'light copy' && meta && meta.copied && meta.size){ try{ STEP = 'our copy (light failed)'; doc = await ranged(ST(id), +meta.size, opt); }catch(e2){ doc = null; } }   /* 2553 */
+      if(!doc){ STEP = 'Drive whole file'; want(id); doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt, { disableRange: true, disableStream: false })).promise; } }   /* 2278 */
+    soon(); { const sec = (Date.now() - T0) / 1000; if(STEP === 'Drive whole file' || /failed/.test(STEP)) bookFail('fallback', id, STEP, ERR, sec); else if(sec >= 15) bookFail('slow', id, STEP, ERR, sec); }
     PRE.clear(); CROP.clear(); PG1 = await findFirst(doc); pageNo = PG1; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > PG1 && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
     if(FIRST) FIRST = false; else try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'log', token: TOKEN, kind: 'pdf', id, title: $('fl').textContent || TITLE, book: LABEL }) }); }catch(e){}
   }catch(e){ bookFail('failed', id, STEP, (ERR ? ERR + ' · ' : '') + String((e && e.message) || e).slice(0, 80), (Date.now() - T0) / 1000); msg('This book could not open right now. Please try again, or tell Operations.<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Try again</button>'); } }
@@ -256,7 +258,9 @@ function kIdx(){ try{ return JSON.parse(localStorage.getItem('coe.bk.pre') || '[
 function kSave(L){ try{ localStorage.setItem('coe.bk.pre', JSON.stringify(L.slice(0, 200))); }catch(e){} }
 async function kOpen(url, opt){ try{ if(!('caches' in window)) return null; const c = await caches.open(KC), r = await c.match(url); if(!r) return null;
     const buf = await r.arrayBuffer(); const L = kIdx().filter(x => x.u !== url); L.unshift({ u: url, n: buf.byteLength, at: Date.now() }); kSave(L);
-    return await pdfjsLib.getDocument(Object.assign({ data: new Uint8Array(buf) }, opt)).promise; }catch(e){ return null; } }
+    const t = pdfjsLib.getDocument(Object.assign({ data: new Uint8Array(buf) }, opt));   /* 2553: never stuck on a saved copy */
+    const d = await Promise.race([t.promise, new Promise(r => setTimeout(() => r(null), 8000))]);
+    if(!d){ try{ t.destroy(); }catch(e){} try{ await c.delete(url); }catch(e){} return null; } return d; }catch(e){ try{ (await caches.open(KC)).delete(url); }catch(z){} return null; } }
 let KQ = Promise.resolve();   /* 2550: one saved book at a time */
 function kKeep(url, length, src){ const c = navigator.connection || {}; if(c.saveData || /(^|-)2g|3g/.test(c.effectiveType || '')) return; KQ = KQ.then(() => kKeep1(url, length, src)).catch(() => {}); }
 /* 2551: between classes only. The app writes today's class times (coe.today.cls); 3 minutes before a class until it ends counts as class time.

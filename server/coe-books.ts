@@ -80,9 +80,9 @@ Deno.serve(async (req: Request) => {
     if (op === "meta") {   // 2279: the reader needs a file's size and whether our copy is ready (for page-by-page loading)
       const id = clip(b.id, 80); const { data: f } = await db.from("coe_book_files").select("size,mime").eq("id", id).maybeSingle();
       const { data: m } = await db.from("coe_media_mirror").select("done_at").eq("id", id).maybeSingle();
-      // 2548: a light copy made overnight (same pages, text stays text, pictures 150 dpi) opens first: management now (preview), everyone once switched on
+      // 2548: a light copy made overnight (same pages, text stays text, pictures 150 dpi) opens first, for everyone (Misty 23:14 "make it live")
       const { data: lt } = await db.from("coe_book_light").select("size,use_it,note").eq("id", id).maybeSingle();
-      if (lt && lt.note === "ready" && lt.size && (lt.use_it || mgr)) return out({ ok: true, size: f ? f.size : null, copied: !!(m && m.done_at), light: "light-2548/" + id, lightSize: lt.size });
+      if (lt && lt.note === "ready" && lt.size) return out({ ok: true, size: f ? f.size : null, copied: !!(m && m.done_at), light: "light-2548/" + id, lightSize: lt.size });
       // 2281: not copied yet → a lighter "_APP COPIES" twin that is copied opens instead (same book, same name)
       if (f && !(m && m.done_at)) { const { data: me } = await db.from("coe_book_files").select("path,name").eq("id", id).maybeSingle();
         if (me) { const { data: tw } = await db.from("coe_book_files").select("id,size").eq("name", me.name).eq("path", "_APP COPIES / " + me.path).is("gone_at", null).limit(1);
