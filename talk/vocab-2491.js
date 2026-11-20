@@ -1,4 +1,4 @@
-/* 2490 · Words and phrases for IPA-guided explaining in IELTS Speaking. Meanings are short CupOfEnglish wording, checked against
+/* 2491 · Words and phrases for IELTS Speaking and Free talk. Meanings are short CupOfEnglish wording, checked against
    Oxford Learner's Dictionaries; IPA (UK and US) is taken from the key word's Oxford entry, which the "Oxford" link opens. */
 window.KITS = window.KITS || {};
 window.KITS.vocab = {
@@ -3317,8 +3317,8 @@ window.KITS.vocab = {
 },
 "I'd recommend it because…": {
 "m": "to say why others should try it",
-"zh": "说推荐理由",
-"ex": "I'd recommend it because it's quiet and free.",
+"zh": "我推荐它，因为……",
+"ex": "I'd recommend it because the story is exciting.",
 "u": "/us/definition/english/recommend",
 "w": "recommend",
 "ipa": "/ˌrekəˈmend/"
@@ -3477,8 +3477,8 @@ window.KITS.vocab = {
 },
 "I'll never forget…": {
 "m": "to show a strong memory",
-"zh": "说难忘的事",
-"ex": "I'll never forget the fireworks that night.",
+"zh": "我永远不会忘记……",
+"ex": "I'll never forget the view from the top.",
 "u": "/us/definition/english/forget",
 "w": "forget",
 "ipa": "UK /fəˈɡet/  ·  US /fərˈɡet/"
@@ -3558,7 +3558,8 @@ window.KITS.vocab = {
 },
 "I'm into…": {
 "m": "I am very interested in",
-"zh": "我对……很感兴趣",
+"zh": "我很喜欢……",
+"ex": "I'm into football.",
 "u": "/us/definition/english/into",
 "w": "into",
 "ipa": "/ˈɪntə/"
@@ -3573,7 +3574,7 @@ window.KITS.vocab = {
 },
 "I rely on it for…": {
 "m": "I depend on it for",
-"zh": "我依靠它来……",
+"zh": "我靠它来……",
 "ex": "I rely on it for my daily schedule.",
 "u": "/us/definition/english/rely",
 "w": "rely",
@@ -3640,7 +3641,8 @@ window.KITS.vocab = {
 },
 "I'm really into…": {
 "m": "I like it very much",
-"zh": "我非常喜欢",
+"zh": "我很喜欢……",
+"ex": "I'm really into hiking.",
 "u": "/us/definition/english/into",
 "w": "into",
 "ipa": "/ˈɪntə/"
@@ -3942,5 +3944,718 @@ window.KITS.vocab = {
 "ex": "I'd sign up for an evening class.",
 "u": "/us/definition/english/sign-up",
 "w": "sign up"
+},
+"I usually start by…": {
+"m": "to say the first thing you do",
+"zh": "我通常先……",
+"ex": "I usually start by checking my emails.",
+"u": "/us/definition/english/usually",
+"w": "usually",
+"ipa": "/ˈjuːʒuəli/"
+},
+"The busiest part is…": {
+"m": "to say the time when you have most to do",
+"zh": "最忙的时候是……",
+"ex": "The busiest part is the morning.",
+"u": "/us/definition/english/busy_1",
+"w": "busy",
+"ipa": "/ˈbɪzi/"
+},
+"To be honest,…": {
+"m": "to say what you really think",
+"zh": "说实话，……",
+"ex": "To be honest, I'm not a morning person.",
+"u": "/us/definition/english/honest",
+"w": "honest",
+"ipa": "UK /ˈɒnɪst/  ·  US /ˈɑːnɪst/"
+},
+"It depends on…": {
+"m": "it changes with",
+"zh": "这要看……",
+"ex": "It depends on the weather.",
+"u": "/us/definition/english/depend",
+"w": "depend",
+"ipa": "/dɪˈpend/"
+},
+"I'm thinking of going to…": {
+"m": "to talk about a possible plan",
+"zh": "我在考虑去……",
+"ex": "I'm thinking of going to Qingdao.",
+"u": "/us/definition/english/think_1",
+"w": "think",
+"ipa": "/θɪŋk/"
+},
+"It's worth visiting because…": {
+"m": "to say why a place is good to visit",
+"zh": "值得一去，因为……",
+"ex": "It's worth visiting because the old town is beautiful.",
+"u": "/us/definition/english/worth_1",
+"w": "worth",
+"ipa": "UK /wɜːθ/  ·  US /wɜːrθ/"
+},
+"We could… instead.": {
+"m": "to suggest another idea",
+"zh": "我们也可以改为……",
+"ex": "We could take the train instead.",
+"u": "/us/definition/english/instead",
+"w": "instead",
+"ipa": "/ɪnˈsted/"
+},
+"On a budget": {
+"m": "without much money to spend",
+"zh": "预算有限",
+"ex": "We travelled on a budget and stayed in hostels.",
+"u": "/us/definition/english/budget_1",
+"w": "budget",
+"ipa": "/ˈbʌdʒɪt/"
+},
+"It's quick and easy to make.": {
+"m": "it does not take long to cook",
+"zh": "做起来又快又简单。",
+"ex": "Egg fried rice is quick and easy to make.",
+"u": "/us/definition/english/quick_1",
+"w": "quick",
+"ipa": "/kwɪk/"
+},
+"I'm not much of a cook.": {
+"m": "I am not good at cooking",
+"zh": "我不太会做饭。",
+"ex": "I'm not much of a cook, so I eat out a lot.",
+"u": "/us/definition/english/cook_1",
+"w": "cook",
+"ipa": "/kʊk/"
+},
+"It saves time, but…": {
+"m": "to give a good point, then a bad one",
+"zh": "省时间，但是……",
+"ex": "Delivery saves time, but it's expensive.",
+"u": "/us/definition/english/save_1",
+"w": "save",
+"ipa": "/seɪv/"
+},
+"Home-cooked food": {
+"m": "food made at home",
+"zh": "家常菜",
+"ex": "Nothing beats home-cooked food.",
+"u": "/us/definition/english/cook_1",
+"w": "cook",
+"ipa": "/kʊk/"
+},
+"It saves me a lot of time.": {
+"m": "it helps me do things faster",
+"zh": "它帮我节省了很多时间。",
+"ex": "This app saves me a lot of time.",
+"u": "/us/definition/english/save_1",
+"w": "save",
+"ipa": "/seɪv/"
+},
+"The downside is…": {
+"m": "to say the bad side",
+"zh": "缺点是……",
+"ex": "The downside is the price.",
+"u": "/us/definition/english/downside",
+"w": "downside",
+"ipa": "/ˈdaʊnsaɪd/"
+},
+"Double-check the facts": {
+"m": "check information again to be sure",
+"zh": "再次核实事实",
+"ex": "Always double-check the facts before you share.",
+"u": "/us/definition/english/double-check_1",
+"w": "double-check",
+"ipa": "/ˌdʌbl ˈtʃek/"
+},
+"I try to… every day.": {
+"m": "to talk about a daily habit",
+"zh": "我每天都尽量……",
+"ex": "I try to walk every day.",
+"u": "/us/definition/english/try_1",
+"w": "try",
+"ipa": "/traɪ/"
+},
+"I've cut down on…": {
+"m": "I now use or do less of it",
+"zh": "我减少了……",
+"ex": "I've cut down on sugar.",
+"u": "/us/definition/english/cut-down_1",
+"w": "cut down"
+},
+"Stick to a routine": {
+"m": "keep doing things at the same times",
+"zh": "坚持规律作息",
+"ex": "It's easier to sleep well if you stick to a routine.",
+"u": "/us/definition/english/routine_1",
+"w": "routine",
+"ipa": "/ruːˈtiːn/"
+},
+"Easier said than done": {
+"m": "easy to say, hard to do",
+"zh": "说起来容易做起来难",
+"ex": "Going to bed early is easier said than done.",
+"u": "/us/definition/english/easy_1",
+"w": "easy",
+"ipa": "/ˈiːzi/"
+},
+"It's good value for money.": {
+"m": "it is worth the price",
+"zh": "物有所值。",
+"ex": "This bag is good value for money.",
+"u": "/us/definition/english/value_1",
+"w": "value",
+"ipa": "/ˈvæljuː/"
+},
+"I can't afford it right now.": {
+"m": "I don't have enough money now",
+"zh": "我现在买不起。",
+"ex": "I like that phone, but I can't afford it right now.",
+"u": "/us/definition/english/afford",
+"w": "afford",
+"ipa": "UK /əˈfɔːd/  ·  US /əˈfɔːrd/"
+},
+"Shop around": {
+"m": "compare prices in different shops",
+"zh": "货比三家",
+"ex": "It's a good idea to shop around before you buy.",
+"u": "/us/definition/english/shop-around",
+"w": "shop around"
+},
+"On sale": {
+"m": "cheaper than usual",
+"zh": "打折促销",
+"ex": "These shoes were on sale.",
+"u": "/us/definition/english/sale",
+"w": "sale",
+"ipa": "/seɪl/"
+},
+"I picked it up by…": {
+"m": "to say how you learned it",
+"zh": "我是通过……学会的。",
+"ex": "I picked it up by watching videos.",
+"u": "/us/definition/english/pick-up",
+"w": "pick up"
+},
+"I'm getting better at…": {
+"m": "to say you are improving",
+"zh": "我在……方面越来越好。",
+"ex": "I'm getting better at speaking.",
+"u": "/us/definition/english/better_1",
+"w": "better",
+"ipa": "UK /ˈbetə(r)/  ·  US /ˈbetər/"
+},
+"Practice makes perfect.": {
+"m": "doing it often makes you good",
+"zh": "熟能生巧。",
+"ex": "Keep trying; practice makes perfect.",
+"u": "/us/definition/english/practice_1",
+"w": "practice",
+"ipa": "/ˈpræktɪs/"
+},
+"Step by step": {
+"m": "slowly, one stage at a time",
+"zh": "循序渐进",
+"ex": "I learned to cook step by step.",
+"u": "/us/definition/english/step_1",
+"w": "step",
+"ipa": "/step/"
+},
+"It's well known for…": {
+"m": "to say what a place is famous for",
+"zh": "它以……而闻名。",
+"ex": "My city is well known for its noodles.",
+"u": "/us/definition/english/known_1",
+"w": "known",
+"ipa": "/nəʊn/"
+},
+"Public transport is…": {
+"m": "to describe the buses and trains",
+"zh": "公共交通……",
+"ex": "Public transport is cheap and fast here.",
+"u": "/us/definition/english/public-transport",
+"w": "public transport",
+"ipa": "UK /ˌpʌblɪk ˈtrænspɔːt/  ·  US /ˌpʌblɪk ˈtrænspɔːrt/"
+},
+"It's a bit crowded.": {
+"m": "there are quite a lot of people",
+"zh": "有点拥挤。",
+"ex": "The subway is a bit crowded in the morning.",
+"u": "/us/definition/english/crowded",
+"w": "crowded",
+"ipa": "/ˈkraʊdɪd/"
+},
+"In the city centre": {
+"m": "in the middle of the city",
+"zh": "在市中心",
+"ex": "I live in the city centre.",
+"u": "/us/definition/english/centre_1",
+"w": "centre",
+"ipa": "UK /ˈsentə(r)/  ·  US /ˈsentər/"
+},
+"I like to take it easy.": {
+"m": "I like to relax",
+"zh": "我喜欢放松一下。",
+"ex": "At weekends I like to take it easy.",
+"u": "/us/definition/english/easy_1",
+"w": "easy",
+"ipa": "/ˈiːzi/"
+},
+"Catch up with friends": {
+"m": "meet friends and hear their news",
+"zh": "和朋友叙叙旧",
+"ex": "On Sundays I catch up with friends.",
+"u": "/us/definition/english/catch-up_1",
+"w": "catch up"
+},
+"Recharge my batteries": {
+"m": "rest to get my energy back",
+"zh": "恢复精力",
+"ex": "A long walk helps me recharge my batteries.",
+"u": "/us/definition/english/recharge",
+"w": "recharge",
+"ipa": "UK /ˌriːˈtʃɑːdʒ/  ·  US /ˌriːˈtʃɑːrdʒ/"
+},
+"Could I add something?": {
+"m": "a polite way to join in",
+"zh": "我可以补充一点吗？",
+"ex": "Could I add something? I think the price matters too.",
+"u": "/us/definition/english/add_1",
+"w": "add",
+"ipa": "/æd/"
+},
+"I see your point, but…": {
+"m": "to disagree politely",
+"zh": "我理解你的意思，但是……",
+"ex": "I see your point, but it's too expensive.",
+"u": "/us/definition/english/point_1",
+"w": "point",
+"ipa": "/pɔɪnt/"
+},
+"Let's move on to…": {
+"m": "to change to the next topic",
+"zh": "我们接下来谈……",
+"ex": "Let's move on to the next question.",
+"u": "/us/definition/english/move-on",
+"w": "move on"
+},
+"Follow up": {
+"m": "check or act on something later",
+"zh": "跟进",
+"ex": "I'll follow up with an email tomorrow.",
+"u": "/us/definition/english/follow-up_1",
+"w": "follow up"
+},
+"According to…": {
+"m": "as said by",
+"zh": "根据……",
+"ex": "According to the news, it will rain.",
+"u": "/us/definition/english/according-to",
+"w": "according to",
+"ipa": "UK /əˈkɔːdɪŋ tə/  ·  US /əˈkɔːrdɪŋ tə/"
+},
+"I read somewhere that…": {
+"m": "to share something you read",
+"zh": "我在某处读到……",
+"ex": "I read somewhere that sleep helps memory.",
+"u": "/us/definition/english/somewhere_1",
+"w": "somewhere",
+"ipa": "UK /ˈsʌmweə(r)/  ·  US /ˈsʌmwer/"
+},
+"Check the source": {
+"m": "find out where information came from",
+"zh": "查看来源",
+"ex": "Before you share it, check the source.",
+"u": "/us/definition/english/source_1",
+"w": "source",
+"ipa": "UK /sɔːs/  ·  US /sɔːrs/"
+},
+"It turned out that…": {
+"m": "to say what you found out later",
+"zh": "结果发现……",
+"ex": "It turned out that the story was old.",
+"u": "/us/definition/english/turn-out",
+"w": "turn out"
+},
+"I'm aiming to…": {
+"m": "to say your goal",
+"zh": "我的目标是……",
+"ex": "I'm aiming to run 5 km by June.",
+"u": "/us/definition/english/aim_1",
+"w": "aim",
+"ipa": "/eɪm/"
+},
+"By the end of the year,…": {
+"m": "before this year finishes",
+"zh": "到今年年底，……",
+"ex": "By the end of the year, I want to read ten books.",
+"u": "/us/definition/english/end_1",
+"w": "end",
+"ipa": "/end/"
+},
+"Keep track of": {
+"m": "record something so you know how it is going",
+"zh": "记录进度",
+"ex": "I use an app to keep track of my study time.",
+"u": "/us/definition/english/track_1",
+"w": "track",
+"ipa": "/træk/"
+},
+"Set a realistic goal": {
+"m": "choose a goal you can reach",
+"zh": "设定切实可行的目标",
+"ex": "Set a realistic goal, like one new word a day.",
+"u": "/us/definition/english/realistic",
+"w": "realistic",
+"ipa": "/ˌriːəˈlɪstɪk/"
+},
+"My favourite subject is… because…": {
+"m": "to say your best subject and why",
+"zh": "我最喜欢的科目是……，因为……",
+"ex": "My favourite subject is art because I love drawing.",
+"u": "/us/definition/english/subject_1",
+"w": "subject",
+"ipa": "/ˈsʌbdʒɪkt/"
+},
+"I find… quite hard.": {
+"m": "to say what is difficult for you",
+"zh": "我觉得……挺难的。",
+"ex": "I find maths quite hard.",
+"u": "/us/definition/english/hard_1",
+"w": "hard",
+"ipa": "UK /hɑːd/  ·  US /hɑːrd/"
+},
+"In my opinion,…": {
+"m": "to say what you think",
+"zh": "在我看来，……",
+"ex": "In my opinion, homework should be shorter.",
+"u": "/us/definition/english/opinion",
+"w": "opinion",
+"ipa": "/əˈpɪnjən/"
+},
+"Hand in homework": {
+"m": "give your homework to the teacher",
+"zh": "交作业",
+"ex": "We hand in homework every Friday.",
+"u": "/us/definition/english/hand-in",
+"w": "hand in"
+},
+"It helps me relax.": {
+"m": "it makes me feel calm",
+"zh": "它让我放松。",
+"ex": "Music helps me relax.",
+"u": "/us/definition/english/relax",
+"w": "relax",
+"ipa": "/rɪˈlæks/"
+},
+"Set a time limit": {
+"m": "decide the most time you will spend",
+"zh": "设定时间限制",
+"ex": "My parents set a time limit for games.",
+"u": "/us/definition/english/limit_1",
+"w": "limit",
+"ipa": "/ˈlɪmɪt/"
+},
+"I agree up to a point.": {
+"m": "I agree with part of it",
+"zh": "我部分同意。",
+"ex": "I agree up to a point, but not completely.",
+"u": "/us/definition/english/point_1",
+"w": "point",
+"ipa": "/pɔɪnt/"
+},
+"We get on well.": {
+"m": "we have a friendly relationship",
+"zh": "我们相处得很好。",
+"ex": "My sister and I get on well.",
+"u": "/us/definition/english/get-on",
+"w": "get on"
+},
+"We have a lot in common.": {
+"m": "we share many interests",
+"zh": "我们有很多共同点。",
+"ex": "We have a lot in common, like music and sport.",
+"u": "/us/definition/english/common_1",
+"w": "common",
+"ipa": "UK /ˈkɒmən/  ·  US /ˈkɑːmən/"
+},
+"Fall out with": {
+"m": "stop being friends after an argument",
+"zh": "和……闹翻",
+"ex": "I fell out with my friend over a game.",
+"u": "/us/definition/english/fall-out",
+"w": "fall out"
+},
+"Make up": {
+"m": "become friends again after an argument",
+"zh": "和好",
+"ex": "We argued, but we made up the next day.",
+"u": "/us/definition/english/make-up_1",
+"w": "make up"
+},
+"I'd like to become…": {
+"m": "to say the job you want",
+"zh": "我想成为……",
+"ex": "I'd like to become a doctor.",
+"u": "/us/definition/english/become",
+"w": "become",
+"ipa": "/bɪˈkʌm/"
+},
+"You need to be good at…": {
+"m": "to say a skill a job needs",
+"zh": "你需要擅长……",
+"ex": "You need to be good at maths to be an engineer.",
+"u": "/us/definition/english/good_1",
+"w": "good",
+"ipa": "/ɡʊd/"
+},
+"In the long run": {
+"m": "over a long time in the future",
+"zh": "从长远来看",
+"ex": "Studying hard pays off in the long run.",
+"u": "/us/definition/english/run_1",
+"w": "run",
+"ipa": "/rʌn/"
+},
+"Work from home": {
+"m": "do your job at home",
+"zh": "居家办公",
+"ex": "My dad works from home on Fridays.",
+"u": "/us/definition/english/work_1",
+"w": "work",
+"ipa": "UK /wɜːk/  ·  US /wɜːrk/"
+},
+"I'm on the… team.": {
+"m": "to say which team you play for",
+"zh": "我是……队的。",
+"ex": "I'm on the school basketball team.",
+"u": "/us/definition/english/team_1",
+"w": "team",
+"ipa": "/tiːm/"
+},
+"I work out": {
+"m": "I do exercise, often at a gym",
+"zh": "我去锻炼",
+"ex": "I work out three times a week.",
+"u": "/us/definition/english/work-out",
+"w": "work out"
+},
+"Give it a try": {
+"m": "try something new",
+"zh": "试一试",
+"ex": "I've never played tennis, but I'll give it a try.",
+"u": "/us/definition/english/try_1",
+"w": "try",
+"ipa": "/traɪ/"
+},
+"Win or lose": {
+"m": "whatever the result is",
+"zh": "无论输赢",
+"ex": "Win or lose, we have fun.",
+"u": "/us/definition/english/lose",
+"w": "lose",
+"ipa": "/luːz/"
+},
+"It's about…": {
+"m": "its topic is",
+"zh": "它讲的是……",
+"ex": "It's about a boy who loves space.",
+"u": "/us/definition/english/about_1",
+"w": "about",
+"ipa": "/əˈbaʊt/"
+},
+"It's worth watching.": {
+"m": "it is good enough to watch",
+"zh": "值得一看。",
+"ex": "It's long, but it's worth watching.",
+"u": "/us/definition/english/worth_1",
+"w": "worth",
+"ipa": "UK /wɜːθ/  ·  US /wɜːrθ/"
+},
+"The ending was…": {
+"m": "to describe how a story finished",
+"zh": "结局……",
+"ex": "The ending was a big surprise.",
+"u": "/us/definition/english/ending",
+"w": "ending",
+"ipa": "/ˈendɪŋ/"
+},
+"Cut down on…": {
+"m": "use or do less of something",
+"zh": "减少……",
+"ex": "We should cut down on plastic.",
+"u": "/us/definition/english/cut-down_1",
+"w": "cut down"
+},
+"Reuse and recycle": {
+"m": "use things again and turn waste into new things",
+"zh": "重复使用和回收利用",
+"ex": "At home we reuse and recycle bottles.",
+"u": "/us/definition/english/recycle",
+"w": "recycle",
+"ipa": "/ˌriːˈsaɪkl/"
+},
+"It makes a difference.": {
+"m": "it has a good effect",
+"zh": "这会带来改变。",
+"ex": "Small actions can make a difference.",
+"u": "/us/definition/english/difference",
+"w": "difference",
+"ipa": "/ˈdɪfrəns/"
+},
+"As a result,…": {
+"m": "because of this",
+"zh": "因此，……",
+"ex": "It rained a lot. As a result, the trip was cancelled.",
+"u": "/us/definition/english/result_1",
+"w": "result",
+"ipa": "/rɪˈzʌlt/"
+},
+"When I was there,…": {
+"m": "to talk about your time in a place",
+"zh": "我在那里的时候，……",
+"ex": "When I was there, I tried hotpot.",
+"u": "/us/definition/english/there_1",
+"w": "there",
+"ipa": "UK /ðeə(r)/  ·  US /ðer/"
+},
+"The best part was…": {
+"m": "to say what you liked most",
+"zh": "最棒的部分是……",
+"ex": "The best part was the beach.",
+"u": "/us/definition/english/best_1",
+"w": "best",
+"ipa": "/best/"
+},
+"Take photos": {
+"m": "use a camera or phone to take pictures",
+"zh": "拍照",
+"ex": "I take photos everywhere I go.",
+"u": "/us/definition/english/photo_1",
+"w": "photo",
+"ipa": "/ˈfəʊtəʊ/"
+},
+"I came across…": {
+"m": "I found it by chance",
+"zh": "我偶然看到……",
+"ex": "I came across a funny video yesterday.",
+"u": "/us/definition/english/come-across",
+"w": "come across"
+},
+"It's fake.": {
+"m": "it is not real or true",
+"zh": "这是假的。",
+"ex": "That photo is fake; it was edited.",
+"u": "/us/definition/english/fake_1",
+"w": "fake",
+"ipa": "/feɪk/"
+},
+"Think before you post.": {
+"m": "think carefully before sharing online",
+"zh": "发帖前先想一想。",
+"ex": "Think before you post; it stays online.",
+"u": "/us/definition/english/post_3",
+"w": "post",
+"ipa": "/pəʊst/"
+},
+"On the other hand,…": {
+"m": "used to give another side",
+"zh": "另一方面，……",
+"ex": "Phones are useful. On the other hand, they waste time.",
+"u": "/us/definition/english/hand_1",
+"w": "hand",
+"ipa": "/hænd/"
+},
+"In my free time, I…": {
+"m": "to talk about your hobbies",
+"zh": "我空闲时……",
+"ex": "In my free time, I play the piano.",
+"u": "/us/definition/english/free_1",
+"w": "free",
+"ipa": "/friː/"
+},
+"I've been doing it for… years.": {
+"m": "to say how long you have done it",
+"zh": "我已经做了……年。",
+"ex": "I've been doing it for three years.",
+"u": "/us/definition/english/year",
+"w": "year",
+"ipa": "UK /jɪə(r)/  ·  US /jɪr/"
+},
+"It's a lot of fun.": {
+"m": "it is very enjoyable",
+"zh": "非常有趣。",
+"ex": "Skateboarding is a lot of fun.",
+"u": "/us/definition/english/fun_1",
+"w": "fun",
+"ipa": "/fʌn/"
+},
+"Hang out with": {
+"m": "spend free time with",
+"zh": "和……一起玩",
+"ex": "I hang out with my friends after school.",
+"u": "/us/definition/english/hang-out_1",
+"w": "hang out"
+},
+"It tastes…": {
+"m": "to describe the flavour",
+"zh": "它尝起来……",
+"ex": "It tastes sweet and a little sour.",
+"u": "/us/definition/english/taste_1",
+"w": "taste",
+"ipa": "/teɪst/"
+},
+"My mum makes the best…": {
+"m": "to praise your mum's cooking",
+"zh": "我妈妈做的……最好吃。",
+"ex": "My mum makes the best dumplings.",
+"u": "/us/definition/english/best_1",
+"w": "best",
+"ipa": "/best/"
+},
+"It's a bit spicy.": {
+"m": "it is a little hot to eat",
+"zh": "有点辣。",
+"ex": "This noodle soup is a bit spicy.",
+"u": "/us/definition/english/spicy",
+"w": "spicy",
+"ipa": "/ˈspaɪsi/"
+},
+"Have a snack": {
+"m": "eat a small amount between meals",
+"zh": "吃点零食",
+"ex": "I have a snack after school.",
+"u": "/us/definition/english/snack_1",
+"w": "snack",
+"ipa": "/snæk/"
+},
+"I'm trying to improve my…": {
+"m": "to say what you are working on",
+"zh": "我正在努力提高我的……",
+"ex": "I'm trying to improve my listening.",
+"u": "/us/definition/english/improve_1",
+"w": "improve",
+"ipa": "/ɪmˈpruːv/"
+},
+"It's hard to…": {
+"m": "to say something is difficult",
+"zh": "……很难。",
+"ex": "It's hard to remember new words.",
+"u": "/us/definition/english/hard_1",
+"w": "hard",
+"ipa": "UK /hɑːd/  ·  US /hɑːrd/"
+},
+"Little by little": {
+"m": "slowly, in small steps",
+"zh": "一点一点地",
+"ex": "Little by little, my English is getting better.",
+"u": "/us/definition/english/little_1",
+"w": "little",
+"ipa": "/ˈlɪtl/"
+},
+"Make mistakes": {
+"m": "do something wrong",
+"zh": "犯错",
+"ex": "It's OK to make mistakes when you learn.",
+"u": "/us/definition/english/mistake_1",
+"w": "mistake",
+"ipa": "/mɪˈsteɪk/"
 }
 };
