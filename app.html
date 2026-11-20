@@ -7439,7 +7439,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2146;
+const COE_V = 2147;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -43879,11 +43879,16 @@ window.dots2471 = function(done, total, label){ try{ done = Math.max(0, +done ||
       + S.map(function(x){ var k = x.code + '|' + x.ym;
         return '<div class="r"><div class="n"><b>' + E(x.name) + '</b> <span class="mute small">' + E(x.code) + ' · ' + E(x.teachers) + '</span> ' + (x.clear ? '<span class="k c">Remaining ' + x.before + ' too low</span>' : '<span class="k u">Check by hand</span>')
           + '<small>Started ' + E(dl(x.start)) + ' · ' + E(ml(x.ym)) + ' counts <b>' + x.sheet + '</b> · class records: ' + x.before + ' before the start, ' + x['from'] + ' from the start' + (x.finished != null ? ' · completed now ' + x.finished : '') + '</small></div>'
-          + '<div class="bb">' + (x.clear ? '<button class="btn teal sm" onclick="fm2484Fix(\'' + E(k) + '\')">Correct to ' + x.suggest + '</button>' : '') + '<button class="btn ghost sm" onclick="openStudent(\'' + E(x.code) + '\')">Open</button></div></div>'; }).join('')
+          + '<div class="bb">' + (x.clear ? '<button class="btn teal sm" onclick="fm2484Fix(\'' + E(k) + '\')">Correct to ' + x.suggest + '</button>' : '') + '<button class="btn ghost sm" title="The count is already correct: take it off this list" onclick="fm2544Ok(\'' + E(k) + '\')">It\'s right</button><button class="btn ghost sm" onclick="openStudent(\'' + E(x.code) + '\')">Open</button></div></div>'; }).join('')
       + (L.length > S.length ? '<div style="padding-top:8px"><button class="btn ghost sm" onclick="fm2484All()">Show all ' + L.length + '</button></div>' : '') + '</section>'; }
   function paint(){ var v = document.getElementById('v-mtoday'); if(!v) return; var o = document.getElementById('fm2484'), h = html();
     if(!h){ if(o) o.remove(); return; } if(o){ if(o.outerHTML !== h) o.outerHTML = h; } else v.insertAdjacentHTML('beforeend', h); }
   window.fm2484All = function(){ open = 1; paint(); };
+  window.fm2544Ok = function(k){ var x = (R || []).find(function(y){ return y.code + '|' + y.ym === k; }); if(!x) return;
+    done[k] = 1; paint();
+    fetch(OPS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'ok', ref: 'fm:' + k }) }).then(function(r){ return r.json(); })
+      .then(function(r){ if(r && r.ok){ try{ toast('Marked right · ' + x.name + ' ' + ml(x.ym)); }catch(e){} } else { delete done[k]; paint(); try{ toast('Not saved. Try again.'); }catch(e){} } })
+      .catch(function(){ delete done[k]; paint(); try{ toast('Not saved. Try again.'); }catch(e){} }); };
   window.fm2484Fix = function(k){ var x = (R || []).find(function(y){ return y.code + '|' + y.ym === k; }); if(!x || !x.clear) return;
     if(!confirm(x.name + ' · ' + ml(x.ym) + ': change ' + x.sheet + ' to ' + x.suggest + '?\n\nOnly the lessons from ' + dl(x.start) + ' count for this package: completed goes down by ' + x.before + ' and remaining goes up by ' + x.before + '. You can undo it in the Lesson Summary.')) return;
     fetch(OPS, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'lessonfix', code: x.code, ym: x.ym, v: x.suggest, was: x.sheet, note: 'First month counted from the start date ' + dl(x.start) + ' (earlier lessons belong to the previous package)' }) })
