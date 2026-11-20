@@ -985,7 +985,9 @@ function fixOut(fn: string, data: any, F: Record<string, any>) {
       const set = (i: number, dv: number) => { const r = rows[i].slice(), M = (r[C.months] || []).slice(); M[j] = r1((Number(M[j]) || 0) + dv); r[C.months] = M; if (r[C.finished] !== "" && r[C.finished] != null) r[C.finished] = r1(Number(r[C.finished]) + dv); rows[i] = r; };
       if (d) { const D0 = d; const by = idx.slice().sort((a, b) => val(b) - val(a));
         if (d < 0) { for (const i of by) { if (d >= 0) break; const t = Math.max(d, -val(i)); if (t) { set(i, t); d = r1(d - t); } } } else set(by[0], d);
-        const used = f.left ? D0 : r1(D0 - d), ai = idx.find((i) => rows[i][C.available] !== "" && rows[i][C.available] != null);   // remaining sits on the package row · v59 (2522): left = lessons never counted anywhere, so all of them come off what is left
+        const hasA = (i: number) => rows[i][C.available] !== "" && rows[i][C.available] != null;
+        let ai = idx.find(hasA); const used = f.left ? D0 : r1(D0 - d);
+        if (ai == null && C.shared != null) { const sc = idx.map((i) => up(rows[i][C.shared])).find((x) => /^ST-\d{4}-\d{3}$/.test(x)); if (sc) { const j = rows.findIndex((r: any[], i: number) => up(r[C.code]) === sc && hasA(i)); if (j > -1) ai = j; } }   // v60 (2525): a shared-package child (Simon) · the remaining sits on the package owner's row (Kiki)   // v59 (2522): left = lessons never counted anywhere, so all of them come off what is left
         if (ai != null && used) { const r = rows[ai].slice(); r[C.available] = r1(Number(r[C.available]) - used); rows[ai] = r; } }
       fixes.push({ code, ym, v: f.v, was: old !== f.v ? old : (typeof f.was === "number" ? f.was : old), note: f.note || "", by: f.by || "", at: f.at || "", left: !!f.left }); });
     return Object.assign({}, data, { rows, fixes });
