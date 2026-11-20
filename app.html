@@ -7416,7 +7416,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2110;
+const COE_V = 2111;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -43880,16 +43880,18 @@ window.dots2471 = function(done, total, label){ try{ done = Math.max(0, +done ||
       + (Object.keys(r.marks || {}).length ? '<div class="mk">' + ['fluency', 'lexical', 'grammar', 'pron'].filter(k => r.marks[k]).map(k => '<span class="' + e(r.marks[k]) + '">' + NM[k] + ' · ' + (LV[r.marks[k]] || '') + '</span>').join('') + '</div>' : '')
       + ((r.used || []).length ? '<div class="ph">Used: ' + r.used.map(e).join(' · ') + '</div>' : '') + ((r.practise || []).length ? '<div class="ph">To practise: ' + r.practise.slice(0, 8).map(e).join(' · ') + '</div>' : '')
       + (r.comment ? '<div class="cm">' + e(r.comment) + '</div>' : '') + '</div></div>').join(''); }
-  function place(code){ const box = document.getElementById('stuSpk'), R = C[code]; if(!box) return; if(!R || !R.length){ box.remove(); return; } box.innerHTML = html(R); }
+  function sync(){ const box = document.getElementById('stuSpk'); if(!box) return; const fb = [...document.querySelectorAll('section.sec h2')].find(h => /^Teacher feedback/.test(h.textContent || '')), s = fb && fb.closest('section'); box.dataset.stab = (s && s.dataset.stab) || 'pr'; if(s) box.classList.toggle('stu-hide', s.classList.contains('stu-hide')); }
+  function place(code){ const box = document.getElementById('stuSpk'), R = C[code]; if(!box) return; if(!R || !R.length){ box.remove(); return; } box.innerHTML = html(R); sync(); }
   function load(code){ fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-talk', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'speakList', token: TOKEN, code }) })
     .then(r => r.json()).then(j => { if(j && j.ok){ C[code] = j.rows || []; place(code); } }).catch(() => {}); }
   const sr = window.stuRender; if(typeof sr !== 'function') return;
   window.stuRender = function(){ const r = sr.apply(this, arguments);
     try{ if(typeof STU !== 'undefined' && STU && STU.code && typeof TOKEN !== 'undefined' && TOKEN && !document.getElementById('stuSpk')){ const code = String(STU.code).toUpperCase();
         const fb = [...document.querySelectorAll('section.sec h2')].find(h => /^Teacher feedback/.test(h.textContent || '')), anchor = fb ? fb.closest('section') : document.getElementById('stuSch');
-        if(anchor){ anchor.insertAdjacentHTML('afterend', '<section class="sec sp2495" id="stuSpk"></section>'); if(C[code]) place(code); else document.getElementById('stuSpk').style.display = 'none'; if(!C[code]) load(code); else load(code); } } }catch(x){}
+        if(anchor){ anchor.insertAdjacentHTML('afterend', '<section class="sec sp2495" id="stuSpk" data-stab="pr"></section>'); if(C[code]) place(code); else document.getElementById('stuSpk').style.display = 'none'; if(!C[code]) load(code); else load(code); } } }catch(x){}
     return r; };
   const pl0 = place; place = function(code){ const b = document.getElementById('stuSpk'); if(b) b.style.display = ''; pl0(code); };
+  const tb = window.stuTab; if(typeof tb === 'function') window.stuTab = function(){ const r = tb.apply(this, arguments); try{ sync(); }catch(x){} return r; };
 })();
 </script>
 <script id="b2278">
