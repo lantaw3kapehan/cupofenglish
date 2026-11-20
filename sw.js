@@ -1,9 +1,31 @@
 // CupOfEnglish: keeps the app frame on the phone so it opens instantly and installs as an app.
 const V = 'coe-4', SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL))); self.skipWaiting(); });
-self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== V).map(x => caches.delete(x))))); self.clients.claim(); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== V && x !== BOOKS).map(x => caches.delete(x))))); self.clients.claim(); });   // 2554: the saved books stay
+// 2554 (Misty 23:19): class audio and video saved on this computer before class (app 2552) play from here, with no buffering.
+// Only audio/video requests for our book files; anything not saved goes to the internet exactly as before.
+const BOOKS = 'coe-books-pre', MEDIA = 'https://rlxkiahqjsabopmuhern.supabase.co/storage/v1/object/public/book-media/';
+let SAVED = null;   // the saved media addresses, so a file that is not saved is never touched here (it goes to the internet untouched)
+function loadSaved() { return caches.open(BOOKS).then(c => c.keys()).then(k => { SAVED = new Set(k.map(r => r.url).filter(x => x.startsWith(MEDIA) && x.indexOf('?') < 0)); }).catch(() => { SAVED = new Set(); }); }
+self.addEventListener('message', e => { if (e.data === 'coe-books-saved') loadSaved(); });
+function fromSaved(req) {
+  return caches.open(BOOKS).then(c => c.match(req.url)).then(hit => {
+    if (!hit) return fetch(req);
+    return hit.blob().then(b => {
+      const rg = /^bytes=(\d*)-(\d*)$/.exec(req.headers.get('Range') || '');
+      const type = hit.headers.get('Content-Type') || b.type || 'application/octet-stream';
+      if (!rg) return new Response(b, { status: 200, headers: { 'Content-Type': type, 'Content-Length': String(b.size), 'Accept-Ranges': 'bytes' } });
+      let s = rg[1] === '' ? Math.max(0, b.size - (+rg[2] || 0)) : +rg[1], en = rg[1] !== '' && rg[2] !== '' ? Math.min(+rg[2], b.size - 1) : b.size - 1;
+      if (s >= b.size || s > en) return new Response(null, { status: 416, headers: { 'Content-Range': 'bytes */' + b.size } });
+      return new Response(b.slice(s, en + 1), { status: 206, headers: { 'Content-Type': type, 'Content-Range': 'bytes ' + s + '-' + en + '/' + b.size, 'Content-Length': String(en - s + 1), 'Accept-Ranges': 'bytes' } });
+    });
+  }).catch(() => fetch(req));
+}
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
+  if (e.request.method === 'GET' && (e.request.destination === 'audio' || e.request.destination === 'video') && e.request.url.startsWith(MEDIA) && !u.search) {
+    if (SAVED === null) loadSaved(); else if (SAVED.has(e.request.url)) e.respondWith(fromSaved(e.request));
+    return; }
   if (e.request.method !== 'GET' || u.origin !== location.origin) return;   // everything else goes live
   if (/\/app\.html$/.test(u.pathname)) return;                              // the screens: always fetched fresh (the frame keeps its own copy)
   if (/\/verify\//.test(u.pathname)) return;   // 21 Oct · the public verify page is never cached as the app frame
