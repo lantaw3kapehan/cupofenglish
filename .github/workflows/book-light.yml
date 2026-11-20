@@ -1,0 +1,44 @@
+name: Book light copies (2548)
+# Misty 20 Nov 22:50: make lighter book copies to a fixed clarity standard (text stays real text; pictures 150 dpi),
+# first 3 samples with side-by-side pictures for her to check. Nothing is switched for teachers here.
+on:
+  workflow_dispatch:
+    inputs:
+      ids:
+        description: 'Drive ids (our copies in book-media), comma-separated'
+        required: true
+      pages:
+        description: 'page to compare for each id, comma-separated'
+        required: true
+      dpi:
+        description: 'picture resolution'
+        default: '150'
+permissions:
+  contents: read
+jobs:
+  light:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ghostscript poppler-utils imagemagick >/dev/null
+      - name: Storage key (never printed)
+        env:
+          SAT: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          K=$(curl -sf -H "Authorization: Bearer $SAT" "https://api.supabase.com/v1/projects/rlxkiahqjsabopmuhern/api-keys?reveal=true" | python3 -c 'import sys,json; print([k["api_key"] for k in json.load(sys.stdin) if k.get("name")=="service_role"][0])')
+          echo "::add-mask::$K"; echo "SRK=$K" >> "$GITHUB_ENV"
+      - name: Make light copies and pictures
+        env:
+          IDS: ${{ inputs.ids }}
+          PAGES: ${{ inputs.pages }}
+          DPI: ${{ inputs.dpi }}
+        run: bash tools/book-light.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compare
+          path: out/*.png
+          retention-days: 3
+      - name: Sizes
+        run: cat out/sizes.txt
