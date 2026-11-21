@@ -232,7 +232,7 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
   try{ if(doc){ try{ doc.destroy(); }catch(e){} doc = null; }
     let meta = null; for(let k = 0; k < 2 && !meta; k++){ try{ meta = await fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'meta', token: TOKEN, id }) }).then(x => x.json()); }catch(e){ if(!k) await new Promise(r => setTimeout(r, 800)); } }   /* 2543: one retry on a WiFi blip */
     /* 2281: our copy page by page → else a lighter copy of the same book → else Drive page by page (never the whole file first) */
-    if(!meta) ERR = 'meta check failed';
+    if(!meta) ERR = 'book details did not load';   /* 2594 (audit QA-26) */
     try{ if(meta && meta.light && meta.lightSize){ STEP = 'light copy'; doc = await ranged(SB + '/storage/v1/object/public/book-media/' + meta.light.split('/').map(encodeURIComponent).join('/'), +meta.lightSize, opt); }   /* 2548: the light copy (same pages, text stays sharp) */
       else if(meta && meta.copied && meta.size){ STEP = 'our copy'; doc = await ranged(ST(id), +meta.size, opt); }
       else if(meta && meta.alt && meta.altSize){ STEP = 'lighter copy'; want(id); doc = await ranged(ST(meta.alt), +meta.altSize, opt); }
