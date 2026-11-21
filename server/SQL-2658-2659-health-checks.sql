@@ -1,0 +1,8 @@
+-- 21 Nov night (Misty 23:06 App health screenshot · 23:45 "I get phone notifications now")
+-- Database closed to the public: revoked execute from public/anon/authenticated on 11+5 public functions (none called by pages);
+--   alter default privileges in schema public revoke execute on functions from public, anon, authenticated; grant execute to service_role.
+-- 2658 coe_guard_mgmt_no_google: a mgmtSetBook the app already applied (rows in args[5], classes show the book, or a later change replaced it) is not "finished by Google".
+-- 2659 coe_fix_guard:
+--   · alert push only when a check starts failing that had no push in the last 24 h, or one daily summary; none 22:00–08:00 Manila
+--     (was: any change in the details re-pushed · 11 pushes 22:13–23:44 for the same Sales line);
+--   · Sales check matches by payment confirmation number + date + package; a blank peso amount in Google's copy is not a difference.
