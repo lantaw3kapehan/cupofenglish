@@ -3349,7 +3349,8 @@ async function hlBudget(){ try{ const r = await fetch(FAST_URL, { method: 'POST'
 async function loadHealth(){ try{ HL = await api('mgmtHealth', TOKEN); await hlBudget(); const b = $('hlBox'); if(b) b.innerHTML = hlHtml(); homeSoon(); try{ hl2598(); }catch(x){} }catch(e){} }
 /* 2598: App health tab · the current check on top */
 function hl2598(){ const v = $('v-msgs'); if(!v || window.MSF !== 'sys') return; let c = v.querySelector('.hl2598');
-  const body = HL ? hlHtml() : '<div class="small mute">Checking…</div>';
+  const I = (HL && HL.issues) || [], S = (HL && HL.slow) || [];
+  const body = !HL ? '<div class="small mute">Checking…</div>' : '<div style="margin-top:6px"><b style="color:' + (I.length ? '#A2462C' : '#1E6E4C') + '">' + (I.length ? I.length + ' of ' + (HL.checks || '?') + ' checks need attention' : '✓ All ' + (HL.checks || '') + ' checks pass') + '</b></div>' + (I.length ? '<ul class="small" style="margin:6px 0 0;padding-left:18px">' + I.map(x => '<li style="margin:3px 0">' + esc(x) + '</li>').join('') + '</ul>' : '') + (S.length ? '<div class="small mute" style="margin-top:6px">Slow to load (10 s or more), latest first: ' + S.slice(0, 6).map(x => esc(x[0] + ' ' + x[1] + ' ' + Math.round((+x[2] || 0) / 1000) + ' s')).join(' · ') + '</div>' : '');
   const html = '<div class="card hl2598" style="margin-top:12px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h3 style="margin:0">App health now</h3><span class="small mute">' + esc(new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })) + (HL && HL.time ? ' · checked ' + esc(HL.time) : '') + ' · the database checks itself every 5 minutes</span></div>' + body + '</div><h3 class="hl2598h" style="margin:16px 0 4px">Older reports <span class="small mute" style="font-weight:400">· each one is about its own date</span></h3>';
   if(c){ if(c.dataset.h !== String(HL && HL.time)){ c.nextElementSibling && c.nextElementSibling.classList.contains('hl2598h') && c.nextElementSibling.remove(); c.remove(); c = null; } else return; }
   const anchor = v.querySelector('.tb22') || v.querySelector('.seg'); if(!anchor) return; anchor.insertAdjacentHTML('afterend', html); const n = v.querySelector('.hl2598'); if(n) n.dataset.h = String(HL && HL.time);
@@ -7484,7 +7485,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2192;
+const COE_V = 2193;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
