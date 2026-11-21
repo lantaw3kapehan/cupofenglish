@@ -4152,10 +4152,14 @@ const ren = ((srv && srv.rows) || []).filter(x => x.pre > 0 && byRow[x.row]).map
 const over = AT.rows.filter(r => own(r) && r[C.available] !== '' && +r[C.available] < 0).map(r => item(r, '<b style="color:#C0392B">+' + (-r[C.available]) + '</b> lessons over the ' + r[C.enrolled] + '-lesson package · renew'));
 const exp = AT.rows.filter(r => own(r) && r[C.active] && r[C.deadline] && String(r[C.deadline]).slice(0, 10) < today && r[C.available] !== '' && +r[C.available] > 0);
 const expOn = exp.filter(recent).sort((a, b) => String(a[C.deadline]).localeCompare(String(b[C.deadline]))).map(r => item(r, 'Deadline ' + esc(String(r[C.deadline]).slice(0, 10)) + ' · <b>' + r[C.available] + '</b> left · still taking classes → extend the deadline or renew'));
-const expOff = exp.filter(r => !recent(r)).sort((a, b) => String(a[C.deadline]).localeCompare(String(b[C.deadline]))).map(r => item(r, 'Deadline ' + esc(String(r[C.deadline]).slice(0, 10)) + ' · <b>' + r[C.available] + '</b> left · no classes last 2 months → stopped? untick ACTIVE or follow up'));
+const bk2577 = {}; try{ (window.MS || []).forEach(s => { if(s && s.wk && !s.wk.histOnly) bk2577[String(s.code).toUpperCase()] = s.wk; }); }catch(e){}   /* 2577 */
+const expOff = exp.filter(r => !recent(r)).sort((a, b) => String(a[C.deadline]).localeCompare(String(b[C.deadline]))).map(r => { const cd = String(r[C.code] || '').toUpperCase(), oth = AT.rows.filter(o => o !== r && String(o[C.code] || '').toUpperCase() === cd && recent(o)), bk = bk2577[cd];
+  const head = 'Package row with ' + esc(r[C.teacher] || 'no teacher') + ' · deadline ' + esc(String(r[C.deadline]).slice(0, 10)) + ' · <b>' + r[C.available] + '</b> left · no classes on this package row in the last 2 months';
+  const still = oth.length || bk;
+  return item(r, head + (still ? ' · <b>the student is still taking classes</b>' + (oth.length ? ' (recent: ' + esc([...new Set(oth.map(o => o[C.teacher]))].join(', ')) + ')' : '') + (bk ? ' (booked: ' + bk.cw + ' a week)' : '') + ' → check whether these lessons move to the current package or the deadline is extended' : ' → no other classes for this student either: follow up, or untick ACTIVE if they stopped')); });
 $('sheetBody').innerHTML = '<h1>Package check</h1><div class="mute small">From ACTIVE and SALES, as of ' + esc(now.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + ' · tap a student to open the profile</div>' +
 (srv ? sec('Renewed by hand · old lessons may still count', 'The payment is newer than the package start', ren) : '<div class="small" style="color:#B4513B;margin-top:10px">Could not read the payments for the renewal check · try again</div>') +
-sec('Over the package', 'More lessons used than the package has', over) + sec('Deadline passed · still taking classes', 'Lessons left after the deadline, classes in the last 2 months', expOn) + sec('Deadline passed · no recent classes', 'Lessons left, no classes in the last 2 months', expOff);
+sec('Over the package', 'More lessons used than the package has', over) + sec('Deadline passed · still taking classes', 'Lessons left after the deadline, classes in the last 2 months', expOn) + sec('Deadline passed · no recent classes on the package', 'Checked per package row (teacher). A student can have classes on another row · each line says if they do.', expOff);
 }
 function stuSched(L){
 const now = Date.now(), up = L.filter(e => new Date(e.end) >= now), past = L.filter(e => new Date(e.end) < now);
@@ -7458,7 +7462,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2171;
+const COE_V = 2172;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
