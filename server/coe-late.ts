@@ -147,7 +147,7 @@ Deno.serve(async (req: Request) => {
       const L = (Array.isArray(b.lates) ? b.lates : []).slice(0, 30).map((x: any) => ({ teacher: str(x.teacher, 60), at: str(x.at, 19) })).filter((x: any) => x.teacher && LOCAL.test(x.at));
       if (!L.length) return out({ ok: true, items: {}, now });
       const [R, X] = await Promise.all([
-        db.from("log_rows").select("data").eq("tab", "T-TIMEIN").in("data->>3", [...new Set(L.map((x: any) => x.at))]).in("data->>6", ["Late", "Late to class"]).limit(100),
+        db.from("log_rows").select("data").eq("tab", "T-TIMEIN").in("data->>3", [...new Set(L.map((x: any) => x.at))]).in("data->>6", ["Late", "Late to class", "Missed lesson"]).limit(100),
         db.from("late_explain").select("teacher,late_at,reason,img_path,created_at").in("late_at", [...new Set(L.map((x: any) => x.at))]).limit(100)]);
       const paths = (X.data || []).map((x: any) => x.img_path).filter(Boolean); const U: Record<string, string> = {};
       if (paths.length) { const { data } = await db.storage.from(BUCKET).createSignedUrls(paths, 3600); (data || []).forEach((x: any) => { if (x.path) U[x.path] = x.signedUrl; }); }
@@ -155,7 +155,8 @@ Deno.serve(async (req: Request) => {
       await Promise.all(L.map(async (l: any) => {
         const k = lc(l.teacher) + "|" + l.at, r = (R.data || []).map((x: any) => x.data).find((d: any) => lc(d[1]) === lc(l.teacher) && String(d[3]) === l.at);
         const e = (X.data || []).find((x: any) => lc(x.teacher) === lc(l.teacher) && x.late_at === l.at);
-        let check = null; try { if (r) check = await sysCheck(String(r[1]).trim(), r); } catch (err) { check = { line: "System check: not available (" + str((err as Error).message, 60) + ")" }; }
+        let check = null; try { if (r && r[6] === "Missed lesson") check = { line: "Class record: " + (str(r[17], 260) || "cancelled because of the teacher") };   // 2560: a cancelled class has no check-in to read → its cancellation (when, why, who)
+          else if (r) check = await sysCheck(String(r[1]).trim(), r); } catch (err) { check = { line: "System check: not available (" + str((err as Error).message, 60) + ")" }; }
         items[k] = { ex: e ? { reason: e.reason, at: e.created_at, img: e.img_path ? U[e.img_path] || null : null } : null, check };
       }));
       return out({ ok: true, items, now });
