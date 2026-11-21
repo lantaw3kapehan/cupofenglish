@@ -7458,7 +7458,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2170;
+const COE_V = 2171;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36964,7 +36964,7 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
 #v-astudents .ltf1590 button{height:28px;padding:0 12px;border-radius:999px;border:1px solid var(--coe-line,#E7E5EE);background:#fff;color:var(--coe-text,#3A3556);font:500 13px/26px var(--coe-font,Inter,system-ui,sans-serif);cursor:pointer}
 #v-astudents .ltf1590 button b{font-weight:600;margin-left:4px;color:var(--coe-mute,#5E5A76)}
 #v-astudents .ltf1590 button[aria-pressed="true"]{background:var(--coe-teal-50,#E3F4F5);border-color:var(--coe-teal-200,#8CC5CA);color:var(--coe-teal-700,#00707A);font-weight:600}
-#v-astudents[data-ltf="early"] .li.sa:not([data-lb="early"]),#v-astudents[data-ltf="young"] .li.sa:not([data-lb="young"]),#v-astudents[data-ltf="teen"] .li.sa:not([data-lb="teen"]),#v-astudents[data-ltf="adult"] .li.sa:not([data-lb="adult"]){display:none!important}
+#v-astudents[data-ltf="early"] .li.sa:not([data-lb="early"]),#v-astudents[data-ltf="young"] .li.sa:not([data-lb="young"]),#v-astudents[data-ltf="teen"] .li.sa:not([data-lb="teen"]),#v-astudents[data-ltf="adult"] .li.sa:not([data-lb="adult"]),#v-astudents[data-ltf="unk"] .li.sa[data-lb="early"],#v-astudents[data-ltf="unk"] .li.sa[data-lb="young"],#v-astudents[data-ltf="unk"] .li.sa[data-lb="teen"],#v-astudents[data-ltf="unk"] .li.sa[data-lb="adult"]{display:none!important}
 /* 2 · separators: every item but the first carries its dot 11 px to its left; a dot that starts a line falls in the clipped 17 px */
 #sheet #sheetBody.stu2 .shero.h1589 .grow>:is(.h-who,.h-learn):not(#z1590):not(#y1590){margin-left:-17px!important;clip-path:inset(-6px -6px -6px 17px)}
 #sheet #sheetBody.stu2 .shero.h1589 .grow>:is(.h-who,.h-learn):not(#z1590)>*{position:relative;margin-left:17px!important;overflow:visible!important}
@@ -37006,14 +37006,14 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
 /* 1590 · learner filter on the Students list */
 (function(){
   if(window.__1590) return; window.__1590 = 1;
-  const K = 'coe.ltF', OPT = [['', 'All'], ['early', 'Early Years'], ['young', 'Young Learners'], ['teen', 'Teens'], ['adult', 'Adults']];
+  const K = 'coe.ltF', OPT = [['', 'All'], ['early', 'Early Years'], ['young', 'Young Learners'], ['teen', 'Teens'], ['adult', 'Adults'], ['unk', 'Not set']];   /* 2576 */
   let cur = ''; try{ cur = localStorage.getItem(K) || ''; }catch(e){} if(!OPT.some(o => o[0] === cur)) cur = '';
   const v = () => document.getElementById('v-astudents');
   function apply(){ const el = v(); if(!el) return; if(cur) el.setAttribute('data-ltf', cur); else el.removeAttribute('data-ltf'); }
   function bar(){ const el = v(); if(!el) return; apply();
     const rows = el.querySelectorAll('.li.sa'); if(!rows.length) return;   /* 1818: both kinds of row */
-    const n = { '': rows.length, early: 0, young: 0, teen: 0, adult: 0 }; rows.forEach(r => { const c = r.querySelector('.lt1588'); if(!c) return; ['early', 'young', 'teen', 'adult'].forEach(k => { if(c.classList.contains(k)) n[k]++; }); });
-    const html = '<span>Learner</span>' + OPT.map(o => '<button type="button" data-k="' + o[0] + '" aria-pressed="' + (cur === o[0]) + '" onclick="ltF1590(\'' + o[0] + '\')">' + o[1] + '<b>' + n[o[0]] + '</b></button>').join('');
+    const n = { '': rows.length, early: 0, young: 0, teen: 0, adult: 0, unk: 0 }; rows.forEach(r => { const c = r.querySelector('.lt1588'); let hit = 0; if(c) ['early', 'young', 'teen', 'adult'].forEach(k => { if(c.classList.contains(k)){ n[k]++; hit = 1; } }); if(!hit) n.unk++; });
+    const html = '<span>Learner</span>' + OPT.filter(o => o[0] !== 'unk' || n.unk || cur === 'unk').map(o => '<button type="button" data-k="' + o[0] + '" aria-pressed="' + (cur === o[0]) + '" onclick="ltF1590(\'' + o[0] + '\')">' + o[1] + '<b>' + n[o[0]] + '</b></button>').join('');
     let b = el.querySelector('.ltf1590');
     if(!b){ const src = [].find.call(el.querySelectorAll('div, section'), d => /^\s*Source/i.test(d.textContent || '') && d.querySelector('button') && d.children.length < 12);
       const at = src || el.querySelector(':scope > .seg'); if(!at) return; at.insertAdjacentHTML('afterend', '<div class="ltf1590" role="group" aria-label="Learner type"></div>'); b = el.querySelector('.ltf1590'); }
