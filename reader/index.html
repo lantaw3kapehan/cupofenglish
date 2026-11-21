@@ -227,6 +227,7 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
   try{ const q = new URLSearchParams(location.search); q.set('id', id); q.set('t', TITLE); history.replaceState(null, '', '?' + q.toString()); }catch(e){}
   paintSide(); loadAnn(); $('wrap').style.display = 'none'; msg('Opening the book…', true);
   const opt = { rangeChunkSize: 262144, disableAutoFetch: true, cMapUrl: './pdfjs/cmaps/', cMapPacked: true, standardFontDataUrl: './pdfjs/standard_fonts/' };
+  try{ localStorage.setItem('coe.rd.busy', String(Date.now())); }catch(e){}   /* 2568: the app's saving-ahead waits while a book is open */
   const T0 = Date.now(); let STEP = 'meta', ERR = '';   /* 2547: what was being tried, for the failure record */
   try{ if(doc){ try{ doc.destroy(); }catch(e){} doc = null; }
     let meta = null; for(let k = 0; k < 2 && !meta; k++){ try{ meta = await fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'meta', token: TOKEN, id }) }).then(x => x.json()); }catch(e){ if(!k) await new Promise(r => setTimeout(r, 800)); } }   /* 2543: one retry on a WiFi blip */
@@ -245,6 +246,7 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
     if(FIRST) FIRST = false; else try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'log', token: TOKEN, kind: 'pdf', id, title: $('fl').textContent || TITLE, book: LABEL }) }); }catch(e){}
   }catch(e){ bookFail('failed', id, STEP, (ERR ? ERR + ' · ' : '') + String((e && e.message) || e).slice(0, 80), (Date.now() - T0) / 1000); msg('This book could not open right now. Please try again, or tell Operations.<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Try again</button>'); } }
 
+setInterval(() => { try{ if(!document.hidden) localStorage.setItem('coe.rd.busy', String(Date.now())); }catch(e){} }, 15e3);   /* 2568 */
 /* 2547 · a book that did not open (or opened only after a slow fallback) is recorded, so Operations sees it the same evening */
 function bookFail(outcome, id, step, error, secs){ try{ const c = navigator.connection || {}; fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, keepalive: true, body: JSON.stringify({ op: 'fail', token: TOKEN, outcome, id, book: LABEL, title: $('fl').textContent || TITLE, step, error, secs: Math.round(secs), net: (c.effectiveType || '') + (c.downlink ? ' ' + c.downlink + ' Mbps' : '') + (navigator.onLine === false ? ' offline' : '') }) }).catch(() => {}); }catch(e){} }
 /* 2279 · our copy is read page by page (only the bytes of the pages shown), so even a 100 MB book opens at once.
