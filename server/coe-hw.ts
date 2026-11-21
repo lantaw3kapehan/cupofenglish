@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-hw v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
+// CupOfEnglish · coe-hw v8 (21 Nov · 2556 trialMark k books) · v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
 // correct it and share it). Used by the Homework check page (homework/index.html).
 // POST { token, op, ... }:
 //   me                       → { name, role, mgmt }
@@ -80,7 +80,7 @@ Deno.serve(async (req: Request) => {
     }
     if (op === "trialMark") {   // v7 (2401): course plan, CEFR picture, price, welcome copied (on) or "Not sent" (off) · who and when kept
       if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
-      const label = clean(b.label, 120), k = clean(b.k, 20); if (!label || !/^(plan|cefr|price|welcome)$/.test(k)) return out({ ok: false, error: "bad request" }, 400);
+      const label = clean(b.label, 120), k = clean(b.k, 20); if (!label || !/^(plan|cefr|price|welcome|books)$/.test(k)) return out({ ok: false, error: "bad request" }, 400);
       if (b.on === false) { await db.from("coe_trial_marks").delete().eq("label", label).eq("k", k); return out({ ok: true }); }
       const row: any = { label, k, by: name }; if (b.at && !isNaN(Date.parse(String(b.at)))) row.at = new Date(String(b.at)).toISOString();
       const { error } = await db.from("coe_trial_marks").upsert(row, { onConflict: "label,k", ignoreDuplicates: !!b.keep }); if (error) throw new Error(error.message);
