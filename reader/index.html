@@ -99,6 +99,7 @@ body.idle .tools:not(:hover){opacity:.35}
 body.board .bbar{display:flex}body.present .bbar{display:none!important}.pill .bo{display:none}body.board .pill .bo{display:inline-block}.smenu{display:none;position:fixed;z-index:8;background:#2B2450;border-radius:14px;padding:6px;flex-direction:column;gap:2px;box-shadow:0 6px 18px rgba(0,0,0,.25)}.smenu.on{display:flex}.smenu button{height:38px;border:0;border-radius:10px;background:transparent;color:#fff;font-size:14px;font-weight:600;text-align:left;padding:0 14px;cursor:pointer;white-space:nowrap}.smenu button.on{background:rgba(255,255,255,.18)}.pill button{white-space:nowrap}   /* 2620: presenting: style bar at the top (over the page header), the writing space stays free */body.present.idle .bbar{opacity:.15}
 .bbar button{height:34px;border:0;border-radius:10px;background:transparent;cursor:pointer;font-size:13px;font-weight:600;color:#2B2450;padding:0 11px;white-space:nowrap}.bbar button.on{background:var(--teal2);color:#0E4C52}.bbar i{width:1px;height:22px;background:#E3E1EA;margin:0 4px}
 body.bonly #bback,body.bonly #pboard,body.bonly #boardBt,body.bonly #sideBt{display:none!important}   /* 2634 */
+#cl2636{position:fixed;inset:0;background:rgba(43,36,80,.35);z-index:50;display:flex;align-items:center;justify-content:center}#cl2636 .cl36{background:#fff;border-radius:16px;padding:18px 20px;width:min(420px,92vw);box-shadow:0 10px 30px rgba(0,0,0,.2)}#cl2636 .cl36s{font-size:13px;color:var(--mute);margin:6px 0 10px;line-height:1.5}#cl2636 .cl36r{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #EEECF3;padding:8px 0;font-size:14px}#cl2636 .cl36b{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}   /* 2636 */
 .txdrag{cursor:move!important}.txsize{cursor:nwse-resize!important}   /* 2614 */
 body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not(:hover){opacity:.35}
 .vid{position:fixed;inset:0;z-index:20;background:rgba(10,12,20,.92);display:none;align-items:center;justify-content:center;flex-direction:column;padding:16px}
@@ -489,7 +490,7 @@ async function renderBoard(my){ const st = $('stage'), pad = 48, tl = $('tools')
 function boardPic(notes){ const W = 1600, H = Math.round(W * BH / BW), out = document.createElement('canvas'); out.width = W; out.height = H; paintBoard(out.getContext('2d'), W, H, BRD[+pageNo.slice(1) - 1] || 'plain', notes); drawInk(out); return out; }
 function boardUI(){ const on = isB(); if(on){ const r = $('wrap').getBoundingClientRect(); if(r.width) $('bbar').style.left = Math.round(r.left + r.width / 2) + 'px'; }   /* 2619: the style bar sits under the page, never over the toolbar */ document.body.classList.toggle('board', on); $('boardBtT').textContent = on ? 'Back to book' : 'Blank board'; $('pboard').textContent = on ? 'Book' : 'Board';
   const stl = on ? (BRD[+pageNo.slice(1) - 1] || 'plain') : ''; document.querySelectorAll('[data-bs]').forEach(b => b.classList.toggle('on', b.dataset.bs === stl)); }
-function board(on){ if(!doc || doc.boardOnly) return; if(on && !isB()){ BBACK = pageNo; if(!BRD.length) BRD.push('plain'); pageNo = 'b' + Math.min(BI, BRD.length); zoom = 1; }
+function board(on){ if(!doc || doc.boardOnly) return; if(on && !isB()){ BBACK = pageNo; if(!BRD.length && !boardRestore()) BRD.push('plain'); pageNo = 'b' + Math.min(BI, BRD.length); zoom = 1; }
   else if(!on && isB()){ BI = +pageNo.slice(1); pageNo = BBACK; zoom = 1; }
   $('stage').scrollTo(0, 0); boardUI(); render(); }
 $('boardBt').onclick = () => board(!isB()); $('pboard').onclick = () => board(!isB());
@@ -503,8 +504,17 @@ document.querySelectorAll('[data-bs]').forEach(b => b.onclick = () => { $('smenu
 
 /* ── drawing: kept per page, in page proportions so zoom keeps them in place ── */
 const key = () => 'coe.ann.' + FID;
-function saveAnn(){ try{ if(FID){ const o = {}; Object.keys(ANN).forEach(k => { if(!/^b\d+$/.test(k)) o[k] = ANN[k]; }); sessionStorage.setItem(key(), JSON.stringify(o)); } }catch(e){} }   /* 2618: board pages are not kept: cleared when the book is closed */
-function loadAnn(){ Object.keys(ANN).forEach(k => delete ANN[k]); HIST.length = 0; try{ BRD.length = 0; BI = 1; }catch(e){} try{ Object.assign(ANN, JSON.parse(sessionStorage.getItem(key()) || '{}')); }catch(e){} }
+/* 2636 (Misty 21 Nov 16:55): today's notes stay on this computer until midnight, per student: book pages per file, board pages per class,
+   so a teacher who forgot to copy a page can open the same book or Board after class and copy it. Nothing is uploaded; tomorrow they are cleared. */
+const DAY = (() => { const d = new Date(Date.now() + 8 * 3600e3); return d.toISOString().slice(0, 10); })(), WHO = String(Q.get('code') || Q.get('s') || '').slice(0, 40);
+const dKey = () => 'coe.ann.d.' + DAY + '.' + WHO + '.' + (FID || '-'), bKey = () => 'coe.brd.d.' + DAY + '.' + WHO;
+try{ for(let i = localStorage.length - 1; i >= 0; i--){ const k = localStorage.key(i); if(/^coe\.(ann|brd)\.d\./.test(k) && k.indexOf('.d.' + DAY + '.') < 0) localStorage.removeItem(k); } }catch(e){}
+function daySave(){ try{ const o = {}, b = {}; Object.keys(ANN).forEach(k => { if(!(ANN[k] && ANN[k].length)) return; if(/^b\d+$/.test(k)) b[k] = ANN[k]; else o[k] = ANN[k]; });
+    if(FID){ if(Object.keys(o).length) localStorage.setItem(dKey(), JSON.stringify(o)); else localStorage.removeItem(dKey()); }
+    if(BRD.length && Object.keys(b).length) localStorage.setItem(bKey(), JSON.stringify({ st: BRD.slice(), p: b })); }catch(e){} }
+function boardRestore(){ try{ const v = JSON.parse(localStorage.getItem(bKey()) || 'null'); if(!v || !v.st || !v.st.length) return false; BRD.length = 0; v.st.forEach(x => BRD.push(x)); Object.assign(ANN, v.p || {}); return true; }catch(e){ return false; } }
+function saveAnn(){ try{ daySave(); }catch(e){} try{ if(FID){ const o = {}; Object.keys(ANN).forEach(k => { if(!/^b\d+$/.test(k)) o[k] = ANN[k]; }); sessionStorage.setItem(key(), JSON.stringify(o)); } }catch(e){} }   /* 2618: board pages are not kept: cleared when the book is closed */
+function loadAnn(){ Object.keys(ANN).forEach(k => delete ANN[k]); HIST.length = 0; try{ BRD.length = 0; BI = 1; }catch(e){} try{ Object.assign(ANN, JSON.parse(sessionStorage.getItem(key()) || '{}')); }catch(e){} try{ if(!Object.keys(ANN).length) Object.assign(ANN, JSON.parse(localStorage.getItem(dKey()) || '{}')); }catch(e){} }   /* 2636 */
 const list = () => (ANN[pageNo] = ANN[pageNo] || []);
 /* 2286: undo and redo for every change (pen, shape, text, eraser, Clear) */
 const REDO = []; const rec = () => { HIST.push({ pg: pageNo, snap: list().slice() }); REDO.length = 0; if(HIST.length > 300) HIST.shift(); };
@@ -657,13 +667,26 @@ async function copyPage(b, notes){ if(!doc || b.disabled) return; b.disabled = t
   if(sp) sp.textContent = 'Copying…'; else if(notes){ b.dataset.was = b.textContent; b.textContent = 'Copying…'; }
   const blobP = pagePic(notes).then(c => new Promise(z => c.toBlob(z, 'image/png')));
   const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent), key = mac ? '⌘ Cmd + V' : 'Ctrl + V';
-  try{ await Promise.race([navigator.clipboard.write([new ClipboardItem({ 'image/png': blobP })]), blobP.then(() => new Promise((z, no) => setTimeout(() => no(new Error('slow')), 8000)))]); toast('Copied. Paste it in the WeChat group (' + key + ').'); }
-  catch(e){ try{ const bl = await blobP, a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = (String(LABEL || 'page').replace(/[^\w-]+/g, '-') + (UNIT != null ? '-unit-' + UNIT : '') + '-p' + pageNo + '.png'); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Saved to your downloads. Send it in WeChat.'); }
+  try{ await Promise.race([navigator.clipboard.write([new ClipboardItem({ 'image/png': blobP })]), blobP.then(() => new Promise((z, no) => setTimeout(() => no(new Error('slow')), 8000)))]); toast('Copied. Paste it in the WeChat group (' + key + ').'); markCopied(); }
+  catch(e){ try{ const bl = await blobP, a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = (String(LABEL || 'page').replace(/[^\w-]+/g, '-') + (UNIT != null ? '-unit-' + UNIT : '') + '-p' + pageNo + '.png'); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Saved to your downloads. Send it in WeChat.'); markCopied(); }
     catch(e2){ toast('The page could not be copied. Please try again.'); } }
   $('toastU').style.display = 'none'; setTimeout(() => { $('toastU').style.display = ''; }, 7200);
   b.disabled = false; if(sp) sp.textContent = was; else if(b.dataset.was){ b.textContent = b.dataset.was; delete b.dataset.was; } }
 $('present').onclick = () => present(true); $('px').onclick = () => present(false);
-$('close').onclick = () => { saveAnn(); window.close(); setTimeout(() => { location.href = '../'; }, 200); };
+/* 2636: before closing, pages with notes that were not copied are listed, each with Copy (it goes to the page and copies it) */
+const COPIED = {}; const sig = k => JSON.stringify(ANN[k] || []).length;
+function markCopied(){ COPIED[String(pageNo)] = sig(pageNo); }
+function uncopied(){ return Object.keys(ANN).filter(k => ANN[k] && ANN[k].length && COPIED[k] !== sig(k)).sort((a, b) => (/^b/.test(a) ? 1e6 + +a.slice(1) : +a) - (/^b/.test(b) ? 1e6 + +b.slice(1) : +b)); }
+function pgLabel(k){ if(/^b\d+$/.test(k)) return 'Board ' + k.slice(1); let n0 = 0; for(let i = 1; i <= +k; i++) if(!SKIP.has(i)) n0++; return 'Page ' + n0; }
+function reallyClose(){ saveAnn(); window.close(); setTimeout(() => { location.href = '../'; }, 200); }
+function closeAsk(){ const L = uncopied(); if(!L.length) return reallyClose(); let o = document.getElementById('cl2636'); if(o) o.remove();
+  o = document.createElement('div'); o.id = 'cl2636'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-label', 'Notes not copied yet');
+  o.innerHTML = '<div class="cl36"><b>Copy your notes for the WeChat group?</b><div class="cl36s">' + L.length + ' page' + (L.length === 1 ? '' : 's') + ' with notes not copied yet. They stay on this computer until midnight, so you can also open this ' + (doc && doc.boardOnly ? 'board' : 'book') + ' again later.</div>'
+    + L.slice(0, 5).map(k => '<div class="cl36r"><span>' + pgLabel(k) + '</span><button class="btn" data-k="' + k + '">Copy</button></div>').join('') + '<div class="cl36b"><button class="btn" id="cl36x">Close anyway</button><button class="btn" id="cl36c">Back to the page</button></div></div>';
+  document.body.appendChild(o);
+  o.querySelectorAll('[data-k]').forEach(b => b.onclick = async () => { const k = b.dataset.k; pageNo = /^b/.test(k) ? k : +k; await render(); await copyPage(b, true); if(COPIED[k] === sig(k)){ b.textContent = 'Copied'; b.disabled = true; } });
+  $('cl36x').onclick = () => { o.remove(); reallyClose(); }; $('cl36c').onclick = () => o.remove(); }
+$('close').onclick = closeAsk;
 $('sideBt').onclick = () => { const small = matchMedia('(max-width:900px)').matches; document.body.classList.toggle(small ? 'side' : 'noside'); try{ localStorage.setItem('coe.reader.noside', document.body.classList.contains('noside') ? '1' : ''); }catch(e){} setTimeout(render, 60); };
 try{ if(localStorage.getItem('coe.reader.noside') && !matchMedia('(max-width:900px)').matches) document.body.classList.add('noside'); }catch(e){}
 document.addEventListener('keydown', e => { if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
@@ -685,7 +708,7 @@ addEventListener('message', ev => { if(ev.origin !== location.origin || !ev.data
 $('bk').textContent = 'CupOfEnglish book'; $('fl').textContent = TITLE;
 /* 2634 (Misty 21 Nov 16:41): classes with no book (Free Talk, Debate, IELTS speaking) open the Blank board on its own: ?board=1 (and &s=student).
    Same tools, page styles, + Page and Copy page; no book, so no "Back to book". Cleared when it is closed, like every board. */
-function boardOnly(){ doc = { numPages: 0, boardOnly: true }; document.body.classList.add('bonly', 'noside'); BRD.length = 0; BRD.push('plain'); pageNo = 'b1'; zoom = 1;
+function boardOnly(){ doc = { numPages: 0, boardOnly: true }; document.body.classList.add('bonly', 'noside'); BRD.length = 0; if(!boardRestore()) BRD.push('plain'); pageNo = 'b1'; zoom = 1; if(BRD.length > 1 || (ANN.b1 && ANN.b1.length)) setTimeout(() => toast('Today\u2019s board is back: ' + BRD.length + ' page' + (BRD.length === 1 ? '' : 's') + '. Copy page to send it.'), 600);
   $('bk').textContent = 'CupOfEnglish board'; $('fl').textContent = Q.get('s') ? 'Class with ' + Q.get('s') : 'Blank board';
   $('msg').style.display = 'none'; $('wrap').style.display = ''; render(); }
 if(!FID && Q.get('board') === '1') boardOnly();
