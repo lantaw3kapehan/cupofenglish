@@ -388,7 +388,7 @@ const kitStu = () => { try{ const x = JSON.parse(sessionStorage.getItem('coe.kit
 const LVK = ['', 'needs', 'ok', 'good', 'strong'], MK = ['fluency', 'lexical', 'grammar', 'pron'];
 function notesHtml(RUB, marks, cmt){ const st = kitStu();
   return '<div class="kpanel" id="kNotesP" style="margin-top:16px"><div class="kk">Teacher notes · tap a level for each skill as the student speaks · hide them before you share your screen</div>'
-    + '<div class="sub" style="margin:0 0 8px">' + (st ? 'Saved to <b>' + esc(st.name) + '</b>\'s Speaking history when you close or finish · only teachers and management see it' : 'Not saved: choose the student on the list page to keep these in the Speaking history') + '</div>'
+    + '<div class="sub" style="margin:0 0 8px">' + (st ? 'Saved to <b>' + esc(st.name) + '</b>\'s Speaking history when you close or finish · only teachers and management see it' : '<b style="color:#8A5A12">Preview · not saved yet.</b> Choose the student to keep these notes in their Speaking history: <select id="kNS" aria-label="Student for these notes" style="padding:4px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:14px"><option value="">Loading your students…</option></select>') + '</div>'
     + '<div class="krub">' + RUB.map((r, i) => '<span>' + esc(r[0]) + '</span><span>' + [[1, 'Needs work'], [2, 'OK'], [3, 'Good'], [4, 'Strong']].map(o => '<button type="button" style="width:auto;padding:0 10px" data-rb="' + i + ':' + o[0] + '" class="' + ((marks[i] || 0) === o[0] ? 'on' : '') + '">' + o[1] + '</button>').join(' ') + '</span>').join('') + '</div>'
     + '<label class="sub" style="display:block;margin:10px 0 4px">One short comment (optional)</label><textarea id="kCm" rows="2" maxlength="600" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;font-size:15px" placeholder="e.g. Link ideas with P–R–E–L; good use of examples">' + esc(cmt || '') + '</textarea></div>'; }
 async function saveSpeak(o){ const m = {}; MK.forEach((k, i) => { if(o.marks[i]) m[k] = LVK[o.marks[i]]; });
@@ -821,6 +821,36 @@ async function start(){
   const tid = Q.get('t'), kit = Q.get('kit'); if(tid) openTopic(tid, false); else if(kit === 'free' || kit === 'ielts') paintKit(kit); else if(Q.get('lib')) paintLib(); else paintDash(); }
 window.addEventListener('popstate', () => { const P = new URLSearchParams(location.search), tid = P.get('t'); if(D){ document.body.classList.remove('present'); const kit = P.get('kit'); if(tid) openTopic(tid, false); else if(kit === 'free' || kit === 'ielts') paintKit(kit); else if(P.get('lib')) paintLib(); else paintDash(); } });
 start();
+})();
+</script>
+<script>
+/* 2584 (audit QA-33/34, 21 Nov) · QA-33: the notes panel lets the teacher choose the student there (no need to close the lesson); the choice
+   is the same one the list page keeps (coe.kit.stu), so the notes save to that student when the lesson closes. · QA-34: "Sharing mode" in the
+   lesson bar hides the teacher notes and their button and the student picker, with a visible "Sharing mode" tag; off again in one tap. */
+(function(){
+  if(window.__2584) return; window.__2584 = 1;
+  const st = document.createElement('style'); st.textContent = 'body.sh34 #kNotesP,body.sh34 #kNotes,body.sh34 #kStu,body.sh34 #kNS{display:none!important}'
+    + '.sh34t{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;background:#1E6E4C;color:#fff;border-radius:999px;padding:6px 14px;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.15)}'
+    + 'body:not(.sh34) .sh34t{display:none}';
+  document.head.appendChild(st);
+  const tag = document.createElement('div'); tag.className = 'sh34t'; tag.textContent = 'Sharing mode · teacher notes hidden'; document.body.appendChild(tag);
+  const on = () => { try{ return sessionStorage.getItem('coe.kit.share') === '1'; }catch(e){ return false; } };
+  function paintBtn(){ const nav = document.querySelector('.knav'); if(!nav) return; let b = nav.querySelector('.sh34b');
+    if(!b){ b = document.createElement('button'); b.type = 'button'; b.className = 'btn sh34b'; b.onclick = () => set(!on()); nav.appendChild(b); }
+    const t = on() ? 'Sharing mode: on' : 'Sharing mode'; if(b.textContent !== t) b.textContent = t; b.classList.toggle('pr', on());
+    b.title = on() ? 'Teacher notes are hidden. Tap to turn sharing mode off.' : 'Before you share your screen: hides the teacher notes and the student picker'; }
+  function set(v){ if(v){ const n = document.getElementById('kNotes'); if(n && /Hide/.test(n.textContent)) n.click(); }   /* close open notes first */
+    try{ sessionStorage.setItem('coe.kit.share', v ? '1' : '0'); }catch(e){} document.body.classList.toggle('sh34', v); paintBtn(); }
+  async function fillNS(){ const s0 = document.getElementById('kNS'); if(!s0 || s0.dataset.f) return; s0.dataset.f = '1';
+    let L2 = []; try{ L2 = await students(); }catch(e){}
+    s0.innerHTML = '<option value="">Choose the student</option>' + (L2 || []).map(x => '<option value="' + esc(x.code) + '">' + esc(x.student) + '</option>').join('');
+    s0.onchange = () => { if(!s0.value) return; const op = s0.options[s0.selectedIndex];
+      try{ sessionStorage.setItem('coe.kit.stu', JSON.stringify({ code: s0.value, name: op.text })); }catch(e){}
+      const k = document.getElementById('kStu'); if(k) k.value = s0.value;
+      const sub = s0.closest('.sub'); if(sub) sub.innerHTML = 'Saved to <b>' + esc(op.text) + '</b>\'s Speaking history when you close or finish · only teachers and management see it';
+      toast('Notes will save to ' + op.text + '\'s Speaking history.'); }; }
+  document.body.classList.toggle('sh34', on());
+  let q = 0; new MutationObserver(() => { if(q) return; q = 1; requestAnimationFrame(() => { q = 0; try{ paintBtn(); fillNS(); }catch(e){} }); }).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
 </body>
