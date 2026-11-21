@@ -95,7 +95,7 @@ body.idle .tools:not(:hover){opacity:.35}
 .tmini .cur{width:36px;height:36px;border-radius:10px;background:var(--teal2);color:#0E4C52;display:flex;align-items:center;justify-content:center;font-weight:700}
 .tmini small{font-size:9.5px;color:var(--mute)}
 .tools,.tmini{position:fixed;left:var(--tlx,16px);top:var(--tly,50%)}   /* 2606: tools stay on screen while zoomed or scrolled */
-.txdrag{cursor:move!important}
+.txdrag{cursor:move!important}.txsize{cursor:nwse-resize!important}   /* 2614 */
 body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not(:hover){opacity:.35}
 .vid{position:fixed;inset:0;z-index:20;background:rgba(10,12,20,.92);display:none;align-items:center;justify-content:center;flex-direction:column;padding:16px}
 .vid.on{display:flex}
@@ -479,26 +479,41 @@ function drawInk(cv){ const ink = cv || $('ink'), x = ink.getContext('2d'), W = 
   (ANN[pageNo] || []).forEach(a => { if(a.t === 'text'){ x.fillStyle = a.c; x.font = '600 ' + Math.round(a.s * H) + 'px Inter, sans-serif'; x.textBaseline = 'top'; x.fillText(a.v, a.x * W, a.y * H); return; }
     x.globalAlpha = a.t === 'hl' ? 0.32 : 1; x.strokeStyle = a.c; x.lineWidth = a.w * W; x.lineCap = a.t === 'hl' ? 'butt' : 'round'; x.lineJoin = 'round';
     if(a.t === 'shape'){ drawShape(x, a, W, H); return; }
-    x.beginPath(); a.p.forEach((q, i) => i ? x.lineTo(q[0] * W, q[1] * H) : x.moveTo(q[0] * W, q[1] * H)); if(a.p.length === 1) x.lineTo(a.p[0][0] * W + 0.1, a.p[0][1] * H); x.stroke(); x.globalAlpha = 1; }); }
+    x.beginPath(); a.p.forEach((q, i) => i ? x.lineTo(q[0] * W, q[1] * H) : x.moveTo(q[0] * W, q[1] * H)); if(a.p.length === 1) x.lineTo(a.p[0][0] * W + 0.1, a.p[0][1] * H); x.stroke(); x.globalAlpha = 1; });
+  if(!cv && tool === 'text' && HOV && list().indexOf(HOV) > -1){ const b = txBox(HOV), k = Math.max(10, Math.round(H * 0.012));   /* 2614: corner handle on the text under the mouse */
+    x.setLineDash([5, 4]); x.strokeStyle = 'rgba(43,36,80,.45)'; x.lineWidth = 1; x.strokeRect(b.x * W - 4, b.y * H - 3, b.w * W + 8, b.h * H + 6); x.setLineDash([]);
+    x.fillStyle = '#fff'; x.strokeStyle = '#2B2450'; x.lineWidth = 2; x.fillRect(b.x1 * W - k / 2 + 4, b.y1 * H - k / 2 + 3, k, k); x.strokeRect(b.x1 * W - k / 2 + 4, b.y1 * H - k / 2 + 3, k, k); } }
+/* 2614 (Misty 21 Nov): typed text can be made bigger or smaller with the mouse: drag the corner handle, or turn the mouse wheel over the text (Text tool) */
+let HOV = null;
+function txBox(a){ const ink = $('ink'), x = ink.getContext('2d'), W = ink.width; x.font = '600 ' + Math.round(a.s * ink.height) + 'px Inter, sans-serif'; const w = x.measureText(a.v).width / W; return { x: a.x, y: a.y, w, h: a.s, x1: a.x + w, y1: a.y + a.s }; }
+function onHandle(p){ if(!HOV || list().indexOf(HOV) < 0) return null; const b = txBox(HOV), ink = $('ink'), k = Math.max(14, ink.height * 0.016) / ink.height; return (Math.abs(p[0] - b.x1) * ink.width / ink.height < k * 1.2 && Math.abs(p[1] - b.y1) < k * 1.2) ? HOV : null; }
+const TXMIN = 0.012, TXMAX = 0.3, txClamp = v => Math.max(TXMIN, Math.min(TXMAX, v));
 const pt = e => { const r = $('ink').getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
 let cur = null;
 $('ink').addEventListener('pointerdown', e => { if(tool === 'hand') return; e.preventDefault(); const p = pt(e);
-  if(tool === 'text'){ const h = hitText(p); if(!h) return addText(e, p);   /* 2606: press on a text and move = drag it; a tap = change it */
+  if(tool === 'text'){ const hs = onHandle(p); if(hs){ $('ink').setPointerCapture(e.pointerId); rec(); const L = list(), i = L.indexOf(hs), c = Object.assign({}, hs); if(i > -1) L[i] = c; HOV = c; cur = { size: c, y0: c.y }; return; }   /* 2614 */
+    const h = hitText(p); if(!h) return addText(e, p);   /* 2606: press on a text and move = drag it; a tap = change it */
     $('ink').setPointerCapture(e.pointerId); cur = { drag: h, p0: p, x0: h.x, y0: h.y, moved: false, ev: e }; return; }
   $('ink').setPointerCapture(e.pointerId);
   if(tool === 'erase'){ cur = { erase: true, before: list().slice(), hit: false }; eraseAt(p); return; }
   rec();
   if(tool === 'shape'){ cur = { t: 'shape', k: shp, c: color, w: SZ.pen[size] * 1.2, p: [p, p] }; list().push(cur); drawInk(); return; }
   cur = { t: tool, c: tool === 'hl' ? (/^#(2B2450|1B1B1F)$/.test(color) ? '#F5B700' : color) : color, w: tool === 'hl' ? 0.022 : SZ.pen[size], p: [p] }; list().push(cur); drawInk(); });
-$('ink').addEventListener('pointermove', e => { if(!cur){ if(tool === 'text') $('ink').classList.toggle('txdrag', !!hitText(pt(e))); return; } const p = pt(e);
+$('ink').addEventListener('pointermove', e => { if(!cur){ if(tool === 'text'){ const q = pt(e), hs = onHandle(q), h = hs || hitText(q); $('ink').classList.toggle('txsize', !!hs); $('ink').classList.toggle('txdrag', !hs && !!h); if(h !== HOV){ HOV = h; drawInk(); } } return; } const p = pt(e);
+  if(cur.size){ cur.size.s = txClamp(p[1] - cur.y0); drawInk(); return; }   /* 2614: the bottom edge follows the mouse */
   if(cur.drag){ const dx = p[0] - cur.p0[0], dy = p[1] - cur.p0[1]; if(!cur.moved && Math.hypot(dx, dy) < 0.004) return;
     if(!cur.moved){ rec(); const L = list(), i = L.indexOf(cur.drag), c = Object.assign({}, cur.drag); if(i > -1) L[i] = c; cur.drag = c; cur.moved = true; }
     cur.drag.x = cur.x0 + dx; cur.drag.y = cur.y0 + dy; drawInk(); return; } if(cur.erase) return eraseAt(p); if(cur.t === 'shape') cur.p[1] = p; else cur.p.push(p); drawInk(); });
-const end = () => { if(cur && cur.drag){ const d = cur; cur = null; if(d.moved) saveAnn(); else addText(d.ev, d.p0); return; }
+const end = () => { if(cur && cur.size){ cur = null; saveAnn(); drawInk(); return; }
+  if(cur && cur.drag){ const d = cur; cur = null; if(d.moved) saveAnn(); else addText(d.ev, d.p0); return; }
   if(cur){ if(cur.erase){ if(cur.hit){ HIST.push({ pg: pageNo, snap: cur.before }); REDO.length = 0; } }
     else if(cur.t === 'shape' && Math.hypot(cur.p[1][0] - cur.p[0][0], cur.p[1][1] - cur.p[0][1]) < 0.005){ ANN[pageNo] = list().filter(a => a !== cur); HIST.pop(); drawInk(); }
     cur = null; saveAnn(); } };
 $('ink').addEventListener('pointerup', end); $('ink').addEventListener('pointercancel', end);
+$('ink').addEventListener('pointerleave', () => { if(!cur && HOV){ HOV = null; drawInk(); } });
+let wT = 0, wS = 0; $('ink').addEventListener('wheel', e => { if(tool !== 'text' || cur || e.ctrlKey) return; const h = hitText(pt(e)); if(!h) return;   /* 2614: wheel over a text = bigger / smaller; elsewhere the page scrolls as before */
+  e.preventDefault(); let a = h; if(Date.now() - wT > 700){ rec(); const L = list(), i = L.indexOf(h); a = Object.assign({}, h); if(i > -1) L[i] = a; }
+  wT = Date.now(); a.s = txClamp(a.s * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); HOV = a; drawInk(); clearTimeout(wS); wS = setTimeout(saveAnn, 400); }, { passive: false });
 /* 2286: the eraser takes away only what it touches (one stroke, shape or word at a time); one drag = one undo */
 function eraseAt(p){ const ink = $('ink'), W = ink.width, H = ink.height, L = list(), before = L.length;
   ANN[pageNo] = L.filter(a => { if(a.t === 'text'){ const t = hitText(p); return t !== a; }
