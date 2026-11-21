@@ -149,7 +149,7 @@ body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not
 </div>
 </div>
 </div>
-<div class="pill" id="pill"><button id="pp" aria-label="Previous page">‹</button><span class="num" id="pg2">–</span><button id="pn" aria-label="Next page">›</button><button id="pz">Zoom</button><button id="px">Exit · Esc</button></div>
+<div class="pill" id="pill"><button id="pp" aria-label="Previous page">‹</button><span class="num" id="pg2">–</span><button id="pn" aria-label="Next page">›</button><button id="pz">Zoom</button><button id="pcopy" title="Copy this page with your notes as a clean picture for the WeChat group (no video windows)">Copy page</button><button id="px">Exit · Esc</button></div>
 <div class="vid" id="vid"><div class="top"><b id="vt"></b><button id="vx">✕ Close</button></div><video id="vv" controls playsinline preload="auto"></video></div>
 <script src="../homework/hdr.js"></script>
 <script type="module">
@@ -580,7 +580,7 @@ $('zi').onclick = () => setZoom(zoom * 1.25); $('zo').onclick = () => setZoom(zo
 $('pz').onclick = () => setZoom(zoom > 1 ? 1 : 1.6);
 /* 2323 · Copy page: the page shown, drawn sharp (1600 px wide, about 3× a screenshot) with the teacher's drawings and a small
    "Homework · 作业" band (book · unit), copied as a picture to paste in the WeChat group. Not copied → it downloads instead. */
-async function pagePic(){ const p = await doc.getPage(pageNo), v1 = p.getViewport({ scale: 1 }), sc = Math.min(4, 1600 / v1.width), vp = p.getViewport({ scale: sc });
+async function pagePic(notes){ const p = await doc.getPage(pageNo), v1 = p.getViewport({ scale: 1 }), sc = Math.min(4, 1600 / v1.width), vp = p.getViewport({ scale: sc });
   const src = document.createElement('canvas'); src.width = Math.round(vp.width); src.height = Math.round(vp.height); const sg = src.getContext('2d'); sg.fillStyle = '#fff'; sg.fillRect(0, 0, src.width, src.height);
   await p.render({ canvasContext: sg, viewport: vp }).promise;
   const cr = CROP.get(pageNo), top = cr && !cr.tpl ? Math.round(src.height * cr.t) : 0, hh = cr && !cr.tpl ? Math.round(src.height * (1 - cr.t - cr.b)) : src.height;
@@ -594,24 +594,28 @@ async function pagePic(){ const p = await doc.getPage(pageNo), v1 = p.getViewpor
   try{ await fontsReady(); }catch(e){}
   const hT = window.coeHdr ? coeHdr.height(W, !!label) : 0, out = document.createElement('canvas'); out.width = W; out.height = hT + hh + P; const g = out.getContext('2d');
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, out.height);
-  if(window.coeHdr) coeHdr.draw(g, W, { logo, title: 'Homework / 作业', meta: [Q.get('s') ? 'For / 学生: ' + Q.get('s') : ''].filter(Boolean), label });   /* 2407: the student when opened from a class or a student page */
+  if(window.coeHdr) coeHdr.draw(g, W, { logo, title: notes ? 'Class notes / 课堂笔记' : 'Homework / 作业', meta: [Q.get('s') ? 'For / 学生: ' + Q.get('s') : ''].filter(Boolean), label });   /* 2407: the student when opened from a class or a student page */
   g.drawImage(pg, P, hT); g.strokeStyle = '#E3E1EA'; g.lineWidth = Math.max(1, Math.round(W / 600)); g.strokeRect(P, hT, pg.width, hh);
   /* Give homework recognises this page by its size and keeps only the page and its label under its own header */
-  try{ localStorage.setItem('coe.hwcard', JSON.stringify({ w: W, h: out.height, top: hT, pad: P, label, at: Date.now() })); }catch(e){}
+  if(!notes) try{ localStorage.setItem('coe.hwcard', JSON.stringify({ w: W, h: out.height, top: hT, pad: P, label, at: Date.now() })); }catch(e){}
   return out; }
 /* Writing correction (18 Nov): shown for writing books (IELTS, academic, KET / PET, Pathways, business); opens homework/writing.html */
 function wrShow(){ const t = (TITLE + ' ' + BOOK + ' ' + (document.title || '')); const b = $('wrPg'); if(b) b.hidden = !/IELTS|writ|academic|pathway|business|\bKET\b|\bPET\b|essay/i.test(t); }
 $('wrPg').onclick = () => { const p = new URLSearchParams(); const q = new URLSearchParams(location.search); ['code', 'n'].forEach(k => { if(q.get(k)) p.set(k, q.get(k)); }); const u = '../homework/writing.html' + (p.toString() ? '?' + p : ''); const w = window.open(u, 'coewr'); if(!w) location.href = u; };
 setInterval(wrShow, 1500); wrShow();
-$('copyPg').onclick = async () => { if(!doc) return; const b = $('copyPg'); b.disabled = true; const sp = b.querySelector('span'), was = sp ? sp.textContent : '';
-  if(sp) sp.textContent = 'Copying…';
-  const blobP = pagePic().then(c => new Promise(z => c.toBlob(z, 'image/png')));
+/* 2615 (Misty 21 Nov): "Copy page" on the presenting bar too: the page with the teacher's notes, headed "Class notes / 课堂笔记", so the
+   WeChat group gets a clean page instead of a screenshot that includes the Tencent video windows */
+$('pcopy').onclick = () => copyPage($('pcopy'), true);
+$('copyPg').onclick = () => copyPage($('copyPg'), false);
+async function copyPage(b, notes){ if(!doc || b.disabled) return; b.disabled = true; const sp = b.querySelector('span'), was = sp ? sp.textContent : '';
+  if(sp) sp.textContent = 'Copying…'; else if(notes){ b.dataset.was = b.textContent; b.textContent = 'Copying…'; }
+  const blobP = pagePic(notes).then(c => new Promise(z => c.toBlob(z, 'image/png')));
   const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent), key = mac ? '⌘ Cmd + V' : 'Ctrl + V';
   try{ await Promise.race([navigator.clipboard.write([new ClipboardItem({ 'image/png': blobP })]), blobP.then(() => new Promise((z, no) => setTimeout(() => no(new Error('slow')), 8000)))]); toast('Copied. Paste it in the WeChat group (' + key + ').'); }
   catch(e){ try{ const bl = await blobP, a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = (String(LABEL || 'page').replace(/[^\w-]+/g, '-') + (UNIT != null ? '-unit-' + UNIT : '') + '-p' + pageNo + '.png'); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Saved to your downloads. Send it in WeChat.'); }
     catch(e2){ toast('The page could not be copied. Please try again.'); } }
   $('toastU').style.display = 'none'; setTimeout(() => { $('toastU').style.display = ''; }, 7200);
-  b.disabled = false; if(sp) sp.textContent = was; };
+  b.disabled = false; if(sp) sp.textContent = was; else if(b.dataset.was){ b.textContent = b.dataset.was; delete b.dataset.was; } }
 $('present').onclick = () => present(true); $('px').onclick = () => present(false);
 $('close').onclick = () => { saveAnn(); window.close(); setTimeout(() => { location.href = '../'; }, 200); };
 $('sideBt').onclick = () => { const small = matchMedia('(max-width:900px)').matches; document.body.classList.toggle(small ? 'side' : 'noside'); try{ localStorage.setItem('coe.reader.noside', document.body.classList.contains('noside') ? '1' : ''); }catch(e){} setTimeout(render, 60); };
