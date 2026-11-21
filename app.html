@@ -7485,7 +7485,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2194;
+const COE_V = 2195;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -37096,6 +37096,28 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
   #v-schedule .vw03>span:last-child{flex-basis:100%}
 }
 </style>
+<script>
+/* 2603 · book display names */
+(function(){
+  const N = { OD1: 'Oxford Discover 1', OD2: 'Oxford Discover 2', OD3: 'Oxford Discover 3', ODF1: 'Oxford Discover Futures 1', REF: 'Reading Explorer Foundations', 'RE F': 'Reading Explorer Foundations', RE1: 'Reading Explorer 1', RE2: 'Reading Explorer 2',
+    ShortVowels: 'Short Vowels', ShorVowels: 'Short Vowels', TheAlphabet: 'The Alphabet', LongVowels: 'Long Vowels', ConsonantBlends: 'Consonant Blends', LetterBlends: 'Letter Blends',
+    RazAa: 'Raz-Kids Level aa', RazA: 'Raz-Kids Level A', RazBb: 'Raz-Kids Level bb', RazC: 'Raz-Kids Level C', WondersGK: 'Wonders Grade K', WondersG1: 'Wonders Grade 1', WondersG2: 'Wonders Grade 2',
+    Pathways1: 'Pathways 1', Pathways3: 'Pathways 3', DKEnglishLevel1: 'DK English Level 1', DKEnglishLevel2: 'DK English Level 2', DKEnglish: 'DK English', DKEnglish2: 'DK English 2', RoaldDahl: 'Roald Dahl',
+    IELTSWriting: 'IELTS Writing', IELTSSpeaking: 'IELTS Speaking', AcademicWriting: 'Academic Writing', BusinessEnglish: 'Business English', DailyEnglish: 'Daily English', Freetalk: 'Free Talk' };
+  window.bookLabel = c => { const k = String(c == null ? '' : c).trim(); return N[k] || k; };
+  const keys = Object.keys(N).sort((a, b) => b.length - a.length).map(k => k.replace(/ /g, '\\s'));
+  const RX = new RegExp('(^|[^A-Za-z0-9_\\-/.])(' + keys.join('|') + ')(?![A-Za-z0-9_\\-/.])', 'g');
+  const SKIP = /^(SCRIPT|STYLE|TEXTAREA|INPUT|CODE|PRE|OPTION|SELECT|NOSCRIPT)$/;
+  function fix(root){ if(!root || !document.body) return; const w = document.createTreeWalker(root.nodeType === 3 ? root.parentNode || document.body : root, NodeFilter.SHOW_TEXT, { acceptNode: t => {
+      const p = t.parentNode; if(!p || SKIP.test(p.nodeName) || (p.closest && p.closest('[contenteditable="true"],textarea,input,.nobk2603'))) return NodeFilter.FILTER_REJECT; RX.lastIndex = 0; return RX.test(t.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP; } });
+    const L = []; let n; while((n = w.nextNode())) L.push(n);
+    L.forEach(t => { RX.lastIndex = 0; const v = t.nodeValue.replace(RX, (m, a, k) => a + (N[k] || N[k.replace(/\s+/g, ' ')] || k)); if(v !== t.nodeValue) t.nodeValue = v; }); }
+  let Q = new Set(), q = 0;
+  const run = () => { q = 0; const S = [...Q]; Q.clear(); S.forEach(x => { try{ if(document.contains(x)) fix(x); }catch(e){} }); };
+  const go = () => { try{ fix(document.body); }catch(e){} new MutationObserver(M => { M.forEach(m => { if(m.type === 'characterData') Q.add(m.target.parentNode); else m.addedNodes.forEach(x => { if(x.nodeType === 1 || x.nodeType === 3) Q.add(x.nodeType === 3 ? x.parentNode : x); }); }); if(!q && Q.size){ q = 1; requestAnimationFrame(run); } }).observe(document.body, { childList: true, subtree: true, characterData: true }); };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+})();
+</script>
 <style id="css1592">/* 1592 · Students list: rows off screen are not laid out or painted until you scroll to them (all rows stay in the page: search, filters, focus, find-in-page unchanged) */
 #v-astudents a.li.sa{content-visibility:auto;contain-intrinsic-size:auto 76px}
 @media(max-width:620px){#v-astudents a.li.sa{contain-intrinsic-size:auto 120px}}
