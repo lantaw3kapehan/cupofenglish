@@ -227,22 +227,22 @@ async function weeklyAll(db: any) {
     const f0 = first[code] || "", fm = f0.slice(0, 7), fd = +f0.slice(8, 10) || 1;
     const wks = ks.reduce((a, k) => { const p = k.split("-").map(Number), e = k === cur ? today : new Date(Date.UTC(p[0], p[1], 0)).getUTCDate(), st = k === fm ? Math.min(fd, e) : 1; return a + Math.max(7, e - st + 1) / 7; }, 0);
     const tot = ks.reduce((a, k) => a + L[k], 0), raw = tot / wks, v = raw > 0 ? Math.max(0.5, Math.round(raw * 2) / 2) : 0, cn = ks.reduce((a, k) => a + (N[k] || 0), 0);
-    const cw = cn ? Math.max(1, Math.round(cn / wks)) : 0, mins = cn ? Math.round(tot / cn * 50 / 5) * 5 : 0;
-    if (v > 0) out[code] = { v, cw, mins, n: ks.length };
+    const cw = cn ? Math.round(cn / wks * 10) / 10 : 0, mins = cn ? Math.round(tot / cn * 50 / 5) * 5 : 0;   // 2571: not forced up to 1, so classes × length ≈ units
+    if (v > 0) out[code] = { v: Math.round(raw * 10) / 10 || v, cw, mins, n: ks.length };
   });
   return out;
 }
 async function studentsLive(db: any) {
   const [L, G, W] = await Promise.all([studentsFromTables(db), liveGap(db), weeklyAll(db).catch(() => ({} as Record<string, any>))]);
-  // 2396 (Misty 19 Nov 10:57, Elowen "no classes on record"): a student with no past months yet gets "a week" from the classes booked in
-  // the next 4 weeks (trials left out), marked plan: true
-  try { const need = L.filter((s: any) => s && s.code && !W[s.code]).map((s: any) => String(s.code).toUpperCase());
-    if (need.length) { const now = new Date(), to = new Date(now.getTime() + 28 * 864e5);
-      const { data: C } = await db.from("classes").select("code,starts_at,ends_at,data").in("code", need.slice(0, 400)).eq("cancelled", false).gte("starts_at", now.toISOString()).lt("starts_at", to.toISOString()).limit(3000);
-      const by: Record<string, { n: number; m: number }> = {};
-      (C || []).forEach((c: any) => { const d = c.data || {}; if (/trial/i.test(String(d.type || "")) || /-TC(\s+X)?$/i.test(String(d.title || ""))) return;
-        const m = Math.max(0, (Date.parse(c.ends_at) - Date.parse(c.starts_at)) / 6e4) || 25; const o = by[c.code] || (by[c.code] = { n: 0, m: 0 }); o.n++; o.m += m; });
-      Object.keys(by).forEach((k) => { const o = by[k], u = o.m / 50 / 4; W[k] = { v: Math.max(0.5, Math.round(u * 2) / 2), cw: Math.max(1, Math.round(o.n / 4)), mins: Math.round(o.m / o.n / 5) * 5, n: 0, plan: true }; }); } } catch (_e) { /* keep as is */ }
+  // 2396 (Misty 19 Nov 10:57, Elowen) · 2571 (audit QA-03/04, 21 Nov): "a week" is now the classes BOOKED in the next 4 weeks for
+  // every student (trials and cancelled left out, counted in coe_wk_booked), so classes, length and units come from the same classes
+  // and match the profile's weekly schedule. The S-MONTHLY average is kept as hist and shown only as "average, last N months".
+  try { const { data: B } = await db.rpc("coe_wk_booked"); const H = W; const out: Record<string, any> = {};
+    (B || []).forEach((r: any) => { const k = String(r.code || "").toUpperCase(), n = +r.n || 0, m = +r.mins || 0; if (!n) return;
+      const cw = Math.round(n / 4 * 2) / 2 || 0.5, mins = Math.round(m / n / 5) * 5, v = Math.round(cw * mins / 50 * 10) / 10;
+      out[k] = { v, cw, mins, n: 0, plan: true, days: String(r.days || ""), hist: H[k] || null }; });
+    Object.keys(H).forEach((k) => { if (!out[k]) out[k] = Object.assign({}, H[k], { histOnly: true }); });
+    Object.keys(W).forEach((k) => delete W[k]); Object.assign(W, out); } catch (_e) { /* keep the averages */ }
   return L.map((s: any) => { const g = G[s.code], w = W[s.code]; const x = w ? Object.assign({}, s, { wk: w }) : s; if (!g || s.left == null || s.shared) return x; return Object.assign({}, x, { left: Math.max(0, Math.round((s.left - g) * 10) / 10), today: g }); });
 }
 
