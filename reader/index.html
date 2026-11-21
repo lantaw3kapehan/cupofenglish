@@ -98,6 +98,7 @@ body.idle .tools:not(:hover){opacity:.35}
 .bbar{display:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);align-items:center;gap:4px;background:#fff;border:1px solid #E3E1EA;border-radius:14px;padding:5px;z-index:7;box-shadow:0 4px 14px rgba(43,36,80,.12);transition:opacity .3s;max-width:calc(100vw - 24px);overflow-x:auto}
 body.board .bbar{display:flex}body.present .bbar{display:none!important}.pill .bo{display:none}body.board .pill .bo{display:inline-block}.smenu{display:none;position:fixed;z-index:8;background:#2B2450;border-radius:14px;padding:6px;flex-direction:column;gap:2px;box-shadow:0 6px 18px rgba(0,0,0,.25)}.smenu.on{display:flex}.smenu button{height:38px;border:0;border-radius:10px;background:transparent;color:#fff;font-size:14px;font-weight:600;text-align:left;padding:0 14px;cursor:pointer;white-space:nowrap}.smenu button.on{background:rgba(255,255,255,.18)}.pill button{white-space:nowrap}   /* 2620: presenting: style bar at the top (over the page header), the writing space stays free */body.present.idle .bbar{opacity:.15}
 .bbar button{height:34px;border:0;border-radius:10px;background:transparent;cursor:pointer;font-size:13px;font-weight:600;color:#2B2450;padding:0 11px;white-space:nowrap}.bbar button.on{background:var(--teal2);color:#0E4C52}.bbar i{width:1px;height:22px;background:#E3E1EA;margin:0 4px}
+body.bonly #bback,body.bonly #pboard,body.bonly #boardBt,body.bonly #sideBt{display:none!important}   /* 2634 */
 .txdrag{cursor:move!important}.txsize{cursor:nwse-resize!important}   /* 2614 */
 body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not(:hover){opacity:.35}
 .vid{position:fixed;inset:0;z-index:20;background:rgba(10,12,20,.92);display:none;align-items:center;justify-content:center;flex-direction:column;padding:16px}
@@ -488,7 +489,7 @@ async function renderBoard(my){ const st = $('stage'), pad = 48, tl = $('tools')
 function boardPic(notes){ const W = 1600, H = Math.round(W * BH / BW), out = document.createElement('canvas'); out.width = W; out.height = H; paintBoard(out.getContext('2d'), W, H, BRD[+pageNo.slice(1) - 1] || 'plain', notes); drawInk(out); return out; }
 function boardUI(){ const on = isB(); if(on){ const r = $('wrap').getBoundingClientRect(); if(r.width) $('bbar').style.left = Math.round(r.left + r.width / 2) + 'px'; }   /* 2619: the style bar sits under the page, never over the toolbar */ document.body.classList.toggle('board', on); $('boardBtT').textContent = on ? 'Back to book' : 'Blank board'; $('pboard').textContent = on ? 'Book' : 'Board';
   const stl = on ? (BRD[+pageNo.slice(1) - 1] || 'plain') : ''; document.querySelectorAll('[data-bs]').forEach(b => b.classList.toggle('on', b.dataset.bs === stl)); }
-function board(on){ if(!doc) return; if(on && !isB()){ BBACK = pageNo; if(!BRD.length) BRD.push('plain'); pageNo = 'b' + Math.min(BI, BRD.length); zoom = 1; }
+function board(on){ if(!doc || doc.boardOnly) return; if(on && !isB()){ BBACK = pageNo; if(!BRD.length) BRD.push('plain'); pageNo = 'b' + Math.min(BI, BRD.length); zoom = 1; }
   else if(!on && isB()){ BI = +pageNo.slice(1); pageNo = BBACK; zoom = 1; }
   $('stage').scrollTo(0, 0); boardUI(); render(); }
 $('boardBt').onclick = () => board(!isB()); $('pboard').onclick = () => board(!isB());
@@ -682,7 +683,13 @@ addEventListener('pagehide', saveAnn);
 addEventListener('message', ev => { if(ev.origin !== location.origin || !ev.data || ev.data.coeBook !== 1) return; const d = ev.data; if(d.b && d.b !== BOOK){ BOOK = d.b; UNIT = d.u != null ? d.u : null; loadBook(); } else if(d.u != null){ UNIT = d.u; } openFile(d.id, d.t); window.focus(); });
 
 $('bk').textContent = 'CupOfEnglish book'; $('fl').textContent = TITLE;
-loadBook().then(() => { if(FID) openFile(FID, TITLE); else msg('Choose a page on the left.'); });
+/* 2634 (Misty 21 Nov 16:41): classes with no book (Free Talk, Debate, IELTS speaking) open the Blank board on its own: ?board=1 (and &s=student).
+   Same tools, page styles, + Page and Copy page; no book, so no "Back to book". Cleared when it is closed, like every board. */
+function boardOnly(){ doc = { numPages: 0, boardOnly: true }; document.body.classList.add('bonly', 'noside'); BRD.length = 0; BRD.push('plain'); pageNo = 'b1'; zoom = 1;
+  $('bk').textContent = 'CupOfEnglish board'; $('fl').textContent = Q.get('s') ? 'Class with ' + Q.get('s') : 'Blank board';
+  $('msg').style.display = 'none'; $('wrap').style.display = ''; render(); }
+if(!FID && Q.get('board') === '1') boardOnly();
+else loadBook().then(() => { if(FID) openFile(FID, TITLE); else msg('Choose a page on the left.'); });
 </script>
 <script src="../homework/fresh.js"></script>
 </body>
