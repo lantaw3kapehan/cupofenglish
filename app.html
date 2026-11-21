@@ -7447,7 +7447,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2162;
+const COE_V = 2163;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -44571,12 +44571,13 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
   function classes(){ return (D.schedule || []).filter(function(c){ return c.day === D.today && !c.cancelled && c.start && c.end; }); }
   function free(){ var t = Date.now(); return !classes().some(function(c){ return t >= new Date(c.start).getTime() - 3 * 6e4 && t <= new Date(c.end).getTime(); }); }
   var sleep = function(ms){ return new Promise(function(r){ setTimeout(r, ms); }); };
-  async function waitFree(){ while(!free()) await sleep(60e3); }
+  const rdBusy = function(){ try{ return Date.now() - (+localStorage.getItem('coe.rd.busy') || 0) < 45e3; }catch(e){ return false; } };   /* 2568: the book reader is open */
+  async function waitFree(){ while(!free() || rdBusy()) await sleep(rdBusy() ? 15e3 : 60e3); }
   function idx(){ try{ return JSON.parse(localStorage.getItem('coe.bk.pre') || '[]'); }catch(e){ return []; } }
   async function save(url, src, n){ var c = await caches.open(KC); if(await c.match(url)) return 'had';
-    var out = new Uint8Array(n), pos = 0, step = 524288;
+    var out = new Uint8Array(n), pos = 0, step = 262144;
     while(pos < n){ await waitFree(); var e = Math.min(n, pos + step), r = await fetch(src, { cache: 'no-store', headers: { Range: 'bytes=' + pos + '-' + (e - 1) } });
-      if(r.status !== 206 && !(r.ok && pos === 0 && e === n)) return 'no'; out.set(new Uint8Array(await r.arrayBuffer()).subarray(0, e - pos), pos); pos = e; await sleep(150); }
+      if(r.status !== 206 && !(r.ok && pos === 0 && e === n)) return 'no'; out.set(new Uint8Array(await r.arrayBuffer()).subarray(0, e - pos), pos); pos = e; await sleep(500); }
     await c.put(url, new Response(out, { headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(n) } }));
     var L = idx().filter(function(x){ return x.u !== url; }); L.unshift({ u: url, n: n, at: Date.now() }); var tot = 0, keep = [];
     for(var i = 0; i < L.length; i++){ if(tot + L[i].n <= KALL){ keep.push(L[i]); tot += L[i].n; } else { try{ await c.delete(L[i].u); }catch(e){} } }
@@ -44615,13 +44616,14 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
   function classes(){ return (D.schedule || []).filter(function(c){ return c.day === D.today && !c.cancelled && c.start && c.end; }); }
   function free(){ var t = Date.now(); return !classes().some(function(c){ return t >= new Date(c.start).getTime() - 3 * 6e4 && t <= new Date(c.end).getTime(); }); }
   var sleep = function(ms){ return new Promise(function(r){ setTimeout(r, ms); }); };
-  async function waitFree(){ while(!free()) await sleep(60e3); }
+  const rdBusy = function(){ try{ return Date.now() - (+localStorage.getItem('coe.rd.busy') || 0) < 45e3; }catch(e){ return false; } };   /* 2568: the book reader is open */
+  async function waitFree(){ while(!free() || rdBusy()) await sleep(rdBusy() ? 15e3 : 60e3); }
   function idx(){ try{ return JSON.parse(localStorage.getItem('coe.bk.pre') || '[]'); }catch(e){ return []; } }
   async function save(url, type){ var c = await caches.open(KC); if(await c.match(url)) return;
     var h = await fetch(url, { method: 'HEAD', cache: 'no-store' }); var n = +(h.headers.get('content-length') || 0); if(!h.ok || !n || n > KMAX) return;
-    var out = new Uint8Array(n), pos = 0, step = 524288;
+    var out = new Uint8Array(n), pos = 0, step = 262144;
     while(pos < n){ await waitFree(); var e = Math.min(n, pos + step), r = await fetch(url, { cache: 'no-store', headers: { Range: 'bytes=' + pos + '-' + (e - 1) } });
-      if(r.status !== 206 && !(r.ok && pos === 0 && e === n)) return; out.set(new Uint8Array(await r.arrayBuffer()).subarray(0, e - pos), pos); pos = e; await sleep(150); }
+      if(r.status !== 206 && !(r.ok && pos === 0 && e === n)) return; out.set(new Uint8Array(await r.arrayBuffer()).subarray(0, e - pos), pos); pos = e; await sleep(500); }
     await c.put(url, new Response(out, { headers: { 'Content-Type': h.headers.get('content-type') || type, 'Content-Length': String(n) } }));
     var L = idx().filter(function(x){ return x.u !== url; }); L.unshift({ u: url, n: n, at: Date.now() }); var tot = 0, keep = [];
     for(var i = 0; i < L.length; i++){ if(tot + L[i].n <= KALL){ keep.push(L[i]); tot += L[i].n; } else { try{ await c.delete(L[i].u); }catch(e){} } }
