@@ -7485,7 +7485,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2201;
+const COE_V = 2202;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -44687,10 +44687,20 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
   var E = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var mgr = function(){ return typeof D !== 'undefined' && D && D.mgr; }, W = null, AT = 0, BUSY = 0;
   var ops = function(b){ return fetch(FAST_URL + '-ops', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, b)) }).then(function(r){ return r.json(); }); };
+  /* 2626 (Misty 15:26): a suggested answer from the cancellation reason (most reasons are the parent's own message); one "Save all suggested" that needs a second tap. Rows with no reason still need a person. */
+  function sug(w){ w = String(w || '').replace(/ · (Celine|CupOfEnglish|Misty|Operations)( · [A-Z][a-z]{2} \d{1,2})?$/, '').trim(); if(!w) return '';
+    if(/^(the )?teacher (asked for leave|is sick|was sick|is on leave|had an emergency)/i.test(w)) return 'teacher';
+    if(/^(schedule conflict|no arrangement|school holiday make-?up|schedule stopped|changed teacher|teacher changed)|temporarily suspend|let \w+ take the remaining/i.test(w)) return 'company';
+    return 'parent'; }
+  window.wa2626all = function(b){ if(!b.dataset.sure){ b.dataset.sure = '1'; b.textContent = 'Tap again to save them'; setTimeout(function(){ if(b.isConnected && b.dataset.sure){ delete b.dataset.sure; paint(); } }, 6000); return; }
+    var L = (W || []).filter(function(x){ return sug(x.why); }); b.disabled = true; var ok = 0, i = 0;
+    (function next(){ if(i >= L.length){ toast('Saved ' + ok + ' of ' + L.length); paint(); return; } var x = L[i++]; b.textContent = 'Saving ' + i + ' of ' + L.length + '…';
+      ops({ op: 'clsby', id: x.id, who: sug(x.why) }).then(function(r){ if(r && r.ok){ ok++; W = W.filter(function(y){ return y.id !== x.id; }); } }).catch(function(){}).then(next); })(); };
   function whoHtml(){ if(!W || !W.length) return '';
     return '<div class="card" id="wa2609" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3 style="margin:0">Who asked? · ' + W.length + ' cancelled class' + (W.length === 1 ? '' : 'es') + '</h3><span class="small mute">tap one · only cancellations the teacher asked for count against the teacher</span></div>'
-      + W.slice(0, 12).map(function(x){ return '<div class="li" style="align-items:center;gap:10px;flex-wrap:wrap"><div class="grow" style="min-width:200px"><b>' + E(x.student) + '</b> <span class="small mute">' + E(x.code) + ' · Teacher ' + E(x.teacher) + ' · ' + E(x.at) + '</span>' + (x.why ? '<div class="small mute">' + E(x.why) + '</div>' : '') + '</div><div style="display:flex;gap:6px">'
-        + [['parent', 'Parent'], ['teacher', 'Teacher'], ['company', 'CupOfEnglish']].map(function(o){ return '<button class="btn sm ghost" onclick="wa2609(this,\'' + E(x.id).replace(/\\/g, '') + '\',\'' + o[0] + '\')" aria-label="' + E(o[1] + ' asked: ' + x.student + ' ' + x.at) + '">' + o[1] + '</button>'; }).join('') + '</div></div>'; }).join('')
+      + (function(){ var n = W.filter(function(x){ return sug(x.why); }).length; return n ? '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 2px"><button class="btn sm teal" id="wa2626all" onclick="wa2626all(this)">Save all ' + n + ' suggested</button><span class="small mute">suggested from the reason · check them first · the rest need a tap</span></div>' : ''; })()
+      + W.slice(0, 12).map(function(x){ var sg = sug(x.why); return '<div class="li" style="align-items:center;gap:10px;flex-wrap:wrap"><div class="grow" style="min-width:200px"><b>' + E(x.student) + '</b> <span class="small mute">' + E(x.code) + ' · Teacher ' + E(x.teacher) + ' · ' + E(x.at) + '</span>' + (x.why ? '<div class="small mute">' + E(x.why) + '</div>' : '') + (sg ? '<div class="small" style="color:#0E6B73">Suggested: ' + { parent: 'Parent', teacher: 'Teacher', company: 'CupOfEnglish' }[sg] + '</div>' : '') + '</div><div style="display:flex;gap:6px">'
+        + [['parent', 'Parent'], ['teacher', 'Teacher'], ['company', 'CupOfEnglish']].map(function(o){ return '<button class="btn sm ' + (sg === o[0] ? 'teal' : 'ghost') + '" onclick="wa2609(this,\'' + E(x.id).replace(/\\/g, '') + '\',\'' + o[0] + '\')" aria-label="' + E(o[1] + ' asked: ' + x.student + ' ' + x.at) + '">' + o[1] + '</button>'; }).join('') + '</div></div>'; }).join('')
       + (W.length > 12 ? '<div class="small mute" style="margin-top:6px">' + (W.length - 12) + ' more after these</div>' : '') + '</div>'; }
   function valHtml(){ var Ev = window.validityEnded ? validityEnded() : {}, L = Object.keys(Ev).map(function(k){ return Ev[k]; }).sort(function(a, b){ return a.dl < b.dl ? -1 : 1; }); if(!L.length) return '';
     var rows = function(x){ var R = (window.vr2588Rows && vr2588Rows(x.code, x.dl)) || [], s = R[0], st = !s ? 'review needed' : s.kind === 'review' ? 'review pending' : s.kind === 'extend' ? 'extension approved' : s.kind === 'exception' ? 'exception approved' : 'date to correct';
