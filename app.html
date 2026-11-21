@@ -7462,7 +7462,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2179;
+const COE_V = 2180;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23388,15 +23388,19 @@ go();
     return [dd != null && dd < 0 ? 'p-due' : 'p-grey', 'Not opened' + (dd != null && dd < 0 ? ' · overdue' : '')]; }
   function paintAdmin(){ const b = $('sheetBody'); if(!b || !AD) return; const signDocs = (AD.docs || []).filter(d => d.needs_sign);
     const add = signDocs.find(d => d.kind === 'addendum');
-    const all = (AD.rows || []).filter(r => add && r.doc_id === add.id);
-    const k = { signed: all.filter(r => r.status === 'signed').length, wait: all.filter(r => r.status === 'signed' && !r.pres_at).length, open: all.filter(r => /^(sent|opened)$/.test(r.status)).length, q: all.filter(r => /^(question|declined)$/.test(r.status)).length };
+    const cur2587 = new Set((AD.teachers || []).map(t => t.name)), all = (AD.rows || []).filter(r => add && r.doc_id === add.id && cur2587.has(r.teacher));   /* 2587: current teachers only */
+    const grp2587 = r => !r ? 'none' : (r.status === 'signed' && r.pres_at) || r.status === 'paper' ? 'both' : r.status === 'signed' ? 'wait' : /^(question|declined)$/.test(r.status) ? 'q' : 'open';
+    const G2587 = {}; (AD.teachers || []).forEach(t => { G2587[t.name] = grp2587(all.find(r => r.teacher === t.name)); });
+    const k = { signed: Object.values(G2587).filter(x => x === 'both').length, wait: Object.values(G2587).filter(x => x === 'wait').length, open: Object.values(G2587).filter(x => x === 'open' || x === 'none').length, q: Object.values(G2587).filter(x => x === 'q').length };
+    const F2587 = window.CTF2587 || '', tile = (f, n, t) => '<div role="button" tabindex="0" style="cursor:pointer' + (F2587 === f ? ';outline:2px solid var(--teal,#01b0bf)' : '') + '" onclick="window.CTF2587=window.CTF2587===\'' + f + '\'?\'\':\'' + f + '\';ctAdminPaint2587()"><b>' + n + '</b><span>' + t + '</span></div>';
     b.innerHTML = '<div class="ct"><h1>Contracts</h1><div class="sub">Who has read and signed · all times Philippine time' + (signDocs.length ? '' : ' · <b>nothing published yet</b>') + '</div>' +
-      (add ? '<div class="kpis"><div><b>' + k.signed + '</b><span>signed ' + e(add.title.split(' · ')[0]) + '</span></div><div><b>' + k.wait + '</b><span>waiting for your countersign</span></div><div><b>' + k.open + '</b><span>not signed yet</span></div><div><b>' + k.q + '</b><span>questions or did not agree</span></div></div>' : '') +
-      '<div class="box"><h3>Teachers</h3>' + (AD.teachers || []).map(t => { const rs = tRows(t.name);
+      (add ? '<div class="kpis">' + tile('both', k.signed, 'signed by both · ' + e(add.title.split(' · ')[0])) + tile('wait', k.wait, 'signed by the teacher · waiting for your countersign') + tile('open', k.open, 'not signed yet') + tile('q', k.q, 'question or did not agree') + '</div><div class="fine" style="margin-top:4px">' + (AD.teachers || []).length + ' current teachers, each counted once · tap a number to list them' + (F2587 ? ' · <a class="link" onclick="window.CTF2587=\'\';ctAdminPaint2587()">show all</a>' : '') + '</div>' : '') +
+      '<div class="box"><h3>Teachers</h3>' + (AD.teachers || []).filter(t => !F2587 || G2587[t.name] === F2587 || (F2587 === 'open' && G2587[t.name] === 'none')).map(t => { const rs = tRows(t.name);
         const pills = signDocs.map(d => { const r = rs.find(x => x.doc_id === d.id); if(!r && d.kind !== 'addendum') return ''; const [c, l] = adStatus(r); return '<span class="pill ' + c + '" title="' + e(d.title) + '">' + e(d.kind === 'addendum' ? 'Add. 1' : d.kind === 'agreement' ? 'Agreement' : 'Annex A') + ': ' + e(l) + '</span>'; }).filter(Boolean).join(' ');
         const T9 = termOf(rs, AD.docs, (AD.people || []).find(x => x.teacher === t.name)); return '<div class="tr" onclick="ctTeacher(\'' + e(t.name) + '\')"><div class="grow"><b>' + e(t.name) + '</b>' + (T9 ? ' <span class="' + (T9.due ? 'pill p-due' : 'mute small') + '">' + (T9.due ? 'Renewal due · ends ' : 'term to ') + e(ph(T9.end)) + '</span>' : '') + '<div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap">' + (pills || '<span class="pill p-grey">Nothing sent</span>') + '</div>' + (window.ct1121Next ? ct1121Next(rs.find(x => add && x.doc_id === add.id)) : '') + '</div><span class="vl1121">View ›</span></div>'; }).join('') + '</div>' +
       '<div class="fine">A published addendum reaches every current teacher by itself. For a new teacher, open their name and tap “Send the full set”. Paper Agreements signed before the app can be recorded with their date and notarized scan.</div></div>'; }
 
+  window.ctAdminPaint2587 = () => paintAdmin();
   window.ctTeacher = function(t){ const b = $('sheetBody'); if(!b || !AD) return; const P = pres(); const rs = tRows(t); const pp = (AD.people || []).find(x => x.teacher === t) || {};
     const signDocs = (AD.docs || []).filter(d => d.needs_sign);
     let h = '<div class="ct"><button class="btn ghost sm" style="margin-bottom:10px" onclick="ctAdmin()">‹ Contracts</button><h1>' + e(t) + '</h1><div class="sub">Signing record · Philippine time</div>';
