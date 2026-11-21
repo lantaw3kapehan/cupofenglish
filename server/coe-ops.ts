@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-ops v25 (21 Nov · 2630 presdec) · v24 (21 Nov · 2609 clsbylist, clsby) · v23 (21 Nov · 2588 validity review: valrev, valset) · v20 (20 Nov · 2524 log kind "sent") · v19 (20 Nov · 2522 lessonfix: "left" flag; a correction closes open reports about the student) · v14 (19 Nov · 2456 lessonfix: management's lesson count for one month) · v13 (19 Nov · 2453 resolve {lid}: President solves a problem from her log) · v12 (18 Nov · 2377 System reminders on the President card) · v11 (18 Nov · 2375 teachers waiting, 2376 weekly summary in deskday) · v10 (18 Nov · 2360 chain of command: report types, answer, myreports, seenans, eod) · v9 (18 Nov · 2344 op me: her own Overview) · v8 (18 Nov · 2341 Ops Desk: desk, log, done, report, deskday, resolve, watch) · v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
+// CupOfEnglish · coe-ops v26 (21 Nov · 2637 presmark, marks in presdec) · v25 (21 Nov · 2630 presdec) · v24 (21 Nov · 2609 clsbylist, clsby) · v23 (21 Nov · 2588 validity review: valrev, valset) · v20 (20 Nov · 2524 log kind "sent") · v19 (20 Nov · 2522 lessonfix: "left" flag; a correction closes open reports about the student) · v14 (19 Nov · 2456 lessonfix: management's lesson count for one month) · v13 (19 Nov · 2453 resolve {lid}: President solves a problem from her log) · v12 (18 Nov · 2377 System reminders on the President card) · v11 (18 Nov · 2375 teachers waiting, 2376 weekly summary in deskday) · v10 (18 Nov · 2360 chain of command: report types, answer, myreports, seenans, eod) · v9 (18 Nov · 2344 op me: her own Overview) · v8 (18 Nov · 2341 Ops Desk: desk, log, done, report, deskday, resolve, watch) · v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
 // Management only (Operations and President). Teachers get "Management only".
 // POST { token, op: "check" }                        → { ok, items: [{ kind, ref, text, go }], at }   the daily database check (coe_ops_check)
 // POST { token, op: "ok", ref }                      → { ok }   "It's correct": this item never comes back (coe_ops_ok)
@@ -254,8 +254,20 @@ Deno.serve(async (req: Request) => {
   }
   if (op === "presdec") {   // v25 (2630, Misty 21 Nov): For your decision · what only the President can decide
     if (!pres) return out({ ok: false, error: "President only" }, 403);
-    const { data, error } = await db.rpc("coe_pres_decisions"); if (error) return out({ ok: false, error: "Not loaded. Try again." }, 500);
-    return out({ ok: true, ...(data || {}) });
+    const [{ data, error }, M] = await Promise.all([db.rpc("coe_pres_decisions"), db.from("docs").select("data").eq("key", "pres:decisions").maybeSingle()]);
+    if (error) return out({ ok: false, error: "Not loaded. Try again." }, 500);
+    return out({ ok: true, ...(data || {}), marks: (M.data && M.data.data && M.data.data.marks) || {} });
+  }
+  if (op === "presmark") {   // v26 (2637, Misty 17:03): For your decision · "Followed up" (waiting) or "Done" on one item, kept until the item changes
+    if (!pres) return out({ ok: false, error: "President only" }, 403);
+    const k = str(b.k, 80), st = str(b.st, 12); if (!k || !/^(followed|done|)$/.test(st)) return out({ ok: false, error: "bad request" }, 400);
+    const { data: cur } = await db.from("docs").select("data").eq("key", "pres:decisions").maybeSingle();
+    const marks: Record<string, any> = { ...((cur && cur.data && cur.data.marks) || {}) };
+    if (!st) delete marks[k]; else marks[k] = { st, sig: str(b.sig, 300), note: str(b.note, 300), at: new Date().toISOString(), by: me };
+    for (const x of Object.keys(marks)) if (Date.now() - Date.parse(marks[x].at) > 30 * 864e5) delete marks[x];   // a mark is forgotten after 30 days
+    const { error } = await db.from("docs").upsert({ key: "pres:decisions", scope: "mgmt", data: { marks }, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) return out({ ok: false, error: "Not saved. Try again." }, 500);
+    return out({ ok: true, marks });
   }
   if (op === "deskday" || op === "resolve" || op === "watch_add" || op === "watch_del") {
     if (!pres) return out({ ok: false, error: "Management only" }, 403);
