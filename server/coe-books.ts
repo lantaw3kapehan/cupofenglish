@@ -80,6 +80,9 @@ Deno.serve(async (req: Request) => {
     if (op === "meta") {   // 2279: the reader needs a file's size and whether our copy is ready (for page-by-page loading)
       const id = clip(b.id, 80); const { data: f } = await db.from("coe_book_files").select("size,mime").eq("id", id).maybeSingle();
       const { data: m } = await db.from("coe_media_mirror").select("done_at").eq("id", id).maybeSingle();
+      // 2607 (21 Nov, Rose · The Alphabet U2L2): a corrected copy (coe-pdffix) is a few bytes longer than the Drive size on record, and
+      // page-by-page loading with the old size breaks ("Invalid PDF structure"). When our copy is ready, its own stored size is used.
+      if (f && m && m.done_at) { try { const { data: os } = await db.rpc("coe_book_obj_size", { p_id: id }); if (os) f.size = Number(os); } catch (_e) { /* keep the size on record */ } }
       // 2548: a light copy made overnight (same pages, text stays text, pictures 150 dpi) opens first, for everyone (Misty 23:14 "make it live")
       const { data: lt } = await db.from("coe_book_light").select("size,use_it,note").eq("id", id).maybeSingle();
       if (lt && lt.note === "ready" && lt.size) return out({ ok: true, size: f ? f.size : null, copied: !!(m && m.done_at), light: "light-2548/" + id, lightSize: lt.size });
