@@ -13,7 +13,9 @@ P
 }
 export FN
 OIDC=$(tok) && export OIDC
-list=$(call "{\"op\":\"todo\",\"limit\":${LIMIT:-40}}") || { echo "todo failed"; exit 1; }
+if [ -n "${IDS:-}" ]; then J=$(python3 -c 'import sys,json;print(json.dumps([x.strip() for x in sys.argv[1].split(",") if x.strip()]))' "$IDS"); list=$(call "{\"op\":\"todo\",\"ids\":$J}") || { echo "todo failed"; exit 1; }   # v4: chosen files
+else list=$(call "{\"op\":\"todo\",\"limit\":${LIMIT:-40}}") || { echo "todo failed"; exit 1; }
+fi
 echo "$list" | python3 -c 'import sys,json; r=json.load(sys.stdin)["rows"]; print(len(r),"files to do"); [print(x["id"], x["size"]) for x in r]' > work/todo.txt
 head -1 work/todo.txt; ok=0; kept=0; bad=0
 tail -n +2 work/todo.txt | while read -r id size; do

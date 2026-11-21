@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-light v3 (21 Nov: _APP COPIES files too · Dezza OD1 Workbook) · v2 (20 Nov: todo by id) · v1 (20 Nov 2026 · 2548 · Misty 23:03 "let us do 1 and 2 now"): lighter book copies made overnight on GitHub.
+// CupOfEnglish · coe-light v4 (21 Nov: todo { ids }) · v3 (21 Nov: _APP COPIES files too · Dezza OD1 Workbook) · v2 (20 Nov: todo by id) · v1 (20 Nov 2026 · 2548 · Misty 23:03 "let us do 1 and 2 now"): lighter book copies made overnight on GitHub.
 // Only the repository's own "Book light copies" workflow can call this: the caller sends its GitHub OIDC token, checked here
 // against GitHub's public keys (repository lantaw3kapehan/cupofenglish, workflow book-light.yml, branch main). No shared secret.
 // POST { oidc, op, ... }
@@ -22,6 +22,11 @@ Deno.serve(async (req: Request) => {
   try {
     if (op === "todo") {
       const lim = Math.min(200, Math.max(1, +b.limit || 20));
+      // v4 (21 Nov, Mayi · Consonant Blends 7–14 MB on a slow connection): todo { ids } → these files, any size, if copied and not done yet
+      if (Array.isArray(b.ids) && b.ids.length) { const ids = b.ids.map((x: unknown) => String(x)).filter((x: string) => ID.test(x)).slice(0, 50);
+        const { data: F2 } = await db.from("coe_book_files").select("id,name,size").in("id", ids); const { data: M2 } = await db.from("coe_media_mirror").select("id").in("id", ids).not("done_at", "is", null);
+        const { data: L2 } = await db.from("coe_book_light").select("id").in("id", ids); const cp2 = new Set((M2 || []).map((x: any) => x.id)), have2 = new Set((L2 || []).map((x: any) => x.id));
+        return out({ ok: true, rows: (F2 || []).filter((f: any) => cp2.has(f.id) && !have2.has(f.id)).map((f: any) => ({ id: f.id, size: f.size, name: f.name })) }); }
       const { data: L } = await db.from("coe_book_light").select("id").limit(5000); const have = new Set((L || []).map((x: any) => x.id));
       const { data: F } = await db.from("coe_book_files").select("id,name,size,path").is("gone_at", null).ilike("name", "%.pdf").gt("size", 20 * 1048576).lte("size", 250 * 1048576).order("size", { ascending: false }).limit(1000);
       const C = (F || []).filter((f: any) => !have.has(f.id)), cp = new Set<string>();
