@@ -3267,7 +3267,7 @@ let MO = null, MS = null, MS_F = 'all';
 
 function todayStr(){ const d = new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10); }
 let PULSE_BUSY = 0, PULSE_AT = 0, PULSE_RL = 0;   /* 753 */
-async function pulse(){ if(!D || !D.mgr || document.hidden || PULSE_BUSY || Date.now() - PULSE_AT < 30000) return; PULSE_BUSY = 1; PULSE_AT = Date.now(); try{ return await pulse0(); }finally{ PULSE_BUSY = 0; } }
+async function pulse(){ if(!D || !D.mgr || document.hidden || PULSE_BUSY || Date.now() - PULSE_AT < 15000) return; PULSE_BUSY = 1; PULSE_AT = Date.now(); try{ return await pulse0(); }finally{ PULSE_BUSY = 0; } }
 async function pulse0(){
 if(!D || !D.mgr) return;
 try{
@@ -3280,7 +3280,7 @@ const seen = new Set(PULSE.items.map(x=>x.t)); PULSE.items = r.items.filter(x=>!
 store('set','coe.pulse', JSON.stringify({since:PULSE.since, items:PULSE.items}));
 if(!first){                                   
 const k = new Set(r.items.map(x=>x.kind));
-if((k.has('Time-in')||k.has('Time-out')||k.has('Class check-in')||k.has('Late review')||k.has('Payroll')) && Date.now() - PULSE_RL > 120000){ PULSE_RL = Date.now(); loadMgmt(true); }
+if((k.has('Time-in')||k.has('Time-out')||k.has('Class check-in')||k.has('Late review')||k.has('Payroll')) && Date.now() - PULSE_RL > (k.has('Late review') ? 20000 : 120000)){ PULSE_RL = Date.now(); loadMgmt(true); }
 if(k.has('Leave')) loadLeave(true);
 if(k.has('Sale')||k.has('Expense')){ store('del','coe.m.money'); MN = null; if(VIEW==='money') loadMoney(); }
 if(k.has('Case')||k.has('Late review')){ store('del','coe.m.actions'); AC = null; if(VIEW==='actions') loadActions(); }
@@ -3295,7 +3295,7 @@ const lt = $('liveTag'); if(lt) lt.innerHTML = '<i></i>Connected · ' + PULSE.ti
 const fd = $('feed'); if(fd) fd.innerHTML = feedHtml();
 }catch(e){}
 }
-setInterval(pulse, 45000);
+setInterval(pulse, 20000);   /* 2644 */
 document.addEventListener('visibilitychange', () => { if(!document.hidden) pulse(); });
 async function loadMgmt(quiet){
 if(!quiet) setTimeout(() => bg(() => { prefetchMgmt(); pulse(); }), 1500);
@@ -7485,7 +7485,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2218;
+const COE_V = 2219;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -45075,6 +45075,22 @@ window.bk2556 = function(t){ try{ const code = String(t.code || '').toUpperCase(
 /* 2278 · warm the CupOfEnglish book reader (reader/) so the first book opens without waiting */
 (function(){ function warm(){ try{ if(!D) return; ['reader/', 'reader/pdfjs/pdf.min.mjs', 'reader/pdfjs/pdf.worker.min.mjs', 'reader/logo.png'].forEach(u => { const l = document.createElement('link'); l.rel = 'prefetch'; l.href = u; document.head.appendChild(l); }); }catch(e){} }
   setTimeout(warm, 6000); })();
+</script>
+<script id="b2644">
+(function(){ if(window.__2644) return; window.__2644 = 1;
+  let busy = 0;
+  async function sync(){ try{
+    if(busy || document.hidden || typeof D === 'undefined' || !D || !D.mgr || typeof TOKEN === 'undefined' || !TOKEN || typeof MO === 'undefined' || !MO) return; busy = 1;
+    const r = await fetch(FAST_URL + '-mgmt', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'overview', token: TOKEN }) }).then(x => x.json());
+    if(!(r && r.ok && r.data && Array.isArray(r.data.late))) return;
+    let L = r.data.late; try{ if(window.dec2538) L = L.filter(x => !dec2538.has(dec2538.late(x.row))); }catch(e){}
+    const sig = a => JSON.stringify((a || []).map(x => x.row).sort());
+    if(sig(L) === sig(MO.late)) return;
+    MO.late = L; try{ store('set', 'coe.mo', JSON.stringify(MO)); }catch(e){}
+    try{ hmBadge(); }catch(e){}   /* the lates card itself repaints on its own 5 s check (it compares rows, so nothing else moves) */
+  }catch(e){} finally{ busy = 0; } }
+  setInterval(sync, 15000); document.addEventListener('visibilitychange', () => { if(!document.hidden) setTimeout(sync, 800); });
+})();
 </script>
 </body>
 </html>
