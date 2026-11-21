@@ -7485,7 +7485,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2202;
+const COE_V = 2203;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -44747,6 +44747,11 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
   function unitOf(f){ var g = String(f.group || ''), m = /^(\d+)$/.exec(g.split(' / ').slice(-1)[0] || ''); if(m) return +m[1];
     m = /\bunit\s*0?(\d+)\b/i.exec(g) || /\bunit\s*0?(\d+)\b/i.exec(f.name) || /(?:^|[^A-Z])U0?(\d+)(?=L|W|[^0-9]|$)/.exec(f.name); return m ? +m[1] : null; }
   function classes(){ return (D.schedule || []).filter(function(c){ return c.day === D.today && !c.cancelled && c.start && c.end; }); }
+  /* 2627 (Misty 21 Nov, Mayi's 79–107 MB books): books up to 120 MB, a big one (over 50 MB) only when this connection can finish it before the next class */
+  var KBIG = 120 * 1048576;
+  function fits(n){ var cn = navigator.connection || {}, mbps = Math.max(0.5, +cn.downlink || 3), secs = n * 8 / (mbps * 1e6) * 1.6 + n / 262144 * 0.5, t = Date.now();
+    var nx = classes().map(function(c){ return new Date(c.start).getTime(); }).filter(function(s){ return s > t; }).sort(function(a, b){ return a - b; })[0];
+    return !nx || t + secs * 1000 < nx - 3 * 6e4; }
   function free(){ var t = Date.now(); return !classes().some(function(c){ return t >= new Date(c.start).getTime() - 3 * 6e4 && t <= new Date(c.end).getTime(); }); }
   var sleep = function(ms){ return new Promise(function(r){ setTimeout(r, ms); }); };
   const rdBusy = function(){ try{ return Date.now() - (+localStorage.getItem('coe.rd.busy') || 0) < 45e3; }catch(e){ return false; } };   /* 2568: the book reader is open */
@@ -44760,19 +44765,21 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
     var L = idx().filter(function(x){ return x.u !== url; }); L.unshift({ u: url, n: n, at: Date.now() }); var tot = 0, keep = [];
     for(var i = 0; i < L.length; i++){ if(tot + L[i].n <= KALL){ keep.push(L[i]); tot += L[i].n; } else { try{ await c.delete(L[i].u); }catch(e){} } }
     try{ localStorage.setItem('coe.bk.pre', JSON.stringify(keep.slice(0, 200))); }catch(e){} return 'saved'; }
-  async function run(){ if(RUN || typeof D === 'undefined' || !D || D.mgr || !D.timeIn || !TOKEN || !('caches' in window) || !window.bkGet) return;
+  async function run(){ if(RUN || typeof D === 'undefined' || !D || D.mgr || !TOKEN || !('caches' in window) || !window.bkGet) return;   /* 2627: from the moment the app is open on a class day, not only after time-in */
     var cn = navigator.connection || {}; if(cn.saveData || /(^|-)2g|3g/.test(cn.effectiveType || '')) return;
     var day = D.today; if(DONE[day] && Date.now() - DONE[day] < 30 * 6e4) return; RUN = 1;
     try{ var want = [], seen = {};
       for(var c of classes()){ if(new Date(c.end).getTime() < Date.now()) continue; var s = (D.students || []).find(function(x){ return x.code === c.code; }) || {}, k = code1(c.book || s.book); if(!k) continue;
         var u = unitIn(s.note && s.note.ended); if(u == null) continue; var b = null; try{ b = await bkGet(k); }catch(e){} if(!b) continue;
-        (b.files || []).filter(function(f){ var x = unitOf(f); return f.kind === 'pdf' && (x === u || x === u + 1); }).forEach(function(f){ if(!seen[f.id]){ seen[f.id] = 1; want.push(f.id); } }); }
+        var F = (b.files || []).filter(function(f){ var x = unitOf(f); return f.kind === 'pdf' && (x === u || x === u + 1); });
+        if(!F.length) F = (b.files || []).filter(function(f){ return f.kind === 'pdf' && unitOf(f) == null && /student|workbook|book|course/i.test(String(f.name || '')); }).slice(0, 2);   /* 2627: a book kept as one whole file (Student's Book, Workbook) */
+        F.forEach(function(f){ if(!seen[f.id]){ seen[f.id] = 1; want.push(f.id); } }); }
       for(var id of want.slice(0, 30)){ if(D.today !== day) break; await waitFree();
         var m = null; try{ m = await fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'meta', token: TOKEN, id: id }) }).then(function(r){ return r.json(); }); }catch(e){}
         if(!m) continue; var src = '', n = 0;
         if(m.light && m.lightSize){ src = SB + '/storage/v1/object/public/book-media/' + m.light.split('/').map(encodeURIComponent).join('/'); n = +m.lightSize; }
         else if(m.copied && m.size){ src = SB + '/storage/v1/object/public/book-media/' + encodeURIComponent(id); n = +m.size; }
-        if(!src || !n || n > KMAX) continue; try{ await save(src + '?n=' + n, src, n); }catch(e){} }
+        if(!src || !n || n > KBIG) continue; if(n > KMAX && !fits(n)) continue; try{ await save(src + '?n=' + n, src, n); }catch(e){} }
       DONE[day] = Date.now(); }catch(e){} RUN = 0; }
   setTimeout(function(){ run(); }, 20e3); setInterval(function(){ run(); }, 10 * 6e4);
 })();
@@ -44807,7 +44814,7 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
     for(var i = 0; i < L.length; i++){ if(tot + L[i].n <= KALL){ keep.push(L[i]); tot += L[i].n; } else { try{ await c.delete(L[i].u); }catch(e){} } }
     try{ localStorage.setItem('coe.bk.pre', JSON.stringify(keep.slice(0, 300))); }catch(e){}
     try{ if(navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage('coe-books-saved'); }catch(e){} }
-  async function run(){ if(RUN || typeof D === 'undefined' || !D || D.mgr || !D.timeIn || !TOKEN || !('caches' in window) || !window.bkGet) return;
+  async function run(){ if(RUN || typeof D === 'undefined' || !D || D.mgr || !TOKEN || !('caches' in window) || !window.bkGet) return;   /* 2627: from the moment the app is open on a class day, not only after time-in */
     var cn = navigator.connection || {}; if(cn.saveData || /(^|-)2g|3g/.test(cn.effectiveType || '')) return;
     var day = D.today; if(DONE[day] && Date.now() - DONE[day] < 30 * 6e4) return; RUN = 1;
     try{ var want = [], seen = {};
