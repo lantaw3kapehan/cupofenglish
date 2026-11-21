@@ -2224,7 +2224,7 @@ else pwForm(name, false, i && i.msg);
 async function accOff(name, mg){
 const who = mg ? name : tName(name);
 if(!confirm('Remove ' + who + '\'s access?\n\nThis signs them out on every phone and removes their password. Their history stays.')) return;
-const rs = confirm('Also mark ' + who + ' as Resigned in MASTERLIST?\n\nOK = yes, hide them from the lists\nCancel = no, only block the app');
+const rs = confirm('Also mark ' + who + ' as Resigned in the staff list?\n\nOK = yes, hide them from the lists\nCancel = no, only block the app');
 if(window._accBusy) return; window._accBusy = 1; toast('Removing access…');
 let dbOff = null; try{ dbOff = await fetch(FAST_URL + '-pw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'off', token: TOKEN, name: name, resign: !!rs }) }).then(x => x.json()); }catch(e){ dbOff = null; }   /* 2163: the database first */
 window._accBusy = 0;
@@ -4211,7 +4211,7 @@ const P = (MO && MO.payroll) || [], R = (MO && MO.renewals) || [];
 const tot = P.reduce((a,x)=>a+x.net,0), paid = P.filter(x=>x.paid).length;
 const UP = P.filter(x=>!x.paid), owed = UP.reduce((a,x)=>a+x.net,0), out = tot - owed;
 const RD = RDY ? UP.filter(x=>rdyN(x.name)===0) : [], rdyAmt = RD.reduce((a,x)=>a+x.net,0);
-let h = `<div class="lead row"><div class="grow"><h1>Payroll</h1><div class="mute small">${esc((MO&&MO.payMonth)||'')} pay · from the PAY tab</div></div>
+let h = `<div class="lead row"><div class="grow"><h1>Payroll</h1><div class="mute small">${esc((MO&&MO.payMonth)||'')} pay · from the database</div></div>
 <button class="btn sm ghost" onclick="tabSheet('PAY','PAY tab')" style="display:none">PAY tab</button><button class="btn sm teal" onclick="payslip('')">Payslip</button></div>
 <div class="stats s4" style="margin-top:14px"><div class="stat"><b class="num">${peso(tot)}</b><span>total net · ${P.reduce((a,x)=>a+x.units,0)} units</span></div>
 <div class="stat st-ok"><b class="num">${peso(out)}</b><span>released · ${paid}/${P.length} paid</span></div>
@@ -4274,7 +4274,7 @@ let h = `<div class="card" style="margin-top:10px"><div class="row"><div class="
 <div class="stats" style="margin-top:10px"><div class="stat"><b class="num">${(m.nowReg||0)+(m.nowTrial||0)+(m.nowSub||0)}</b><span>units this month</span></div>
 <div class="stat"><b class="num">${peso(nowPayOf(m)+(m.monthBonus||0)-(m.monthDeduct||0))}</b><span>pay so far</span></div>
 <div class="stat"><b class="num"><span class="plus">+${peso(m.monthBonus||0)}</span></b><span>bonus · <span class="minus">−${peso(m.monthDeduct||0)}</span></span></div></div>
-<label>App sign-in email (MASTERLIST → APP EMAIL)</label>
+<label>App sign-in email</label>
 <div class="row" style="gap:8px"><input id="ttE" class="in-t grow" type="email" value="${esc(f.email||'')}" placeholder="teacher@gmail.com"><button class="btn sm" id="ttEGo" onclick="saveEmail()">Save</button></div></div>`;
 h = `<div class="row noprint" style="justify-content:flex-end;margin-top:8px">${printBtn('ttBody', 'Teacher – ' + (f.full||t.name))}</div>` + h;
 h += `<h2>Pay · last 12 months</h2>` + ((t.pay||[]).length ? `<div class="gx"><table><tr><th>Month</th><th>Units</th><th>Rate</th><th>Bonus</th><th>Deduct</th><th>Gov</th><th>Net</th><th>Paid</th></tr>${t.pay.map(x=>`<tr><td>${esc(x.month)}</td><td class="num">${x.units}</td><td class="num">${x.parts && x.parts.length > 1 ? x.parts.map(q => peso(q.rate)).join(' → ') : peso(x.rate)}</td>
@@ -4532,7 +4532,7 @@ const row = (r, btn) => `<div class="li" onclick="lvSheet('${esc(r.id)}')"><div 
 ${r.status === 'Pending' ? `<div class="small mute ell">${(r.proof||[]).length ? (window.IC1120 ? IC1120('clip') : '') + r.proof.length + ' proof file' + (r.proof.length === 1 ? '' : 's') : 'No proof yet'}${r.ask ? ' · asked: ' + esc(r.ask) : r.ops ? ' · checked by ' + esc(r.ops) : ''}</div>` : ''}${btn ? '<div class="row" style="gap:8px;margin-top:8px">' + btn + '</div>' : ''}</div>${btn ? '' : '<span class="vl1121">View ›</span>'}</div>`;
 const dec = r => `<button class="btn teal sm" onclick="event.stopPropagation();lvDecide('${esc(r.id)}','Approved')">Approve</button><button class="btn ghost sm" onclick="event.stopPropagation();lvDecide('${esc(r.id)}','Declined')">Decline</button><button class="btn ghost sm" onclick="event.stopPropagation();lvSheet('${esc(r.id)}')">Review request</button>`;
 const chk = r => `<button class="btn teal sm" onclick="event.stopPropagation();lvSheet('${esc(r.id)}')">Check proof</button>`;
-let h = `<div class="lead row"><div class="grow"><h1>Leave</h1><div class="mute small">Requests with proof · Operations checks · management approves · saved in T-LEAVE</div></div><button class="btn sm teal" onclick="lvSheet()">${P ? '+ Lodge leave' : '+ File leave'}</button></div>
+let h = `<div class="lead row"><div class="grow"><h1>Leave</h1><div class="mute small">Requests with proof · Operations checks · management approves · kept in the leave records</div></div><button class="btn sm teal" onclick="lvSheet()">${P ? '+ Lodge leave' : '+ File leave'}</button></div>
 <div class="stats" style="margin-top:14px"><div class="stat"><b class="num">${onToday.length}</b><span>on leave today</span></div><div class="stat"><b class="num">${now.length - onToday.length}</b><span>coming up</span></div><div class="stat"><b class="num ${(P ? toPres : toCheck).length ? 'minus' : ''}">${(P ? toPres : toCheck).length}</b><span>${P ? 'waiting for your approval' : 'to check'}</span></div></div>
 <div class="small mute" style="margin-top:10px">Teacher asks with proof → Operations checks it (and asks for more details if needed) → management approves → the teacher sees it in the app</div>`;
 if(P){ if(toPres.length) h += `<h2>Waiting for your approval <span class="c">${toPres.length}</span></h2>` + toPres.map(r => row(r, dec(r))).join('');
@@ -4578,8 +4578,8 @@ ${lvDrop('lvFile', 'lvFiles', x ? 'Add proof' : 'Attach proof (if the teacher se
 ${x ? `<label>Status</label><div class="qa-ch">${[...new Set(stOpts)].map(v => pill('status', v, LVF.status)).join('')}</div>${P ? '' : '<div class="small mute">Only management approves or declines.</div>'}` : ''}
 <label>Comment / cover plan (the teacher sees it · needed to decline)</label><input id="lvN" class="in-t" value="${esc(x ? x.note : '')}" placeholder="e.g. sub: Teacher Pam · classes moved to Saturday">
 ${act}
-${x && (P || x.status !== 'Approved') ? `<button class="btn ghost block" style="margin-top:8px" onclick="if(confirm('Remove this leave from T-LEAVE?'))lvSave(true)">Remove</button>` : ''}
-<p class="small mute" style="margin-top:8px">Saved in T-LEAVE · proof files go to the private Drive folder "CupOfEnglish Leave proofs" · the teacher sees the status on Today and Pay.</p>`);
+${x && (P || x.status !== 'Approved') ? `<button class="btn ghost block" style="margin-top:8px" onclick="if(confirm('Remove this leave record?'))lvSave(true)">Remove</button>` : ''}
+<p class="small mute" style="margin-top:8px">Kept in the leave records · proof files are stored privately (management only) · the teacher sees the status on Today and Pay.</p>`);
 if(!x) lvClasses(); else if(x.status === 'Pending') lvClasses(true);
 }
 async function lvClasses(keep){ const t = ($('lvT')||{}).value, f = ($('lvF')||{}).value, to = ($('lvTo')||{}).value, box = $('lvC'); if(!box) return;
@@ -7462,7 +7462,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2186;
+const COE_V = 2187;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -8203,7 +8203,7 @@ h += `<h2>Teachers today <span class="c">${work.length}</span></h2><div class="t
 if(off.length) h += `<div class="small mute" style="margin-top:8px">No class today: ${off.map(x => esc(tName(x.name))).join(' · ')}</div>`;
 const ops = (MO && MO.ops) || [];
 if(ops.length) h += `<h2>Office</h2><div class="ti-list">${ops.map(x => tiRow(x, 1)).join('')}</div>`;
-if(!t.length) h += `<div class="empty">Add teachers' Gmail in MASTERLIST → APP EMAIL to see them here.</div>`;
+if(!t.length) h += `<div class="empty">Add each teacher's sign-in email (Teachers › tap the teacher › Edit) to see them here.</div>`;
 h += `<div id="hrsBox">${hrsHtml()}</div><div id="ngBox">${ngHtml()}</div><div id="hlBox">${hlHtml()}</div>`;
 h += `<h2>Latest changes <span class="c">${PULSE.time ? 'updated ' + PULSE.time : ''}</span></h2><div class="feed" id="feed">${feedHtml()}</div>`;
 h = lvTodayHtml() + h; $('v-team').innerHTML = h; if(!LV) loadLeave(true);
@@ -12407,7 +12407,7 @@ window.renderPayroll = function(){
   const tot = P.reduce((a, x) => a + x.net, 0), paid = P.filter(x => x.paid), UP = P.filter(x => !x.paid), owed = UP.reduce((a, x) => a + x.net, 0);
   const RD = RDY ? UP.filter(x => rdyN(x.name) === 0) : [], rdyAmt = RD.reduce((a, x) => a + x.net, 0), wait = UP.length - RD.length;
   const S = PCKM ? P.map(x => (pchkOf(x) || {}).st) : [], ver = S.filter(s => s === 'Verified').length, qs = P.filter(x => ['Disputed', 'Changed'].includes((pchkOf(x) || {}).st)).length;
-  let h = `<div class="py-top"><div><h1>Payroll</h1><div class="sub">${esc((MO && MO.payMonth) || '')} pay · from the PAY tab</div></div>
+  let h = `<div class="py-top"><div><h1>Payroll</h1><div class="sub">${esc((MO && MO.payMonth) || '')} pay · from the database</div></div>
     <div class="py-act"><button class="btn ghost" onclick="tabSheet('PAY','PAY tab')" style="display:none">PAY tab</button><button class="btn teal" onclick="payslip('')">Payslip</button></div></div>`;
   if(P.length){
     h += `<section class="py-hero"><img class="py-cup" src="${esc(ovCup())}" alt=""><div class="r1"><span>${esc((MO && MO.payMonth) || '')} · total net</span></div>
@@ -27422,7 +27422,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   // ── 3 · Payroll: status line + list before analytics
   const curLabel = () => new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   function payStatus(v){ const M = g('MO'), P = (M && M.payroll) || [], pm = (M && M.payMonth) || '', PLx = g('PL');
-    if(!P.length) return '<span>Loading pay from the PAY tab…</span>';
+    if(!P.length) return '<span>Loading pay…</span>';
     const now = v.classList.contains('py-now') && document.getElementById('pyCur'), paid = P.filter(x => x.paid).length, cl = curLabel();
     let per;
     if(now) per = 'Showing <b>' + esc(cl) + ' so far</b> · month still running, paid after month end · ' + esc(pm) + ' pay: all ' + P.length + ' paid';
@@ -28981,7 +28981,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   var st = document.createElement('style'); st.id = 'ui931'; st.textContent = css; document.head.appendChild(st);
   /* plain-words subtitles + amber "waiting" count, after every repaint */
   var SUB = [
-    [/^Requests with proof · Operations checks · management approves · saved in T-LEAVE$/, 'Who is away, what needs a decision, and the leave record'],
+    [/^Requests with proof · Operations checks · management approves · kept in the leave records$/, 'Who is away, what needs a decision, and the leave record'],
     [/^Live from ACTIONS · newest first$/, 'Bonuses, deductions and incidents · newest first'],
   ];
   function tidy(){
@@ -44609,7 +44609,7 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
   function html(){ if(!R || !R.length) return ''; var t = function(a){ return new Date(a).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' }); };
     return '<div class="card" id="bf2547" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3 style="margin:0">Books that did not open · last 24 h</h3><span class="small mute">' + R.length + ' · from the book reader</span></div>'
       + R.slice(0, 8).map(function(x){ var w = W[x.outcome] || [x.outcome, '#4B5563'];
-        return '<div class="li" style="align-items:flex-start"><div class="grow"><b>' + E(x.who || '') + '</b> <span class="small mute">' + E(t(x.at)) + ' · ' + (+x.secs || 0) + ' s</span><div class="small">' + E([x.book, x.title].filter(Boolean).join(' · ')) + '</div><div class="small mute">' + E(x.step || '') + (x.error ? ' · ' + E(x.error) : '') + '</div></div><span class="small" style="font-weight:600;color:' + w[1] + '">' + E(w[0]) + '</span></div>'; }).join('')
+        return '<div class="li" style="align-items:flex-start"><div class="grow"><b>' + E(x.who || '') + '</b> <span class="small mute">' + E(t(x.at)) + ' · ' + (+x.secs || 0) + ' s</span><div class="small">' + E([x.book, x.title].filter(Boolean).join(' · ')) + '</div><div class="small">' + E(x.outcome === 'failed' ? 'The book could not be opened' : /meta check failed|book details did not load/.test(x.error || '') ? 'The book details did not load, so a slower copy was used' : x.outcome === 'fallback' ? 'Opened from Drive (slow)' : 'Took ' + (+x.secs || 0) + ' s to open') + '</div><div class="small mute">Details: ' + E(x.step || '') + (x.error ? ' · ' + E(x.error) : '') + '</div></div><span class="small" style="font-weight:600;color:' + w[1] + '">' + E(w[0]) + '</span></div>'; }).join('')
       + (R.length > 8 ? '<div class="small mute" style="margin-top:6px">and ' + (R.length - 8) + ' more</div>' : '') + '</div>'; }
   function paint(){ if(!mgr()) return; var v = document.getElementById('v-mtoday'); if(!v) return; var h = html(), o = document.getElementById('bf2547');
     if(!h){ if(o) o.remove(); return; } if(o){ if(o.outerHTML !== h) o.outerHTML = h; return; } v.insertAdjacentHTML('beforeend', h); }
