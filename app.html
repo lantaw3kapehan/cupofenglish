@@ -4662,10 +4662,18 @@ function lv1802stats(rows, teacher, upto){   /* 1802: every notice (not withdraw
   const mine = (rows || []).filter(r => (!teacher || String(r.teacher || '').toLowerCase() === String(teacher).toLowerCase()) && !(/Cancelled/i.test(r.status || '') && String(r.decidedBy || '').trim().toLowerCase() === String(r.teacher || '').trim().toLowerCase()) && String(r.from || '') <= d);
   const late = r => { const c = lv1795cls(r); return c.length > 0 && (Math.min.apply(null, c.map(x => x.t)) - lv1795at(r.at)) < 4 * 36e5; };
   const in60 = mine.filter(r => String(r.from || '') >= lo);
-  return { all: in60.length, late: in60.filter(late).length, month: mine.filter(r => String(r.from || '').slice(0, 7) === d.slice(0, 7)).filter(late).length, year: mine.filter(r => String(r.from || '').slice(0, 4) === d.slice(0, 4)).length }; }
+  const MO = [...Array(6)].map((_, i) => { const x = new Date(Date.parse(d.slice(0, 7) + '-15T12:00:00+08:00')); x.setUTCMonth(x.getUTCMonth() - (5 - i)); return x.toISOString().slice(0, 7); });   /* 2562: notices month by month */
+  const by = MO.map(m => ({ m, n: mine.filter(r => String(r.from || '').slice(0, 7) === m).length }));
+  let run = 0; for(let i = by.length - 1; i >= 0 && by[i].n > 0; i--) run++;
+  return { all: in60.length, late: in60.filter(late).length, month: mine.filter(r => String(r.from || '').slice(0, 7) === d.slice(0, 7)).filter(late).length, year: mine.filter(r => String(r.from || '').slice(0, 4) === d.slice(0, 4)).length, by, run }; }
 function lv1802line(s, incl){ const k = s.month >= 3 ? 'bad' : s.month >= 2 || s.late >= 2 ? 'warn' : 'ok';
   return lv1795line(k, 'Notices in the last 60 days: <b>' + s.all + '</b>' + (incl ? ' (this one included)' : '') + ' · with less than 4 h notice: <b>' + s.late + '</b> · this year: <b>' + s.year + '</b>'
-    + (s.month >= 3 ? ' · <b>' + s.month + ' late cancellations this month: lesson offers may be paused (Clause 5.2)</b>' : s.month === 2 ? ' · 2 late cancellations this month · a 3rd may pause lesson offers (Clause 5.2)' : '')); }
+    + (s.month >= 3 ? ' · <b>' + s.month + ' late cancellations this month: lesson offers may be paused (Clause 5.2)</b>' : s.month === 2 ? ' · 2 late cancellations this month · a 3rd may pause lesson offers (Clause 5.2)' : ''))
+    + (s.by ? (() => { const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], L = s.by.filter((x, i) => x.n || s.by.slice(0, i).some(y => y.n)); if(!L.length) return '';   /* 2562 */
+        const rep = s.run >= 2, two = s.by[s.by.length - 1].n >= 2, mg = typeof D !== 'undefined' && D && D.mgr;
+        return lv1795line(rep || two ? 'warn' : 'ok', 'Notices by month: ' + L.map(x => MN[+x.m.slice(5, 7) - 1] + ' <b>' + x.n + '</b>').join(' · ')
+          + (rep ? ' · <b>a notice in each of the last ' + s.run + ' months</b>' : '') + (two ? ' · ' + s.by[s.by.length - 1].n + ' notices this month' : '')
+          + (mg ? '<div class="small" style="margin-top:4px;opacity:.85">Addendum No. 1 sets no monthly limit: 4 h or more is no charge (2.9). Each month with a notice loses the Perfect Attendance incentive (4.4). A pause (5.2) needs a 3rd charged case of the same kind in one month. A limit on notices would need a new signed addendum (1.8).</div>' : '')); })() : ''); }
 function lv1804clauses(){ const q = (n, t) => '<div style="margin-top:6px"><b>Clause ' + n + '</b> · ' + t + '</div>';   /* 1804: exact text, Addendum No. 1 v1.0 */
   return '<details class="lv95x" style="margin-top:8px;font-size:12.5px;line-height:1.5"><summary style="cursor:pointer;font-weight:600;color:#1F6E6A">Read the clauses (Addendum No. 1)</summary>'
     + q('2.9 Notice of unavailability', '“If the Teacher cannot deliver an accepted lesson, the Teacher files a notice of unavailability in the App, with proof where available, at least four (4) hours before the lesson. Operations reviews it, and the President confirms any reassignment of the lesson.”')
@@ -7439,7 +7447,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2159;
+const COE_V = 2160;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
