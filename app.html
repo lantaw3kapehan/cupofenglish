@@ -7439,7 +7439,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2152;
+const COE_V = 2153;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -43461,7 +43461,7 @@ window.pass2375 = function(i){ try{ var x = (window.DK2341q || [])[i] || null; i
       { k: 'paid', title: 'Paid', done: !!paid, sub: paid ? ((+paid.pkg ? paid.pkg + ' + ' + (+paid.free || 0) + ' lessons' : (paid.lessons || '?') + ' lessons') + (paid.inv ? ' · ' + String(paid.inv).replace(/^PaymentConfirmation(\d+).*$/, 'Payment Confirmation $1') : '') + ' · recorded ' + paid.at + (paid.by ? ' · ' + paid.by : '')) : '' },
       { k: 'sched', title: 'Class schedule', done: !!sch, warn: !!paid && !sch, sub: sch ? sch.n + ' classes · ' + (sch.slots || []).slice().sort((a, b) => ('MonTueWedThuFriSatSun'.indexOf(a.slice(0, 3)) - 'MonTueWedThuFriSatSun'.indexOf(b.slice(0, 3))) || a.localeCompare(b)).join(' + ') + (sch.teacher ? ' · Teacher ' + cap(sch.teacher) : '') + ' · from ' + sch.first : (paid ? 'Paid ' + paid.at + ' · no classes booked yet · book the classes' : '') },
       { k: 'agree', title: 'Agreement', done: !!(ag && ag.how !== 'Sent'), half: !!(ag && ag.how === 'Sent'), sub: ag ? (ag.how === 'Sent' ? 'Sent ' + dm(ag.at) + ' · waiting for the signature' : 'Signed ' + dm(ag.at)) : '' },
-      { k: 'welcome', title: 'Welcome message', done: !!m.welcome, sub: mk('welcome'), undo: 1 }
+      { k: 'welcome', title: 'Class notice', done: !!m.welcome, sub: mk('welcome'), undo: 1 }   /* 2555: Class notice (the welcome to the WeChat group) */
     ];
     const n = L.filter(s => s.done).length, ld = L.map(s => s.done).lastIndexOf(true), nx = L.find((s, i) => !s.done && i > ld) || L.find(s => !s.done);
     return { L, n, nx, paid, sch }; }
@@ -43483,11 +43483,14 @@ window.pass2375 = function(i){ try{ var x = (window.DK2341q || [])[i] || null; i
     const st = steps(t), A = el.querySelector('#tl4A');
     /* Class notice is the welcome message · it goes last, after the agreement */
     const cn = rowOf(el, 'Class notice') || rowOf(el, 'Welcome message'), ag = rowOf(el, 'Agreement');
-    if(cn){ const b = cn.querySelector('.tl4-t b'), s = cn.querySelector('.tl4-t span'); b.textContent = 'Welcome message'; if(!st.L[9].done) s.textContent = 'Class times, books and the first class · for the WeChat group';
+    if(cn){ const b = cn.querySelector('.tl4-t b'), s = cn.querySelector('.tl4-t span'); b.textContent = 'Class notice'; if(!st.L[9].done) s.textContent = 'First rename the WeChat group, then copy the class notice into it';
+      { const g = window.wx2555 ? wx2555(t.student || t.code, t.code, st.paid ? (+st.paid.pkg ? +st.paid.pkg + (+st.paid.free || 0) : +st.paid.lessons || 0) : 0) : ''; let w = cn.querySelector('.wx2555');   /* 2555: the group name, right here */
+        if(g){ if(!w){ w = document.createElement('div'); w.className = 'wx2555'; w.style.cssText = 'grid-column:2/-1;font-size:13px;color:#5E5A75;margin-top:2px;display:flex;gap:8px;align-items:center;flex-wrap:wrap'; cn.appendChild(w); }
+          if(w.dataset.g !== g){ w.dataset.g = g; w.innerHTML = 'WeChat group name: <b style="color:#2B2253">' + E(g) + '</b><button type="button" class="btn ghost sm" style="padding:3px 10px">Copy group name</button>'; w.querySelector('button').onclick = ev => { ev.preventDefault(); ev.stopPropagation(); wx2555Copy(g); }; } } else if(w) w.remove(); }
       if(ag && ag.nextElementSibling !== cn) ag.after(cn);
       cn.querySelectorAll('button').forEach(x => { if(!x.dataset.st01){ x.dataset.st01 = 1; x.addEventListener('click', () => mark(t, 'welcome', true), true); } }); }
     ['Course plan', 'CEFR picture', 'Price'].forEach((ti, i) => { const r = rowOf(el, ti); if(r) r.querySelectorAll('button').forEach(x => { if(!x.dataset.st01){ x.dataset.st01 = 1; x.addEventListener('click', () => mark(t, ['plan', 'cefr', 'price'][i], true), true); } }); });
-    const map = { report: 'Trial report', plan: 'Course plan', cefr: 'CEFR picture', price: 'Price', fu: 'Follow up', details: 'Student details', paid: 'Paid', sched: 'Class schedule', agree: 'Agreement', welcome: 'Welcome message' };
+    const map = { report: 'Trial report', plan: 'Course plan', cefr: 'CEFR picture', price: 'Price', fu: 'Follow up', details: 'Student details', paid: 'Paid', sched: 'Class schedule', agree: 'Agreement', welcome: 'Class notice' };
     st.L.forEach((s, i) => { const r = rowOf(el, map[s.k]); if(!r) return; const nEl = r.querySelector('.tl4-n'), sp = r.querySelector('.tl4-t span');
       r.classList.toggle('done', s.done); r.classList.toggle('next', !s.done && st.nx === s); r.classList.toggle('st01w', !!s.warn); r.classList.toggle('st01h', !s.done && !!s.half);
       if(nEl) nEl.textContent = s.done ? '✓' : s.warn ? '!' : String(i + 1);
@@ -43499,7 +43502,7 @@ window.pass2375 = function(i){ try{ var x = (window.DK2341q || [])[i] || null; i
           const d = document.createElement('div'); d.className = 'st01u'; d.textContent = 'Already recorded · Enrolled · paid is hidden so it cannot be saved twice · a new package goes in Renewals'; r.appendChild(d); } }
       if(s.k === 'sched'){ const b = r.querySelector('.tl4-a button'); if(b){ if(s.done){ b.textContent = 'View calendar'; b.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); closeSheet(); openStudent(t.code); }; } else if(s.warn){ b.textContent = 'Book the classes'; b.classList.add('teal'); } } } });
     { const pg = [...el.querySelectorAll('.tl4-r')].find(r => /^Student page$/.test((r.querySelector('.tl4-t b') || {}).textContent || '')); if(pg){ const n = pg.querySelector('.tl4-n'); if(n) n.textContent = '·'; pg.classList.remove('next', 'done'); } }
-    { const w = [...el.querySelectorAll('.tl4-r')].find(r => /^Welcome message$/.test((r.querySelector('.tl4-t b') || {}).textContent || '')); const b = w && w.querySelector('.tl4-a button'); if(b && /Class notice/.test(b.textContent)) b.textContent = 'Open'; }
+    { const w = [...el.querySelectorAll('.tl4-r')].find(r => /^(Welcome message|Class notice)$/.test((r.querySelector('.tl4-t b') || {}).textContent || '')); const b = w && w.querySelector('.tl4-a button'); if(b && /Class notice/.test(b.textContent)) b.textContent = 'Open'; }
     let p = el.querySelector('.st01p'); if(!p){ p = document.createElement('div'); p.className = 'st01p'; el.querySelector('.tl4').prepend(p); }
     p.innerHTML = '<div class="h"><b>' + st.n + ' of 10 done</b>' + (st.nx ? '<span>Next: ' + E(st.nx.title) + '</span>' : '<span>All done ✓</span>') + '</div><div class="bar"><i style="width:' + (st.n * 10) + '%"></i></div>'; }
   async function mark(t, k, on){ const m = M[t.label] = M[t.label] || {}, me = ((typeof D !== 'undefined' && D && D.me) || {}).name || '';
@@ -44610,6 +44613,22 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
       for(var f of want.slice(0, 60)){ if(D.today !== day) break; await waitFree(); try{ await save(MEDIA + encodeURIComponent(f.id), f.kind === 'video' ? 'video/mp4' : 'audio/mpeg'); }catch(e){} }
       DONE[day] = Date.now(); }catch(e){} RUN = 0; }
   setTimeout(function(){ run(); }, 45e3); setInterval(function(){ run(); }, 10 * 6e4);
+})();
+</script>
+<script id="b2555">
+/* 21 Nov · 2555 · WeChat group name before the Class notice (Misty 09:23) */
+window.wx2555 = function(name, code, n){ try{ code = String(code || '').toUpperCase(); if(!code || !window.wxGroup) return ''; let g = wxGroup(name || code, code);
+    if(!/节课/.test(g) && +n > 0) g = g.replace(/\((ST-\d{4}-\d{3})\)$/i, '-' + (Math.round(+n * 10) / 10) + '节课($1)'); return g; }catch(e){ return ''; } };
+window.wx2555Copy = function(g){ if(!g) return; const done = () => toast('Copied · in the WeChat group: ··· › Group name › paste › Done'); try{ navigator.clipboard.writeText(g).then(done, () => toast(g)); }catch(e){ toast(g); } };
+(function(){
+  const box = () => { try{ if(typeof CN === 'undefined' || !CN || !CN.code) return; const b = $('sheetBody'); if(!b || !$('cnPv')) return;
+      const m = /([\d.]+) units?（/.exec(typeof cnText === 'function' ? cnText() : ''), g = wx2555(CN.name, CN.code, m ? +m[1] : 0); if(!g) return;
+      let w = $('wx2555'); const h = '<div style="font-weight:700;color:#2B2253">1 · Rename the WeChat group</div><div class="small mute" style="margin:2px 0 8px">In the group: ··· › Group name › paste › Done. Then 2 · copy the notice below into the group.</div>'
+        + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="color:#0E5E5E;font-size:15px">' + esc(g) + '</b><button type="button" class="btn ghost sm" onclick="wx2555Copy(this.dataset.g)" data-g="' + esc(g) + '">Copy group name</button></div>';
+      if(!w){ w = document.createElement('div'); w.id = 'wx2555'; w.style.cssText = 'margin:12px 0 4px;padding:12px 14px;border-radius:14px;background:#F4FAF8;border:1px solid #DCEFEA'; const d = b.querySelector('h1 + .mute') || b.querySelector('h1'); d.after(w); }
+      if(w.dataset.g !== g){ w.dataset.g = g; w.innerHTML = h; } }catch(e){} };
+  const _p = window.cnPaint; if(typeof _p === 'function') window.cnPaint = cnPaint = function(){ const r = _p.apply(this, arguments); box(); return r; };
+  const _v = window.cnPv; if(typeof _v === 'function') window.cnPv = cnPv = function(){ const r = _v.apply(this, arguments); box(); return r; };
 })();
 </script>
 <script id="b2278">
