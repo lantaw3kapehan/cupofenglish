@@ -4485,7 +4485,7 @@ const lvStage = r => r.status !== 'Pending' ? r.status : r.ask ? 'More details n
 const lvChip = r => { const st = typeof r === 'string' ? r : lvStage(r); return `<span class="chip ${st === 'Approved' ? 'green' : st === 'More details needed' ? 'red' : /^(Pending|Waiting)/.test(st) ? 'amber' : st === 'Declined' ? 'red' : ''}">${esc(st)}</span>`; };
 const lvClsShort = r => r.classes && r.classes !== 'No classes' ? String(r.classes).split(':')[0] : 'No classes';
 function lvCls(r){ const s = String(r.classes || ''), i = s.indexOf(':'); if(i < 0 || /^No classes/.test(s)) return [];
-return s.slice(i + 1).split(', ').map(x => { const m = x.trim().match(/^(\d\d-\d\d) (\d\d:\d\d)(?:–(\d\d:\d\d))? (.+)$/); return m ? { key: m[1] + ' ' + m[2], md: m[1], time: m[2], end: m[3] || '', student: m[4] } : null; }).filter(Boolean); }
+return s.slice(i + 1).split(', ').map(x => { const m = x.trim().match(/^(\d\d-\d\d) (\d\d:\d\d)(?:–(\d\d:\d\d))? (.+)$/); return m ? { key: m[1] + ' ' + m[2], md: m[1], time: m[2], end: m[3] || '', student: m[4] } : null; }).filter(Boolean).concat(r._add2572 || []); }   /* 2572: + classes booked after the request */
 const lvInf = (r, key) => (r.informed || []).find(k => k.slice(0, 11) === key);
 function lvInfHtml(r, who){ const L = lvCls(r); if(!L.length) return ''; const n = L.filter(c => lvInf(r, c.key)).length, y = String(r.from).slice(0, 4);
 return `<div class="lv-inf"><div class="small"><b>Students to inform</b> <span class="mute">${n}/${L.length} informed</span></div>${L.map(c => { const k = lvInf(r, c.key);
@@ -4582,7 +4582,16 @@ async function lvClasses(keep){ const t = ($('lvT')||{}).value, f = ($('lvF')||{
 const some = LVF && LVF.part === 'Some classes', a = some ? ($('lvA')||{}).value : '', b = some ? ($('lvB')||{}).value : '';
 if(!t || !f){ box.textContent = 'Pick the person and dates'; return; } if(some && (!a || !b)){ box.textContent = 'Pick from what time to what time'; return; }
 if(!keep) box.textContent = 'Checking the calendar…';
-try{ const L = await api('mgmtLeaveClasses', TOKEN, t, f, to, a, b); if(($('lvT')||{}).value !== t) return; box.innerHTML = lvClsHtml(L) + (L.length ? '<div>Move them or find a sub in Schedule.</div>' : ''); }
+try{ const L = await api('mgmtLeaveClasses', TOKEN, t, f, to, a, b); if(($('lvT')||{}).value !== t) return;
+  const x2572 = keep && LVF && LVF.id && LV && (LV.rows || []).find(r => r.id === LVF.id);   /* 2572: a saved request — compare with what was saved */
+  if(x2572){ x2572._add2572 = []; const sv = lvCls(x2572), keyOf = c => String(c.date || '').slice(5, 10) + ' ' + c.time, SK = new Set(sv.map(c => c.key)), LK = new Set(L.map(keyOf));
+    const add = L.filter(c => !SK.has(keyOf(c))), gone = sv.filter(c => !LK.has(c.key)), mins = L.reduce((s, c) => s + (c.mins || 0), 0);
+    x2572._add2572 = add.map(c => ({ key: keyOf(c), md: keyOf(c).slice(0, 5), time: c.time, end: c.end || '', student: c.student || c.code, code: c.code, added: 1 }));
+    box.innerHTML = '<b>' + L.length + ' class' + (L.length === 1 ? '' : 'es') + ' · ' + mins + ' min</b> <span class="mute">on the calendar now</span><div>' + L.map(c => esc(lvNice(c.date) + ' ' + c.time + '–' + (c.end || '') + ' · ' + (c.student || c.code)) + (SK.has(keyOf(c)) ? '' : ' <b style="color:#B4513B">· booked after the request</b>')).join('<br>') + '</div>'
+      + (gone.length ? '<div>No longer on the calendar (moved or cancelled): ' + gone.map(c => esc(c.student + ' ' + c.time)).join(', ') + '</div>' : '')
+      + (add.length || gone.length ? '<div class="mute">The request was sent with ' + esc(lvClsShort(x2572)) + '.</div>' : '') + (L.length ? '<div>Move them or find a sub in Schedule.</div>' : '');
+    const inf = box.parentNode && box.parentNode.querySelector('.lv-inf'); if(add.length){ const h = lvInfHtml(x2572, 'm'); if(inf) inf.outerHTML = h; else box.insertAdjacentHTML('afterend', h); } return; }
+  box.innerHTML = lvClsHtml(L) + (L.length ? '<div>Move them or find a sub in Schedule.</div>' : ''); }
 catch(e){ if(!keep) box.textContent = 'Could not check the calendar · it is checked again when you save.'; } }
 async function lvProof(id, i){ const el = $('lvPv'); if(el) el.innerHTML = '<div class="sk" style="height:120px;margin-top:8px"></div>';
 try{ const k1616 = id + '|' + i, r = (window.__lp1616 = window.__lp1616 || {})[k1616] || await ((window.__lpq1825 || {})[k1616] || api('mgmtLeaveProof', TOKEN, id, i))   /* 1825 */; if(!r.ok) throw r; try{ const ks = Object.keys(window.__lp1616); if(ks.length > 12) delete window.__lp1616[ks[0]]; window.__lp1616[k1616] = r; }catch(e){}   /* 1616: seen again → instant */ const bin = atob(r.b64), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
@@ -7449,7 +7458,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2166;
+const COE_V = 2167;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
