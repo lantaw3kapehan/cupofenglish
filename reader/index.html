@@ -96,7 +96,7 @@ body.idle .tools:not(:hover){opacity:.35}
 .tmini small{font-size:9.5px;color:var(--mute)}
 .tools,.tmini{position:fixed;left:var(--tlx,16px);top:var(--tly,50%)}   /* 2606: tools stay on screen while zoomed or scrolled */
 .bbar{display:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);align-items:center;gap:4px;background:#fff;border:1px solid #E3E1EA;border-radius:14px;padding:5px;z-index:7;box-shadow:0 4px 14px rgba(43,36,80,.12);transition:opacity .3s;max-width:calc(100vw - 24px);overflow-x:auto}
-body.board .bbar{display:flex}body.present .bbar{bottom:auto;top:58px}.pill button{white-space:nowrap}   /* 2620: presenting: style bar at the top (over the page header), the writing space stays free */body.present.idle .bbar{opacity:.15}
+body.board .bbar{display:flex}body.present .bbar{display:none!important}.pill .bo{display:none}body.board .pill .bo{display:inline-block}.smenu{display:none;position:fixed;z-index:8;background:#2B2450;border-radius:14px;padding:6px;flex-direction:column;gap:2px;box-shadow:0 6px 18px rgba(0,0,0,.25)}.smenu.on{display:flex}.smenu button{height:38px;border:0;border-radius:10px;background:transparent;color:#fff;font-size:14px;font-weight:600;text-align:left;padding:0 14px;cursor:pointer;white-space:nowrap}.smenu button.on{background:rgba(255,255,255,.18)}.pill button{white-space:nowrap}   /* 2620: presenting: style bar at the top (over the page header), the writing space stays free */body.present.idle .bbar{opacity:.15}
 .bbar button{height:34px;border:0;border-radius:10px;background:transparent;cursor:pointer;font-size:13px;font-weight:600;color:#2B2450;padding:0 11px;white-space:nowrap}.bbar button.on{background:var(--teal2);color:#0E4C52}.bbar i{width:1px;height:22px;background:#E3E1EA;margin:0 4px}
 .txdrag{cursor:move!important}.txsize{cursor:nwse-resize!important}   /* 2614 */
 body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not(:hover){opacity:.35}
@@ -154,7 +154,8 @@ body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not
 </div>
 </div>
 <div class="bbar" id="bbar" role="toolbar" aria-label="Blank board"><button data-bs="plain">Plain</button><button data-bs="lines">Lines</button><button data-bs="grid">Grid</button><button data-bs="four">Four lines</button><i></i><button id="bnew">+ New page</button><button id="bback">Back to book</button></div>
-<div class="pill" id="pill"><button id="pp" aria-label="Previous page">‹</button><span class="num" id="pg2">–</span><button id="pn" aria-label="Next page">›</button><button id="pzo" aria-label="Zoom out" title="Zoom out">−</button><button id="pz" title="Fit the page">Fit</button><button id="pzi" aria-label="Zoom in" title="Zoom in">+</button><button id="pboard" title="Blank board ↔ book (key B)">Board</button><button id="pcopy" title="Copy this page with your notes as a clean picture for the WeChat group (no video windows)">Copy page</button><button id="px">Exit · Esc</button></div>
+<div class="smenu" id="smenu" role="menu"><button data-bs="plain">Plain</button><button data-bs="lines">Lines</button><button data-bs="grid">Grid</button><button data-bs="four">Four lines</button></div>
+<div class="pill" id="pill"><button id="pp" aria-label="Previous page">‹</button><span class="num" id="pg2">–</span><button id="pn" aria-label="Next page">›</button><button id="pzo" aria-label="Zoom out" title="Zoom out">−</button><button id="pz" title="Fit the page">Fit</button><button id="pzi" aria-label="Zoom in" title="Zoom in">+</button><button id="pstyle" class="bo" aria-haspopup="menu" title="Page style">Style</button><button id="pnew" class="bo" title="Add a blank page">+ Page</button><button id="pboard" title="Blank board ↔ book (key B)">Board</button><button id="pcopy" title="Copy this page with your notes as a clean picture for the WeChat group (no video windows)">Copy page</button><button id="px">Exit · Esc</button></div>
 <div class="vid" id="vid"><div class="top"><b id="vt"></b><button id="vx">✕ Close</button></div><video id="vv" controls playsinline preload="auto"></video></div>
 <script src="../homework/hdr.js"></script>
 <script type="module">
@@ -492,8 +493,12 @@ function board(on){ if(!doc) return; if(on && !isB()){ BBACK = pageNo; if(!BRD.l
   $('stage').scrollTo(0, 0); boardUI(); render(); }
 $('boardBt').onclick = () => board(!isB()); $('pboard').onclick = () => board(!isB());
 $('bback').onclick = () => board(false);
+/* 2621 (Misty 15:01): presenting: no bar at the top; the bottom bar has Style (menu) and + Page on board pages */
+$('pnew').onclick = () => $('bnew').click();
+$('pstyle').onclick = e => { e.stopPropagation(); const m = $('smenu'), r = $('pstyle').getBoundingClientRect(); m.classList.toggle('on'); if(m.classList.contains('on')){ m.style.left = Math.round(r.left) + 'px'; m.style.top = Math.round(r.top - m.offsetHeight - 8) + 'px'; } };
+document.addEventListener('pointerdown', e => { const m = $('smenu'); if(m.classList.contains('on') && !m.contains(e.target) && e.target.id !== 'pstyle') m.classList.remove('on'); }, true);
 $('bnew').onclick = () => { if(!isB()) return; BRD.push(BRD[+pageNo.slice(1) - 1] || 'plain'); pageNo = 'b' + BRD.length; render(); };
-document.querySelectorAll('[data-bs]').forEach(b => b.onclick = () => { if(!isB()) return; BRD[+pageNo.slice(1) - 1] = b.dataset.bs; render(); });
+document.querySelectorAll('[data-bs]').forEach(b => b.onclick = () => { $('smenu').classList.remove('on'); if(!isB()) return; BRD[+pageNo.slice(1) - 1] = b.dataset.bs; render(); });
 
 /* ── drawing: kept per page, in page proportions so zoom keeps them in place ── */
 const key = () => 'coe.ann.' + FID;
