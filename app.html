@@ -4524,7 +4524,7 @@ const toCheck = pend.filter(r => !r.ops && !r.ask), asked = pend.filter(r => r.a
 const onToday = now.filter(r => r.from <= t), past = R.filter(r => r.status !== 'Pending' && !(r.status === 'Approved' && r.to >= t)).filter(r => !q || (r.teacher + ' ' + r.type + ' ' + r.reason).toLowerCase().includes(q));
 const tot = {}; R.filter(r => r.status === 'Approved' && r.from.slice(0,4) === y).forEach(r => { tot[r.teacher] = (tot[r.teacher] || 0) + r.days; });
 const row = (r, btn) => `<div class="li" onclick="lvSheet('${esc(r.id)}')"><div class="av">${esc(String(r.teacher)[0]||'?')}</div><div class="grow"><div class="row" style="gap:6px;flex-wrap:wrap"><b>${esc(tName(r.teacher))}</b>${lvChip(r)}</div>
-<div class="small ell">${esc(r.type)} · ${esc(lvDates(r))}${r.notice ? ' · ' + esc(r.notice) : ''} · ${esc(lvClsShort(r))}</div><div class="small mute ell">${esc(r.reason || '')}${lvCls(r).length && r.status !== 'Declined' && r.status !== 'Cancelled' ? ' · informed ' + lvCls(r).filter(c => lvInf(r, c.key)).length + '/' + lvCls(r).length : ''}</div>
+<div class="small ell">${esc(r.type)} · ${esc(lvDates(r))}${r.notice ? ' · ' + esc(r.notice) + ' (by date)' : ''}${(() => { try{ const C = lv1795cls(r); if(!C.length) return ''; const h = (Math.min.apply(null, C.map(c => c.t)) - lv1795at(r.at)) / 36e5; return ' · ' + (h < 4 ? '<b style="color:#B4513B">' + esc(lv1795h(h)) + ' before the first lesson · under 4 h (Clause 2.9)</b>' : esc(lv1795h(h)) + ' before the first lesson · 4 h or more'); }catch(e){ return ''; } })()} · ${esc(lvClsShort(r))}</div><div class="small mute ell">${esc(r.reason || '')}${lvCls(r).length && r.status !== 'Declined' && r.status !== 'Cancelled' ? ' · informed ' + lvCls(r).filter(c => lvInf(r, c.key)).length + '/' + lvCls(r).length : ''}</div>
 ${r.status === 'Pending' ? `<div class="small mute ell">${(r.proof||[]).length ? (window.IC1120 ? IC1120('clip') : '') + r.proof.length + ' proof file' + (r.proof.length === 1 ? '' : 's') : 'No proof yet'}${r.ask ? ' · asked: ' + esc(r.ask) : r.ops ? ' · checked by ' + esc(r.ops) : ''}</div>` : ''}${btn ? '<div class="row" style="gap:8px;margin-top:8px">' + btn + '</div>' : ''}</div>${btn ? '' : '<span class="vl1121">View ›</span>'}</div>`;
 const dec = r => `<button class="btn teal sm" onclick="event.stopPropagation();lvDecide('${esc(r.id)}','Approved')">Approve</button><button class="btn ghost sm" onclick="event.stopPropagation();lvDecide('${esc(r.id)}','Declined')">Decline</button><button class="btn ghost sm" onclick="event.stopPropagation();lvSheet('${esc(r.id)}')">Review request</button>`;
 const chk = r => `<button class="btn teal sm" onclick="event.stopPropagation();lvSheet('${esc(r.id)}')">Check proof</button>`;
@@ -4567,7 +4567,7 @@ ${canAsk && !x.ask ? `<label>Ask the teacher for more details</label><div class=
 <div class="grow"><label>To</label><input id="lvTo" class="in-t" type="date" value="${esc(x ? x.to : t0)}" onchange="lvClasses()"></div></div>
 <label>How much</label><div class="qa-ch">${['Whole day','Some classes'].map(v => pill('part', v, LVF.part, "$('lvW').style.display=LVF.part==='Some classes'?'':'none';lvClasses()")).join('')}</div>
 ${lvTimeRow('lv', part0 === 'Some classes' ? (w[0] || '') : null, w[1] || '')}
-<label>Notice</label><div class="qa-ch">${['In advance','Short notice','After the fact'].map(v => pill('notice', v, LVF.notice)).join('')}</div>
+<label>Notice category <span class="mute" style="font-weight:400">· by date: In advance = 2+ days ahead · Short notice = for today or tomorrow · the charge goes by the 4 h rule (Clause 2.9)</span></label><div class="qa-ch">${['In advance','Short notice','After the fact'].map(v => pill('notice', v, LVF.notice)).join('')}</div>
 <label>Reason</label><textarea id="lvR" class="in-t" rows="2" placeholder="e.g. fever · family emergency · out of town">${esc(x ? x.reason : '')}</textarea>
 <label>Lessons affected</label><div id="lvC" class="small mute">${x ? esc(x.classes || '—') : 'Pick the person and dates'}</div>${x && x.status !== 'Declined' && x.status !== 'Cancelled' ? lvInfHtml(x, 'm') : ''}
 ${lvDrop('lvFile', 'lvFiles', x ? 'Add proof' : 'Attach proof (if the teacher sent it)')}
@@ -7458,7 +7458,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2168;
+const COE_V = 2169;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
