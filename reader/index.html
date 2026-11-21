@@ -581,6 +581,8 @@ $('pz').onclick = () => setZoom(1);   /* 2616 (Misty 21 Nov): presenting has −
 $('pzi').onclick = () => setZoom(zoom * 1.25); $('pzo').onclick = () => setZoom(zoom / 1.25);
 /* 2323 · Copy page: the page shown, drawn sharp (1600 px wide, about 3× a screenshot) with the teacher's drawings and a small
    "Homework · 作业" band (book · unit), copied as a picture to paste in the WeChat group. Not copied → it downloads instead. */
+/* 2617 (Misty 21 Nov): the class-notes picture names the teacher who made the notes (the teacher signed in to the app on this computer; not for management) */
+function tchName(){ try{ const d = JSON.parse(localStorage.getItem('coe.data') || 'null'), m = d && d.me; if(!m || d.mgr || !m.name) return ''; return String(m.name).trim().slice(0, 30); }catch(e){ return ''; } }
 async function pagePic(notes){ const p = await doc.getPage(pageNo), v1 = p.getViewport({ scale: 1 }), sc = Math.min(4, 1600 / v1.width), vp = p.getViewport({ scale: sc });
   const src = document.createElement('canvas'); src.width = Math.round(vp.width); src.height = Math.round(vp.height); const sg = src.getContext('2d'); sg.fillStyle = '#fff'; sg.fillRect(0, 0, src.width, src.height);
   await p.render({ canvasContext: sg, viewport: vp }).promise;
@@ -595,7 +597,7 @@ async function pagePic(notes){ const p = await doc.getPage(pageNo), v1 = p.getVi
   try{ await fontsReady(); }catch(e){}
   const hT = window.coeHdr ? coeHdr.height(W, !!label) : 0, out = document.createElement('canvas'); out.width = W; out.height = hT + hh + P; const g = out.getContext('2d');
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, out.height);
-  if(window.coeHdr) coeHdr.draw(g, W, { logo, title: notes ? 'Class notes / 课堂笔记' : 'Homework / 作业', meta: [Q.get('s') ? 'For / 学生: ' + Q.get('s') : ''].filter(Boolean), label });   /* 2407: the student when opened from a class or a student page */
+  if(window.coeHdr) coeHdr.draw(g, W, { logo, title: notes ? 'Class notes / 课堂笔记' : 'Homework / 作业', meta: [notes && tchName() ? 'Teacher / 老师: ' + tchName() : '', Q.get('s') ? 'For / 学生: ' + Q.get('s') : ''].filter(Boolean), label });   /* 2407: the student when opened from a class or a student page */
   g.drawImage(pg, P, hT); g.strokeStyle = '#E3E1EA'; g.lineWidth = Math.max(1, Math.round(W / 600)); g.strokeRect(P, hT, pg.width, hh);
   /* Give homework recognises this page by its size and keeps only the page and its label under its own header */
   if(!notes) try{ localStorage.setItem('coe.hwcard', JSON.stringify({ w: W, h: out.height, top: hT, pad: P, label, at: Date.now() })); }catch(e){}
