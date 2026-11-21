@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-ops v23 (21 Nov · 2588 validity review: valrev, valset) · v20 (20 Nov · 2524 log kind "sent") · v19 (20 Nov · 2522 lessonfix: "left" flag; a correction closes open reports about the student) · v14 (19 Nov · 2456 lessonfix: management's lesson count for one month) · v13 (19 Nov · 2453 resolve {lid}: President solves a problem from her log) · v12 (18 Nov · 2377 System reminders on the President card) · v11 (18 Nov · 2375 teachers waiting, 2376 weekly summary in deskday) · v10 (18 Nov · 2360 chain of command: report types, answer, myreports, seenans, eod) · v9 (18 Nov · 2344 op me: her own Overview) · v8 (18 Nov · 2341 Ops Desk: desk, log, done, report, deskday, resolve, watch) · v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
+// CupOfEnglish · coe-ops v24 (21 Nov · 2609 clsbylist, clsby) · v23 (21 Nov · 2588 validity review: valrev, valset) · v20 (20 Nov · 2524 log kind "sent") · v19 (20 Nov · 2522 lessonfix: "left" flag; a correction closes open reports about the student) · v14 (19 Nov · 2456 lessonfix: management's lesson count for one month) · v13 (19 Nov · 2453 resolve {lid}: President solves a problem from her log) · v12 (18 Nov · 2377 System reminders on the President card) · v11 (18 Nov · 2375 teachers waiting, 2376 weekly summary in deskday) · v10 (18 Nov · 2360 chain of command: report types, answer, myreports, seenans, eod) · v9 (18 Nov · 2344 op me: her own Overview) · v8 (18 Nov · 2341 Ops Desk: desk, log, done, report, deskday, resolve, watch) · v7 (13 Nov · op finov: Operations' Finance overview, counts only, coe_ops_finov) · v6 (13 Nov · ok also takes tfu: / tagain: · trial follow-up gaps) · v5 (13 Nov · ok also takes risk: · students at risk, "Called ✓") · v4 (13 Nov · "Done today" on renewals and "It's the LAN cable" on pictures were refused: ok now takes renew: and shot:) · v3 (2099 · op invemail: a parent email that came late, on the payment confirmation and the student) · v2 (2093 · precheck also returns the booked classes { first, last, n, lessons }; no "no package" flag on a first enrolment) · v1 (11 Nov 2026, 2091 · Misty: Operations "always makes mistakes with details … I want her to be productive").
 // Management only (Operations and President). Teachers get "Management only".
 // POST { token, op: "check" }                        → { ok, items: [{ kind, ref, text, go }], at }   the daily database check (coe_ops_check)
 // POST { token, op: "ok", ref }                      → { ok }   "It's correct": this item never comes back (coe_ops_ok)
@@ -47,6 +47,20 @@ Deno.serve(async (req: Request) => {
   const op = String(b.op || "");
   // v23 (21 Nov · 2588, audit QA-07): validity review. valrev → every review row (latest first); valset { code, dl, kind, new_date?, note }
   //   records one. Operations may record 'review'; the decisions (extend · exception · date_error) are the President's. Nothing else changes.
+  // v24 (21 Nov · 2609, Misty "easy to check there, and simple"): cancelled classes with no "who asked" (last 45 days) · clsby { id, who } sets it
+  if (op === "clsbylist") {
+    const { data, error } = await db.rpc("coe_cls_by_missing"); if (error) return out({ ok: false, error: "db" }, 500);
+    return out({ ok: true, rows: data || [] });
+  }
+  if (op === "clsby") {
+    const id = String(b.id || "").slice(0, 200), who = String(b.who || "");
+    if (!id || !["parent", "teacher", "company"].includes(who)) return out({ ok: false, error: "Choose who asked." });
+    const { error: e1 } = await db.from("coe_class_who").upsert({ id, field: "by", who, at: new Date().toISOString() }, { onConflict: "id,field" });
+    if (e1) return out({ ok: false, error: "Not saved. Try again." }, 500);
+    const { data: c } = await db.from("classes").select("data").eq("id", id).maybeSingle();
+    if (c) await db.from("classes").update({ data: { ...(c.data || {}), by: who } }).eq("id", id);
+    return out({ ok: true });
+  }
   if (op === "valrev") {
     const { data, error } = await db.from("coe_validity_review").select("code,dl,kind,new_date,note,by_name,at").order("at", { ascending: false }).limit(2000);
     if (error) return out({ ok: false, error: "db" }, 500);
