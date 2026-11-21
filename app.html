@@ -7485,7 +7485,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2204;
+const COE_V = 2205;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -44714,7 +44714,7 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
   /* 2628 (Misty 15:54): on a phone (no To do screen) both cards show on Today, 5 rows each */
   function ph(){ try{ return matchMedia('(max-width: 760px)').matches; }catch(e){ return false; } }
   function host(){ return document.getElementById(ph() ? 'v-home' : 'v-mtoday'); }
-  function paint(){ if(!mgr()) return; var v = host(); if(!v) return; ['wa2609', 'vr2609'].forEach(function(id){ var o = document.getElementById(id); if(o && o.parentElement !== v) o.remove(); }); put('wa2609', whoHtml(), v); try{ put('vr2609', valHtml(), v); }catch(e){} }
+  function paint(){ if(!mgr()) return; try{ ov(); }catch(e){} var v = host(); if(!v) return; ['wa2609', 'vr2609'].forEach(function(id){ var o = document.getElementById(id); if(o && o.parentElement !== v) o.remove(); }); put('wa2609', whoHtml(), v); try{ put('vr2609', valHtml(), v); }catch(e){} }
   function load(){ if(!mgr() || BUSY || Date.now() - AT < 120e3) return paint(); BUSY = 1;
     ops({ op: 'clsbylist' }).then(function(r){ BUSY = 0; AT = Date.now(); if(r && r.ok){ W = r.rows || []; } paint(); }).catch(function(){ BUSY = 0; paint(); }); }
   window.wa2609 = function(btn, id, who){ var row = btn.closest('.li'); if(row) row.style.opacity = '.4';
@@ -44722,6 +44722,15 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
       .catch(function(e){ if(row) row.style.opacity = ''; toast((e && e.error) || 'Not saved. Try again.'); }); };
   var _r = window.renderMToday; if(typeof _r === 'function') window.renderMToday = function(){ var x = _r.apply(this, arguments); try{ load(); }catch(e){} return x; };
   var shown = function(){ var v = host(); return !!(v && v.offsetParent); };
+  /* 2629 (Misty 16:20): Overview › Needs you (laptop) gets one group with the two counts and Open buttons to To do */
+  var ovOn = function(){ var o = document.getElementById('nd37'); return !ph() && !!(o && o.offsetParent); };
+  function ov(){ var o = document.getElementById('nd37'); if(!o || ph() || !mgr()) return; var nw = (W || []).length, nv = 0; try{ var m = /Validity to review · (\d+)/.exec(valHtml() || ''); nv = m ? +m[1] : 0; }catch(e){}
+    var g = document.getElementById('nd2629'); if(!nw && !nv){ if(g) g.remove(); return; }
+    var row = function(n, t, s){ return n ? '<div class="nd-r"><span class="nd-n" aria-label="' + t + ': ' + n + '">' + n + '</span><span class="nd-t"><b>' + t + '</b><small>' + s + '</small></span><button class="btn sm ghost" onclick="go(\'mtoday\')" aria-label="Open ' + t + '">Open</button></div>' : ''; };
+    var h = '<div class="nd-gh"><span class="nd-dot" aria-hidden="true"></span><b>Records to check</b><span class="nd-gc">' + (nw + nv) + '</span><small>on To do</small></div>' + row(nw, 'Who asked', 'cancelled classes without who asked · ' + (W || []).filter(function(x){ return sug(x.why); }).length + ' suggested') + row(nv, 'Validity to review', 'lessons left after the validity date');
+    if(!g){ g = document.createElement('div'); g.id = 'nd2629'; g.className = 'nd-grp'; }
+    if(g.parentElement !== o) o.appendChild(g); if(g.__h !== h){ g.__h = h; g.innerHTML = h; } }
+  setInterval(function(){ try{ if(ovOn()){ if(W === null) load(); ov(); } }catch(e){} }, 3000);
   var _h = window.renderHome; if(typeof _h === 'function') window.renderHome = function(){ var x = _h.apply(this, arguments); try{ if(ph()) load(); }catch(e){} return x; };
   setInterval(function(){ try{ if(shown()) load(); }catch(e){} }, 30e3);   /* 2628: load (at most every 2 min), so the phone Today gets the list too */
   var n0 = 0, t0 = setInterval(function(){ try{ var ok = typeof MS !== 'undefined' && Array.isArray(MS) && MS.length; if(ok && shown()) paint(); if(ok || ++n0 > 30) clearInterval(t0); }catch(e){ clearInterval(t0); } }, 2e3);
