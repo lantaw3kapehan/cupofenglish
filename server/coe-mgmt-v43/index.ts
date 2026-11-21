@@ -43,6 +43,7 @@ Deno.serve(async (req: Request) => {
   const out = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...h, "Content-Type": "application/json" } });
   if (req.method !== "POST") return out({ ok: false, error: "POST only" }, 405);
   let b: any; try { b = JSON.parse(await req.text()); } catch { return out({ ok: false, error: "bad request" }, 400); }
+  if (b && b.op === "warm") return out({ ok: true, warm: true });   // 21 Nov (2612): the 4-minute warm-up ping (cron coe-app-warm) only wakes the server; answered ok instead of "bad request"
   if (b.op === "newCode") {   // 16 Oct · a new student's code, handed out by the database (never twice)
     const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
     const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
