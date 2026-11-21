@@ -3346,7 +3346,15 @@ ${(HL.handover||[]).length ? `<div style="margin:4px 0"><b>Teacher changed in th
 async function hlBudget(){ try{ const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'docs', token: TOKEN, keys: ['sys:budget2'] }) }).then(x => x.json());
   const b = r && r.ok && r.docs && r.docs['sys:budget2'] && r.docs['sys:budget2'].data; if(!b || b.day !== ymdLocal(new Date()) || !HL || !HL.today) return;
   const dr = (+b.drainAllSec || 0) / 3600, wm = (+b.warmSec || 0) / 3600; HL.today.drain = Math.round(dr * 10) / 10; HL.today.warm = Math.round(wm * 10) / 10; HL.today.hours = Math.round((dr + wm) * 10) / 10; }catch(e){} }
-async function loadHealth(){ try{ HL = await api('mgmtHealth', TOKEN); await hlBudget(); const b = $('hlBox'); if(b) b.innerHTML = hlHtml(); homeSoon(); }catch(e){} }
+async function loadHealth(){ try{ HL = await api('mgmtHealth', TOKEN); await hlBudget(); const b = $('hlBox'); if(b) b.innerHTML = hlHtml(); homeSoon(); try{ hl2598(); }catch(x){} }catch(e){} }
+/* 2598: App health tab · the current check on top */
+function hl2598(){ const v = $('v-msgs'); if(!v || window.MSF !== 'sys') return; let c = v.querySelector('.hl2598');
+  const body = HL ? hlHtml() : '<div class="small mute">Checking…</div>';
+  const html = '<div class="card hl2598" style="margin-top:12px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline"><h3 style="margin:0">App health now</h3><span class="small mute">' + esc(new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })) + (HL && HL.time ? ' · checked ' + esc(HL.time) : '') + ' · the database checks itself every 5 minutes</span></div>' + body + '</div><h3 class="hl2598h" style="margin:16px 0 4px">Older reports <span class="small mute" style="font-weight:400">· each one is about its own date</span></h3>';
+  if(c){ if(c.dataset.h !== String(HL && HL.time)){ c.nextElementSibling && c.nextElementSibling.classList.contains('hl2598h') && c.nextElementSibling.remove(); c.remove(); c = null; } else return; }
+  const anchor = v.querySelector('.tb22') || v.querySelector('.seg'); if(!anchor) return; anchor.insertAdjacentHTML('afterend', html); const n = v.querySelector('.hl2598'); if(n) n.dataset.h = String(HL && HL.time);
+  if(!HL) loadHealth(); }
+(function(){ const _r = window.renderMsgs; if(typeof _r === 'function') window.renderMsgs = function(){ const r = _r.apply(this, arguments); try{ hl2598(); }catch(e){} return r; }; })();
 let NG = null, NG_D = '';
 const ymdMNL = (k=0) => new Date(Date.now() + 8*3600e3 + k*864e5).toISOString().slice(0,10);
 const ymdAdd = (ds, k) => new Date(new Date(ds+'T12:00:00Z').getTime() + k*864e5).toISOString().slice(0,10);
@@ -7465,7 +7473,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2189;
+const COE_V = 2190;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
