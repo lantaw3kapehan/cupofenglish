@@ -1,0 +1,4 @@
+-- 2644 (Misty 21 Nov 18:41): teacher cancellations made 24 h or more before the class no longer come to "Lates to decide".
+-- Applied to coe_late_open() and coe_overview_live(): after the kind filter
+--   and not (l.data->>6 = 'Missed lesson' and coalesce(l.data->>5, '') ~ '^\d+$' and (l.data->>5)::int >= 1440)
+-- The Missed lesson row is still written (coe_missed_mark), so the class record and Perfect Attendance are unchanged.
