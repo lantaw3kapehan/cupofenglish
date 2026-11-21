@@ -94,6 +94,8 @@ body.idle .tools:not(:hover){opacity:.35}
 .tmini{display:none;position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:5;flex-direction:column;align-items:center;gap:2px;background:rgba(255,255,255,.97);border-radius:14px;box-shadow:0 6px 20px rgba(30,26,60,.14);padding:6px;border:0;cursor:pointer;color:var(--ink)}
 .tmini .cur{width:36px;height:36px;border-radius:10px;background:var(--teal2);color:#0E4C52;display:flex;align-items:center;justify-content:center;font-weight:700}
 .tmini small{font-size:9.5px;color:var(--mute)}
+.tools,.tmini{position:fixed;left:var(--tlx,16px);top:var(--tly,50%)}   /* 2606: tools stay on screen while zoomed or scrolled */
+.txdrag{cursor:move!important}
 body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not(:hover){opacity:.35}
 .vid{position:fixed;inset:0;z-index:20;background:rgba(10,12,20,.92);display:none;align-items:center;justify-content:center;flex-direction:column;padding:16px}
 .vid.on{display:flex}
@@ -481,14 +483,19 @@ function drawInk(cv){ const ink = cv || $('ink'), x = ink.getContext('2d'), W = 
 const pt = e => { const r = $('ink').getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
 let cur = null;
 $('ink').addEventListener('pointerdown', e => { if(tool === 'hand') return; e.preventDefault(); const p = pt(e);
-  if(tool === 'text') return addText(e, p);
+  if(tool === 'text'){ const h = hitText(p); if(!h) return addText(e, p);   /* 2606: press on a text and move = drag it; a tap = change it */
+    $('ink').setPointerCapture(e.pointerId); cur = { drag: h, p0: p, x0: h.x, y0: h.y, moved: false, ev: e }; return; }
   $('ink').setPointerCapture(e.pointerId);
   if(tool === 'erase'){ cur = { erase: true, before: list().slice(), hit: false }; eraseAt(p); return; }
   rec();
   if(tool === 'shape'){ cur = { t: 'shape', k: shp, c: color, w: SZ.pen[size] * 1.2, p: [p, p] }; list().push(cur); drawInk(); return; }
   cur = { t: tool, c: tool === 'hl' ? (/^#(2B2450|1B1B1F)$/.test(color) ? '#F5B700' : color) : color, w: tool === 'hl' ? 0.022 : SZ.pen[size], p: [p] }; list().push(cur); drawInk(); });
-$('ink').addEventListener('pointermove', e => { if(!cur) return; const p = pt(e); if(cur.erase) return eraseAt(p); if(cur.t === 'shape') cur.p[1] = p; else cur.p.push(p); drawInk(); });
-const end = () => { if(cur){ if(cur.erase){ if(cur.hit){ HIST.push({ pg: pageNo, snap: cur.before }); REDO.length = 0; } }
+$('ink').addEventListener('pointermove', e => { if(!cur){ if(tool === 'text') $('ink').classList.toggle('txdrag', !!hitText(pt(e))); return; } const p = pt(e);
+  if(cur.drag){ const dx = p[0] - cur.p0[0], dy = p[1] - cur.p0[1]; if(!cur.moved && Math.hypot(dx, dy) < 0.004) return;
+    if(!cur.moved){ rec(); const L = list(), i = L.indexOf(cur.drag), c = Object.assign({}, cur.drag); if(i > -1) L[i] = c; cur.drag = c; cur.moved = true; }
+    cur.drag.x = cur.x0 + dx; cur.drag.y = cur.y0 + dy; drawInk(); return; } if(cur.erase) return eraseAt(p); if(cur.t === 'shape') cur.p[1] = p; else cur.p.push(p); drawInk(); });
+const end = () => { if(cur && cur.drag){ const d = cur; cur = null; if(d.moved) saveAnn(); else addText(d.ev, d.p0); return; }
+  if(cur){ if(cur.erase){ if(cur.hit){ HIST.push({ pg: pageNo, snap: cur.before }); REDO.length = 0; } }
     else if(cur.t === 'shape' && Math.hypot(cur.p[1][0] - cur.p[0][0], cur.p[1][1] - cur.p[0][1]) < 0.005){ ANN[pageNo] = list().filter(a => a !== cur); HIST.pop(); drawInk(); }
     cur = null; saveAnn(); } };
 $('ink').addEventListener('pointerup', end); $('ink').addEventListener('pointercancel', end);
@@ -523,6 +530,8 @@ $('toastU').onclick = () => $('undo').click();
 function fold(on){ document.body.classList.toggle('tmin', on); shOpen && shOpen(false); try{ localStorage.setItem('coe.reader.tmin', on ? '1' : ''); }catch(e){} miniIcon(); setTimeout(render, 30); }
 function miniIcon(){ const b = document.querySelector('.tb[data-t].on'); $('tcur').innerHTML = b ? b.innerHTML : ''; $('tcur').style.color = (b && b.dataset.t !== 'hand' && b.dataset.t !== 'erase') ? color : ''; }
 $('tfold').onclick = () => fold(true); $('tmini').onclick = () => fold(false);
+function tlPlace(){ const r = $('stage').getBoundingClientRect(); document.documentElement.style.setProperty('--tlx', Math.round(r.left + 16) + 'px'); document.documentElement.style.setProperty('--tly', Math.round(r.top + r.height / 2) + 'px'); }   /* 2606 */
+tlPlace(); addEventListener('resize', tlPlace); document.addEventListener('fullscreenchange', () => setTimeout(tlPlace, 60)); try{ new ResizeObserver(tlPlace).observe($('stage')); }catch(e){}
 try{ if(localStorage.getItem('coe.reader.tmin')) document.body.classList.add('tmin'); }catch(e){}
 $('clear').onclick = () => { const L = ANN[pageNo] || []; if(!L.length) return; rec(); ANN[pageNo] = []; drawInk(); saveAnn(); toast('This page is cleared.'); };
 /* shapes: pick one from the small panel */
