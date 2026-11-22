@@ -279,6 +279,13 @@ function setMode(m){ MODE = m; $('mT').classList.toggle('on', m === 'T'); $('mC'
   $('mTip').textContent = m === 'T' ? 'Type or paste exactly what the student wrote. Nothing is marked in this step.' : 'Delete a wrong word (Backspace or Delete): it stays in red with a line through it. Delete the red word again to remove it completely. Then type: your correction comes out in blue.'; }
 $('mT').onclick = () => { setMode('T'); ed.focus(); }; $('mC').onclick = () => { setMode('C'); ed.focus(); };
 const inside = (n, sel) => { n = n && (n.nodeType === 3 ? n.parentNode : n); return n && n.closest ? n.closest(sel) : null; };
+/* 2683 (Misty 22 Nov 11:52): in step 1 typing is always plain, even with the cursor next to a red, blue or green mark */
+function plainT(e){ const s = window.getSelection(); if(!s.rangeCount) return; const r = s.getRangeAt(0); const mk = inside(r.startContainer, 'del,ins,.cm'); if(!mk) return;
+  const txt = e.data != null ? e.data : (e.dataTransfer ? e.dataTransfer.getData('text/plain') : ''); if(!txt) return; e.preventDefault(); if(!r.collapsed) r.deleteContents();
+  const tn = document.createTextNode(txt), a = document.createRange(); a.selectNodeContents(mk); a.setEnd(r.startContainer, r.startOffset); const before = a.toString().replace(/\u200B/g, '');
+  const b = document.createRange(); b.selectNodeContents(mk); b.setStart(r.startContainer, r.startOffset); const after = b.toString().replace(/\u200B/g, '');
+  if(!after) mk.after(tn); else if(!before) mk.before(tn); else { const rest = b.extractContents(), m2 = mk.cloneNode(false); m2.appendChild(rest); mk.after(tn); tn.after(m2); }
+  placeIn(tn, tn.length); ed.dispatchEvent(new Event('input', { bubbles: true })); }
 function placeIn(node, off){ const s = window.getSelection(), r = document.createRange(); r.setStart(node, off); r.collapse(true); s.removeAllRanges(); s.addRange(r); }
 function markDel(r, back){ /* the range becomes red; text typed earlier as a correction is really removed */
   if(inside(r.commonAncestorContainer, 'ins')){ r.deleteContents(); return; }
@@ -291,7 +298,7 @@ function markDel(r, back){ /* the range becomes red; text typed earlier as a cor
   let nx = skip(d.nextSibling, 'nextSibling'); if(isDel(nx)){ d.append(...nx.childNodes); nx.remove(); }
   let pv = skip(d.previousSibling, 'previousSibling'); if(isDel(pv)){ pv.append(...d.childNodes); d.remove(); keep = pv; }
   const s = window.getSelection(), rr = document.createRange(), anchor = keep.isConnected ? keep : null; if(anchor){ if(back) rr.setStartBefore(anchor); else rr.setStartAfter(anchor); } else rr.setStart(r.startContainer, r.startOffset); rr.collapse(true); s.removeAllRanges(); s.addRange(rr); }
-ed.addEventListener('beforeinput', e => { if(MODE !== 'C') return; const s = window.getSelection(); if(!s.rangeCount) return; const r = s.getRangeAt(0); const t = e.inputType;
+ed.addEventListener('beforeinput', e => { if(MODE === 'T' && (e.inputType === 'insertText' || e.inputType === 'insertFromPaste')){ plainT(e); return; } if(MODE !== 'C') return; const s = window.getSelection(); if(!s.rangeCount) return; const r = s.getRangeAt(0); const t = e.inputType;
   if(/^delete/.test(t)){ e.preventDefault(); let rr = r.cloneRange(); const back = /Backward/.test(t);
     if(rr.collapsed){ const s2 = window.getSelection(); s2.modify('extend', back ? 'backward' : 'forward', /Word/.test(t) ? 'word' : 'character'); rr = s2.getRangeAt(0).cloneRange(); }
     if(!rr.collapsed) markDel(rr, back); save(); draw(); return; }
@@ -359,6 +366,7 @@ function layout(g, R, maxW){ const toks = []; R.forEach(r => { if(r.img){ toks.p
    Time / Word Count / Essay Type as small grey pills · **bold** and *italic* typed by the teacher are kept. */
 /* 2670 (Misty 22 Nov, option B): one colour per label · time amber · word count teal · essay type purple */
 const PC2670 = { time: ['#FFF3DC', '#8A5A00'], words: ['#E4F6F6', '#0E6F68'], type: ['#EEEDFE', '#3C3489'] };
+window.taskPill = t => taskPill(t);   /* 2683: the full-screen task card (another script) needs it */
 function taskPill(t){ let m;
   if((m = t.match(/^(?:time(?:\s*limit)?\s*:\s*)?(\d+\s*(?:minutes?|mins?))$/i))) return { c: '◷ ' + m[1], k: 'time' };
   if((m = t.match(/^(?:word\s*count\s*:\s*)?((?:at\s+least|minimum|about|around|max(?:imum)?)?\s*\d+\s*words?(?:\s+or\s+more)?)$/i))) return { c: '✎ ' + m[1].trim(), k: 'words' };
@@ -534,7 +542,7 @@ setMode(ed.textContent.trim() ? 'C' : 'T');
   const task = () => { const q = (document.getElementById('q') || {}).value || ''; let el = c.querySelector('.fsTask'); if(!q.trim()){ if(el) el.remove(); return; }
     if(!el){ el = document.createElement('div'); el.className = 'fsTask'; const m = c.querySelector('.mode'); c.insertBefore(el, m || null); }
     const P = [], pills = []; q.split(/\n/).forEach(r => { const t = r.trim(); if(!t) return; let m;
-      if((m = taskPill(t))) return pills.push(m);   /* 2668 */
+      if((m = window.taskPill(t))) return pills.push(m);   /* 2668 · 2683 */
       P.push(/^topic\s*:/i.test(t) ? '<div class="tt">' + md(t) + '</div>' : '<p' + (INSTR.test(t.replace(/^\*+/, '')) ? ' class="in"' : '') + '>' + md(t) + '</p>'); });
     el.innerHTML = P.join('') + (pills.length ? '<div class="pills">' + pills.map(x => '<span class="pk-' + x.k + '">' + E(x.c) + '</span>').join('') + '</div>' : ''); };
   const qi = document.getElementById('q'); if(qi) qi.addEventListener('input', () => { if(on()) task(); });
