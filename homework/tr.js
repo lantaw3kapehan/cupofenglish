@@ -105,7 +105,7 @@
       return; }
     if(!r){ CUR = null; bd.innerHTML = '<div class="mute">“' + esc(text) + '” is not in our dictionary. Check the spelling, or try the base word (run, not running).</div>'; return; }
     const [ph, tr, tags] = r.e, M = tr.map(split), zh1 = M.map(m => m.zh).join('；'), P = await Promise.all(M.map(m => py(m.zh))); if(show.my !== my) return;
-    CUR = { w: r.w, ph, zh: M[0] ? M[0].zh.split(/[,，；;]/).slice(0, 3).join('，') : '', py: '' }; CUR.py = await py(CUR.zh); if(show.my !== my) return;
+    CUR = { w: r.w, ph, zh: M[0] ? M[0].zh.split(/[,，；;]/).slice(0, 2).map(x => x.trim()).join('，') : '', py: '' }; CUR.py = await py(CUR.zh); if(show.my !== my) return;
     const it = note(r.w, CUR.zh), tg = String(tags || '').split(/\s+/).filter(t => TAG[t]).map(t => TAG[t]);
     bd.innerHTML = (r.from ? '<div class="from">' + esc(r.from) + ' → ' + esc(r.w) + '</div>' : '')
       + '<div class="w"><b>' + esc(r.w) + '</b></div>'
