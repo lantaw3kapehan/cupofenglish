@@ -125,7 +125,7 @@
       CHIP.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); }); CHIP.onclick = e => { e.stopPropagation(); if(CHIP.dataset.busy) return; hideChip(); show(CHIP.dataset.t); }; }
     place(CHIP); CHIP.dataset.t = text; if(busy) CHIP.dataset.busy = 1; else delete CHIP.dataset.busy; CHIP.style.opacity = busy ? '.75' : ''; CHIP.textContent = busy ? text : 'Translate · ' + (text.length > 18 ? text.slice(0, 17) + '…' : text);
     CHIP.style.display = 'block'; const w = CHIP.offsetWidth; CHIP.style.left = Math.max(6, Math.min(innerWidth - w - 6, x - w / 2)) + 'px'; CHIP.style.top = Math.max(6, y - 44) + 'px';
-    clearTimeout(chip.t); chip.t = setTimeout(hideChip, 5000); }
+    clearTimeout(chip.t); chip.t = setTimeout(hideChip, busy ? 20000 : 8000); }
   const BTN = [];
   function button(cls){ const b = document.createElement('button'); b.type = 'button'; if(cls) b.className = cls; b.dataset.ctr = '1'; b.title = 'Translate a word (English ↔ 中文) without leaving the screen'; b.textContent = 'Translate';
     b.addEventListener('click', e => { e.preventDefault(); toggle(); }); BTN.push(b); return b; }
