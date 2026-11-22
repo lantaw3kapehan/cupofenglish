@@ -164,7 +164,7 @@ body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not
 <div class="smenu" id="smenu" role="menu"><button data-bs="plain" title="A blank page">Blank</button><button data-bs="lines" title="Lined paper">Lined</button><button data-bs="four" title="Four-line handwriting paper, for letters and spelling">Handwriting</button></div>
 <div class="pill" id="pill"><button id="pp" aria-label="Previous page">‹</button><span class="num" id="pg2">–</span><button id="pn" aria-label="Next page">›</button><button id="pzo" aria-label="Zoom out" title="Zoom out">−</button><button id="pz" title="Fit the page">Fit</button><button id="pzi" aria-label="Zoom in" title="Zoom in">+</button><button id="pstyle" class="bo" aria-haspopup="menu" title="Page style">Style</button><button id="pnew" class="bo" title="Add a blank page">+ Page</button><button id="pboard" title="Blank board ↔ book (key B)">Board</button><button id="pfs" title="Back to full screen" style="display:none">Full screen</button><button id="pcopy" title="Copy this page with your notes as a clean picture for the WeChat group (no video windows)">Copy page</button><button id="px">Exit · Esc</button></div>
 <div class="vid" id="vid"><div class="top"><b id="vt"></b><button id="vx">✕ Close</button></div><video id="vv" controls playsinline preload="auto"></video></div>
-<script src="../homework/hdr.js?v=2695"></script>
+<script src="../homework/hdr.js?v=2711"></script>
 <script type="module">
 import * as pdfjsLib from './pdfjs/pdf.min.mjs';
 pdfjsLib.GlobalWorkerOptions.workerSrc = './pdfjs/pdf.worker.min.mjs';
@@ -526,9 +526,9 @@ const setZoom = z => { zoom = Math.min(4, Math.max(0.5, z)); render(); };
 const BRD = []; let BBACK = 1, BI = 1; const isB = () => typeof pageNo === 'string';
 const BLOGO = new Image(); BLOGO.onload = () => { if(isB()) render(); }; BLOGO.src = 'logo.png';
 const BW = 1414, BH = 1000;
-function paintBoard(g, W, H, st, notes){ g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+function paintBoard(g, W, H, st, notes, scr){ g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
   let y0 = Math.round(H * 0.1);
-  if(window.coeHdr){ const t = tchName(); coeHdr.draw(g, W, { logo: BLOGO.complete && BLOGO.naturalWidth ? BLOGO : null, title: notes === false ? 'Homework / 作业' : 'Class notes / 课堂笔记', meta: [t ? 'Teacher / 老师: ' + t : '', Q.get('s') ? 'For / 学生: ' + Q.get('s') : ''].filter(Boolean) }); y0 = coeHdr.height(W, false); }
+  if(window.coeHdr){ const t = tchName(); coeHdr.draw(g, W, { slim: !!scr, logo: BLOGO.complete && BLOGO.naturalWidth ? BLOGO : null, title: notes === false ? 'Homework / 作业' : 'Class notes / 课堂笔记', meta: [t ? 'Teacher / 老师: ' + t : '', Q.get('s') ? 'For / 学生: ' + Q.get('s') : ''].filter(Boolean) }); y0 = coeHdr.height(W, false); }
   const L = Math.round(W * 0.045), R = W - L, T = y0 + Math.round(H * 0.035), B = H - Math.round(H * 0.045), lw = Math.max(1, Math.round(W / 900));
   g.lineWidth = lw;
   if(st === 'lines'){ g.strokeStyle = '#D5DAE6'; const d = H * 0.065; for(let y = T + d; y <= B; y += d){ g.beginPath(); g.moveTo(L, Math.round(y) + 0.5); g.lineTo(R, Math.round(y) + 0.5); g.stroke(); } }
@@ -539,7 +539,7 @@ function paintBoard(g, W, H, st, notes){ g.fillStyle = '#fff'; g.fillRect(0, 0, 
 async function renderBoard(my){ const st = $('stage'), pad = 48, tl = $('tools'), res = document.body.classList.contains('tmin') ? 64 : (tl ? tl.offsetWidth + 24 : 70); st.style.paddingLeft = (24 + res) + 'px';
   try{ await fontsReady(); }catch(e){} if(rendering !== my) return;
   const fit = Math.min((st.clientWidth - pad - res) / BW, (st.clientHeight - pad) / BH), scale = Math.max(0.2, fit * zoom), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-  const w = BW * scale, h = BH * scale, c = $('pdf'), ink = $('ink'); c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); paintBoard(c.getContext('2d'), c.width, c.height, BRD[+pageNo.slice(1) - 1] || 'plain');
+  const w = BW * scale, h = BH * scale, c = $('pdf'), ink = $('ink'); c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); paintBoard(c.getContext('2d'), c.width, c.height, BRD[+pageNo.slice(1) - 1] || 'plain', undefined, true);   /* 2711: on screen, no second logo */
   c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = c.width; ink.height = c.height; ink.style.width = w + 'px'; ink.style.height = h + 'px';
   st.classList.toggle('fit', zoom <= 1); drawInk(); pages(); boardUI(); }
 function boardPic(notes){ const W = 1600, H = Math.round(W * BH / BW), out = document.createElement('canvas'); out.width = W; out.height = H; paintBoard(out.getContext('2d'), W, H, BRD[+pageNo.slice(1) - 1] || 'plain', notes); drawInk(out); return out; }

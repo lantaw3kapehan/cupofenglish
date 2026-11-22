@@ -23,18 +23,20 @@
   function draw(g, W, o){ o = o || {}; const u = U(W), P = Math.round(26 * u), hasL = !!(o.label && String(o.label).trim()), H = height(W, hasL);
     g.save(); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); g.textBaseline = 'alphabetic';
     const top = 22 * u, row = 38 * u; let lw = 0;
-    if(o.logo && o.logo.width){ const lh = Math.round(34 * u); lw = Math.round(o.logo.width * lh / o.logo.height); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    /* 2711 (Misty 22 Nov 18:41): o.slim · the on-screen class notes board: no logo (it is already in the reader's top bar), title on the left, details on the right, same height */
+    if(o.slim){ lw = 0; }
+    else if(o.logo && o.logo.width){ const lh = Math.round(34 * u); lw = Math.round(o.logo.width * lh / o.logo.height); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
       g.drawImage(crisp(o.logo, lw), P, Math.round(top + (row - lh) / 2), lw, lh); }
     else { g.fillStyle = '#2B2253'; g.font = '600 ' + (20 * u) + 'px ' + FL; g.fillText('CupOfEnglish', P, top + 26 * u); lw = g.measureText('CupOfEnglish').width; }
-    const room = W - 2 * P - lw - 20 * u;
+    const room = o.slim ? (W - 2 * P) * 0.5 : W - 2 * P - lw - 20 * u;
     /* the English leads: "Homework" full size, " / 作业" at 72 % (Misty 18 Nov 19:56) */
     const title = o.title || 'Homework / 作业', cut = title.indexOf(' / '), en = cut > 0 ? title.slice(0, cut) : title, zh = cut > 0 ? title.slice(cut) : '';
     let big = 19 * u; const wOf = b => { g.font = '700 ' + b + 'px ' + FT; const a = g.measureText(en).width; g.font = '700 ' + (b * 0.72) + 'px ' + FT; return a + (zh ? g.measureText(zh).width : 0); };
     while(wOf(big) > room && big > 12 * u) big -= 0.5;
-    g.fillStyle = '#2B2253'; g.textAlign = 'left'; const ty = top + 18 * u, x0 = W - P - wOf(big);
+    g.fillStyle = '#2B2253'; g.textAlign = 'left'; const ty = o.slim ? top + 30 * u : top + 18 * u, x0 = o.slim ? P : W - P - wOf(big);
     g.font = '700 ' + big + 'px ' + FT; const ew = g.measureText(en).width; g.fillText(en, x0, ty);
     if(zh){ g.font = '700 ' + (big * 0.72) + 'px ' + FT; g.fillText(zh, x0 + ew, ty); }
-    g.fillStyle = '#14B3A7'; g.beginPath(); const uw = 20 * u, uh = Math.max(2, 1.7 * u); g.roundRect ? g.roundRect(W - P - uw, ty + 6.5 * u, uw, uh, uh / 2) : g.rect(W - P - uw, ty + 6.5 * u, uw, uh); g.fill();
+    g.fillStyle = '#14B3A7'; g.beginPath(); const uw = 20 * u, uh = Math.max(2, 1.7 * u); const ux = o.slim ? P : W - P - uw; g.roundRect ? g.roundRect(ux, ty + 6.5 * u, uw, uh, uh / 2) : g.rect(ux, ty + 6.5 * u, uw, uh); g.fill();
     g.textAlign = 'right';
     const meta = (o.meta || []).filter(Boolean).concat(o.date === false ? [] : [o.date || today()]).join('  ·  ');
     /* 2695 (Misty 22 Nov 14:27, option A): the student's name on a light teal band, the teacher's on a light lavender band, like the book label */
@@ -42,10 +44,10 @@
       if((m = /^(For(?: \/ 学生)?:\s*)(.+)$/.exec(p))) segs.push({ t: m[1] }, { t: m[2], bg: '#E4F6F6', fg: '#0E6F68' });
       else if((m = /^(Teacher(?: \/ 老师)?:\s*|Teacher\s+)(.+)$/.exec(p))) segs.push({ t: m[1] }, { t: m[2], bg: '#ECE9F7', fg: '#3C3489' });
       else segs.push({ t: p }); });
-    const pd95 = 6 * u, yb95 = top + 37 * u; let fs95 = 12 * u;
+    const pd95 = 6 * u, yb95 = o.slim ? ty : top + 37 * u; let fs95 = 12 * u; const room95 = o.slim ? W - 2 * P - wOf(big) - 24 * u : room;
     const mw95 = () => segs.reduce((a, x) => { g.font = (x.bg ? '700 ' : '400 ') + fs95 + 'px ' + FI; return a + g.measureText(x.t).width + (x.bg ? 2 * pd95 : 0); }, 0);
-    while(mw95() > room && fs95 > 9 * u) fs95 -= 0.5;
-    if(segs.length && mw95() <= room){ let x = W - P - mw95(); g.textAlign = 'left';
+    while(mw95() > room95 && fs95 > 9 * u) fs95 -= 0.5;
+    if(segs.length && mw95() <= room95){ let x = W - P - mw95(); g.textAlign = 'left';
       segs.forEach(x0 => { g.font = (x0.bg ? '700 ' : '400 ') + fs95 + 'px ' + FI; const w = g.measureText(x0.t).width;
         if(x0.bg){ const h = fs95 * 1.45; g.fillStyle = x0.bg; g.beginPath(); g.roundRect ? g.roundRect(x, yb95 - fs95 * 1.08, w + 2 * pd95, h, h / 2) : g.rect(x, yb95 - fs95 * 1.08, w + 2 * pd95, h); g.fill(); g.fillStyle = x0.fg; g.fillText(x0.t, x + pd95, yb95); x += w + 2 * pd95; }
         else { g.fillStyle = GREY; g.fillText(x0.t, x, yb95); x += w; } }); g.textAlign = 'right'; }
