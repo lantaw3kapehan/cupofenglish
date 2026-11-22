@@ -157,7 +157,7 @@ body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not
 </div>
 <div class="bbar" id="bbar" role="toolbar" aria-label="Blank board"><button data-bs="plain" title="A blank page">Blank</button><button data-bs="lines" title="Lined paper">Lined</button><button data-bs="four" title="Four-line handwriting paper, for letters and spelling">Handwriting</button><i></i><button id="bnew">+ New page</button><button id="bback">Back to book</button></div>
 <div class="smenu" id="smenu" role="menu"><button data-bs="plain" title="A blank page">Blank</button><button data-bs="lines" title="Lined paper">Lined</button><button data-bs="four" title="Four-line handwriting paper, for letters and spelling">Handwriting</button></div>
-<div class="pill" id="pill"><button id="pp" aria-label="Previous page">‹</button><span class="num" id="pg2">–</span><button id="pn" aria-label="Next page">›</button><button id="pzo" aria-label="Zoom out" title="Zoom out">−</button><button id="pz" title="Fit the page">Fit</button><button id="pzi" aria-label="Zoom in" title="Zoom in">+</button><button id="pstyle" class="bo" aria-haspopup="menu" title="Page style">Style</button><button id="pnew" class="bo" title="Add a blank page">+ Page</button><button id="pboard" title="Blank board ↔ book (key B)">Board</button><button id="pcopy" title="Copy this page with your notes as a clean picture for the WeChat group (no video windows)">Copy page</button><button id="px">Exit · Esc</button></div>
+<div class="pill" id="pill"><button id="pp" aria-label="Previous page">‹</button><span class="num" id="pg2">–</span><button id="pn" aria-label="Next page">›</button><button id="pzo" aria-label="Zoom out" title="Zoom out">−</button><button id="pz" title="Fit the page">Fit</button><button id="pzi" aria-label="Zoom in" title="Zoom in">+</button><button id="pstyle" class="bo" aria-haspopup="menu" title="Page style">Style</button><button id="pnew" class="bo" title="Add a blank page">+ Page</button><button id="pboard" title="Blank board ↔ book (key B)">Board</button><button id="pfs" title="Back to full screen" style="display:none">Full screen</button><button id="pcopy" title="Copy this page with your notes as a clean picture for the WeChat group (no video windows)">Copy page</button><button id="px">Exit · Esc</button></div>
 <div class="vid" id="vid"><div class="top"><b id="vt"></b><button id="vx">✕ Close</button></div><video id="vv" controls playsinline preload="auto"></video></div>
 <script src="../homework/hdr.js?v=2695"></script>
 <script type="module">
@@ -622,10 +622,15 @@ function playVid(f){ const v = $('vv'); $('vt').textContent = String(f.name); v.
 $('vx').onclick = () => { const v = $('vv'); v.pause(); v.removeAttribute('src'); v.load(); $('vid').classList.remove('on'); };
 
 /* ── Present: full screen, only the CupOfEnglish header, the page and the drawings ── */
-async function present(on){ document.body.classList.toggle('present', on);
+async function present(on){ document.body.classList.toggle('present', on); setTimeout(() => { try{ fsBtn2697(); }catch(e){} }, 300);
   try{ if(on && !document.fullscreenElement) await document.documentElement.requestFullscreen(); if(!on && document.fullscreenElement) await document.exitFullscreen(); }catch(e){}
   setTimeout(render, 120); }
-document.addEventListener('fullscreenchange', () => { if(!document.fullscreenElement && document.body.classList.contains('present')){ document.body.classList.remove('present'); setTimeout(render, 120); } });
+/* 2697 (Misty 22 Nov 14:51): switching to WeChat to paste a copied page makes Safari leave full screen. The class view now stays
+   (same header, page and drawings, no app screen); a "Full screen" button in the bar goes back to full screen. Exit or Esc leaves it. */
+const fsBtn2697 = () => { const b = $('pfs'); if(b) b.style.display = document.body.classList.contains('present') && !document.fullscreenElement ? '' : 'none'; };
+document.addEventListener('fullscreenchange', () => { fsBtn2697(); setTimeout(render, 120); });
+$('pfs').onclick = async () => { try{ await document.documentElement.requestFullscreen(); }catch(e){} fsBtn2697(); };
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && !document.fullscreenElement && document.body.classList.contains('present') && !/INPUT|TEXTAREA/.test((e.target || {}).tagName || '')){ present(false); setTimeout(fsBtn2697, 50); } });
 let idle = 0; document.addEventListener('mousemove', () => { document.body.classList.remove('idle'); clearTimeout(idle); idle = setTimeout(() => document.body.classList.add('idle'), 2500); });
 
 $('prev').onclick = () => turn(-1); $('next').onclick = () => turn(1); $('pp').onclick = () => turn(-1); $('pn').onclick = () => turn(1);
