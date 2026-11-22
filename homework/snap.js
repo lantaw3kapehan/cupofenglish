@@ -46,10 +46,10 @@
   function trim(cv, keep){ const g = cv.getContext('2d'), w = cv.width, d = g.getImageData(0, 0, w, cv.height).data; let last = 0;
     for(let y = cv.height - 1; y >= 0 && !last; y--){ const o = y * w * 4; for(let x = 0; x < w; x += 2){ const k = o + x * 4; if(d[k] < 235 || d[k + 1] < 235 || d[k + 2] < 235){ last = y; break; } } }
     const h = Math.min(cv.height, last + (keep || 56)); if(h >= cv.height - 4) return cv; const o = document.createElement('canvas'); o.width = w; o.height = h; const og = o.getContext('2d'); og.fillStyle = '#fff'; og.fillRect(0, 0, w, h); og.drawImage(cv, 0, 0); return o; }
-  function withHead(cv, o){ try{ if(!window.coeHdr) return cv; const W = 1240, M = 50, lab = String((o && o.label) || '').trim(), band = coeHdr.height(W, !!lab), sc = (W - 2 * M) / cv.width, ch = Math.round(cv.height * sc);
-      const out = document.createElement('canvas'); out.width = W; out.height = band + 20 + ch + 30; const g = out.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, out.height);
+  function withHead(cv, o){ try{ if(!window.coeHdr) return cv; /* 2721: the picture keeps the screen's full sharpness (no shrinking) */ const M = Math.round(Math.max(50, cv.width * 0.04)), W = Math.max(1240, cv.width + 2 * M), lab = String((o && o.label) || '').trim(), band = coeHdr.height(W, !!lab), sc = (W - 2 * M) / cv.width, ch = Math.round(cv.height * sc);
+      const out = document.createElement('canvas'); out.width = W; out.height = band + Math.round(50 * W / 1240) + ch; const g = out.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, out.height);
       coeHdr.draw(g, W, { logo: o && o.logo, title: o && o.title, meta: (o && o.meta) || [], label: lab });
-      g.imageSmoothingQuality = 'high'; g.drawImage(cv, M, band + 20, W - 2 * M, ch); return out; }catch(e){ return cv; } }
+      g.imageSmoothingQuality = 'high'; g.drawImage(cv, M, band + Math.round(20 * W / 1240), W - 2 * M, ch); return out; }catch(e){ return cv; } }
   async function copy(pic, btn, name){ const was = btn ? btn.textContent : ''; if(btn){ btn.disabled = true; btn.textContent = 'Copying…'; }
     const bp = Promise.resolve(pic).then(c => new Promise(z => c.toBlob(z, 'image/png')));
     try{ await Promise.race([navigator.clipboard.write([new ClipboardItem({ 'image/png': bp })]), new Promise((z, no) => setTimeout(() => no(new Error('slow')), 8000))]); if(btn) btn.textContent = 'Copied ✓ · paste in WeChat'; }
