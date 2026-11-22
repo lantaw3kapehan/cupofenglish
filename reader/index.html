@@ -86,6 +86,10 @@ body.present aside,body.noside aside{display:none}
 body.present #sideBt{display:none}
 body.present .pill{display:flex}
 body.present .tag{display:flex}
+/* 2701 (Misty 22 Nov 16:51, option A): the time and the minutes left in the class header while presenting */
+header{position:relative}.clk{display:none;position:absolute;right:20px;top:50%;transform:translateY(-50%);align-items:center;gap:10px;font-family:'COE Card Inter',Inter,sans-serif}
+body.present .clk{display:flex}.clk b{font-size:20px;color:#2B2253;font-variant-numeric:tabular-nums}.clk span{font-size:13px;font-weight:700;border-radius:999px;padding:4px 12px;background:#E4F6F6;color:#0E6F68}
+.clk span.warn{background:#FFF3DC;color:#8A5A00}.clk span.over{background:#FCEBEB;color:#A32D2D}.clk span:empty{display:none}
 body.present.idle .pill{opacity:.15}
 /* 2287: the toolbar stays out of the way: compact, can fold into one button, and fades while the teacher is not using it */
 .tools{transition:opacity .25s}.tools .tb{height:38px}.tools .sz{height:28px}
@@ -118,6 +122,7 @@ body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not
 <div class="sep"></div>
 <button class="btn x" id="sideBt" aria-label="Show or hide the list of lessons" title="Show or hide the list">≡</button>
 <div class="tt"><b id="bk">Book</b><span id="fl"></span></div>
+<div class="clk" id="clk" aria-live="off"><b id="clkT"></b><span id="clkL"></span></div>
 <div class="grp"><button class="ib" id="prev" aria-label="Previous page">‹</button><button class="num pgb" id="pg" title="Go to a page or a section" aria-haspopup="dialog">–</button><button class="ib" id="next" aria-label="Next page">›</button></div>
 <div class="grp hide-s"><button class="ib" id="zo" aria-label="Zoom out">−</button><button class="ib" id="zf" aria-label="Fit page">Fit</button><button class="ib" id="zi" aria-label="Zoom in">+</button></div>
 <button class="btn" id="copyPg" title="Copy this page as the homework picture, then paste it in the WeChat group. Hidden while you present."><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span class="hide-s">Copy for homework</span></button>
@@ -248,6 +253,15 @@ function endRec2699(){ const id = FID, pn = pageNo, d = doc, kk = id + '#' + pn;
     if(printed == null && unit == null) return;
     const k = 'coe.rd.end.' + String(BOOK).toUpperCase(); let o = {}; try{ o = JSON.parse(localStorage.getItem(k) || '{}') || {}; }catch(e){}
     o[kind] = { p: printed, u: unit, at: Date.now() }; o.at = Date.now(); localStorage.setItem(k, JSON.stringify(o)); }catch(e){} }, 2500); }
+function clk2701(){ try{ const now = Date.now(), d = new Date(); const t = $('clkT'); if(!t) return; t.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  let o = null; try{ o = JSON.parse(localStorage.getItem('coe.today.cls') || 'null'); }catch(e){}
+  const L = (o && o.cls) || [], c = L.find(x => now >= x[0] - 5 * 6e4 && now <= x[1] + 10 * 6e4), el = $('clkL'); if(!el) return;
+  if(!c){ el.textContent = ''; el.className = ''; return; }
+  const left = Math.ceil((c[1] - now) / 6e4);
+  if(now < c[0]){ el.textContent = 'Starts in ' + Math.max(1, Math.ceil((c[0] - now) / 6e4)) + ' min'; el.className = ''; }
+  else if(left > 0){ el.textContent = left + ' min left'; el.className = left <= 5 ? 'warn' : ''; }
+  else { el.textContent = 'Time\u2019s up'; el.className = 'over'; } }catch(e){} }
+clk2701(); setInterval(clk2701, 15000);
 function paintSide(){ const s = $('side'); if(!FILES.length){ s.innerHTML = ''; return; }
   const M = FILES.filter(isMain), units = [...new Set(FILES.map(unitOf).filter(u => u != null && u < 200))].sort((a, b) => a - b);
   if(UNIT == null && units.length) UNIT = units[0];
