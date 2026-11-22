@@ -84,7 +84,8 @@
       else if(a === 'big') big();
       else if((a === 'n' || a === 'h') && CUR){ const it = note(CUR.w, CUR.zh, a); b.classList.toggle('on', !!it[a]); b.textContent = a === 'n' ? (it.n ? '✓ In class notes' : 'Add to notes') : (it.h ? '✓ In homework' : 'Add to homework'); today(); } });
     return C; }
-  function today(){ const o = load(), el = C && C.querySelector('.td'); if(!el) return; const L = o.L.slice(-12);
+  /* 2736 (Misty 22 Nov 21:04): no list of today's words on the card · the student on screen would see words from other students' classes. The words are still kept for the class note. */
+  function today(){ const el = C && C.querySelector('.td'); if(el) el.innerHTML = ''; return; const o = load(); const L = o.L.slice(-12);
     el.innerHTML = L.length ? '<em>Today</em>' + L.map(x => '<button type="button" data-a="w" data-w="' + esc(x.w) + '" class="' + (x.n || x.h ? 'n' : '') + '" title="' + esc(x.zh || '') + '">' + esc(x.w) + '</button>').join('') : ''; }
   function say(w, v){ if(!w) return; let done = false; const tts = () => { if(done) return; done = true; try{ const u = new SpeechSynthesisUtterance(w); u.lang = v === 'uk' ? 'en-GB' : 'en-US'; u.rate = 0.9; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} };
     try{ const a = new Audio('https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(w) + '&type=' + (v === 'uk' ? 1 : 2)); a.onerror = tts; const t = setTimeout(tts, 2500); a.onplaying = () => { clearTimeout(t); done = true; }; a.play().catch(() => { clearTimeout(t); tts(); }); }catch(e){ tts(); } }
