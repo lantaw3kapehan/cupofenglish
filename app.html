@@ -2083,6 +2083,15 @@ async function sbRead(fn, args, real, ui){
   if(!d || age0(d) > (SB_UIAGE[fn] || 3 * 864e5)) return rp;
   rp.then(x => { if(JSON.stringify(x) !== JSON.stringify(d.data)){ SB_FRESH[key] = { data: x, t: Date.now() }; sbRedraw(fn, args, x); } }).catch(() => {});
   return d.data; }
+const FRESH2660 = /^(getBootstrap|tMyVisits|tMyComments|tLeave|tFbStatus|mgmtMonDay|mgmtPayroll|mgmtLeave|mgmtActions)$/;
+window.fresh2660 = async function(fn, args){ try{
+  if(typeof D === 'undefined' || !D || typeof TOKEN === 'undefined' || !TOKEN) return undefined;
+  const T = /^(getBootstrap|t[A-Z])/.test(fn); if(T === !!D.mgr) return undefined;   /* teachers: their screens · management: theirs */
+  const ac = window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), 8000) : 0, t0 = performance.now();
+  const r = await fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'fresh', token: TOKEN, fn: fn, args: args.slice(1), scope: D.pres ? 'pres' : 'mgmt' }), signal: ac ? ac.signal : undefined }).then(x => x.json()).finally(() => clearTimeout(tid));
+  const d = r && r.ok && r.data; if(!d || d.ok === false || d.error || (fn === 'getBootstrap' && !d.me)) return undefined;
+  try{ (window.__fr2660 = window.__fr2660 || []).push({ fn: fn, ms: Math.round(performance.now() - t0) }); }catch(e){}
+  return d; }catch(e){ return undefined; } };
 function api(fn, ...args){
 if(!LIVE) return DEMO_API(fn, ...args);
 if(!API_READ.test(fn) && !API_BG.test(fn) && !SB_R.test(fn) && !/Seen|Ack|Pulse|Nudge/.test(fn) && !/^(classCheck|tFbPlus|tVidFlags|tVidList|mgmtVidFlags|mgmtRoadmap|mgmtPcPdf|mgmtReportPdf|mgmtTrialPdf|mgmtTrialSentPic|mgmtPwInfo|mgmtPkgCheck)$/.test(fn)) SB_LASTW = Date.now();   /* 1300: reads are not saves */   /* a save: read fresh for 2 min */
@@ -2090,7 +2099,7 @@ if(FAST_W[fn] && (fastOn() || (fn === 'timeIn' && D && D.mgr && (function(){ try
 if(fastOnM(fn, args)) return fastWrite(fn, args);   /* 14 Oct night: management saves through the database */   /* 14 Oct: fast layer (test users first) */
 if(!API_READ.test(fn) && !API_BG.test(fn) && !(SB_R.test(fn) && sbOn())) return apiNow(fn, ...args);   /* 14 Oct: API_BG reads also wait in the queue */
 const k = fn + '|' + JSON.stringify(args), _uiNow = Date.now() - (window._ui || 0) < 1500, _fly = API_FLY[k]; if(_fly && (_fly._ui || !_uiNow)) return _fly;   /* 1280: a tap never waits behind a queued background read */
-const go = () => apiNow(fn, ...args);
+const go = () => (typeof window.fresh2660 === 'function' && FRESH2660.test(fn)) ? window.fresh2660(fn, args).then(x => x !== undefined ? x : apiNow(fn, ...args), () => apiNow(fn, ...args)) : apiNow(fn, ...args);   /* 2660 */
 if((SB_R.test(fn) || (fn === 'getBootstrap' && D && !D.mgr && D.me && D.me.name)) && sbOn()){ const ui = Date.now() - (window._ui || 0) < 1500;   /* 14 Oct pm: database copy first */
   const real = () => _fly ? _fly : ui || /^(getBootstrap|mgmtOverview|mgmtRenewals|mgmtTrialFus)$/.test(fn) ? go() : new Promise((res, rej) => { API_Q.push(() => go().then(res, rej)); apiPump(); });
   const sp = sbRead(fn, args, real, ui); sp._ui = ui; API_FLY[k] = sp; const _dl = () => { if(API_FLY[k] === sp) delete API_FLY[k]; }; sp.then(_dl, _dl); return sp; }
@@ -7494,7 +7503,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2230;
+const COE_V = 2231;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
