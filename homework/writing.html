@@ -73,7 +73,7 @@ textarea{width:100%;min-height:80px;border:1px solid var(--out);border-radius:10
 .fsTask{display:none}
 #tcCard:fullscreen .fsTask,#tcCard.fs .fsTask{display:block;background:#F4F6F8;border-left:5px solid #14B3A7;border-radius:10px;padding:14px 18px;margin:10px 0 12px;font-family:'COE Card Inter',Inter,sans-serif;color:#374151;font-size:17px;line-height:1.55;max-height:32vh;overflow:auto}
 .fsTask .tt{font-weight:700;font-size:20px;color:#1F2937;margin-bottom:6px}.fsTask p{margin:0 0 8px}.fsTask .in{font-weight:700}
-.fsTask .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}.fsTask .pills span{background:#E9ECEF;border-radius:999px;padding:4px 12px;font-size:14px;font-weight:500}
+.fsTask .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}.fsTask .pills span{background:#EEEDFE;color:#3C3489;border-radius:999px;padding:4px 12px;font-size:14px;font-weight:600}.fsTask .pills .pk-time{background:#FFF3DC;color:#8A5A00}.fsTask .pills .pk-words{background:#E4F6F6;color:#0E6F68}
 #tcCard:fullscreen #mTip,#tcCard.fs #mTip{display:none}
 #ed{min-height:340px;text-align:justify;border:1px solid var(--line);border-radius:0 0 12px 12px;padding:16px 18px;font:18px/1.9 'Times New Roman',Georgia,serif;background:#fff;outline:none;white-space:pre-wrap;word-wrap:break-word}
 #ed:empty:before{content:attr(data-ph);color:#9CA3AF;font-family:'COE Card Inter',sans-serif;font-size:15px}
@@ -353,11 +353,13 @@ function layout(g, R, maxW){ const toks = []; R.forEach(r => { if(r.img){ toks.p
 /* 2664 (Misty 22 Nov 10:46 "bold or italic here, for highlight · like this"): the question box on the picture reads like a task card:
    "Topic: …" as a bold heading · the question in plain text · the instruction (Discuss… / To what extent… / Do you agree…) in bold ·
    Time / Word Count / Essay Type as small grey pills · **bold** and *italic* typed by the teacher are kept. */
+/* 2670 (Misty 22 Nov, option B): one colour per label · time amber · word count teal · essay type purple */
+const PC2670 = { time: ['#FFF3DC', '#8A5A00'], words: ['#E4F6F6', '#0E6F68'], type: ['#EEEDFE', '#3C3489'] };
 function taskPill(t){ let m;
-  if((m = t.match(/^(?:time(?:\s*limit)?\s*:\s*)?(\d+\s*(?:minutes?|mins?))$/i))) return '◷ ' + m[1];
-  if((m = t.match(/^(?:word\s*count\s*:\s*)?((?:at\s+least|minimum|about|around|max(?:imum)?)?\s*\d+\s*words?(?:\s+or\s+more)?)$/i))) return '✎ ' + m[1].trim();
-  if((m = t.match(/^(?:essay\s*)?type\s*:\s*(.+)$/i))) return m[1];
-  if(t.length <= 40 && /^(discussion|opinion|agree|disagree|advantages|disadvantages|problem|solution|cause|effect|two[-\s]part|argumentative|mixed)\b[\w\s+&\/,-]*$/i.test(t) && !/[.?!]$/.test(t)) return t;
+  if((m = t.match(/^(?:time(?:\s*limit)?\s*:\s*)?(\d+\s*(?:minutes?|mins?))$/i))) return { c: '◷ ' + m[1], k: 'time' };
+  if((m = t.match(/^(?:word\s*count\s*:\s*)?((?:at\s+least|minimum|about|around|max(?:imum)?)?\s*\d+\s*words?(?:\s+or\s+more)?)$/i))) return { c: '✎ ' + m[1].trim(), k: 'words' };
+  if((m = t.match(/^(?:essay\s*)?type\s*:\s*(.+)$/i))) return { c: m[1], k: 'type' };
+  if(t.length <= 40 && /^(discussion|opinion|agree|disagree|advantages|disadvantages|problem|solution|cause|effect|two[-\s]part|argumentative|mixed)\b[\w\s+&\/,-]*$/i.test(t) && !/[.?!]$/.test(t)) return { c: t, k: 'type' };
   return null; }
 function qBox(g, text, maxW){
   const FN = { n: '400 27px "COE Card Inter", Inter, sans-serif', b: '700 27px "COE Card Inter", Inter, sans-serif', i: 'italic 400 27px "COE Card Inter", Inter, sans-serif', bi: 'italic 700 27px "COE Card Inter", Inter, sans-serif', t: '700 32px "COE Card Inter", Inter, sans-serif' };
@@ -373,9 +375,9 @@ function qBox(g, text, maxW){
     if(gap){ ops.push({ gap: 18 }); h += 18; gap = false; }
     wrap(segs(t, kind), kind === 't' ? 46 : 40).forEach(x => { ops.push(x); h += x.lh; });
     if(kind === 't'){ ops.push({ gap: 6 }); h += 6; } });
-  let cr = null; if(chips.length){ g.font = '500 22px "COE Card Inter", Inter, sans-serif'; const R = [[]]; let x = 0; chips.forEach(c => { const w = g.measureText(c).width + 32; if(x + w > maxW && x > 0){ R.push([]); x = 0; } R[R.length - 1].push({ c, x, w }); x += w + 12; }); cr = R; h += 20 + R.length * 52; }
+  let cr = null; if(chips.length){ g.font = '500 22px "COE Card Inter", Inter, sans-serif'; const R = [[]]; let x = 0; chips.forEach(c => { const w = g.measureText(c.c).width + 32; if(x + w > maxW && x > 0){ R.push([]); x = 0; } R[R.length - 1].push({ c, x, w }); x += w + 12; }); cr = R; h += 20 + R.length * 52; }
   return { h: h + 40, draw(x0, y0){ let y = y0 + 20; ops.forEach(o => { if(o.gap){ y += o.gap; return; } y += o.lh; o.l.forEach(p => { g.font = FN[p.k]; g.fillStyle = p.k === 't' ? '#1F2937' : '#374151'; g.fillText(p.t, x0 + p.x, y - 10); }); });
-      if(cr){ y += 20; cr.forEach(r => { r.forEach(c => { g.fillStyle = '#E9ECEF'; g.beginPath(); g.roundRect ? g.roundRect(x0 + c.x, y, c.w, 40, 20) : g.rect(x0 + c.x, y, c.w, 40); g.fill(); g.fillStyle = '#374151'; g.font = '500 22px "COE Card Inter", Inter, sans-serif'; g.fillText(c.c, x0 + c.x + 16, y + 27); }); y += 52; }); } } };
+      if(cr){ y += 20; cr.forEach(r => { r.forEach(c => { const pc = PC2670[c.c.k] || PC2670.type; g.fillStyle = pc[0]; g.beginPath(); g.roundRect ? g.roundRect(x0 + c.x, y, c.w, 40, 20) : g.rect(x0 + c.x, y, c.w, 40); g.fill(); g.fillStyle = pc[1]; g.font = '600 22px "COE Card Inter", Inter, sans-serif'; g.fillText(c.c.c, x0 + c.x + 16, y + 27); }); y += 52; }); } } };
 }
 function build(){ const R = runs(), has = R.some(x => x.img || (x.t && x.t.trim())), stu = $('stu').value.trim(), kind = $('kind').value, qs = $('q').value.trim(), cn = counts();
   const c = document.createElement('canvas'), g = c.getContext('2d'), band = coeHdr.height(W, true), foot = 0, LH = 58;   /* design A header, no footer */
@@ -528,7 +530,7 @@ setMode(ed.textContent.trim() ? 'C' : 'T');
     const P = [], pills = []; q.split(/\n/).forEach(r => { const t = r.trim(); if(!t) return; let m;
       if((m = taskPill(t))) return pills.push(m);   /* 2668 */
       P.push(/^topic\s*:/i.test(t) ? '<div class="tt">' + md(t) + '</div>' : '<p' + (INSTR.test(t.replace(/^\*+/, '')) ? ' class="in"' : '') + '>' + md(t) + '</p>'); });
-    el.innerHTML = P.join('') + (pills.length ? '<div class="pills">' + pills.map(x => '<span>' + E(x) + '</span>').join('') + '</div>' : ''); };
+    el.innerHTML = P.join('') + (pills.length ? '<div class="pills">' + pills.map(x => '<span class="pk-' + x.k + '">' + E(x.c) + '</span>').join('') + '</div>' : ''); };
   const qi = document.getElementById('q'); if(qi) qi.addEventListener('input', () => { if(on()) task(); });
   const on = () => document.fullscreenElement === c || c.classList.contains('fs'), lab = () => { b.textContent = on() ? '✕ Exit full screen' : '⛶ Full screen'; if(on()){ side(); task(); } else unside(); };
   b.onclick = async () => { if(on()){ if(document.fullscreenElement) await document.exitFullscreen().catch(() => {}); c.classList.remove('fs'); lab(); return; }
