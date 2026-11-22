@@ -800,11 +800,12 @@ async function ocrWord2730(e){ const G = window.__geo2730, c = $('pdf'), r = c.g
   /* the strip around the click is drawn again from the book itself, sharp (3x; a larger strip at 2x for big print), then read */
   for(const [S, bw, bh] of [[3, 180, 30], [2, 260, 64]]){ const cv = document.createElement('canvas'); cv.width = bw * S; cv.height = bh * S; const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
     const sx = (X - bw / 2) * S, sy = (Y - bh / 2) * S; await G.p.render({ canvasContext: g, viewport: G.p.getViewport({ scale: S }), transform: [1, 0, 0, 1, -sx, -sy] }).promise;
-    const res = await wk.recognize(cv), cx = bw / 2 * S, cy = bh / 2 * S; let best = null, bd = 1e9;
+    const res = await wk.recognize(cv), cx = bw / 2 * S, cy = bh / 2 * S, C = [];
     const words = (res.data.words || []).length ? res.data.words : ((res.data.blocks || []).flatMap(b => (b.paragraphs || []).flatMap(p => (p.lines || []).flatMap(l => l.words || []))));
     for(const wd of words){ const t = String(wd.text || '').replace(/^[^A-Za-z]+|[^A-Za-z]+$/g, ''); if(t.length < 2 || !/^[A-Za-z'\-]+$/.test(t) || (wd.confidence || 0) < 45) continue; const b = wd.bbox;
-      const dx = cx < b.x0 ? b.x0 - cx : cx > b.x1 ? cx - b.x1 : 0, dy = cy < b.y0 ? b.y0 - cy : cy > b.y1 ? cy - b.y1 : 0, d = dx * 2 + dy; if(d < bd){ bd = d; best = t; } }
-    if(best && bd < 12 * S) return best; }
+      if(b.x0 < 3 || b.x1 > cv.width - 3) continue;   /* cut by the strip's edge: not a whole word */
+      const dx = cx < b.x0 ? b.x0 - cx : cx > b.x1 ? cx - b.x1 : 0, dy = cy < b.y0 ? b.y0 - cy : cy > b.y1 ? cy - b.y1 : 0, d = dx * 2 + dy; if(d < 12 * S) C.push([d, t]); }
+    C.sort((p, q) => p[0] - q[0]); for(const [, t] of C.slice(0, 4)){ if(await coeTr.find(t)) return t; } }
   return null; }
 $('present').onclick = () => present(true); $('px').onclick = () => present(false);
 /* 2636: before closing, pages with notes that were not copied are listed, each with Copy (it goes to the page and copies it) */
