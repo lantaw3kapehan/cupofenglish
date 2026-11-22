@@ -322,7 +322,7 @@ function bookFail(outcome, id, step, error, secs){ try{ const c = navigator.conn
    (Cache Storage "coe-books-pre", files up to 80 MB, up to 1.2 GB in all, the least recently opened leaves first). It is fetched
    quietly in small pieces with pauses, so a live class keeps its internet. The next open reads it from the computer: instant, even offline. */
 let STEP0 = '';
-const KC = 'coe-books-pre', KMAX = 50 * 1048576, KALL = 1200 * 1048576, KSEEN = new Set();
+const KC = 'coe-books-pre', KMAX = (/Safari/.test(navigator.userAgent) && !/Chrome|Chromium|Edg/.test(navigator.userAgent) ? 25 : 50) * 1048576,   /* 2728: Safari keeps smaller books only */ KALL = 1200 * 1048576, KSEEN = new Set();
 function kIdx(){ try{ return JSON.parse(localStorage.getItem('coe.bk.pre') || '[]'); }catch(e){ return []; } }
 function kSave(L){ try{ localStorage.setItem('coe.bk.pre', JSON.stringify(L.slice(0, 200))); }catch(e){} }
 async function kOpen(url, opt){ try{ if(!('caches' in window)) return null; const c = await caches.open(KC), r = await c.match(url); if(!r) return null;
@@ -503,7 +503,7 @@ const PRE = new Map(); let AH = 0;
 function ahead(sc){ const my = ++AH, doc0 = doc; [pageNo + 1, pageNo + 2, pageNo - 1].filter(n => n >= 1 && n <= doc.numPages).reduce((pr, n) => pr.then(async () => {
     if(my !== AH || doc0 !== doc) return; const p = await doc.getPage(n), vp = p.getViewport({ scale: sc }), key = n + '|' + vp.width + 'x' + vp.height; if(PRE.has(key)) return;
     const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height; await p.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
-    PRE.set(key, cv); if(PRE.size > 6) PRE.delete(PRE.keys().next().value); }).catch(() => {}), new Promise(r => setTimeout(r, 120))); }
+    PRE.set(key, cv); while(PRE.size > 3){ const k0 = PRE.keys().next().value, c0 = PRE.get(k0); PRE.delete(k0); try{ c0.width = 0; c0.height = 0; }catch(e){} } }).catch(() => {}), new Promise(r => setTimeout(r, 120))); }   /* 2728 (Safari "reloaded because it used a lot of memory"): 3 pages kept ahead, not 6, and a dropped page gives its memory back at once */
 function pages(){ if(isB()){ const i = +pageNo.slice(1), n = BRD.length; $('pg').textContent = 'Board ' + i + ' of ' + n; $('pg2').textContent = 'Board ' + i + ' / ' + n; $('prev').disabled = i <= 1; $('next').disabled = i >= n; return; } let n0 = 0; for(let i = 1; i <= pageNo; i++) if(!SKIP.has(i)) n0++; const nn = doc ? doc.numPages - SKIP.size : 0, t = doc ? n0 + ' / ' + nn : '–'; $('pg').textContent = doc ? 'Page ' + n0 + ' of ' + nn : '–'; $('pg2').textContent = t;
   $('prev').disabled = !doc || pageNo <= PG1 || n0 <= 1; $('next').disabled = !doc || pageNo >= doc.numPages; }
 /* 2307: go straight to a page (the number teachers see, skipped pages not counted) or to a section of the lesson */
