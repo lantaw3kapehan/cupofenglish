@@ -738,6 +738,12 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
     else if(k === 'p3') (len === '25' ? t.p3.slice(0, 2) : t.p3).forEach((q, n, a) => S.push({ ph: i, k, it: q, n, of: a.length }));
     else S.push({ ph: i, k: 'fb' }); });
   let si = 0, left = P[0][2] * 60, run = true, show = false, notes = false, mini = null, open = -1, cmt = ''; const marks = {}, used = {}, seen = {};
+  /* 2691 (Misty 22 Nov 13:46, Yufan): remember which IELTS set this lesson used and how far it got, so the trial report (IELTS scoring in the app)
+     shows the same questions and only the parts reached. Kept on this computer (localStorage coe.kit.ieltsLast). */
+  const REACH = {}; const rec2691 = () => { try{ const k = S[si] && S[si].k; if(k) REACH[k] = 1; const st = kitStu() || {};
+    const p1 = S.filter(x => x.k === 'p1').map(x => x.it.q), cue = (S.find(x => x.k === 'p2') || {}).it, p3 = S.filter(x => x.k === 'p3').map(x => x.it.q);
+    localStorage.setItem('coe.kit.ieltsLast', JSON.stringify({ at: Date.now(), id: t.id, theme: t.theme, zh: t.zh || '', len, stu: st.name || who || '', code: st.code || '',
+      p1, cue: cue ? { t: cue.task, say: cue.points || [], end: cue.explain || '' } : null, p3, reach: REACH.p3 || REACH.fb ? 3 : REACH.p2 ? 2 : 1 })); }catch(e){} };
   const who = (kitStu() || {}).name || '';
   document.body.classList.add('present'); $('hT').textContent = 'IELTS Speaking / 雅思口语'; $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + len + ' minutes · ' + t.theme;
   $('hBtns').innerHTML = '<button class="btn sm" id="bX" type="button">Close</button>';
@@ -791,7 +797,7 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
     $('kNotes').onclick = () => { notes = !notes; paint(); if(notes){ const n = $('kNotesP'); if(n) n.scrollIntoView({ behavior: 'smooth', block: 'center' }); } };
     $('kPic').onclick = () => copyKitPic(ieltsSpec(t), 'ielts-speaking');
     if($('kCm')) $('kCm').oninput = e => { cmt = e.target.value; };
-    try{ window.CoeInk && CoeInk.page(app.querySelector('.kv'), 'ielts:' + t.id + ':' + si); }catch(e){}
+    try{ window.CoeInk && CoeInk.page(app.querySelector('.kv'), 'ielts:' + t.id + ':' + si); }catch(e){} rec2691();
     if($('kShow')) $('kShow').onclick = () => { show = !show; paint(); };
     app.querySelectorAll('[data-pi]').forEach(b => b.onclick = () => { const i = +b.dataset.pi; open = open === i ? -1 : i; paint(); });
     app.querySelectorAll('[data-pclose]').forEach(b => b.onclick = () => { open = -1; paint(); });
