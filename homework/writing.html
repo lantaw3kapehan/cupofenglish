@@ -343,15 +343,38 @@ function layout(g, R, maxW){ const toks = []; R.forEach(r => { if(r.img){ toks.p
   lines.forEach(L => { if(!L.soft || !L.length) return; while(L.length && /^\s+$/.test(L[L.length - 1].t)) L.pop(); const last = L[L.length - 1]; if(!last) return; const extra = maxW - (last.x + last.w), gaps = L.filter(p => /^\s+$/.test(p.t)).length; if(!gaps || extra <= 0 || extra > maxW * .25) return;
     let add = 0; L.forEach(p => { p.x += add; if(/^\s+$/.test(p.t)) add += extra / gaps; }); });
   return lines; }
+/* 2664 (Misty 22 Nov 10:46 "bold or italic here, for highlight · like this"): the question box on the picture reads like a task card:
+   "Topic: …" as a bold heading · the question in plain text · the instruction (Discuss… / To what extent… / Do you agree…) in bold ·
+   Time / Word Count / Essay Type as small grey pills · **bold** and *italic* typed by the teacher are kept. */
+function qBox(g, text, maxW){
+  const FN = { n: '400 27px "COE Card Inter", Inter, sans-serif', b: '700 27px "COE Card Inter", Inter, sans-serif', i: 'italic 400 27px "COE Card Inter", Inter, sans-serif', bi: 'italic 700 27px "COE Card Inter", Inter, sans-serif', t: '700 32px "COE Card Inter", Inter, sans-serif' };
+  const INSTR = /^(discuss|to what extent|do you agree|what is your opinion|in your opinion|give reasons|why|how|what are|what do you|write|describe|summari[sz]e|explain|compare)\b/i;
+  const ops = [], chips = []; let h = 0, gap = false;
+  const segs = (t, base) => { const out = []; String(t).split(/(\*\*[^*]+\*\*|\*[^*]+\*)/).forEach(x => { if(!x) return; const b = /^\*\*.+\*\*$/.test(x), it = !b && /^\*.+\*$/.test(x), tx = b ? x.slice(2, -2) : it ? x.slice(1, -1) : x;
+      const k = base === 't' ? 't' : (b || base === 'b') ? (it ? 'bi' : 'b') : it ? 'i' : 'n'; tx.split(/(\s+)/).forEach(w => { if(w) out.push({ t: w, k }); }); }); return out; };
+  const wrap = (S, lh) => { const L = [[]]; let x = 0; S.forEach(p => { g.font = FN[p.k]; const w = g.measureText(p.t).width, sp = /^\s+$/.test(p.t); if(x + w > maxW && x > 0 && !sp){ L.push([]); x = 0; } if(sp && x === 0) return; L[L.length - 1].push({ t: p.t, k: p.k, x }); x += w; }); return L.map(l => ({ l, lh })); };
+  String(text || '').split(/\n/).forEach(raw => { const t = raw.trim();
+    if(!t){ if(ops.length) gap = true; return; }
+    let m; if((m = t.match(/^time(?:\s*limit)?\s*:\s*(.+)$/i))) { chips.push('◷ ' + m[1]); return; }
+    if((m = t.match(/^word\s*count\s*:\s*(.+)$/i))) { chips.push('✎ ' + m[1]); return; }
+    if((m = t.match(/^(?:essay\s*)?type\s*:\s*(.+)$/i))) { chips.push(m[1]); return; }
+    const kind = /^topic\s*:/i.test(t) ? 't' : INSTR.test(t.replace(/^\*+/, '')) ? 'b' : 'n';
+    if(gap){ ops.push({ gap: 18 }); h += 18; gap = false; }
+    wrap(segs(t, kind), kind === 't' ? 46 : 40).forEach(x => { ops.push(x); h += x.lh; });
+    if(kind === 't'){ ops.push({ gap: 6 }); h += 6; } });
+  let cr = null; if(chips.length){ g.font = '500 22px "COE Card Inter", Inter, sans-serif'; const R = [[]]; let x = 0; chips.forEach(c => { const w = g.measureText(c).width + 32; if(x + w > maxW && x > 0){ R.push([]); x = 0; } R[R.length - 1].push({ c, x, w }); x += w + 12; }); cr = R; h += 20 + R.length * 52; }
+  return { h: h + 40, draw(x0, y0){ let y = y0 + 20; ops.forEach(o => { if(o.gap){ y += o.gap; return; } y += o.lh; o.l.forEach(p => { g.font = FN[p.k]; g.fillStyle = p.k === 't' ? '#1F2937' : '#374151'; g.fillText(p.t, x0 + p.x, y - 10); }); });
+      if(cr){ y += 20; cr.forEach(r => { r.forEach(c => { g.fillStyle = '#E9ECEF'; g.beginPath(); g.roundRect ? g.roundRect(x0 + c.x, y, c.w, 40, 20) : g.rect(x0 + c.x, y, c.w, 40); g.fill(); g.fillStyle = '#374151'; g.font = '500 22px "COE Card Inter", Inter, sans-serif'; g.fillText(c.c, x0 + c.x + 16, y + 27); }); y += 52; }); } } };
+}
 function build(){ const R = runs(), has = R.some(x => x.img || (x.t && x.t.trim())), stu = $('stu').value.trim(), kind = $('kind').value, qs = $('q').value.trim(), cn = counts();
   const c = document.createElement('canvas'), g = c.getContext('2d'), band = coeHdr.height(W, true), foot = 0, LH = 58;   /* design A header, no footer */
-  const L = layout(g, R, CW), QL = qs ? plain(g, qs, 'italic 400 28px Georgia, serif', CW - 40) : [];
+  const L = layout(g, R, CW), QB = qs ? qBox(g, qs, CW - 52) : null, QL = QB ? [1] : [];   /* 2664 */
   const sOn = $('bandOn').checked && /IELTS/.test(kind), sc = CRIT().map(([k, n]) => [k, n, BV[k] || '']), ov = ovr(), showB = sOn && sc.some(x => x[2]);
   const G = plain(g, $('fbG').value.trim(), '500 28px "COE Card Inter", Inter, sans-serif', CW - 60), I = plain(g, $('fbI').value.trim(), '500 28px "COE Card Inter", Inter, sans-serif', CW - 60);
   const gh = $('fbG').value.trim(), ih = $('fbI').value.trim();
   const phs = $('incPh').checked ? PH.map(p => { const w = Math.min(CW, p.img.naturalWidth), h = Math.round(p.img.naturalHeight * w / p.img.naturalWidth); return { p, w, h: Math.min(h, 1500) }; }) : [];
   let h = band + 40 + 60;   /* title line */
-  if(QL.length) h += 36 + QL.length * 40 + 24;
+  if(QB) h += 12 + QB.h + 24;
   phs.forEach(x => { h += x.h + 24; });
   h += 30 + L.reduce((a, l) => a + (l.img ? l.img.h + 36 : LH), 0) + 40 + 44;   /* writing (with photos) + legend */
   if(showB) h += 170;
@@ -362,7 +385,7 @@ function build(){ const R = runs(), has = R.some(x => x.img || (x.t && x.t.trim(
   let y = band + 40; g.textBaseline = 'alphabetic';
   g.fillStyle = '#2B2253'; g.font = '700 34px "COE Card Inter", Inter, sans-serif'; /* design A: the student and the writing type are in the header */
   g.fillStyle = '#6B6880'; g.font = '500 24px "COE Card Inter", Inter, sans-serif'; g.textAlign = 'right'; g.fillText(cn.n + ' words' + (cn.min && cn.n < cn.min ? ' (under ' + cn.min + ')' : ''), W - M, y + 30); g.textAlign = 'left'; y += 60;
-  if(QL.length){ y += 12; const qh = QL.length * 40 + 24; g.fillStyle = '#F4F6F8'; g.fillRect(M, y, CW, qh); g.fillStyle = '#14B3A7'; g.fillRect(M, y, 6, qh); g.fillStyle = '#374151'; g.font = 'italic 400 28px Georgia, serif'; QL.forEach((t, i) => g.fillText(t, M + 24, y + 42 + i * 40)); y += qh + 24; }
+  if(QB){ y += 12; const qh = QB.h; g.fillStyle = '#F4F6F8'; g.fillRect(M, y, CW, qh); g.fillStyle = '#14B3A7'; g.fillRect(M, y, 6, qh); g.textAlign = 'left'; QB.draw(M + 28, y); y += qh + 24; }   /* 2664 */
   phs.forEach(x => { const xx = M + (CW - x.w) / 2; g.save(); g.beginPath(); g.rect(xx, y, x.w, x.h); g.clip(); g.drawImage(x.p.img, xx, y, x.w, Math.round(x.p.img.naturalHeight * x.w / x.p.img.naturalWidth)); g.restore(); g.strokeStyle = '#E3E1EA'; g.lineWidth = 2; g.strokeRect(xx, y, x.w, x.h); y += x.h + 24; });
   y += 30;
   L.forEach(line => { if(line.img){ y += 18; g.drawImage(line.img.el, M, y, line.img.w, line.img.h); g.strokeStyle = '#E3E1EA'; g.lineWidth = 2; g.strokeRect(M, y, line.img.w, line.img.h); y += line.img.h + 18; return; } y += LH; line.forEach(p => { g.font = F[p.k]; g.fillStyle = COL[p.k]; g.fillText(p.t, M + p.x, y - 16);
