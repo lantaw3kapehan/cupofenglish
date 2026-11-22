@@ -119,7 +119,7 @@ textarea{width:100%;min-height:80px;border:1px solid var(--out);border-radius:10
           <div><label class="l" for="kind">Writing</label><select class="tt" id="kind">
             <option>IELTS Writing Task 2</option><option>IELTS Writing Task 1 (Academic)</option><option>IELTS Writing Task 1 (General)</option><option>Academic writing</option><option>Essay</option><option>KET / PET Writing</option><option>Other writing</option></select></div>
         </div>
-        <label class="l" for="q" style="margin-top:12px">The question (optional)</label>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-top:12px"><label class="l" for="q" style="margin:0">The question (optional)</label><span class="qfmt" style="display:flex;gap:6px"><button type="button" class="btn sm" id="qB" title="Bold: select words, then click" style="font-weight:800;min-width:40px">B</button><button type="button" class="btn sm" id="qI" title="Italic: select words, then click" style="font-style:italic;font-family:Georgia,serif;min-width:40px">I</button></span></div>
         <textarea id="q" style="min-height:64px" placeholder="Paste or type the essay question."></textarea>
       </div>
 
@@ -476,7 +476,7 @@ setMode(ed.textContent.trim() ? 'C' : 'T');
   const inEd = n => !!n && (n === ed || ed.contains(n));
   document.addEventListener('selectionchange', () => { const s = getSelection(); if(s && s.rangeCount && inEd(s.anchorNode)) R = s.getRangeAt(0).cloneRange(); });
   document.addEventListener('pointerdown', e => { lastDown = Date.now(); downIn = inEd(e.target); }, true);
-  ed.addEventListener('keydown', () => { typing = Date.now(); });
+  ['keydown', 'input', 'beforeinput'].forEach(ev => ed.addEventListener(ev, () => { typing = Date.now(); }));
   const back = () => { if(!R || !document.hasFocus()) return; const a = document.activeElement;
     if(a && a !== document.body && a !== ed && !inEd(a)) return;            /* she is in another box or on a button */
     try{ ed.focus({ preventScroll: true }); const s = getSelection(); if(inEd(R.startContainer)){ s.removeAllRanges(); s.addRange(R); } }catch(e){} };
@@ -484,6 +484,21 @@ setMode(ed.textContent.trim() ? 'C' : 'T');
     if(Date.now() - typing > 20000) return;                                  /* not typing lately: nothing to keep */
     setTimeout(back, 0); setTimeout(back, 150); });
   window.addEventListener('focus', () => { if(R && Date.now() - typing < 20000) setTimeout(back, 50); });
+})();
+</script>
+<script>
+/* 2667 (Misty 22 Nov 10:58 "the bold or italic aren't here yet to choose"): B and I buttons for the question box ·
+   select words, click B or I; click again on the same words to remove it. The picture shows them in bold / italic. */
+(function(){ const q = document.getElementById('q'); if(!q) return;
+  const wrap = mk => { const a = q.selectionStart, b = q.selectionEnd, v = q.value; if(a === b){ q.focus(); return; }
+    let s = v.slice(a, b), pre = v.slice(0, a), post = v.slice(b), n = mk.length;
+    if(pre.endsWith(mk) && post.startsWith(mk) && !(mk === '*' && pre.endsWith('**') && !pre.endsWith('***'))){ q.value = pre.slice(0, -n) + s + post.slice(n); q.setSelectionRange(a - n, b - n); }
+    else if(s.startsWith(mk) && s.endsWith(mk) && s.length > 2 * n){ s = s.slice(n, -n); q.value = pre + s + post; q.setSelectionRange(a, a + s.length); }
+    else { const lead = s.match(/^\s*/)[0], trail = s.match(/\s*$/)[0], core = s.trim(); q.value = pre + lead + mk + core + mk + trail + post; q.setSelectionRange(a + lead.length + n, a + lead.length + n + core.length); }
+    q.focus(); q.dispatchEvent(new Event('input', { bubbles: true })); };
+  document.getElementById('qB').addEventListener('mousedown', e => e.preventDefault()); document.getElementById('qI').addEventListener('mousedown', e => e.preventDefault());
+  document.getElementById('qB').onclick = () => wrap('**'); document.getElementById('qI').onclick = () => wrap('*');
+  q.addEventListener('keydown', e => { if((e.metaKey || e.ctrlKey) && !e.shiftKey && (e.key === 'b' || e.key === 'i')){ e.preventDefault(); wrap(e.key === 'b' ? '**' : '*'); } });
 })();
 </script>
 <script src="fresh.js"></script>
