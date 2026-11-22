@@ -110,7 +110,7 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
     const a = b.dataset.a; if(a === 'fold'){ document.body.classList.add('ink-min'); return; }
     if(a === 'undo') swap(HIST, REDO); if(a === 'redo') swap(REDO, HIST);
     if(a === 'clear' && list().length){ rec(); ANN[key] = []; draw(); } }
-  function onKey(e){ if(!on || (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))) return; const k = e.key.toLowerCase();
+  function onKey(e){ if(!on || (e.target && (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.target.isContentEditable))) return;   /* 2706: typing in the writing box is not a tool key */ const k = e.key.toLowerCase();
     if((e.metaKey || e.ctrlKey) && k === 'z'){ e.preventDefault(); e.stopPropagation(); if(e.shiftKey) swap(REDO, HIST); else swap(HIST, REDO); return; }
     if(e.metaKey || e.ctrlKey || e.altKey) return; const m = { v: 'hand', p: 'pen', h: 'hl', t: 'text', e: 'erase', s: 'shape' }[k]; if(m){ setTool(m); } }
   window.CoeInk = {
