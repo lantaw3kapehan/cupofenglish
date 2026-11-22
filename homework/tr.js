@@ -121,9 +121,9 @@
   function close(){ if(C) C.classList.remove('on'); BTN.forEach(b => b.classList.remove('on')); hideChip(); }
   function toggle(){ if(C && C.classList.contains('on')) close(); else show(''); }
   function hideChip(){ if(CHIP) CHIP.style.display = 'none'; }
-  function chip(text, x, y){ text = String(text || '').trim(); if(!text || text.length > 60) return; if(!CHIP){ CHIP = document.createElement('button'); CHIP.type = 'button'; CHIP.className = 'ctr-chip'; document.body.appendChild(CHIP);
-      CHIP.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); }); CHIP.onclick = e => { e.stopPropagation(); hideChip(); show(CHIP.dataset.t); }; }
-    place(CHIP); CHIP.dataset.t = text; CHIP.textContent = 'Translate · ' + (text.length > 18 ? text.slice(0, 17) + '…' : text);
+  function chip(text, x, y, busy){ text = String(text || '').trim(); if(!text || text.length > 60) return; if(!CHIP){ CHIP = document.createElement('button'); CHIP.type = 'button'; CHIP.className = 'ctr-chip'; document.body.appendChild(CHIP);
+      CHIP.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); }); CHIP.onclick = e => { e.stopPropagation(); if(CHIP.dataset.busy) return; hideChip(); show(CHIP.dataset.t); }; }
+    place(CHIP); CHIP.dataset.t = text; if(busy) CHIP.dataset.busy = 1; else delete CHIP.dataset.busy; CHIP.style.opacity = busy ? '.75' : ''; CHIP.textContent = busy ? text : 'Translate · ' + (text.length > 18 ? text.slice(0, 17) + '…' : text);
     CHIP.style.display = 'block'; const w = CHIP.offsetWidth; CHIP.style.left = Math.max(6, Math.min(innerWidth - w - 6, x - w / 2)) + 'px'; CHIP.style.top = Math.max(6, y - 44) + 'px';
     clearTimeout(chip.t); chip.t = setTimeout(hideChip, 5000); }
   const BTN = [];
