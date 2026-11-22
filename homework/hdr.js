@@ -40,7 +40,10 @@
     if(meta){ g.fillStyle = GREY; const m = fit(g, meta, s => '400 ' + s + 'px ' + FI, 12 * u, 9 * u, room); g.fillText(m, W - P, top + 37 * u); }
     g.textAlign = 'left';
     const ly = Math.round(top + row + 16 * u); g.fillStyle = LINE; g.fillRect(P, ly, W - 2 * P, Math.max(1, Math.round(u * 0.9)));
-    if(hasL){ g.fillStyle = GREY; const l = fit(g, String(o.label).trim(), s => '400 ' + s + 'px ' + FI, 12 * u, 9 * u, W - 2 * P); g.fillText(l, P, ly + 12 * u + 12 * u); }
+    if(hasL){ /* 2687 (Misty 22 Nov 12:42, option B): the book or writing label in cup teal on a light teal band */
+      const pd = 8 * u, ph = 21 * u, py = ly + 9 * u; const l = fit(g, String(o.label).trim(), s => '700 ' + s + 'px ' + FI, 12 * u, 9 * u, W - 2 * P - 2 * pd); g.font = '700 ' + (12 * u) + 'px ' + FI; const lw2 = Math.min(g.measureText(l).width, W - 2 * P - 2 * pd);
+      g.fillStyle = '#E4F6F6'; g.beginPath(); g.roundRect ? g.roundRect(P, py, lw2 + 2 * pd, ph, ph / 2) : g.rect(P, py, lw2 + 2 * pd, ph); g.fill();
+      g.fillStyle = '#0E6F68'; g.font = '700 ' + (12 * u) + 'px ' + FI; fit(g, l, s => '700 ' + s + 'px ' + FI, 12 * u, 9 * u, W - 2 * P - 2 * pd); g.fillText(l, P + pd, py + ph / 2 + 4.3 * u); }
     g.restore(); return H; }
   window.coeHdr = { height, draw, pad: W => Math.round(26 * U(W)), today };
 })();
