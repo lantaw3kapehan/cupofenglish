@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-hw v8 (21 Nov · 2556 trialMark k books) · v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
+// CupOfEnglish · coe-hw v9 (22 Nov · 2729 where / whereGet: where the class ended and the homework page, per student) · v8 (21 Nov · 2556 trialMark k books) · v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
 // correct it and share it). Used by the Homework check page (homework/index.html).
 // POST { token, op, ... }:
 //   me                       → { name, role, mgmt }
@@ -85,6 +85,22 @@ Deno.serve(async (req: Request) => {
       const row: any = { label, k, by: name }; if (b.at && !isNaN(Date.parse(String(b.at)))) row.at = new Date(String(b.at)).toISOString();
       const { error } = await db.from("coe_trial_marks").upsert(row, { onConflict: "label,k", ignoreDuplicates: !!b.keep }); if (error) throw new Error(error.message);
       return out({ ok: true });
+    }
+    if (op === "where") {   // v9 (2729, Misty 22 Nov): where the class ended / the homework page, per student, saved by the book reader
+      const code = clean(b.code, 20); if (!(await owns(code))) return out({ ok: false, error: "Not your student" }, 403);
+      const book = clean(b.book, 40).toUpperCase().replace(/[^A-Z0-9]/g, ""), kind = b.kind === "wb" ? "wb" : "sb", what = b.what === "hw" ? "hw" : "end";
+      if (!book) return out({ ok: false, error: "Which book?" }, 400);
+      const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n > 0 && n < 2000 ? Math.round(n) : null; };
+      const pages = Array.isArray(b.pages) ? (b.pages as unknown[]).map(num).filter((x): x is number => x != null).slice(0, 20) : null;
+      const row = { code, book, kind, what, day: new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), page: num(b.page), unit: num(b.unit), pages, teacher: name, at: new Date().toISOString() };
+      const { error } = await db.from("coe_book_where").upsert(row, { onConflict: "code,book,kind,what,day" }); if (error) throw new Error(error.message);
+      return out({ ok: true });
+    }
+    if (op === "whereGet") {   // v9: the latest records for a student (last 30 days, newest first)
+      const code = clean(b.code, 20); if (!(await owns(code))) return out({ ok: false, error: "Not your student" }, 403);
+      const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+      const { data, error } = await db.from("coe_book_where").select("book,kind,what,day,page,unit,pages,teacher,at").eq("code", code).gte("day", since).order("at", { ascending: false }).limit(40);
+      if (error) throw new Error(error.message); return out({ ok: true, rows: data || [] });
     }
     if (op === "ids") {   // v4 (2319): which classes already have a saved check (class card shows "Homework checked")
       const since = new Date(Date.now() - 21 * 864e5).toISOString();
