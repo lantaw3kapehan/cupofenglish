@@ -3,7 +3,9 @@
    a hairline · an optional small grey label (book · unit, writing type) · no footer, so the logo and the date appear once.
    Used by homework/give.html, homework/writing.html, homework/index.html and reader/index.html (book page copy). */
 (function(){
-  const FT = '"COE Card Fredoka", Fredoka, "Fredoka One", "Noto Sans SC", sans-serif', FI = '"COE Card Inter", Inter, "Noto Sans SC", "PingFang SC", sans-serif';
+  /* 2684 (Misty 22 Nov 12:00, option A): the title and the details in Source Serif like the page · title in deep navy with a short teal line under it */
+  const FT = '"COE Serif", Georgia, "Noto Sans SC", "PingFang SC", serif', FI = '"COE Serif", Georgia, "Noto Sans SC", "PingFang SC", serif', FL = '"COE Card Fredoka", Fredoka, "Fredoka One", sans-serif';
+  try{ if(![...document.fonts].some(f => f.family.replace(/"/g, '') === 'COE Serif')) [['400', 'normal'], ['700', 'normal'], ['400', 'italic'], ['700', 'italic']].forEach(([w, st]) => { const f = new FontFace('COE Serif', 'url(/fonts/card-serif-' + w + '-' + st + '.woff2)', { weight: w, style: st }); document.fonts.add(f); f.load().then(() => { try{ window.__draw2677 && window.__draw2677(); }catch(e){} }).catch(() => {}); }); }catch(e){}
   const TEAL = '#00ACB8'   /* 18 Nov 19:58 (Misty, option 1): the cup colour of the logo */, GREY = '#6B6880', LINE = '#E3E1EA';
   const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const today = () => { const d = new Date(); return d.getDate() + ' ' + MO[d.getMonth()] + ' ' + d.getFullYear(); };
@@ -23,18 +25,19 @@
     const top = 22 * u, row = 38 * u; let lw = 0;
     if(o.logo && o.logo.width){ const lh = Math.round(34 * u); lw = Math.round(o.logo.width * lh / o.logo.height); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
       g.drawImage(crisp(o.logo, lw), P, Math.round(top + (row - lh) / 2), lw, lh); }
-    else { g.fillStyle = '#2B2253'; g.font = '600 ' + (20 * u) + 'px ' + FT; g.fillText('CupOfEnglish', P, top + 26 * u); lw = g.measureText('CupOfEnglish').width; }
+    else { g.fillStyle = '#2B2253'; g.font = '600 ' + (20 * u) + 'px ' + FL; g.fillText('CupOfEnglish', P, top + 26 * u); lw = g.measureText('CupOfEnglish').width; }
     const room = W - 2 * P - lw - 20 * u;
     /* the English leads: "Homework" full size, " / 作业" at 72 % (Misty 18 Nov 19:56) */
     const title = o.title || 'Homework / 作业', cut = title.indexOf(' / '), en = cut > 0 ? title.slice(0, cut) : title, zh = cut > 0 ? title.slice(cut) : '';
-    let big = 19 * u; const wOf = b => { g.font = '600 ' + b + 'px ' + FT; const a = g.measureText(en).width; g.font = '600 ' + (b * 0.72) + 'px ' + FT; return a + (zh ? g.measureText(zh).width : 0); };
+    let big = 19 * u; const wOf = b => { g.font = '700 ' + b + 'px ' + FT; const a = g.measureText(en).width; g.font = '700 ' + (b * 0.72) + 'px ' + FT; return a + (zh ? g.measureText(zh).width : 0); };
     while(wOf(big) > room && big > 12 * u) big -= 0.5;
-    g.fillStyle = TEAL; g.textAlign = 'left'; const ty = top + 19 * u, x0 = W - P - wOf(big);
-    g.font = '600 ' + big + 'px ' + FT; const ew = g.measureText(en).width; g.fillText(en, x0, ty);
-    if(zh){ g.font = '600 ' + (big * 0.72) + 'px ' + FT; g.fillText(zh, x0 + ew, ty); }
+    g.fillStyle = '#2B2253'; g.textAlign = 'left'; const ty = top + 18 * u, x0 = W - P - wOf(big);
+    g.font = '700 ' + big + 'px ' + FT; const ew = g.measureText(en).width; g.fillText(en, x0, ty);
+    if(zh){ g.font = '700 ' + (big * 0.72) + 'px ' + FT; g.fillText(zh, x0 + ew, ty); }
+    g.fillStyle = '#14B3A7'; g.beginPath(); const uw = 20 * u, uh = Math.max(2, 1.7 * u); g.roundRect ? g.roundRect(W - P - uw, ty + 4.5 * u, uw, uh, uh / 2) : g.rect(W - P - uw, ty + 4.5 * u, uw, uh); g.fill();
     g.textAlign = 'right';
     const meta = (o.meta || []).filter(Boolean).concat(o.date === false ? [] : [o.date || today()]).join('  ·  ');
-    if(meta){ g.fillStyle = GREY; const m = fit(g, meta, s => '400 ' + s + 'px ' + FI, 12 * u, 9 * u, room); g.fillText(m, W - P, top + 19 * u + 3 * u + 12 * u); }
+    if(meta){ g.fillStyle = GREY; const m = fit(g, meta, s => '400 ' + s + 'px ' + FI, 12 * u, 9 * u, room); g.fillText(m, W - P, top + 37 * u); }
     g.textAlign = 'left';
     const ly = Math.round(top + row + 16 * u); g.fillStyle = LINE; g.fillRect(P, ly, W - 2 * P, Math.max(1, Math.round(u * 0.9)));
     if(hasL){ g.fillStyle = GREY; const l = fit(g, String(o.label).trim(), s => '400 ' + s + 'px ' + FI, 12 * u, 9 * u, W - 2 * P); g.fillText(l, P, ly + 12 * u + 12 * u); }
