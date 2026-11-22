@@ -276,13 +276,13 @@ ed.addEventListener('input', () => { save(); draw(); });
 /* ---------- Correct mode = Word's Track Changes: deleting keeps the word in red with a line, typing comes out blue ---------- */
 let MODE = 'C';
 function setMode(m){ MODE = m; $('mT').classList.toggle('on', m === 'T'); $('mC').classList.toggle('on', m === 'C'); ed.classList.toggle('trk', m === 'C');
-  $('mTip').textContent = m === 'T' ? 'Type or paste exactly what the student wrote. Nothing is marked in this step.' : 'Delete a wrong word (Backspace or Delete): it stays in red with a line through it. Then type: your correction comes out in blue.'; }
+  $('mTip').textContent = m === 'T' ? 'Type or paste exactly what the student wrote. Nothing is marked in this step.' : 'Delete a wrong word (Backspace or Delete): it stays in red with a line through it. Delete the red word again to remove it completely. Then type: your correction comes out in blue.'; }
 $('mT').onclick = () => { setMode('T'); ed.focus(); }; $('mC').onclick = () => { setMode('C'); ed.focus(); };
 const inside = (n, sel) => { n = n && (n.nodeType === 3 ? n.parentNode : n); return n && n.closest ? n.closest(sel) : null; };
 function placeIn(node, off){ const s = window.getSelection(), r = document.createRange(); r.setStart(node, off); r.collapse(true); s.removeAllRanges(); s.addRange(r); }
 function markDel(r, back){ /* the range becomes red; text typed earlier as a correction is really removed */
   if(inside(r.commonAncestorContainer, 'ins')){ r.deleteContents(); return; }
-  if(inside(r.startContainer, 'del') && inside(r.endContainer, 'del') && inside(r.startContainer, 'del') === inside(r.endContainer, 'del')){ const d = inside(r.startContainer, 'del'); const rr = document.createRange(); if(back) rr.setStartBefore(d); else rr.setStartAfter(d); rr.collapse(true); const s = window.getSelection(); s.removeAllRanges(); s.addRange(rr); return; }
+  if(inside(r.startContainer, 'del') && inside(r.endContainer, 'del') && inside(r.startContainer, 'del') === inside(r.endContainer, 'del')){ const d = inside(r.startContainer, 'del'); r.deleteContents(); if(!d.textContent.replace(/\u200B/g, '')){ const rr = document.createRange(); rr.setStartBefore(d); rr.collapse(true); d.remove(); const s = window.getSelection(); s.removeAllRanges(); s.addRange(rr); } return; }   /* 2682 (Misty 22 Nov 11:45 "I cannot delete in that box"): deleting red text again removes it for good */
   const frag = r.extractContents(); frag.querySelectorAll('ins,.cm').forEach(n => n.remove()); frag.querySelectorAll('del').forEach(n => n.replaceWith(...n.childNodes));
   if(!frag.textContent.replace(/​/g, '')) return; const d = document.createElement('del'); d.appendChild(frag); r.insertNode(d);
   /* join with a red word right next to it */
