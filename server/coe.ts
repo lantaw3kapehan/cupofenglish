@@ -1078,6 +1078,24 @@ Deno.serve(async (req: Request) => {
     return out({ ok: true, failed: (rows || []).map((r: any) => ({ id: r.id, fn: r.fn, a1: Array.isArray(r.args) ? r.args[1] : null, error: r.error, at: r.created_at })) });
   }
 
+  // 2660 (Misty 22 Nov 09:53 "do it now, ensure this improves our use"): a screen with no database copy yet asked Google
+  //   (My visits 4–5 min, a teacher's start-up 33–44 s, Schedule day list 2 min then failed). The app now asks here first:
+  //   the database works the screen out at once. Teachers: only their own screens; management: management screens.
+  if (b.op === "fresh") {
+    const fn = String(b.fn || ""), args = Array.isArray(b.args) ? b.args : [];
+    const T = /^(getBootstrap|tMyVisits|tMyComments|tLeave|tFbStatus)$/.test(fn), M = /^(mgmtMonDay|mgmtPayroll|mgmtLeave|mgmtActions)$/.test(fn);
+    if (!T && !M) return out({ ok: false, error: "fn" }, 400);
+    if ((T && s.mode === "mgmt") || (M && s.mode !== "mgmt")) return out({ ok: false, error: "AUTH" }, 403);
+    try {
+      const scope = T ? String(s.name || "").trim().toLowerCase() : (b.scope === "pres" && mayRead(s, "pres") ? "pres" : "mgmt");
+      let base = null;
+      if (/^(tMyVisits|tMyComments|mgmtPayroll|mgmtLeave|mgmtActions)$/.test(fn)) { const { data: d } = await db.from("docs").select("data").eq("key", scope + ":" + fn + "|" + JSON.stringify(args)).maybeSingle(); base = d ? d.data : null; }
+      const t0 = Date.now(), r = await calc(db, fn, args, base, T && fn !== "getBootstrap" ? { name: s.name, mode: s.mode } : s);
+      if (!r || !r.data) return out({ ok: true, data: null, ms: Date.now() - t0 });
+      return out({ ok: true, data: r.data, full: !!r.full, ms: Date.now() - t0, at: r.at ? new Date(r.at).toISOString() : null });
+    } catch (e) { return out({ ok: false, error: "db", why: String((e as Error).message || e) }, 500); }
+  }
+
   if (b.op === "active" || b.op === "students" || b.op === "calc") {
     if (s.mode !== "mgmt") return out({ ok: false, error: "AUTH" }, 403);
     const fn = b.op === "active" ? "mgmtActive" : b.op === "students" ? "mgmtStudents" : String(b.fn || ""), args = Array.isArray(b.args) ? b.args : [];
