@@ -83,7 +83,7 @@ textarea.zh{min-height:90px;font-family:'Noto Sans SC','PingFang SC','Microsoft 
       </div>
       <div class="card pad">
         <div class="h2">The task</div>
-        <label class="l" for="en">Instructions or essay question (English)</label>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px"><label class="l" for="en" style="margin:0">Instructions or essay question (English)</label><span class="qfmt" style="display:flex;gap:6px;margin-bottom:6px"><button type="button" class="btn sm" id="qB" title="Bold: select words, then click" style="font-weight:800;min-width:40px">B</button><button type="button" class="btn sm" id="qI" title="Italic: select words, then click" style="font-style:italic;font-family:Georgia,serif;min-width:40px">I</button></span></div>
         <textarea id="en" placeholder="e.g. Write 80–100 words about your favourite season. Use at least three adjectives."></textarea>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 6px">
           <label class="l" for="zh" style="margin:0">Chinese for the parent</label>
@@ -183,7 +183,7 @@ function pair(enId, zhId, stId, okMsg){ let t0 = 0;
     const add = [...B].filter(w => !A.has(w)).length, cut = [...A].filter(w => !B.has(w)).length, same = A.size > 0 && add <= 1 && cut <= 1;   /* one word changed at most */
     if(mine && same){ $(stId).innerHTML = 'You changed the Chinese, so it is kept as you wrote it. <a href="#" style="color:#00838C;font-weight:600" onclick="event.preventDefault();window.zhAgain2392(\'' + zhId + '\')">Make it again</a>'; return; }
     if(!$('zhOn').checked) return;
-    $(stId).textContent = 'Translating…'; const zh = await trZh(t); if($(enId).value.trim() !== t) return;
+    $(stId).textContent = 'Translating…'; const zh = await trZh(t.replace(/\*+/g, ''));   /* 2671: no ** or * in the Chinese */ if($(enId).value.trim() !== t) return;
     SRC[zhId] = t; if(zh){ AUTO[zhId] = zh; $(zhId).value = zh; $(stId).textContent = okMsg; } else $(stId).textContent = 'The Chinese could not be made just now. Type it, or the picture shows the English only.';
     save(); draw(); };
   $(enId).addEventListener('input', () => { save(); draw(); clearTimeout(t0); t0 = setTimeout(now, 1400); });
@@ -346,5 +346,20 @@ zhPref(); ntHead(); draw();
 })();
 </script>
 <script src="fresh.js"></script>
+<script>
+/* 2671 (Misty 22 Nov 11:15): the same B and I buttons as Writing correction, for the task box ·
+   select words, click B or I; click again on the same words to remove it. The picture shows them in bold / italic. */
+(function(){ const q = document.getElementById('en'); if(!q) return;
+  const wrap = mk => { const a = q.selectionStart, b = q.selectionEnd, v = q.value; if(a === b){ q.focus(); return; }
+    let s = v.slice(a, b), pre = v.slice(0, a), post = v.slice(b), n = mk.length;
+    if(pre.endsWith(mk) && post.startsWith(mk) && !(mk === '*' && pre.endsWith('**') && !pre.endsWith('***'))){ q.value = pre.slice(0, -n) + s + post.slice(n); q.setSelectionRange(a - n, b - n); }
+    else if(s.startsWith(mk) && s.endsWith(mk) && s.length > 2 * n){ s = s.slice(n, -n); q.value = pre + s + post; q.setSelectionRange(a, a + s.length); }
+    else { const lead = s.match(/^\s*/)[0], trail = s.match(/\s*$/)[0], core = s.trim(); q.value = pre + lead + mk + core + mk + trail + post; q.setSelectionRange(a + lead.length + n, a + lead.length + n + core.length); }
+    q.focus(); q.dispatchEvent(new Event('input', { bubbles: true })); };
+  document.getElementById('qB').addEventListener('mousedown', e => e.preventDefault()); document.getElementById('qI').addEventListener('mousedown', e => e.preventDefault());
+  document.getElementById('qB').onclick = () => wrap('**'); document.getElementById('qI').onclick = () => wrap('*');
+  q.addEventListener('keydown', e => { if((e.metaKey || e.ctrlKey) && !e.shiftKey && (e.key === 'b' || e.key === 'i')){ e.preventDefault(); wrap(e.key === 'b' ? '**' : '*'); } });
+})();
+</script>
 </body>
 </html>
