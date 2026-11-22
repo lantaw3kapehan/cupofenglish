@@ -164,7 +164,7 @@ body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not
 <div class="smenu" id="smenu" role="menu"><button data-bs="plain" title="A blank page">Blank</button><button data-bs="lines" title="Lined paper">Lined</button><button data-bs="four" title="Four-line handwriting paper, for letters and spelling">Handwriting</button></div>
 <div class="pill" id="pill"><button id="pp" aria-label="Previous page">‹</button><span class="num" id="pg2">–</span><button id="pn" aria-label="Next page">›</button><button id="pzo" aria-label="Zoom out" title="Zoom out">−</button><button id="pz" title="Fit the page">Fit</button><button id="pzi" aria-label="Zoom in" title="Zoom in">+</button><button id="pstyle" class="bo" aria-haspopup="menu" title="Page style">Style</button><button id="pnew" class="bo" title="Add a blank page">+ Page</button><button id="pboard" title="Blank board ↔ book (key B)">Board</button><button id="pfs" title="Back to full screen" style="display:none">Full screen</button><button id="pcopy" title="Copy this page with your notes as a clean picture for the WeChat group (no video windows)">Copy page</button><button id="px">Exit · Esc</button></div>
 <div class="vid" id="vid"><div class="top"><b id="vt"></b><button id="vx">✕ Close</button></div><video id="vv" controls playsinline preload="auto"></video></div>
-<script src="../homework/hdr.js?v=2711"></script>
+<script src="../homework/hdr.js?v=2717"></script>
 <script type="module">
 import * as pdfjsLib from './pdfjs/pdf.min.mjs';
 pdfjsLib.GlobalWorkerOptions.workerSrc = './pdfjs/pdf.worker.min.mjs';
@@ -524,11 +524,18 @@ const setZoom = z => { zoom = Math.min(4, Math.max(0.5, z)); render(); };
    in Plain, Lines, Grid or Four lines (handwriting). Same pens, text, shapes, eraser, Undo and Copy page. "+ New page" adds a page.
    Board pages are pageNo 'b1', 'b2' … and are not saved: they are cleared when the book is closed. */
 const BRD = []; let BBACK = 1, BI = 1; const isB = () => typeof pageNo === 'string';
+/* 2717 (Misty 22 Nov 18:59): a new board page takes the shape of the screen (wider), with a smaller header, so the whole screen can be written on.
+   BAS[i] = the page's width ÷ height (pages from before keep the classic page). The copied picture keeps the full header with the logo. */
+const BAS = []; const BA = i => BAS[i] || BW / BH;
+function newAspect(){ try{ const st = $('stage'), tl = $('tools'), res = document.body.classList.contains('tmin') ? 64 : (tl ? tl.offsetWidth + 24 : 70); const aw = st.clientWidth - 48 - res, ah = st.clientHeight - 48 - barRoom();
+  if(!(aw > 200 && ah > 200)) return BW / BH; return Math.max(1.3, Math.min(2.4, Math.round(aw / ah * 100) / 100)); }catch(e){ return BW / BH; } }
+const bUnit = (H, k) => H / 1000 * 2.525 * (k || 0.62);
+const wf = () => { if(!isB()) return 1; const a = BAS[+pageNo.slice(1) - 1]; return a ? (BW / BH) / a : 1; };
 const BLOGO = new Image(); BLOGO.onload = () => { if(isB()) render(); }; BLOGO.src = 'logo.png';
 const BW = 1414, BH = 1000;
-function paintBoard(g, W, H, st, notes, scr){ g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+function paintBoard(g, W, H, st, notes, scr, v2){ g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
   let y0 = Math.round(H * 0.1);
-  if(window.coeHdr){ const t = tchName(); coeHdr.draw(g, W, { slim: !!scr, logo: BLOGO.complete && BLOGO.naturalWidth ? BLOGO : null, title: notes === false ? 'Homework / 作业' : 'Class Notes / 课堂笔记', meta: [t ? 'Teacher / 老师: ' + t : '', Q.get('s') ? 'For / 学生: ' + Q.get('s') : ''].filter(Boolean) }); y0 = coeHdr.height(W, false); }
+  if(window.coeHdr){ const t = tchName(); coeHdr.draw(g, W, { unit: v2 ? bUnit(H) : undefined, slim: !!scr, logo: BLOGO.complete && BLOGO.naturalWidth ? BLOGO : null, title: notes === false ? 'Homework / 作业' : 'Class Notes / 课堂笔记', meta: [t ? 'Teacher / 老师: ' + t : '', Q.get('s') ? 'For / 学生: ' + Q.get('s') : ''].filter(Boolean) }); y0 = coeHdr.height(W, false, v2 ? bUnit(H) : undefined); }
   const L = Math.round(W * 0.045), R = W - L, T = y0 + Math.round(H * 0.035), B = H - Math.round(H * 0.045), lw = Math.max(1, Math.round(W / 900));
   g.lineWidth = lw;
   if(st === 'lines'){ g.strokeStyle = '#D5DAE6'; const d = H * 0.065; for(let y = T + d; y <= B; y += d){ g.beginPath(); g.moveTo(L, Math.round(y) + 0.5); g.lineTo(R, Math.round(y) + 0.5); g.stroke(); } }
@@ -538,14 +545,21 @@ function paintBoard(g, W, H, st, notes, scr){ g.fillStyle = '#fff'; g.fillRect(0
       g.strokeStyle = c; g.setLineDash(dash ? [lw * 6, lw * 5] : []); g.beginPath(); g.moveTo(L, Math.round(y + h * f) + 0.5); g.lineTo(R, Math.round(y + h * f) + 0.5); g.stroke(); }); g.setLineDash([]); } } }
 async function renderBoard(my){ const st = $('stage'), pad = 48, tl = $('tools'), res = document.body.classList.contains('tmin') ? 64 : (tl ? tl.offsetWidth + 24 : 70); st.style.paddingLeft = (24 + res) + 'px';
   try{ await fontsReady(); }catch(e){} if(rendering !== my) return;
-  const fit = Math.min((st.clientWidth - pad - res) / BW, (st.clientHeight - pad - barRoom()) / BH), scale = Math.max(0.2, fit * zoom), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-  const w = BW * scale, h = BH * scale, c = $('pdf'), ink = $('ink'); c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); paintBoard(c.getContext('2d'), c.width, c.height, BRD[+pageNo.slice(1) - 1] || 'plain', undefined, true);   /* 2711: on screen, no second logo */
+  const bi = +pageNo.slice(1) - 1, bw = BH * BA(bi);
+  const fit = Math.min((st.clientWidth - pad - res) / bw, (st.clientHeight - pad - barRoom()) / BH), scale = Math.max(0.2, fit * zoom), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const w = bw * scale, h = BH * scale, c = $('pdf'), ink = $('ink'); c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); paintBoard(c.getContext('2d'), c.width, c.height, BRD[bi] || 'plain', undefined, true, !!BAS[bi]);   /* 2711: on screen, no second logo */
   c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = c.width; ink.height = c.height; ink.style.width = w + 'px'; ink.style.height = h + 'px';
   st.classList.toggle('fit', zoom <= 1); drawInk(); pages(); boardUI(); }
-function boardPic(notes){ const W = 1600, H = Math.round(W * BH / BW), out = document.createElement('canvas'); out.width = W; out.height = H; paintBoard(out.getContext('2d'), W, H, BRD[+pageNo.slice(1) - 1] || 'plain', notes); drawInk(out); return out; }
+function boardPic(notes){ const bi = +pageNo.slice(1) - 1;
+  if(BAS[bi]){ const Hc = 1200, Wc = Math.round(Hc * BAS[bi]), bc = document.createElement('canvas'); bc.width = Wc; bc.height = Hc; paintBoard(bc.getContext('2d'), Wc, Hc, BRD[bi] || 'plain', notes, true, true); drawInk(bc);
+    const sh = window.coeHdr ? coeHdr.height(Wc, false, bUnit(Hc)) : 0, u2 = bUnit(Hc, 0.85), hT = window.coeHdr ? coeHdr.height(Wc, false, u2) : 0, o = document.createElement('canvas'); o.width = Wc; o.height = hT + Hc - sh; const g = o.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, Wc, o.height); const t = tchName();
+    if(window.coeHdr) coeHdr.draw(g, Wc, { unit: u2, logo: BLOGO.complete && BLOGO.naturalWidth ? BLOGO : null, title: notes === false ? 'Homework / 作业' : 'Class Notes / 课堂笔记', meta: [t ? 'Teacher / 老师: ' + t : '', Q.get('s') ? 'For / 学生: ' + Q.get('s') : ''].filter(Boolean) });
+    g.drawImage(bc, 0, sh, Wc, Hc - sh, 0, hT, Wc, Hc - sh); return o; }
+  const W = 1600, H = Math.round(W * BH / BW), out = document.createElement('canvas'); out.width = W; out.height = H; paintBoard(out.getContext('2d'), W, H, BRD[+pageNo.slice(1) - 1] || 'plain', notes); drawInk(out); return out; }
 function boardUI(){ const on = isB(); if(on){ const r = $('wrap').getBoundingClientRect(); if(r.width) $('bbar').style.left = Math.round(r.left + r.width / 2) + 'px'; }   /* 2619: the style bar sits under the page, never over the toolbar */ document.body.classList.toggle('board', on); $('boardBtT').textContent = on ? 'Back to book' : 'Blank board'; $('pboard').textContent = on ? 'Book' : 'Board';
   const stl = on ? (BRD[+pageNo.slice(1) - 1] || 'plain') : ''; document.querySelectorAll('[data-bs]').forEach(b => b.classList.toggle('on', b.dataset.bs === stl)); }
-function board(on){ if(!doc || doc.boardOnly) return; if(on && !isB()){ BBACK = pageNo; if(!BRD.length && !boardRestore()) BRD.push('plain'); pageNo = 'b' + Math.min(BI, BRD.length); zoom = 1; }
+function board(on){ if(!doc || doc.boardOnly) return; if(on && !isB()){ BBACK = pageNo; if(!BRD.length && !boardRestore()){ BRD.push('plain'); BAS[0] = newAspect(); } pageNo = 'b' + Math.min(BI, BRD.length); zoom = 1; }
   else if(!on && isB()){ BI = +pageNo.slice(1); pageNo = BBACK; zoom = 1; }
   $('stage').scrollTo(0, 0); boardUI(); render(); }
 $('boardBt').onclick = () => board(!isB()); $('pboard').onclick = () => board(!isB());
@@ -554,7 +568,7 @@ $('bback').onclick = () => board(false);
 $('pnew').onclick = () => $('bnew').click();
 $('pstyle').onclick = e => { e.stopPropagation(); const m = $('smenu'), r = $('pstyle').getBoundingClientRect(); m.classList.toggle('on'); if(m.classList.contains('on')){ m.style.left = Math.round(r.left) + 'px'; m.style.top = Math.round(r.top - m.offsetHeight - 8) + 'px'; } };
 document.addEventListener('pointerdown', e => { const m = $('smenu'); if(m.classList.contains('on') && !m.contains(e.target) && e.target.id !== 'pstyle') m.classList.remove('on'); }, true);
-$('bnew').onclick = () => { if(!isB()) return; BRD.push(BRD[+pageNo.slice(1) - 1] || 'plain'); pageNo = 'b' + BRD.length; render(); };
+$('bnew').onclick = () => { if(!isB()) return; BRD.push(BRD[+pageNo.slice(1) - 1] || 'plain'); BAS[BRD.length - 1] = newAspect(); pageNo = 'b' + BRD.length; render(); };
 document.querySelectorAll('[data-bs]').forEach(b => b.onclick = () => { $('smenu').classList.remove('on'); if(!isB()) return; BRD[+pageNo.slice(1) - 1] = b.dataset.bs; render(); });
 
 /* ── drawing: kept per page, in page proportions so zoom keeps them in place ── */
@@ -566,10 +580,10 @@ const dKey = () => 'coe.ann.d.' + DAY + '.' + WHO + '.' + (FID || '-'), bKey = (
 try{ for(let i = localStorage.length - 1; i >= 0; i--){ const k = localStorage.key(i); if(/^coe\.(ann|brd)\.d\./.test(k) && k.indexOf('.d.' + DAY + '.') < 0) localStorage.removeItem(k); } }catch(e){}
 function daySave(){ try{ const o = {}, b = {}; Object.keys(ANN).forEach(k => { if(!(ANN[k] && ANN[k].length)) return; if(/^b\d+$/.test(k)) b[k] = ANN[k]; else o[k] = ANN[k]; });
     if(FID){ if(Object.keys(o).length) localStorage.setItem(dKey(), JSON.stringify(o)); else localStorage.removeItem(dKey()); }
-    if(BRD.length && Object.keys(b).length) localStorage.setItem(bKey(), JSON.stringify({ st: BRD.slice(), p: b })); }catch(e){} }
-function boardRestore(){ try{ const v = JSON.parse(localStorage.getItem(bKey()) || 'null'); if(!v || !v.st || !v.st.length) return false; BRD.length = 0; v.st.forEach(x => BRD.push(x)); Object.assign(ANN, v.p || {}); return true; }catch(e){ return false; } }
+    if(BRD.length && Object.keys(b).length) localStorage.setItem(bKey(), JSON.stringify({ st: BRD.slice(), as: BAS.slice(0, BRD.length), p: b })); }catch(e){} }
+function boardRestore(){ try{ const v = JSON.parse(localStorage.getItem(bKey()) || 'null'); if(!v || !v.st || !v.st.length) return false; BRD.length = 0; BAS.length = 0; v.st.forEach(x => BRD.push(x)); (v.as || []).forEach((a, i) => { if(a) BAS[i] = a; }); Object.assign(ANN, v.p || {}); return true; }catch(e){ return false; } }
 function saveAnn(){ try{ daySave(); }catch(e){} try{ if(FID){ const o = {}; Object.keys(ANN).forEach(k => { if(!/^b\d+$/.test(k)) o[k] = ANN[k]; }); sessionStorage.setItem(key(), JSON.stringify(o)); } }catch(e){} }   /* 2618: board pages are not kept: cleared when the book is closed */
-function loadAnn(){ Object.keys(ANN).forEach(k => delete ANN[k]); HIST.length = 0; try{ BRD.length = 0; BI = 1; }catch(e){} try{ Object.assign(ANN, JSON.parse(sessionStorage.getItem(key()) || '{}')); }catch(e){} try{ if(!Object.keys(ANN).length) Object.assign(ANN, JSON.parse(localStorage.getItem(dKey()) || '{}')); }catch(e){} }   /* 2636 */
+function loadAnn(){ Object.keys(ANN).forEach(k => delete ANN[k]); HIST.length = 0; try{ BRD.length = 0; BAS.length = 0; BI = 1; }catch(e){} try{ Object.assign(ANN, JSON.parse(sessionStorage.getItem(key()) || '{}')); }catch(e){} try{ if(!Object.keys(ANN).length) Object.assign(ANN, JSON.parse(localStorage.getItem(dKey()) || '{}')); }catch(e){} }   /* 2636 */
 const list = () => (ANN[pageNo] = ANN[pageNo] || []);
 /* 2286: undo and redo for every change (pen, shape, text, eraser, Clear) */
 const REDO = []; const rec = () => { HIST.push({ pg: pageNo, snap: list().slice() }); REDO.length = 0; if(HIST.length > 300) HIST.shift(); };
@@ -613,8 +627,8 @@ $('ink').addEventListener('pointerdown', e => { if(tool === 'hand') return; e.pr
   $('ink').setPointerCapture(e.pointerId);
   if(tool === 'erase'){ cur = { erase: true, before: list().slice(), hit: false }; eraseAt(p); return; }
   rec();
-  if(tool === 'shape'){ cur = { t: 'shape', k: shp, c: color, w: SZ.pen[size] * 1.2, p: [p, p] }; list().push(cur); drawInk(); return; }
-  cur = { t: tool, c: tool === 'hl' ? (/^#(2B2450|1B1B1F)$/.test(color) ? '#F5B700' : color) : color, w: tool === 'hl' ? 0.022 : SZ.pen[size], p: [p] }; list().push(cur); drawInk(); });
+  if(tool === 'shape'){ cur = { t: 'shape', k: shp, c: color, w: SZ.pen[size] * 1.2 * wf(), p: [p, p] }; list().push(cur); drawInk(); return; }
+  cur = { t: tool, c: tool === 'hl' ? (/^#(2B2450|1B1B1F)$/.test(color) ? '#F5B700' : color) : color, w: (tool === 'hl' ? 0.022 : SZ.pen[size]) * wf(), p: [p] }; list().push(cur); drawInk(); });
 $('ink').addEventListener('pointermove', e => { if(!cur){ if(tool === 'text'){ const q = pt(e), hs = onHandle(q), h = hs || hitText(q); $('ink').classList.toggle('txsize', !!hs); $('ink').classList.toggle('txdrag', !hs && !!h); if(h !== HOV){ HOV = h; drawInk(); } } return; } const p = pt(e);
   if(cur.size){ cur.size.s = txClamp(p[1] - cur.y0); drawInk(); return; }   /* 2614: the bottom edge follows the mouse */
   if(cur.drag){ const dx = p[0] - cur.p0[0], dy = p[1] - cur.p0[1]; if(!cur.moved && Math.hypot(dx, dy) < 0.004) return;
@@ -785,7 +799,7 @@ addEventListener('message', ev => { if(ev.origin !== location.origin || !ev.data
 $('bk').textContent = 'CupOfEnglish book'; $('fl').textContent = TITLE;
 /* 2634 (Misty 21 Nov 16:41): classes with no book (Free Talk, Debate, IELTS speaking) open the Blank board on its own: ?board=1 (and &s=student).
    Same tools, page styles, + Page and Copy page; no book, so no "Back to book". Cleared when it is closed, like every board. */
-function boardOnly(){ doc = { numPages: 0, boardOnly: true }; document.body.classList.add('bonly', 'noside'); BRD.length = 0; if(!boardRestore()) BRD.push('plain'); pageNo = 'b1'; zoom = 1; if(BRD.length > 1 || (ANN.b1 && ANN.b1.length)) setTimeout(() => toast('Today\u2019s board is back: ' + BRD.length + ' page' + (BRD.length === 1 ? '' : 's') + '. Copy page to send it.'), 600);
+function boardOnly(){ doc = { numPages: 0, boardOnly: true }; document.body.classList.add('bonly', 'noside'); BRD.length = 0; if(!boardRestore()){ BRD.push('plain'); setTimeout(() => { if(!BAS[0] && !(ANN.b1 && ANN.b1.length)){ BAS[0] = newAspect(); render(); } }, 0); } pageNo = 'b1'; zoom = 1; if(BRD.length > 1 || (ANN.b1 && ANN.b1.length)) setTimeout(() => toast('Today\u2019s board is back: ' + BRD.length + ' page' + (BRD.length === 1 ? '' : 's') + '. Copy page to send it.'), 600);
   $('bk').textContent = 'CupOfEnglish board'; $('fl').textContent = Q.get('s') ? 'Class with ' + Q.get('s') : 'Blank board';
   $('msg').style.display = 'none'; $('wrap').style.display = ''; render(); }
 if(!FID && Q.get('board') === '1') boardOnly();

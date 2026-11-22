@@ -16,11 +16,11 @@
     return s; }
   const U = W => W / 560;   /* the design was drawn 560 px wide */
   /* height of the header (content starts here) */
-  function height(W, hasLabel){ const u = U(W); return Math.round(u * (22 + 38 + 16) + Math.max(1, u * 0.9) + u * (hasLabel ? 38 : 16)); }
+  function height(W, hasLabel, unit){ const u = unit || U(W);   /* 2717: unit = the size of the header's parts (default: from the width) */ return Math.round(u * (22 + 38 + 16) + Math.max(1, u * 0.9) + u * (hasLabel ? 38 : 16)); }
   function fit(g, t, font, size, min, room){ let s = size; g.font = font(s); while(g.measureText(t).width > room && s > min){ s -= 0.5; g.font = font(s); }
     let x = t; if(g.measureText(x).width > room){ while(x.length > 4 && g.measureText(x + '…').width > room) x = x.slice(0, -1); x = x.trim() + '…'; } return x; }
   /* o: { logo: Image|null, title, meta: [parts], label } · paints a white header on g (canvas 2D) at the top; returns where content starts */
-  function draw(g, W, o){ o = o || {}; const u = U(W), P = Math.round(26 * u), hasL = !!(o.label && String(o.label).trim()), H = height(W, hasL);
+  function draw(g, W, o){ o = o || {}; const u = o.unit || U(W), P = Math.round(26 * u), hasL = !!(o.label && String(o.label).trim()), H = height(W, hasL, o.unit);
     g.save(); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); g.textBaseline = 'alphabetic';
     const top = 22 * u, row = 38 * u; let lw = 0;
     /* 2711 (Misty 22 Nov 18:41): o.slim · the on-screen class notes board: no logo (it is already in the reader's top bar), title on the left, details on the right, same height */
