@@ -107,6 +107,7 @@ body.ink-on #tcCard.fs{padding-left:max(80px,calc((100vw - 1180px)/2))}body.ink-
 .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1F2937;color:#fff;padding:10px 16px;border-radius:10px;font-size:15px;z-index:50;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1}
+#tcCard .toast{z-index:70}
 .tip{font-size:13px;color:var(--ink2);margin-top:6px}
 .chk{display:flex;align-items:center;gap:10px;font-size:15px;cursor:pointer}.chk input{width:20px;height:20px;accent-color:#00707A}
 @media(max-width:1100px){.grid{grid-template-columns:1fr}.side{position:static}}
@@ -274,7 +275,9 @@ function underline(){ const x = sel(); if(!x) return ed.focus(); const { s, r } 
   if(u0 && (r.collapsed || u0.contains(r.endContainer))){ const f = u0.firstChild, l = u0.lastChild; u0.replaceWith(...u0.childNodes); if(f && l){ const rr = document.createRange(); rr.setStartBefore(f); rr.setEndAfter(l); s.removeAllRanges(); s.addRange(rr); } ed.normalize(); save(); draw(); return; }
   if(r.collapsed){ toast('Select the word(s) to underline first.'); return; }
   const frag = r.extractContents(); unwrapIn(frag, 'u'); const u = document.createElement('u'); u.appendChild(frag); r.insertNode(u); caretAfter(u, s); save(); draw(); }
-function clearMarks(){ const x = sel(); if(!x) return; const { r } = x; if(r.collapsed){ toast('Select the marked words first.'); return; }
+function clearMarks(){ const x = sel(); if(!x) return; const { r } = x;
+  /* 2708 (Misty 22 Nov 18:24): with no words selected, the mark the cursor is in is cleared */
+  if(r.collapsed){ const mk = inside(r.startContainer, 'del,ins,.cm,u'); if(!mk){ toast('Select the marked words first (or click inside a mark), then Clear marks.'); return; } r.selectNode(mk); }
   const frag = r.extractContents(); frag.querySelectorAll('.cm').forEach(n => n.remove()); frag.querySelectorAll('ins').forEach(n => n.remove()); unwrapIn(frag, 'del'); unwrapIn(frag, 'u'); r.insertNode(frag); ed.normalize(); save(); draw(); }
 /* the toolbar keeps the selection (mousedown would take it away) */
 ['bW', 'bC', 'bG', 'bUl', 'bX', 'bU'].forEach(id => $(id).addEventListener('mousedown', e => e.preventDefault()));
@@ -576,7 +579,8 @@ setMode(ed.textContent.trim() ? 'C' : 'T');
     [document.getElementById('ed'), c.querySelector('.fsTask')].forEach(n => n && ro2.observe(n)); };
   const inkDown = () => { if(ro2){ ro2.disconnect(); ro2 = null; } if(!inkOn) return; inkOn = false; try{ CoeInk.close(); }catch(e){} c.querySelectorAll('canvas.ink-c').forEach(n => n.remove()); c.style.minHeight = '';
     ['.ink-t', '.ink-m'].forEach(q => { const n = c.querySelector(q); if(n) document.body.appendChild(n); }); };
-  const on = () => document.fullscreenElement === c || c.classList.contains('fs'), lab = () => { b.textContent = on() ? '✕ Exit full screen' : '⛶ Full screen'; fb.style.display = on() && !document.fullscreenElement ? '' : 'none'; if(on()){ side(); task(); setTimeout(inkUp, 60); } else { inkDown(); unside(); } };
+  const tst = () => { const t = document.getElementById('toast'); if(!t) return; if(on()){ if(t.parentNode !== c) c.appendChild(t); } else if(t.parentNode === c) document.body.appendChild(t); };   /* 2708: messages show in full screen too */
+  const on = () => document.fullscreenElement === c || c.classList.contains('fs'), lab = () => { tst(); b.textContent = on() ? '✕ Exit full screen' : '⛶ Full screen'; fb.style.display = on() && !document.fullscreenElement ? '' : 'none'; if(on()){ side(); task(); setTimeout(inkUp, 60); } else { inkDown(); unside(); } };
   async function snap(btn){ const was = btn.textContent; const pic = withHead(trim(shot()));   /* before the button's words change (the header must not move) */
     btn.disabled = true; btn.textContent = 'Copying…'; const bp = new Promise(z => pic.toBlob(z, 'image/png'));
     try{ await Promise.race([navigator.clipboard.write([new ClipboardItem({ 'image/png': bp })]), new Promise((z, no) => setTimeout(() => no(new Error('slow')), 8000))]); btn.textContent = 'Copied ✓ · paste in WeChat'; }
@@ -594,9 +598,10 @@ setMode(ed.textContent.trim() ? 'C' : 'T');
       g.imageSmoothingQuality = 'high'; g.drawImage(cv, M, band + 20, W - 2 * M, ch); return o; }catch(e){ return cv; } }
   /* draws the task card and the writing as they are on the screen (each word where it sits, with its colour and lines), then the drawings */
   function shot(){ const ed = document.getElementById('ed'), tk = c.querySelector('.fsTask'), parts = [tk, ed].filter(Boolean);
-    const box = parts.map(n => n.getBoundingClientRect()), L = Math.min(...box.map(r => r.left)), T = Math.min(...box.map(r => r.top)), Rr = Math.max(...box.map(r => r.right)), B = Math.max(...box.map(r => r.bottom));
-    const pad = 28, z = 2, cv = document.createElement('canvas'); cv.width = Math.round((Rr - L + 2 * pad) * z); cv.height = Math.round((B - T + 2 * pad) * z);
-    const g = cv.getContext('2d'); g.scale(z, z); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.translate(pad - L, pad - T);
+    /* 2708: the task card and the writing one under the other (the tabs and buttons between them are left out) */
+    const box = parts.map(n => n.getBoundingClientRect()), L = Math.min(...box.map(r => r.left)), Rr = Math.max(...box.map(r => r.right)), GAP = 18;
+    const pad = 28, z = 2, tot = box.reduce((a, r) => a + r.height, 0) + GAP * (box.length - 1), cv = document.createElement('canvas'); cv.width = Math.round((Rr - L + 2 * pad) * z); cv.height = Math.round((tot + 2 * pad) * z);
+    const g = cv.getContext('2d'); g.scale(z, z); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
     const tr = s => !s || s === 'transparent' || /rgba\(.*,\s*0\)$/.test(s);
     const rr = (x, y, w, h, r) => { g.beginPath(); if(g.roundRect && r) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); };
     const deco = (n, root) => { const o = []; for(let e = n; e && e !== root.parentNode; e = e.parentNode){ if(e.nodeType !== 1) continue; const cs = getComputedStyle(e), l = cs.textDecorationLine || '';
@@ -615,9 +620,11 @@ setMode(ed.textContent.trim() ? 'C' : 'T');
           /* the line under the gap to the next underlined / crossed-out word */
           const nx = /\s+/y; nx.lastIndex = k.index + k[0].length; const sp = nx.exec(n.nodeValue); if(sp && D.length && nx.lastIndex < n.nodeValue.length){ rg.setStart(n, k.index + k[0].length); rg.setEnd(n, nx.lastIndex); const s2 = rg.getClientRects()[0]; if(s2 && Math.abs(s2.top - q.top) < 2) D.forEach(([t, col]) => { g.fillStyle = col; g.fillRect(s2.left, t === 's' ? by - fs * 0.3 : by + 4, s2.width, 2); }); } } };
       walk(root); };
-    parts.forEach(paint);
-    const ic = c.querySelector('canvas.ink-c'); if(ic && ic.width){ const q = ic.getBoundingClientRect(), d = ic.width / q.width, x0 = Math.max(L, q.left), y0 = Math.max(T, q.top), x1 = Math.min(Rr, q.right), y1 = Math.min(B, q.bottom);
-      if(x1 > x0 && y1 > y0) try{ g.drawImage(ic, (x0 - q.left) * d, (y0 - q.top) * d, (x1 - x0) * d, (y1 - y0) * d, x0, y0, x1 - x0, y1 - y0); }catch(e){} }
+    const ic = c.querySelector('canvas.ink-c'); let yy = pad;
+    parts.forEach((part, n) => { const r = box[n]; g.save(); g.translate(pad - L, yy - r.top); g.beginPath(); g.rect(L, r.top, Rr - L, r.height); g.clip(); paint(part);
+      if(ic && ic.width){ const q = ic.getBoundingClientRect(), d = ic.width / q.width, x0 = Math.max(L, q.left), y0 = Math.max(r.top, q.top), x1 = Math.min(Rr, q.right), y1 = Math.min(r.bottom, q.bottom);
+        if(x1 > x0 && y1 > y0) try{ g.drawImage(ic, (x0 - q.left) * d, (y0 - q.top) * d, (x1 - x0) * d, (y1 - y0) * d, x0, y0, x1 - x0, y1 - y0); }catch(e){} }
+      g.restore(); yy += r.height + GAP; });
     return cv; }
   b.onclick = async () => { if(on()){ c.classList.remove('fs'); if(document.fullscreenElement) await document.exitFullscreen().catch(() => {}); lab(); return; }
     side(); c.classList.add('fs'); try{ await c.requestFullscreen(); }catch(e){} lab(); const ed = document.getElementById('ed'); if(ed) ed.focus(); };
