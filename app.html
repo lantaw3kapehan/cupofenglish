@@ -7503,7 +7503,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2247;
+const COE_V = 2248;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -10539,7 +10539,14 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
   function paint(){ const box = $('epBox'); if(!box || !EP) return;
     box.querySelector('.ep-g').innerHTML = step('unit', 'Unit') + step('sb', 'Book page') + step('wb', 'Workbook page');
     box.querySelectorAll('[data-bk]').forEach(b => b.classList.toggle('on', b.dataset.bk === EP.book));
-    const hw = $('epHw'); if(hw) hw.innerHTML = EP.wb != null ? '<button type="button" onclick="gxIns(\'nH\',\'Workbook p. ' + (EP.wb + 1) + '\')">Homework: Workbook p. ' + (EP.wb + 1) + '</button>' : ''; }
+    const hw = $('epHw'); if(hw){ const dh = (() => { try{ const now = Date.now(), want = String(EP.book || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); let best = null;
+          for(let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if(!/^coe\.rd\.hw\./.test(k)) continue; const o = JSON.parse(localStorage.getItem(k) || 'null'), bk = k.slice(10).replace(/[^A-Z0-9]/g, '');
+            if(!o || now - (o.at || 0) > 3 * 3600e3) continue; const sc = (want && bk === want ? 1e13 : 0) + o.at; if(!best || sc > best.sc) best = { sc, o }; }
+          if(!best) return ''; const pp = L => !L || !L.length ? '' : L.length === 1 ? 'p. ' + L[0] : (L[L.length - 1] - L[0] === L.length - 1 ? 'pp. ' + L[0] + '–' + L[L.length - 1] : 'pp. ' + L.join(', '));
+          return [best.o.wb && best.o.wb.length ? 'Workbook ' + pp(best.o.wb) : '', best.o.sb && best.o.sb.length ? 'Student’s Book ' + pp(best.o.sb) : ''].filter(Boolean).join(' · '); }catch(e){ return ''; } })();
+        if(dh){ hw.innerHTML = '<button type="button" onclick="(function(){var e=document.getElementById(\'nH\');if(e){e.value=\'' + dh.replace(/'/g, '’') + '\';e.dispatchEvent(new Event(\'input\'))}})()">Copied for homework today · ' + esc(dh) + '</button>';
+          const ih = $('nH'); if(ih && !ih.value.trim() && !ih.dataset.h2726){ ih.dataset.h2726 = 1; ih.value = dh; ih.dispatchEvent(new Event('input')); } }
+        else hw.innerHTML = EP.wb != null ? '<button type="button" onclick="gxIns(\'nH\',\'Workbook p. ' + (EP.wb + 1) + '\')">Homework: Workbook p. ' + (EP.wb + 1) + '</button>' : ''; } }
   window.epAdd = (k, d) => { if(!EP) return; const v = EP[k] == null ? (EP.last && EP.last[k] != null ? EP.last[k] : 0) : EP[k]; EP[k] = Math.max(0, v + d); compose(); };
   window.epSet = (k, v) => { if(!EP) return; EP[k] = v === '' ? null : Math.max(0, +v || 0); const p = [EP.book || 'Book']; if(EP.unit != null) p.push('Unit ' + EP.unit); if(EP.sb != null) p.push('SB p. ' + EP.sb); if(EP.wb != null) p.push('WB p. ' + EP.wb); const e = $('nE'); if(e){ e.value = p.join(' · '); e.dispatchEvent(new Event('input', { bubbles: true })); } const hw = $('epHw'); if(hw) hw.innerHTML = EP.wb != null ? '<button type="button" onclick="gxIns(\'nH\',\'Workbook p. ' + (EP.wb + 1) + '\')">Homework: Workbook p. ' + (EP.wb + 1) + '</button>' : ''; };
   window.epBook = b => { if(!EP) return; EP.book = b; compose(); };
