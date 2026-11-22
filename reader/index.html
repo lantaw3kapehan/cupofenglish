@@ -216,6 +216,20 @@ function bookTab2698(f){ const name = TABN2698(mainLabel(f.name)), mine = window
   let w = null; try{ w = window.open('', name); }catch(e){} if(!w) return false;
   let blank = true; try{ blank = !w.location.href || w.location.href === 'about:blank'; }catch(e){ blank = false; }
   if(blank) w.location.href = location.pathname + '?' + q.toString(); try{ w.focus(); }catch(e){} return true; }
+/* 2699 (Misty 22 Nov 15:42): where the class ended · the book page number printed on the page (read from the page itself) and the unit,
+   kept for this book (Student's Book and Workbook apart) for a few hours, so the class note's "Where did you end?" fills itself. */
+let endT2699 = 0;
+function endRec2699(){ clearTimeout(endT2699); const id = FID, pn = pageNo, d = doc; endT2699 = setTimeout(async () => { if(!d || !BOOK || id !== FID || pn !== pageNo) return;
+  try{ const cf = FILES.find(x => x.id === id), nm = String((cf && cf.name) || TITLE || ''), kind = /work\s*book|\bWB\b/i.test(nm) ? 'wb' : /teacher|answer|\bTG\b/i.test(nm) ? '' : 'sb'; if(!kind) return;
+    const pg = await d.getPage(pn), vp = pg.getViewport({ scale: 1 }), tc = await pg.getTextContent(); let printed = null, unit = null, low = -1;
+    tc.items.forEach(it => { const t = String(it.str || '').trim(), y = it.transform ? it.transform[5] : 0, x = it.transform ? it.transform[4] : 0;
+      if(/^\d{1,3}$/.test(t) && y < vp.height * 0.12 && (x < vp.width * 0.22 || x > vp.width * 0.7)){ if(printed == null || y < low){ printed = +t; low = y; } }
+      const m = /\bunit\s*(\d{1,2})\b/i.exec(t); if(m && unit == null) unit = +m[1]; });
+    if(printed == null){ try{ const L = await d.getPageLabels(); if(L && L[pn - 1] && /^\d+$/.test(L[pn - 1])) printed = +L[pn - 1]; }catch(e){} }
+    if(unit == null && cf && typeof unitOf === 'function' && unitOf(cf) != null && unitOf(cf) < 200) unit = unitOf(cf);
+    if(printed == null && unit == null) return;
+    const k = 'coe.rd.end.' + String(BOOK).toUpperCase(); let o = {}; try{ o = JSON.parse(localStorage.getItem(k) || '{}') || {}; }catch(e){}
+    o[kind] = { p: printed, u: unit, at: Date.now() }; o.at = Date.now(); localStorage.setItem(k, JSON.stringify(o)); }catch(e){} }, 1500); }
 function paintSide(){ const s = $('side'); if(!FILES.length){ s.innerHTML = ''; return; }
   const M = FILES.filter(isMain), units = [...new Set(FILES.map(unitOf).filter(u => u != null && u < 200))].sort((a, b) => a - b);
   if(UNIT == null && units.length) UNIT = units[0];
@@ -447,7 +461,7 @@ async function render(){ if(!doc) return; const my = {}; rendering = my; if(isB(
   if(!cr && !tplW){ const lg = logoBottom(c); if(lg){ const g = c.getContext('2d'), m = Math.round(c.width * 0.01); g.fillStyle = lg.c; g.fillRect(lg.x - m, lg.y - m, lg.w + 2 * m, lg.h + 2 * m); } }   /* 2297 */
   c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = vp.width; ink.height = hh; ink.style.width = w + 'px'; ink.style.height = h + 'px';
   st.classList.toggle('fit', zoom <= 1);
-  if(rendering !== my) return; drawInk(); pages(); boardUI(); try{ localStorage.setItem('coe.reader.pg.' + FID, String(pageNo)); }catch(e){}
+  if(rendering !== my) return; drawInk(); pages(); boardUI(); try{ localStorage.setItem('coe.reader.pg.' + FID, String(pageNo)); }catch(e){} try{ endRec2699(); }catch(e){}
   ahead(scale * dpr); }
 /* 2279 · the next two pages (and the one before) are drawn in the background, so turning pages is instant */
 const PRE = new Map(); let AH = 0;
