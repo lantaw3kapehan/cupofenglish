@@ -80,7 +80,7 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
     const natural = () => { ctx.save(); ctx.font = '600 ' + fs + 'px Inter, sans-serif'; const m = Math.max(0, ...String(i.value || ' ').split('\n').map(t => ctx.measureText(t).width)); ctx.restore(); return m; };
     const room = () => Math.max(0.06, lim - x0);
     const fitW = () => { const want = fixW ? Math.min(fixW, room()) : Math.min(room(), Math.max(110 / w, (natural() + fs * 0.8) / w)); i.style.width = Math.round(want * w + PADW) + 'px'; return want; };
-    i.style.cssText = 'font:600 ' + fs + 'px Inter, sans-serif;line-height:' + Math.round(fs * 1.25) + 'px;color:' + col + ';left:' + (cv.offsetLeft + x0 * w - 7.5) + 'px;top:' + (cv.offsetTop + y0 * w - 3.5) + 'px;resize:horizontal;overflow:hidden;white-space:pre-wrap;box-sizing:border-box;min-width:60px';
+    i.style.cssText = 'font:600 ' + fs + 'px Inter, sans-serif;line-height:' + Math.round(fs * 1.25) + 'px;color:' + col + ';left:' + (cv.offsetLeft + x0 * w - 7.5) + 'px;top:' + (cv.offsetTop + y0 * w - 3.5) + 'px;resize:horizontal;overflow:hidden;white-space:pre-wrap;box-sizing:border-box;min-width:60px;min-height:0;max-width:none;margin:0';
     const grip = document.createElement('div'); grip.className = 'ink-grip'; grip.title = 'Drag to move the text'; grip.textContent = '✥';
     const place = () => { i.style.left = (cv.offsetLeft + x0 * w - 7.5) + 'px'; i.style.top = (cv.offsetTop + y0 * w - 3.5) + 'px'; grip.style.left = (cv.offsetLeft + x0 * w - 7.5 - 24) + 'px'; grip.style.top = (cv.offsetTop + y0 * w - 3.5) + 'px'; };
     const grow = () => { fitW(); i.style.height = 'auto'; i.style.height = i.scrollHeight + 'px'; };
