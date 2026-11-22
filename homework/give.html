@@ -393,13 +393,56 @@ zhPref(); ntHead(); draw();
 })();
 </script>
 <script>
-/* 2672: Add table · puts a small table at the cursor (one row per line, columns split by |) */
-(function(){ const add = (id, bid) => { const q = document.getElementById(id), b = document.getElementById(bid); if(!q || !b) return;
-  b.addEventListener('mousedown', e => e.preventDefault());
-  b.onclick = () => { const a = q.selectionStart, v = q.value, pre = v.slice(0, a), post = v.slice(q.selectionEnd);
-    const T = (pre && !pre.endsWith('\n') ? '\n' : '') + (pre.trim() ? '\n' : '') + 'Table title\nVocabulary | Meaning\nword | meaning\nword | meaning\n';
-    q.value = pre + T + post; const st = pre.length + T.indexOf('Table title'); q.focus(); q.setSelectionRange(st, st + 11); q.dispatchEvent(new Event('input', { bubbles: true })); }; };
-  add('en', 'qT'); add('nt', 'nT'); })();
+/* 2676 (Misty 22 Nov 11:23 "I thought there would be a table too"): Add table opens a real table to fill in, under the box ·
+   a box per cell, + Row / + Column, the line above is the title. It writes the table into the task or note for you
+   (columns split by Tab, the same as a table pasted from Word or Google Docs). With the cursor in a table, it opens that table. */
+(function(){
+  const css = document.createElement('style'); css.textContent = `.tbe{margin-top:10px;border:1px solid #D5D9E0;border-radius:12px;padding:12px;background:#FAFBFC}
+.tbe .tt{width:100%;height:38px;border:1px solid #D5D9E0;border-radius:8px;padding:0 10px;font-weight:700;font-size:15px;color:#2B2253;margin-bottom:8px;box-sizing:border-box}
+.tbe .gr{display:grid;gap:0;border:1px solid #DDE3E8;border-radius:8px;overflow:hidden;background:#fff}
+.tbe .gr input{border:0;border-top:1px solid #EEF1F4;border-left:1px solid #EEF1F4;height:38px;padding:0 10px;font-size:14px;min-width:0;color:#374151;background:#fff}
+.tbe .gr input.h{background:#E4F6F6;color:#0E6F68;font-weight:700;border-top:0}.tbe .gr input.c0{font-weight:600;color:#2B2253}.tbe .gr input.l{border-left:0}
+.tbe .gr input:focus{outline:2px solid #7FC8CD;outline-offset:-2px}
+.tbe .bar{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}.tbe .bar .sp{flex:1}.tbe .note{font-size:12px;color:#6B7280;margin-top:8px}`;
+  document.head.appendChild(css);
+  const isRow = t => typeof isRow2672 === 'function' ? isRow2672(t) : /\t/.test(t), cells = t => typeof cells2672 === 'function' ? cells2672(t) : t.split(/\t+/);
+  const setup = (id, bid) => { const q = document.getElementById(id), b = document.getElementById(bid); if(!q || !b) return; let ed = null;
+    b.addEventListener('mousedown', e => e.preventDefault());
+    const fire = () => q.dispatchEvent(new Event('input', { bubbles: true }));
+    const open = () => { if(ed) ed.el.remove(); const L = q.value.split('\n'), at = q.value.slice(0, q.selectionStart).split('\n').length - 1;
+      let s = -1, e = -1; if(L[at] !== undefined && L[at].trim() && isRow(L[at])){ s = at; while(s > 0 && L[s - 1].trim() && isRow(L[s - 1])) s--; e = at; while(e + 1 < L.length && L[e + 1].trim() && isRow(L[e + 1])) e++; }
+      else if(L[at + 1] !== undefined && L[at].trim() && L[at + 1].trim() && isRow(L[at + 1])){ s = at + 1; e = s; while(e + 1 < L.length && L[e + 1].trim() && isRow(L[e + 1])) e++; }
+      let title = '', rows, tIdx = -1;
+      if(s >= 0){ rows = L.slice(s, e + 1).map(cells); if(s > 0 && L[s - 1].trim()){ title = L[s - 1].trim(); tIdx = s - 1; } }
+      else { rows = [['Vocabulary', 'Meaning'], ['', ''], ['', '']]; const pos = q.selectionEnd, pre = q.value.slice(0, pos), post = q.value.slice(pos);
+        const lead = (pre && !pre.endsWith('\n') ? '\n' : '') + (pre.trim() ? '\n' : ''), block = 'Useful words\n' + rows.map(r => r.join('\t')).join('\n'), tail = post && !post.startsWith('\n') ? '\n' : '';
+        q.value = pre + lead + block + tail + post; const L2 = q.value.split('\n'); tIdx = (pre + lead).split('\n').length - 1; s = tIdx + 1; title = 'Useful words'; fire(); }
+      const n = Math.max(...rows.map(r => r.length)); rows = rows.map(r => { while(r.length < n) r.push(''); return r; });
+      ed = { el: document.createElement('div'), rows, title, tIdx, s, len: rows.length }; ed.el.className = 'tbe'; q.insertAdjacentElement('afterend', ed.el); draw(); setTimeout(() => { const f = ed.el.querySelector('.gr input:not(.h)'); f && f.focus(); }, 30); };
+    const write = () => { const L = q.value.split('\n'), out = ed.rows.map(r => r.map(c => String(c).replace(/[\t\n]+/g, ' ')).join('\t'));
+      let s = ed.s; if(ed.tIdx >= 0){ L[ed.tIdx] = ed.title.trim() || 'Table'; } L.splice(s, ed.len, ...out); ed.len = out.length; const top = q.scrollTop; q.value = L.join('\n'); q.scrollTop = top; fire(); };
+    const draw = () => { const n = ed.rows[0].length, E = x => String(x).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+      ed.el.innerHTML = (ed.tIdx >= 0 ? '<input class="tt" placeholder="Table title" value="' + E(ed.title) + '">' : '') +
+        '<div class="gr" style="grid-template-columns:repeat(' + n + ',minmax(0,1fr))">' + ed.rows.map((r, ri) => r.map((c, ci) => '<input data-r="' + ri + '" data-c="' + ci + '" class="' + (ri === 0 ? 'h ' : '') + (ci === 0 ? 'c0 l' : '') + '" placeholder="' + (ri === 0 ? 'Heading' : '') + '" value="' + E(c) + '">').join('')).join('') + '</div>' +
+        '<div class="bar"><button type="button" class="btn sm" data-a="r+">+ Row</button><button type="button" class="btn sm" data-a="c+">+ Column</button><button type="button" class="btn sm" data-a="r-"' + (ed.rows.length < 3 ? ' disabled' : '') + '>Remove last row</button><button type="button" class="btn sm" data-a="c-"' + (n < 2 ? ' disabled' : '') + '>Remove last column</button><span class="sp"></span><button type="button" class="btn sm" data-a="del">Delete table</button><button type="button" class="btn sm pri" data-a="ok">Done</button></div>' +
+        '<div class="note">The first row is the heading. Tip: paste a table copied from Word, Google Docs or a website into the first box and it fills the table.</div>'; };
+    document.addEventListener('input', e => { if(!ed || !ed.el.contains(e.target)) return; const t = e.target;
+      if(t.classList.contains('tt')){ ed.title = t.value; write(); return; } ed.rows[+t.dataset.r][+t.dataset.c] = t.value; write(); });
+    document.addEventListener('paste', e => { if(!ed || !ed.el.contains(e.target) || !e.target.dataset.r) return; const tx = (e.clipboardData || window.clipboardData).getData('text'); if(!/\t|\n/.test(tx.trim())) return;
+      e.preventDefault(); const R = tx.replace(/\r/g, '').split('\n').filter(x => x.trim()).map(x => x.split('\t').map(c => c.trim())), r0 = +e.target.dataset.r, c0 = +e.target.dataset.c;
+      const nc = Math.max(ed.rows[0].length, c0 + Math.max(...R.map(r => r.length))); ed.rows.forEach(r => { while(r.length < nc) r.push(''); });
+      R.forEach((r, i) => { while(ed.rows.length <= r0 + i) ed.rows.push(Array(nc).fill('')); r.forEach((c, j) => { ed.rows[r0 + i][c0 + j] = c; }); }); write(); draw(); });
+    document.addEventListener('click', e => { if(!ed) return; const bt = e.target.closest && e.target.closest('.tbe button'); if(!bt || !ed.el.contains(bt)) return; const a = bt.dataset.a, n = ed.rows[0].length;
+      if(a === 'r+') ed.rows.push(Array(n).fill('')); else if(a === 'c+') ed.rows.forEach((r, i) => r.push(i ? '' : 'Heading')); else if(a === 'r-' && ed.rows.length > 2) ed.rows.pop(); else if(a === 'c-' && n > 1) ed.rows.forEach(r => r.pop());
+      else if(a === 'ok'){ ed.el.remove(); ed = null; return; }
+      else if(a === 'del'){ if(!confirm('Delete this table?')) return; const L = q.value.split('\n'); L.splice(ed.s, ed.len); if(ed.tIdx >= 0) L.splice(ed.tIdx, 1); q.value = L.join('\n').replace(/\n{3,}/g, '\n\n'); fire(); ed.el.remove(); ed = null; return; }
+      write(); draw(); if(a === 'r+'){ const ins = ed.el.querySelectorAll('.gr input'); ins[ins.length - n] && ins[ins.length - n].focus(); } });
+    q.addEventListener('input', e => { if(ed && e.isTrusted){ ed.el.remove(); ed = null; } });   /* typing in the box itself closes the table editor so they never disagree */
+    b.onclick = open; b.textContent = 'Add table';
+    const lbl = () => { const L = q.value.split('\n'), at = q.value.slice(0, q.selectionStart).split('\n').length - 1; b.textContent = L[at] && L[at].trim() && isRow(L[at]) ? 'Edit table' : 'Add table'; };
+    q.addEventListener('keyup', lbl); q.addEventListener('click', lbl); };
+  setup('en', 'qT'); setup('nt', 'nT');
+})();
 </script>
 </body>
 </html>
