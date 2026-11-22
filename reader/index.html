@@ -208,6 +208,14 @@ async function refreshBook(){
     if(r && r.ok && r.book){ FILES = r.book.files || []; LABEL = r.book.label || ''; $('bk').textContent = LABEL || $('bk').textContent; document.title = 'CupOfEnglish · ' + (LABEL || 'Books'); }
   }catch(e){}
   const cur = FILES.find(f => f.id === FID); if(UNIT == null && cur) UNIT = unitOf(cur); paintSide(); }
+/* 2698 (Misty 22 Nov 14:56): the Student's Book, the Workbook (and the teacher's guide / answer key) each open in their own browser tab,
+   so in class the two books never replace each other. A tab that is already open is brought forward as it is (same page, same drawings). */
+const TABN2698 = l => l === 'Workbook' ? 'coeReaderWB' : l === "Teacher's guide" ? 'coeReaderTG' : l === 'Answer key' ? 'coeReaderAK' : 'coeReader';
+function bookTab2698(f){ const name = TABN2698(mainLabel(f.name)), mine = window.name || 'coeReader'; if(name === mine) return false;
+  const q = new URLSearchParams(location.search); q.set('id', f.id); q.set('t', String(f.name).slice(0, 120)); if(BOOK) q.set('b', BOOK); q.set('n', '1');
+  let w = null; try{ w = window.open('', name); }catch(e){} if(!w) return false;
+  let blank = true; try{ blank = !w.location.href || w.location.href === 'about:blank'; }catch(e){ blank = false; }
+  if(blank) w.location.href = location.pathname + '?' + q.toString(); try{ w.focus(); }catch(e){} return true; }
 function paintSide(){ const s = $('side'); if(!FILES.length){ s.innerHTML = ''; return; }
   const M = FILES.filter(isMain), units = [...new Set(FILES.map(unitOf).filter(u => u != null && u < 200))].sort((a, b) => a - b);
   if(UNIT == null && units.length) UNIT = units[0];
@@ -225,7 +233,7 @@ function paintSide(){ const s = $('side'); if(!FILES.length){ s.innerHTML = ''; 
     Object.keys(G).sort(nat).forEach(g => { const fs = G[g].filter(f => !SQ || f.name.toLowerCase().includes(SQ.toLowerCase())); if(!fs.length) return;
       h += '<div class="h">' + esc(g.replace(/^[A-Z0-9 &'-]+$/, w => w.charAt(0) + w.slice(1).toLowerCase())) + '</div>' + fs.map(f => it(f, pLabel(f.name, []), f.kind === 'video' ? IC.play : IC.page)).join(''); }); }
   s.innerHTML = h;
-  s.querySelectorAll('.it').forEach(b => b.onclick = () => { const f = FILES.find(x => x.id === b.dataset.id); if(!f) return; if(f.kind === 'video') return playVid(f); if(f.kind === 'pdf') openFile(f.id, f.name); });
+  s.querySelectorAll('.it').forEach(b => b.onclick = () => { const f = FILES.find(x => x.id === b.dataset.id); if(!f) return; if(f.kind === 'video') return playVid(f); if(f.kind === 'pdf'){ if(isMain(f) && bookTab2698(f)) return; openFile(f.id, f.name); } });
   const go = d => { const i = units.indexOf(UNIT) + d; if(units[i] != null){ UNIT = units[i]; paintSide(); } };
   if($('uPrev')) $('uPrev').onclick = () => go(-1); if($('uNext')) $('uNext').onclick = () => go(1);
   const sq = $('sq'); if(sq) sq.oninput = () => { SQ = sq.value; const p = sq.selectionStart; paintSide(); const n = $('sq'); if(n){ n.focus(); n.setSelectionRange(p, p); } };
