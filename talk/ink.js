@@ -120,7 +120,13 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
       + '<div class="hr"></div>' + [0, 1, 2].map(z => '<button class="sz' + (size === z ? ' on' : '') + '" data-z="' + z + '" title="' + ['Small', 'Medium', 'Large'][z] + ' text and pen"><span style="font-size:' + [12, 16, 21][z] + 'px">A</span></button>').join('')
       + '<div class="hr"></div><div class="ur"><button class="tb" data-a="undo" title="Undo (Ctrl/Cmd+Z)" aria-label="Undo">' + IC.undo + '</button><button class="tb" data-a="redo" title="Redo (Ctrl/Cmd+Shift+Z)" aria-label="Redo"><span style="display:flex;transform:scaleX(-1)">' + IC.undo + '</span></button></div>'
       + '<button class="tb red" data-a="clear" title="Clear this screen (Undo brings it back)">Clear</button>';
-    if(mini) mini.innerHTML = '<i style="background:' + color + '"></i>Tools'; }
+    if(mini) mini.innerHTML = '<i style="background:' + color + '"></i>Tools';
+    /* 2709 (Misty 22 Nov 18:29): the shapes list opens outside the tool bar (no sideways scrolling to see Arrow / Box / Circle / Tick) */
+    document.querySelectorAll('.ink-p.ink-out').forEach(n => n.remove()); const pp = bar.querySelector('.ink-p.on'), sbn = bar.querySelector('[data-t="shape"]');
+    if(pp && sbn){ const r = sbn.getBoundingClientRect(); pp.classList.add('ink-out'); (bar.parentNode || document.body).appendChild(pp);
+      pp.style.cssText = 'position:fixed;left:' + Math.round(r.right + 10) + 'px;top:' + Math.round(r.top - 6) + 'px;z-index:62'; pp.addEventListener('click', onBar);
+      const off = ev => { if(pp.contains(ev.target) || bar.contains(ev.target)) return; document.removeEventListener('pointerdown', off, true); bar.dataset.sp = ''; pp.remove(); }; setTimeout(() => document.addEventListener('pointerdown', off, true), 0);
+      requestAnimationFrame(() => { const q = pp.getBoundingClientRect(); if(q.bottom > window.innerHeight - 8) pp.style.top = Math.max(8, window.innerHeight - 8 - q.height) + 'px'; }); } }
   function onBar(e){ const b = e.target.closest('button'); if(!b) return; e.stopPropagation();
     if(b.dataset.t){ if(b.dataset.t === 'shape' && tool === 'shape'){ bar.dataset.sp = bar.dataset.sp === '1' ? '' : '1'; } else bar.dataset.sp = b.dataset.t === 'shape' ? '1' : ''; setTool(b.dataset.t); return; }
     if(b.dataset.k){ shp = b.dataset.k; bar.dataset.sp = ''; try{ localStorage.setItem('coe.ink.shp', shp); }catch(x){} setTool('shape'); return; }
@@ -144,6 +150,6 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
       cv = document.createElement('canvas'); cv.className = 'ink-c' + (tool === 'hand' ? ' off' : ''); host.appendChild(cv); bindCanvas();
       const room = () => { try{ const r = host.getBoundingClientRect(), ft = document.querySelector('.knav'); const fh = ft ? ft.getBoundingClientRect().height : 90; host.style.minHeight = Math.max(0, Math.round(window.innerHeight - (r.top + window.scrollY) - fh - 12)) + 'px'; }catch(e){} }; room();   /* 2688: room to write under the cards */
       if(ro) ro.disconnect(); ro = new ResizeObserver(() => fit()); ro.observe(host); fit(); },
-    close(){ on = false; if(ro) ro.disconnect(); ro = null; cv = null; host = null; if(bar) bar.style.display = 'none'; if(mini) mini.style.display = 'none'; document.body.classList.remove('ink-draw', 'ink-min', 'ink-on'); }
+    close(){ document.querySelectorAll('.ink-p.ink-out').forEach(n => n.remove()); on = false; if(ro) ro.disconnect(); ro = null; cv = null; host = null; if(bar) bar.style.display = 'none'; if(mini) mini.style.display = 'none'; document.body.classList.remove('ink-draw', 'ink-min', 'ink-on'); }
   };
 })();
