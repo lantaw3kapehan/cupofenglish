@@ -26,6 +26,7 @@
 .ink-p.on{display:flex}.ink-p button{display:flex;align-items:center;gap:8px;border:0;background:transparent;border-radius:8px;padding:6px 10px;cursor:pointer;font:600 13px Inter,sans-serif;color:#2B2253;white-space:nowrap}.ink-p button.on,.ink-p button:hover{background:#DDF1F2}
 .ink-m{position:fixed;left:12px;top:50%;transform:translateY(-50%);z-index:60;display:none;flex-direction:column;align-items:center;gap:2px;border:0;border-radius:14px;background:rgba(255,255,255,.97);box-shadow:0 6px 20px rgba(30,26,60,.14);padding:8px 6px;cursor:pointer;font:600 11px Inter,sans-serif;color:#2B2253}
 .ink-m i{width:14px;height:14px;border-radius:50%;display:block}body.ink-min .ink-t{display:none}body.ink-min .ink-m{display:flex}
+.ink-grip{position:absolute;z-index:6;width:22px;height:22px;border-radius:6px;background:#fff;border:1.5px solid #9AD3D6;color:#0E6F68;font:700 13px/19px Inter,sans-serif;text-align:center;cursor:move;user-select:none;touch-action:none}
 .ink-in{position:absolute;z-index:5;border:1.5px dashed #9AD3D6;background:rgba(255,255,255,.85);border-radius:6px;padding:2px 6px;outline:0;font-family:Inter,sans-serif;font-weight:600}
 body.ink-draw .kv{cursor:crosshair}
 body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{padding-left:58px}@media (min-width:1500px){body.ink-on #app{padding-left:0}}`;
@@ -69,13 +70,31 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
   function addText(p){ const w = W(), old = hitText(p); let col = color, at = p;
     if(old){ rec(); ANN[key] = list().filter(a => a !== old); col = old.c; at = [old.x, old.y + old.s / 2]; draw(); }
     const ts = old ? old.s : SZ.text[size], fs = Math.max(12, Math.round(ts * w));
-    let x0 = old ? old.x : Math.min(at[0], 0.85 - 0.012); const mw = old && old.mw ? old.mw : Math.max(0.15, 1 - x0 - 0.012), y0 = at[1] - ts / 2;
+    /* 2707 (Misty 22 Nov 18:19): the text box fits what is typed (it no longer runs to the edge of the screen), stays inside the
+       screen, can be made wider or narrower by dragging its right edge, and moved by the grip at its top-left corner while typing.
+       Clicking a text again puts the cursor at the end (the words are no longer all selected). */
+    const cs0 = getComputedStyle(host), lim = Math.max(0.2, Math.min(1, (host.clientWidth - (parseFloat(cs0.paddingRight) || 0) - cv.offsetLeft) / w) - 0.012);
+    let x0 = old ? old.x : Math.min(at[0], lim - 0.12), y0 = at[1] - ts / 2, fixW = old && old.fw ? old.mw : 0;
     const i = document.createElement('textarea'); i.className = 'ink-in'; i.value = old ? old.v : ''; i.rows = 1; i.spellcheck = false;
-    i.style.cssText = 'font:600 ' + fs + 'px Inter, sans-serif;line-height:' + Math.round(fs * 1.25) + 'px;color:' + col + ';left:' + (cv.offsetLeft + x0 * w - 5.5) + 'px;top:' + (cv.offsetTop + y0 * w - 3.5) + 'px;width:' + Math.round(mw * w + 10) + 'px;resize:none;overflow:hidden;white-space:pre-wrap;box-sizing:border-box';
-    const grow = () => { i.style.height = 'auto'; i.style.height = i.scrollHeight + 'px'; }; i.addEventListener('input', grow); host.appendChild(i); grow(); setTimeout(() => { i.focus({ preventScroll: true }); i.select(); }, 0);
-    let fin = false; const done = ok => { if(fin) return; fin = true; const v = i.value.replace(/\s+$/, ''); i.remove();
-      if(ok && v.trim()){ if(!old) rec(); list().push({ t: 'text', v, x: x0, y: y0, s: ts, c: col, mw }); } else if(old && !ok){ HIST.pop(); list().push(old); } draw(); };
-    i.addEventListener('keydown', ev => { ev.stopPropagation(); if(ev.key === 'Enter' && !ev.shiftKey){ ev.preventDefault(); done(true); } if(ev.key === 'Escape') done(false); }); i.addEventListener('blur', () => done(true)); }
+    const PADW = 15, ctx = cv.getContext("2d");
+    const natural = () => { ctx.save(); ctx.font = '600 ' + fs + 'px Inter, sans-serif'; const m = Math.max(0, ...String(i.value || ' ').split('\n').map(t => ctx.measureText(t).width)); ctx.restore(); return m; };
+    const room = () => Math.max(0.06, lim - x0);
+    const fitW = () => { const want = fixW ? Math.min(fixW, room()) : Math.min(room(), Math.max(110 / w, (natural() + fs * 0.8) / w)); i.style.width = Math.round(want * w + PADW) + 'px'; return want; };
+    i.style.cssText = 'font:600 ' + fs + 'px Inter, sans-serif;line-height:' + Math.round(fs * 1.25) + 'px;color:' + col + ';left:' + (cv.offsetLeft + x0 * w - 7.5) + 'px;top:' + (cv.offsetTop + y0 * w - 3.5) + 'px;resize:horizontal;overflow:hidden;white-space:pre-wrap;box-sizing:border-box;min-width:60px';
+    const grip = document.createElement('div'); grip.className = 'ink-grip'; grip.title = 'Drag to move the text'; grip.textContent = '✥';
+    const place = () => { i.style.left = (cv.offsetLeft + x0 * w - 7.5) + 'px'; i.style.top = (cv.offsetTop + y0 * w - 3.5) + 'px'; grip.style.left = (cv.offsetLeft + x0 * w - 7.5 - 24) + 'px'; grip.style.top = (cv.offsetTop + y0 * w - 3.5) + 'px'; };
+    const grow = () => { fitW(); i.style.height = 'auto'; i.style.height = i.scrollHeight + 'px'; };
+    i.addEventListener('input', grow); host.appendChild(i); host.appendChild(grip); place(); grow();
+    setTimeout(() => { i.focus({ preventScroll: true }); const n = i.value.length; try{ i.setSelectionRange(n, n); }catch(e){} }, 0);
+    /* dragging the right edge: the width chosen is kept for this text */
+    let w0 = 0; i.addEventListener('pointerdown', () => { w0 = i.offsetWidth; }); i.addEventListener('pointerup', () => { if(w0 && Math.abs(i.offsetWidth - w0) > 3){ fixW = Math.min(room(), Math.max(40 / w, (i.offsetWidth - PADW) / w)); grow(); } w0 = 0; });
+    let mv = null; grip.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); grip.setPointerCapture(e.pointerId); mv = { sx: e.clientX, sy: e.clientY, x: x0, y: y0 }; });
+    grip.addEventListener('pointermove', e => { if(!mv) return; x0 = Math.max(0, Math.min(lim - 0.06, mv.x + (e.clientX - mv.sx) / w)); y0 = Math.max(0, mv.y + (e.clientY - mv.sy) / w); place(); grow(); });
+    const upG = () => { if(!mv) return; mv = null; setTimeout(() => i.focus({ preventScroll: true }), 0); }; grip.addEventListener('pointerup', upG); grip.addEventListener('pointercancel', upG);
+    let fin = false; const done = ok => { if(fin) return; fin = true; const v = i.value.replace(/\s+$/, ''), mw = fitW(); i.remove(); grip.remove();
+      if(ok && v.trim()){ if(!old) rec(); list().push({ t: 'text', v, x: x0, y: y0, s: ts, c: col, mw, fw: fixW ? 1 : 0 }); } else if(old && !ok){ HIST.pop(); list().push(old); } draw(); };
+    i.addEventListener('keydown', ev => { ev.stopPropagation(); if(ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing){ ev.preventDefault(); done(true); } if(ev.key === 'Escape') done(false); });
+    i.addEventListener('blur', () => setTimeout(() => { if(!mv && document.activeElement !== i) done(true); }, 120)); }
   function bindCanvas(){
     cv.addEventListener('pointerdown', e => { if(tool === 'hand') return; e.preventDefault(); e.stopPropagation(); const p = pt(e);
       if(tool === 'text'){ const hit = hitText(p); if(!hit) return addText(p); cv.setPointerCapture(e.pointerId); cur = { drag: hit, p0: p, x0: hit.x, y0: hit.y, moved: false, before: list().map(a => a === hit ? Object.assign({}, a) : a) }; return; }
