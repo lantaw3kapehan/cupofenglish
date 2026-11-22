@@ -100,7 +100,7 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
     const upG = () => { if(!mv) return; mv = null; setTimeout(() => i.focus({ preventScroll: true }), 0); }; grip.addEventListener('pointerup', upG); grip.addEventListener('pointercancel', upG);
     let fin = false; const done = ok => { if(fin) return; fin = true; const v = i.value.replace(/\s+$/, ''), mw = fitW(); i.remove(); grip.remove();
       if(ok && v.trim()){ if(!old) rec(); list().push({ t: 'text', v, x: x0, y: y0, s: ts, c: col, mw, fw: fixW ? 1 : 0 }); } else if(old && !ok){ HIST.pop(); list().push(old); } draw(); };
-    i.addEventListener('keydown', ev => { ev.stopPropagation(); if(ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing){ ev.preventDefault(); done(true); } if(ev.key === 'Escape') done(false); });
+    i.addEventListener('keydown', ev => { ev.stopPropagation(); if(ev.key === 'Escape'){ ev.preventDefault(); done(true); } });   /* 2712: Enter = new line · click outside or Esc = finished (as on the books) */
     i.addEventListener('blur', () => setTimeout(() => { if(!mv && document.activeElement !== i) done(true); }, 120)); }
   function bindCanvas(){
     cv.addEventListener('pointerdown', e => { if(tool === 'hand') return; e.preventDefault(); e.stopPropagation(); const p = pt(e);
@@ -122,7 +122,7 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
   function paintBar(){ if(!bar) return;
     bar.innerHTML = '<button class="tb" data-a="fold" title="Hide the tools" aria-label="Hide the tools">' + IC.fold + '</button>'
       + [['hand', 'Move and click (V)'], ['pen', 'Pen (P)'], ['hl', 'Highlighter (H)']].map(b => '<button class="tb' + (tool === b[0] ? ' on' : '') + '" data-t="' + b[0] + '" title="' + b[1] + '" aria-label="' + b[1] + '">' + IC[b[0]] + '</button>').join('')
-      + '<button class="tb' + (tool === 'text' ? ' on' : '') + '" data-t="text" title="Text (T) · click a text to change it, drag it to move it · Shift+Enter for a new line" aria-label="Text">T</button>'
+      + '<button class="tb' + (tool === 'text' ? ' on' : '') + '" data-t="text" title="Text (T) · click a text to change it, drag it to move it · Enter for a new line · click outside when finished" aria-label="Text">T</button>'
       + '<button class="tb' + (tool === 'erase' ? ' on' : '') + '" data-t="erase" title="Eraser (E)" aria-label="Eraser">' + IC.erase + '</button>'
       + '<div class="ink-s"><button class="tb' + (tool === 'shape' ? ' on' : '') + '" data-t="shape" title="Shapes (S): arrow, box, circle, tick, star, heart · click once for a tick, star or heart" aria-label="Shapes">' + IC[shp] + '</button><div class="ink-p' + (tool === 'shape' && bar.dataset.sp === '1' ? ' on' : '') + '">' + SH.map(s => '<button data-k="' + s[0] + '" class="' + (shp === s[0] ? 'on' : '') + '">' + IC[s[0]] + s[1] + '</button>').join('') + '</div></div>'
       + '<div class="hr"></div><div class="dots">' + COL.map(c => '<button class="dot' + (color === c[0] ? ' on' : '') + '" data-c="' + c[0] + '" style="background:' + c[0] + ';color:' + c[0] + '" title="' + c[1] + '" aria-label="' + c[1] + '"></button>').join('') + '</div>'
