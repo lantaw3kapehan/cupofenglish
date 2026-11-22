@@ -297,15 +297,17 @@ function taskCard(g, text, maxW, F){
   const segs = (t, base) => { const out = []; String(t).split(/(\*\*[^*]+\*\*|\*[^*]+\*)/).forEach(x => { if(!x) return; const b = /^\*\*.+\*\*$/.test(x), it = !b && /^\*.+\*$/.test(x), tx = b ? x.slice(2, -2) : it ? x.slice(1, -1) : x;
       const k = base === 't' ? 't' : (b || base === 'b') ? (it ? 'bi' : 'b') : it ? 'i' : 'n'; tx.split(/(\s+)/).forEach(w => { if(w) out.push({ t: w, k }); }); }); return out; };
   const wrapS = (S, lh) => { const L = [[]]; let x = 0; S.forEach(p => { g.font = F[p.k]; const w = g.measureText(p.t).width, sp = /^\s+$/.test(p.t); if(x + w > maxW && x > 0 && !sp){ L.push([]); x = 0; } if(sp && x === 0) return; L[L.length - 1].push({ t: p.t, k: p.k, x }); x += w; }); return L.map(l => ({ l, lh })); };
-  parts2672(text).forEach(pt => { if(pt.tbl){ const T = tbl2672(g, pt.tbl, maxW, 26), g1 = ops.length ? 22 : 0; ops.push({ gap: g1 }, { tb: T }, { gap: 10 }); h += g1 + T.h + 10; gap = false; return; }
+  parts2672(text).forEach(pt => { if(pt.tbl){ const T = tbl2672(g, pt.tbl, maxW, 26), g1 = ops.length ? 22 : 0; if(pills.length && !ops.some(o => o.pl)) ops.push({ pl: 1 }); ops.push({ gap: g1 }, { tb: T }, { gap: 10 }); h += g1 + T.h + 10; gap = false; return; }
     const raw = pt.line, t = raw.trim(); if(!t){ if(ops.length) gap = true; return; }
     const pl = taskPill(t); if(pl){ pills.push(pl); return; }
     const kind = /^topic\s*:/i.test(t) ? 't' : (pt.title || INSTR.test(t.replace(/^\*+/, ''))) ? 'b' : 'n';
     const g0 = kind === 'b' && ops.length ? 30 : gap ? 24 : 0; if(g0){ ops.push({ gap: g0 }); h += g0; } gap = false;
     wrapS(segs(t, kind), kind === 't' ? 58 : 52).forEach(x => { ops.push(x); h += x.lh; }); if(kind === 't'){ ops.push({ gap: 16 }); h += 16; } });
   let pr = null; if(pills.length){ g.font = F.p; const R = [[]]; let x = 0; pills.forEach(c => { const w = g.measureText(c.c).width + 38; if(x + w > maxW && x > 0){ R.push([]); x = 0; } R[R.length - 1].push({ c, x, w }); x += w + 12; }); pr = R; h += 32 + R.length * 60; }
-  return { h, draw(x0, y0){ let y = y0; ops.forEach(o => { if(o.gap !== undefined){ y += o.gap; return; } if(o.tb){ y = o.tb.draw(x0, y); return; } y += o.lh; o.l.forEach(p => { g.font = F[p.k]; g.fillStyle = p.k === 'n' || p.k === 'i' ? '#3F3D56' : '#2B2253'; g.fillText(p.t, x0 + p.x, y - 13); }); });
-      if(pr){ y += 32; pr.forEach(r => { r.forEach(c => { const pc = PC2670[c.c.k] || PC2670.type; g.fillStyle = pc[0]; g.beginPath(); g.roundRect ? g.roundRect(x0 + c.x, y, c.w, 48, 24) : g.rect(x0 + c.x, y, c.w, 48); g.fill(); g.fillStyle = pc[1]; g.font = F.p; g.fillText(c.c.c, x0 + c.x + 18, y + 32); }); y += 60; }); } return y; } };
+  let X0 = 0;
+  return { h, draw(x0, y0){ X0 = x0; let y = y0; ops.forEach(o => { if(o.gap !== undefined){ y += o.gap; return; } if(o.tb){ y = o.tb.draw(x0, y); return; } if(o.pl){ y = pd(y); return; } y += o.lh; o.l.forEach(p => { g.font = F[p.k]; g.fillStyle = p.k === 'n' || p.k === 'i' ? '#3F3D56' : '#2B2253'; g.fillText(p.t, x0 + p.x, y - 13); }); });
+      return ops.some(o => o.pl) ? y : pd(y); }, _: 0 };
+  function pd(y){ if(pr){ y += 32; pr.forEach(r => { r.forEach(c => { const pc = PC2670[c.c.k] || PC2670.type; g.fillStyle = pc[0]; g.beginPath(); g.roundRect ? g.roundRect(X0 + c.x, y, c.w, 48, 24) : g.rect(X0 + c.x, y, c.w, 48); g.fill(); g.fillStyle = pc[1]; g.font = F.p; g.fillText(c.c.c, X0 + c.x + 18, y + 32); }); y += 60; }); } return y; }
 }
 let dT = 0; function draw(){ clearTimeout(dT); dT = setTimeout(drawNow, 60); }
 function build(){ const en = $('en').value.trim(), ZON = $('zhOn').checked, zh = ZON ? $('zh').value.trim() : '', stu = $('stu').value.trim(), due = dueText(), nt = $('nt').value.trim(), ntzh = ZON ? $('ntzh').value.trim() : '';
