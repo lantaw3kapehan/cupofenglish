@@ -165,6 +165,7 @@ body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not
 <div class="pill" id="pill"><button id="pp" aria-label="Previous page">‹</button><span class="num" id="pg2">–</span><button id="pn" aria-label="Next page">›</button><button id="pzo" aria-label="Zoom out" title="Zoom out">−</button><button id="pz" title="Fit the page">Fit</button><button id="pzi" aria-label="Zoom in" title="Zoom in">+</button><button id="pstyle" class="bo" aria-haspopup="menu" title="Page style">Style</button><button id="pnew" class="bo" title="Add a blank page">+ Page</button><button id="pboard" title="Blank board ↔ book (key B)">Board</button><button id="pfs" title="Back to full screen" style="display:none">Full screen</button><button id="pcopy" title="Copy this page with your notes as a clean picture for the WeChat group (no video windows)">Copy page</button><button id="px">Exit · Esc</button></div>
 <div class="vid" id="vid"><div class="top"><b id="vt"></b><button id="vx">✕ Close</button></div><video id="vv" controls playsinline preload="auto"></video></div>
 <script src="../homework/hdr.js?v=2717"></script>
+<script src="../homework/tr.js?v=2730"></script>
 <script type="module">
 import * as pdfjsLib from './pdfjs/pdf.min.mjs';
 pdfjsLib.GlobalWorkerOptions.workerSrc = './pdfjs/pdf.worker.min.mjs';
@@ -493,6 +494,7 @@ async function render(){ if(!doc) return; const my = {}; rendering = my; if(isB(
   const c = $('pdf'), ink = $('ink'), w = vp.width / dpr, h = hh / dpr; c.width = vp.width; c.height = hh;
   if(tplW){ const g = c.getContext('2d'); if(/^thank you/i.test(tplW.en)) tplEnd(g, c.width, c.height, tplW); else tplSection(g, c.width, c.height, tplW, pageNo); }
   else c.getContext('2d').drawImage(src, 0, -top);
+  window.__geo2730 = { n: pageNo, s: scale * dpr, top, dpr, tpl: !!tplW, p };   /* 2730: where the page is, for a double-click on a word */
   if(!cr && !tplW){ const lg = logoBottom(c); if(lg){ const g = c.getContext('2d'), m = Math.round(c.width * 0.01); g.fillStyle = lg.c; g.fillRect(lg.x - m, lg.y - m, lg.w + 2 * m, lg.h + 2 * m); } }   /* 2297 */
   c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = vp.width; ink.height = hh; ink.style.width = w + 'px'; ink.style.height = h + 'px';
   st.classList.toggle('fit', zoom <= 1);
@@ -775,6 +777,19 @@ async function copyPage(b, notes){ if(!doc || b.disabled) return; if(notes === f
     catch(e2){ toast('The page could not be copied. Please try again.'); } }
   $('toastU').style.display = 'none'; setTimeout(() => { $('toastU').style.display = ''; }, 7200);
   b.disabled = false; if(sp) sp.textContent = was; else if(b.dataset.was){ b.textContent = b.dataset.was; delete b.dataset.was; } }
+/* 2730 (Misty 22 Nov 20:13): Translate in class · a button on the top bar and on the presenting bar; a double-click on a word of the page
+   offers "Translate · word" (the word is read from the page's own text; on a picture-only page the teacher types it in the card) */
+const TC2730 = new Map();
+if(window.coeTr){ const hb = coeTr.button('btn'); $('present').parentNode.insertBefore(hb, $('present')); $('pill').insertBefore(coeTr.button(''), $('pcopy'));
+  $('ink').addEventListener('dblclick', async e => { if(tool === 'text') return; const G = window.__geo2730; if(!G || G.tpl || isB() || G.n !== pageNo) return;
+    try{ const r = $('pdf').getBoundingClientRect(), X = ((e.clientX - r.left) * G.dpr) / G.s, Y = ((e.clientY - r.top) * G.dpr + G.top) / G.s;
+      let t = TC2730.get(pageNo); if(!t){ t = await G.p.getTextContent(); TC2730.set(pageNo, t); } const v1 = G.p.getViewport({ scale: 1 }); let best = null;
+      for(const it of t.items){ const s = it.str || ''; if(!s.trim()) continue; const tr = it.transform, [x0, y0] = v1.convertToViewportPoint(tr[4], tr[5]), fh = Math.hypot(tr[2], tr[3]) || 10, wd = it.width || 0;
+        if(X < x0 - 2 || X > x0 + wd + 2 || Y > y0 + fh * 0.35 || Y < y0 - fh * 1.15) continue;
+        let i = Math.max(0, Math.min(s.length - 1, Math.floor((X - x0) / Math.max(1, wd) * s.length))); if(!/[A-Za-z']/.test(s[i])){ if(/[A-Za-z']/.test(s[i - 1] || '')) i--; else if(/[A-Za-z']/.test(s[i + 1] || '')) i++; else continue; }
+        let a = i, b = i; while(a > 0 && /[A-Za-z'\-]/.test(s[a - 1])) a--; while(b < s.length - 1 && /[A-Za-z'\-]/.test(s[b + 1])) b++;
+        const w = s.slice(a, b + 1).replace(/^['\-]+|['\-]+$/g, ''); if(w.length > 1){ best = w; break; } }
+      if(best) coeTr.chip(best, e.clientX, e.clientY); else coeTr.open(''); }catch(err){ coeTr.open(''); } }); }
 $('present').onclick = () => present(true); $('px').onclick = () => present(false);
 /* 2636: before closing, pages with notes that were not copied are listed, each with Copy (it goes to the page and copies it) */
 const COPIED = {}; const sig = k => JSON.stringify(ANN[k] || []).length;
