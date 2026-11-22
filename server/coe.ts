@@ -1083,7 +1083,7 @@ Deno.serve(async (req: Request) => {
   //   the database works the screen out at once. Teachers: only their own screens; management: management screens.
   if (b.op === "fresh") {
     const fn = String(b.fn || ""), args = Array.isArray(b.args) ? b.args : [];
-    const T = /^(getBootstrap|tMyVisits|tMyComments|tLeave|tFbStatus)$/.test(fn), M = /^(mgmtMonDay|mgmtPayroll|mgmtLeave|mgmtActions)$/.test(fn);
+    const T = /^(getBootstrap|tMyVisits|tMyComments|tLeave|tFbStatus|tReminders)$/.test(fn), M = /^(mgmtMonDay|mgmtPayroll|mgmtLeave|mgmtActions)$/.test(fn);
     if (!T && !M) return out({ ok: false, error: "fn" }, 400);
     if ((T && s.mode === "mgmt") || (M && s.mode !== "mgmt")) return out({ ok: false, error: "AUTH" }, 403);
     try {
