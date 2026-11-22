@@ -37,7 +37,19 @@
     g.fillStyle = '#14B3A7'; g.beginPath(); const uw = 20 * u, uh = Math.max(2, 1.7 * u); g.roundRect ? g.roundRect(W - P - uw, ty + 6.5 * u, uw, uh, uh / 2) : g.rect(W - P - uw, ty + 6.5 * u, uw, uh); g.fill();
     g.textAlign = 'right';
     const meta = (o.meta || []).filter(Boolean).concat(o.date === false ? [] : [o.date || today()]).join('  ·  ');
-    if(meta){ g.fillStyle = GREY; const m = fit(g, meta, s => '400 ' + s + 'px ' + FI, 12 * u, 9 * u, room); g.fillText(m, W - P, top + 37 * u); }
+    /* 2695 (Misty 22 Nov 14:27, option A): the student's name on a light teal band, the teacher's on a light lavender band, like the book label */
+    const segs = []; (o.meta || []).filter(Boolean).concat(o.date === false ? [] : [o.date || today()]).forEach((p, i) => { if(i) segs.push({ t: '  ·  ' }); let m;
+      if((m = /^(For(?: \/ 学生)?:\s*)(.+)$/.exec(p))) segs.push({ t: m[1] }, { t: m[2], bg: '#E4F6F6', fg: '#0E6F68' });
+      else if((m = /^(Teacher(?: \/ 老师)?:\s*|Teacher\s+)(.+)$/.exec(p))) segs.push({ t: m[1] }, { t: m[2], bg: '#ECE9F7', fg: '#3C3489' });
+      else segs.push({ t: p }); });
+    const pd95 = 6 * u, yb95 = top + 37 * u; let fs95 = 12 * u;
+    const mw95 = () => segs.reduce((a, x) => { g.font = (x.bg ? '700 ' : '400 ') + fs95 + 'px ' + FI; return a + g.measureText(x.t).width + (x.bg ? 2 * pd95 : 0); }, 0);
+    while(mw95() > room && fs95 > 9 * u) fs95 -= 0.5;
+    if(segs.length && mw95() <= room){ let x = W - P - mw95(); g.textAlign = 'left';
+      segs.forEach(x0 => { g.font = (x0.bg ? '700 ' : '400 ') + fs95 + 'px ' + FI; const w = g.measureText(x0.t).width;
+        if(x0.bg){ const h = fs95 * 1.45; g.fillStyle = x0.bg; g.beginPath(); g.roundRect ? g.roundRect(x, yb95 - fs95 * 1.08, w + 2 * pd95, h, h / 2) : g.rect(x, yb95 - fs95 * 1.08, w + 2 * pd95, h); g.fill(); g.fillStyle = x0.fg; g.fillText(x0.t, x + pd95, yb95); x += w + 2 * pd95; }
+        else { g.fillStyle = GREY; g.fillText(x0.t, x, yb95); x += w; } }); g.textAlign = 'right'; }
+    else if(meta){ g.fillStyle = GREY; const m = fit(g, meta, s => '400 ' + s + 'px ' + FI, 12 * u, 9 * u, room); g.fillText(m, W - P, top + 37 * u); }
     g.textAlign = 'left';
     const ly = Math.round(top + row + 16 * u); g.fillStyle = LINE; g.fillRect(P, ly, W - 2 * P, Math.max(1, Math.round(u * 0.9)));
     if(hasL){ /* 2687 (Misty 22 Nov 12:42, option B): the book or writing label in cup teal on a light teal band */
