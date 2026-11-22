@@ -466,6 +466,26 @@ load(); bands(); $('bands').style.display = $('bandOn').checked ? '' : 'none'; d
 setMode(ed.textContent.trim() ? 'C' : 'T');
 })();
 </script>
+<script>
+/* 2666 (Misty 22 Nov 10:53 / 10:56 "when I'm typing in the box where I correct, I'm kicked out and enter the box again · can it be stable?")
+   The correcting box keeps its cursor: if it loses the keyboard without the teacher clicking somewhere else (VooV's floating
+   window or its "Type to chat" bar taking it for a moment, the browser window losing focus while sharing), the cursor goes back
+   to the exact place she was typing. A deliberate click on another box, button or menu is left alone. */
+(function(){ const ed = document.getElementById('ed'); if(!ed) return;
+  let R = null, lastDown = 0, downIn = false, typing = 0;
+  const inEd = n => !!n && (n === ed || ed.contains(n));
+  document.addEventListener('selectionchange', () => { const s = getSelection(); if(s && s.rangeCount && inEd(s.anchorNode)) R = s.getRangeAt(0).cloneRange(); });
+  document.addEventListener('pointerdown', e => { lastDown = Date.now(); downIn = inEd(e.target); }, true);
+  ed.addEventListener('keydown', () => { typing = Date.now(); });
+  const back = () => { if(!R || !document.hasFocus()) return; const a = document.activeElement;
+    if(a && a !== document.body && a !== ed && !inEd(a)) return;            /* she is in another box or on a button */
+    try{ ed.focus({ preventScroll: true }); const s = getSelection(); if(inEd(R.startContainer)){ s.removeAllRanges(); s.addRange(R); } }catch(e){} };
+  ed.addEventListener('blur', () => { const deliberate = Date.now() - lastDown < 500 && !downIn; if(deliberate) { R = null; return; }
+    if(Date.now() - typing > 20000) return;                                  /* not typing lately: nothing to keep */
+    setTimeout(back, 0); setTimeout(back, 150); });
+  window.addEventListener('focus', () => { if(R && Date.now() - typing < 20000) setTimeout(back, 50); });
+})();
+</script>
 <script src="fresh.js"></script>
 <script>
 /* 2414: Full screen for Type and correct (falls back to filling the window where full screen is not allowed)
