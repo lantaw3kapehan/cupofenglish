@@ -33,6 +33,8 @@ self.addEventListener('fetch', e => {
   if (/\/portal-update\.js$/.test(u.pathname)) return;
   if (/\/paused\.html$/.test(u.pathname)) return;   // 2022 · the 'open in another window' page is never kept as the app frame
   if (/\/version\.txt$/.test(u.pathname)) return;   // 1970 · the version check is always live (the app frame opens its saved copy when it is the newest)  // 1354 · the portals' shared updater is always fetched live
+  // 2685 (22 Nov): a versioned file (?v=) or a freshness check (?fresh=) always comes from the internet; it is never answered with, or saved as, an older copy
+  if (/[?&](v|fresh)=/.test(u.search)) return;
   const page = e.request.mode === 'navigate' || /\/(index\.html)?$/.test(u.pathname);
   e.respondWith(caches.open(V).then(c => {
     const net = fetch(e.request, { cache: 'no-cache' }).then(r => { if (r.ok) c.put(page ? './' : e.request, r.clone()); return r; });
