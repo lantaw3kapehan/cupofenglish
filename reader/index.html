@@ -90,7 +90,7 @@ body.present .tag{display:flex}
 header{position:relative}.clk{display:none;position:absolute;right:20px;top:50%;transform:translateY(-50%);align-items:center;gap:10px;font-family:'COE Card Inter',Inter,sans-serif}
 body.present .clk{display:flex}.clk b{font-size:20px;color:#2B2253;font-variant-numeric:tabular-nums}.clk span{font-size:13px;font-weight:700;border-radius:999px;padding:4px 12px;background:#E4F6F6;color:#0E6F68}
 .clk span.warn{background:#FFF3DC;color:#8A5A00}.clk span.over{background:#FCEBEB;color:#A32D2D}.clk span:empty{display:none}
-body.present.idle .pill{opacity:.15}
+body.present .pill{bottom:18px}   /* 2715 (Misty 22 Nov 18:49, option A): the bar sits under the page, always clear */
 /* 2287: the toolbar stays out of the way: compact, can fold into one button, and fades while the teacher is not using it */
 .tools{transition:opacity .25s}.tools .tb{height:38px}.tools .sz{height:28px}.tools .sz{display:none!important}.tools .sz + .sz + .sz + .hr{display:none}
 body.idle .tools:not(:hover){opacity:.35}
@@ -474,7 +474,7 @@ async function render(){ if(!doc) return; const my = {}; rendering = my; if(isB(
   const st = $('stage'), v1 = p.getViewport({ scale: 1 }), pad = 48;
   const tl = $('tools'), res = document.body.classList.contains('tmin') ? 64 : (tl ? tl.offsetWidth + 24 : 70); st.style.paddingLeft = (24 + res) + 'px';   /* 2287: the page sits beside the toolbar, never under it */
   const ck = CROP.get(pageNo), keep = ck ? 1 - ck.t - ck.b : 1;
-  const fit = Math.min((st.clientWidth - pad - res) / v1.width, (st.clientHeight - pad) / (v1.height * keep));
+  const fit = Math.min((st.clientWidth - pad - res) / v1.width, (st.clientHeight - pad - barRoom()) / (v1.height * keep));
   const scale = Math.max(0.2, fit * zoom), dpr = Math.min(window.devicePixelRatio || 1, 2.5), vp = p.getViewport({ scale: scale * dpr });
   /* 2287: the page is drawn off-screen first and shown only when complete, so two quick redraws can never mix (no flipped or cut pages) */
   const key = pageNo + '|' + vp.width + 'x' + vp.height; let src = PRE.get(key);
@@ -538,7 +538,7 @@ function paintBoard(g, W, H, st, notes, scr){ g.fillStyle = '#fff'; g.fillRect(0
       g.strokeStyle = c; g.setLineDash(dash ? [lw * 6, lw * 5] : []); g.beginPath(); g.moveTo(L, Math.round(y + h * f) + 0.5); g.lineTo(R, Math.round(y + h * f) + 0.5); g.stroke(); }); g.setLineDash([]); } } }
 async function renderBoard(my){ const st = $('stage'), pad = 48, tl = $('tools'), res = document.body.classList.contains('tmin') ? 64 : (tl ? tl.offsetWidth + 24 : 70); st.style.paddingLeft = (24 + res) + 'px';
   try{ await fontsReady(); }catch(e){} if(rendering !== my) return;
-  const fit = Math.min((st.clientWidth - pad - res) / BW, (st.clientHeight - pad) / BH), scale = Math.max(0.2, fit * zoom), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const fit = Math.min((st.clientWidth - pad - res) / BW, (st.clientHeight - pad - barRoom()) / BH), scale = Math.max(0.2, fit * zoom), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   const w = BW * scale, h = BH * scale, c = $('pdf'), ink = $('ink'); c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); paintBoard(c.getContext('2d'), c.width, c.height, BRD[+pageNo.slice(1) - 1] || 'plain', undefined, true);   /* 2711: on screen, no second logo */
   c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = c.width; ink.height = c.height; ink.style.width = w + 'px'; ink.style.height = h + 'px';
   st.classList.toggle('fit', zoom <= 1); drawInk(); pages(); boardUI(); }
@@ -702,6 +702,7 @@ const fsBtn2697 = () => { const b = $('pfs'); if(b) b.style.display = document.b
 document.addEventListener('fullscreenchange', () => { fsBtn2697(); setTimeout(render, 120); });
 $('pfs').onclick = async () => { try{ await document.documentElement.requestFullscreen(); }catch(e){} fsBtn2697(); };
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && !document.fullscreenElement && document.body.classList.contains('present') && !/INPUT|TEXTAREA/.test((e.target || {}).tagName || '')){ present(false); setTimeout(fsBtn2697, 50); } });
+function barRoom(){ return document.body.classList.contains('present') ? 70 : 0; }   /* 2715: room kept under the page for the class bar */
 let idle = 0; document.addEventListener('mousemove', () => { document.body.classList.remove('idle'); clearTimeout(idle); idle = setTimeout(() => document.body.classList.add('idle'), 2500); });
 
 $('prev').onclick = () => turn(-1); $('next').onclick = () => turn(1); $('pp').onclick = () => turn(-1); $('pn').onclick = () => turn(1);
