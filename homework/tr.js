@@ -91,7 +91,7 @@
   function big(){ if(!CUR) return; if(!BIG){ BIG = document.createElement('div'); BIG.className = 'ctr-big'; document.body.appendChild(BIG); BIG.onclick = () => BIG.classList.remove('on'); }
     BIG.innerHTML = '<div class="bw">' + esc(CUR.w) + '</div>' + (CUR.ph ? '<div class="bp">/' + esc(CUR.ph) + '/</div>' : '') + '<div class="bz">' + esc(CUR.zh || '') + '</div>' + (CUR.py ? '<div class="by">' + esc(CUR.py) + '</div>' : '') + '<div class="bh">Tap anywhere or press Esc to go back</div>';
     place(BIG); BIG.classList.add('on'); }
-  async function show(text){ build(); open0(); text = String(text || '').replace(/\s+/g, ' ').trim(); const inp = C.querySelector('input'), bd = C.querySelector('.bd'); inp.value = text; today();
+  async function show(text){ build(); open0(); hideChip(); text = String(text || '').replace(/\s+/g, ' ').trim(); const inp = C.querySelector('input'), bd = C.querySelector('.bd'); inp.value = text; today();
     if(!text){ bd.innerHTML = '<div class="mute">Type a word, or double-click a word on the page.</div>'; setTimeout(() => inp.focus(), 30); return; }
     const my = {}; show.my = my; bd.innerHTML = '<div class="mute">Looking up…</div>';
     if(/[一-鿿]/.test(text)){ const t = text.replace(/[^一-鿿]/g, ''), L = await zhFind(t), p = await py(t); if(show.my !== my) return;

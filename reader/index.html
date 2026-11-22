@@ -165,7 +165,7 @@ body.tmin .tools{display:none}body.tmin .tmini{display:flex}body.idle .tmini:not
 <div class="pill" id="pill"><button id="pp" aria-label="Previous page">‹</button><span class="num" id="pg2">–</span><button id="pn" aria-label="Next page">›</button><button id="pzo" aria-label="Zoom out" title="Zoom out">−</button><button id="pz" title="Fit the page">Fit</button><button id="pzi" aria-label="Zoom in" title="Zoom in">+</button><button id="pstyle" class="bo" aria-haspopup="menu" title="Page style">Style</button><button id="pnew" class="bo" title="Add a blank page">+ Page</button><button id="pboard" title="Blank board ↔ book (key B)">Board</button><button id="pfs" title="Back to full screen" style="display:none">Full screen</button><button id="pcopy" title="Copy this page with your notes as a clean picture for the WeChat group (no video windows)">Copy page</button><button id="px">Exit · Esc</button></div>
 <div class="vid" id="vid"><div class="top"><b id="vt"></b><button id="vx">✕ Close</button></div><video id="vv" controls playsinline preload="auto"></video></div>
 <script src="../homework/hdr.js?v=2717"></script>
-<script src="../homework/tr.js?v=2731"></script>
+<script src="../homework/tr.js?v=2732"></script>
 <script type="module">
 import * as pdfjsLib from './pdfjs/pdf.min.mjs';
 pdfjsLib.GlobalWorkerOptions.workerSrc = './pdfjs/pdf.worker.min.mjs';
@@ -792,17 +792,20 @@ if(window.coeTr){ const hb = coeTr.button('btn'); $('present').parentNode.insert
       if(!best && !t.items.some(i => /[A-Za-z]{2}/.test(i.str || ''))) best = await ocrWord2730(e);   /* a scanned page: read the word under the click */
       if(best) coeTr.chip(best, e.clientX, e.clientY); else coeTr.open(''); }catch(err){ coeTr.open(''); } }); }
 let OW2730 = null;
-async function ocrWord2730(e){ const c = $('pdf'), r = c.getBoundingClientRect(), kx = c.width / r.width, ky = c.height / r.height, px = (e.clientX - r.left) * kx, py = (e.clientY - r.top) * ky;
-  const W = Math.round(260 * kx), H = Math.round(64 * ky), sx = Math.max(0, Math.round(px - W / 2)), sy = Math.max(0, Math.round(py - H / 2)), w = Math.min(W, c.width - sx), h = Math.min(H, c.height - sy);
-  const up = Math.max(1, Math.min(3, 520 / w)), cv = document.createElement('canvas'); cv.width = Math.round(w * up); cv.height = Math.round(h * up); const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(c, sx, sy, w, h, 0, 0, cv.width, cv.height);
+async function ocrWord2730(e){ const G = window.__geo2730, c = $('pdf'), r = c.getBoundingClientRect(), X = ((e.clientX - r.left) * G.dpr) / G.s, Y = ((e.clientY - r.top) * G.dpr + G.top) / G.s;
   coeTr.chip('Reading the word…', e.clientX, e.clientY, true);
   if(!OW2730) OW2730 = (async () => { if(!window.Tesseract) await new Promise((ok, no) => { const s = document.createElement('script'); s.src = new URL('ocr/tesseract.min.js', location.href).href; s.onload = ok; s.onerror = no; document.head.appendChild(s); });
     return Tesseract.createWorker('eng', 1, { workerPath: new URL('ocr/worker.min.js', location.href).href, corePath: new URL('ocr/', location.href).href, langPath: new URL('ocr/lang', location.href).href }); })().catch(err => { OW2730 = null; throw err; });
-  const wk = await OW2730, res = await wk.recognize(cv), X = (px - sx) * up, Y = (py - sy) * up; let best = null, bd = 1e9;
-  const words = (res.data.words || []).length ? res.data.words : ((res.data.blocks || []).flatMap(b => (b.paragraphs || []).flatMap(p => (p.lines || []).flatMap(l => l.words || []))));
-  for(const wd of words){ const t = String(wd.text || '').replace(/^[^A-Za-z]+|[^A-Za-z]+$/g, ''); if(t.length < 2 || (wd.confidence || 0) < 40) continue; const b = wd.bbox;
-    const dx = X < b.x0 ? b.x0 - X : X > b.x1 ? X - b.x1 : 0, dy = Y < b.y0 ? b.y0 - Y : Y > b.y1 ? Y - b.y1 : 0, d = dx * 2 + dy; if(d < bd){ bd = d; best = t; } }
-  return bd < 40 * up ? best : null; }
+  const wk = await OW2730, vw = G.p.getViewport({ scale: 1 });
+  /* the strip around the click is drawn again from the book itself, sharp (3x; a larger strip at 2x for big print), then read */
+  for(const [S, bw, bh] of [[3, 180, 30], [2, 260, 64]]){ const cv = document.createElement('canvas'); cv.width = bw * S; cv.height = bh * S; const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+    const sx = (X - bw / 2) * S, sy = (Y - bh / 2) * S; await G.p.render({ canvasContext: g, viewport: G.p.getViewport({ scale: S }), transform: [1, 0, 0, 1, -sx, -sy] }).promise;
+    const res = await wk.recognize(cv), cx = bw / 2 * S, cy = bh / 2 * S; let best = null, bd = 1e9;
+    const words = (res.data.words || []).length ? res.data.words : ((res.data.blocks || []).flatMap(b => (b.paragraphs || []).flatMap(p => (p.lines || []).flatMap(l => l.words || []))));
+    for(const wd of words){ const t = String(wd.text || '').replace(/^[^A-Za-z]+|[^A-Za-z]+$/g, ''); if(t.length < 2 || !/^[A-Za-z'\-]+$/.test(t) || (wd.confidence || 0) < 45) continue; const b = wd.bbox;
+      const dx = cx < b.x0 ? b.x0 - cx : cx > b.x1 ? cx - b.x1 : 0, dy = cy < b.y0 ? b.y0 - cy : cy > b.y1 ? cy - b.y1 : 0, d = dx * 2 + dy; if(d < bd){ bd = d; best = t; } }
+    if(best && bd < 12 * S) return best; }
+  return null; }
 $('present').onclick = () => present(true); $('px').onclick = () => present(false);
 /* 2636: before closing, pages with notes that were not copied are listed, each with Copy (it goes to the page and copies it) */
 const COPIED = {}; const sig = k => JSON.stringify(ANN[k] || []).length;
