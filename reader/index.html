@@ -249,6 +249,8 @@ function endRec2699(){ const id = FID, pn = pageNo, d = doc, kk = id + '#' + pn;
       if(printed == null){ try{ const L = await d.getPageLabels(); if(L && L[pn - 1] && /^\d+$/.test(L[pn - 1])) printed = +L[pn - 1]; }catch(e){} }
       let fail = false; if(printed == null && window.__ocr2700){   /* 2700f: picture reading off until it is proven on teachers' laptops */ if(id !== FID || pn !== pageNo) return; try{ const o2 = await footOcr2700(d, pn); printed = o2.p; if(unit == null) unit = o2.u; }catch(e){ fail = true; try{ localStorage.setItem('coe.rd.ocr.err', String((e && (e.message || e)) || e).slice(0, 200)); }catch(x){} } }
       if(!fail) C[pn] = { p: printed, u: unit }; try{ localStorage.setItem(ck, JSON.stringify(C)); }catch(e){} }
+    /* 2726 (Misty 22 Nov 19:23): pictures-only books · printed page = PDF page − the book file's offset (read once from the printed page numbers, kept by the database) */
+    if(printed == null && cf && cf.off != null && pn - cf.off >= 1) printed = pn - cf.off;
     if(unit == null && cf && typeof unitOf === 'function' && unitOf(cf) != null && unitOf(cf) < 200) unit = unitOf(cf);
     if(printed == null && unit == null) return;
     const k = 'coe.rd.end.' + String(BOOK).toUpperCase(); let o = {}; try{ o = JSON.parse(localStorage.getItem(k) || '{}') || {}; }catch(e){}
@@ -754,7 +756,13 @@ setInterval(wrShow, 1500); wrShow();
    WeChat group gets a clean page instead of a screenshot that includes the Tencent video windows */
 $('pcopy').onclick = () => copyPage($('pcopy'), true);
 $('copyPg').onclick = () => copyPage($('copyPg'), false);
-async function copyPage(b, notes){ if(!doc || b.disabled) return; b.disabled = true; const sp = b.querySelector('span'), was = sp ? sp.textContent : '';
+/* 2726: the page copied for homework is remembered (Student's Book / Workbook, printed page, unit), so the class note's Homework fills itself */
+function hwRec2726(){ try{ if(!BOOK || typeof pageNo !== 'number') return; const cf = FILES.find(x => x.id === FID), nm = String((cf && cf.name) || TITLE || ''), kind = /work\s*book|\bWB\b/i.test(nm) ? 'wb' : /teacher|answer|\bTG\b/i.test(nm) ? '' : 'sb'; if(!kind) return;
+  let p = null; const ck = 'coe.rd.ocr.' + FID; try{ const C = JSON.parse(localStorage.getItem(ck) || '{}') || {}; if(C[pageNo] && C[pageNo].p != null) p = C[pageNo].p; }catch(e){}
+  if(p == null && cf && cf.off != null && pageNo - cf.off >= 1) p = pageNo - cf.off; const u = cf && typeof unitOf === 'function' ? unitOf(cf) : null;
+  const k = 'coe.rd.hw.' + String(BOOK).toUpperCase(); let o = {}; try{ o = JSON.parse(localStorage.getItem(k) || '{}') || {}; }catch(e){} if(!o.at || Date.now() - o.at > 3 * 3600e3) o = {};
+  const L = (o[kind] = o[kind] || []); if(p != null && !L.includes(p)) L.push(p); L.sort((a, b) => a - b); if(u != null && u < 200) o.u = u; o.at = Date.now(); localStorage.setItem(k, JSON.stringify(o)); }catch(e){} }
+async function copyPage(b, notes){ if(!doc || b.disabled) return; if(notes === false) hwRec2726(); b.disabled = true; const sp = b.querySelector('span'), was = sp ? sp.textContent : '';
   if(sp) sp.textContent = 'Copying…'; else if(notes){ b.dataset.was = b.textContent; b.textContent = 'Copying…'; }
   const blobP = pagePic(notes).then(c => new Promise(z => c.toBlob(z, 'image/png')));
   const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent), key = mac ? '⌘ Cmd + V' : 'Ctrl + V';
