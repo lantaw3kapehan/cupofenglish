@@ -83,7 +83,7 @@ textarea.zh{min-height:90px;font-family:'Noto Sans SC','PingFang SC','Microsoft 
       </div>
       <div class="card pad">
         <div class="h2">The task</div>
-        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px"><label class="l" for="en" style="margin:0">Instructions or essay question (English)</label><span class="qfmt" style="display:flex;gap:6px;margin-bottom:6px"><button type="button" class="btn sm" id="qB" title="Bold: select words, then click" style="font-weight:800;min-width:40px">B</button><button type="button" class="btn sm" id="qI" title="Italic: select words, then click" style="font-style:italic;font-family:Georgia,serif;min-width:40px">I</button></span></div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px"><label class="l" for="en" style="margin:0">Instructions or essay question (English)</label><span class="qfmt" style="display:flex;gap:6px;margin-bottom:6px"><button type="button" class="btn sm" id="qB" title="Bold: select words, then click" style="font-weight:800;min-width:40px">B</button><button type="button" class="btn sm" id="qI" title="Italic: select words, then click" style="font-style:italic;font-family:Georgia,serif;min-width:40px">I</button><button type="button" class="btn sm" id="qT" title="Add a table: one row per line, columns split by | (a table pasted from Word, Google Docs or a website works too)" style="min-width:40px">Add table</button></span></div>
         <textarea id="en" placeholder="e.g. Write 80–100 words about your favourite season. Use at least three adjectives."></textarea>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 6px">
           <label class="l" for="zh" style="margin:0">Chinese for the parent</label>
@@ -93,7 +93,7 @@ textarea.zh{min-height:90px;font-family:'Noto Sans SC','PingFang SC','Microsoft 
       </div>
       <div class="card pad">
         <div class="h2" id="ntH">A personal note (optional)</div>
-        <label class="l" for="nt">Your note (English)</label>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px"><label class="l" for="nt" style="margin:0">Your note (English)</label><span style="display:flex;gap:6px;margin-bottom:6px"><button type="button" class="btn sm" id="nT" title="Add a table: one row per line, columns split by | (a table pasted from Word, Google Docs or a website works too)" style="min-width:40px">Add table</button></span></div>
         <textarea id="nt" style="min-height:90px" placeholder="e.g. You did great with commas today. This time, check your capital letters."></textarea>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 6px">
           <label class="l" for="ntzh" style="margin:0">Chinese for the parent</label><span class="xs mute" id="ntSt"></span>
@@ -183,7 +183,7 @@ function pair(enId, zhId, stId, okMsg){ let t0 = 0;
     const add = [...B].filter(w => !A.has(w)).length, cut = [...A].filter(w => !B.has(w)).length, same = A.size > 0 && add <= 1 && cut <= 1;   /* one word changed at most */
     if(mine && same){ $(stId).innerHTML = 'You changed the Chinese, so it is kept as you wrote it. <a href="#" style="color:#00838C;font-weight:600" onclick="event.preventDefault();window.zhAgain2392(\'' + zhId + '\')">Make it again</a>'; return; }
     if(!$('zhOn').checked) return;
-    $(stId).textContent = 'Translating…'; const zh = await trZh(t.replace(/\*+/g, ''));   /* 2671: no ** or * in the Chinese */ if($(enId).value.trim() !== t) return;
+    $(stId).textContent = 'Translating…'; const zh = await trZh(t.split(/\n/).filter(l => !isRow2672(l)).join('\n').replace(/\*+/g, '').trim() || '');   /* 2671: no ** or * in the Chinese */ if($(enId).value.trim() !== t) return;
     SRC[zhId] = t; if(zh){ AUTO[zhId] = zh; $(zhId).value = zh; $(stId).textContent = okMsg; } else $(stId).textContent = 'The Chinese could not be made just now. Type it, or the picture shows the English only.';
     save(); draw(); };
   $(enId).addEventListener('input', () => { save(); draw(); clearTimeout(t0); t0 = setTimeout(now, 1400); });
@@ -265,19 +265,46 @@ function taskPill(t){ let m;
   if((m = t.match(/^(?:essay\s*)?type\s*:\s*(.+)$/i))) return { c: m[1], k: 'type' };
   if(t.length <= 40 && /^(discussion|opinion|agree|disagree|advantages|disadvantages|problem|solution|cause|effect|two[-\s]part|argumentative|mixed)\b[\w\s+&\/,-]*$/i.test(t) && !/[.?!]$/.test(t)) return { c: t, k: 'type' };
   return null; }
+/* 2672 (Misty 22 Nov 11:16-11:18): tables in the task and in the note · a table pasted from Word, Google Docs or a website
+   (columns split by Tab) or typed with | is drawn as a real table: teal header row, light stripes, the first column in bold.
+   The line just above a table is its bold title. */
+const isRow2672 = t => /\t/.test(t) || (t.split('|').length > 2 || /\S\s*\|\s*\S/.test(t));
+const cells2672 = t => (/\t/.test(t) ? t.split(/\t+/) : t.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|')).map(x => x.trim().replace(/\*+/g, ''));
+function tbl2672(g, rows, maxW, sz){
+  const fH = '700 ' + sz + 'px "COE Card Inter", Inter, sans-serif', fB = '600 ' + sz + 'px "COE Card Inter", Inter, sans-serif', fN = '400 ' + sz + 'px "COE Card Inter", Inter, sans-serif';
+  const n = Math.max(...rows.map(r => r.length)), P = Math.round(sz * .7), LH = Math.round(sz * 1.35); rows = rows.map(r => { while(r.length < n) r.push(''); return r; });
+  const fo = (ri, ci) => ri === 0 ? fH : ci === 0 ? fB : fN;
+  const nat = []; for(let ci = 0; ci < n; ci++){ let m = 0; rows.forEach((r, ri) => { g.font = fo(ri, ci); m = Math.max(m, g.measureText(r[ci]).width + 2 * P); }); nat.push(Math.max(m, 60)); }
+  const tot = nat.reduce((a, b) => a + b, 0); let cw;
+  if(tot <= maxW){ const add = (maxW - tot) / n; cw = nat.map(w => w + add); } else { const fair = maxW / n; const small = nat.filter(w => w <= fair), sm = small.reduce((a, b) => a + b, 0), big = nat.filter(w => w > fair).reduce((a, b) => a + b, 0); cw = nat.map(w => w <= fair ? w : w / big * (maxW - sm)); }
+  const wrapC = (t, w) => { const L = [''];  String(t).split(/\s+/).forEach(x => { if(!x) return; const k = L[L.length - 1] ? L[L.length - 1] + ' ' + x : x; if(g.measureText(k).width > w && L[L.length - 1]) L.push(x); else L[L.length - 1] = k; }); return L; };
+  const R = rows.map((r, ri) => { const C = r.map((t, ci) => { g.font = fo(ri, ci); return wrapC(t, cw[ci] - 2 * P); }); return { C, h: Math.max(...C.map(l => l.length)) * LH + 2 * P - Math.round(sz * .2) }; });
+  const h = R.reduce((a, r) => a + r.h, 0);
+  return { h, draw(x0, y0){ let y = y0; g.save(); g.beginPath(); g.roundRect ? g.roundRect(x0, y0, maxW, h, 14) : g.rect(x0, y0, maxW, h); g.clip();
+      R.forEach((r, ri) => { g.fillStyle = ri === 0 ? '#E4F6F6' : ri % 2 === 0 ? '#FAFBFC' : '#FFFFFF'; g.fillRect(x0, y, maxW, r.h);
+        if(ri > 1){ g.fillStyle = '#EEF1F4'; g.fillRect(x0, y, maxW, 2); }
+        let x = x0; r.C.forEach((L, ci) => { g.font = fo(ri, ci); g.fillStyle = ri === 0 ? '#0E6F68' : ci === 0 ? '#2B2253' : '#374151'; L.forEach((t, li) => g.fillText(t, x + P, y + P + li * LH + Math.round(sz * .85))); x += cw[ci]; });
+        y += r.h; }); g.restore();
+      g.strokeStyle = '#DDE3E8'; g.lineWidth = 2; g.beginPath(); g.roundRect ? g.roundRect(x0, y0, maxW, h, 14) : g.rect(x0, y0, maxW, h); g.stroke(); return y0 + h; } };
+}
+/* 2672: split text into text parts and tables, in order */
+function parts2672(text){ const out = []; let tb = null; String(text || '').split(/\n/).forEach(raw => { if(raw.trim() && isRow2672(raw)){ if(!tb){ tb = { tbl: [] }; out.push(tb); } tb.tbl.push(cells2672(raw)); } else { tb = null; out.push({ line: raw }); } });
+  out.forEach((p, i) => { if(p.tbl && p.tbl.length < 2 && p.tbl[0].length < 2) { out[i] = { line: p.tbl[0].join(' ') }; } });
+  out.forEach((p, i) => { const nx = out[i + 1]; if(p.line !== undefined && p.line.trim() && nx && nx.tbl) p.title = true; }); return out; }
 function taskCard(g, text, maxW, F){
   const INSTR = /^(discuss|to what extent|do you agree|what is your opinion|in your opinion|give reasons|why|how|what are|what do you|write about|summari[sz]e|explain|compare)\b/i;
   const ops = [], pills = []; let h = 0, gap = false;
   const segs = (t, base) => { const out = []; String(t).split(/(\*\*[^*]+\*\*|\*[^*]+\*)/).forEach(x => { if(!x) return; const b = /^\*\*.+\*\*$/.test(x), it = !b && /^\*.+\*$/.test(x), tx = b ? x.slice(2, -2) : it ? x.slice(1, -1) : x;
       const k = base === 't' ? 't' : (b || base === 'b') ? (it ? 'bi' : 'b') : it ? 'i' : 'n'; tx.split(/(\s+)/).forEach(w => { if(w) out.push({ t: w, k }); }); }); return out; };
   const wrapS = (S, lh) => { const L = [[]]; let x = 0; S.forEach(p => { g.font = F[p.k]; const w = g.measureText(p.t).width, sp = /^\s+$/.test(p.t); if(x + w > maxW && x > 0 && !sp){ L.push([]); x = 0; } if(sp && x === 0) return; L[L.length - 1].push({ t: p.t, k: p.k, x }); x += w; }); return L.map(l => ({ l, lh })); };
-  String(text || '').split(/\n/).forEach(raw => { const t = raw.trim(); if(!t){ if(ops.length) gap = true; return; }
+  parts2672(text).forEach(pt => { if(pt.tbl){ const T = tbl2672(g, pt.tbl, maxW, 26), g1 = ops.length ? 22 : 0; ops.push({ gap: g1 }, { tb: T }, { gap: 10 }); h += g1 + T.h + 10; gap = false; return; }
+    const raw = pt.line, t = raw.trim(); if(!t){ if(ops.length) gap = true; return; }
     const pl = taskPill(t); if(pl){ pills.push(pl); return; }
-    const kind = /^topic\s*:/i.test(t) ? 't' : INSTR.test(t.replace(/^\*+/, '')) ? 'b' : 'n';
+    const kind = /^topic\s*:/i.test(t) ? 't' : (pt.title || INSTR.test(t.replace(/^\*+/, ''))) ? 'b' : 'n';
     const g0 = kind === 'b' && ops.length ? 30 : gap ? 24 : 0; if(g0){ ops.push({ gap: g0 }); h += g0; } gap = false;
     wrapS(segs(t, kind), kind === 't' ? 58 : 52).forEach(x => { ops.push(x); h += x.lh; }); if(kind === 't'){ ops.push({ gap: 16 }); h += 16; } });
   let pr = null; if(pills.length){ g.font = F.p; const R = [[]]; let x = 0; pills.forEach(c => { const w = g.measureText(c.c).width + 38; if(x + w > maxW && x > 0){ R.push([]); x = 0; } R[R.length - 1].push({ c, x, w }); x += w + 12; }); pr = R; h += 32 + R.length * 60; }
-  return { h, draw(x0, y0){ let y = y0; ops.forEach(o => { if(o.gap){ y += o.gap; return; } y += o.lh; o.l.forEach(p => { g.font = F[p.k]; g.fillStyle = p.k === 'n' || p.k === 'i' ? '#3F3D56' : '#2B2253'; g.fillText(p.t, x0 + p.x, y - 13); }); });
+  return { h, draw(x0, y0){ let y = y0; ops.forEach(o => { if(o.gap !== undefined){ y += o.gap; return; } if(o.tb){ y = o.tb.draw(x0, y); return; } y += o.lh; o.l.forEach(p => { g.font = F[p.k]; g.fillStyle = p.k === 'n' || p.k === 'i' ? '#3F3D56' : '#2B2253'; g.fillText(p.t, x0 + p.x, y - 13); }); });
       if(pr){ y += 32; pr.forEach(r => { r.forEach(c => { const pc = PC2670[c.c.k] || PC2670.type; g.fillStyle = pc[0]; g.beginPath(); g.roundRect ? g.roundRect(x0 + c.x, y, c.w, 48, 24) : g.rect(x0 + c.x, y, c.w, 48); g.fill(); g.fillStyle = pc[1]; g.font = F.p; g.fillText(c.c.c, x0 + c.x + 18, y + 32); }); y += 60; }); } return y; } };
 }
 let dT = 0; function draw(){ clearTimeout(dT); dT = setTimeout(drawNow, 60); }
@@ -289,7 +316,9 @@ function build(){ const en = $('en').value.trim(), ZON = $('zhOn').checked, zh =
   const TF = { n: '400 32px "COE Card Inter", Inter, sans-serif', b: '700 32px "COE Card Inter", Inter, sans-serif', i: 'italic 400 32px "COE Card Inter", Inter, sans-serif', bi: 'italic 700 32px "COE Card Inter", Inter, sans-serif', t: '700 40px "COE Card Inter", Inter, sans-serif', p: '600 25px "COE Card Inter", Inter, sans-serif' };   /* 2669: calmer type, more air */
   const TB = en ? taskCard(g, en, CW, TF) : null, L1 = TB ? [1] : [];   /* 2668 */ g.font = F_ZH; const L2 = zh ? wrap(g, zh, CW) : [];
   const F_N = '500 30px "COE Card Inter", Inter, sans-serif', F_NZ = '400 27px "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif', NW = CW - 60;
-  g.font = F_N; const N1 = nt ? wrap(g, nt, NW) : []; g.font = F_NZ; const N2 = ntzh ? wrap(g, ntzh, NW) : [];
+  g.font = F_N; const NP = parts2672(nt), N1 = []; NP.forEach(p => { if(p.tbl){ N1.push({ tb: tbl2672(g, p.tbl, NW, 24) }); return; } g.font = p.title ? '700 30px "COE Card Inter", Inter, sans-serif' : F_N; wrap(g, p.line, NW).forEach(t => N1.push({ t, b: p.title })); g.font = F_N; });
+  while(N1.length && N1[N1.length - 1].t === '') N1.pop(); while(N1.length && N1[0].t === '') N1.shift();
+  const N1H = N1.reduce((a, x) => a + (x.tb ? x.tb.h + 30 : 44), 0);   /* 2672 */ g.font = F_NZ; const N2 = ntzh ? wrap(g, ntzh, NW) : [];
   const greet = stu && (en || nt);
   const pw = PICS.map(p => CW);   /* 2407 (Misty 19 Nov): every picture fills the card's width, so a photo of a page is as easy to read as a reader page */
   const ph2 = PICS.map((p, i) => Math.round(p.img.naturalHeight * pw[i] / p.img.naturalWidth));
@@ -300,7 +329,7 @@ function build(){ const en = $('en').value.trim(), ZON = $('zhOn').checked, zh =
   if(L2.length) h += 18 + L2.length * 46;
   if(L1.length || L2.length) h += 46;
   ph2.forEach(x => { h += x + 28; });
-  const nh = (N1.length || N2.length) ? 40 + N1.length * 44 + (N2.length ? 14 + N2.length * 40 : 0) + 36 : 0; h += nh ? nh + 24 : 0;
+  const nh = (N1.length || N2.length) ? 40 + N1H + (N2.length ? 14 + N2.length * 40 : 0) + 36 : 0; h += nh ? nh + 24 : 0;
   h += 20 + foot;
   c.width = W; c.height = Math.max(h, band + foot + 240);
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, c.height);
@@ -320,7 +349,7 @@ function build(){ const en = $('en').value.trim(), ZON = $('zhOn').checked, zh =
   PICS.forEach((p, i) => { const w = pw[i], hh = ph2[i], x = M + Math.round((CW - w) / 2); g.drawImage(p.img, x, y, w, hh); g.strokeStyle = '#E3E1EA'; g.lineWidth = 2; g.strokeRect(x, y, w, hh); y += hh + 28; });
   /* the personal note: a soft card, English then Chinese */
   if(nh){ g.fillStyle = '#EEF8F7'; g.beginPath(); g.roundRect ? g.roundRect(M, y, CW, nh, 20) : g.rect(M, y, CW, nh); g.fill(); g.fillStyle = '#14B3A7'; g.fillRect(M, y + 18, 6, nh - 36);
-    let ny = y + 22; g.textBaseline = 'alphabetic'; g.fillStyle = '#1F2937'; g.font = F_N; N1.forEach(t => { ny += 44; g.fillText(t, M + 34, ny - 10); });
+    let ny = y + 22; g.textBaseline = 'alphabetic'; N1.forEach(x => { if(x.tb){ ny = x.tb.draw(M + 34, ny + 14) + 16; return; } ny += 44; g.fillStyle = x.b ? '#2B2253' : '#1F2937'; g.font = x.b ? '700 30px "COE Card Inter", Inter, sans-serif' : F_N; g.fillText(x.t, M + 34, ny - 10); });
     if(N2.length){ ny += 14; g.fillStyle = '#5B5675'; g.font = F_NZ; N2.forEach(t => { ny += 40; g.fillText(t, M + 34, ny - 8); }); } y += nh + 24; }
   /* design A: no footer (the logo and the date are in the header) */
   return { c, has }; }
@@ -360,6 +389,15 @@ zhPref(); ntHead(); draw();
   document.getElementById('qB').onclick = () => wrap('**'); document.getElementById('qI').onclick = () => wrap('*');
   q.addEventListener('keydown', e => { if((e.metaKey || e.ctrlKey) && !e.shiftKey && (e.key === 'b' || e.key === 'i')){ e.preventDefault(); wrap(e.key === 'b' ? '**' : '*'); } });
 })();
+</script>
+<script>
+/* 2672: Add table · puts a small table at the cursor (one row per line, columns split by |) */
+(function(){ const add = (id, bid) => { const q = document.getElementById(id), b = document.getElementById(bid); if(!q || !b) return;
+  b.addEventListener('mousedown', e => e.preventDefault());
+  b.onclick = () => { const a = q.selectionStart, v = q.value, pre = v.slice(0, a), post = v.slice(q.selectionEnd);
+    const T = (pre && !pre.endsWith('\n') ? '\n' : '') + (pre.trim() ? '\n' : '') + 'Table title\nVocabulary | Meaning\nword | meaning\nword | meaning\n';
+    q.value = pre + T + post; const st = pre.length + T.indexOf('Table title'); q.focus(); q.setSelectionRange(st, st + 11); q.dispatchEvent(new Event('input', { bubbles: true })); }; };
+  add('en', 'qT'); add('nt', 'nT'); })();
 </script>
 </body>
 </html>
