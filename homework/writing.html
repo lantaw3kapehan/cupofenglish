@@ -68,6 +68,12 @@ textarea{width:100%;min-height:80px;border:1px solid var(--out);border-radius:10
 #tcCard.sbs .fsPh .photo{display:block!important;flex:1;max-height:none;margin:0;background:#fff}
 #tcCard.sbs #ed{font-size:22px;min-height:calc(100vh - 250px)}
 #tcCard.sbs .bar{top:-16px}
+/* 2665: the writing task at the top in full screen (same reading as the picture) */
+.fsTask{display:none}
+#tcCard:fullscreen .fsTask,#tcCard.fs .fsTask{display:block;background:#F4F6F8;border-left:5px solid #14B3A7;border-radius:10px;padding:14px 18px;margin:10px 0 12px;font-family:'COE Card Inter',Inter,sans-serif;color:#374151;font-size:17px;line-height:1.55;max-height:32vh;overflow:auto}
+.fsTask .tt{font-weight:700;font-size:20px;color:#1F2937;margin-bottom:6px}.fsTask p{margin:0 0 8px}.fsTask .in{font-weight:700}
+.fsTask .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}.fsTask .pills span{background:#E9ECEF;border-radius:999px;padding:4px 12px;font-size:14px;font-weight:500}
+#tcCard:fullscreen #mTip,#tcCard.fs #mTip{display:none}
 #ed{min-height:340px;text-align:justify;border:1px solid var(--line);border-radius:0 0 12px 12px;padding:16px 18px;font:18px/1.9 'Times New Roman',Georgia,serif;background:#fff;outline:none;white-space:pre-wrap;word-wrap:break-word}
 #ed:empty:before{content:attr(data-ph);color:#9CA3AF;font-family:'COE Card Inter',sans-serif;font-size:15px}
 #ed del{color:var(--red);text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:var(--red)}
@@ -474,7 +480,17 @@ setMode(ed.textContent.trim() ? 'C' : 'T');
   const unside = () => { if(!back) return; const a = c.querySelector('.fsPh');
     back.forEach(([n, p, nx]) => { try{ p.insertBefore(n, nx && nx.parentNode === p ? nx : null); }catch(e){ p.appendChild(n); } });
     back = null; if(a) a.remove(); c.classList.remove('sbs'); };
-  const on = () => document.fullscreenElement === c || c.classList.contains('fs'), lab = () => { b.textContent = on() ? '✕ Exit full screen' : '⛶ Full screen'; if(on()) side(); else unside(); };
+  /* 2665: the writing task card (Topic in bold, the question, the instruction in bold, Time / Word Count / Essay Type as pills) */
+  const E = t => String(t).replace(/[&<>]/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[x])), md = t => E(t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\*([^*]+)\*/g, '<i>$1</i>');
+  const INSTR = /^(discuss|to what extent|do you agree|what is your opinion|in your opinion|give reasons|why|how|what are|what do you|write|describe|summari[sz]e|explain|compare)\b/i;
+  const task = () => { const q = (document.getElementById('q') || {}).value || ''; let el = c.querySelector('.fsTask'); if(!q.trim()){ if(el) el.remove(); return; }
+    if(!el){ el = document.createElement('div'); el.className = 'fsTask'; const m = c.querySelector('.mode'); c.insertBefore(el, m || null); }
+    const P = [], pills = []; q.split(/\n/).forEach(r => { const t = r.trim(); if(!t) return; let m;
+      if((m = t.match(/^time(?:\s*limit)?\s*:\s*(.+)$/i))) return pills.push('◷ ' + m[1]); if((m = t.match(/^word\s*count\s*:\s*(.+)$/i))) return pills.push('✎ ' + m[1]); if((m = t.match(/^(?:essay\s*)?type\s*:\s*(.+)$/i))) return pills.push(m[1]);
+      P.push(/^topic\s*:/i.test(t) ? '<div class="tt">' + md(t) + '</div>' : '<p' + (INSTR.test(t.replace(/^\*+/, '')) ? ' class="in"' : '') + '>' + md(t) + '</p>'); });
+    el.innerHTML = P.join('') + (pills.length ? '<div class="pills">' + pills.map(x => '<span>' + E(x) + '</span>').join('') + '</div>' : ''); };
+  const qi = document.getElementById('q'); if(qi) qi.addEventListener('input', () => { if(on()) task(); });
+  const on = () => document.fullscreenElement === c || c.classList.contains('fs'), lab = () => { b.textContent = on() ? '✕ Exit full screen' : '⛶ Full screen'; if(on()){ side(); task(); } else unside(); };
   b.onclick = async () => { if(on()){ if(document.fullscreenElement) await document.exitFullscreen().catch(() => {}); c.classList.remove('fs'); lab(); return; }
     side(); try{ await c.requestFullscreen(); }catch(e){ c.classList.add('fs'); } lab(); const ed = document.getElementById('ed'); if(ed) ed.focus(); };
   document.addEventListener('fullscreenchange', lab);
