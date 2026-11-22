@@ -12,9 +12,10 @@
   const IC = { hand: I('<path d="M7 11V6a1.5 1.5 0 0 1 3 0v4"/><path d="M10 10V4.5a1.5 1.5 0 0 1 3 0V10"/><path d="M13 10V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M16 11V8.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-.5A6.5 6.5 0 0 1 6 17.5L4.3 13a1.5 1.5 0 0 1 2.7-1.3L8 14"/>'),
     pen: I('<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/>'), hl: I('<path d="m9 11-5 5v3h3l5-5"/><path d="m12 8 4 4 5-5-4-4z"/><path d="M3 21h8"/>'),
     erase: I('<path d="m7 21-4-4L14 6l6 6-9 9z"/><path d="M7 21h13"/>'), rect: I('<rect x="4" y="6" width="16" height="12" rx="1.5"/>'), arrow: I('<path d="M5 19 19 5"/><path d="M10 5h9v9"/>'),
-    line: I('<path d="M5 19 19 5"/>'), ellipse: I('<ellipse cx="12" cy="12" rx="8" ry="6"/>'), tick: I('<path d="m5 12 4 4 10-10"/>'), star: I('<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'),
+    line: I('<path d="M5 19 19 5"/>'), ellipse: I('<ellipse cx="12" cy="12" rx="8" ry="6"/>'), tick: I('<path d="m5 12 4 4 10-10"/>'), heart: I('<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>'), star: I('<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'),
     undo: I('<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>'), fold: I('<path d="m15 6-6 6 6 6"/>') };
-  const SH = [['arrow', 'Arrow'], ['rect', 'Box'], ['ellipse', 'Circle'], ['tick', 'Tick']];
+  const SH = [['arrow', 'Arrow'], ['rect', 'Box'], ['ellipse', 'Circle'], ['tick', 'Tick'], ['star', 'Star'], ['heart', 'Heart']];   /* 2710: star and heart for praise */
+  const STAMP = { tick: 1, star: 1, heart: 1 }, FILL = { star: ['#FFC21A', '#E39A00'], heart: ['#FF6B9A', '#E23D74'] };
   const css = `.ink-c{position:absolute;left:0;top:0;z-index:4;touch-action:none}.ink-c.off{pointer-events:none}
 .ink-t{position:fixed;left:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.97);border-radius:16px;box-shadow:0 6px 20px rgba(30,26,60,.14);padding:8px;display:flex;flex-direction:column;gap:4px;align-items:center;z-index:60;max-height:calc(100vh - 140px);overflow-y:auto}
 .ink-t .tb{width:42px;height:38px;border:0;border-radius:12px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font:700 17px Inter,sans-serif;color:#2B2253}
@@ -47,12 +48,18 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
   function shapePts(a, w){ const [p0, p1] = a.p, x0 = p0[0] * w, y0 = p0[1] * w, x1 = p1[0] * w, y1 = p1[1] * w, P = [];
     if(a.k === 'rect') return [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
     if(a.k === 'ellipse'){ const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = Math.abs(x1 - x0) / 2, ry = Math.abs(y1 - y0) / 2; for(let i = 0; i <= 48; i++){ const t = i / 48 * Math.PI * 2; P.push([cx + rx * Math.cos(t), cy + ry * Math.sin(t)]); } return P; }
-    if(a.k === 'tick'){ const ww = x1 - x0, h = y1 - y0; return [[x0, y0 + h * 0.55], [x0 + ww * 0.38, y1], [x1, y0]]; }
+    /* 2710: a hand-written looking tick (short stroke down, long curved stroke up) and a heart */
+    if(a.k === 'tick'){ const ww = x1 - x0, h = y1 - y0, A = [x0 + ww * 0.04, y0 + h * 0.56], B = [x0 + ww * 0.36, y0 + h * 0.96], C = [x1, y0 + h * 0.02], K = [x0 + ww * 0.52, y0 + h * 0.5];
+      P.push(A); for(let i = 1; i <= 6; i++){ const t = i / 6; P.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * Math.pow(t, 0.9)]); }
+      for(let i = 1; i <= 16; i++){ const t = i / 16, u = 1 - t; P.push([u * u * B[0] + 2 * u * t * K[0] + t * t * C[0], u * u * B[1] + 2 * u * t * K[1] + t * t * C[1]]); } return P; }
+    if(a.k === 'heart'){ const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, sx = Math.abs(x1 - x0) / 34, sy = Math.abs(y1 - y0) / 30; for(let i = 0; i <= 60; i++){ const t = i / 60 * Math.PI * 2; P.push([cx + sx * 16 * Math.pow(Math.sin(t), 3), cy - sy * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) - sy * 1.5]); } return P; }
     if(a.k === 'star'){ const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, R = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) / 2; for(let i = 0; i <= 10; i++){ const r = i % 2 ? R * 0.45 : R, t = -Math.PI / 2 + i * Math.PI / 5; P.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]); } return P; }
     return [[x0, y0], [x1, y1]]; }
   function draw(){ if(!cv) return; const x = cv.getContext('2d'), d = window.devicePixelRatio || 1, w = W(); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, cv.width, cv.height);
     (ANN[key] || []).forEach(a => { if(a.t === 'text'){ const T = lines(x, a, w); x.fillStyle = a.c; x.textBaseline = 'top'; T.L.forEach((t, i) => x.fillText(t, a.x * w, a.y * w + i * T.lh)); return; }
       x.globalAlpha = a.t === 'hl' ? 0.32 : 1; x.strokeStyle = a.c; x.lineWidth = Math.max(1.5, a.w * w); x.lineCap = a.t === 'hl' ? 'butt' : 'round'; x.lineJoin = 'round';
+      if(a.t === 'shape' && FILL[a.k]){ const P = shapePts(a, w); x.beginPath(); P.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); x.closePath(); x.fillStyle = FILL[a.k][0]; x.fill(); x.strokeStyle = FILL[a.k][1]; x.lineWidth = Math.max(1.5, a.w * w * 0.7); x.stroke(); x.globalAlpha = 1; return; }
+      if(a.t === 'shape' && a.k === 'tick') x.lineWidth = Math.max(3, a.w * w * 2.2);
       if(a.t === 'shape'){ const P = shapePts(a, w); x.beginPath(); P.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); x.stroke();
         if(a.k === 'arrow'){ const [ax, ay] = P[0], [bx, by] = P[1], g = Math.atan2(by - ay, bx - ax), L = Math.max(14, a.w * w * 5); x.beginPath(); x.moveTo(bx - L * Math.cos(g - 0.45), by - L * Math.sin(g - 0.45)); x.lineTo(bx, by); x.lineTo(bx - L * Math.cos(g + 0.45), by - L * Math.sin(g + 0.45)); x.stroke(); }
         x.globalAlpha = 1; return; }
@@ -106,6 +113,8 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
     cv.addEventListener('pointermove', e => { if(!cur) return; const p = pt(e);
       if(cur.drag){ const dx = p[0] - cur.p0[0], dy = p[1] - cur.p0[1]; if(Math.hypot(dx, dy) > 0.004) cur.moved = true; if(cur.moved){ cur.drag.x = Math.max(0, Math.min(0.97, cur.x0 + dx)); cur.drag.y = Math.max(0, cur.y0 + dy); cur.drag.mw = Math.max(0.15, Math.min(cur.drag.mw || 1, 1 - cur.drag.x - 0.012)); draw(); } return; } if(cur.erase) return eraseAt(p); if(cur.t === 'shape') cur.p[1] = p; else cur.p.push(p); draw(); });
     const end = () => { if(!cur) return; if(cur.drag){ const c0 = cur; cur = null; if(c0.moved){ HIST.push({ k: key, snap: c0.before }); REDO.length = 0; draw(); } else addText(c0.p0); return; } if(cur.erase){ if(cur.hit){ HIST.push({ k: key, snap: cur.before }); REDO.length = 0; } }
+      else if(cur.t === 'shape' && STAMP[cur.k] && Math.hypot(cur.p[1][0] - cur.p[0][0], cur.p[1][1] - cur.p[0][1]) < 0.012){   /* 2710: a click puts a tick / star / heart of a ready size */
+        const c0 = cur.p[0], z = cur.k === 'tick' ? 0.035 : 0.04; cur.p = [[c0[0] - z / 2, c0[1] - z / 2], [c0[0] + z / 2, c0[1] + z / 2]]; draw(); }
       else if(cur.t === 'shape' && Math.hypot(cur.p[1][0] - cur.p[0][0], cur.p[1][1] - cur.p[0][1]) < 0.004){ ANN[key] = list().filter(a => a !== cur); HIST.pop(); draw(); } cur = null; };
     cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end); }
   function swap(from, to){ const h = from.pop(); if(!h) return; to.push({ k: h.k, snap: (ANN[h.k] || []).slice() }); ANN[h.k] = h.snap.slice(); if(h.k === key) draw(); }
@@ -115,7 +124,7 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
       + [['hand', 'Move and click (V)'], ['pen', 'Pen (P)'], ['hl', 'Highlighter (H)']].map(b => '<button class="tb' + (tool === b[0] ? ' on' : '') + '" data-t="' + b[0] + '" title="' + b[1] + '" aria-label="' + b[1] + '">' + IC[b[0]] + '</button>').join('')
       + '<button class="tb' + (tool === 'text' ? ' on' : '') + '" data-t="text" title="Text (T) · click a text to change it, drag it to move it · Shift+Enter for a new line" aria-label="Text">T</button>'
       + '<button class="tb' + (tool === 'erase' ? ' on' : '') + '" data-t="erase" title="Eraser (E)" aria-label="Eraser">' + IC.erase + '</button>'
-      + '<div class="ink-s"><button class="tb' + (tool === 'shape' ? ' on' : '') + '" data-t="shape" title="Shapes (S): arrow, box, circle, tick" aria-label="Shapes">' + IC[shp] + '</button><div class="ink-p' + (tool === 'shape' && bar.dataset.sp === '1' ? ' on' : '') + '">' + SH.map(s => '<button data-k="' + s[0] + '" class="' + (shp === s[0] ? 'on' : '') + '">' + IC[s[0]] + s[1] + '</button>').join('') + '</div></div>'
+      + '<div class="ink-s"><button class="tb' + (tool === 'shape' ? ' on' : '') + '" data-t="shape" title="Shapes (S): arrow, box, circle, tick, star, heart · click once for a tick, star or heart" aria-label="Shapes">' + IC[shp] + '</button><div class="ink-p' + (tool === 'shape' && bar.dataset.sp === '1' ? ' on' : '') + '">' + SH.map(s => '<button data-k="' + s[0] + '" class="' + (shp === s[0] ? 'on' : '') + '">' + IC[s[0]] + s[1] + '</button>').join('') + '</div></div>'
       + '<div class="hr"></div><div class="dots">' + COL.map(c => '<button class="dot' + (color === c[0] ? ' on' : '') + '" data-c="' + c[0] + '" style="background:' + c[0] + ';color:' + c[0] + '" title="' + c[1] + '" aria-label="' + c[1] + '"></button>').join('') + '</div>'
       + '<div class="hr"></div>' + [0, 1, 2].map(z => '<button class="sz' + (size === z ? ' on' : '') + '" data-z="' + z + '" title="' + ['Small', 'Medium', 'Large'][z] + ' text and pen"><span style="font-size:' + [12, 16, 21][z] + 'px">A</span></button>').join('')
       + '<div class="hr"></div><div class="ur"><button class="tb" data-a="undo" title="Undo (Ctrl/Cmd+Z)" aria-label="Undo">' + IC.undo + '</button><button class="tb" data-a="redo" title="Redo (Ctrl/Cmd+Shift+Z)" aria-label="Redo"><span style="display:flex;transform:scaleX(-1)">' + IC.undo + '</span></button></div>'
