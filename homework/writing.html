@@ -577,11 +577,21 @@ setMode(ed.textContent.trim() ? 'C' : 'T');
   const inkDown = () => { if(ro2){ ro2.disconnect(); ro2 = null; } if(!inkOn) return; inkOn = false; try{ CoeInk.close(); }catch(e){} c.querySelectorAll('canvas.ink-c').forEach(n => n.remove()); c.style.minHeight = '';
     ['.ink-t', '.ink-m'].forEach(q => { const n = c.querySelector(q); if(n) document.body.appendChild(n); }); };
   const on = () => document.fullscreenElement === c || c.classList.contains('fs'), lab = () => { b.textContent = on() ? '✕ Exit full screen' : '⛶ Full screen'; fb.style.display = on() && !document.fullscreenElement ? '' : 'none'; if(on()){ side(); task(); setTimeout(inkUp, 60); } else { inkDown(); unside(); } };
-  async function snap(btn){ const was = btn.textContent; const pic = shot();   /* before the button's words change (the header must not move) */
+  async function snap(btn){ const was = btn.textContent; const pic = withHead(trim(shot()));   /* before the button's words change (the header must not move) */
     btn.disabled = true; btn.textContent = 'Copying…'; const bp = new Promise(z => pic.toBlob(z, 'image/png'));
     try{ await Promise.race([navigator.clipboard.write([new ClipboardItem({ 'image/png': bp })]), new Promise((z, no) => setTimeout(() => no(new Error('slow')), 8000))]); btn.textContent = 'Copied ✓ · paste in WeChat'; }
     catch(e){ try{ const bl = await bp, a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = 'writing-screen.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); btn.textContent = 'Saved as a file'; }catch(x){ btn.textContent = 'Could not copy'; } }
     setTimeout(() => { btn.textContent = was; btn.disabled = false; }, 2200); }
+  /* 2708 (Misty 22 Nov 18:23): the screen copy has the same header as the other pictures (logo, title, student, teacher, writing type),
+     and the empty space under the last words or drawings is cut off */
+  function trim(cv){ const g = cv.getContext('2d'), w = cv.width, d = g.getImageData(0, 0, w, cv.height).data; let last = 0;
+    for(let y = cv.height - 1; y >= 0 && !last; y--){ const o = y * w * 4; for(let x = 0; x < w; x += 2){ const k = o + x * 4; if(d[k] < 235 || d[k + 1] < 235 || d[k + 2] < 235){ last = y; break; } } }
+    const h = Math.min(cv.height, last + 56); if(h >= cv.height - 4) return cv; const o = document.createElement('canvas'); o.width = w; o.height = h; const og = o.getContext('2d'); og.fillStyle = '#fff'; og.fillRect(0, 0, w, h); og.drawImage(cv, 0, 0); return o; }
+  function withHead(cv){ try{ if(!window.coeHdr) return cv; const W = 1240, M = 50, lab = ((document.getElementById('kind') || {}).value || '').trim(), band = coeHdr.height(W, !!lab), sc = (W - 2 * M) / cv.width, ch = Math.round(cv.height * sc);
+      const o = document.createElement('canvas'); o.width = W; o.height = band + 20 + ch + 30; const g = o.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, o.height);
+      const stu = ((document.getElementById('stu') || {}).value || '').trim(); let logo = null, tch = ''; try{ logo = LOGO; tch = TEACHER; }catch(e){}
+      coeHdr.draw(g, W, { logo, title: 'Writing feedback / 写作批改', meta: [stu ? 'For / 学生: ' + stu : '', tch], label: lab });
+      g.imageSmoothingQuality = 'high'; g.drawImage(cv, M, band + 20, W - 2 * M, ch); return o; }catch(e){ return cv; } }
   /* draws the task card and the writing as they are on the screen (each word where it sits, with its colour and lines), then the drawings */
   function shot(){ const ed = document.getElementById('ed'), tk = c.querySelector('.fsTask'), parts = [tk, ed].filter(Boolean);
     const box = parts.map(n => n.getBoundingClientRect()), L = Math.min(...box.map(r => r.left)), T = Math.min(...box.map(r => r.top)), Rr = Math.max(...box.map(r => r.right)), B = Math.max(...box.map(r => r.bottom));
