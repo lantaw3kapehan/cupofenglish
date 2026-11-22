@@ -127,11 +127,16 @@ input.tt{width:100%;height:42px;border:1px solid var(--out);border-radius:10px;p
 .pick .row{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 14px;border:0;border-top:1px solid #F0F1F4;background:#fff;text-align:left;font-size:16px}
 .pick .row:hover{background:#F8F9FB}
 /* show on screen */
-#work:fullscreen{background:#fff;overflow:auto;border-radius:0}
-#work:fullscreen #essay{font-size:30px;max-width:1200px;margin:0 auto}
-#work:fullscreen .why{max-width:1200px;margin:18px auto 0}
-#work:fullscreen .why div{font-size:22px}
-#work:fullscreen .body{padding:40px 60px}
+#work:fullscreen,#work.fs{background:#fff;overflow:auto;border-radius:0}
+#work.fs{position:fixed;inset:0;z-index:50;border:0}
+#work:fullscreen #essay,#work.fs #essay{font-size:30px;max-width:1200px;margin:0 auto}
+#work:fullscreen .why,#work.fs .why{max-width:1200px;margin:18px auto 0}
+#work:fullscreen .why div,#work.fs .why div{font-size:22px}
+#work:fullscreen .body,#work.fs .body{padding:40px 60px}
+/* 2705: class view controls (top right) */
+#fsBar{display:none;position:fixed;top:10px;right:12px;z-index:60;gap:6px}
+#work.fs #fsBar{display:flex}
+#fsBar button{height:32px;padding:0 12px;border-radius:8px;border:1px solid #D6DAE1;background:rgba(255,255,255,.94);color:#374151;font-size:13px;cursor:pointer}
 @media(max-width:640px){.wrap{padding:12px 12px 40px}#essay{font-size:18px}.body{padding:18px 16px}.cnt b{font-size:18px}.top img.logo{height:30px}}
 </style>
 </head>
@@ -629,9 +634,21 @@ function newCheck(){ if(DIRTY && hasWork() && !confirm('Start a new check? Unsav
   $('note').value = ''; $('ttl').value = ''; ZH = { src: '', zh: '' }; $('zhBox').style.display = 'none'; $('saveInfo').textContent = 'Saving keeps the corrected copy with ' + (NAME || CODE) + '’s homework, so you can open it again later.'; paintMode(); loadHist(); }
 
 /* ================= show on screen ================= */
+/* 2705 (Misty 22 Nov 18:06): like the shared books (2697) · the class view stays when the browser leaves full screen (Esc, or switching
+   to WeChat to send a picture); "⛶ Full screen" (top right) puts the browser back in full screen; Esc again or "✕ Exit" leaves */
+function fsLab(){ const w = $('work'), on = !!(w && w.classList.contains('fs')), b = $('fsBar');
+  $('bShow') && ($('bShow').lastChild.textContent = on ? 'Exit full screen' : 'Show on screen');
+  if(b){ const r = b.querySelector('.re'); if(r) r.style.display = document.fullscreenElement ? 'none' : ''; }
+  if(MODE === 'picture') setTimeout(fit, 60); }
 async function showOnScreen(){ const w = $('work'); if(!w) return; closeEd();
-  try{ if(document.fullscreenElement) await document.exitFullscreen(); else await w.requestFullscreen(); }catch(e){ toast('Full screen is not allowed here'); } }
-document.addEventListener('fullscreenchange', () => { const on = document.fullscreenElement === $('work'); $('bShow') && ($('bShow').lastChild.textContent = on ? 'Exit full screen' : 'Show on screen'); if(MODE === 'picture') setTimeout(fit, 60); });
+  if(w.classList.contains('fs')) return leaveScreen();
+  if(!$('fsBar')){ const b = document.createElement('div'); b.id = 'fsBar'; b.innerHTML = '<button type="button" class="re">⛶ Full screen</button><button type="button" class="ex">✕ Exit</button>'; w.appendChild(b);
+    b.querySelector('.re').onclick = async () => { try{ await w.requestFullscreen(); }catch(e){} fsLab(); }; b.querySelector('.ex').onclick = leaveScreen; }
+  w.classList.add('fs'); try{ await w.requestFullscreen(); }catch(e){} fsLab(); }
+async function leaveScreen(){ const w = $('work'); if(w) w.classList.remove('fs'); try{ if(document.fullscreenElement) await document.exitFullscreen(); }catch(e){} fsLab(); }
+document.addEventListener('fullscreenchange', fsLab);
+document.addEventListener('keydown', e => { const w = $('work'); if(e.key !== 'Escape' || !w || !w.classList.contains('fs') || document.fullscreenElement || e.defaultPrevented) return;
+  const t = e.target || {}; if(/INPUT|TEXTAREA|SELECT/.test(t.tagName || '') || t.isContentEditable) return; if(typeof SELI !== 'undefined' && SELI) return; leaveScreen(); }, true);
 
 /* ================= parent picture ================= */
 async function img(src){ return new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; }); }

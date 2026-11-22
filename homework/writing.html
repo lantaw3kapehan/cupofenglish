@@ -546,11 +546,16 @@ setMode(ed.textContent.trim() ? 'C' : 'T');
       P.push(/^topic\s*:/i.test(t) ? '<div class="tt">' + md(t) + '</div>' : '<p' + (INSTR.test(t.replace(/^\*+/, '')) ? ' class="in"' : '') + '>' + md(t) + '</p>'); });
     el.innerHTML = P.join('') + (pills.length ? '<div class="pills">' + pills.map(x => '<span class="pk-' + x.k + '">' + E(x.c) + '</span>').join('') + '</div>' : ''); };
   const qi = document.getElementById('q'); if(qi) qi.addEventListener('input', () => { if(on()) task(); });
-  const on = () => document.fullscreenElement === c || c.classList.contains('fs'), lab = () => { b.textContent = on() ? '✕ Exit full screen' : '⛶ Full screen'; if(on()){ side(); task(); } else unside(); };
-  b.onclick = async () => { if(on()){ if(document.fullscreenElement) await document.exitFullscreen().catch(() => {}); c.classList.remove('fs'); lab(); return; }
-    side(); try{ await c.requestFullscreen(); }catch(e){ c.classList.add('fs'); } lab(); const ed = document.getElementById('ed'); if(ed) ed.focus(); };
+  /* 2705 (Misty 22 Nov 18:06): like the shared books (2697) · the class view stays when the browser leaves full screen (Esc, or
+     switching to WeChat to send a picture); "⛶ Full screen" puts the browser back in full screen; Esc again or "✕ Exit" leaves */
+  const fb = document.createElement('button'); fb.type = 'button'; fb.className = b.className; fb.id = 'bFsBack'; fb.textContent = '⛶ Full screen'; fb.style.display = 'none'; fb.style.marginLeft = 'auto'; fb.style.marginRight = '8px';
+  b.parentNode.insertBefore(fb, b); fb.onclick = async () => { try{ await c.requestFullscreen(); }catch(e){} lab(); };
+  const on = () => document.fullscreenElement === c || c.classList.contains('fs'), lab = () => { b.textContent = on() ? '✕ Exit full screen' : '⛶ Full screen'; fb.style.display = on() && !document.fullscreenElement ? '' : 'none'; if(on()){ side(); task(); } else unside(); };
+  b.onclick = async () => { if(on()){ c.classList.remove('fs'); if(document.fullscreenElement) await document.exitFullscreen().catch(() => {}); lab(); return; }
+    side(); c.classList.add('fs'); try{ await c.requestFullscreen(); }catch(e){} lab(); const ed = document.getElementById('ed'); if(ed) ed.focus(); };
   document.addEventListener('fullscreenchange', lab);
-  document.addEventListener('keydown', e => { if(e.key === 'Escape' && c.classList.contains('fs')){ c.classList.remove('fs'); lab(); } }); })();
+  document.addEventListener('keydown', e => { if(e.key !== 'Escape' || !c.classList.contains('fs') || document.fullscreenElement || e.defaultPrevented) return; const t = e.target || {};
+    if(/INPUT|TEXTAREA|SELECT/.test(t.tagName || '') || (t.isContentEditable && !(t.closest && t.closest('#ed')))) return; c.classList.remove('fs'); lab(); }); })();
 </script>
 <script>
 /* 2677 (Misty 22 Nov 11:26, option C): 'Source Serif 4' for the reading text on the pictures · load it, then draw again */
