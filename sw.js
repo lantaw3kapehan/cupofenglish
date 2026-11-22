@@ -37,7 +37,7 @@ self.addEventListener('fetch', e => {
   e.respondWith(caches.open(V).then(c => {
     const net = fetch(e.request, { cache: 'no-cache' }).then(r => { if (r.ok) c.put(page ? './' : e.request, r.clone()); return r; });
     if (page) return net.catch(() => c.match('./'));                         // the frame: newest first, phone copy when offline
-    return c.match(e.request, { ignoreSearch: true }).then(hit => hit || net);   // icons: phone copy first
+    return c.match(e.request, { ignoreSearch: !/[?&]v=/.test(u.search) }).then(hit => hit || net);   // icons: phone copy first · 2684: a file asked for with ?v= (a new version) is never answered with an older saved copy
   }));
 });
 // 19 Oct · phone notifications sent by the database (coe-push), even when the app is closed
