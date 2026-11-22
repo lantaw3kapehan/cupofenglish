@@ -253,15 +253,16 @@ function endRec2699(){ const id = FID, pn = pageNo, d = doc, kk = id + '#' + pn;
     if(printed == null && unit == null) return;
     const k = 'coe.rd.end.' + String(BOOK).toUpperCase(); let o = {}; try{ o = JSON.parse(localStorage.getItem(k) || '{}') || {}; }catch(e){}
     o[kind] = { p: printed, u: unit, at: Date.now() }; o.at = Date.now(); localStorage.setItem(k, JSON.stringify(o)); }catch(e){} }, 2500); }
-function clk2701(){ try{ const now = Date.now(), d = new Date(); const t = $('clkT'); if(!t) return; t.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+function clk2701(){ try{ const now = Date.now(), d = new Date(); const t = $('clkT'); if(!t) return; const ph = new Date(now + 8 * 3600e3), hm = String(ph.getUTCHours()).padStart(2, '0') + ':' + String(ph.getUTCMinutes()).padStart(2, '0'); if(t.textContent !== hm) t.textContent = hm;   /* 2701b: Philippine time, checked every second */
   let o = null; try{ o = JSON.parse(localStorage.getItem('coe.today.cls') || 'null'); }catch(e){}
   const L = (o && o.cls) || [], c = L.find(x => now >= x[0] - 5 * 6e4 && now <= x[1] + 10 * 6e4), el = $('clkL'); if(!el) return;
-  if(!c){ el.textContent = ''; el.className = ''; return; }
+  const set = (tx, cl) => { if(el.textContent !== tx) el.textContent = tx; if(el.className !== cl) el.className = cl; };
+  if(!c){ set('', ''); return; }
   const left = Math.ceil((c[1] - now) / 6e4);
-  if(now < c[0]){ el.textContent = 'Starts in ' + Math.max(1, Math.ceil((c[0] - now) / 6e4)) + ' min'; el.className = ''; }
-  else if(left > 0){ el.textContent = left + ' min left'; el.className = left <= 5 ? 'warn' : ''; }
-  else { el.textContent = 'Time\u2019s up'; el.className = 'over'; } }catch(e){} }
-clk2701(); setInterval(clk2701, 15000);
+  if(now < c[0]) set('Starts in ' + Math.max(1, Math.ceil((c[0] - now) / 6e4)) + ' min', '');
+  else if(left > 0) set(left + ' min left', left <= 5 ? 'warn' : '');
+  else set('Time\u2019s up', 'over'); }catch(e){} }
+clk2701(); setInterval(clk2701, 1000);
 function paintSide(){ const s = $('side'); if(!FILES.length){ s.innerHTML = ''; return; }
   const M = FILES.filter(isMain), units = [...new Set(FILES.map(unitOf).filter(u => u != null && u < 200))].sort((a, b) => a - b);
   if(UNIT == null && units.length) UNIT = units[0];
