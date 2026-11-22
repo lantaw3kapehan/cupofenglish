@@ -34,7 +34,7 @@
     g.fillStyle = '#2B2253'; g.textAlign = 'left'; const ty = top + 18 * u, x0 = W - P - wOf(big);
     g.font = '700 ' + big + 'px ' + FT; const ew = g.measureText(en).width; g.fillText(en, x0, ty);
     if(zh){ g.font = '700 ' + (big * 0.72) + 'px ' + FT; g.fillText(zh, x0 + ew, ty); }
-    g.fillStyle = '#14B3A7'; g.beginPath(); const uw = 20 * u, uh = Math.max(2, 1.7 * u); g.roundRect ? g.roundRect(W - P - uw, ty + 4.5 * u, uw, uh, uh / 2) : g.rect(W - P - uw, ty + 4.5 * u, uw, uh); g.fill();
+    g.fillStyle = '#14B3A7'; g.beginPath(); const uw = 20 * u, uh = Math.max(2, 1.7 * u); g.roundRect ? g.roundRect(W - P - uw, ty + 6.5 * u, uw, uh, uh / 2) : g.rect(W - P - uw, ty + 6.5 * u, uw, uh); g.fill();
     g.textAlign = 'right';
     const meta = (o.meta || []).filter(Boolean).concat(o.date === false ? [] : [o.date || today()]).join('  ·  ');
     if(meta){ g.fillStyle = GREY; const m = fit(g, meta, s => '400 ' + s + 'px ' + FI, 12 * u, 9 * u, room); g.fillText(m, W - P, top + 37 * u); }
