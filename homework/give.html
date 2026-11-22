@@ -253,13 +253,39 @@ function wrap(g, text, maxW){ const out = []; String(text).split(/\n/).forEach(p
   const cjk = /[㐀-鿿]/.test(par), toks = cjk ? [...par] : par.split(/(\s+)/); let line = '';
   toks.forEach(t => { const tryL = line + t; if(g.measureText(tryL).width > maxW && line.trim()){ out.push(line.trimEnd()); line = cjk ? t : t.trimStart(); } else line = tryL; });
   out.push(line.trimEnd()); }); return out; }
+/* 2668 (Misty 22 Nov 10:58): the task on the homework picture reads like a task card, as in Writing correction:
+   "Topic: …" bold · the question in plain text · the instruction (Discuss… / To what extent… / Do you agree…) bold ·
+   time, word count and essay type as small grey pills (with or without "Time:" / "Word Count:" / "Essay Type:") ·
+   **bold** and *italic* typed by the teacher are kept. Ordinary homework instructions look as before. */
+function taskPill(t){ let m;
+  if((m = t.match(/^(?:time(?:\s*limit)?\s*:\s*)?(\d+\s*(?:minutes?|mins?))$/i))) return '◷ ' + m[1];
+  if((m = t.match(/^(?:word\s*count\s*:\s*)?((?:at\s+least|minimum|about|around|max(?:imum)?)?\s*\d+\s*words?(?:\s+or\s+more)?)$/i))) return '✎ ' + m[1].trim();
+  if((m = t.match(/^(?:essay\s*)?type\s*:\s*(.+)$/i))) return m[1];
+  if(t.length <= 40 && /^(discussion|opinion|agree|disagree|advantages|disadvantages|problem|solution|cause|effect|two[-\s]part|argumentative|mixed)\b[\w\s+&\/,-]*$/i.test(t) && !/[.?!]$/.test(t)) return t;
+  return null; }
+function taskCard(g, text, maxW, F){
+  const INSTR = /^(discuss|to what extent|do you agree|what is your opinion|in your opinion|give reasons|why|how|what are|what do you|write about|summari[sz]e|explain|compare)\b/i;
+  const ops = [], pills = []; let h = 0, gap = false;
+  const segs = (t, base) => { const out = []; String(t).split(/(\*\*[^*]+\*\*|\*[^*]+\*)/).forEach(x => { if(!x) return; const b = /^\*\*.+\*\*$/.test(x), it = !b && /^\*.+\*$/.test(x), tx = b ? x.slice(2, -2) : it ? x.slice(1, -1) : x;
+      const k = base === 't' ? 't' : (b || base === 'b') ? (it ? 'bi' : 'b') : it ? 'i' : 'n'; tx.split(/(\s+)/).forEach(w => { if(w) out.push({ t: w, k }); }); }); return out; };
+  const wrapS = (S, lh) => { const L = [[]]; let x = 0; S.forEach(p => { g.font = F[p.k]; const w = g.measureText(p.t).width, sp = /^\s+$/.test(p.t); if(x + w > maxW && x > 0 && !sp){ L.push([]); x = 0; } if(sp && x === 0) return; L[L.length - 1].push({ t: p.t, k: p.k, x }); x += w; }); return L.map(l => ({ l, lh })); };
+  String(text || '').split(/\n/).forEach(raw => { const t = raw.trim(); if(!t){ if(ops.length) gap = true; return; }
+    const pl = taskPill(t); if(pl){ pills.push(pl); return; }
+    const kind = /^topic\s*:/i.test(t) ? 't' : INSTR.test(t.replace(/^\*+/, '')) ? 'b' : 'n';
+    if(gap){ ops.push({ gap: 20 }); h += 20; gap = false; }
+    wrapS(segs(t, kind), kind === 't' ? 56 : 50).forEach(x => { ops.push(x); h += x.lh; }); if(kind === 't'){ ops.push({ gap: 6 }); h += 6; } });
+  let pr = null; if(pills.length){ g.font = F.p; const R = [[]]; let x = 0; pills.forEach(c => { const w = g.measureText(c).width + 36; if(x + w > maxW && x > 0){ R.push([]); x = 0; } R[R.length - 1].push({ c, x, w }); x += w + 12; }); pr = R; h += 22 + R.length * 58; }
+  return { h, draw(x0, y0){ let y = y0; ops.forEach(o => { if(o.gap){ y += o.gap; return; } y += o.lh; o.l.forEach(p => { g.font = F[p.k]; g.fillStyle = '#2B2253'; g.fillText(p.t, x0 + p.x, y - 12); }); });
+      if(pr){ y += 22; pr.forEach(r => { r.forEach(c => { g.fillStyle = '#EEF0F3'; g.beginPath(); g.roundRect ? g.roundRect(x0 + c.x, y, c.w, 46, 23) : g.rect(x0 + c.x, y, c.w, 46); g.fill(); g.fillStyle = '#374151'; g.font = F.p; g.fillText(c.c, x0 + c.x + 18, y + 31); }); y += 58; }); } return y; } };
+}
 let dT = 0; function draw(){ clearTimeout(dT); dT = setTimeout(drawNow, 60); }
 function build(){ const en = $('en').value.trim(), ZON = $('zhOn').checked, zh = ZON ? $('zh').value.trim() : '', stu = $('stu').value.trim(), due = dueText(), nt = $('nt').value.trim(), ntzh = ZON ? $('ntzh').value.trim() : '';
   const has = !!(en || PICS.length || $('nt').value.trim()); const c = document.createElement('canvas'), g = c.getContext('2d');
   const LBL = (PICS.find(p => p.label) || {}).label || '', band = coeHdr.height(W, !!LBL), foot = 0, CW = W - 2 * M;   /* design A: one header, no footer */
   /* measure */
   const F_EN = '500 34px "COE Card Inter", Inter, sans-serif', F_ZH = '400 30px "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif';
-  g.font = F_EN; const L1 = en ? wrap(g, en, CW) : []; g.font = F_ZH; const L2 = zh ? wrap(g, zh, CW) : [];
+  const TF = { n: '400 34px "COE Card Inter", Inter, sans-serif', b: '700 34px "COE Card Inter", Inter, sans-serif', i: 'italic 400 34px "COE Card Inter", Inter, sans-serif', bi: 'italic 700 34px "COE Card Inter", Inter, sans-serif', t: '700 38px "COE Card Inter", Inter, sans-serif', p: '500 26px "COE Card Inter", Inter, sans-serif' };
+  const TB = en ? taskCard(g, en, CW, TF) : null, L1 = TB ? [1] : [];   /* 2668 */ g.font = F_ZH; const L2 = zh ? wrap(g, zh, CW) : [];
   const F_N = '500 30px "COE Card Inter", Inter, sans-serif', F_NZ = '400 27px "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif', NW = CW - 60;
   g.font = F_N; const N1 = nt ? wrap(g, nt, NW) : []; g.font = F_NZ; const N2 = ntzh ? wrap(g, ntzh, NW) : [];
   const greet = stu && (en || nt);
@@ -268,7 +294,7 @@ function build(){ const en = $('en').value.trim(), ZON = $('zhOn').checked, zh =
   let h = band + 46;
   if(due) h += 64;
   if(greet) h += ZON ? 112 : 68;
-  if(L1.length) h += L1.length * 52 + 8;
+  if(TB) h += TB.h + 8;
   if(L2.length) h += 18 + L2.length * 46;
   if(L1.length || L2.length) h += 34;
   ph2.forEach(x => { h += x + 28; });
@@ -286,7 +312,7 @@ function build(){ const en = $('en').value.trim(), ZON = $('zhOn').checked, zh =
     y += 64; }
   if(greet){ g.fillStyle = '#2B2253'; g.font = '700 36px "COE Card Inter", Inter, sans-serif'; y += 46; g.fillText('Hi ' + stu + ',', M, y - 8);
     if(ZON){ g.fillStyle = '#5B5675'; g.font = '500 30px "Noto Sans SC", "PingFang SC", sans-serif'; y += 44; g.fillText(stu + '，你好！', M, y - 8); } y += 22; }
-  if(L1.length){ g.fillStyle = '#2B2253'; g.font = F_EN; L1.forEach(t => { y += 52; g.fillText(t, M, y - 12); }); y += 8; }
+  if(TB){ g.textAlign = 'left'; y = TB.draw(M, y) + 8; }
   if(L2.length){ y += 18; g.fillStyle = '#5B5675'; g.font = F_ZH; L2.forEach(t => { y += 46; g.fillText(t, M, y - 10); }); }
   if(L1.length || L2.length){ y += 14; g.fillStyle = '#00ACB8'; g.beginPath(); g.roundRect ? g.roundRect(M, y - 1, 80, 6, 3) : g.rect(M, y - 1, 80, 6); g.fill();   /* short teal accent in the logo's cup colour (Misty 18 Nov 20:09, option 2) */ y += 20; }
   PICS.forEach((p, i) => { const w = pw[i], hh = ph2[i], x = M + Math.round((CW - w) / 2); g.drawImage(p.img, x, y, w, hh); g.strokeStyle = '#E3E1EA'; g.lineWidth = 2; g.strokeRect(x, y, w, hh); y += hh + 28; });
