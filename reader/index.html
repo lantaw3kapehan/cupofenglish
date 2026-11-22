@@ -218,19 +218,34 @@ function bookTab2698(f){ const name = TABN2698(mainLabel(f.name)), mine = window
   if(blank) w.location.href = location.pathname + '?' + q.toString(); try{ w.focus(); }catch(e){} return true; }
 /* 2699 (Misty 22 Nov 15:42): where the class ended · the book page number printed on the page (read from the page itself) and the unit,
    kept for this book (Student's Book and Workbook apart) for a few hours, so the class note's "Where did you end?" fills itself. */
-let endT2699 = 0;
+let endT2699 = 0, OCR2700 = null;
+/* 2700: most book PDFs are pictures with no text, so the page number and the unit printed at the foot of the page are read from the picture
+   (Tesseract, loaded only when needed; one small strip per page; each page read once and remembered on this computer) */
+function ocrLoad2700(){ if(OCR2700) return OCR2700; OCR2700 = new Promise((ok, no) => { if(window.Tesseract) return ok(window.Tesseract); const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'; sc.onload = () => ok(window.Tesseract); sc.onerror = no; document.head.appendChild(sc); })
+  .then(T => T.createWorker('eng')).catch(e => { OCR2700 = null; throw e; }); return OCR2700; }
+async function footOcr2700(d, pn){ const pg = await d.getPage(pn), v0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: 1400 / v0.width }), cv = document.createElement('canvas');
+  cv.width = Math.round(vp.width); cv.height = Math.round(vp.height); await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+  const h = Math.round(cv.height * 0.075), st = document.createElement('canvas'); st.width = cv.width; st.height = h; st.getContext('2d').drawImage(cv, 0, cv.height - h, cv.width, h, 0, 0, cv.width, h);
+  const w = await ocrLoad2700(), r = await w.recognize(st), t = String((r && r.data && r.data.text) || '').replace(/\s+/g, ' ').trim();
+  const toks = t.split(' '), num = x => /^\d{1,3}$/.test(x) ? +x : null; let printed = num(toks[0]); if(printed == null) printed = num(toks[toks.length - 1]);
+  const m = /\bunit\s*(\d{1,2})\b/i.exec(t); return { p: printed, u: m ? +m[1] : null }; }
 function endRec2699(){ clearTimeout(endT2699); const id = FID, pn = pageNo, d = doc; endT2699 = setTimeout(async () => { if(!d || !BOOK || id !== FID || pn !== pageNo) return;
   try{ const cf = FILES.find(x => x.id === id), nm = String((cf && cf.name) || TITLE || ''), kind = /work\s*book|\bWB\b/i.test(nm) ? 'wb' : /teacher|answer|\bTG\b/i.test(nm) ? '' : 'sb'; if(!kind) return;
-    const pg = await d.getPage(pn), vp = pg.getViewport({ scale: 1 }), tc = await pg.getTextContent(); let printed = null, unit = null, low = -1;
-    tc.items.forEach(it => { const t = String(it.str || '').trim(), y = it.transform ? it.transform[5] : 0, x = it.transform ? it.transform[4] : 0;
-      if(/^\d{1,3}$/.test(t) && y < vp.height * 0.12 && (x < vp.width * 0.22 || x > vp.width * 0.7)){ if(printed == null || y < low){ printed = +t; low = y; } }
-      const m = /\bunit\s*(\d{1,2})\b/i.exec(t); if(m && unit == null) unit = +m[1]; });
-    if(printed == null){ try{ const L = await d.getPageLabels(); if(L && L[pn - 1] && /^\d+$/.test(L[pn - 1])) printed = +L[pn - 1]; }catch(e){} }
+    const ck = 'coe.rd.ocr.' + id; let C = {}; try{ C = JSON.parse(localStorage.getItem(ck) || '{}') || {}; }catch(e){}
+    let printed = null, unit = null;
+    if(C[pn]){ printed = C[pn].p; unit = C[pn].u; }
+    else { const pg = await d.getPage(pn), vp = pg.getViewport({ scale: 1 }), tc = await pg.getTextContent(); let low = -1;
+      tc.items.forEach(it => { const t = String(it.str || '').trim(), y = it.transform ? it.transform[5] : 0, x = it.transform ? it.transform[4] : 0;
+        if(/^\d{1,3}$/.test(t) && y < vp.height * 0.12 && (x < vp.width * 0.22 || x > vp.width * 0.7)){ if(printed == null || y < low){ printed = +t; low = y; } }
+        const m = /\bunit\s*(\d{1,2})\b/i.exec(t); if(m && unit == null) unit = +m[1]; });
+      if(printed == null){ try{ const L = await d.getPageLabels(); if(L && L[pn - 1] && /^\d+$/.test(L[pn - 1])) printed = +L[pn - 1]; }catch(e){} }
+      if(printed == null){ if(id !== FID || pn !== pageNo) return; try{ const o2 = await footOcr2700(d, pn); printed = o2.p; if(unit == null) unit = o2.u; }catch(e){} }
+      C[pn] = { p: printed, u: unit }; try{ localStorage.setItem(ck, JSON.stringify(C)); }catch(e){} }
     if(unit == null && cf && typeof unitOf === 'function' && unitOf(cf) != null && unitOf(cf) < 200) unit = unitOf(cf);
-    try{ localStorage.setItem('coe.rd.end.dbg', JSON.stringify({ n: tc.items.length, printed, unit, pn, sample: tc.items.slice(-6).map(it => [String(it.str).slice(0, 20), Math.round(it.transform ? it.transform[4] : 0), Math.round(it.transform ? it.transform[5] : 0)]), h: Math.round(vp.height), w: Math.round(vp.width) })); }catch(e){}
     if(printed == null && unit == null) return;
     const k = 'coe.rd.end.' + String(BOOK).toUpperCase(); let o = {}; try{ o = JSON.parse(localStorage.getItem(k) || '{}') || {}; }catch(e){}
-    o[kind] = { p: printed, u: unit, at: Date.now() }; o.at = Date.now(); localStorage.setItem(k, JSON.stringify(o)); }catch(e){ try{ localStorage.setItem('coe.rd.end.err', String(e && e.message || e)); }catch(x){} } }, 1500); }
+    o[kind] = { p: printed, u: unit, at: Date.now() }; o.at = Date.now(); localStorage.setItem(k, JSON.stringify(o)); }catch(e){} }, 2500); }
 function paintSide(){ const s = $('side'); if(!FILES.length){ s.innerHTML = ''; return; }
   const M = FILES.filter(isMain), units = [...new Set(FILES.map(unitOf).filter(u => u != null && u < 200))].sort((a, b) => a - b);
   if(UNIT == null && units.length) UNIT = units[0];
