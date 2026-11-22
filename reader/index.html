@@ -254,7 +254,7 @@ function endRec2699(){ const id = FID, pn = pageNo, d = doc, kk = id + '#' + pn;
     if(unit == null && cf && typeof unitOf === 'function' && unitOf(cf) != null && unitOf(cf) < 200) unit = unitOf(cf);
     if(printed == null && unit == null) return;
     const k = 'coe.rd.end.' + String(BOOK).toUpperCase(); let o = {}; try{ o = JSON.parse(localStorage.getItem(k) || '{}') || {}; }catch(e){}
-    o[kind] = { p: printed, u: unit, at: Date.now() }; o.at = Date.now(); localStorage.setItem(k, JSON.stringify(o)); }catch(e){} }, 2500); }
+    o[kind] = { p: printed, u: unit, at: Date.now() }; o.at = Date.now(); localStorage.setItem(k, JSON.stringify(o)); where2729('end', kind, printed, unit); }catch(e){} }, 2500); }
 function clk2701(){ try{ const now = Date.now(), d = new Date(); const t = $('clkT'); if(!t) return; const ph = new Date(now + 8 * 3600e3), hm = String(ph.getUTCHours()).padStart(2, '0') + ':' + String(ph.getUTCMinutes()).padStart(2, '0'); if(t.textContent !== hm) t.textContent = hm;   /* 2701b: Philippine time, checked every second */
   let o = null; try{ o = JSON.parse(localStorage.getItem('coe.today.cls') || 'null'); }catch(e){}
   const L = (o && o.cls) || [], c = L.find(x => now >= x[0] - 5 * 6e4 && now <= x[1] + 10 * 6e4), el = $('clkL'); if(!el) return;
@@ -761,7 +761,11 @@ function hwRec2726(){ try{ if(!BOOK || typeof pageNo !== 'number') return; const
   let p = null; const ck = 'coe.rd.ocr.' + FID; try{ const C = JSON.parse(localStorage.getItem(ck) || '{}') || {}; if(C[pageNo] && C[pageNo].p != null) p = C[pageNo].p; }catch(e){}
   if(p == null && cf && cf.off != null && pageNo - cf.off >= 1) p = pageNo - cf.off; const u = cf && typeof unitOf === 'function' ? unitOf(cf) : null;
   const k = 'coe.rd.hw.' + String(BOOK).toUpperCase(); let o = {}; try{ o = JSON.parse(localStorage.getItem(k) || '{}') || {}; }catch(e){} if(!o.at || Date.now() - o.at > 3 * 3600e3) o = {};
-  const L = (o[kind] = o[kind] || []); if(p != null && !L.includes(p)) L.push(p); L.sort((a, b) => a - b); if(u != null && u < 200) o.u = u; o.at = Date.now(); localStorage.setItem(k, JSON.stringify(o)); }catch(e){} }
+  const L = (o[kind] = o[kind] || []); if(p != null && !L.includes(p)) L.push(p); L.sort((a, b) => a - b); if(u != null && u < 200) o.u = u; o.at = Date.now(); localStorage.setItem(k, JSON.stringify(o)); where2729('hw', kind, p, u != null && u < 200 ? u : null, L); }catch(e){} }
+/* 2729 (Misty 22 Nov 19:56): also saved with the student in the app (only when the book was opened for a student's class), so a sub or any teacher sees where the class ended and the homework */
+let W2729 = {}; function where2729(what, kind, page, unit, pages){ try{ const code = String(Q.get('code') || ''); if(!/^ST-\d{4}-\d{3}$/.test(code) || !BOOK || typeof TOKEN === 'undefined' || !TOKEN || (page == null && unit == null)) return;
+  const k = [what, kind].join('|'), v = JSON.stringify([page, unit, pages || null]); if(W2729[k] === v) return; W2729[k] = v;
+  clearTimeout(W2729['t' + k]); W2729['t' + k] = setTimeout(() => { fetch(SB + '/functions/v1/coe-hw', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'where', token: TOKEN, code, book: BOOK, kind, what, page, unit, pages: pages || null }) }).catch(() => {}); }, what === 'hw' ? 500 : 8000); }catch(e){} }
 async function copyPage(b, notes){ if(!doc || b.disabled) return; if(notes === false) hwRec2726(); b.disabled = true; const sp = b.querySelector('span'), was = sp ? sp.textContent : '';
   if(sp) sp.textContent = 'Copying…'; else if(notes){ b.dataset.was = b.textContent; b.textContent = 'Copying…'; }
   const blobP = pagePic(notes).then(c => new Promise(z => c.toBlob(z, 'image/png')));
