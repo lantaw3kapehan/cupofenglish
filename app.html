@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2309;
+const COE_V = 2310;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24190,7 +24190,13 @@ go();
   async function load(force){
     if(busy || typeof TOKEN === 'undefined' || !TOKEN || (typeof D !== 'undefined' && D && D.mgr)) return;
     if(!force && Date.now() - at < 10 * 6e4) return; busy = true; at = Date.now();
-    try{ const r = await api('tVidList', TOKEN); if(r && r.ok){ if(JSON.stringify(r.list || []) === JSON.stringify(window.VL_LIST || [])) return; VL = { list: r.list || [], t: Date.now() }; window.VL_LIST = VL.list; try{ localStorage.setItem(K, JSON.stringify(VL)); }catch(e){} paint(); } }
+    try{ const [r, m] = await Promise.all([api('tVidList', TOKEN).catch(() => null),
+        fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-vidmiss', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN }) }).then(x => x.json()).catch(() => null)]);
+      /* 2811: Google's list misses a class when another teacher uploaded for the same student that day; the database list (matched by teacher) adds it */
+      if((r && r.ok) || (m && m.ok)){ const L = ((r && r.ok && r.list) || []).slice(), seen = new Set(L.map(c => c.id + '|' + c.day));
+        ((m && m.ok && m.list) || []).forEach(c => { if(c && c.id && !seen.has(c.id + '|' + c.day)){ seen.add(c.id + '|' + c.day); L.push(c); } });
+        L.sort((a, b) => String(b.start).localeCompare(String(a.start)));
+        if(JSON.stringify(L) === JSON.stringify(window.VL_LIST || [])) return; VL = { list: L, t: Date.now() }; window.VL_LIST = VL.list; try{ localStorage.setItem(K, JSON.stringify(VL)); }catch(e){} paint(); } }
     catch(e){ /* server not updated yet, or offline: keep the last list */ } finally{ busy = false; }
   }
   function paint(){
