@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2256;
+const COE_V = 2257;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -45381,8 +45381,12 @@ window.bk2556 = function(t){ try{ const code = String(t.code || '').toUpperCase(
   function next(code){ try{ if(typeof D === 'undefined' || !D || D.mgr || !Array.isArray(D.schedule)) return null; const c = String(code || '').toUpperCase(), td = D.today || new Date().toISOString().slice(0, 10);
       const L = D.schedule.filter(x => x && String(x.code || '').toUpperCase() === c && !x.cancelled && x.day >= td && x.book).sort((a, b) => String(a.start).localeCompare(String(b.start)));
       const s = (D.students || []).find(x => String(x.code || '').toUpperCase() === c); if(!L.length || !s) return null;
-      const cur = String(s.book || '').split(',').pop().trim(); const nb = L[0].book; if(!cur || !nb) return null;
-      const a = N(cur), b = N(nb); if(!a || !b || a === b || a.indexOf(b) > -1 || b.indexOf(a) > -1) return null;
+      const cur = String(s.book || '').split(',').pop().trim(), nb = L[0].book; if(!nb) return null;
+      /* the book of the last class (class note) and the book in DATABASE: a booked class in either is no change; a book taken in turn (another class this week still in the old book) is no change either */
+      const last = String((s.note && s.note.ended) || '').split(/\s+·\s+|\s+p\.\s*\d|\s+page\s|\s+Unit\s/i)[0].trim();
+      const was = [cur, last].map(N).filter(Boolean), b = N(nb); if(!b || !was.length) return null;
+      const same = k => was.some(a => a === k || a.indexOf(k) > -1 || k.indexOf(a) > -1);
+      if(same(b) || L.slice(1).some(x => same(N(x.book)))) return null;
       return { b: pretty(nb), from: L[0].day }; }catch(e){ return null; } }
   function paint(){ try{ if(typeof STU === 'undefined' || !STU || !STU.code) return; const h = document.querySelector('#sheetBody .shero'); if(!h || h.querySelector('.nb2761')) return;
       const n = next(STU.code); if(!n) return; const chips = h.querySelectorAll('.h-learn .chip:not(.teal)'); const bk = chips[chips.length - 1]; if(!bk) return;
