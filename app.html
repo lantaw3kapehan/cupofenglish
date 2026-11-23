@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2253;
+const COE_V = 2254;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -21042,7 +21042,8 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
 #v-today .cs93.p20 .n::before{background:#F0997B} #v-today .cs93.p20 .n{color:#993C1D}
 #v-today .cs93.p20 .l{color:#8A879C}
 #v-today .cs93.p20 b{font-weight:600;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;text-align:center}
-#v-today .cs93.p20 b small{display:block;font-size:10.5px;font-weight:500;color:#8A879C;margin-top:2px}
+#v-today .cs93.p20 b small{display:block;font-size:10px;font-weight:500;color:#8A879C;margin-top:2px;letter-spacing:-.1px}
+#v-today .cs93.p20 span:first-child b{overflow:visible}
 #v-today .cs93.p20 em{grid-column:5;grid-row:1;font-style:normal;font-size:12px;color:#6C6786;white-space:nowrap;margin-left:4px;align-self:start;line-height:1;margin-top:-2px}
 #v-today .cls.c20:not(.o20){cursor:pointer;padding-top:10px;padding-bottom:10px}
 #v-today .cls.c20:not(.o20) .grow > :not(.row){display:none!important}
@@ -45365,6 +45366,30 @@ window.bk2556 = function(t){ try{ const code = String(t.code || '').toUpperCase(
           const s = sig(); if(s && s === last) return; last = s; } else last = sig(); }catch(e){} return f.apply(this, arguments); };
     w.__s2727 = 1; window.renderToday = w; try{ renderToday = w; }catch(e){} }
   setTimeout(wrap, 2000); setTimeout(wrap, 9000); setInterval(wrap, 60000);
+})();
+</script>
+<script>
+/* 2761 (Misty 23 Nov 12:11): a book change already booked in the calendar shows on the teacher's student page too, as on the management list
+   ("A2 · DK English 2 → Free Talk from 29 Nov"). Ying was moved to Free Talk from 29 Nov; Pam's student page still showed only DK English 2.
+   Teacher side: the next class of this student in the teacher's calendar (D.schedule, today to 7 days ahead) is compared with the student's book. */
+(function(){
+  const N = b => String(b || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^DKENGLISH(?:LEVEL)?/, 'DK').replace(/^FREETALKING$/, 'FREETALK').replace(/^OXFORDDISCOVER(FUTURES)?/, (m, f) => f ? 'ODF' : 'OD');
+  const SP = { FREETALK: 'Free Talk', IELTS: 'IELTS', REF: 'Reading Explorer Foundations', RAZAA: 'RAZ aa' };
+  const pretty = b => { const k = N(b); if(SP[k]) return SP[k]; let m = /^DK(\d)$/.exec(k); if(m) return 'DK English ' + m[1];
+    return String(b || '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Za-z])(\d)/g, (x, a, d) => /[A-Z]/.test(a) && b.length <= 4 ? a + d : a + ' ' + d).trim(); };
+  const dShort = d => { try{ return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); }catch(e){ return d; } };
+  function next(code){ try{ if(typeof D === 'undefined' || !D || D.mgr || !Array.isArray(D.schedule)) return null; const c = String(code || '').toUpperCase(), td = D.today || new Date().toISOString().slice(0, 10);
+      const L = D.schedule.filter(x => x && String(x.code || '').toUpperCase() === c && !x.cancelled && x.day >= td && x.book).sort((a, b) => String(a.start).localeCompare(String(b.start)));
+      const s = (D.students || []).find(x => String(x.code || '').toUpperCase() === c); if(!L.length || !s) return null;
+      const cur = String(s.book || '').split(',').pop().trim(); const nb = L[0].book; if(!cur || !nb) return null;
+      const a = N(cur), b = N(nb); if(!a || !b || a === b || a.indexOf(b) > -1 || b.indexOf(a) > -1) return null;
+      return { b: pretty(nb), from: L[0].day }; }catch(e){ return null; } }
+  function paint(){ try{ if(typeof STU === 'undefined' || !STU || !STU.code) return; const h = document.querySelector('#sheetBody .shero'); if(!h || h.querySelector('.nb2761')) return;
+      const n = next(STU.code); if(!n) return; const chips = h.querySelectorAll('.h-learn .chip:not(.teal)'); const bk = chips[chips.length - 1]; if(!bk) return;
+      bk.insertAdjacentHTML('afterend', '<span class="chip nb2761" title="Booked in the calendar from ' + dShort(n.from) + '">→ ' + String(n.b).replace(/[<>&"]/g, '') + ' from ' + dShort(n.from) + '</span>'); }catch(e){} }
+  const st = document.createElement('style'); st.textContent = '.shero .chip.nb2761{background:#FFF6E5;color:#8A5A00;border-color:#F3D9A4;font-weight:600}'; document.head.appendChild(st);
+  let q = 0; new MutationObserver(() => { if(q) return; q = requestAnimationFrame(() => { q = 0; paint(); }); }).observe(document.body, { childList: true, subtree: true });
+  window.coeNextBook2761 = next;
 })();
 </script>
 </body>
