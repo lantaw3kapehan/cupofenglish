@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2305;
+const COE_V = 2306;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -21625,7 +21625,7 @@ ${(window.ie1854 && ie1854.chip && ie1854.chip(t)) || (t.reportMissing ? `<span 
     if(C.indexOf('pc') > -1) return ['pc', 'Progress check', '#C98A16'];
     if(C.indexOf('qa') > -1) return ['qa', 'Class QA', '#7B5CC4'];
     if(r.role === 'mgmt' && (r.need || r.kind === 'notice')) return ['notice', 'Notice', '#00939D'];
-    if(r.role === 'mgmt') return ['mg', 'Management', '#3F51B5'];
+    if(r.role === 'mgmt') return window.who2801 && who2801(r).k === 'sys' ? ['mg', 'Reminder', '#6B6880'] : ['mg', 'Message', '#3F51B5'];   /* 2805: 'Reminder · Automatic' instead of 'Management · Automatic' */
     return ['msg', 'You', '#8A87A0']; };
   const when = s => { const d = new Date(s); if(isNaN(d)) return msgAt(s); const t = ymdLocal(new Date()), y = ymdLocal(d), hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     return y === t ? 'Today ' + hm : y === ymdLocal(new Date(Date.now() - 864e5)) ? 'Yesterday ' + hm : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + hm; };
@@ -25593,7 +25593,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     let h = '<h1>' + (mine ? 'My activity log' : 'Activity log') + '</h1><div class="small mute">' + (mine ? '' : E(typeof tName === 'function' ? tName(who) : 'Teacher ' + who) + ' · ') + 'every save, timed by the CupOfEnglish server (Philippine time) · kept permanently · cannot be edited or deleted</div>'
       + '<div class="row" style="gap:8px;align-items:center;margin:12px 0"><button class="btn sm ghost" onclick="actLogDay(-1)">‹</button><b class="grow" style="text-align:center">' + E(dayLab(s.day)) + '</b><button class="btn sm ghost" onclick="actLogDay(1)"' + (s.day >= today() ? ' disabled' : '') + '>›</button></div>';
     if(s.err) h += '<div class="empty">' + E(s.err) + '</div>';
-    else if(!s.rows) h += '<div class="sk"></div><div class="sk" style="width:70%"></div>';
+    else if(!s.rows) h += '<div class="empty" aria-busy="true" style="color:#A3A0B5">Loading this day…</div>';   /* 2805: same size as the result, so the page does not jump when it arrives */
     else if(!L.length) h += '<div class="empty">Nothing saved from the app on this day.</div>';
     else h += '<div class="al">' + L.map(r => { const [t, c] = res(r), m = map(r);
       return '<div class="al-it"><b class="al-t">' + E(hms(r.at)) + '</b><div class="grow"><b>' + E(what(r)) + '</b><div class="small" style="color:' + c + ';font-weight:700">' + E(t) + '</div>'
@@ -45880,6 +45880,16 @@ body.role-t #v-students .sl2793 .R #ie1855{margin-top:18px}
       save(); if(changed){ try{ if(VIEW === 'msgs' && typeof renderMsgs === 'function') renderMsgs(); else if(VIEW === 'tinbox' && typeof renderTInbox === 'function') renderTInbox(); }catch(e){} } }catch(e){} finally{ busy = false; } }
   setTimeout(fill, 2500); setInterval(fill, 20000);
 })();
+</script>
+<script>
+/* 2805: panels that fill in a moment after a screen opens keep the height they had last time, so what is below them does not jump (Overview operations panel, To do sections) */
+(function(){ const SEL = ['#pd2360', '#od2341', '#fm2484', '#vr2609', '#wa2609'], K = 'coe.h2805';
+  let H = {}; try{ H = JSON.parse(sessionStorage.getItem(K) || '{}') || {}; }catch(e){}
+  function hold(){ SEL.forEach(s => { const e = document.querySelector(s); if(e && e.offsetParent && H[s] > 40 && !e.dataset.h2805){ e.style.minHeight = H[s] + 'px'; e.dataset.h2805 = '1'; } }); }
+  function rec(){ let ch = false; SEL.forEach(s => { const e = document.querySelector(s); if(e && e.offsetParent && !e.dataset.h2805){ const h = e.offsetHeight; if(h > 40 && H[s] !== h){ H[s] = h; ch = true; } } }); if(ch) try{ sessionStorage.setItem(K, JSON.stringify(H)); }catch(e){} }
+  function free(){ SEL.forEach(s => { const e = document.querySelector(s); if(e && e.dataset.h2805){ e.style.minHeight = ''; delete e.dataset.h2805; } }); rec(); }
+  const g = window.go; if(typeof g === 'function'){ const f = function(){ const r = g.apply(this, arguments); try{ hold(); setTimeout(hold, 60); setTimeout(hold, 250); clearTimeout(f._t); f._t = setTimeout(free, 3000); }catch(e){} return r; }; window.go = f; try{ go = f; }catch(e){} }
+  setInterval(rec, 4000); })();
 </script>
 </body>
 </html>
