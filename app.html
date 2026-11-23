@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2289;
+const COE_V = 2290;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -45599,7 +45599,7 @@ body #v-today #tv2 .fx .cls,body #v-today #tv2 tr.ex .cls{display:block!importan
     return '<div class="st">' + st.map((s, i) => '<span class="' + s + '" title="' + T[i] + (s === 'd' ? ' · done' : s === 'n' ? ' · to do' : ' · later') + '">' + L[i] + '</span>').join('') + '</div>'; }
   function build(){ try{
     if(typeof D === 'undefined' || !D || D.mgr){ document.body.classList.remove('tv2'); return; }
-    const v = document.getElementById('v-today'); if(!v || !v.childElementCount) return; const main = v.querySelector('.tcols > .tcol-main'), side = v.querySelector('.tcols > .tcol-side'); if(!main) return;
+    const v = document.getElementById('v-today'); if(!v || !v.childElementCount) return; let main = v.querySelector('.tcols > .tcol-main, .n2792 > .tcol-main'), side = v.querySelector('.tcols > .tcol-side, .n2792 > .tcol-side'); if(!main){ const n = narrow2792(v); if(n){ main = n[0]; side = n[1]; } } if(!main) return;   /* 2792: below 1100 px (small laptop, tablet, phone) the classes are gathered into one column so the new Today shows there too; before, the next class was hidden on narrow screens */
     const now = Date.now(), all = (D.schedule || []).filter(c => c && c.day === D.today).sort((a, b) => String(a.start).localeCompare(String(b.start)));
     const C = cards(v), live = all.filter(c => !c.cancelled);
     const focus = live.find(c => +new Date(c.end) >= now) || null;
@@ -45642,6 +45642,10 @@ body #v-today #tv2 .fx .cls,body #v-today #tv2 tr.ex .cls{display:block!importan
     box.querySelectorAll('tr.ex').forEach(tr => { const card = C.get(tr.dataset.ex); if(card){ home(card); tr.firstElementChild.appendChild(card); } });
   }catch(e){ console.warn('2773', e); } }
   /* 2790 (Misty 13:46): students whose classes this week have no Tencent Meeting ID yet, each with one-click "Add" (opens that class › Meeting ID) */
+  function narrow2792(v){ try{ if(innerWidth >= 1100) return null; const kids = [...v.children]; let on = false, at = null; const take = [];
+      kids.forEach(k => { if(k.tagName === 'H2'){ on = /Today.s classes|Coming up|Remaining today/i.test(k.textContent); } if(on && !k.classList.contains('lead')){ if(!at) at = k; take.push(k); } });
+      if(!at) return null; const w = document.createElement('div'), main = document.createElement('div'), side = document.createElement('div'); w.className = 'n2792'; main.className = 'tcol-main'; side.className = 'tcol-side';
+      v.insertBefore(w, at); take.forEach(k => main.appendChild(k)); w.append(main, side); return [main, side]; }catch(e){ return null; } }
   function meetMissing(side){ try{ if(!side || typeof D === 'undefined' || !D || D.mgr) return; const now = Date.now(), seen = new Map();
       (D.schedule || []).filter(c => c && !c.cancelled && c.code && +new Date(c.end) >= now && !String(c.meet || '').trim()).sort((a, b) => String(a.start).localeCompare(String(b.start))).forEach(c => { if(!seen.has(c.code)) seen.set(c.code, c); });
       let n = document.getElementById('mid2790'); const L = [...seen.values()];
@@ -45673,8 +45677,7 @@ body #v-today #tv2 .fx .cls,body #v-today #tv2 tr.ex .cls{display:block!importan
   window.p2773 = build;
 })();
 </script>
-<style id="s2782">
-/* 2782 (Misty 23 Nov 13:25: go through every teacher screen as a teacher and as an app developer; less space, cleaner, nothing cut) */
+<style id="s2782">/* 2782 (Misty 23 Nov 13:25: go through every teacher screen as a teacher and as an app developer; less space, cleaner, nothing cut) */
 /* Schedule · the List / Calendar switch sits on the week row; the day tiles are half as tall (the tiny bar under each day said nothing the number does not) */
 body.role-t #v-tsched .ld501{display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:8px}
 body.role-t #v-tsched .ld501 > h1,body.role-t #v-tsched .ld501 > .mute.small{flex:1 0 100%;margin-bottom:0}
@@ -45719,6 +45722,9 @@ body.tv2 #v-today > #talk2425{display:none!important}
 body.role-t #v-students .gr504{display:block!important;columns:2;column-gap:10px}
 body.role-t #v-students .gr504 > .c504{break-inside:avoid;-webkit-column-break-inside:avoid;margin:0 0 10px!important;width:100%;box-sizing:border-box}
 @media(max-width:760px){body.role-t #v-students .gr504{columns:1}}
+
+/* 2792 narrow Today */
+.n2792 > .tcol-side:not(:empty){margin-top:20px}
 </style>
 <script>
 /* 2785 (Misty 13:35: open the notices and improve them) · a message asking for a Tencent Meeting ID gets one button per student
