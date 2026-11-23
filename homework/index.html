@@ -155,6 +155,7 @@ input.tt{width:100%;height:42px;border:1px solid var(--out);border-radius:10px;p
   <div id="root"></div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="hdr.js?v=2754"></script>
 <script>
 function crisp(im, w){ let s = im, sw = im.width, sh = im.height; while(sw / 2 >= w * 1.4){ const c2 = document.createElement('canvas'); c2.width = Math.round(sw / 2); c2.height = Math.round(sh / 2); const g2 = c2.getContext('2d'); g2.imageSmoothingEnabled = true; g2.imageSmoothingQuality = 'high'; g2.drawImage(s, 0, 0, c2.width, c2.height); s = c2; sw = c2.width; sh = c2.height; } return s; }   /* 18 Nov: logo shrunk in halves, high-quality smoothing (one big step looked pixelated) */
 (function(){
@@ -676,7 +677,7 @@ async function parentPic(){
     const d = new Date(), dEn = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), dZh = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
     const title = $('ttl').value.trim();
     if(title){ const L = wrap(title, '700 30px ' + F, 740); blocks.push(label('Homework', '作业')); blocks.push({ h: L.length * 40 + 22, draw: (c, y) => { c.fillStyle = '#2B2253'; c.font = '700 30px ' + F; L.forEach((t, i) => c.fillText(t, 80, y + 30 + i * 40)); } }); }
-    blocks.push(label('Checked on', '批改日期')); blocks.push({ h: 40 + 34 + 22, draw: (c, y) => { c.fillStyle = '#2B2253'; c.font = '400 30px ' + F; c.fillText(dEn, 80, y + 30); c.fillStyle = '#4C4868'; c.font = '400 24px ' + Z; c.fillText(dZh + (ME.name && ME.role !== 'Operations' ? ' · ' + tName(ME.name) : ''), 80, y + 64); } });
+    blocks.push(label('Checked on', '批改日期')); blocks.push({ h: 40 + 34 + 22, draw: (c, y) => { c.fillStyle = '#2B2253'; c.font = '400 30px ' + F; c.fillText(dEn, 80, y + 30); c.fillStyle = '#4C4868'; c.font = '400 24px ' + Z; c.fillText(dZh + (!window.coeHdr && ME.name && ME.role !== 'Operations' ? ' · ' + tName(ME.name) : ''), 80, y + 64); } });
     if(MODE === 'text'){
       if(TX.stamps.length){ const L = TX.stamps.slice(0, 12); blocks.push({ h: 130, draw: (c, y) => { let x = 80; L.forEach(k => { const wide = !!stB(k), s = 84, w = wide ? s * (1 + .2 * String(stB(k)[0]).length) : s * 1.1; if(x + w > W - 80) return; drawStamp(c, { k, x: x + w / 2, y: y + 58, s }); x += w + 14; }); } }); }
       const good = TX.marks.filter(x => x.c === 'good').map(x => TX.parts.slice(x.a, x.b + 1).join('')).slice(0, 3);
@@ -701,13 +702,16 @@ async function parentPic(){
     if(note){ const LE = wrap(note, '400 28px ' + F, 700), LZ = zh ? wrap(zh, '400 25px ' + Z, 700) : [], hh = 30 + LE.length * 38 + (LZ.length ? 12 + LZ.length * 36 : 0) + 26;
       blocks.push({ h: hh + 22, draw: (c, y) => { rr(c, 80, y, W - 160, hh, 20); c.fillStyle = '#F7F6FB'; c.fill(); c.fillStyle = '#2B2253'; c.font = '700 20px ' + F; c.fillText('Teacher’s note / 老师寄语', 106, y + 34);
         let yy = y + 74; c.font = '400 28px ' + F; LE.forEach(t => { c.fillText(t, 106, yy); yy += 38; }); if(LZ.length){ yy += 12; c.fillStyle = '#4C4868'; c.font = '400 25px ' + Z; LZ.forEach(t => { c.fillText(t, 106, yy); yy += 36; }); } } }); }
-    const idLine = CODE, head = 80 + 140 + 130 + 44;
+    const idLine = CODE, HW = W - 80, hT = window.coeHdr ? coeHdr.height(HW, false) : 0, head = window.coeHdr ? 40 + hT + 34 : 80 + 140 + 130 + 44;   /* 2754: the same letterhead as every other picture (Teacher / Student names) */
     let H = head + blocks.reduce((s, b) => s + b.h, 0) + 10 + 100 + 40;
     const cv = document.createElement('canvas'); cv.width = W * S; cv.height = H * S; const c = cv.getContext('2d'); c.scale(S, S);
     c.fillStyle = '#F3F6F7'; c.fillRect(0, 0, W, H);
     c.save(); c.shadowColor = 'rgba(43,34,83,.10)'; c.shadowBlur = 30; c.shadowOffsetY = 8; rr(c, 40, 40, W - 80, H - 80, 34); c.fillStyle = '#fff'; c.fill(); c.restore();
     c.save(); rr(c, 40, 40, W - 80, H - 80, 34); c.clip();
-    let y = 80;
+    let y;
+    if(window.coeHdr){ c.save(); c.translate(40, 40); coeHdr.draw(c, HW, { logo, title: 'Homework feedback / 作业反馈', tch: ME.name && ME.role !== 'Operations' ? ME.name : '', stu: NAME || CODE }); c.restore(); y = head; }
+    else {
+    y = 80;
     if(logo){ const lw = 300, lh = lw * logo.height / logo.width; c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(crisp(logo, lw), 80, y, lw, lh); c.restore(); } else { c.font = '400 34px ' + B; c.fillStyle = '#2B2253'; c.fillText('CupOfEnglish', 80, y + 50); }
     c.font = '700 22px ' + F; const pill = 'Homework feedback / 作业反馈', pw = c.measureText(pill).width + 44;
     rr(c, W - 80 - pw, y + 22, pw, 48, 24); c.fillStyle = '#E3F6F6'; c.fill(); c.fillStyle = '#00737B'; c.textBaseline = 'middle'; c.fillText(pill, W - 80 - pw + 22, y + 47); c.textBaseline = 'alphabetic';
@@ -716,6 +720,7 @@ async function parentPic(){
     c.fillStyle = '#2B2253'; { const nm = NAME || CODE; let fs = 54; c.font = '400 54px ' + B; while(fs > 26 && c.measureText(nm).width > W - 160){ fs -= 2; c.font = '400 ' + fs + 'px ' + B; } c.fillText(nm, 80, y + 82); }
     c.fillStyle = '#4C4868'; c.font = '400 28px ' + F; c.fillText(idLine, 80, y + 126);
     y += 130 + 44;
+    }
     blocks.forEach(b => { b.draw(c, y); y += b.h; });
     const fy = H - 40 - 100; c.fillStyle = '#EEF0F4'; c.fillRect(80, fy + 14, W - 160, 2);
     if(tag){ const tw = 190, th = tw * tag.height / tag.width; c.drawImage(tag, (W - tw) / 2, fy + 16 + (84 - th) / 2, tw, th); }

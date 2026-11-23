@@ -59,5 +59,25 @@
       g.fillStyle = '#E4F6F6'; g.beginPath(); g.roundRect ? g.roundRect(P, py, lw2 + 2 * pd, ph, ph / 2) : g.rect(P, py, lw2 + 2 * pd, ph); g.fill();
       g.fillStyle = '#0E6F68'; g.font = '700 ' + (12 * u) + 'px ' + FI; fit(g, l, s => '700 ' + s + 'px ' + FI, 12 * u, 9 * u, W - 2 * P - 2 * pd); g.fillText(l, P + pd, py + ph / 2 + 4.3 * u); }
     g.restore(); return H; }
-  window.coeHdr = { height, draw, pad: W => Math.round(26 * U(W)), today };
+  /* 2754 (Misty 23 Nov 11:38): ONE place for the names on every picture — books, Class Notes, homework, writing feedback, corrections, Talk of the Day, Free talk, IELTS.
+     Always "Teacher / 老师: <name>" then "For / 学生: <name>" (English only when o.zh === false), the teacher filled in from the signed-in teacher when a page gives none. */
+  const clean = n => String(n || '').replace(/^\s*teacher\s+/i, '').trim().slice(0, 30);
+  const me = () => { try{ const d = JSON.parse(localStorage.getItem('coe.data') || 'null'), m = d && d.me; return m && !d.mgr && m.name ? clean(m.name) : ''; }catch(e){ return ''; } };
+  const student = (who, ask) => { let s = clean(who);
+    if(!s) try{ const k = JSON.parse(sessionStorage.getItem('coe.kit.stu') || 'null'); if(k && k.name) s = clean(k.name); }catch(e){}
+    if(!s) try{ s = clean(new URLSearchParams(location.search).get('s')); }catch(e){}
+    if(!s) try{ const o = JSON.parse(localStorage.getItem('coe.today.cls') || 'null'), now = Date.now(); const c = ((o && o.cls) || []).find(x => x[2] && now >= x[0] - 10 * 6e4 && now <= x[1] + 15 * 6e4); if(c) s = clean(c[2]); }catch(e){}
+    if(!s) try{ s = sessionStorage.getItem('coe.copy.stu') || ''; }catch(e){}
+    if(!s && ask){ const a = window.prompt('Student name for the picture? / 学生姓名', ''); if(a && a.trim()){ s = clean(a); try{ sessionStorage.setItem('coe.copy.stu', s); }catch(e){} } }
+    return s; };
+  const people = o => { let t = o.tch ? clean(o.tch) : '', st = o.stu != null ? clean(o.stu) : ''; const rest = [];
+    (o.meta || []).filter(Boolean).forEach(p => { p = String(p); let m;
+      if((m = /^For(?: \/ 学生)?:\s*(.+)$/.exec(p))) { if(!st) st = clean(m[1]); }
+      else if((m = /^Teacher(?: \/ 老师)?:\s*(.+)$/.exec(p)) || (m = /^Teacher\s+(.+)$/i.exec(p))) { if(!t) t = clean(m[1]); }
+      else rest.push(p); });
+    if(!t && o.tch !== false) t = me();
+    const zh = o.zh !== false; return [t ? (zh ? 'Teacher / 老师: ' : 'Teacher: ') + t : '', st ? (zh ? 'For / 学生: ' : 'For: ') + st : ''].filter(Boolean).concat(rest); };
+  const draw0 = draw;
+  const drawStd = (g, W, o) => draw0(g, W, Object.assign({}, o || {}, { meta: people(o || {}) }));
+  window.coeHdr = { height, draw: drawStd, pad: W => Math.round(26 * U(W)), today, people, me, student, clean };
 })();
