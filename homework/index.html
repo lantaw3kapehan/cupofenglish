@@ -462,14 +462,20 @@ function drawItem(c, it){
   else if(it.t === 'cross'){ const s = it.s * .4; c.lineWidth = it.s * .13; c.beginPath(); c.moveTo(it.x - s, it.y - s); c.lineTo(it.x + s, it.y + s); c.moveTo(it.x + s, it.y - s); c.lineTo(it.x - s, it.y + s); c.stroke(); }
   else if(it.t === 'circle'){ c.lineWidth = it.w; c.beginPath(); c.ellipse(it.x, it.y, Math.max(1, Math.abs(it.rx)), Math.max(1, Math.abs(it.ry)), 0, 0, Math.PI * 2); c.stroke(); }
   else if(it.t === 'stamp') drawStamp(c, it);
-  else if(it.t === 'text'){ c.font = '600 ' + it.s + 'px "COE Card Inter",Inter,sans-serif'; const pd = it.s * .35, tw = c.measureText(it.txt).width; rr(c, it.x, it.y, tw + pd * 2, it.s * 1.45, it.s * .3); c.fill(); c.fillStyle = '#fff'; c.textBaseline = 'middle'; c.fillText(it.txt, it.x + pd, it.y + it.s * .74); }
+  else if(it.t === 'text'){ c.font = '600 ' + it.s + 'px "COE Card Inter",Inter,sans-serif'; const pd = it.s * .35, T = txtL2747(c, it), lh = it.s * 1.2; rr(c, it.x, it.y, T.w + pd * 2, it.s * 1.45 + (T.L.length - 1) * lh, it.s * .3); c.fill(); c.fillStyle = '#fff'; c.textBaseline = 'middle'; T.L.forEach((t, k) => c.fillText(t, it.x + pd, it.y + it.s * .74 + k * lh)); }
   c.restore(); }
 function bbox(it){ const u = U();
   if(it.t === 'pen'){ let a = 1e9, b = 1e9, c = -1e9, d = -1e9; it.p.forEach(q => { a = Math.min(a, q[0]); b = Math.min(b, q[1]); c = Math.max(c, q[0]); d = Math.max(d, q[1]); }); return [a - u, b - u, c + u, d + u]; }
   if(it.t === 'stamp'){ const w = stB(it.k) ? it.s * 1.9 : it.s * .6; return [it.x - w, it.y - it.s * .6, it.x + w, it.y + it.s * .6]; }
   if(it.t === 'tick' || it.t === 'cross') return [it.x - it.s * .6, it.y - it.s * .6, it.x + it.s * .6, it.y + it.s * .6];
   if(it.t === 'circle') return [it.x - Math.abs(it.rx) - u, it.y - Math.abs(it.ry) - u, it.x + Math.abs(it.rx) + u, it.y + Math.abs(it.ry) + u];
-  if(it.t === 'text'){ const c = document.createElement('canvas').getContext('2d'); c.font = '600 ' + it.s + 'px Inter,sans-serif'; return [it.x, it.y, it.x + c.measureText(it.txt).width + it.s * .7, it.y + it.s * 1.45]; } return [0, 0, 0, 0]; }
+  if(it.t === 'text'){ const c = document.createElement('canvas').getContext('2d'); c.font = '600 ' + it.s + 'px "COE Card Inter",Inter,sans-serif'; const T = txtL2747(c, it); return [it.x, it.y, it.x + T.w + it.s * .7, it.y + it.s * 1.45 + (T.L.length - 1) * it.s * 1.2]; } return [0, 0, 0, 0]; }
+/* 2747 (Misty 23 Nov 11:11: "ensure the same issue does not exist in other screens"): a mark typed near the right side of the
+   student's picture ran past its edge and was cut in the copied picture. The words now wrap inside the picture. */
+function txtL2747(c, it){ const maxW = Math.max(it.s * 3, (PIC.base ? PIC.base.width : 1e9) - it.x - it.s * .7 - 6), L = []; let cur = '';
+  String(it.txt).split(/\s+/).forEach(wd => { if(!wd) return; const t = cur ? cur + ' ' + wd : wd; if(cur && c.measureText(t).width > maxW){ L.push(cur); cur = wd; } else cur = t;
+    while(c.measureText(cur).width > maxW && cur.length > 1){ let k = cur.length - 1; while(k > 1 && c.measureText(cur.slice(0, k)).width > maxW) k--; L.push(cur.slice(0, k)); cur = cur.slice(k); } });
+  L.push(cur); return { L, w: Math.max(...L.map(t => c.measureText(t).width)) }; }
 function tbSync(){ try{ const t = $('tools'); document.documentElement.style.setProperty('--tb', (t ? t.offsetHeight : 0) + 'px'); }catch(e){} }
 window.addEventListener('resize', tbSync);
 function stampBar(){ setTimeout(tbSync, 0); const t = $('tools'); if(!t || MODE !== 'picture' || !PIC.base){ return; }

@@ -41,7 +41,9 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
   function saveSoon(){ clearTimeout(svT); svT = setTimeout(() => { try{ const o = JSON.parse(localStorage.getItem(SK) || '{}'), now = Date.now();
       Object.keys(ANN).forEach(k => { if(ANN[k] && ANN[k].length) o[k] = { at: now, a: ANN[k] }; else delete o[k]; });
       Object.keys(o).forEach(k => { if(now - o[k].at > 2 * 864e5) delete o[k]; }); localStorage.setItem(SK, JSON.stringify(o)); }catch(e){} }, 500); }
-  function lines(x, a, w){ const fs = Math.round(a.s * w), mw = Math.max(40, (a.mw || Math.max(0.15, 1 - a.x - 0.012)) * w); x.font = '600 ' + fs + 'px Inter, sans-serif';
+  /* 2746 (Misty 23 Nov 11:10, IELTS): a note was drawn in a narrow column (one word per line) because its saved width was small.
+     Now only a width the teacher chose on purpose (dragging the box edge, fw) is kept; otherwise a note wraps at the screen's edge. */
+  function lines(x, a, w){ const fs = Math.round(a.s * w), mw = Math.max(40, (a.fw && a.mw ? a.mw : Math.max(0.15, 1 - a.x - 0.012)) * w); x.font = '600 ' + fs + 'px Inter, sans-serif';
     const L = []; String(a.v).split('\n').forEach(par => { let cur = ''; par.split(/\s+/).forEach(wd => { if(!wd) return; const t = cur ? cur + ' ' + wd : wd; if(cur && x.measureText(t).width > mw){ L.push(cur); cur = wd; } else cur = t; }); L.push(cur); });
     const lh = Math.round(fs * 1.25); return { L, lh, fs, tw: Math.max(0, ...L.map(t => x.measureText(t).width)) }; }
   const rec = () => { HIST.push({ k: key, snap: list().slice() }); REDO.length = 0; if(HIST.length > 300) HIST.shift(); };
@@ -67,7 +69,10 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
         if(a.k === 'arrow'){ const [ax, ay] = P[0], [bx, by] = P[1], g = Math.atan2(by - ay, bx - ax), L = Math.max(14, a.w * w * 5); x.beginPath(); x.moveTo(bx - L * Math.cos(g - 0.45), by - L * Math.sin(g - 0.45)); x.lineTo(bx, by); x.lineTo(bx - L * Math.cos(g + 0.45), by - L * Math.sin(g + 0.45)); x.stroke(); }
         x.globalAlpha = 1; return; }
       x.beginPath(); a.p.forEach((q, i) => i ? x.lineTo(q[0] * w, q[1] * w) : x.moveTo(q[0] * w, q[1] * w)); if(a.p.length === 1) x.lineTo(a.p[0][0] * w + 0.1, a.p[0][1] * w); x.stroke(); x.globalAlpha = 1; }); saveSoon(); }
-  function fit(){ if(!cv || !host) return; const d = window.devicePixelRatio || 1, w = host.scrollWidth, h = host.scrollHeight; cv.style.width = w + 'px'; cv.style.height = h + 'px'; cv.width = Math.round(w * d); cv.height = Math.round(h * d); draw(); }
+  /* 2746: a note or drawing low on the screen was cut off at the bottom of the drawing area (on screen and in Copy screen).
+     The screen now grows to hold every note and drawing. */
+  function need2746(w){ let m = 0; try{ const x = cv.getContext('2d'); (ANN[key] || []).forEach(a => { if(a.t === 'text'){ const T = lines(x, a, w); m = Math.max(m, a.y * w + T.L.length * T.lh + 16); } else if(a.p){ a.p.forEach(q => { m = Math.max(m, q[1] * w + 16); }); } }); }catch(e){} return Math.ceil(m); }
+  function fit(){ if(!cv || !host) return; { const n = need2746(host.scrollWidth); if(host.dataset.mh2746){ host.style.minHeight = ''; delete host.dataset.mh2746; } if(n > host.scrollHeight - 4){ host.style.minHeight = n + 'px'; host.dataset.mh2746 = '1'; } } const d = window.devicePixelRatio || 1, w = host.scrollWidth, h = host.scrollHeight; cv.style.width = w + 'px'; cv.style.height = h + 'px'; cv.width = Math.round(w * d); cv.height = Math.round(h * d); draw(); }
   const pt = e => { const r = cv.getBoundingClientRect(), w = W(); return [(e.clientX - r.left) / w, (e.clientY - r.top) / w]; };
   function hitText(p){ const x = cv.getContext('2d'), w = W(), L = list();
     for(let k = L.length - 1; k >= 0; k--){ const a = L[k]; if(a.t !== 'text') continue; const T = lines(x, a, w), tw = T.tw / w, th = (T.L.length * T.lh) / w;
@@ -102,7 +107,7 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
     grip.addEventListener('pointermove', e => { if(!mv) return; x0 = Math.max(0, Math.min(lim - 0.06, mv.x + (e.clientX - mv.sx) / w)); y0 = Math.max(0, mv.y + (e.clientY - mv.sy) / w); place(); grow(); });
     const upG = () => { if(!mv) return; mv = null; setTimeout(() => i.focus({ preventScroll: true }), 0); }; grip.addEventListener('pointerup', upG); grip.addEventListener('pointercancel', upG);
     let fin = false; const done = ok => { if(fin) return; fin = true; const v = i.value.replace(/\s+$/, ''), mw = fitW(); i.remove(); grip.remove();
-      if(ok && v.trim()){ if(!old) rec(); list().push({ t: 'text', v, x: x0, y: y0, s: ts, c: col, mw, fw: fixW ? 1 : 0 }); } else if(old && !ok){ HIST.pop(); list().push(old); } draw(); };
+      if(ok && v.trim()){ if(!old) rec(); list().push({ t: 'text', v, x: x0, y: y0, s: ts, c: col, mw, fw: fixW ? 1 : 0 }); } else if(old && !ok){ HIST.pop(); list().push(old); } fit(); };   /* 2746: fit, so the screen grows for a low note */
     i.addEventListener('keydown', ev => { ev.stopPropagation(); if(ev.key === 'Escape'){ ev.preventDefault(); done(true); } });   /* 2712: Enter = new line · click outside or Esc = finished (as on the books) */
     i.addEventListener('blur', () => setTimeout(() => { if(!mv && document.activeElement !== i) done(true); }, 120)); }
   function bindCanvas(){
