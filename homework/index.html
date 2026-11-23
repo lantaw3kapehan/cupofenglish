@@ -98,7 +98,7 @@ h1{margin:0;font:400 28px/1.2 'COE Card Fredoka','Fredoka One',sans-serif;color:
 #pwrap{flex:1;min-width:0;background:#EEF0F3;padding:16px;display:flex;justify-content:center;align-items:flex-start;position:relative;overflow:auto}
 #pcv{display:block;background:#fff;box-shadow:0 6px 18px rgba(16,24,40,.18);touch-action:none}
 #pcv.hand{touch-action:auto;cursor:grab}
-#ptxt{position:absolute;z-index:4;min-width:180px;font-size:15px;border:2px solid var(--teal);border-radius:8px;padding:6px 8px}
+#ptxt{position:absolute;z-index:4;min-width:180px;max-width:70%;font-size:15px;font-weight:600;line-height:1.2;border:1.5px dashed var(--teal);border-radius:6px;padding:2px 6px;background:transparent;resize:none;overflow:hidden;text-shadow:0 0 2px #fff,0 0 2px #fff;outline:none}
 /* side */
 .cnt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;text-align:center}
 .cnt div{border-radius:10px;padding:9px 4px}
@@ -407,7 +407,7 @@ let OWN = (() => { try{ return localStorage.getItem('coe.hw.own') || ''; }catch(
 let STAMP = (() => { try{ const v = localStorage.getItem('coe.hw.stamp'); return STAMPS.some(x => x[0] === v) ? v : 'star'; }catch(e){ return 'star'; } })();
 /* 2313 · mark sizes (Misty 18:29: the tick is small). Medium is the new default; Small is the old size. Remembered on this device. */
 const SZ = { s: { tick: 3.2, pen: .28, text: 2.2, ring: .28 }, m: { tick: 4.6, pen: .36, text: 2.7, ring: .34 }, l: { tick: 7, pen: .5, text: 3.4, ring: .45 } };   /* 2315 (Misty 20:29): 7 was too big; M is now close to the first size */
-let SIZE = (() => { try{ const v = localStorage.getItem('coe.hw.size'); return SZ[v] ? v : 'm'; }catch(e){ return 'm'; } })();
+let SIZE = 'm';   /* 2770 (Misty 23 Nov 13:00): one standard size for marks and typed notes, as on the books and speaking screens · the teacher zooms if a student needs it bigger (was S / M / L) */
 const SZN = () => SZ[SIZE] || SZ.m;
 const COLS = [['#D92D20', 'Red'], ['#2563EB', 'Blue'], ['#16A34A', 'Green']];
 async function loadPicture(file){
@@ -436,14 +436,14 @@ function paintPic(){
   if(!PIC.base){ $('area').innerHTML = emptyHtml('picture'); bindEmpty(); return; }
   $('area').innerHTML = `<div class="pic"><div class="rail">
 ${Object.keys(ICO).map(k => `<button type="button" class="tb${TOOL === k ? ' on' : ''}" data-t="${k}" aria-label="${TIPS[k]}" title="${TIPS[k]}">${ICO[k]}</button>`).join('')}
-<span class="ln"></span>${[['s', 'Small'], ['m', 'Medium'], ['l', 'Large']].map(([k, n]) => `<button type="button" class="tb sz${SIZE === k ? ' on' : ''}" data-z="${k}" aria-label="${n} marks" title="${n} marks" style="font-size:${k === 's' ? 12 : k === 'm' ? 15 : 19}px">${k.toUpperCase()}</button>`).join('')}
 <span class="ln"></span>${COLS.map(([c, n]) => `<button type="button" class="dot${COL === c ? ' on' : ''}" data-c="${c}" style="background:${c};color:${c}" aria-label="${n}" title="${n}"></button>`).join('')}
 <span class="ln"></span><button type="button" class="tb" id="pU" aria-label="Undo" title="Undo (${UNDOK})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
 <button type="button" class="tb" id="pR" aria-label="Redo" title="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
 </div><div id="pwrap"><canvas id="pcv"></canvas></div></div>`;
   $('area').querySelectorAll('[data-t]').forEach(b => b.onclick = () => { TOOL = b.dataset.t; $('area').querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b)); $('pcv').classList.toggle('hand', TOOL === 'hand'); stampBar(); });
   stampBar();
-  $('area').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { COL = b.dataset.c; if(SELI && PIC.items.includes(SELI) && SELI.t !== 'stamp' && SELI.c !== COL){ push(); SELI.c = COL; draw(); side(); } $('area').querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('area').querySelectorAll('[data-c]').forEach(b => b.onmousedown = ev => { if($('ptxt')) ev.preventDefault(); });   /* 2770: pressing a colour while typing keeps the box open */
+  $('area').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { COL = b.dataset.c; { const t = $('ptxt'); if(t){ t.dataset.c = COL; t.style.color = COL; t.style.borderColor = COL; } } if(SELI && PIC.items.includes(SELI) && SELI.t !== 'stamp' && SELI.c !== COL){ push(); SELI.c = COL; draw(); side(); } $('area').querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b)); });
   $('area').querySelectorAll('[data-z]').forEach(b => b.onclick = () => { SIZE = b.dataset.z; try{ localStorage.setItem('coe.hw.size', SIZE); }catch(e){} $('area').querySelectorAll('[data-z]').forEach(x => x.classList.toggle('on', x === b)); });
   $('pU').onclick = undo; $('pR').onclick = redo;
   const cv = $('pcv'); cv.classList.toggle('hand', TOOL === 'hand');
@@ -463,7 +463,8 @@ function drawItem(c, it){
   else if(it.t === 'cross'){ const s = it.s * .4; c.lineWidth = it.s * .13; c.beginPath(); c.moveTo(it.x - s, it.y - s); c.lineTo(it.x + s, it.y + s); c.moveTo(it.x + s, it.y - s); c.lineTo(it.x - s, it.y + s); c.stroke(); }
   else if(it.t === 'circle'){ c.lineWidth = it.w; c.beginPath(); c.ellipse(it.x, it.y, Math.max(1, Math.abs(it.rx)), Math.max(1, Math.abs(it.ry)), 0, 0, Math.PI * 2); c.stroke(); }
   else if(it.t === 'stamp') drawStamp(c, it);
-  else if(it.t === 'text'){ c.font = '600 ' + it.s + 'px "COE Card Inter",Inter,sans-serif'; const pd = it.s * .35, T = txtL2747(c, it), lh = it.s * 1.2; rr(c, it.x, it.y, T.w + pd * 2, it.s * 1.45 + (T.L.length - 1) * lh, it.s * .3); c.fill(); c.fillStyle = '#fff'; c.textBaseline = 'middle'; T.L.forEach((t, k) => c.fillText(t, it.x + pd, it.y + it.s * .74 + k * lh)); }
+  else if(it.t === 'text'){ c.font = '600 ' + it.s + 'px "COE Card Inter",Inter,sans-serif'; const pd = it.s * .35, T = txtL2747(c, it), lh = it.s * 1.2;   /* 2770: the note as coloured letters with a thin white outline (no coloured box), as on the books and speaking screens */
+    c.textBaseline = 'middle'; c.lineJoin = 'round'; c.lineWidth = Math.max(2, it.s * .2); c.strokeStyle = '#fff'; T.L.forEach((t, k) => { c.strokeText(t, it.x + pd, it.y + it.s * .74 + k * lh); }); c.fillStyle = it.c; T.L.forEach((t, k) => c.fillText(t, it.x + pd, it.y + it.s * .74 + k * lh)); }
   c.restore(); }
 function bbox(it){ const u = U();
   if(it.t === 'pen'){ let a = 1e9, b = 1e9, c = -1e9, d = -1e9; it.p.forEach(q => { a = Math.min(a, q[0]); b = Math.min(b, q[1]); c = Math.max(c, q[0]); d = Math.max(d, q[1]); }); return [a - u, b - u, c + u, d + u]; }
@@ -474,8 +475,9 @@ function bbox(it){ const u = U();
 /* 2747 (Misty 23 Nov 11:11: "ensure the same issue does not exist in other screens"): a mark typed near the right side of the
    student's picture ran past its edge and was cut in the copied picture. The words now wrap inside the picture. */
 function txtL2747(c, it){ const maxW = Math.max(it.s * 3, (PIC.base ? PIC.base.width : 1e9) - it.x - it.s * .7 - 6), L = []; let cur = '';
-  String(it.txt).split(/\s+/).forEach(wd => { if(!wd) return; const t = cur ? cur + ' ' + wd : wd; if(cur && c.measureText(t).width > maxW){ L.push(cur); cur = wd; } else cur = t;
-    while(c.measureText(cur).width > maxW && cur.length > 1){ let k = cur.length - 1; while(k > 1 && c.measureText(cur.slice(0, k)).width > maxW) k--; L.push(cur.slice(0, k)); cur = cur.slice(k); } });
+  String(it.txt).split('\n').forEach((par, pi) => { if(pi){ L.push(cur); cur = ''; }   /* 2770: Enter makes a new line */
+  par.split(/\s+/).forEach(wd => { if(!wd) return; const t = cur ? cur + ' ' + wd : wd; if(cur && c.measureText(t).width > maxW){ L.push(cur); cur = wd; } else cur = t;
+    while(c.measureText(cur).width > maxW && cur.length > 1){ let k = cur.length - 1; while(k > 1 && c.measureText(cur.slice(0, k)).width > maxW) k--; L.push(cur.slice(0, k)); cur = cur.slice(k); } }); });
   L.push(cur); return { L, w: Math.max(...L.map(t => c.measureText(t).width)) }; }
 function tbSync(){ try{ const t = $('tools'); document.documentElement.style.setProperty('--tb', (t ? t.offsetHeight : 0) + 'px'); }catch(e){} }
 window.addEventListener('resize', tbSync);
@@ -550,19 +552,22 @@ function pUp(){ if(RSZ){ const r = RSZ; RSZ = null; if(r.pushed){ dirty(); draw(
   if(MOVE){ const m = MOVE; MOVE = null; const cv = $('pcv'); if(cv) cv.classList.remove('mving'); if(m.moved){ dirty(); draw(); side(); } return; }
   if(!DRAW) return; const it = DRAW.it; DRAW = null; if(it.t === 'circle' && Math.abs(it.rx) < U() * .6 && Math.abs(it.ry) < U() * .6){ draw(); return; }
   push(); PIC.items.push(it); draw(); side(); }
-function openTxt(x, y, e){ const w = $('pwrap'), r = w.getBoundingClientRect(), inp = document.createElement('input'); inp.id = 'ptxt'; inp.placeholder = 'Type, then Enter';
+function openTxt(x, y, e){ const w = $('pwrap'), r = w.getBoundingClientRect(), inp = document.createElement('textarea'); inp.id = 'ptxt'; inp.rows = 1; inp.placeholder = 'Type · Enter = new line · click outside to finish'; inp.dataset.c = COL; inp.style.color = COL; tFit2770(inp);
   inp.style.left = (e.clientX - r.left + w.scrollLeft) + 'px'; inp.style.top = (e.clientY - r.top + w.scrollTop - 14) + 'px'; inp.style.borderColor = COL; w.appendChild(inp); setTimeout(() => inp.focus(), 10);
-  const done = () => { const v = inp.value.trim(); inp.remove(); if(v){ push(); PIC.items.push({ t: 'text', c: COL, x, y: y - U() * SZN().text * .55, s: U() * SZN().text, txt: v }); SELI = PIC.items[PIC.items.length - 1]; draw(); side(); } };
-  inp.onkeydown = ev => { if(ev.key === 'Enter'){ ev.preventDefault(); done(); } else if(ev.key === 'Escape'){ inp.remove(); } }; inp.onblur = done; }
-function editTxt(it, e){ closeTxt(); const w = $('pwrap'), r = w.getBoundingClientRect(), inp = document.createElement('input'); inp.id = 'ptxt'; inp.value = it.txt;
+  let gone = false; const done = () => { if(gone) return; gone = true; const v = inp.value.replace(/\s+$/, '').replace(/^\s*\n/, ''); inp.remove(); if(v.trim()){ push(); PIC.items.push({ t: 'text', c: inp.dataset.c || COL, x, y: y - U() * SZN().text * .55, s: U() * SZN().text, txt: v }); SELI = PIC.items[PIC.items.length - 1]; draw(); side(); } };
+  inp.oninput = () => tFit2770(inp); inp.onkeydown = ev => { if(ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)){ ev.preventDefault(); done(); } else if(ev.key === 'Escape'){ ev.preventDefault(); done(); } }; inp.onblur = done; }
+function editTxt(it, e){ closeTxt(); const w = $('pwrap'), r = w.getBoundingClientRect(), inp = document.createElement('textarea'); inp.id = 'ptxt'; inp.rows = 1; inp.value = it.txt; inp.dataset.c = it.c; inp.style.color = it.c; tFit2770(inp);
   inp.style.left = (e.clientX - r.left + w.scrollLeft) + 'px'; inp.style.top = (e.clientY - r.top + w.scrollTop - 14) + 'px'; inp.style.borderColor = it.c; w.appendChild(inp); setTimeout(() => { inp.focus(); inp.select(); }, 10);
-  let gone = false; const done = () => { if(gone) return; gone = true; const v = inp.value.trim(); inp.remove(); if(v && v !== it.txt){ push(); it.txt = v; draw(); side(); } };
-  inp.onkeydown = ev => { if(ev.key === 'Enter'){ ev.preventDefault(); done(); } else if(ev.key === 'Escape'){ gone = true; inp.remove(); } }; inp.onblur = done; }
+  let gone = false; const done = () => { if(gone) return; gone = true; const v = inp.value.replace(/\s+$/, ''), nc = inp.dataset.c || it.c; inp.remove(); if(v.trim() && (v !== it.txt || nc !== it.c)){ push(); it.txt = v; it.c = nc; draw(); side(); } };
+  inp.oninput = () => tFit2770(inp); inp.onkeydown = ev => { if(ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)){ ev.preventDefault(); done(); } else if(ev.key === 'Escape'){ ev.preventDefault(); done(); } }; inp.onblur = done; }
+/* 2770: the typing box is see-through (dashed outline in the note's colour), in the note's real size, and grows as you type */
+function tFit2770(inp){ try{ const px = Math.max(12, U() * SZN().text * PK); inp.style.fontSize = px + 'px'; inp.style.borderColor = inp.dataset.c || COL; inp.style.height = 'auto'; inp.style.height = (inp.scrollHeight + 2) + 'px'; }catch(e){} }
 function closeTxt(){ const t = $('ptxt'); if(t) t.blur(); }
 function rotate(){ if(!PIC.base) return; if(PIC.items.length && !confirm('Rotating clears the marks on this picture. Rotate?')) return;
   const b = PIC.base, c = document.createElement('canvas'); c.width = b.height; c.height = b.width; const x = c.getContext('2d'); x.translate(c.width, 0); x.rotate(Math.PI / 2); x.drawImage(b, 0, 0);
   PIC.base = c; PIC.items = []; PIC.origSaved = false; UNDO = []; REDO = []; dirty(); fit(); side(); }
-function marked(q){ const c = document.createElement('canvas'); c.width = PIC.base.width; c.height = PIC.base.height; const x = c.getContext('2d'); x.drawImage(PIC.base, 0, 0); PIC.items.forEach(it => drawItem(x, it)); return q ? c.toDataURL('image/jpeg', q) : c; }
+function marked(q){ const c = document.createElement('canvas'); c.width = PIC.base.width; c.height = PIC.base.height; const x = c.getContext('2d'); x.drawImage(PIC.base, 0, 0); PIC.items.forEach(it => drawItem(x, it)); if(!q) return c; const k = Math.min(1, 1600 / Math.max(c.width, c.height)); if(k >= 1) return c.toDataURL('image/jpeg', q);   /* 2771: the saved marked copy is for viewing only (a check reopens from the original + marks), so it goes up at most 1600 px */
+  const d = document.createElement('canvas'); d.width = Math.round(c.width * k); d.height = Math.round(c.height * k); const g = d.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, d.width, d.height); return d.toDataURL('image/jpeg', q); }
 
 /* ================= side panel ================= */
 function counts(){
@@ -603,10 +608,11 @@ let SAVING = false;
 async function save(){
   if(SAVING) return; if(!hasWork()) return toast('Paste the homework first');
   SAVING = true; const b = $('bSave'), lab = b.textContent; b.disabled = true; b.textContent = 'Saving…';
-  try{ const note = $('note').value.trim(), note_zh = note ? await zhNow() : '';
+  /* 2771 (Misty 23 Nov 13:01: saving should always be fast): the Chinese of the note is used from the translation already made while typing; a new one is waited for at most 1.5 s (the picture is copied with the newest Chinese anyway), and the pictures go up a little lighter */
+  try{ const note = $('note').value.trim(), note_zh = !note ? '' : (ZH && ZH.src === note && ZH.zh) ? ZH.zh : await Promise.race([zhNow(), new Promise(z => setTimeout(() => z(ZH && ZH.src === note ? ZH.zh : ''), 1500))]);
     const body = { id: CUR.id || undefined, code: CODE, student: NAME, class_id: CLS, day: DAY || new Date().toISOString().slice(0, 10), kind: MODE, title: $('ttl').value.trim(), note, note_zh, counts: counts() };
     if(MODE === 'text'){ body.body = TX.body; body.marks = TX.marks; }
-    else { body.marks = PIC.items; body.marked = marked(.85); if(!PIC.origSaved) body.orig = PIC.base.toDataURL('image/jpeg', .9); }
+    else { body.marks = PIC.items; body.marked = marked(.8); if(!PIC.origSaved) body.orig = PIC.base.toDataURL('image/jpeg', .85); }
     const r = await api('save', body, 60000); if(!r.ok) throw new Error(r.error || 'Not saved');
     CUR.id = r.id; if(MODE === 'picture') PIC.origSaved = true; DIRTY = false; clearDraft();
     toast('Saved to ' + (NAME || CODE) + '’s homework'); $('saveInfo').textContent = 'Saved at ' + new Date().toTimeString().slice(0, 5) + '. Saving again updates the same check.'; loadHist();
