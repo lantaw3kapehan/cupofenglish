@@ -43,7 +43,7 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
       Object.keys(o).forEach(k => { if(now - o[k].at > 2 * 864e5) delete o[k]; }); localStorage.setItem(SK, JSON.stringify(o)); }catch(e){} }, 500); }
   /* 2746 (Misty 23 Nov 11:10, IELTS): a note was drawn in a narrow column (one word per line) because its saved width was small.
      Now only a width the teacher chose on purpose (dragging the box edge, fw) is kept; otherwise a note wraps at the screen's edge. */
-  function lines(x, a, w){ const fs = Math.round(a.s * w), mw = Math.max(40, (a.fw && a.mw ? a.mw : Math.max(0.15, 1 - a.x - 0.012)) * w); x.font = '600 ' + fs + 'px Inter, sans-serif';
+  function lines(x, a, w){ const fs = Math.round(SZ.text[0] * w),   /* 2750: one standard size for every note */ mw = Math.max(40, (a.fw && a.mw ? a.mw : Math.max(0.15, 1 - a.x - 0.012)) * w); x.font = '600 ' + fs + 'px Inter, sans-serif';
     const L = []; String(a.v).split('\n').forEach(par => { let cur = ''; par.split(/\s+/).forEach(wd => { if(!wd) return; const t = cur ? cur + ' ' + wd : wd; if(cur && x.measureText(t).width > mw){ L.push(cur); cur = wd; } else cur = t; }); L.push(cur); });
     const lh = Math.round(fs * 1.25); return { L, lh, fs, tw: Math.max(0, ...L.map(t => x.measureText(t).width)) }; }
   const rec = () => { HIST.push({ k: key, snap: list().slice() }); REDO.length = 0; if(HIST.length > 300) HIST.shift(); };
@@ -84,8 +84,8 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
     if(ANN[key].length !== n){ if(cur && cur.erase) cur.hit = true; draw(); } }
   let EDIT2748 = null;   /* 2748: the text being typed or changed; a colour click recolours it */
   function addText(p){ const w = W(), old = hitText(p); let col = color, at = p;
-    if(old){ rec(); ANN[key] = list().filter(a => a !== old); col = old.c; at = [old.x, old.y + old.s / 2]; draw(); }
-    const ts = old ? old.s : SZ.text[size], fs = Math.max(12, Math.round(ts * w));
+    if(old){ rec(); ANN[key] = list().filter(a => a !== old); col = old.c; at = [old.x, old.y + SZ.text[0] / 2]; draw(); }
+    const ts = SZ.text[0], fs = Math.max(12, Math.round(ts * w));
     /* 2707 (Misty 22 Nov 18:19): the text box fits what is typed (it no longer runs to the edge of the screen), stays inside the
        screen, can be made wider or narrower by dragging its right edge, and moved by the grip at its top-left corner while typing.
        Clicking a text again puts the cursor at the end (the words are no longer all selected). */
