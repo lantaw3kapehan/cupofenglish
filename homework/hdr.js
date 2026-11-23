@@ -14,7 +14,7 @@
     while(sw / 2 >= w * 1.4){ const c = document.createElement('canvas'); c.width = Math.round(sw / 2); c.height = Math.round(sh / 2); const g = c.getContext('2d');
       g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(s, 0, 0, c.width, c.height); s = c; sw = c.width; sh = c.height; }
     return s; }
-  const U = W => W / 560;   /* the design was drawn 560 px wide */
+  const U = W => W / 750;   /* 2752 (Misty 23 Nov 11:32): one letterhead size on every picture (books, Class Notes, homework, speaking), as on Class Notes · was W / 560 */   /* the design was drawn 560 px wide */
   /* height of the header (content starts here) */
   function height(W, hasLabel, unit){ const u = unit || U(W);   /* 2717: unit = the size of the header's parts (default: from the width) */ return Math.round(u * (22 + 38 + 16) + Math.max(1, u * 0.9) + u * (hasLabel ? 38 : 16)); }
   function fit(g, t, font, size, min, room){ let s = size; g.font = font(s); while(g.measureText(t).width > room && s > min){ s -= 0.5; g.font = font(s); }
