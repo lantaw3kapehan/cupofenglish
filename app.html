@@ -5579,7 +5579,7 @@ function ding(kind){ if(kind !== 'pop'){ try{ const au = ding.au2026 || (ding.au
   try{ const A = SND || (typeof ACX !== 'undefined' && ACX); if(!A) return; const N = kind === 'pop' ? [880, 1320] : kind === 'ack' ? [659, 988] : [784, 1047, 1319], t0 = A.currentTime;
 N.forEach((f, i) => { const o = A.createOscillator(), g = A.createGain(), s = t0 + i * 0.11; o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(0.2, s + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, s + 0.4); o.connect(g); g.connect(A.destination); o.start(s); o.stop(s + 0.45); }); }catch(e){} }
 let ACKS = null;
-const EMO = ['😊', '👍', '🙏', '🎉', '👏', '💪', '❤️', '✅', '⏰', '📌', '📣', '⭐', '🙌', '😄', '🤗', '☕', '📚', '🌟'];
+const EMO = ['👍', '🙏', '✅', '😊', '👏', '⭐'];   /* 2785 (Misty 13:35 · notices audited as Kat): 18 emojis under every reply box were clutter; six professional ones stay (Team Chat keeps its full picker) */
 function emojiBar(id){ return '<div class="emo">' + EMO.map(e => '<button type="button" onmousedown="event.preventDefault()" onclick="emoAdd(\'' + id + '\',\'' + e + '\')">' + e + '</button>').join('') + '</div>'; }
 function emoAdd(id, e){ const t = $(id); if(!t) return; const s = t.selectionStart == null ? t.value.length : t.selectionStart, en = t.selectionEnd == null ? s : t.selectionEnd; t.value = t.value.slice(0, s) + e + t.value.slice(en); t.focus(); t.selectionStart = t.selectionEnd = s + e.length; ding('pop'); }
 function msgAckWatch(){ if(!MSG) return; const me = String(MSG.me || '').toLowerCase(), now = {}, fresh = [];
@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2282;
+const COE_V = 2284;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -45689,5 +45689,31 @@ body.role-t #v-tsched .wk501 a .d{font-size:18px!important}
 #tv2 .fc .acts{width:100%}
 }
 </style>
+<script>
+/* 2785 (Misty 13:35: open the notices and improve them) · a message asking for a Tencent Meeting ID gets one button per student
+   ("Add meeting ID · Judy"), which opens that student's next class › Meeting ID, so the teacher does not have to find the class first */
+(function(){ if(window.__p2785) return; window.__p2785 = 1;
+  const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const o = window.tMsgOpen; if(typeof o !== 'function') return;
+  const w = function(id){ const r = o.apply(this, arguments); try{
+      const t = ((TMSG && TMSG.threads) || []).find(x => x.root.id === id); const txt = t ? [t.root].concat(t.replies).filter(x => x.role === 'mgmt').map(x => x.text || '').join('\n') : '';
+      if(!/meeting id/i.test(txt)) return r;
+      const codes = [...new Set((txt.match(/ST-\d{4}-\d{3}/g) || []))], now = Date.now(), L = (D.schedule || []).filter(c => c && !c.cancelled && +new Date(c.end) >= now).sort((a, b) => String(a.start).localeCompare(String(b.start)));
+      const btns = codes.map(cd => { const c = L.find(x => x.code === cd); if(!c) return ''; const has = !!String(c.meet || '').trim();
+        return '<button type="button" class="btn ' + (has ? 'ghost' : 'teal') + ' sm" onclick="meetSheet(\'' + E(c.id) + '\')">' + (has ? '✓ ' : '') + (has ? 'Meeting ID · ' : 'Add meeting ID · ') + E(c.student || cd) + '</button>'; }).filter(Boolean);
+      if(!btns.length) return r; const m = document.querySelector('#sheetBody .msgs'); if(!m) return r;
+      m.insertAdjacentHTML('afterend', '<div class="row" style="flex-wrap:wrap;gap:8px;margin:10px 0 4px">' + btns.join('') + '</div>');
+    }catch(e){} return r; };
+  window.tMsgOpen = w; try{ tMsgOpen = w; }catch(e){}
+  /* the same request sent on several days (e.g. "add the Tencent Meeting ID") showed as many near-identical rows: the newest stays, the earlier ones fold under "+ n earlier like this" */
+  const css = document.createElement('style'); css.textContent = '#v-tinbox .m508.g2785{display:none}#v-tinbox .ls508.op2785 .m508.g2785{display:flex}#v-tinbox .more2785{display:inline-block;margin-top:6px;font-size:12.5px;font-weight:600;color:#0E6F68;cursor:pointer}'; document.head.appendChild(css);
+  function fold(){ try{ document.querySelectorAll('#v-tinbox .ls508').forEach(ls => { const seen = new Map();
+      ls.querySelectorAll(':scope > .m508').forEach(m => { const tx = m.querySelector('.tx'), k = tx ? tx.textContent.replace(/\s+/g, ' ').trim().slice(0, 60) : ''; m.classList.remove('g2785'); const old = m.querySelector('.more2785'); if(old) old.remove();
+        if(k.length < 30) return; if(seen.has(k)){ m.classList.add('g2785'); seen.get(k).n++; } else seen.set(k, { m, n: 0 }); });
+      seen.forEach(v => { if(!v.n) return; const b = document.createElement('span'); b.className = 'more2785'; b.textContent = '+ ' + v.n + ' earlier like this'; b.onclick = e => { e.stopPropagation(); ls.classList.toggle('op2785'); b.textContent = ls.classList.contains('op2785') ? 'Hide the earlier ones' : '+ ' + v.n + ' earlier like this'; }; (v.m.querySelector('.bd') || v.m).appendChild(b); }); }); }catch(e){} }
+  const rt = window.renderTInbox; if(typeof rt === 'function'){ const w2 = function(){ const r = rt.apply(this, arguments); fold(); return r; }; window.renderTInbox = w2; try{ renderTInbox = w2; }catch(e){} }
+  setTimeout(fold, 1500);
+})();
+</script>
 </body>
 </html>
