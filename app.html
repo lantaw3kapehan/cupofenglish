@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2292;
+const COE_V = 2293;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -14222,9 +14222,10 @@ ${m.top && m.top.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-
 <div style="margin-top:16px"><b class="small">My months</b> <span class="small mute">· every month, for transparency</span>${chart}<details style="margin-top:6px"><summary class="small">Month by month</summary><table class="small" style="width:100%;border-collapse:collapse;margin-top:6px">${tl}</table></details></div>
 <details style="margin-top:6px"><summary class="small"><b>How it works</b></summary><p class="small mute" style="margin:6px 0">A monthly recognition worked out from what is already in the app: Quality 35 (your monthly QA and daily class visits) · Reliability 35 (attendance, class videos, class record, hours) · Progress 15 · Trust 15. Gold 88+ · Silver 78+ · Bronze 65+. A part with no data that month is left out, not counted as zero, and the other parts are scaled up. Attendance, class videos and demerits count as full marks when there is no record. Teachers with 20 hours or more are ranked. It is updated every day until the month ends. It does not change your pay or your teacher rank (Junior, Senior, Master…) — demerits and penalties for pay follow your contract as always.</p></details>
 </section>`; }
-  function growthCard(){ const el = $('v-growth'); if(!el || !isT()) return; const old = $('kxCard'); if(old) old.remove(); const h = cardHtml(); if(!h) return;
-    const t = document.createElement('div'); t.innerHTML = h; const c = t.firstElementChild; const lead = el.querySelector('.lead');
-    if(lead && lead.nextSibling) el.insertBefore(c, lead.nextSibling); else el.insertBefore(c, el.firstChild); }
+  function growthCard(){ const el = $('v-growth'); if(!el || !isT()) return; const old = $('kxCard'), h = cardHtml(); if(!h){ if(old) old.remove(); return; }   /* 2794: kept in place when unchanged, always right under the title (it swapped places with 'Qualified to teach' and the page jumped) */
+    let c = old && old._h === h ? old : null; if(!c){ const t = document.createElement('div'); t.innerHTML = h; c = t.firstElementChild; c._h = h; if(old) old.remove(); }
+    const lead = el.querySelector(':scope > .lead'); if(lead){ if(lead.nextElementSibling !== c) lead.after(c); } else if(el.firstElementChild !== c) el.prepend(c);
+    try{ const tx = $('txGrow'); if(tx && tx.parentNode === el && c.nextElementSibling !== tx) c.after(tx); }catch(e){} }
 
   // 3 · Teacher of the Month on Today (first 7 days of the month, for last month)
   function totm(){ const el = $('v-today'); if(!el || !isT()) return; const old = $('kxTotm'); if(old) old.remove(); if(!K || !K.on || new Date().getDate() > 7) return;
@@ -25162,9 +25163,10 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     if(!L.length){ if(c) c.remove(); return; }
     const lab = t => t.id === 'trial' ? 'Trial classes' : t.title.split(' · ')[0].replace(/ Specialization$/, '').replace(/^Phonics Training$/, 'Phonics');
     const h = '<span class="k">Qualified to teach</span><div class="tx-bdg">' + L.map(t => '<span style="--c:' + (BGC[BG(t)] || '#9A97AE') + '">' + (BG(t) === 'Specializations' ? '★ ' : '') + e(lab(t)) + '</span>').join('') + '</div><button type="button" class="btn ghost sm" onclick="go(\'train\')">Trainings ›</button>';
-    if(c && c._h === h && c.parentNode === g) return; if(c) c.remove();
-    const d = document.createElement('div'); d.id = 'txGrow'; d.innerHTML = h; d._h = h; const ld = g.querySelector(':scope > .lead');
-    if(ld) ld.after(d); else g.prepend(d); }
+    const kx = g.querySelector(':scope > #kxCard'), at = kx || g.querySelector(':scope > .lead');   /* 2794: always under the Excellence card, so the two never swap */
+    if(c && c._h === h && c.parentNode === g){ if(at && at.nextElementSibling !== c) at.after(c); return; } if(c) c.remove();
+    const d = document.createElement('div'); d.id = 'txGrow'; d.innerHTML = h; d._h = h;
+    if(at) at.after(d); else g.prepend(d); }
   function txUp(){ try{ txStar(); }catch(x){} try{ txTrn(); }catch(x){} try{ txGrow(); }catch(x){} }
   (function(){ const st = document.createElement('style'); st.textContent = '#txTrn,#txStar{display:inline-flex;align-items:center;gap:4px;height:22px;box-sizing:border-box;font:inherit;font-weight:700;font-size:12px;line-height:1;border-radius:99px;padding:0 9px;margin-left:6px;cursor:pointer;vertical-align:middle}#txTrn{border:0;background:none;color:#00737B;padding:0;margin-left:2px;height:auto}#txTrn::before{content:"·";color:var(--ink2,#5E5A75);font-weight:400;margin-right:4px}#txStar{display:none!important}#txStar{border:1.5px solid #D67FA3;background:#FBEFF4;color:#8A3B6A}'
       + '#txGrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card,#fff);border:1px solid var(--line);border-radius:18px;padding:12px 16px;margin:12px 0}#txGrow .k{font-size:12px;font-weight:700;color:var(--ink2,#5E5A75)}#txGrow .tx-bdg{margin:0;flex:1}';
@@ -25583,9 +25585,10 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
   const where = r => [r.dev, r.net, r.ip ? 'IP ' + r.ip : '', r.speed].filter(Boolean).join(' · ');
   const map = r => r.lat != null ? 'https://maps.google.com/?q=' + (+r.lat).toFixed(6) + ',' + (+r.lng).toFixed(6) : '';
   let ST = null;
-  async function load(name, day, el){ ST = { name, day, rows: null, el: el || null }; paint();
+  const AC2794 = {};   /* 2794: the day already seen shows at once (no grey loading bars, then a jump); the fresh copy replaces it quietly */
+  async function load(name, day, el){ const ck = (name || '') + '|' + day, kc = AC2794[ck]; ST = { name, day, rows: kc ? kc.rows : null, who: kc ? kc.who : undefined, el: el || null }; paint();
     try{ const r = await call({ action: 'activity', teacher: name || undefined, day }); if(!ST || ST.day !== day) return; if(!r || !r.ok) throw new Error((r && r.error) || 'Could not load'); ST.rows = r.rows || []; ST.who = r.who; try{ let last = null; ST.rows.forEach(x => { if(x.code && /^(saveNote|markHomework|classIn)$/.test(x.fn)) last = x; else if(x.fn === 'tNoteTag' && !x.code && last && Math.abs(Date.parse(x.at) - Date.parse(last.at)) < 18e4){ x.code = last.code; x.student = last.student; x.start = last.start; } }); }catch(e){}   /* 1005 */ }catch(e){ ST.err = e.message; } paint(); }
-  function paint(){ if(!ST) return; const s = ST, mine = !(typeof D !== 'undefined' && D && D.mgr), who = s.who || s.name || ((D && D.me && D.me.name) || '');
+  function paint(){ if(!ST) return; if(ST.rows && !ST.err) AC2794[(ST.name || '') + '|' + ST.day] = { rows: ST.rows, who: ST.who }; const s = ST, mine = !(typeof D !== 'undefined' && D && D.mgr), who = s.who || s.name || ((D && D.me && D.me.name) || '');
     const L = (s.rows || []).filter(r => window._alAll || r.fn !== 'tMsgSeen');
     let h = '<h1>' + (mine ? 'My activity log' : 'Activity log') + '</h1><div class="small mute">' + (mine ? '' : E(typeof tName === 'function' ? tName(who) : 'Teacher ' + who) + ' · ') + 'every save, timed by the CupOfEnglish server (Philippine time) · kept permanently · cannot be edited or deleted</div>'
       + '<div class="row" style="gap:8px;align-items:center;margin:12px 0"><button class="btn sm ghost" onclick="actLogDay(-1)">‹</button><b class="grow" style="text-align:center">' + E(dayLab(s.day)) + '</b><button class="btn sm ghost" onclick="actLogDay(1)"' + (s.day >= today() ? ' disabled' : '') + '>›</button></div>';
