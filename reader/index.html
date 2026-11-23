@@ -77,7 +77,7 @@ aside .note{font-size:12px;color:var(--mute);padding:14px 8px;line-height:1.5}
 .pill{display:none;position:fixed;bottom:44px;left:50%;transform:translateX(-50%);align-items:center;gap:4px;background:rgba(43,36,80,.9);color:#fff;border-radius:999px;padding:6px 8px;z-index:6;transition:opacity .3s}
 .pill button{height:40px;min-width:40px;border:0;border-radius:999px;background:transparent;color:#fff;cursor:pointer;font-size:14px;font-weight:600;padding:0 12px}
 .tag{display:none;height:30px;flex:none;align-items:center;justify-content:center;font-size:12.5px;color:var(--mute);background:#fff;letter-spacing:.02em}
-.txtin{position:absolute;z-index:7;font:600 20px Inter,sans-serif;border:1.5px dashed var(--teal);background:rgba(255,255,255,.9);padding:2px 6px;outline:0;min-width:60px;line-height:1.1;border-radius:6px}
+.txtin{position:absolute;z-index:7;font:600 20px Inter,sans-serif;border:1.5px dashed var(--teal);background:transparent;text-shadow:0 0 2px #fff,0 0 3px #fff;padding:2px 6px;outline:0;min-width:60px;line-height:1.1;border-radius:6px}
 /* Present: what the student sees on the shared screen */
 body.present header .grp,body.present header .btn,body.present header .sep{display:none}
 body.present header{justify-content:center;border-bottom:0;background:#fff linear-gradient(90deg,#00C4AF,#00B5B9 50%,#00ACC4) no-repeat left bottom/100% 3px}   /* 2296: the logo's own teal */
@@ -704,7 +704,8 @@ function addText(e, p){ const w = $('wrap'), r = w.getBoundingClientRect(), ir =
     i.style.width = Math.min(mw, room()) + 'px'; i.scrollLeft = 0; i.style.height = 'auto'; i.style.height = (i.scrollHeight + 3) + 'px'; };
   i.addEventListener('input', fitT); i.addEventListener('scroll', () => { if(i.scrollLeft) i.scrollLeft = 0; }); fitT();
   w.appendChild(i); fitT(); setTimeout(() => { i.focus(); const n = i.value.length; try{ i.setSelectionRange(n, n); }catch(x){} fitT(); }, 0);   /* 2707: cursor at the end, not all selected */
-  let fin = false; const done = ok => { if(fin) return; fin = true; const maxW = Math.max(fs * 2, i.clientWidth - 12) - 2;
+  EDIT2748 = { set: c => { col = c; i.style.color = c; setTimeout(() => i.focus(), 0); } };   /* 2748: a colour click recolours the text being typed or changed */
+  let fin = false; const done = ok => { if(fin) return; fin = true; EDIT2748 = null; const maxW = Math.max(fs * 2, i.clientWidth - 12) - 2;
     const v = i.value.replace(/\s+$/, '').replace(/^\n+/, '').split('\n').map(t => wrapL(t, maxW).join('\n')).join('\n'); i.remove();
     if(ok && v.trim()){ if(!old) rec(); const a = { t: 'text', v, x: at[0], y: at[1] - ts / 2, s: ts, c: col }; list().push(a); }
     else if(old && !ok){ HIST.pop(); list().push(old); }   /* Esc puts it back; an emptied text is removed (Undo brings it back) */
@@ -733,7 +734,9 @@ $('ink').style.pointerEvents = 'none';
 setTimeout(() => { try{ miniIcon(); }catch(e){} }, 0);
 function setSize(z){ size = Math.max(0, Math.min(2, z)); document.querySelectorAll('.sz').forEach(x => x.classList.toggle('on', +x.dataset.z === size)); try{ localStorage.setItem('coe.reader.sz', String(size)); }catch(e){} }
 document.querySelectorAll('.sz').forEach(b => b.onclick = () => { setSize(+b.dataset.z); if(tool === 'hand' || tool === 'erase') document.querySelector('.tb[data-t="text"]').click(); }); setSize(size);
-document.querySelectorAll('.dot').forEach(b => b.onclick = () => { color = b.dataset.c; document.querySelectorAll('.dot').forEach(x => x.classList.toggle('on', x === b)); if(tool === 'hand' || tool === 'erase') document.querySelector('.tb[data-t="pen"]').click(); });
+let EDIT2748 = null;
+document.querySelectorAll('.dot').forEach(b => { b.addEventListener('mousedown', e => { if(EDIT2748) e.preventDefault(); }); });   /* keep the text box open */
+document.querySelectorAll('.dot').forEach(b => b.onclick = () => { color = b.dataset.c; document.querySelectorAll('.dot').forEach(x => x.classList.toggle('on', x === b)); if(EDIT2748){ EDIT2748.set(color); return; } if(tool === 'hand' || tool === 'erase') document.querySelector('.tb[data-t="pen"]').click(); });
 
 /* ── video from the list: plays here ── */
 function playVid(f){ const v = $('vv'); $('vt').textContent = String(f.name); v.dataset.s = '1'; v.src = ST(f.id);

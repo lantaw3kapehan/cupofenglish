@@ -28,7 +28,7 @@
 .ink-m{position:fixed;left:12px;top:50%;transform:translateY(-50%);z-index:60;display:none;flex-direction:column;align-items:center;gap:2px;border:0;border-radius:14px;background:rgba(255,255,255,.97);box-shadow:0 6px 20px rgba(30,26,60,.14);padding:8px 6px;cursor:pointer;font:600 11px Inter,sans-serif;color:#2B2253}
 .ink-m i{width:14px;height:14px;border-radius:50%;display:block}body.ink-min .ink-t{display:none}body.ink-min .ink-m{display:flex}
 .ink-grip{position:absolute;z-index:6;width:22px;height:22px;border-radius:6px;background:#fff;border:1.5px solid #9AD3D6;color:#0E6F68;font:700 13px/19px Inter,sans-serif;text-align:center;cursor:move;user-select:none;touch-action:none}
-.ink-in{position:absolute;z-index:5;border:1.5px dashed #9AD3D6;background:rgba(255,255,255,.85);border-radius:6px;padding:2px 6px;outline:0;font-family:Inter,sans-serif;font-weight:600}
+.ink-in{position:absolute;z-index:5;border:1.5px dashed #9AD3D6;background:transparent;text-shadow:0 0 2px #fff,0 0 3px #fff;border-radius:6px;padding:2px 6px;outline:0;font-family:Inter,sans-serif;font-weight:600}
 body.ink-draw .kv{cursor:crosshair}
 body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{padding-left:58px}@media (min-width:1500px){body.ink-on #app{padding-left:0}}`;
   function styles(){ if(document.getElementById('ink-css')) return; const s = document.createElement('style'); s.id = 'ink-css'; s.textContent = css; document.head.appendChild(s); }
@@ -59,9 +59,9 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
     return [[x0, y0], [x1, y1]]; }
   function draw(){ if(!cv) return; const x = cv.getContext('2d'), d = window.devicePixelRatio || 1, w = W(); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, cv.width, cv.height);
     (ANN[key] || []).forEach(a => { if(a.t === 'text'){ const T = lines(x, a, w);
-      /* 2718 (Misty 22 Nov 19:01): a light white card behind typed notes, so they stay readable over the page's own words */
-      { const pdx = Math.max(3, T.fs * 0.25), bx = a.x * w - pdx, by = a.y * w - pdx * 0.6, bwd = T.tw + 2 * pdx, bh = T.L.length * T.lh + pdx * 1.2; x.save(); x.fillStyle = 'rgba(255,255,255,.78)'; x.beginPath(); if(x.roundRect) x.roundRect(bx, by, bwd, bh, pdx); else x.rect(bx, by, bwd, bh); x.fill(); x.restore(); }
-      x.fillStyle = a.c; x.textBaseline = 'top'; T.L.forEach((t, i) => x.fillText(t, a.x * w, a.y * w + i * T.lh)); return; }
+      /* 2748 (Misty 23 Nov 11:19): the white card behind typed notes covered the book's words. Now only a thin white outline
+         hugs the letters, so notes stay readable without hiding what is under them. */
+      x.textBaseline = 'top'; x.save(); x.lineJoin = 'round'; x.strokeStyle = 'rgba(255,255,255,.85)'; x.lineWidth = Math.max(2, T.fs * 0.16); T.L.forEach((t, i) => x.strokeText(t, a.x * w, a.y * w + i * T.lh)); x.restore(); x.fillStyle = a.c; T.L.forEach((t, i) => x.fillText(t, a.x * w, a.y * w + i * T.lh)); return; }
       x.globalAlpha = a.t === 'hl' ? 0.32 : 1; x.strokeStyle = a.c; x.lineWidth = Math.max(1.5, a.w * w); x.lineCap = a.t === 'hl' ? 'butt' : 'round'; x.lineJoin = 'round';
       if(a.t === 'shape' && FILL[a.k]){ const P = shapePts(a, w); x.beginPath(); P.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); x.closePath(); x.fillStyle = FILL[a.k][0]; x.fill(); x.strokeStyle = FILL[a.k][1]; x.lineWidth = Math.max(1.5, a.w * w * 0.7); x.stroke(); x.globalAlpha = 1; return; }
       if(a.t === 'shape' && a.k === 'tick') x.lineWidth = Math.max(3, a.w * w * 2.2);
@@ -82,6 +82,7 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
       for(let i = 0; i < P.length; i++){ const q = P[i], m = P[i + 1] || q, dx = m[0] - q[0], dy = m[1] - q[1], l2 = dx * dx + dy * dy, t = l2 ? Math.max(0, Math.min(1, ((p[0] - q[0]) * dx + (p[1] - q[1]) * dy) / l2)) : 0;
         if(Math.hypot(q[0] + t * dx - p[0], q[1] + t * dy - p[1]) < 0.01) return false; } return true; });
     if(ANN[key].length !== n){ if(cur && cur.erase) cur.hit = true; draw(); } }
+  let EDIT2748 = null;   /* 2748: the text being typed or changed; a colour click recolours it */
   function addText(p){ const w = W(), old = hitText(p); let col = color, at = p;
     if(old){ rec(); ANN[key] = list().filter(a => a !== old); col = old.c; at = [old.x, old.y + old.s / 2]; draw(); }
     const ts = old ? old.s : SZ.text[size], fs = Math.max(12, Math.round(ts * w));
@@ -99,6 +100,7 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
     const grip = document.createElement('div'); grip.className = 'ink-grip'; grip.title = 'Drag to move the text'; grip.textContent = '✥';
     const place = () => { i.style.left = (cv.offsetLeft + x0 * w - 7.5) + 'px'; i.style.top = (cv.offsetTop + y0 * w - 3.5) + 'px'; grip.style.left = (cv.offsetLeft + x0 * w - 7.5 - 24) + 'px'; grip.style.top = (cv.offsetTop + y0 * w - 3.5) + 'px'; };
     const grow = () => { fitW(); i.style.height = 'auto'; i.style.height = i.scrollHeight + 'px'; };
+    EDIT2748 = { set: c => { col = c; i.style.color = c; setTimeout(() => i.focus({ preventScroll: true }), 0); } };
     i.addEventListener('input', grow); host.appendChild(i); host.appendChild(grip); place(); grow();
     setTimeout(() => { i.focus({ preventScroll: true }); const n = i.value.length; try{ i.setSelectionRange(n, n); }catch(e){} }, 0);
     /* dragging the right edge: the width chosen is kept for this text */
@@ -106,7 +108,7 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
     let mv = null; grip.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); grip.setPointerCapture(e.pointerId); mv = { sx: e.clientX, sy: e.clientY, x: x0, y: y0 }; });
     grip.addEventListener('pointermove', e => { if(!mv) return; x0 = Math.max(0, Math.min(lim - 0.06, mv.x + (e.clientX - mv.sx) / w)); y0 = Math.max(0, mv.y + (e.clientY - mv.sy) / w); place(); grow(); });
     const upG = () => { if(!mv) return; mv = null; setTimeout(() => i.focus({ preventScroll: true }), 0); }; grip.addEventListener('pointerup', upG); grip.addEventListener('pointercancel', upG);
-    let fin = false; const done = ok => { if(fin) return; fin = true; const v = i.value.replace(/\s+$/, ''), mw = fitW(); i.remove(); grip.remove();
+    let fin = false; const done = ok => { if(fin) return; fin = true; EDIT2748 = null; const v = i.value.replace(/\s+$/, ''), mw = fitW(); i.remove(); grip.remove();
       if(ok && v.trim()){ if(!old) rec(); list().push({ t: 'text', v, x: x0, y: y0, s: ts, c: col, mw, fw: fixW ? 1 : 0 }); } else if(old && !ok){ HIST.pop(); list().push(old); } fit(); };   /* 2746: fit, so the screen grows for a low note */
     i.addEventListener('keydown', ev => { ev.stopPropagation(); if(ev.key === 'Escape'){ ev.preventDefault(); done(true); } });   /* 2712: Enter = new line · click outside or Esc = finished (as on the books) */
     i.addEventListener('blur', () => setTimeout(() => { if(!mv && document.activeElement !== i) done(true); }, 120)); }
@@ -148,7 +150,7 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
   function onBar(e){ const b = e.target.closest('button'); if(!b) return; e.stopPropagation();
     if(b.dataset.t){ if(b.dataset.t === 'shape' && tool === 'shape'){ bar.dataset.sp = bar.dataset.sp === '1' ? '' : '1'; } else bar.dataset.sp = b.dataset.t === 'shape' ? '1' : ''; setTool(b.dataset.t); return; }
     if(b.dataset.k){ shp = b.dataset.k; bar.dataset.sp = ''; try{ localStorage.setItem('coe.ink.shp', shp); }catch(x){} setTool('shape'); return; }
-    if(b.dataset.c){ color = b.dataset.c; if(tool === 'hand' || tool === 'erase') tool = 'pen'; setTool(tool); return; }
+    if(b.dataset.c){ color = b.dataset.c; if(EDIT2748){ EDIT2748.set(color); paintBar(); return; } if(tool === 'hand' || tool === 'erase') tool = 'pen'; setTool(tool); return; }
     if(b.dataset.z){ size = +b.dataset.z; try{ localStorage.setItem('coe.ink.sz', String(size)); }catch(x){} paintBar(); return; }
     const a = b.dataset.a; if(a === 'fold'){ document.body.classList.add('ink-min'); return; }
     if(a === 'undo') swap(HIST, REDO); if(a === 'redo') swap(REDO, HIST);
@@ -168,12 +170,13 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
   window.CoeInk = {
     /* start a class session: fresh drawings, tools on the left */
     open(){ styles(); ANN = loadAll(); HIST = []; REDO = []; HIDE = false; on = true; tool = 'hand';
-      if(!bar){ bar = document.createElement('div'); bar.className = 'ink-t'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Drawing tools'); bar.addEventListener('click', onBar); document.body.appendChild(bar);
+      if(!bar){ bar = document.createElement('div'); bar.className = 'ink-t'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Drawing tools'); bar.addEventListener('click', onBar); bar.addEventListener('mousedown', e => { if(EDIT2748 && e.target.closest && e.target.closest('[data-c]')) e.preventDefault(); }); document.body.appendChild(bar);
         mini = document.createElement('button'); mini.className = 'ink-m'; mini.type = 'button'; mini.title = 'Show the tools'; mini.onclick = () => document.body.classList.remove('ink-min'); document.body.appendChild(mini);
         document.addEventListener('keydown', onKey, true); }
       bar.style.display = ''; mini.style.display = ''; document.body.classList.remove('ink-min'); document.body.classList.add('ink-on'); paintBar(); },
     /* after each repaint: put the drawing layer over this screen (k = which screen, so each keeps its own drawings) */
     page(el, k){ if(!on || !el) return; host = el; key = String(k); handDrag(el); if(getComputedStyle(host).position === 'static') host.style.position = 'relative';
+      host.querySelectorAll(':scope > canvas.ink-c').forEach(o => o.remove());   /* 2749: never two drawing layers on one screen (Copy screen took the old one) */
       cv = document.createElement('canvas'); cv.className = 'ink-c' + (tool === 'hand' ? ' off' : '') + (HIDE ? ' hid' : ''); host.appendChild(cv); bindCanvas();
       const room = () => { try{ const r = host.getBoundingClientRect(), ft = document.querySelector('.knav'); const fh = ft ? ft.getBoundingClientRect().height : 90; host.style.minHeight = Math.max(0, Math.round(window.innerHeight - (r.top + window.scrollY) - fh - 12)) + 'px'; }catch(e){} }; room();   /* 2688: room to write under the cards */
       if(ro) ro.disconnect(); ro = new ResizeObserver(() => fit()); ro.observe(host); fit(); },
