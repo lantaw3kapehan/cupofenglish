@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2259;
+const COE_V = 2260;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -45402,9 +45402,25 @@ window.bk2556 = function(t){ try{ const code = String(t.code || '').toUpperCase(
     /* 2763: My Contract and Activity log titles start at the same height as every other screen (they sat 28 px higher, so the page jumped when switching) */
     'body.role-t #v-contract > .ct:first-child, body.role-t #v-act > .al-page:first-child{padding-top:28px}body.role-t #v-train > .tx5:first-child{padding-top:24px}' +
     /* 2764: Today card · the Homework menu button sat 4 px lower than the buttons beside it (its wrapper was taller) and its arrow showed as a dot */
-    '#v-today .hg20{display:inline-flex;vertical-align:top;line-height:normal}#v-today .hg20 > .btn::after{content:"";display:inline-block;width:6px;height:6px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(45deg);margin:-4px 0 0 9px;opacity:.7}'; document.head.appendChild(st);
+    '#v-today .hg20{display:inline-flex;vertical-align:top;line-height:normal}#v-today .hg20 > .btn{margin:0!important}#v-today .hg20 > .btn::after{content:"";display:inline-block;width:6px;height:6px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(45deg);margin:-4px 0 0 9px;opacity:.7}'; document.head.appendChild(st);
   let q = 0; new MutationObserver(() => { if(q) return; q = requestAnimationFrame(() => { q = 0; paint(); }); }).observe(document.body, { childList: true, subtree: true });
   window.coeNextBook2761 = next;
+  /* 2766 (Misty 23 Nov 12:41): Today · the next (or running) class has a faded teal background; a finished class turns pale grey,
+     and a finished class with every step done (time-in, homework, note, video) is also dimmed. Updated every minute. */
+  function state(){ try{ const v = document.getElementById('v-today'); if(!v || v.classList.contains('hide') || typeof D === 'undefined' || !D || D.mgr) return;
+      const now = Date.now(), L = (D.schedule || []).filter(c => c && c.day === D.today && !c.cancelled).sort((a, b) => String(a.start).localeCompare(String(b.start)));
+      const nx = L.find(c => +new Date(c.end) >= now);
+      v.querySelectorAll('.cls').forEach(card => { const b = card.querySelector('[onclick^="classBrief("]'); const id = b && (b.getAttribute('onclick').match(/classBrief\('([^']+)'/) || [])[1];
+        const c = id && L.find(x => x.id === id); const past = !!(c && +new Date(c.end) < now), isNx = !!(c && nx && c.id === nx.id);
+        const done = past && [...card.querySelectorAll('.cs93 > span')].length > 0 && [...card.querySelectorAll('.cs93 > span')].every(x => x.classList.contains('d'));
+        if(card.classList.contains('nx2766') !== isNx) card.classList.toggle('nx2766', isNx);
+        if(card.classList.contains('past2766') !== past) card.classList.toggle('past2766', past);
+        if(card.classList.contains('dn2766') !== done) card.classList.toggle('dn2766', done); }); }catch(e){} }
+  const st2 = document.createElement('style'); st2.textContent = '#v-today .cls.nx2766{background:#F2FAF9!important;border-color:#C7E8E3!important}' +
+    '#v-today .cls.past2766{background:#FAFAFC!important}#v-today .cls.dn2766{opacity:.6;transition:opacity .15s}#v-today .cls.dn2766:hover{opacity:1}';
+  document.head.appendChild(st2);
+  let q2 = 0; new MutationObserver(() => { if(q2) return; q2 = requestAnimationFrame(() => { q2 = 0; state(); }); }).observe(document.body, { childList: true, subtree: true });
+  setInterval(state, 60000);
 })();
 </script>
 </body>
