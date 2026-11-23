@@ -667,14 +667,30 @@ function addText(e, p){ const w = $('wrap'), r = w.getBoundingClientRect(), ir =
   /* 2712 (Misty 22 Nov 18:46): Enter starts a new line (it no longer closes the text) · the box fits the words and stays on the page ·
      click outside the box or press Esc when finished */
   const ts = old ? old.s : SZ.text[size], fs = Math.max(12, Math.round(ts * ir.height)), i = document.createElement('textarea'); i.className = 'txtin'; i.value = old ? old.v : ''; i.rows = 1; i.spellcheck = false;
-  const lx = ir.left - r.left + at[0] * ir.width - 7; i.style.font = '600 ' + fs + 'px/1.2 Inter, sans-serif'; i.style.left = lx + 'px'; i.style.top = (ir.top - r.top + (at[1] - ts / 2) * ir.height - 4) + 'px'; i.style.color = col;
-  i.style.cssText += ';resize:none;overflow:hidden;white-space:pre;box-sizing:border-box;min-height:0;margin:0';
+  /* 2737 (Misty 23 Nov 10:31): near the right edge the words ran off the page and the box scrolled sideways, so a new line (Enter)
+     started out of sight. Now the words wrap inside the box at the edge of the page (or of the screen when zoomed in), the box never
+     scrolls sideways, a box started too close to the edge opens further left, and the wrapped lines are kept exactly as shown. */
   const mc = document.createElement('canvas').getContext('2d'); mc.font = '600 ' + fs + 'px Inter, sans-serif';
-  const fitT = () => { const L = i.value.split('\n'), mw = Math.max(fs * 4, ...L.map(t => mc.measureText(t).width)) + fs * 0.8 + 15, room = Math.max(fs * 4, ir.right - r.left - lx - 4);
-    i.style.width = Math.min(mw, room) + 'px'; i.style.height = (L.length * fs * 1.2 + 7) + 'px'; };
-  i.addEventListener('input', fitT); fitT();
-  w.appendChild(i); setTimeout(() => { i.focus(); const n = i.value.length; try{ i.setSelectionRange(n, n); }catch(x){} }, 0);   /* 2707: cursor at the end, not all selected */
-  let fin = false; const done = ok => { if(fin) return; fin = true; const v = i.value.replace(/\s+$/, '').replace(/^\n+/, ''); i.remove();
+  const sr = ($('stage') || w).getBoundingClientRect(), padX = fs * 0.8 + 15;
+  const rightEdge = Math.min(ir.right, sr.right - 14) - r.left - 4, leftEdge = Math.max(ir.left, sr.left) - r.left;
+  let lx = ir.left - r.left + at[0] * ir.width - 7; const need = Math.min(fs * 7 + padX, rightEdge - leftEdge);
+  if(!old && rightEdge - lx < need){ lx = Math.max(leftEdge, rightEdge - need); at = [(lx + 7 - (ir.left - r.left)) / ir.width, at[1]]; }
+  i.style.font = '600 ' + fs + 'px/1.2 Inter, sans-serif'; i.style.left = lx + 'px'; i.style.top = (ir.top - r.top + (at[1] - ts / 2) * ir.height - 4) + 'px'; i.style.color = col;
+  i.style.cssText += ';resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;box-sizing:border-box;min-height:0;margin:0';
+  const room = () => Math.max(fs * 4, rightEdge - lx);
+  const mw_ = s => mc.measureText(s.replace(/\s+$/, '')).width;
+  const wrapL = (t, maxW) => { const out = []; let line = '';
+    for(const tok of (t.match(/\S+\s*|\s+/g) || [''])){
+      if(line && mw_(line + tok) > maxW){ out.push(line.replace(/\s+$/, '')); line = ''; }
+      line += tok;
+      while(mw_(line) > maxW && line.length > 1){ let k = line.length - 1; while(k > 1 && mc.measureText(line.slice(0, k)).width > maxW) k--; out.push(line.slice(0, k)); line = line.slice(k); } }
+    out.push(line.replace(/\s+$/, '')); return out; };
+  const fitT = () => { const L = i.value.split('\n'), mw = Math.max(fs * 4, ...L.map(t => mc.measureText(t).width)) + padX;
+    i.style.width = Math.min(mw, room()) + 'px'; i.scrollLeft = 0; i.style.height = 'auto'; i.style.height = (i.scrollHeight + 3) + 'px'; };
+  i.addEventListener('input', fitT); i.addEventListener('scroll', () => { if(i.scrollLeft) i.scrollLeft = 0; }); fitT();
+  w.appendChild(i); fitT(); setTimeout(() => { i.focus(); const n = i.value.length; try{ i.setSelectionRange(n, n); }catch(x){} fitT(); }, 0);   /* 2707: cursor at the end, not all selected */
+  let fin = false; const done = ok => { if(fin) return; fin = true; const maxW = Math.max(fs * 2, i.clientWidth - 12) - 2;
+    const v = i.value.replace(/\s+$/, '').replace(/^\n+/, '').split('\n').map(t => wrapL(t, maxW).join('\n')).join('\n'); i.remove();
     if(ok && v.trim()){ if(!old) rec(); const a = { t: 'text', v, x: at[0], y: at[1] - ts / 2, s: ts, c: col }; list().push(a); }
     else if(old && !ok){ HIST.pop(); list().push(old); }   /* Esc puts it back; an emptied text is removed (Undo brings it back) */
     drawInk(); saveAnn(); };
