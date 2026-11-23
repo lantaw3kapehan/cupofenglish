@@ -5552,7 +5552,7 @@ window.ft1484 = { key: function(){ try{ return 'coe.ft1484.' + String((D && D.me
 
 const msgAt = s => { const d = String(s || ''), m = +d.slice(5, 7); if(/^\d{4}-\d{2}-\d{2}/.test(d) && m >= 1 && m <= 12) return (+d.slice(8, 10) + ' ' + 'JanFebMarAprMayJunJulAugSepOctNovDec'.substr(m * 3 - 3, 3) + ' ' + d.slice(11, 16)).trim();   /* 1471: day first, as on every other screen */
   return d.slice(5, 10).replace('-', '/') + ' ' + d.slice(11, 16); };
-const msgBubble = (r, mineRole) => '<div class="msgb ' + (mineRole === 'mgmt' ? (MSG && String(r.from).toLowerCase() === String(MSG.me).toLowerCase() ? 'me' : '') : (r.role === mineRole ? 'me' : '')) + '"><div class="small mute">' + esc(r.role === 'mgmt' ? msgMName(r.from) : 'Teacher ' + r.from) + ' · ' + esc(msgAt(r.at)) + '</div><div style="white-space:pre-line">' + esc(r.text) + '</div></div>';
+const msgBubble = (r, mineRole) => '<div class="msgb ' + (mineRole === 'mgmt' ? (MSG && String(r.from).toLowerCase() === String(MSG.me).toLowerCase() ? 'me' : '') : (r.role === mineRole ? 'me' : '')) + '"><div class="small mute">' + (window.sd2801 ? sd2801(r, mineRole) : esc(r.role === 'mgmt' ? msgMName(r.from) : 'Teacher ' + r.from)) + ' · ' + esc(msgAt(r.at)) + '</div><div style="white-space:pre-line">' + esc(r.text) + '</div></div>';
 async function loadMsgs(quiet){ if(!D || !D.mgr) return; try{ await swr('msgs', () => api('mgmtMsgs', TOKEN), v => { MSG = v; try{ const sys = (MSG.threads || []).filter(t => t && t.root && /^App health$/i.test(String(t.root.from || ''))); MSG.unread = Math.max(0, (MSG.unread || 0) - sys.reduce((a, t) => a + [t.root].concat(t.replies || []).filter(msgNewM).length, 0)); }catch(e){} }, () => { msgBadge(); msgAckWatch(); if(VIEW === 'msgs') renderMsgs(); if(VIEW === 'home') try{ renderHome(); }catch(e){} }); }catch(e){ if(!quiet && VIEW === 'msgs') $('v-msgs').innerHTML = '<div class="empty">Could not load messages. Try again.</div>'; } }
 function msgBadge(){ const n = MSG ? MSG.unread : 0; ['dMsg', 'dMsgM'].forEach(k => { const d = $(k); if(d){ d.classList.toggle('hide', !n); d.textContent = k === 'dMsg' ? (n || '') : ''; } });
 if(MSG && MSG_N >= 0 && n > MSG_N){ const t = MSG.threads.find(t => [t.root].concat(t.replies).some(msgNewM)); if(t){ const r = [t.root].concat(t.replies).filter(msgNewM).pop(); ding('msg'); notify('Message from ' + (r.role === 'mgmt' ? msgMName(r.from) : 'Teacher ' + r.from), r.text, 'coe-msg'); } }
@@ -5592,7 +5592,7 @@ let h = '<div class="lead row"><div class="grow"><h1>Notices &amp; requests</h1>
 if(MSG.leave && MSG.leave.length) h += '<div class="card" style="margin-top:14px;cursor:pointer" onclick="go(\'leave\')"><b>' + MSG.leave.length + ' leave request' + (MSG.leave.length > 1 ? 's' : '') + ' waiting</b><div class="small mute">' + MSG.leave.slice(0, 4).map(l => esc(tName(l.teacher)) + ' · ' + esc(l.type) + ' ' + esc(l.from)).join(' · ') + '</div></div>';
 MSG_G = MF === 'pc' && window.msgPcGroups ? msgPcGroups(T) : msgGroups(T); h += T.length ? '<div style="margin-top:12px">' + MSG_G.map((g, gi) => g.pc ? pcRow(g, gi, unread) : g.length > 1 ? msgGroupRow(g, gi, unread) : (t => { const r = t.root, u = unread(t), last = t.replies.length ? t.replies[t.replies.length - 1] : r, mg = r.role === 'mgmt';
 const st = (r.kind === 'memo' ? '<span class="chip red" style="margin-right:4px">Memo</span>' : '') + (mg ? (r.ack ? '<span class="chip ' + (/^🙋/.test(r.react || '') ? 'coral' : 'teal') + '">' + rxH(ackLbl(r)) + ' ' + esc(msgAt(r.ack)) + '</span>' : r.seen ? '<span class="chip">Seen ' + esc(msgAt(r.seen)) + '</span>' : '<span class="chip amber">Not seen yet</span>') : '<span class="chip ' + (r.to === 'President' ? 'mgmt' : 'teal') + '">' + (r.to === 'President' ? 'Private · management only' : 'From the teacher') + '</span>');
-return '<div class="li" onclick="msgOpen(\'' + r.id + '\')" style="cursor:pointer;' + (u ? 'background:#FFF6EE' : '') + '"><div class="av">' + esc(String(t.teacher).slice(0, 2).toUpperCase()) + '</div><div class="grow" style="min-width:0"><b>' + esc(mg && msgIsM(r.to) ? msgMName(String(r.from).toLowerCase() === String(MSG.me).toLowerCase() ? r.to : r.from) : msgWho(t.teacher)) + '</b>' + (window.msgCatChip ? msgCatChip(t) : '') + (u ? ' <span class="chip red">' + u + ' new</span>' : '') + '<div class="small mute ell">' + esc(r.kind === 'memo' && last === r ? r.memoNo + ' · ' + r.subject : (String(last.from).toLowerCase() === String(MSG.me).toLowerCase() ? 'You: ' : last.role === 'mgmt' ? msgMName(last.from) + ': ' : '') + last.text) + '</div></div><div style="text-align:right">' + st + '<div class="small mute">' + esc(msgAt(t.lastAt)) + (t.replies.length ? ' · ' + t.replies.length + ' repl' + (t.replies.length > 1 ? 'ies' : 'y') : '') + '</div></div></div>'; })(g[0])).join('') + '</div>'
+return '<div class="li" onclick="msgOpen(\'' + r.id + '\')" style="cursor:pointer;' + (u ? 'background:#FFF6EE' : '') + '"><div class="av">' + esc(String(t.teacher).slice(0, 2).toUpperCase()) + '</div><div class="grow" style="min-width:0"><b>' + esc(mg && msgIsM(r.to) ? msgMName(String(r.from).toLowerCase() === String(MSG.me).toLowerCase() ? r.to : r.from) : msgWho(t.teacher)) + '</b>' + (mg && window.sd2801 ? ' ' + sd2801(r, 'mgmt') : '') + (window.msgCatChip ? msgCatChip(t) : '') + (u ? ' <span class="chip red">' + u + ' new</span>' : '') + '<div class="small mute ell">' + esc(r.kind === 'memo' && last === r ? r.memoNo + ' · ' + r.subject : (String(last.from).toLowerCase() === String(MSG.me).toLowerCase() ? 'You: ' : last.role === 'mgmt' ? (window.who2801 ? who2801(last).label : msgMName(last.from)) + ': ' : '') + last.text) + '</div></div><div style="text-align:right">' + st + '<div class="small mute">' + esc(msgAt(t.lastAt)) + (t.replies.length ? ' · ' + t.replies.length + ' repl' + (t.replies.length > 1 ? 'ies' : 'y') : '') + '</div></div></div>'; })(g[0])).join('') + '</div>'
 : MF !== 'all' ? '<div class="empty" style="margin-top:14px">Nothing here · all clear ✓</div>' : '<div class="empty" style="margin-top:14px">No messages yet. Send a notice to teachers here instead of the group chat · you’ll see who read it and who tapped “Got it”.</div>';
 el.innerHTML = h; }
 function msgOpen(id){ const t = (MSG.threads || []).find(x => x.root.id === id); if(!t) return; const all = [t.root].concat(t.replies), r = t.root;
@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2301;
+const COE_V = 2302;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7548,9 +7548,9 @@ const row = t => { const last = t.replies.length ? t.replies[t.replies.length - 
 const chip = memo ? '<span class="chip coral">Memo</span>' : window.msgCatChip && msgCatChip(t) ? msgCatChip(t) : r.role === 'mgmt' && r.need ? '<span class="chip teal">Notice</span>' : '';
 const status = r.role === 'mgmt' && r.need ? (r.ack ? `<span class="chip green">${rxH(ackLbl(r))}</span>` : '<span class="chip amber">Reply needed</span>') : '';
 return `<div class="li" onclick="tMsgOpen('${r.id}')" style="align-items:flex-start;${u ? 'background:#F1FAF9;' : ''}"><div style="width:10px;padding-top:7px">${u ? '<i style="display:block;width:8px;height:8px;border-radius:50%;background:#16BCB0"></i>' : ''}</div>
-<div class="grow" style="min-width:0"><div class="row" style="gap:6px;flex-wrap:wrap;align-items:center">${chip}<span class="small mute">${esc(msgAt(t.lastAt))}${memo && r.memoNo ? ' · ' + esc(r.memoNo) : ''}</span>${status}</div>
+<div class="grow" style="min-width:0"><div class="row" style="gap:6px;flex-wrap:wrap;align-items:center">${r.role === 'mgmt' && window.sd2801 ? sd2801(r, 'teacher') : ''}${chip}<span class="small mute">${esc(msgAt(t.lastAt))}${memo && r.memoNo ? ' · ' + esc(r.memoNo) : ''}</span>${status}</div>
 <div class="ell" style="${u ? 'font-weight:700' : ''}">${esc(r.role === 'mgmt' ? r.text : 'You: ' + r.text)}</div>
-${t.replies.length ? `<div class="small mute ell">${esc((last.role === 'mgmt' ? 'Management: ' : 'You: ') + last.text)} · ${t.replies.length} repl${t.replies.length === 1 ? 'y' : 'ies'}</div>` : ''}</div>
+${t.replies.length ? `<div class="small mute ell">${esc((last.role === 'mgmt' ? (window.who2801 ? who2801(last).label : 'Management') + ': ' : 'You: ') + last.text)} · ${t.replies.length} repl${t.replies.length === 1 ? 'y' : 'ies'}</div>` : ''}</div>
 <button type="button" class="btn ghost sm" title="${st[r.id] ? 'Remove from saved' : 'Save'}" onclick="tStar('${r.id}', event)" style="min-width:40px">${st[r.id] ? '⭐' : '☆'}</button></div>`; };
 v.innerHTML = `<div class="lead"><h1>Notices &amp; requests</h1><div class="mute small">Formal notices and requests. Tap Got it so management knows you’ve read it. Everything is kept here · the star saves one on this device</div></div>
 <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn teal" onclick="tMsgNew()">New message</button><button class="btn ghost" onclick="tlvSheet()">Request leave</button><button class="btn ghost" onclick="loadTMsgs()">↻</button></div>
@@ -45851,6 +45851,34 @@ body.role-t #v-students .sl2793 .R #ie1855{margin-top:18px}
 (function(){ function tidy(){ try{ document.querySelectorAll('[id^="v-"]').forEach(v => { const t = v.querySelectorAll(':scope > .grp-tabs'); for(let i = 1; i < t.length; i++) t[i].remove(); }); }catch(e){} }
   const g = window.go; if(typeof g === 'function'){ const f = function(){ const r = g.apply(this, arguments); tidy(); setTimeout(tidy, 400); return r; }; window.go = f; try{ go = f; }catch(e){} }
   setInterval(tidy, 5000); })();
+</script>
+<script>
+/* 2801 (Misty 16:29): every message shows who it is from, so it can be traced: Automatic (the app's own reminders and checks), Operations · Celine, CupOfEnglish (the president), or the teacher */
+(function(){
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-msgsrc';
+  let AUTO = {}, SEEN = {}; try{ const k = JSON.parse(localStorage.getItem('coe.msrc2801') || '{}'); AUTO = k.a || {}; SEEN = k.s || {}; }catch(e){}
+  const save = () => { try{ const ks = Object.keys(SEEN); if(ks.length > 4000){ ks.slice(0, ks.length - 3000).forEach(k => { delete SEEN[k]; delete AUTO[k]; }); } localStorage.setItem('coe.msrc2801', JSON.stringify({ a: AUTO, s: SEEN })); }catch(e){} };
+  const opsNames = () => { const n = { celine: 1 }; try{ ((typeof MSG !== 'undefined' && MSG && MSG.mgmt) || []).forEach(m => { if(/oper|ops/i.test(String(m.role || ''))) n[String(m.name).toLowerCase()] = 1; }); }catch(e){} return n; };
+  window.who2801 = function(r){ const f = String((r && r.from) || ''), fl = f.toLowerCase();
+    if(r && r.role !== 'mgmt') return { k: 't', label: 'Teacher ' + f };
+    if(/^app health$/i.test(f) || AUTO[r.id]) return { k: 'sys', label: 'Automatic' };
+    if(opsNames()[fl]) return { k: 'ops', label: 'Operations · ' + f };
+    if(fl === 'cupofenglish' || fl === 'president') return { k: 'coe', label: 'CupOfEnglish' };
+    return { k: 'm', label: f }; };
+  window.sd2801 = function(r, side){ const w = who2801(r);
+    if(w.k === 't') return '<span class="sd2801 t">' + (side === 'teacher' ? 'You' : esc(w.label)) + '</span>';
+    const me = side === 'mgmt' && typeof MSG !== 'undefined' && MSG && String(r.from).toLowerCase() === String(MSG.me).toLowerCase() && w.k !== 'sys';
+    return '<span class="sd2801 ' + w.k + '" title="' + (w.k === 'sys' ? 'Sent automatically by the app' : 'Sent by ' + esc(w.label)) + '">' + esc(w.label) + (me ? ' · you' : '') + '</span>'; };
+  const css = document.createElement('style'); css.textContent = '.sd2801{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;font:600 11.5px/1 Inter,system-ui,sans-serif;letter-spacing:0;white-space:nowrap;vertical-align:middle}.sd2801.sys{background:#F1F0F5;color:#5B5872}.sd2801.ops{background:#E3F6F7;color:#01727C}.sd2801.coe{background:#ECE9F6;color:#2F2752}.sd2801.m{background:#F3F2F7;color:#2F2752}.sd2801.t{background:#FFF4E5;color:#8A5300}';
+  document.head.appendChild(css);
+  let busy = false;
+  async function fill(){ if(busy) return; try{ const L = []; [typeof MSG !== 'undefined' ? MSG : null, typeof TMSG !== 'undefined' ? TMSG : null].forEach(M => { ((M && M.threads) || []).forEach(t => [t.root].concat(t.replies || []).forEach(r => { if(r && r.id && r.role === 'mgmt' && !SEEN[r.id]) L.push(String(r.id)); })); });
+      if(!L.length) return; busy = true; let changed = false;
+      for(let i = 0; i < L.length; i += 500){ const res = await fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ ids: L.slice(i, i + 500) }) }).then(x => x.json()).catch(() => null);
+        if(!res || !res.ok) break; (res.seen || []).forEach(id => SEEN[id] = 1); (res.auto || []).forEach(id => { if(!AUTO[id]){ AUTO[id] = 1; changed = true; } }); }
+      save(); if(changed){ try{ if(VIEW === 'msgs' && typeof renderMsgs === 'function') renderMsgs(); else if(VIEW === 'tinbox' && typeof renderTInbox === 'function') renderTInbox(); }catch(e){} } }catch(e){} finally{ busy = false; } }
+  setTimeout(fill, 2500); setInterval(fill, 20000);
+})();
 </script>
 </body>
 </html>
