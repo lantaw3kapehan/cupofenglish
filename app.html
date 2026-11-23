@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2295;
+const COE_V = 2296;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -43015,11 +43015,17 @@ window.hwOpenCE2309 = function(){ try{ const e = typeof CE !== 'undefined' && CE
   async function ids(){ if(typeof TOKEN === 'undefined' || !TOKEN || Date.now() - idAt < 60000) return mark(); idAt = Date.now(); const r = await call('ids'); if(r && r.ok){ IDS = new Set(r.ids || []); } mark(); }
   setTimeout(ids, 4000); setInterval(ids, 120000); window.addEventListener('focus', () => { idAt = 0; ids(); });
   /* 2 · student page */
-  const HC2795 = {};
+  const HC2795 = {}, RC2795 = {};
+  /* 2795: fetch each student's homework checks quietly ahead (a few seconds after opening, one at a time), so a student page opens complete */
+  setTimeout(async function pre2795(){ try{ if(typeof D === 'undefined' || !D || D.mgr || !Array.isArray(D.students)) return; const now = Date.now(), soon = {};
+      (D.schedule || []).forEach(c => { if(c && c.code && !soon[c.code]) soon[c.code] = Math.abs(+new Date(c.start) - now); });
+      const L = D.students.map(x => String(x.code || '').toUpperCase()).filter(c => /^ST-\d{4}-\d{3}$/.test(c)).sort((a, b) => (soon[a] || 9e15) - (soon[b] || 9e15));
+      for(const c of L){ if(RC2795[c]) continue; if(document.hidden){ await new Promise(z => setTimeout(z, 3000)); } try{ const r = await call('list', { code: c }); if(r && r.ok) RC2795[c] = r; }catch(e){} await new Promise(z => setTimeout(z, 500)); } }catch(e){} }, 9000);
   async function stuSec(code, nm){ if(!/^ST-\d{4}-\d{3}$/.test(code || '')) return;
     for(let i = 0; i < 40; i++){ const h = [...document.querySelectorAll('#sheetBody section.sec > h2')].find(x => /^Class notes/.test(x.textContent.trim()));
       if(h){ if(document.getElementById('hw2319s')) return; const sec = document.createElement('section'); sec.className = 'sec hw2319sec'; sec.id = 'hw2319s'; const u0 = 'homework/?code=' + encodeURIComponent(code) + '&n=' + encodeURIComponent(nm || code); sec.innerHTML = HC2795[code] || '<h2>Homework checks</h2><div class="small mute">Loading…</div><div style="margin-top:8px"><a class="btn ghost sm" href="' + E(u0) + '" target="coehw">Check homework</a></div>';   /* 2795: drawn in its final size at once (last copy, or the same shape while loading) so the page below does not jump */
-        h.parentElement.before(sec); const r = await call('list', { code });
+        h.parentElement.before(sec); const fromAhead = !!RC2795[code], r = RC2795[code] || await call('list', { code }); if(r && r.ok) RC2795[code] = r;
+        if(fromAhead) call('list', { code }).then(n => { if(!n || !n.ok || JSON.stringify(n.checks || []) === JSON.stringify(r.checks || [])) return; RC2795[code] = n; const o = document.getElementById('hw2319s'); if(o && o.isConnected){ o.remove(); stuSec(code, nm); } }).catch(() => {});   /* a newer check than the one fetched ahead replaces it */   /* a list fetched ahead is drawn in the same moment, with no in-between state */
         const L = (r && r.ok && r.checks) || [], u = 'homework/?code=' + encodeURIComponent(code) + '&n=' + encodeURIComponent(nm || code);
         sec.innerHTML = '<h2>Homework checks</h2>' + (L.length ? L.slice(0, 6).map(x => { const c = x.counts || {}, ch = ['grammar', 'spelling', 'words', 'punct'].filter(k => +c[k]).map(k => '<span style="color:' + CAT[k][1] + '">' + CAT[k][0] + ' ' + c[k] + '</span>').join('') + (+c.good ? '<span style="color:#15803D">Well done ' + c.good + '</span>' : '') + (Array.isArray(c.stamps) && c.stamps.length ? '<span>Stamps ' + c.stamps.length + '</span>' : '');
             return '<div class="it"><div class="g"><b>' + E(x.title || (x.kind === 'picture' ? 'Picture' : String(x.body || '').split(/\s+/).slice(0, 6).join(' ') + '…')) + '</b><div class="small mute">' + dt(x.created_at) + ' · ' + E(x.by_name || '') + ' · ' + errN(c) + ' to fix</div>' + (ch ? '<div class="chips">' + ch + '</div>' : '') + '</div>' + (x.img_marked_url ? '<a href="' + E(x.img_marked_url) + '" target="_blank" rel="noopener"><img src="' + E(x.img_marked_url) + '" alt="Marked picture" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid #E5E7EB"></a>' : '') + '</div>'; }).join('')
