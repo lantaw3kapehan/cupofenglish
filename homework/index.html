@@ -141,6 +141,8 @@ input.tt{width:100%;height:42px;border:1px solid var(--out);border-radius:10px;p
 @media(max-width:640px){.wrap{padding:12px 12px 40px}#essay{font-size:18px}.body{padding:18px 16px}.cnt b{font-size:18px}.top img.logo{height:30px}}
 
 @media(max-width:480px){nav.seg a{flex:1 1 0;justify-content:center;text-align:center;height:auto!important;min-height:40px;padding:6px 6px!important;line-height:1.2;font-size:13.5px}}   /* 2798: the three tabs share the row evenly on phones; a two-line label stays inside its pill */
+
+.fx2810{display:flex;align-items:center;gap:8px;margin-top:12px;padding:8px 10px;border-radius:12px;background:#FEF3F2}.fx2810 span{flex:1;font-weight:600;color:#B42318;font-size:14px}.fx2810 b{min-width:24px;text-align:center;font-size:18px;color:#B42318}.fx2810 button{width:32px;height:32px;border-radius:10px;border:1px solid #F3C9C4;background:#fff;font:600 16px Inter,sans-serif;color:#B42318;cursor:pointer}.fx2810 button.au{width:auto;padding:0 10px;font-size:12.5px;color:#6B6880;border-color:#E4E2EC}
 </style>
 </head>
 <body>
@@ -575,17 +577,29 @@ function marked(q){ const c = document.createElement('canvas'); c.width = PIC.ba
 /* ================= side panel ================= */
 function counts(){
   if(MODE === 'text'){ const o = { grammar: 0, spelling: 0, words: 0, punct: 0, good: 0, note: 0 }; TX.marks.forEach(m => o[m.c] = (o[m.c] || 0) + 1); o.stamps = TX.stamps.slice(); o.good += TX.stamps.filter(k => !FIXK.includes(k)).length; return o; }
-  const red = PIC.items.filter(i => (i.t === 'stamp' && FIXK.includes(i.k)) || (i.t !== 'stamp' && i.c === '#D92D20' && i.t !== 'pen' && i.t !== 'tick')).length, green = PIC.items.filter(i => (i.t === 'stamp' && !FIXK.includes(i.k)) || (i.t !== 'stamp' && i.c === '#16A34A' && i.t !== 'pen')).length;
-  return Object.assign({ fix: red, good: green }, PIC.cats); }
+  const green = PIC.items.filter(i => (i.t === 'stamp' && !FIXK.includes(i.k)) || (i.t !== 'stamp' && i.c === '#16A34A' && i.t !== 'pen')).length;
+  const auto = fixGroups2810(), set = PIC.cats.fixSet;
+  return Object.assign({}, PIC.cats, { fix: set >= 0 ? set : auto, fixAuto: auto, good: green }); }
+/* 2810 (Misty 18:23): 'To fix' counts MISTAKES, not marks. Red marks on the same line close together (a cross + its correction) are one mistake;
+   red pen corrections count too. The teacher can set the exact number with − / + (saved with the check, shown on the card). */
+function fixGroups2810(){ try{
+  const R = PIC.items.filter(i => (i.t === 'stamp' && FIXK.includes(i.k)) || (i.t !== 'stamp' && i.c === '#D92D20' && i.t !== 'tick')); if(!R.length) return 0;
+  const W = (PIC.base && PIC.base.width) || 1000, u = U(), B = R.map(i => bbox(i)), P = R.map((_, k) => k), f = k => { while(P[k] !== k){ P[k] = P[P[k]]; k = P[k]; } return k; };
+  for(let a = 0; a < B.length; a++) for(let b = a + 1; b < B.length; b++){ const A = B[a], C = B[b];
+    const vo = Math.min(A[3], C[3]) - Math.max(A[1], C[1]), hA = A[3] - A[1], hC = C[3] - C[1], gap = Math.max(0, Math.max(A[0], C[0]) - Math.min(A[2], C[2]));
+    if(vo > Math.min(hA, hC) * .35 - u * .3 && gap < W * .35) P[f(a)] = f(b); }
+  return new Set(P.map((_, k) => f(k))).size; }catch(e){ return PIC.items.filter(i => i.c === '#D92D20' && i.t !== 'tick').length; } }
 function side(){
   const b = $('cntBox'); if(!b) return; const o = counts();
   const box = k => `<div style="background:${CAT[k].bg}"><b style="color:${CAT[k].c}">${o[k] || 0}</b><span>${k === 'words' ? 'Words' : CAT[k].en}</span>${MODE === 'picture' ? `<div class="step"><button type="button" data-s="${k}" data-d="-1" aria-label="Less ${CAT[k].en}">−</button><button type="button" data-s="${k}" data-d="1" aria-label="More ${CAT[k].en}">+</button></div>` : ''}</div>`;
   let tip = '';
   if(MODE === 'text'){ const top = ERR.map(k => [k, o[k] || 0]).sort((a, c) => c[1] - a[1])[0]; if(top && top[1] >= 2) tip = `<div class="small" style="margin-top:10px;color:#374151"><b style="color:${CAT[top[0]].c}">${CAT[top[0]].en}</b> came up ${top[1]} times. It could be a good focus for the next classes.</div>`;
     if(o.good) tip += `<div class="small" style="margin-top:6px;color:#15803D">${o.good} part${o.good > 1 ? 's' : ''} marked Well done.</div>`; }
-  else tip = `<div class="small" style="margin-top:10px;color:#374151">On the picture: <b style="color:#B42318">${o.fix} to fix</b> (red circles, crosses, labels and Try again) and <b style="color:#15803D">${o.good} well done</b> (green marks and stamps). Use + to tag what the mistakes were about.</div>`;
+  else tip = `<div class="fx2810"><span>To fix on the card</span><button type="button" data-fx="-1" aria-label="One less">−</button><b>${o.fix}</b><button type="button" data-fx="1" aria-label="One more">+</button>${PIC.cats.fixSet >= 0 ? `<button type="button" class="au" data-fx="0">Auto (${o.fixAuto})</button>` : ''}</div>`
+    + `<div class="small" style="margin-top:6px;color:#4B5563">${PIC.cats.fixSet >= 0 ? 'Set by you.' : 'Counted from your red marks: one per mistake (a cross and its correction on the same line count once).'} Check it matches the mistakes before you copy. <b style="color:#15803D">${o.good} well done</b>. Use + above to tag what the mistakes were about.</div>`;
   b.innerHTML = `<div class="h2">This check</div><div class="cnt">${ERR.map(box).join('')}</div>${tip}`;
-  b.querySelectorAll('[data-s]').forEach(x => x.onclick = () => { const k = x.dataset.s; PIC.cats[k] = Math.max(0, (PIC.cats[k] || 0) + +x.dataset.d); dirty(); side(); }); }
+  b.querySelectorAll('[data-s]').forEach(x => x.onclick = () => { const k = x.dataset.s; PIC.cats[k] = Math.max(0, (PIC.cats[k] || 0) + +x.dataset.d); dirty(); side(); });
+  b.querySelectorAll('[data-fx]').forEach(x => x.onclick = () => { const d = +x.dataset.fx; if(!d) delete PIC.cats.fixSet; else PIC.cats.fixSet = Math.max(0, o.fix + d); dirty(); side(); try{ if(typeof draw === 'function') draw(); }catch(e){} }); }
 
 /* ================= Chinese of the note ================= */
 let zT = 0; function zhLater(){ clearTimeout(zT); zT = setTimeout(() => zhNow(), 900); }
@@ -644,7 +658,7 @@ async function openCheck(id){
   closeEd(); UNDO = []; REDO = []; CUR = { id: x.id }; $('note').value = x.note || ''; $('ttl').value = x.title || ''; ZH = { src: (x.note || '').trim(), zh: x.note_zh || '' };
   if(x.kind === 'text'){ setText(x.body || ''); TX.marks = Array.isArray(x.marks) ? x.marks : []; TX.stamps = Array.isArray((x.counts || {}).stamps) ? x.counts.stamps : []; MODE = 'text'; }
   else { try{ const im = await new Promise((ok, no) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = no; i.src = x.img_orig_url || x.img_marked_url; }); setBase(im); }catch(e){ return toast('The picture could not be loaded'); }
-    PIC.items = Array.isArray(x.marks) ? x.marks : []; PIC.origSaved = true; const c = x.counts || {}; PIC.cats = { grammar: +c.grammar || 0, spelling: +c.spelling || 0, words: +c.words || 0, punct: +c.punct || 0 }; MODE = 'picture'; }
+    PIC.items = Array.isArray(x.marks) ? x.marks : []; PIC.origSaved = true; const c = x.counts || {}; PIC.cats = { grammar: +c.grammar || 0, spelling: +c.spelling || 0, words: +c.words || 0, punct: +c.punct || 0 }; if(c.fixSet != null && +c.fixSet >= 0) PIC.cats.fixSet = +c.fixSet; MODE = 'picture'; }   /* 2810: the teacher's own To fix number comes back with the check */
   DIRTY = false; clearDraft(); paintMode(); loadHist(); const bx = $('zhBox'); if(bx){ bx.style.display = 'none'; bx.textContent = 'Chinese translation: ' + ZH.zh; } window.scrollTo({ top: 0, behavior: 'smooth' }); }
 function newCheck(){ if(DIRTY && hasWork() && !confirm('Start a new check? Unsaved marks on screen will be lost.')) return;
   closeEd(); TX.body = ''; TX.parts = []; TX.marks = []; TX.stamps = []; PIC.base = null; PIC.items = []; PIC.origSaved = false; PIC.cats = { grammar: 0, spelling: 0, words: 0, punct: 0 }; CUR = { id: null }; UNDO = []; REDO = []; DIRTY = false; clearDraft();
