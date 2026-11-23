@@ -2,6 +2,7 @@
    drawings on top, under the CupOfEnglish header. Each word is drawn where it sits on the screen (no outside program, no upload).
    coeSnap.shot(parts, ink, opt) → canvas · parts: elements stacked one under the other · ink: the drawing canvas (or null)
    coeSnap.withHead(canvas, { logo, title, meta, label }) → canvas with the header · coeSnap.copy(canvasOrPromise, button) */
+const SAFE2740 = new Map();   /* 2740: which photos can go into a picture */
 (function(){
   if(window.coeSnap) return;
   const tr = s => !s || s === 'transparent' || /rgba\(.*,\s*0\)$/.test(s);
@@ -23,7 +24,11 @@
           if(bw.every(x => x > 0 && x < 3) && bc.every(c => c === bc[0]) && !tr(bc[0]) && cs.borderTopStyle !== 'none'){ g.strokeStyle = bc[0]; g.lineWidth = bw[0]; rr(r.left + bw[0] / 2, r.top + bw[0] / 2, r.width - bw[0], r.height - bw[0], rad); g.stroke(); }
           else { [[0, () => [r.left, r.top, r.width, bw[0]]], [1, () => [r.right - bw[1], r.top, bw[1], r.height]], [2, () => [r.left, r.bottom - bw[2], r.width, bw[2]]], [3, () => [r.left, r.top, bw[3], r.height]]].forEach(([i, f]) => {
               if(bw[i] > 0 && !tr(bc[i]) && cs['border' + ['Top', 'Right', 'Bottom', 'Left'][i] + 'Style'] !== 'none'){ g.fillStyle = bc[i]; const q = f(); g.fillRect(q[0], q[1], q[2], q[3]); } }); }
-          if(n.tagName === 'IMG' && n.complete && n.naturalWidth){ try{ g.drawImage(n, r.left, r.top, r.width, r.height); }catch(e){} return; }
+          /* 2740 (Misty 23 Nov 10:46): a photo the browser will not let into a picture (no CORS) made the whole copy fail without a word.
+             Such a photo is now left out (a soft grey box in its place) and the rest of the screen is copied. */
+          if(n.tagName === 'IMG' && n.complete && n.naturalWidth){ let ok = SAFE2740.get(n.currentSrc || n.src);
+            if(ok === undefined){ try{ const pc = document.createElement('canvas'); pc.width = pc.height = 1; const pg = pc.getContext('2d'); pg.drawImage(n, 0, 0, 1, 1); pg.getImageData(0, 0, 1, 1); ok = true; }catch(e){ ok = false; } SAFE2740.set(n.currentSrc || n.src, ok); }
+            if(ok){ try{ g.drawImage(n, r.left, r.top, r.width, r.height); }catch(e){} } else { g.fillStyle = '#EEF0F4'; rr(r.left, r.top, r.width, r.height, rad); g.fill(); } return; }
           if(n.tagName === 'CANVAS' && !n.classList.contains('ink-c')){ try{ g.drawImage(n, r.left, r.top, r.width, r.height); }catch(e){} return; }
           if(n.tagName === 'SVG' || n.tagName === 'svg'){ return; }
           if((n.tagName === 'INPUT' || n.tagName === 'TEXTAREA') && n.value){ g.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily; g.fillStyle = cs.color; g.textBaseline = 'top'; g.fillText(n.value, r.left + (parseFloat(cs.paddingLeft) || 0), r.top + (parseFloat(cs.paddingTop) || 0)); return; }
