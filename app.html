@@ -4037,7 +4037,7 @@ window._CJ = { T, now, nxt, up, nowK, bu: T.filter(x => /^Book/.test(x.en)).leng
     const wks = ks.reduce((a, k) => { const p = k.split('-').map(Number), e = k === cur ? d0.getDate() : new Date(p[0], p[1], 0).getDate(), s = k === fm ? Math.min(fd, e) : 1; return a + Math.max(7, e - s + 1) / 7; }, 0);
     const raw = ks.reduce((a, k) => a + L[k], 0) / wks, v = raw > 0 ? Math.max(0.5, Math.round(raw * 2) / 2) : 0, cn = ks.reduce((a, k) => a + (N[k] || 0), 0), cw = cn ? Math.max(1, Math.round(cn / wks)) : 0, mins = cn ? Math.round(ks.reduce((a, k) => a + L[k], 0) / cn * 50 / 5) * 5 : 0;
     return v > 0 ? { v, n: ks.length, cw, mins } : null;   /* 0.5 steps: half and whole lessons · plus classes a week in plain words */ }catch(e){ return null; } })() };   /* 14 Oct: lessons a week from their history */
-const head = up > 0 ? '<b>Up ' + up + ' level step' + (up === 1 ? '' : 's') + '</b> since ' + esc(mon(st.d) || 'starting') + ' · 进步 ' + up + ' 个级别'
+const head = up > 0 ? '<b>Up ' + up + ' level step' + (up === 1 ? '' : 's') + '</b> since ' + esc(mon(st.d) || 'starting') + (typeof D !== 'undefined' && D && !D.mgr ? '' : ' · 进步 ' + up + ' 个级别')
 : '<b>' + CJ_L[now] + '</b> · building towards ' + CJ_L[nxt] + ' · 正在向 ' + CJ_L[nxt] + ' 迈进';
 return '<section class="sec cj"><style>.cj-st{display:flex;flex-direction:column;gap:5px;margin-top:12px}.cj-r{padding-left:var(--o)}.cj-b{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:8px 12px;border-radius:12px;background:#F6F7F9;color:#A3A1B0;border:2px solid transparent}.cj-lv{font-size:16px;min-width:50px}.cj-d{font-size:12px}.cj-x{font-size:11px;margin-left:auto;opacity:.85}.cj-tgs{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px}.cj-tg{font-size:11px;padding:2px 8px;border-radius:999px;background:#fff;color:#00737B}.cj-tg.lt{background:rgba(255,255,255,.18);color:#fff}.cj-r.dn .cj-b{background:#DDF2F1;color:#00737B}.cj-r.now .cj-b{background:#00737B;color:#fff;box-shadow:0 4px 12px rgba(0,115,123,.25)}.cj-r.nx .cj-b{background:#fff;border:2px dashed #E08A6F;color:#B4513B}.cj-r.nx .cj-tg{background:#FBEDE8;color:#B4513B}.cj-d{font-size:14px;font-weight:700}.cj-cn{flex-basis:100%;font-size:11px;opacity:.8}.cj-note{font-size:11px;color:#8A8799;margin-top:8px}</style>' +
 '<h2>CEFR journey <span class="c">学习进阶</span>' + (D && D.mgr ? '<button class="btn sm teal noprint" style="margin-left:auto;letter-spacing:0;text-transform:none" onclick="cjPic()">Picture to send</button>' : '') + '</h2><div class="small">' + head + '</div>' + (() => { const stK0 = mk(st.i), at = x => (/^Trial/.test(x.en) && chain.length ? mk(chain[0]) : mk(x.i)), cl = k => k === nowK ? 'now' : k === nowK + 1 ? 'nx' : k < nowK && k >= stK0 ? 'dn' : 'lt';
@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2279;
+const COE_V = 2280;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -18502,8 +18502,9 @@ details.lv28>summary{font-size:12.5px;color:#2F6F77;font-weight:700;cursor:point
   const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const SKC = { speaking: '#00A3AD', listening: '#6B5BD2', reading: '#E0A030', writing: '#D4705A', phonics: '#2B8C6E', vocabulary: '#3A7BD5', grammar: '#8A5A9E' };
   const skc = s => { const k = String(s || '').trim().toLowerCase(); return SKC[k] || SKC[Object.keys(SKC).find(x => k.indexOf(x) >= 0)] || '#8A86A0'; };
-  const pg = s => { const m = String(s || '').match(/p\.?\s*(\d{1,3})/i); return m ? +m[1] : null; };
-  const bk = s => { const m = String(s || '').trim().match(/^([A-Za-z]+\s?\d*)/); return m ? m[1].replace(/\s+/g, '').toUpperCase() : ''; };
+  const pg = s => { const m = String(s || '').match(/\b(?:pp?|pg|page)\.?\s*(\d{1,3})/i); return m ? +m[1] : null; };   /* 2782: 'page 18' counts too */
+  const bn = s => String(s || '').trim().split(/\s+·\s+|\s+(?:pp?\.|pg\.?|page|unit|u)\s*\d|,/i)[0].replace(/\s+(?:SB|WB|Student'?s Book|Workbook)$/i, '').trim();   /* 2782: the book's own name ('Letter Combinations'), not its first word in capitals */
+  const bk = s => bn(s).replace(/\s+/g, '').toUpperCase();
   const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   const nd = v => { const d = new Date(String(v || '').slice(0, 10) + 'T12:00:00'); return isNaN(d) ? String(v || '') : d.getDate() + ' ' + MN[d.getMonth()] + ' ' + d.getFullYear(); };
   const nmo = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})/); return m ? MN[+m[2] - 1] + ' ' + m[1] : String(v || ''); };
@@ -18526,7 +18527,7 @@ details.lv28>summary{font-size:12.5px;color:#2F6F77;font-weight:700;cursor:point
         (n.obs ? '<div class="ob">' + esc(n.obs) + '</div>' : '') + '<dl style="--c:#2F6F77">' + (n.ended ? '<dt>Ended</dt><dd>' + esc(n.ended) + '</dd>' : '') + (n.next ? '<dt>Next</dt><dd>' + esc(n.next) + '</dd>' : '') + (n.homework ? '<dt style="color:#8D6421">Homework</dt><dd>' + esc(n.homework) + '</dd>' : '') + '</dl></div></div>'; };
     const h2 = sec.querySelector('h2'); const head = h2 ? h2.outerHTML : '<h2>Class notes</h2>';
     sec.innerHTML = head + '<div class="nt30"><div class="st"><div><em>This month</em><b>' + thisM + '</b><small>notes</small></div><div><em>Homework</em><b>' + hw + '</b><small>this month</small></div>' +
-      '<div><em>Last page</em><b>' + (pg(lastEnd) != null ? 'p.' + pg(lastEnd) : '—') + '</b><small>' + esc(cur) + '</small></div><div><em>Pages reached' + (cur ? ' · ' + esc(cur) : '') + '</em>' + chart + '</div></div>' +
+      '<div><em>Last page</em><b>' + (pg(lastEnd) != null ? 'p.' + pg(lastEnd) : '—') + '</b><small>' + esc(bn(lastEnd)) + '</small></div><div><em>Pages reached' + (cur ? ' · ' + esc(bn(lastEnd)) : '') + '</em>' + chart + '</div></div>' +
       N.slice(0, 20).map(card).join('') + (N.length > 20 ? '<details class="old"><summary>Older notes · ' + (N.length - 20) + '</summary>' + N.slice(20).map(card).join('') + '</details>' : '') + '</div>';
     sec.dataset.n30 = N.length; }
   function checks(sec){ const C = (STU && STU.r && STU.r.checks) || []; if(!C.length) return; const h2 = sec.querySelector('h2');
@@ -18548,7 +18549,7 @@ details.lv28>summary{font-size:12.5px;color:#2F6F77;font-weight:700;cursor:point
     return '<section class="sec noprint" id="pg30" data-stab="pr"><h2>At a glance</h2><div class="pg30">' +
       '<div><em>Monthly score</em>' + (f0 ? '<b class="v">' + f0.total + '</b><small>/100 · ' + esc(window.fbClsLab && /^\d{4}-\d{2}/.test(String(f0.month || '')) ? fbClsLab(f0.month) + ' classes' : nmo(f0.month)) + '</small> ' + (df != null ? '<span class="' + (df >= 0 ? 'up' : 'dn') + '">' + (df >= 0 ? '▲ ' : '▼ ') + Math.abs(df) + '</span>' : '') + spark : '<small>No monthly feedback yet</small>') + '</div>' +
       '<div><em>Level</em><div class="lv">' + (lvNow ? '<span>' + esc(lvNow) + '</span>' : '<small>—</small>') + (lvNow ? '<small>now</small>' : '') + (nxt ? '<small>→ goal</small><span class="n">' + nxt + '</span>' : '') + '</div><small class="sp">' + (nxt ? 'working towards ' + nxt : '') + '</small></div>' +
-      '<div><em>Progress check</em>' + (c0 ? '<b class="v" style="font-size:18px">' + esc(nd(c0.date)) + '</b><small class="sp">Speaking ' + esc(c0.speaking) + '/20 · Listening ' + esc(c0.listening) + '/8 · Reading ' + esc(c0.reading) + '/8</small>' : '<small>None yet · ask the teacher</small>') + '</div>' +
+      '<div><em>Progress check</em>' + (c0 ? '<b class="v" style="font-size:18px">' + esc(nd(c0.date)) + '</b><small class="sp">Speaking ' + esc(c0.speaking) + '/20 · Listening ' + esc(c0.listening) + '/8 · Reading ' + esc(c0.reading) + '/8</small>' : '<small>' + (D && D.mgr ? 'None yet · ask the teacher' : 'None yet') + '</small>') + '</div>' +
       '<div><em>Class notes</em><b class="v">' + nm + '</b><small> this month</small><small class="sp">' + (N[0] ? 'last ' + esc(nd(N[0].date)) : 'none yet') + '</small></div></div></section>'; }
   function paint(){ const body = $('sheetBody'); if(!body || typeof STU === 'undefined' || !STU || !STU.r || !body.querySelector('.shero')) return;
     [...body.querySelectorAll(':scope > section.sec')].forEach(sec => { const h = sec.querySelector('h2'); const t = h ? h.textContent.trim() : '';
@@ -45660,5 +45661,18 @@ body #v-today #tv2 .fx .cls,body #v-today #tv2 tr.ex .cls{display:block!importan
   window.p2773 = build;
 })();
 </script>
+<style id="s2782">
+/* 2782 (Misty 23 Nov 13:25: go through every teacher screen as a teacher and as an app developer; less space, cleaner, nothing cut) */
+/* Schedule · the List / Calendar switch sits on the week row; the day tiles are half as tall (the tiny bar under each day said nothing the number does not) */
+body.role-t #v-tsched .ld501{display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:8px}
+body.role-t #v-tsched .ld501 > h1,body.role-t #v-tsched .ld501 > .mute.small{flex:1 0 100%;margin-bottom:0}
+body.role-t #v-tsched .ld501 > .c01sw{margin:0 0 0 auto!important}
+body.role-t #v-tsched .wk501 a{padding-top:8px!important;padding-bottom:8px!important;min-height:0!important;height:auto!important}
+body.role-t #v-tsched .wk501 a .h{display:none!important}
+body.role-t #v-tsched .wk501 a .d{font-size:18px!important}
+/* Student page · the close ✕ sat on top of the student's summary box; link-buttons (Workbook · last p. 7) and buttons line up */
+#sheetBody > .shero:first-child{margin-right:44px}
+#sheetBody a.btn,#sheetBody button.btn{vertical-align:middle}
+</style>
 </body>
 </html>
