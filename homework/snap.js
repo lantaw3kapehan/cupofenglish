@@ -2,7 +2,7 @@
    drawings on top, under the CupOfEnglish header. Each word is drawn where it sits on the screen (no outside program, no upload).
    coeSnap.shot(parts, ink, opt) → canvas · parts: elements stacked one under the other · ink: the drawing canvas (or null)
    coeSnap.withHead(canvas, { logo, title, meta, label }) → canvas with the header · coeSnap.copy(canvasOrPromise, button) */
-const SAFE2740 = new Map();   /* 2740: which photos can go into a picture */
+const SAFE2740 = new Map(), SVG2743 = new WeakMap();   /* 2740: which photos can go into a picture */
 (function(){
   if(window.coeSnap) return;
   const tr = s => !s || s === 'transparent' || /rgba\(.*,\s*0\)$/.test(s);
@@ -30,7 +30,7 @@ const SAFE2740 = new Map();   /* 2740: which photos can go into a picture */
             if(ok === undefined){ try{ const pc = document.createElement('canvas'); pc.width = pc.height = 1; const pg = pc.getContext('2d'); pg.drawImage(n, 0, 0, 1, 1); pg.getImageData(0, 0, 1, 1); ok = true; }catch(e){ ok = false; } SAFE2740.set(n.currentSrc || n.src, ok); }
             if(ok){ try{ g.drawImage(n, r.left, r.top, r.width, r.height); }catch(e){} } else { g.fillStyle = '#EEF0F4'; rr(r.left, r.top, r.width, r.height, rad); g.fill(); } return; }
           if(n.tagName === 'CANVAS' && !n.classList.contains('ink-c')){ try{ g.drawImage(n, r.left, r.top, r.width, r.height); }catch(e){} return; }
-          if(n.tagName === 'SVG' || n.tagName === 'svg'){ return; }
+          if(n.tagName === 'SVG' || n.tagName === 'svg'){ const im = SVG2743.get(n); if(im) try{ g.drawImage(im, r.left, r.top, r.width, r.height); }catch(e){} return; }   /* 2743: icons are copied too */
           if((n.tagName === 'INPUT' || n.tagName === 'TEXTAREA') && n.value){ g.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily; g.fillStyle = cs.color; g.textBaseline = 'top'; g.fillText(n.value, r.left + (parseFloat(cs.paddingLeft) || 0), r.top + (parseFloat(cs.paddingTop) || 0)); return; }
           n.childNodes.forEach(walk); return; }
         if(n.nodeType !== 3 || !n.nodeValue.replace(/[\s​]/g, '')) return; const el = n.parentNode, cs = getComputedStyle(el), fs = parseFloat(cs.fontSize);
@@ -39,11 +39,14 @@ const SAFE2740 = new Map();   /* 2740: which photos can go into a picture */
         while((k = re.exec(n.nodeValue))){ rg.setStart(n, k.index); rg.setEnd(n, k.index + k[0].length); const RR = rg.getClientRects(), q = RR[0]; if(!q) continue; const by = q.top + asc;
           /* 2743 (23 Nov): a run with no spaces that wraps over several lines (Chinese) was drawn on one line, past the card's edge.
              Such a run is now drawn character by character, each where the browser shows it. */
-          if(RR.length > 1){ let i = 0; for(const ch of k[0]){ rg.setStart(n, k.index + i); rg.setEnd(n, k.index + i + ch.length); const c1 = rg.getClientRects()[0]; if(c1) g.fillText(tt === 'uppercase' ? ch.toUpperCase() : ch, c1.left, c1.top + asc); i += ch.length; } D.forEach(([ty, col]) => { for(const r1 of RR){ g.fillStyle = col; g.fillRect(r1.left, ty === 's' ? r1.top + asc - fs * 0.3 : r1.top + asc + 3, r1.width, Math.max(1.5, fs / 12)); } g.fillStyle = cs.color; }); continue; }
+          if(RR.length > 1){ let i = 0; for(const ch of k[0]){ rg.setStart(n, k.index + i); rg.setEnd(n, k.index + i + ch.length); const c1 = rg.getClientRects()[0]; if(c1) g.fillText(tt === 'uppercase' ? ch.toUpperCase() : ch, c1.left, c1.top + asc); i += ch.length; } continue; }
           let t = k[0]; if(tt === 'uppercase') t = t.toUpperCase(); else if(tt === 'lowercase') t = t.toLowerCase();
           const ls = parseFloat(cs.letterSpacing) || 0; if(ls && g.letterSpacing !== undefined) g.letterSpacing = ls + 'px';
           g.fillText(t, q.left, by); if(ls && g.letterSpacing !== undefined) g.letterSpacing = '0px';
-          D.forEach(([ty, col]) => { g.fillStyle = col; g.fillRect(q.left, ty === 's' ? by - fs * 0.3 : by + 3, q.width, Math.max(1.5, fs / 12)); g.fillStyle = cs.color; }); } };
+        }
+        /* 2743: underline / line-through drawn once per screen line of the whole text (no gaps between words) */
+        if(D.length){ const t0 = n.nodeValue.search(/\S/), t1 = n.nodeValue.replace(/\s+$/, '').length; if(t0 > -1 && t1 > t0){ rg.setStart(n, t0); rg.setEnd(n, t1);
+          for(const r1 of rg.getClientRects()){ if(r1.width < 1) continue; const b1 = r1.top + asc; D.forEach(([ty, col]) => { g.fillStyle = col; g.fillRect(r1.left, ty === 's' ? b1 - fs * 0.3 : b1 + 3, r1.width, Math.max(1.5, fs / 12)); }); } g.fillStyle = cs.color; } } };
       walk(root); };
     let yy = pad;
     parts.forEach((part, i) => { const r = box[i]; g.save(); g.translate(pad - L, yy - r.top); g.beginPath(); g.rect(L - 2, r.top - 2, Rr - L + 4, r.height + 4); g.clip(); paint(part);
@@ -64,5 +67,11 @@ const SAFE2740 = new Map();   /* 2740: which photos can go into a picture */
     catch(e){ try{ const bl = await bp, a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = (name || 'screen') + '.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); if(btn) btn.textContent = 'Saved as a file'; }catch(x){ if(btn) btn.textContent = 'Could not copy'; } }
     if(btn) setTimeout(() => { btn.textContent = was; btn.disabled = false; }, 2200); }
   function logo(src){ return new Promise(z => { const im = new Image(); im.onload = () => z(im); im.onerror = () => z(null); im.src = src; }); }
-  window.coeSnap = { shot, trim, withHead, copy, logo };
+  /* 2743: before a copy, each icon (SVG) on the screen is turned into a picture, with its colour, so shot() can draw it */
+  async function prep(parts){ const L = []; (parts || []).filter(Boolean).forEach(p => p.querySelectorAll('svg').forEach(v => L.push(v)));
+    await Promise.all(L.map(v => new Promise(ok => { try{ const r = v.getBoundingClientRect(); if(!r.width || !r.height){ ok(); return; } const c = v.cloneNode(true), cs = getComputedStyle(v);
+      c.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); c.setAttribute('width', r.width); c.setAttribute('height', r.height); c.style.color = cs.color;
+      const x = new XMLSerializer().serializeToString(c).replace(/currentColor/g, cs.color), im = new Image(); im.onload = () => { SVG2743.set(v, im); ok(); }; im.onerror = () => ok(); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(x); }catch(e){ ok(); } })));
+  }
+  window.coeSnap = { shot, trim, withHead, copy, logo, prep };
 })();
