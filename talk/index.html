@@ -720,6 +720,10 @@ function usedAsk(who, when, by, title, go){ const box = document.createElement('
 function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? K.ielts : K.free).find(x => x.id === id); if(!t) return; window.__kitT0 = Date.now();
   const plan = K.plans[kind + len] || []; let step = 0, left = plan.length ? plan[0][2] * 60 : 0, run = true, tick = null, mini = null, notes = false, open = -1, cmt = ''; const marks = {}, used = {};
   const who = (kitStu() || {}).name || '';
+  /* 2804 (Misty 16:57): the class keeps its place, marks, phrases used and the comment through a refresh or a closed tab (same topic, student and day, 8 hours) */
+  const SK2804 = 'coe.kitst.' + kind + '.' + id + '.' + who + '.' + new Date().toISOString().slice(0, 10);
+  try{ const o = JSON.parse(localStorage.getItem(SK2804) || 'null'); if(o && Date.now() - o.at < 8 * 3600e3){ step = Math.max(0, Math.min(o.step || 0, plan.length - 1)); Object.assign(marks, o.marks || {}); Object.assign(used, o.used || {}); cmt = o.cmt || ''; if(o.left > 0) left = o.left; } }catch(e){}
+  const keep2804 = () => { try{ localStorage.setItem(SK2804, JSON.stringify({ at: Date.now(), step, marks, used, cmt, left })); }catch(e){} };
   document.body.classList.add('present'); $('hT').textContent = (kind === 'ielts' ? 'IELTS Speaking' : 'Free talk') + ' / ' + (kind === 'ielts' ? '雅思口语' : '自由会话');
   hSet2757(who, len + ' minutes');
   $('hBtns').innerHTML = FSB2738 + '<button class="btn sm" id="bX" type="button">Close</button>';
@@ -749,7 +753,7 @@ function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? 
     if(k === 'p3') return '<div class="kpanel"><div class="kk">Part 3 · Discussion · 4–5 min in the test</div>' + qs(t.p3) + '</div><div class="kpanel"><div class="kk">Useful phrases · 常用表达</div>' + ph([['On the one hand… on the other hand…', '一方面……另一方面……'], ['It depends on…', '这取决于……'], ['For example,…', '例如，……'], ['In the future, I think…', '我认为将来……']]) + '</div>';
     return '<div class="kpanel"><div class="kk">Feedback · 课堂反馈</div>' + RUB.map(r => '<div class="kq"><span><b>' + esc(r[0]) + '</b> · ' + esc(r[1]) + '</span></div>').join('') + '</div><div class="kpanel"><div class="kk">Next time · 下次</div>' + qs(['One thing you did well today:', 'One thing to practise before next class:']) + '</div>'; }
   function teacher(){ if(!notes) return ''; return notesHtml(RUB, marks, cmt); }
-  function paint(){ const tot = plan.reduce((a, p) => a + p[2], 0) || 1;
+  function paint(){ keep2804(); const tot = plan.reduce((a, p) => a + p[2], 0) || 1;
     app.innerHTML = '<div class="kv"><div class="khd"><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="lb" style="background:#F1F0F6;color:#4A4566">' + (kind === 'ielts' ? 'IELTS Speaking' : esc(ST[t.strand] || t.strand)) + '</span>' + (kind === 'free' ? '<span class="lb l-' + t.lv + '" data-lvx="1">' + LV[t.lv] + ' · ' + LVZ[t.lv] + ' · CEFR A2–B2</span>' : '') + '</div><div style="display:flex;align-items:center;gap:10px"><span class="ktm" id="kT">' + mm(left) + '</span><button class="btn sm" type="button" id="kRun">' + (run ? 'Pause' : 'Start') + '</button></div></div>'
       + '<div class="kbar">' + plan.map((p, i) => '<i class="' + (i < step ? 'd' : i === step ? 'c' : '') + '" style="flex:' + p[2] + '"></i>').join('') + '</div><div class="klab">' + plan.map(p => '<span style="flex:' + p[2] + '">' + esc(p[1]) + ' · ' + p[2] + '</span>').join('') + '</div>'
       + '<h2>' + esc(kind === 'ielts' ? (plan[step] || [])[1] + ' · ' + t.theme : t.title) + '</h2><p class="zt">' + esc(kind === 'ielts' ? t.zh : t.zh) + '</p>'
@@ -759,7 +763,7 @@ function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? 
     $('kB').onclick = () => go(step - 1); $('kN').onclick = () => { if(step < plan.length - 1) go(step + 1); else close(); };
     if($('kNotes')) $('kNotes').onclick = () => { notes = !notes; paint(); if(notes){ const n = $('kNotesP'); if(n) n.scrollIntoView({ behavior: 'smooth', block: 'center' }); } };
     app.querySelectorAll('[data-rb]').forEach(b => b.onclick = () => { const [i, n] = b.dataset.rb.split(':').map(Number); marks[i] = marks[i] === n ? 0 : n; paint(); });
-    if($('kCm')) $('kCm').oninput = e => { cmt = e.target.value; };
+    if($('kCm')) $('kCm').oninput = e => { cmt = e.target.value; keep2804(); };
     app.querySelectorAll('[data-pi]').forEach(b => b.onclick = () => { const i = +b.dataset.pi; open = open === i ? -1 : i; paint(); });
     app.querySelectorAll('[data-pclose]').forEach(b => b.onclick = () => { open = -1; paint(); });
     if($('kUsed')) $('kUsed').onclick = () => { const p = t.phrases[open][0]; used[p] = !used[p]; paint(); };
@@ -788,6 +792,9 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
     else if(k === 'p3') (len === '25' ? t.p3.slice(0, 2) : t.p3).forEach((q, n, a) => S.push({ ph: i, k, it: q, n, of: a.length }));
     else S.push({ ph: i, k: 'fb' }); });
   let si = 0, left = P[0][2] * 60, run = true, show = false, notes = false, mini = null, open = -1, cmt = ''; const marks = {}, used = {}, seen = {};
+  const SK2804 = 'coe.kitst.ielts.' + t.id + '.' + (((typeof kitStu === 'function' && kitStu()) || {}).name || '') + '.' + new Date().toISOString().slice(0, 10);   /* 2804 */
+  try{ const o = JSON.parse(localStorage.getItem(SK2804) || 'null'); if(o && Date.now() - o.at < 8 * 3600e3){ si = Math.max(0, Math.min(o.si || 0, S.length - 1)); Object.assign(marks, o.marks || {}); Object.assign(used, o.used || {}); Object.assign(seen, o.seen || {}); cmt = o.cmt || ''; if(o.left > 0) left = o.left; } }catch(e){}
+  const keep2804 = () => { try{ localStorage.setItem(SK2804, JSON.stringify({ at: Date.now(), si, marks, used, seen, cmt, left })); }catch(e){} };
   /* 2691 (Misty 22 Nov 13:46, Yufan): remember which IELTS set this lesson used and how far it got, so the trial report (IELTS scoring in the app)
      shows the same questions and only the parts reached. Kept on this computer (localStorage coe.kit.ieltsLast). */
   const REACH = {}; const rec2691 = () => { try{ const k = S[si] && S[si].k; if(k) REACH[k] = 1; const st = kitStu() || {};
@@ -836,7 +843,7 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
     return '<div style="grid-column:1/-1"><div class="kk" style="margin-bottom:8px">Feedback · 课堂反馈</div><div class="krow4">' + RUB.map(r => '<div><b>' + esc(r[0]) + '</b>' + r[1].map(q => '<p>' + esc(q) + '</p>').join('') + '</div>').join('') + '</div><div class="kpanel" style="margin-top:12px">' + ['One thing you did well today:', 'One structure to use more (A–R–E, P–P–F or P–R–E–L):', 'One thing to practise before next class:'].map((q, i) => '<div class="kq"><i>' + (i + 1) + '</i><span>' + esc(q) + '</span></div>').join('') + '</div>'
       + (() => { const U = Object.keys(used).filter(p => used[p]), T = Object.keys(seen).filter(p => !used[p]); if(!U.length && !T.length) return ''; return '<div class="kpanel" style="margin-top:12px"><div class="kk">Words and phrases today</div>' + (U.length ? '<div class="sub" style="margin:0">Used well</div><div class="kph">' + U.map(p => '<span class="kpc used">' + esc(p) + '</span>').join('') + '</div>' : '') + (T.length ? '<div class="sub" style="margin:6px 0 0">Practise next class</div><div class="kph">' + T.slice(0, 12).map(p => '<span class="kpc">' + esc(p) + '</span>').join('') + '</div>' : '') + '</div>'; })() + '</div>'; }
   function teacher(){ if(!notes) return ''; return notesHtml(RUB, marks, cmt); }
-  function paint(){ const x = S[si], phn = x.ph;
+  function paint(){ keep2804(); const x = S[si], phn = x.ph;
     app.innerHTML = '<div class="kv"><div class="khd"><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="lb" style="background:#E6EEFB;color:#2B4C8C">IELTS Speaking · ' + esc(t.theme) + ' · ' + esc(t.zh) + '</span></div><div style="display:flex;align-items:center;gap:10px"><span class="ktm" id="kT">' + mm(left) + '</span><button class="btn sm" type="button" id="kRun">' + (run ? 'Pause' : 'Start') + '</button></div></div>'
       + '<div class="kbar">' + P.map((p, i) => '<i class="' + (i < phn ? 'd' : i === phn ? 'c' : '') + '" style="flex:' + p[2] + '"></i>').join('') + '</div><div class="klab">' + P.map(p => '<span style="flex:' + p[2] + '">' + esc(p[1]) + ' · ' + p[2] + '</span>').join('') + '</div>'
       + '<h2>' + esc(P[phn][1]) + '</h2><p class="zt">' + esc(t.theme) + (t.zh ? ' · ' + esc(t.zh) : '') + '</p>'
@@ -846,7 +853,7 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
     $('kB').onclick = () => go(si - 1); $('kN').onclick = () => { if(si < S.length - 1) go(si + 1); else close(); };
     $('kNotes').onclick = () => { notes = !notes; paint(); if(notes){ const n = $('kNotesP'); if(n) n.scrollIntoView({ behavior: 'smooth', block: 'center' }); } };
     $('kPic').onclick = () => copyKitPic(ieltsSpec(t), 'ielts-speaking');
-    if($('kCm')) $('kCm').oninput = e => { cmt = e.target.value; };
+    if($('kCm')) $('kCm').oninput = e => { cmt = e.target.value; keep2804(); };
     try{ window.CoeInk && CoeInk.page(app.querySelector('.kv'), 'ielts:' + t.id + ':' + si); }catch(e){} rec2691();
     if($('kShow')) $('kShow').onclick = () => { show = !show; paint(); };
     app.querySelectorAll('[data-pi]').forEach(b => b.onclick = () => { const i = +b.dataset.pi; open = open === i ? -1 : i; paint(); });
