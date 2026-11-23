@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2263;
+const COE_V = 2264;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -45426,6 +45426,68 @@ window.bk2556 = function(t){ try{ const code = String(t.code || '').toUpperCase(
   document.head.appendChild(st2);
   const hook = () => { const rt = window.renderToday; if(typeof rt !== 'function' || rt.__s2766) return; const w = function(){ const r = rt.apply(this, arguments); setTimeout(state, 0); setTimeout(state, 450); setTimeout(state, 1300); return r; }; w.__s2766 = 1; Object.keys(rt).forEach(k => { try{ w[k] = rt[k]; }catch(e){} }); window.renderToday = w; try{ renderToday = w; }catch(e){} };
   hook(); setTimeout(hook, 2500); setTimeout(hook, 10000); setInterval(() => { hook(); state(); }, 20000); setTimeout(state, 800); setTimeout(state, 3000);
+})();
+</script>
+<script>
+/* 2769 (Misty 23 Nov 12:52, option "A with B's rule"): the Today screen for every teacher.
+   · The next (or running) class stays the one full focus card at the top, with Book as the main button.
+   · Every other class is a compact two-line row: time · student · book · steps on line 1; last class and the actions on line 2.
+     The meeting ID line shows when the row is clicked open.
+   · B's rule: "Class note" appears only once the class has started (it is written after class); before that a card offers
+     Class brief · Book · Homework (checking homework is a before-class job, so it stays).
+   Nothing is removed from the page: hidden parts are still there and show when a row is opened. */
+(function(){ if(window.__p2769) return; window.__p2769 = 1;
+  const css = document.createElement('style'); css.id = 's2769'; css.textContent = `
+#v-today .cls.r2769{padding:12px 18px!important;cursor:pointer}
+#v-today .cls.r2769 .t b{font-size:17px}
+#v-today .cls.r2769 .t span{font-size:12px}
+#v-today .cls.r2769 .grow{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:14px;row-gap:4px;align-items:center}
+#v-today .cls.r2769 .grow > *{grid-column:1/-1}
+#v-today .cls.r2769 .grow > .row{margin:0}
+#v-today .cls.r2769 .grow > .small.mute{display:none}
+#v-today .cls.r2769.op2769 .grow > .small.mute{display:block}
+#v-today .cls.r2769 .grow > .note{grid-column:1;grid-row:2;background:none!important;border:0!important;padding:0!important;margin:0!important;font-size:13px;color:#77738F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#v-today .cls.r2769 .grow > .note b{font-weight:500;color:#5E5A76}
+#v-today .cls.r2769.op2769 .grow > .note{white-space:normal}
+#v-today .cls.r2769 .grow > .cact{grid-column:2;grid-row:2;margin:0!important;display:flex;flex-wrap:nowrap;gap:6px;align-items:center;justify-content:flex-end}
+#v-today .cls.r2769 .cact .btn{height:32px!important;min-height:32px!important;font-size:13px!important;padding:0 12px!important}
+#v-today .cls.r2769 .cact [onclick^="timeInSheet"],#v-today .cls.r2769 .cact .tiw2769{display:none}
+#v-today .cls.pre2769 .cact [onclick^="noteSheet("]{display:none!important}
+#v-today .nn1104 .cls .cact .bkb{background:#0E7C7B!important;border-color:#0E7C7B!important;color:#fff!important}
+#v-today .nn1104 .cls .cact .bkb i{background:#fff!important}
+#v-today .cls.r2769 .grow > .row{flex-wrap:nowrap!important;min-width:0}
+#v-today .cls.r2769:not(.op2769) .cs93.p20{grid-template-columns:repeat(4,26px) auto;column-gap:4px;align-items:center;row-gap:0}
+#v-today .cls.r2769:not(.op2769) .cs93.p20 b{display:none}
+#v-today .cls.r2769:not(.op2769) .cs93.p20 span::before{height:6px}
+#v-today .cls.r2769:not(.op2769) .cs93.p20 em{margin-top:0;font-size:11.5px}
+#v-today .cls.r2769:not(.op2769) .cact [onclick^="classBrief("]{display:none}
+#v-today .cls.r2769.op2769 .grow > .row{flex-wrap:wrap!important}
+#v-today .cls.r2769.op2769 .grow > .note,#v-today .cls.r2769.op2769 .grow > .cact{grid-column:1/-1;grid-row:auto;justify-content:flex-start;flex-wrap:wrap}
+#v-today .cls.r2769.op2769{background:#FCFCFE!important}
+@media(max-width:760px){#v-today .cls.r2769 .grow{grid-template-columns:1fr}#v-today .cls.r2769 .grow > .note,#v-today .cls.r2769 .grow > .cact{grid-column:1/-1;grid-row:auto;justify-content:flex-start;flex-wrap:wrap}}`;
+  document.head.appendChild(css);
+  const idOf = card => { const b = card.querySelector('[onclick^="classBrief("]'); return b && (b.getAttribute('onclick').match(/classBrief\('([^']+)'/) || [])[1]; };
+  function apply(){ try{ const v = document.getElementById('v-today'); if(!v || typeof D === 'undefined' || !D || D.mgr) return;
+      const now = Date.now(), L = (D.schedule || []).filter(c => c && c.day === D.today && !c.cancelled);
+      /* the focus card: when the Today arranger (1104) did not pin the next class (it can miss it if the list was still loading), pin it here */
+      if(!v.querySelector(':scope > .nn1104') && v.querySelector(':scope > .lead')){
+        const S = L.slice().sort((a, b) => String(a.start).localeCompare(String(b.start))), nx = S.find(c => +new Date(c.end) >= now);
+        const card = nx && [...v.querySelectorAll('.cls')].find(k => idOf(k) === nx.id && !k.closest('.cd1200'));
+        if(card){ const p2 = n => (n < 10 ? '0' : '') + n, st = new Date(nx.start), en = new Date(nx.end), run = now >= +st, mins = Math.max(0, Math.round((+st - now) / 6e4));
+          const span = m => m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
+          const nn = document.createElement('section'); nn.className = 'nn1104'; nn.setAttribute('aria-label', 'Now and next');
+          nn.innerHTML = '<div class="nn-h"><h2>' + (run ? 'Now' : 'Next class') + '</h2></div><div class="nn-g"><div class="nn-i"><span class="nn-t' + (run ? '' : ' nx') + '"><i></i>' + (run ? 'Now · ends ' + p2(en.getHours()) + ':' + p2(en.getMinutes()) : 'Next · ' + p2(st.getHours()) + ':' + p2(st.getMinutes()) + (mins ? ' · in ' + span(mins) : '')) + '</span></div></div>';
+          nn.querySelector('.nn-i').appendChild(card); const td = v.querySelector(':scope > .td1104'); if(td) td.before(nn); else v.querySelector(':scope > .lead').after(nn); } }
+      v.querySelectorAll('.cls').forEach(card => { if(card.classList.contains('x')) return; const focus = !!card.closest('.nn1104');
+        const c = L.find(x => x.id === idOf(card)); const pre = !!(c && now < +new Date(c.start));
+        if(card.classList.contains('r2769') === focus) card.classList.toggle('r2769', !focus);
+        if(card.classList.contains('pre2769') !== pre) card.classList.toggle('pre2769', pre);
+        [...card.querySelectorAll('.cact .btn')].forEach(b => { if(/^How time-in works$/.test(b.textContent.trim()) && !b.classList.contains('tiw2769')) b.classList.add('tiw2769'); }); }); }catch(e){} }
+  document.addEventListener('click', function h2769(e){ const card = e.target.closest && e.target.closest('#v-today .cls.r2769'); if(!card) return;
+    if(e.target.closest('button,a,input,select,textarea,label,[onclick]:not(.cls),.cs93,.m20')) return; card.classList.toggle('op2769'); });
+  const hook = () => { const rt = window.renderToday; if(typeof rt !== 'function' || rt.__p2769) return; const w = function(){ const r = rt.apply(this, arguments); apply(); setTimeout(apply, 0); setTimeout(apply, 450); setTimeout(apply, 1300); return r; }; Object.keys(rt).forEach(k => { try{ w[k] = rt[k]; }catch(e){} }); w.__p2769 = 1; window.renderToday = w; try{ renderToday = w; }catch(e){} };
+  hook(); setTimeout(hook, 2500); setTimeout(hook, 10000); setInterval(() => { hook(); apply(); }, 20000); setTimeout(apply, 300); setTimeout(apply, 1500); setTimeout(apply, 4000);
+  window.p2769 = apply;
 })();
 </script>
 </body>
