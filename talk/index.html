@@ -217,6 +217,8 @@ body.present .st .wch.phr{font-size:clamp(17px,1.35vw,20px)}
 body.present .st .q{font-size:clamp(18px,1.4vw,22px)}
 body.present .st .think,body.present .st .tryh{font-size:clamp(17px,1.35vw,21px)}
 @media (max-width:860px){.tp,.st .cols{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.search{width:100%;margin-left:0}}
+
+.tt #hS b.hnm{display:inline-block;font-size:12.5px;line-height:1.5;padding:0 8px;border-radius:999px;font-weight:700}.tt #hS .hnm.t{background:#ECE9F7;color:#3C3489}.tt #hS .hnm.s{background:#E4F6F6;color:#0E6F68}.tt #hS .hstu{padding:0 9px;font-size:12px;min-height:0;height:20px;line-height:18px;vertical-align:baseline}
 </style>
 </head>
 <body>
@@ -605,8 +607,8 @@ function paintTopic(){ const t = CUR, L = CLV, qs = (t.q && t.q[L]) || [], th = 
   if($('bPhX')) $('bPhX').onclick = async () => { if(!confirm('Remove the photo from this topic?')) return; try{ await call('coe-talk', { token: TOKEN, op: 'photo', id: t.id, remove: true }); t.photo = null; toast('Photo removed'); paintTopic(); }catch(e){ toast(String(e.message || e)); } };
   if($('bAp')) $('bAp').onclick = async () => { const b = $('bAp'); b.disabled = true; try{ await call('coe-talk', { token: TOKEN, op: 'approve', id: t.id }); t.status = 'approved'; toast('Approved. Teachers see it now.'); paintTopic(); }catch(e){ b.disabled = false; toast(e.message); } };
   if($('bRet')) $('bRet').onclick = async () => { if(!confirm('Take this topic out of the library?\n\nTeachers will no longer see it. You can put it back from "Taken out" at the bottom of the library.')) return; try{ await call('coe-talk', { token: TOKEN, op: 'retire', id: t.id }); t.status = 'retired'; toast('Taken out of the library.'); history.pushState({}, '', location.pathname); paintLib(); }catch(e){ toast(e.message); } };
-  if($('stuSel')){ students().then(L2 => { const s = $('stuSel'); if(!s) return; s.innerHTML = '<option value="">Choose your student</option>' + L2.map(x => '<option value="' + esc(x.code) + '">' + esc(x.student) + ' · ' + esc(x.code) + '</option>').join(''); const k = sessionStorage.getItem('coe.talk.stu'); if(k) s.value = k; s.onchange = () => sessionStorage.setItem('coe.talk.stu', s.value); }); }
-  const pick = () => { const s = $('stuSel'), code = s ? s.value : '', nm = s && s.value ? s.options[s.selectedIndex].text.split(' · ')[0] : ''; return { code, nm }; };
+  if($('stuSel')){ students().then(L2 => { const s = $('stuSel'); if(!s) return; s.innerHTML = '<option value="">Choose your student</option>' + L2.map(x => '<option value="' + esc(x.code) + '">' + esc(x.student) + ' · ' + esc(x.code) + '</option>').join(''); const k = sessionStorage.getItem('coe.talk.stu') || (kitStu() || {}).code; if(k) s.value = k; s.onchange = () => { sessionStorage.setItem('coe.talk.stu', s.value); try{ if(s.value) sessionStorage.setItem('coe.kit.stu', JSON.stringify({ code: s.value, name: s.options[s.selectedIndex].text.split(' · ')[0] })); }catch(e){} }; }); }   /* 2757: one student across Talk of the Day, Free Talk and IELTS */
+  const pick = () => { const s = $('stuSel'), code = s ? s.value : '', nm = s && s.value ? s.options[s.selectedIndex].text.split(' · ')[0] : ''; if(!code){ const k = kitStu(); if(k) return { code: k.code, nm: k.name }; } return { code, nm }; };
   const mark = p => { if(!p.code) return; call('coe-talk', { token: TOKEN, op: 'use', id: t.id, code: p.code, student: p.nm }).then(() => { if(!usedOf(t.id).some(u => u.code === p.code)){ D.counts = D.counts || {}; const c = D.counts[t.id] || (D.counts[t.id] = { n: 0, t: 0 }); c.n++; if(!c.t) c.t = 1; } D.used = (D.used || []).filter(u => !(u.topic === t.id && u.code === p.code)).concat([{ topic: t.id, code: p.code, student: p.nm, at: new Date().toISOString() }]); }).catch(() => {}); };
   if($('bCopy')) $('bCopy').onclick = async () => { const p = pick(); await copyPic(t, CLV, p.nm); mark(p); };
   if($('bLink')) $('bLink').onclick = async () => { const p = pick(), u = location.origin + location.pathname + '?id=' + t.id + '&lv=' + CLV + (p.nm ? '&s=' + encodeURIComponent(p.nm) : '');
@@ -630,7 +632,12 @@ const FSB2738 = '<button class="btn sm" id="bFs" type="button" style="display:no
    Close asks before leaving drawings that were not copied, and the topic page offers to reopen the class screen to copy them */
 const inkSig2739 = k => { try{ const o = JSON.parse(localStorage.getItem('coe.ink.ann2688') || '{}'); return o[k] && o[k].a && o[k].a.length ? JSON.stringify(o[k].a).length : 0; }catch(e){ return 0; } };
 const inkCopied2739 = (k, v) => { try{ const o = JSON.parse(localStorage.getItem('coe.ink.copied2739') || '{}'); if(v === undefined) return o[k] || 0; o[k] = v; localStorage.setItem('coe.ink.copied2739', JSON.stringify(o)); }catch(e){ return 0; } };
-function present(t, lv, who){ document.body.classList.add('present'); $('hT').textContent = 'Talk of the Day / 今日话题'; $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + dShort(t.day);
+/* 2757 (Misty 23 Nov 11:47): the class-view header of Talk of the Day, Free Talk and IELTS shows the same names as the pictures — Teacher / 老师 · For / 学生 — with "+ Student" when none is known */
+function hSet2757(who, extra){ const H = window.coeHdr, el = $('hS'); if(!el) return; const tch = H && H.me ? H.me() : '', stu = H && H.student ? H.student(who) : String(who || '');
+  const chip = (l, v, c) => l + ' <b class="hnm ' + c + '">' + esc(v) + '</b>';
+  el.innerHTML = [tch ? chip('Teacher / 老师:', tch, 't') : '', stu ? chip('For / 学生:', stu, 's') : '<button class="btn sm hstu" type="button" title="The student\'s name for the copies">+ Student / 学生</button>', extra ? esc(extra) : ''].filter(Boolean).join(' · ');
+  const b = el.querySelector('.hstu'); if(b) b.onclick = () => { const n = H && H.student ? H.student('', true) : ''; if(n) hSet2757(n, extra); }; }
+function present(t, lv, who){ document.body.classList.add('present'); $('hT').textContent = 'Talk of the Day / 今日话题'; hSet2757(who, dShort(t.day));
   $('hBtns').innerHTML = '<button class="btn sm" id="kShot" type="button" title="This screen with your drawings">Copy screen</button><button class="btn sm" id="bCopyP" type="button" title="The Talk of the Day picture with the student\'s name">Copy picture for student</button>' + FSB2738 + '<button class="btn sm" id="bX" type="button">Close</button>'; app.innerHTML = studentHtml(t, lv, who);
   $('bCopyP').onclick = () => copyPic(t, lv, who); bindChips(app, t, (t.levels || []).includes(lv) ? lv : (t.levels || ['yle'])[0]);
   try{ if(window.CoeInk){ CoeInk.open(); CoeInk.page(app.firstElementChild, 'talk:' + t.id + ':' + lv); } }catch(e){}
@@ -712,7 +719,7 @@ function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? 
   const plan = K.plans[kind + len] || []; let step = 0, left = plan.length ? plan[0][2] * 60 : 0, run = true, tick = null, mini = null, notes = false, open = -1, cmt = ''; const marks = {}, used = {};
   const who = (kitStu() || {}).name || '';
   document.body.classList.add('present'); $('hT').textContent = (kind === 'ielts' ? 'IELTS Speaking' : 'Free talk') + ' / ' + (kind === 'ielts' ? '雅思口语' : '自由会话');
-  $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + len + ' minutes';
+  hSet2757(who, len + ' minutes');
   $('hBtns').innerHTML = FSB2738 + '<button class="btn sm" id="bX" type="button">Close</button>';
   try{ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }catch(e){} const FK = fsKeep2738();
   const mm = s => String(Math.floor(Math.max(0, s) / 60)).padStart(2, '0') + ':' + String(Math.max(0, s) % 60).padStart(2, '0');
@@ -786,7 +793,7 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
     localStorage.setItem('coe.kit.ieltsLast', JSON.stringify({ at: Date.now(), id: t.id, theme: t.theme, zh: t.zh || '', len, stu: st.name || who || '', code: st.code || '',
       p1, cue: cue ? { t: cue.task, say: cue.points || [], end: cue.explain || '' } : null, p3, reach: REACH.p3 || REACH.fb ? 3 : REACH.p2 ? 2 : 1 })); }catch(e){} };
   const who = (kitStu() || {}).name || '';
-  document.body.classList.add('present'); $('hT').textContent = 'IELTS Speaking / 雅思口语'; $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + len + ' minutes · ' + t.theme;
+  document.body.classList.add('present'); $('hT').textContent = 'IELTS Speaking / 雅思口语'; hSet2757(who, len + ' minutes · ' + t.theme);
   $('hBtns').innerHTML = FSB2738 + '<button class="btn sm" id="bX" type="button">Close</button>';
   try{ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }catch(e){} const FK = fsKeep2738();
   const mm = s => (s < 0 ? '−' : '') + String(Math.floor(Math.abs(s) / 60)).padStart(2, '0') + ':' + String(Math.abs(s) % 60).padStart(2, '0');
