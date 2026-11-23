@@ -6,6 +6,9 @@
   /* 2684 (Misty 22 Nov 12:00, option A): the title and the details in Source Serif like the page · title in deep navy with a short teal line under it */
   const FT = '"COE Serif", Georgia, "Noto Sans SC", "PingFang SC", serif', FI = '"COE Serif", Georgia, "Noto Sans SC", "PingFang SC", serif', FL = '"COE Card Fredoka", Fredoka, "Fredoka One", sans-serif';
   try{ if(![...document.fonts].some(f => f.family.replace(/"/g, '') === 'COE Serif')) [['400', 'normal'], ['700', 'normal'], ['400', 'italic'], ['700', 'italic']].forEach(([w, st]) => { const f = new FontFace('COE Serif', 'url(/fonts/card-serif-' + w + '-' + st + '.woff2)', { weight: w, style: st }); document.fonts.add(f); f.load().then(() => { try{ window.__draw2677 && window.__draw2677(); }catch(e){} }).catch(() => {}); }); }catch(e){}
+  /* 2758 (Misty 23 Nov 11:51): picture titles in the official CupOfEnglish font (Fredoka One) and colour (#2F2752) */
+  const FB = '"COE Card Fredoka", "Fredoka One", Fredoka, "Noto Sans SC", "PingFang SC", sans-serif', FZ = '"Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif', BRAND = '#2F2752';
+  try{ if(![...document.fonts].some(f => f.family.replace(/"/g, '') === 'COE Card Fredoka')){ const f = new FontFace('COE Card Fredoka', 'url(/fonts/card-fredoka-one.woff2)', { weight: '400' }); document.fonts.add(f); f.load().catch(() => {}); } }catch(e){}
   const TEAL = '#00ACB8'   /* 18 Nov 19:58 (Misty, option 1): the cup colour of the logo */, GREY = '#6B6880', LINE = '#E3E1EA';
   const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const today = () => { const d = new Date(); return d.getDate() + ' ' + MO[d.getMonth()] + ' ' + d.getFullYear(); };
@@ -27,15 +30,15 @@
     if(o.slim){ lw = 0; }
     else if(o.logo && o.logo.width){ const lh = Math.round(34 * u); lw = Math.round(o.logo.width * lh / o.logo.height); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
       g.drawImage(crisp(o.logo, lw), P, Math.round(top + (row - lh) / 2), lw, lh); }
-    else { g.fillStyle = '#2B2253'; g.font = '600 ' + (20 * u) + 'px ' + FL; g.fillText('CupOfEnglish', P, top + 26 * u); lw = g.measureText('CupOfEnglish').width; }
+    else { g.fillStyle = BRAND; g.font = '600 ' + (20 * u) + 'px ' + FL; g.fillText('CupOfEnglish', P, top + 26 * u); lw = g.measureText('CupOfEnglish').width; }
     const room = o.slim ? (W - 2 * P) * 0.5 : W - 2 * P - lw - 20 * u;
     /* the English leads: "Homework" full size, " / 作业" at 72 % (Misty 18 Nov 19:56) */
     const title = o.title || 'Homework / 作业', cut = title.indexOf(' / '), en = cut > 0 ? title.slice(0, cut) : title, zh = cut > 0 ? title.slice(cut) : '';
-    let big = 19 * u; const wOf = b => { g.font = '700 ' + b + 'px ' + FT; const a = g.measureText(en).width; g.font = '700 ' + (b * 0.72) + 'px ' + FT; return a + (zh ? g.measureText(zh).width : 0); };
+    let big = 19 * u; const wOf = b => { g.font = '400 ' + b + 'px ' + FB; const a = g.measureText(en).width; g.font = '700 ' + (b * 0.72) + 'px ' + FZ; return a + (zh ? g.measureText(zh).width : 0); };
     while(wOf(big) > room && big > 12 * u) big -= 0.5;
-    g.fillStyle = '#2B2253'; g.textAlign = 'left'; const ty = o.slim ? top + 30 * u : top + 18 * u, x0 = o.slim ? P : W - P - wOf(big);
-    g.font = '700 ' + big + 'px ' + FT; const ew = g.measureText(en).width; g.fillText(en, x0, ty);
-    if(zh){ g.font = '700 ' + (big * 0.72) + 'px ' + FT; g.fillText(zh, x0 + ew, ty); }
+    g.fillStyle = BRAND; g.textAlign = 'left'; const ty = o.slim ? top + 30 * u : top + 18 * u, x0 = o.slim ? P : W - P - wOf(big);
+    g.font = '400 ' + big + 'px ' + FB; const ew = g.measureText(en).width; g.fillText(en, x0, ty);
+    if(zh){ g.font = '700 ' + (big * 0.72) + 'px ' + FZ; g.fillText(zh, x0 + ew, ty); }
     g.fillStyle = '#14B3A7'; g.beginPath(); const uw = 20 * u, uh = Math.max(2, 1.7 * u); const ux = o.slim ? P : W - P - uw; g.roundRect ? g.roundRect(ux, ty + 6.5 * u, uw, uh, uh / 2) : g.rect(ux, ty + 6.5 * u, uw, uh); g.fill();
     g.textAlign = 'right';
     const meta = (o.meta || []).filter(Boolean).concat(o.date === false ? [] : [o.date || today()]).join('  ·  ');
