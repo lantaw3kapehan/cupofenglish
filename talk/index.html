@@ -233,7 +233,7 @@ body.present .st .think,body.present .st .tryh{font-size:clamp(17px,1.35vw,21px)
 <script src="../homework/tr.js?v=2736"></script>
 <script src="../homework/snap.js?v=2721"></script>
 <script>/* 2719 (Misty 22 Nov 19:03): "Copy topic" = the whole topic (as before) · "Copy screen" = this screen with the drawings, under the CupOfEnglish header */
-document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('#kShot'); if(!b || !window.coeSnap) return; const kv = document.querySelector('#app .kv'); if(!kv) return;
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('#kShot'); if(!b || !window.coeSnap) return; const kv = document.querySelector('#app .kv') || (document.body.classList.contains('present') && document.querySelector('#app > *')); if(!kv) return;   /* 2738: Talk of the Day's class view too */
   const ink = kv.querySelector('canvas.ink-c'), bg = getComputedStyle(document.body).backgroundColor || '#fff';
   const cv = coeSnap.shot([kv], ink, { pad: 24, bg: /rgba\(0, 0, 0, 0\)|transparent/.test(bg) ? '#fff' : bg, skip: n => n.classList && (n.classList.contains('knav') || n.classList.contains('ink-t') || n.classList.contains('ink-m')) });
   const title = ((document.getElementById('hT') || {}).textContent || 'Speaking Activities').trim(), sub = ((document.getElementById('hS') || {}).textContent || '').replace(/^\s*\d+\s*minutes\s*·\s*/, '').trim();
@@ -612,13 +612,38 @@ function paintTopic(){ const t = CUR, L = CLV, qs = (t.q && t.q[L]) || [], th = 
   if($('bLink')) $('bLink').onclick = async () => { const p = pick(), u = location.origin + location.pathname + '?id=' + t.id + '&lv=' + CLV + (p.nm ? '&s=' + encodeURIComponent(p.nm) : '');
     try{ await navigator.clipboard.writeText(u); toast('Link copied.'); }catch(e){ prompt('Copy this link', u); } mark(p); };
   if($('bPres')) $('bPres').onclick = () => { const p = pick(); mark(p); present(t, CLV, p.nm); };
+  /* 2739: drawings from class kept on this computer → copy them after class */
+  { const IK = 'talk:' + t.id + ':' + CLV, sg = inkSig2739(IK), bp = $('bPres'); if(bp && sg){ const n = document.createElement('div'); const done = inkCopied2739(IK) === sg;
+      n.style.cssText = 'margin-top:8px;padding:10px 12px;border-radius:10px;background:' + (done ? '#EEF6F2' : '#FFF4E5') + ';font-size:13px;color:#2B2253;line-height:1.4';
+      n.innerHTML = (done ? 'Your class drawings were copied. ' : '<b>Your drawings from class are kept (2 days).</b> ') + '<button type="button" class="btn sm" id="bInk" style="margin-top:6px">Open class screen to copy</button>';
+      bp.parentNode.appendChild(n); $('bInk').onclick = () => { const p = pick(); present(t, CLV, p.nm); }; } }
 }
+/* 2738 (Misty 23 Nov 10:35): leaving full screen (Esc, or switching to WeChat to paste) keeps the class view, as on the books (2697) ·
+   "⛶ Full screen" goes back · a second Esc or Close leaves · Talk of the Day's class view gets Copy screen (with the drawings) and Copy picture for student */
+function fsKeep2738(){ let left = 0; const sync = () => { if(!document.fullscreenElement) left = Date.now(); const b = $('bFs'); if(b) b.style.display = document.fullscreenElement ? 'none' : ''; };
+  document.addEventListener('fullscreenchange', sync); setTimeout(sync, 400);
+  const bindBtn = () => { const b = $('bFs'); if(b){ b.onclick = async () => { try{ await document.documentElement.requestFullscreen(); }catch(e){} sync(); }; b.style.display = document.fullscreenElement ? 'none' : ''; } };
+  bindBtn();
+  return { leave: e => e.key === 'Escape' && !document.fullscreenElement && Date.now() - left > 600, off: () => document.removeEventListener('fullscreenchange', sync) }; }
+const FSB2738 = '<button class="btn sm" id="bFs" type="button" style="display:none">⛶ Full screen</button>';
+/* 2739 (Misty 23 Nov 10:37): drawings are kept for 2 days per screen (ink.js 2688) · a screen copied with Copy screen is remembered, so
+   Close asks before leaving drawings that were not copied, and the topic page offers to reopen the class screen to copy them */
+const inkSig2739 = k => { try{ const o = JSON.parse(localStorage.getItem('coe.ink.ann2688') || '{}'); return o[k] && o[k].a && o[k].a.length ? JSON.stringify(o[k].a).length : 0; }catch(e){ return 0; } };
+const inkCopied2739 = (k, v) => { try{ const o = JSON.parse(localStorage.getItem('coe.ink.copied2739') || '{}'); if(v === undefined) return o[k] || 0; o[k] = v; localStorage.setItem('coe.ink.copied2739', JSON.stringify(o)); }catch(e){ return 0; } };
 function present(t, lv, who){ document.body.classList.add('present'); $('hT').textContent = 'Talk of the Day / 今日话题'; $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + dShort(t.day);
-  $('hBtns').innerHTML = '<button class="btn sm" id="bX" type="button">Close</button>'; app.innerHTML = studentHtml(t, lv, who); bindChips(app, t, (t.levels || []).includes(lv) ? lv : (t.levels || ['yle'])[0]);
+  $('hBtns').innerHTML = '<button class="btn sm" id="kShot" type="button" title="This screen with your drawings">Copy screen</button><button class="btn sm" id="bCopyP" type="button" title="The Talk of the Day picture with the student\'s name">Copy picture for student</button>' + FSB2738 + '<button class="btn sm" id="bX" type="button">Close</button>'; app.innerHTML = studentHtml(t, lv, who);
+  $('bCopyP').onclick = () => copyPic(t, lv, who); bindChips(app, t, (t.levels || []).includes(lv) ? lv : (t.levels || ['yle'])[0]);
   try{ if(window.CoeInk){ CoeInk.open(); CoeInk.page(app.firstElementChild, 'talk:' + t.id + ':' + lv); } }catch(e){}
   try{ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }catch(e){}
-  const close = () => { try{ window.CoeInk && CoeInk.close(); }catch(e){} document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintTopic(); document.removeEventListener('keydown', esc1); };
-  const esc1 = e => { if(e.key === 'Escape') close(); }; document.addEventListener('keydown', esc1); $('bX').onclick = close; }
+  const FK = fsKeep2738(), IK = 'talk:' + t.id + ':' + lv;
+  $('kShot').addEventListener('click', () => setTimeout(() => inkCopied2739(IK, inkSig2739(IK)), 700));
+  const ask = () => new Promise(ok => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(20,16,40,.35);display:flex;align-items:center;justify-content:center';
+    d.innerHTML = '<div style="background:#fff;border-radius:14px;padding:22px 24px;max-width:420px;box-shadow:0 12px 40px rgba(0,0,0,.25);font:15px/1.45 Inter,sans-serif;color:#2B2253"><b style="font-size:17px">Copy your drawings first?</b><p style="margin:8px 0 16px;color:#6B6880">You drew on this screen and have not copied it yet. The drawings stay on this computer for 2 days, so you can also open the class screen again later to copy them.</p><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn sm" type="button" data-a="close">Close without copying</button><button class="btn sm pr" type="button" data-a="copy">Copy screen</button></div></div>';
+    d.onclick = e => { const a = e.target.dataset && e.target.dataset.a; if(!a && e.target !== d) return; d.remove(); ok(a || 'stay'); }; document.body.appendChild(d); });
+  const tryClose = async () => { await new Promise(z => setTimeout(z, 600)); const sg = inkSig2739(IK);
+    if(sg && inkCopied2739(IK) !== sg){ const a = await ask(); if(a === 'copy'){ $('kShot').click(); return; } if(a !== 'close') return; } close(); };
+  const close = () => { FK.off(); try{ window.CoeInk && CoeInk.close(); }catch(e){} document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintTopic(); document.removeEventListener('keydown', esc1); };
+  const esc1 = e => { if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; if(FK.leave(e)) tryClose(); }; document.addEventListener('keydown', esc1); $('bX').onclick = tryClose; }
 
 
 /* ── 2485 · Free talk and IELTS Speaking kits: a library by level and length, and a full-screen class view with a timed plan ── */
@@ -688,8 +713,8 @@ function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? 
   const who = (kitStu() || {}).name || '';
   document.body.classList.add('present'); $('hT').textContent = (kind === 'ielts' ? 'IELTS Speaking' : 'Free talk') + ' / ' + (kind === 'ielts' ? '雅思口语' : '自由会话');
   $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + len + ' minutes';
-  $('hBtns').innerHTML = '<button class="btn sm" id="bX" type="button">Close</button>';
-  try{ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }catch(e){}
+  $('hBtns').innerHTML = FSB2738 + '<button class="btn sm" id="bX" type="button">Close</button>';
+  try{ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }catch(e){} const FK = fsKeep2738();
   const mm = s => String(Math.floor(Math.max(0, s) / 60)).padStart(2, '0') + ':' + String(Math.max(0, s) % 60).padStart(2, '0');
   const qs = (L, n0) => L.map((q, i) => '<div class="kq"><i>' + ((n0 || 0) + i + 1) + '</i><span>' + esc(q) + '</span></div>').join('');
   const VB = (window.KITS && window.KITS.vocab) || {};
@@ -737,10 +762,10 @@ function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? 
   function miniRun(sec, endTxt){ clearInterval(mini); let s = sec; const show = () => { const el = $('kMini'); if(el) el.textContent = s > 0 ? mm(s) : endTxt; }; show(); mini = setInterval(() => { s--; show(); if(s <= 0) clearInterval(mini); }, 1000); }
   function go(i){ if(i < 0 || i >= plan.length) return; step = i; open = -1; left = plan[i][2] * 60; clearInterval(mini); paint(); window.scrollTo(0, 0); }
   tick = setInterval(() => { if(!run) return; left--; const el = $('kT'); if(el){ el.textContent = mm(left); el.style.color = left < 0 ? '#B5432C' : ''; } }, 1000);
-  const key = e => { if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; if(e.key === 'ArrowRight') go(step + 1); else if(e.key === 'ArrowLeft') go(step - 1); else if(e.key === 'Escape') close(); };
+  const key = e => { if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; if(e.key === 'ArrowRight') go(step + 1); else if(e.key === 'ArrowLeft') go(step - 1); else if(FK.leave(e)) close(); };
   document.addEventListener('keydown', key);
   function close(){ if(kind === 'free') saveSpeak({ kind: 'free', id: t.id, title: 'Free talk · ' + t.title, len: +len, marks, comment: cmt, used: t.phrases.filter(p => used[p[0]]).map(p => p[0]), practise: t.phrases.filter(p => !used[p[0]]).map(p => p[0]) });
-    try{ window.CoeInk && CoeInk.close(); }catch(e){} clearInterval(tick); clearInterval(mini); document.removeEventListener('keydown', key); document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintKit(kind); }
+    try{ window.CoeInk && CoeInk.close(); }catch(e){} clearInterval(tick); clearInterval(mini); FK.off(); document.removeEventListener('keydown', key); document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintKit(kind); }
   try{ window.CoeInk && CoeInk.open(); }catch(e){} paint(); $('bX').onclick = close; }
 
 /* 2487 · IELTS Speaking in CupOfEnglish's lesson template: Format → Assessment → Part 1 (A–R–E) → Part 2 (P–P–F) → Part 3 (P–R–E–L) → Feedback */
@@ -762,8 +787,8 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
       p1, cue: cue ? { t: cue.task, say: cue.points || [], end: cue.explain || '' } : null, p3, reach: REACH.p3 || REACH.fb ? 3 : REACH.p2 ? 2 : 1 })); }catch(e){} };
   const who = (kitStu() || {}).name || '';
   document.body.classList.add('present'); $('hT').textContent = 'IELTS Speaking / 雅思口语'; $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + len + ' minutes · ' + t.theme;
-  $('hBtns').innerHTML = '<button class="btn sm" id="bX" type="button">Close</button>';
-  try{ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }catch(e){}
+  $('hBtns').innerHTML = FSB2738 + '<button class="btn sm" id="bX" type="button">Close</button>';
+  try{ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }catch(e){} const FK = fsKeep2738();
   const mm = s => (s < 0 ? '−' : '') + String(Math.floor(Math.abs(s) / 60)).padStart(2, '0') + ':' + String(Math.abs(s) % 60).padStart(2, '0');
   const hl = x => esc(x).replace(/\[\[(.+?)\]\]/g, '<span class="khl">$1</span>');
   const VB = (window.KITS && window.KITS.vocab) || {};
@@ -825,10 +850,10 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
   function miniRun(sec, endTxt){ clearInterval(mini); let s = sec; const sh = () => { const el = $('kMini'); if(el) el.textContent = s > 0 ? mm(s) : endTxt; }; sh(); mini = setInterval(() => { s--; sh(); if(s <= 0) clearInterval(mini); }, 1000); }
   function go(i){ if(i < 0 || i >= S.length) return; const ch = S[i].ph !== S[si].ph; si = i; show = false; open = -1; if(ch) left = P[S[i].ph][2] * 60; clearInterval(mini); paint(); window.scrollTo(0, 0); }
   const tick = setInterval(() => { if(!run) return; left--; const el = $('kT'); if(el){ el.textContent = mm(left); el.style.color = left < 0 ? '#B5432C' : ''; } }, 1000);
-  const key = e => { if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; if(e.key === 'ArrowRight') go(si + 1); else if(e.key === 'ArrowLeft') go(si - 1); else if(e.key === 'Escape') close(); };
+  const key = e => { if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; if(e.key === 'ArrowRight') go(si + 1); else if(e.key === 'ArrowLeft') go(si - 1); else if(FK.leave(e)) close(); };
   document.addEventListener('keydown', key);
   function close(){ const SP = Object.keys(seen); saveSpeak({ kind: 'ielts', id: t.id, title: 'IELTS · ' + t.theme + ' · ' + t.p2[0].task.replace(/^Describe /, '').replace(/\.$/, ''), len: +len, marks, comment: cmt, used: SP.filter(p => used[p]), practise: SP.filter(p => !used[p]).slice(0, 12) });
-    try{ window.CoeInk && CoeInk.close(); }catch(e){} clearInterval(tick); clearInterval(mini); document.removeEventListener('keydown', key); document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintKit('ielts'); }
+    try{ window.CoeInk && CoeInk.close(); }catch(e){} clearInterval(tick); clearInterval(mini); FK.off(); document.removeEventListener('keydown', key); document.body.classList.remove('present'); try{ document.fullscreenElement && document.exitFullscreen(); }catch(e){} paintKit('ielts'); }
   try{ window.CoeInk && CoeInk.open(); }catch(e){} paint(); $('bX').onclick = close; }
 
 /* ── start ── */
