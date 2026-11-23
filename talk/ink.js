@@ -4,7 +4,7 @@
    (kept on this device for the session only). Drawings are stored in proportions of the screen width, so they stay in place
    when the window changes size. */
 (function(){
-  const SZ = { pen: [0.0028, 0.0028, 0.0028], text: [0.016, 0.016, 0.016] }   /* 2702: one text size, one pen */, HLW = 0.016;
+  const SZ = { pen: [0.0028, 0.0028, 0.0028], text: [0.024, 0.024, 0.024] }   /* 2702: one text size, one pen · 2813 (Misty 20:28): 1.6 % → 2.4 % of the screen width, readable in WeChat on a phone */, HLW = 0.016;
   const COL = [['#1F6FEB', 'Blue'], ['#D7263D', 'Red'], ['#1E9E5A', 'Green'], ['#F08A00', 'Orange'], ['#7B3FC4', 'Purple'], ['#1B1B1F', 'Black']];
   let HIDE = false, ANN = {}, HIST = [], REDO = [], key = '', tool = 'hand', color = COL[0][0], size = 1, shp = 'rect', host = null, cv = null, bar = null, mini = null, cur = null, ro = null, on = false;
   try{ size = +localStorage.getItem('coe.ink.sz') || 1; if(!(size >= 0 && size <= 2)) size = 1; shp = localStorage.getItem('coe.ink.shp') || 'rect'; }catch(e){}

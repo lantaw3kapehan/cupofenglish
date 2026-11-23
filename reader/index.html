@@ -185,7 +185,7 @@ let FIRST = Q.get('n') === '1', SQ = '';   /* opened from the app: the app alrea
 let doc = null, pageNo = 1, zoom = 1, rendering = null, tool = 'hand', color = '#1F6FEB',   /* 2282: blue first and by default (Misty) */ FILES = [], LABEL = '';
 const ANN = {}, HIST = [];
 /* 2285: three sizes for text and pen (medium by default, bigger than before); the teacher's choice is remembered */
-const TSZ2750 = 0.02;   /* 2786 (Misty 23 Nov 13:38): 0.03 made a note about twice the size of the book's own words; now about 1.5 times */   /* 2750 (Misty 23 Nov 11:25): every note at one standard size, on screen and in copies; zoom makes it bigger for the student */
+function TSZ2750(){ try{ const k = $('ink'), w = (k && k.width) || 1, h = (k && k.height) || 1; return 0.025 * Math.max(w, h) / h; }catch(e){ return 0.025; } }   /* 2813 (Misty 20:28): every note is 2.5 % of the page's LONGER side (like homework), so it is readable in WeChat on a phone; it was 2 % of the HEIGHT, tiny on wide board pages and slides */
 const SZ = { text: [0.03, 0.03, 0.03], pen: [0.003, 0.003, 0.003]   /* 2702 (Misty 22 Nov 16:52): one text size (the small one) and one pen; the size buttons are gone */   /* 2288: thinner pen (Misty) */ }; let size = 1; try{ const z = localStorage.getItem('coe.reader.sz'); if(z !== null && SZ.text[+z]) size = +z; }catch(e){}
 const msg = (h, spin) => { const m = $('msg'); m.style.display = 'flex'; m.innerHTML = (spin ? '<div class="spin"></div>' : '') + '<div>' + h + '</div>'; };
 
@@ -633,7 +633,7 @@ function drawShape(x, a, W, H){ const P = shapePts(a, W, H);
   if(a.k === 'arrow'){ const [x0, y0] = P[0], [x1, y1] = P[1], ang = Math.atan2(y1 - y0, x1 - x0), L = Math.max(14, a.w * W * 5); x.beginPath();
     x.moveTo(x1 - L * Math.cos(ang - 0.45), y1 - L * Math.sin(ang - 0.45)); x.lineTo(x1, y1); x.lineTo(x1 - L * Math.cos(ang + 0.45), y1 - L * Math.sin(ang + 0.45)); x.stroke(); } }
 function drawInk(cv){ const ink = cv || $('ink'), x = ink.getContext('2d'), W = ink.width, H = ink.height; if(!cv) x.clearRect(0, 0, W, H);
-  (ANN[pageNo] || []).forEach(a => { if(a.t === 'text'){ x.fillStyle = a.c; const fz = Math.round(TSZ2750 * H); x.font = '600 ' + fz + 'px Inter, sans-serif'; x.textBaseline = 'top'; x.save(); x.lineJoin = 'round'; x.strokeStyle = 'rgba(255,255,255,.85)'; x.lineWidth = Math.max(2, fz * 0.16); String(a.v).split('\n').forEach((t, i) => x.strokeText(t, a.x * W, a.y * H + i * fz * 1.2)); x.restore(); String(a.v).split('\n').forEach((t, i) => x.fillText(t, a.x * W, a.y * H + i * fz * 1.2)); return; }   /* 2712: several lines · 2748: thin white outline so notes read over photos */
+  (ANN[pageNo] || []).forEach(a => { if(a.t === 'text'){ x.fillStyle = a.c; const fz = Math.round(TSZ2750() * H); x.font = '600 ' + fz + 'px Inter, sans-serif'; x.textBaseline = 'top'; x.save(); x.lineJoin = 'round'; x.strokeStyle = 'rgba(255,255,255,.85)'; x.lineWidth = Math.max(2, fz * 0.16); String(a.v).split('\n').forEach((t, i) => x.strokeText(t, a.x * W, a.y * H + i * fz * 1.2)); x.restore(); String(a.v).split('\n').forEach((t, i) => x.fillText(t, a.x * W, a.y * H + i * fz * 1.2)); return; }   /* 2712: several lines · 2748: thin white outline so notes read over photos */
     x.globalAlpha = a.t === 'hl' ? 0.32 : 1; x.strokeStyle = a.c; x.lineWidth = a.w * W; x.lineCap = a.t === 'hl' ? 'butt' : 'round'; x.lineJoin = 'round';
     if(a.t === 'shape'){ drawShape(x, a, W, H); return; }
     x.beginPath(); a.p.forEach((q, i) => i ? x.lineTo(q[0] * W, q[1] * H) : x.moveTo(q[0] * W, q[1] * H)); if(a.p.length === 1) x.lineTo(a.p[0][0] * W + 0.1, a.p[0][1] * H); x.stroke(); x.globalAlpha = 1; });
@@ -642,7 +642,7 @@ function drawInk(cv){ const ink = cv || $('ink'), x = ink.getContext('2d'), W = 
     x.fillStyle = '#fff'; x.strokeStyle = '#2B2450'; x.lineWidth = 2; x.fillRect(b.x1 * W - k / 2 + 4, b.y1 * H - k / 2 + 3, k, k); x.strokeRect(b.x1 * W - k / 2 + 4, b.y1 * H - k / 2 + 3, k, k); } }
 /* 2614 (Misty 21 Nov): typed text can be made bigger or smaller with the mouse: drag the corner handle, or turn the mouse wheel over the text (Text tool) */
 let HOV = null;
-function txBox(a){ const ink = $('ink'), x = ink.getContext('2d'), W = ink.width; x.font = '600 ' + Math.round(TSZ2750 * ink.height) + 'px Inter, sans-serif'; const w = x.measureText(a.v).width / W; return { x: a.x, y: a.y, w, h: a.s, x1: a.x + w, y1: a.y + a.s }; }
+function txBox(a){ const ink = $('ink'), x = ink.getContext('2d'), W = ink.width; x.font = '600 ' + Math.round(TSZ2750() * ink.height) + 'px Inter, sans-serif'; const w = x.measureText(a.v).width / W; return { x: a.x, y: a.y, w, h: a.s, x1: a.x + w, y1: a.y + a.s }; }
 function onHandle(p){ return null;   /* 2750: notes keep the standard size (no stretching) */
   if(!HOV || list().indexOf(HOV) < 0) return null; const b = txBox(HOV), ink = $('ink'), k = Math.max(14, ink.height * 0.016) / ink.height; return (Math.abs(p[0] - b.x1) * ink.width / ink.height < k * 1.2 && Math.abs(p[1] - b.y1) < k * 1.2) ? HOV : null; }
 const TXMIN = 0.012, TXMAX = 0.3, txClamp = v => Math.max(TXMIN, Math.min(TXMAX, v));
@@ -683,14 +683,14 @@ function eraseAt(p){ const ink = $('ink'), W = ink.width, H = ink.height, L = li
   if(ANN[pageNo].length !== before){ if(cur && cur.erase) cur.hit = true; drawInk(); } }
 /* 2284: text is typed at the size it will show; clicking an existing text opens it to change or move nothing else */
 function hitText(p){ const ink = $('ink'), x = ink.getContext('2d'), W = ink.width, H = ink.height; const L = list();
-  for(let k = L.length - 1; k >= 0; k--){ const a = L[k]; if(a.t !== 'text') continue; x.font = '600 ' + Math.round(TSZ2750 * H) + 'px Inter, sans-serif';
-    const LN = String(a.v).split('\n'), w = Math.max(...LN.map(t => x.measureText(t).width)) / W, h = TSZ2750 * (1 + (LN.length - 1) * 1.2); if(p[0] >= a.x - 0.01 && p[0] <= a.x + w + 0.01 && p[1] >= a.y - 0.01 && p[1] <= a.y + h + 0.01) return a; } return null; }
+  for(let k = L.length - 1; k >= 0; k--){ const a = L[k]; if(a.t !== 'text') continue; x.font = '600 ' + Math.round(TSZ2750() * H) + 'px Inter, sans-serif';
+    const LN = String(a.v).split('\n'), w = Math.max(...LN.map(t => x.measureText(t).width)) / W, h = TSZ2750() * (1 + (LN.length - 1) * 1.2); if(p[0] >= a.x - 0.01 && p[0] <= a.x + w + 0.01 && p[1] >= a.y - 0.01 && p[1] <= a.y + h + 0.01) return a; } return null; }
 function addText(e, p){ const w = $('wrap'), r = w.getBoundingClientRect(), ir = $('ink').getBoundingClientRect(), old = hitText(p);
   let col = color, at = p;
-  if(old){ rec(); ANN[pageNo] = list().filter(a => a !== old); col = old.c; at = [old.x, old.y + TSZ2750 / 2]; drawInk(); }
+  if(old){ rec(); ANN[pageNo] = list().filter(a => a !== old); col = old.c; at = [old.x, old.y + TSZ2750() / 2]; drawInk(); }
   /* 2712 (Misty 22 Nov 18:46): Enter starts a new line (it no longer closes the text) · the box fits the words and stays on the page ·
      click outside the box or press Esc when finished */
-  const ts = TSZ2750, fs = Math.max(12, Math.round(ts * ir.height)), i = document.createElement('textarea'); i.className = 'txtin'; i.value = old ? old.v : ''; i.rows = 1; i.spellcheck = false;
+  const ts = TSZ2750(), fs = Math.max(12, Math.round(ts * ir.height)), i = document.createElement('textarea'); i.className = 'txtin'; i.value = old ? old.v : ''; i.rows = 1; i.spellcheck = false;
   /* 2737 (Misty 23 Nov 10:31): near the right edge the words ran off the page and the box scrolled sideways, so a new line (Enter)
      started out of sight. Now the words wrap inside the box at the edge of the page (or of the screen when zoomed in), the box never
      scrolls sideways, a box started too close to the edge opens further left, and the wrapped lines are kept exactly as shown. */
