@@ -554,9 +554,24 @@ async function renderBoard(my){ const st = $('stage'), pad = 48, tl = $('tools')
   const w = bw * scale, h = BH * scale, c = $('pdf'), ink = $('ink'); c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); paintBoard(c.getContext('2d'), c.width, c.height, BRD[bi] || 'plain', undefined, true, !!BAS[bi]);   /* 2711: on screen, no second logo */
   c.style.width = w + 'px'; c.style.height = h + 'px'; ink.width = c.width; ink.height = c.height; ink.style.width = w + 'px'; ink.style.height = h + 'px';
   st.classList.toggle('fit', zoom <= 1); drawInk(); pages(); boardUI(); }
-function boardPic(notes){ const bi = +pageNo.slice(1) - 1;
+/* 2741 (Misty 23 Nov 10:49–10:50): a Class Notes copy came out with empty lines although the notes were on the screen. The board picture is
+   now taken from the real screen: the board as it is shown plus the drawing layer on top, pixel for pixel, under the full letterhead.
+   The redrawing below stays only as a fallback. */
+/* 2742 (Misty 23 Nov 10:53, Pam's board): the board picture was cut at the bottom of the on-screen title band (line + 16u of white),
+   so notes written just under the title line were lost (only a comma was left). The board is now kept from the title line itself. */
+const bCut2742 = H => { const u = bUnit(H); return Math.round(u * 76 + Math.max(1, u * 0.9)); };
+function boardPicScreen(notes){ try{ const bi = +pageNo.slice(1) - 1, c = $('pdf'), ink = $('ink'); if(!BAS[bi] || !c || !ink || !c.width || !c.height || ink.width !== c.width || ink.height !== c.height) return null;
+    if(HOV){ HOV = null; drawInk(); }   /* no text handle in the picture */
+    const k = Math.max(1, 2000 / c.width), Wc = Math.round(c.width * k), Hc = Math.round(c.height * k), bc = document.createElement('canvas'); bc.width = Wc; bc.height = Hc; const bg = bc.getContext('2d');
+    const sh = window.coeHdr ? bCut2742(Hc) : 0, s0 = Math.round(sh * c.height / Hc);
+    bg.imageSmoothingQuality = 'high'; bg.fillStyle = '#fff'; bg.fillRect(0, 0, Wc, Hc); bg.drawImage(c, 0, s0, c.width, c.height - s0, 0, sh, Wc, Hc - sh); bg.drawImage(ink, 0, 0, Wc, Hc);   /* 2742: the on-screen title is left out, every drawing is kept */
+    const u2 = bUnit(Hc, 0.85), hT = window.coeHdr ? coeHdr.height(Wc, false, u2) : 0, o = document.createElement('canvas'); o.width = Wc; o.height = hT + Hc; const g = o.getContext('2d'); const t = tchName();
+    g.fillStyle = '#fff'; g.fillRect(0, 0, Wc, o.height);
+    if(window.coeHdr) coeHdr.draw(g, Wc, { unit: u2, logo: BLOGO.complete && BLOGO.naturalWidth ? BLOGO : null, title: notes === false ? 'Homework / 作业' : 'Class Notes / 课堂笔记', meta: [t ? 'Teacher / 老师: ' + t : '', Q.get('s') ? 'For / 学生: ' + Q.get('s') : ''].filter(Boolean) });
+    g.drawImage(bc, 0, hT); return o; }catch(e){ return null; } }
+function boardPic(notes){ const bi = +pageNo.slice(1) - 1; const scr = boardPicScreen(notes); if(scr) return scr;
   if(BAS[bi]){ const Hc = 1200, Wc = Math.round(Hc * BAS[bi]), bc = document.createElement('canvas'); bc.width = Wc; bc.height = Hc; paintBoard(bc.getContext('2d'), Wc, Hc, BRD[bi] || 'plain', notes, true, true); drawInk(bc);
-    const sh = window.coeHdr ? coeHdr.height(Wc, false, bUnit(Hc)) : 0, u2 = bUnit(Hc, 0.85), hT = window.coeHdr ? coeHdr.height(Wc, false, u2) : 0, o = document.createElement('canvas'); o.width = Wc; o.height = hT + Hc - sh; const g = o.getContext('2d');
+    const sh = window.coeHdr ? bCut2742(Hc) : 0, u2 = bUnit(Hc, 0.85), hT = window.coeHdr ? coeHdr.height(Wc, false, u2) : 0, o = document.createElement('canvas'); o.width = Wc; o.height = hT + Hc - sh; const g = o.getContext('2d');
     g.fillStyle = '#fff'; g.fillRect(0, 0, Wc, o.height); const t = tchName();
     if(window.coeHdr) coeHdr.draw(g, Wc, { unit: u2, logo: BLOGO.complete && BLOGO.naturalWidth ? BLOGO : null, title: notes === false ? 'Homework / 作业' : 'Class Notes / 课堂笔记', meta: [t ? 'Teacher / 老师: ' + t : '', Q.get('s') ? 'For / 学生: ' + Q.get('s') : ''].filter(Boolean) });
     g.drawImage(bc, 0, sh, Wc, Hc - sh, 0, hT, Wc, Hc - sh); return o; }
