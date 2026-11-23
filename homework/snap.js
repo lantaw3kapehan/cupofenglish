@@ -36,7 +36,10 @@ const SAFE2740 = new Map();   /* 2740: which photos can go into a picture */
         if(n.nodeType !== 3 || !n.nodeValue.replace(/[\s​]/g, '')) return; const el = n.parentNode, cs = getComputedStyle(el), fs = parseFloat(cs.fontSize);
         g.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily; g.fillStyle = cs.color; g.textBaseline = 'alphabetic'; const D = deco(el, root);
         const tt = cs.textTransform, m = g.measureText('Hg'), asc = m.fontBoundingBoxAscent || fs * 0.8, re = /[^\s​]+/g, rg = document.createRange(); let k;
-        while((k = re.exec(n.nodeValue))){ rg.setStart(n, k.index); rg.setEnd(n, k.index + k[0].length); const q = rg.getClientRects()[0]; if(!q) continue; const by = q.top + asc;
+        while((k = re.exec(n.nodeValue))){ rg.setStart(n, k.index); rg.setEnd(n, k.index + k[0].length); const RR = rg.getClientRects(), q = RR[0]; if(!q) continue; const by = q.top + asc;
+          /* 2743 (23 Nov): a run with no spaces that wraps over several lines (Chinese) was drawn on one line, past the card's edge.
+             Such a run is now drawn character by character, each where the browser shows it. */
+          if(RR.length > 1){ let i = 0; for(const ch of k[0]){ rg.setStart(n, k.index + i); rg.setEnd(n, k.index + i + ch.length); const c1 = rg.getClientRects()[0]; if(c1) g.fillText(tt === 'uppercase' ? ch.toUpperCase() : ch, c1.left, c1.top + asc); i += ch.length; } D.forEach(([ty, col]) => { for(const r1 of RR){ g.fillStyle = col; g.fillRect(r1.left, ty === 's' ? r1.top + asc - fs * 0.3 : r1.top + asc + 3, r1.width, Math.max(1.5, fs / 12)); } g.fillStyle = cs.color; }); continue; }
           let t = k[0]; if(tt === 'uppercase') t = t.toUpperCase(); else if(tt === 'lowercase') t = t.toLowerCase();
           const ls = parseFloat(cs.letterSpacing) || 0; if(ls && g.letterSpacing !== undefined) g.letterSpacing = ls + 'px';
           g.fillText(t, q.left, by); if(ls && g.letterSpacing !== undefined) g.letterSpacing = '0px';
