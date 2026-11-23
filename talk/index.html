@@ -235,7 +235,7 @@ body.present .st .think,body.present .st .tryh{font-size:clamp(17px,1.35vw,21px)
 <script>/* 2719 (Misty 22 Nov 19:03): "Copy topic" = the whole topic (as before) · "Copy screen" = this screen with the drawings, under the CupOfEnglish header */
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('#kShot'); if(!b || !window.coeSnap) return; const kv = document.querySelector('#app .kv') || (document.body.classList.contains('present') && document.querySelector('#app > *')); if(!kv) return;   /* 2738: Talk of the Day's class view too */
   const ink = kv.querySelector('canvas.ink-c'), bg = getComputedStyle(document.body).backgroundColor || '#fff';
-  const mk = () => coeSnap.shot([kv], ink, { pad: 24, bg: /rgba\(0, 0, 0, 0\)|transparent/.test(bg) ? '#fff' : bg, skip: n => n.classList && (n.classList.contains('knav') || n.classList.contains('ink-t') || n.classList.contains('ink-m')) });
+  const mk = () => coeSnap.shot([kv], ink, { pad: 24, bg: /rgba\(0, 0, 0, 0\)|transparent/.test(bg) ? '#fff' : bg, skip: n => n.classList && (n.classList.contains('lvx') || (n.dataset && n.dataset.lvx) || n.classList.contains('knav') || n.classList.contains('ink-t') || n.classList.contains('ink-m')) });
   const title = ((document.getElementById('hT') || {}).textContent || 'Speaking Activities').trim(), sub = ((document.getElementById('hS') || {}).textContent || '').replace(/^\s*\d+\s*minutes\s*·\s*/, '').trim();
   const pic = (async () => { try{ coeSnap.prep && await coeSnap.prep([kv]); }catch(x){} const cv = mk(); const lg = await coeSnap.logo('../reader/logo.png'); /* 2722 (Misty 22 Nov 19:16): the teacher and the student on the header, as on the other pictures */
     let tch = '', stu = ''; try{ const d = JSON.parse(localStorage.getItem('coe.data') || 'null'), m = d && d.me; if(m && !d.mgr && m.name) tch = String(m.name).replace(/^Teacher\s+/i, '').trim().slice(0, 30); }catch(x){}
@@ -315,7 +315,7 @@ let D = null, F = { fresh: 'week', lv: '', st: '', q: '', ce: '' }, STU = null;
 /* ── Student page (shared link) and class view: no sign-in needed ── */
 function studentHtml(t, lv, who){
   const L = (t.levels || []).includes(lv) ? lv : (t.levels || ['yle'])[0], qs = (t.q && t.q[L]) || [], th = t.think && t.think[L];
-  return '<div class="st"><div style="display:flex;gap:6px;flex-wrap:wrap">' + stChips(t) + '<span class="lb l-' + L + '">' + LV[L] + ' · ' + LVZ[L] + (ceOf(t, L) ? ' · CEFR ' + esc(ceOf(t, L)) : '') + '</span></div>'
+  return '<div class="st"><div style="display:flex;gap:6px;flex-wrap:wrap">' + stChips(t) + '<span class="lb lvx l-' + L + '">' + LV[L] + ' · ' + LVZ[L] + (ceOf(t, L) ? ' · CEFR ' + esc(ceOf(t, L)) : '') + '</span></div>'
     + '<h2>' + esc(t.title) + '</h2>' + (t.title_zh ? '<p class="zt">' + esc(t.title_zh) + '</p>' : '')
     + '<div class="cols"><div class="card" style="display:flex;flex-direction:column;gap:14px;padding:22px 26px">'
     + photoHtml(t) + (t.media_url ? mediaHtml(t) : '')
@@ -351,7 +351,7 @@ function picture(t, lv, who){
     const chip = (txt, x, yy, c, size) => { g.font = '700 ' + size + 'px ' + FI; const w = g.measureText(txt).width + 28; rr(x, yy, w, size + 18, 10, c[0]); if(draw){ g.fillStyle = c[1]; g.fillText(txt, x + 14, yy + size + 4); } return w; };
     const head = (en, zh, color) => { g.font = '700 22px ' + FI; if(draw){ g.fillStyle = color; g.fillText(en.toUpperCase(), P, y + 22); } const ew = g.measureText(en.toUpperCase()).width; if(zh){ g.font = '400 19px ' + FI; if(draw){ g.fillStyle = ZH; g.fillText('  ' + zh, P + ew, y + 22); } } y += 38; };
     /* labels */
-    let x = P; x += chip(ST[t.strand] || '', x, y, PC[t.strand] || PC.china, 22) + 10; (t.tags || []).filter(k => k !== t.strand).forEach(k => { x += chip(ST[k] || k, x, y, PC[k] || PC.china, 22) + 10; }); chip(LV[L] + (ce ? ' · CEFR ' + ce : ''), x, y, LC[L], 22); y += 62;
+    let x = P; x += chip(ST[t.strand] || '', x, y, PC[t.strand] || PC.china, 22) + 10; (t.tags || []).filter(k => k !== t.strand).forEach(k => { x += chip(ST[k] || k, x, y, PC[k] || PC.china, 22) + 10; }); y += 62;   /* 2745: no level / CEFR chip on pictures for parents */
     /* title */
     lines(t.title, '400 #px ' + FT, 54, INK, 1.15, P, room); y += 6;
     if(t.title_zh){ lines(t.title_zh, '400 #px ' + FI, 22, ZH, 1.4, P, room); } y += 26;
@@ -448,7 +448,7 @@ function kitPicture(sp, who){
   const m = document.createElement('canvas').getContext('2d'), H = Math.ceil(run(m, false));
   const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
   coeHdr.draw(g, W, { logo: LOGO, title: sp.head, meta: [who ? 'For / 学生: ' + who : ''] }); run(g, true); return c; }
-function freeSpec(t){ return { head: 'Free talk / 自由会话', title: t.title, zh: t.zh, chips: [[ST[t.strand] || t.strand, PC[t.strand] || PC.daily], [LV[t.lv] + ' · CEFR A2–B2', LC[t.lv] || LC.teens]],
+function freeSpec(t){ return { head: 'Free talk / 自由会话', title: t.title, zh: t.zh, chips: [[ST[t.strand] || t.strand, PC[t.strand] || PC.daily]],   /* 2745: no level chip for parents */
   sections: [{ kind: 'q', en: 'Warm-up', zh: '热身', items: t.warm }, { kind: 'q', en: "Let's talk", zh: '一起聊聊', items: t.q }, { kind: 'chips', en: 'Useful phrases', zh: '常用表达', items: t.phrases },
     { kind: 'box', en: 'Think', zh: '想一想', items: [t.think], bg: '#FDF5F2', border: '#F1D9D2', color: '#B5432C' }, t.role ? { kind: 'box', en: 'Role-play', zh: '角色扮演', items: [t.role.scene, 'A · ' + t.role.a, 'B · ' + t.role.b], bold: true } : null].filter(Boolean),
   foot: 'Practise with your teacher at CupOfEnglish.' }; }
@@ -741,7 +741,7 @@ function openKit(kind, id, len){ const K = window.KITS, t = (kind === 'ielts' ? 
     return '<div class="kpanel"><div class="kk">Feedback · 课堂反馈</div>' + RUB.map(r => '<div class="kq"><span><b>' + esc(r[0]) + '</b> · ' + esc(r[1]) + '</span></div>').join('') + '</div><div class="kpanel"><div class="kk">Next time · 下次</div>' + qs(['One thing you did well today:', 'One thing to practise before next class:']) + '</div>'; }
   function teacher(){ if(!notes) return ''; return notesHtml(RUB, marks, cmt); }
   function paint(){ const tot = plan.reduce((a, p) => a + p[2], 0) || 1;
-    app.innerHTML = '<div class="kv"><div class="khd"><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="lb" style="background:#F1F0F6;color:#4A4566">' + (kind === 'ielts' ? 'IELTS Speaking' : esc(ST[t.strand] || t.strand)) + '</span>' + (kind === 'free' ? '<span class="lb l-' + t.lv + '">' + LV[t.lv] + ' · ' + LVZ[t.lv] + ' · CEFR A2–B2</span>' : '') + '</div><div style="display:flex;align-items:center;gap:10px"><span class="ktm" id="kT">' + mm(left) + '</span><button class="btn sm" type="button" id="kRun">' + (run ? 'Pause' : 'Start') + '</button></div></div>'
+    app.innerHTML = '<div class="kv"><div class="khd"><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="lb" style="background:#F1F0F6;color:#4A4566">' + (kind === 'ielts' ? 'IELTS Speaking' : esc(ST[t.strand] || t.strand)) + '</span>' + (kind === 'free' ? '<span class="lb l-' + t.lv + '" data-lvx="1">' + LV[t.lv] + ' · ' + LVZ[t.lv] + ' · CEFR A2–B2</span>' : '') + '</div><div style="display:flex;align-items:center;gap:10px"><span class="ktm" id="kT">' + mm(left) + '</span><button class="btn sm" type="button" id="kRun">' + (run ? 'Pause' : 'Start') + '</button></div></div>'
       + '<div class="kbar">' + plan.map((p, i) => '<i class="' + (i < step ? 'd' : i === step ? 'c' : '') + '" style="flex:' + p[2] + '"></i>').join('') + '</div><div class="klab">' + plan.map(p => '<span style="flex:' + p[2] + '">' + esc(p[1]) + ' · ' + p[2] + '</span>').join('') + '</div>'
       + '<h2>' + esc(kind === 'ielts' ? (plan[step] || [])[1] + ' · ' + t.theme : t.title) + '</h2><p class="zt">' + esc(kind === 'ielts' ? t.zh : t.zh) + '</p>'
       + '<div class="kcols">' + body() + '</div>' + teacher() + '</div>'
@@ -860,7 +860,7 @@ function openIelts(id, len){ const t = (window.KITS.ielts2 || []).find(x => x.id
 async function start(){
   const pid = Q.get('id');
   if(pid){ document.body.classList.add('present');
-    try{ const j = await call('coe-talk', { op: 'pub', id: pid }), t = j.topic, who = Q.get('s') || ''; $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + dShort(t.day); const lv0 = Q.get('lv') || 'yle'; app.innerHTML = studentHtml(t, lv0, who); bindChips(app, t, (t.levels || []).includes(lv0) ? lv0 : (t.levels || ['yle'])[0]); document.title = t.title + ' · CupOfEnglish'; }
+    try{ const j = await call('coe-talk', { op: 'pub', id: pid }), t = j.topic, who = Q.get('s') || ''; $('hS').textContent = (who ? 'For / 学生: ' + who + ' · ' : '') + dShort(t.day); const lv0 = Q.get('lv') || 'yle'; app.innerHTML = studentHtml(t, lv0, who); app.querySelectorAll('.lvx').forEach(e => e.remove()); bindChips(app, t, (t.levels || []).includes(lv0) ? lv0 : (t.levels || ['yle'])[0]); document.title = t.title + ' · CupOfEnglish'; }
     catch(e){ app.innerHTML = '<main><div class="empty">This topic is not available.</div></main>'; } return; }
   if(!TOKEN){ app.innerHTML = '<main><h1>Talk library</h1><p class="sub">Open it from the CupOfEnglish app (you need to be signed in).</p><p><a class="btn pr" href="../app.html">Open the app</a></p></main>'; return; }
   app.innerHTML = '<main><div class="empty">Loading…</div></main>';
