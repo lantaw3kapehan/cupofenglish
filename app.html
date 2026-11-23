@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2287;
+const COE_V = 2289;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -45611,7 +45611,7 @@ body #v-today #tv2 .fx .cls,body #v-today #tv2 tr.ex .cls{display:block!importan
     /* the greeting line: the date and the day's classes and teaching time */
     try{ const sm = v.querySelector('.lead > .mute.small, .lead > .small.mute'); if(sm){ const mins = live.reduce((a, c) => a + Math.round((new Date(c.end) - new Date(c.start)) / 6e4), 0), d = new Date(D.today + 'T12:00:00');
       const t = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + (live.length ? ' · ' + live.length + ' class' + (live.length === 1 ? '' : 'es') + ' · ' + span(mins) + ' teaching' : ''); if(sm.textContent !== t) sm.textContent = t; } }catch(e){}
-    needsYou(v, side);
+    needsYou(v, side); meetMissing(side);
     if(box && sig === SIG) return; SIG = sig;
     sendHome();
     if(!box){ box = document.createElement('div'); box.id = 'tv2'; main.prepend(box); }
@@ -45641,6 +45641,16 @@ body #v-today #tv2 .fx .cls,body #v-today #tv2 tr.ex .cls{display:block!importan
     if(focus && FOCUS_OPEN){ const card = C.get(focus.id), fx = box.querySelector('[data-fx]'); if(card && fx){ home(card); fx.appendChild(card); } }
     box.querySelectorAll('tr.ex').forEach(tr => { const card = C.get(tr.dataset.ex); if(card){ home(card); tr.firstElementChild.appendChild(card); } });
   }catch(e){ console.warn('2773', e); } }
+  /* 2790 (Misty 13:46): students whose classes this week have no Tencent Meeting ID yet, each with one-click "Add" (opens that class › Meeting ID) */
+  function meetMissing(side){ try{ if(!side || typeof D === 'undefined' || !D || D.mgr) return; const now = Date.now(), seen = new Map();
+      (D.schedule || []).filter(c => c && !c.cancelled && c.code && +new Date(c.end) >= now && !String(c.meet || '').trim()).sort((a, b) => String(a.start).localeCompare(String(b.start))).forEach(c => { if(!seen.has(c.code)) seen.set(c.code, c); });
+      let n = document.getElementById('mid2790'); const L = [...seen.values()];
+      if(!L.length){ if(n) n.remove(); return; }
+      const dd = c => { const d = new Date(c.start); return (c.day === D.today ? 'Today' : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })) + ' ' + hm(d); };
+      const h = '<div class="lb">Meeting ID missing · ' + L.length + '</div>' + L.slice(0, 6).map(c => '<div class="r"><div style="min-width:0"><b>' + E(c.student || c.code) + '</b><small>' + E(dd(c)) + '</small></div><button type="button" class="b2" onclick="meetSheet(\'' + E(c.id) + '\')">Add</button></div>').join('') + (L.length > 6 ? '<div class="mo">+ ' + (L.length - 6) + ' more this week</div>' : '');
+      if(!n){ n = document.createElement('div'); n.id = 'mid2790'; }
+      const ny = document.getElementById('ny2773'); if(ny && ny.parentNode === side){ if(ny.nextElementSibling !== n) ny.after(n); } else if(side.firstElementChild !== n) side.prepend(n);
+      if(n.__h !== h){ n.__h = h; n.innerHTML = h; } }catch(e){} }
   function needsYou(v, side){ try{ if(!side) return; const td = v.querySelector(':scope > .td1104'); let n = document.getElementById('ny2773');
       const rows = td ? [...td.querySelectorAll('.q1106 .qr')] : [], cnt = rows.length;
       if(!cnt){ if(n) n.remove(); return; }
@@ -45697,6 +45707,18 @@ body.tv2 #v-today > #talk2425{display:none!important}
 /* 2789 · the next-class card: time tile and coloured name label like the table, a little bigger */
 #tv2 .fc .tp.big{height:52px;min-width:92px;font-size:20px;margin-right:12px}#tv2 .fc .tp.big small{font-size:11.5px}
 #tv2 .fc .np.big{font-size:18px;padding:6px 16px;margin-right:10px}
+/* 2790 · Meeting ID missing card (right column on Today) */
+#mid2790{background:#fff;border:1px solid #F3D9A4;border-radius:16px;padding:14px 16px;margin-bottom:14px}
+#mid2790 .lb{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#8A5A00;font-weight:700;margin:0 0 6px}
+#mid2790 .r{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid #F6EFE0}
+#mid2790 .r:first-of-type{border-top:0}
+#mid2790 .r b{display:block;color:#2F2752;font-size:14px}#mid2790 .r small{color:#8A879C;font-size:12px}
+#mid2790 .b2{height:30px;padding:0 14px;border-radius:999px;border:1px solid #E2C07A;background:#FFF8EA;color:#7A4E00;font:600 13px Inter,sans-serif;cursor:pointer;flex:none}
+#mid2790 .mo{font-size:12px;color:#8A879C;margin-top:4px}
+/* 2791 (Misty 13:47) · My students in A–Z order going DOWN the first column, then the second (was left-right) */
+body.role-t #v-students .gr504{display:block!important;columns:2;column-gap:10px}
+body.role-t #v-students .gr504 > .c504{break-inside:avoid;-webkit-column-break-inside:avoid;margin:0 0 10px!important;width:100%;box-sizing:border-box}
+@media(max-width:760px){body.role-t #v-students .gr504{columns:1}}
 </style>
 <script>
 /* 2785 (Misty 13:35: open the notices and improve them) · a message asking for a Tencent Meeting ID gets one button per student
