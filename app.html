@@ -7514,7 +7514,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2323;
+const COE_V = 2325;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -42834,6 +42834,17 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
       if(F.length > 40) html += `<input class="in-t b3-q" placeholder="Search this book · e.g. unit 4, letter m, -at, workbook" oninput="b3Find(this.value)">`;
       const pin = L.u != null && U[L.u] ? L.u : null;
       if(pin != null) html += `<div class="b3-pin"><div class="t"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex:none"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg> Where the last class ended${L.t ? ' · ' + E(L.t) : ''}</div>${unitBlock(pin, U[pin], true)}${U[pin + 1] ? unitBlock(pin + 1, U[pin + 1], false).replace('<b>Unit ' + (pin + 1) + '</b>', '<b>Unit ' + (pin + 1) + '</b> <span class="b3p">next</span>') : ''}</div>`;
+      /* 2834 (24 Nov, Misty: "when they click the student's book, auto highlight where they should start"): books without units (readers such as
+         Raz-Kids "11 - How Many Legs") · the last class's title is matched to a file of this book: the next one is shown first ("Start here"),
+         the last one beside it ("Last class"), and both are marked in the list below. A title that is not in this book shows nothing. */
+      if(pin == null && L.t){ const nt = norm(L.t), PF = F.filter(f => f.kind === 'pdf' && !M.includes(f)).sort((x, y) => nat(String(x.group || '') + '/' + x.name, String(y.group || '') + '/' + y.name));
+        let hit = null, best = 0; PF.forEach(f => { const ti = norm(String(f.name).replace(/\.pdf$/i, '').replace(/^\s*\d+\s*[-.·]\s*/, '')); if(ti.length >= 4 && nt.includes(ti) && ti.length > best){ best = ti.length; hit = f; } });
+        if(hit){ const i = PF.indexOf(hit), nx = PF.slice(i + 1).find(f => String(f.group || '') === String(hit.group || '')) || null; window.__b3hit = { last: hit.id, next: nx ? nx.id : null };
+          html += `<div class="b3-pin b3-pin2834"><div class="t">Where the last class ended · ${E(L.t)}</div>`
+            + (nx ? `<div class="b3-go"><span class="b3-tag">Start here</span>${a(nx, String(nx.name).replace(/\.pdf$/i, ''))}</div>` : '')
+            + `<div class="b3-go b3-was"><span class="b3-tag">Last class</span>${a(hit, String(hit.name).replace(/\.pdf$/i, ''))}</div></div>`; }
+        else window.__b3hit = null; }
+      else if(pin == null) window.__b3hit = null;
       if(units.length) html += `<div class="b3-sec">${pin != null ? 'All units' : 'Units'}</div>` + units.map(u => unitBlock(u, U[u], false)).join('');
       const og = Object.keys(other).sort(nat); if(og.length) html += `<div class="b3-sec">More</div>` + og.map(g => { const fs = other[g].sort((x, y) => nat(x.name, y.name)), kinds = new Set(fs.map(f => f.kind));
         return `<details class="b3u"><summary><span class="ar">▸</span><b>${E(g.replace(/^[A-Z0-9 &'-]+$/, w => w.charAt(0) + w.slice(1).toLowerCase()))}</b><span class="sub"></span><span class="pills"><span class="b3p${kinds.has('video') ? ' v' : kinds.has('audio') ? ' a' : ''}">${kinds.has('video') ? '▶' : kinds.has('audio') ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex:none"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>' : '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex:none"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>'} ${fs.length}</span></span></summary><div class="b3-in">${kinds.size === 1 && kinds.has('audio') ? `<details class="b3a" open><summary><b>${E(g)}</b></summary><div>${fs.map(f => a(f)).join('')}</div></details>` : fs.map(f => a(f, f.kind === 'pdf' ? pLabel(f.name, []) : '')).join('')}</div></details>`; }).join('');
@@ -42841,6 +42852,7 @@ html body #v-schedule .s2-wk a.s2-d.on:not(#z2222):not(#y2222):not(#x2222) :is(s
     if(!html) return;
     html += `<div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap"><button class="btn ghost grow" onclick="closeSheet();go('books')">All books</button></div><div class="b3-note">Pages open in the CupOfEnglish reader tab (zoom, drawing, Present for class) · videos and audio play here in the app.</div>`;
     body.innerHTML = html; delete body.dataset.au;
+    try{ const hh = window.__b3hit; if(hh) [['next', 'b3-next'], ['last', 'b3-last']].forEach(([k, c]) => { if(!hh[k]) return; body.querySelectorAll('details.b3u a.link').forEach(x => { if(String(x.getAttribute('href') || '').includes(encodeURIComponent(hh[k]))){ x.classList.add(c); const d = x.closest('details.b3u'); if(d) d.open = true; } }); }); }catch(e){}   /* 2834 */
     body.insertAdjacentHTML('afterbegin', '<span class="bk-um" hidden></span>');   /* 2270's extra row is not needed: the pinned unit already has everything */
     try{ window.auEnhance && auEnhance(); }catch(e){}
     body.querySelectorAll('.small.mute').forEach(x => { if(/^Audio: open a unit/.test(x.textContent || '')) x.remove(); });
@@ -45639,7 +45651,11 @@ body #v-today #tv2 .fx .cls,body #v-today #tv2 tr.ex .cls{display:block!importan
     const bk = card && card.querySelector('.bkchip'), unit = card && card.querySelector('.cact .bkb'), ut = unit ? unit.textContent.trim() : '';
     const book = (bk ? bk.textContent.trim() : String(c.book || '').replace(/([a-z])([A-Z])/g, '$1 $2')) || 'Class';
     const u = /^Unit\s+(\d+)/i.exec(ut); const note = card && card.querySelector('.note'); let last = note ? note.textContent.replace(/^\s*Last class:\s*/i, '').replace(/\s+/g, ' ').trim() : ''; last = last.split(/\s*·?\s*Next:/i)[0].trim(); if(last.length > 80) last = last.slice(0, 78).replace(/\s+\S*$/, '') + '…';   /* 2776: the last class only (the teacher's 'Next:' advice is in the class brief), never more than one line */
-    return { col, book, unitTxt: ut, unitShort: u ? 'U' + u[1] : '', last, st: steps(card), trial: c.type === 'Trial' }; }
+    /* 2835 (24 Nov, Misty's Today: "Oxford Discover 1 · U10" but nothing for Reading Explorer or Letter Blends): books without units show where
+       the last class ended too, from the class note · the page ("p. 13") or the reader's number ("#11") */
+    let us = u ? 'U' + u[1] : ''; if(!us && last){ const pm = /\b(?:page|p\.?)\s*(\d{1,3})\b/i.exec(last), um = /\bunit\s*(\d{1,2})\b/i.exec(last), rm = /(?:^|[-·\s])(\d{1,3})\s*[-–·]?\s*[A-Z][a-z]/.exec(last);
+      us = um ? 'U' + um[1] + (pm ? ' p.' + pm[1] : '') : pm ? 'p.' + pm[1] : rm ? '#' + rm[1] : ''; }
+    return { col, book, unitTxt: ut, unitShort: us, last, st: steps(card), trial: c.type === 'Trial' }; }
   function stepsHtml(st, trial){ if(!st) return trial ? '<span class="muted" style="color:#8A879C;font-size:13px">Trial</span>' : ''; const L = ['In', 'H', 'N', 'V'], T = ['Time-in', 'Homework', 'Class note', 'Video'];
     return '<div class="st">' + st.map((s, i) => '<span class="' + s + '" title="' + T[i] + (s === 'd' ? ' · done' : s === 'n' ? ' · to do' : ' · later') + '">' + L[i] + '</span>').join('') + '</div>'; }
   function build(){ try{
@@ -46027,6 +46043,11 @@ body #v-train .tx-gr .nm{white-space:nowrap!important}
   try{ if(typeof VIEW !== 'undefined' && VIEW) seen['v-' + VIEW] = 1; }catch(e){}   /* the screen the app opened on has its own start-up hold (1170) */
 })();
 </script>
+<style id="s2834">#bkBody .b3-pin2834 .b3-go{display:flex;align-items:center;gap:10px;padding:6px 0}#bkBody .b3-pin2834 .b3-go+.b3-go{border-top:1px solid #DCEDEE}
+#bkBody .b3-tag{flex:none;min-width:84px;text-align:center;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;background:#13636B;color:#fff}
+#bkBody .b3-was .b3-tag{background:#E4F1F2;color:#13636B}#bkBody .b3-pin2834 .b3-go a.link{font-weight:700}
+#bkBody a.link.b3-next{background:#E4F4F5;border-radius:8px;font-weight:700}#bkBody a.link.b3-next::after{content:"  · start here";color:#13636B;font-size:12px;font-weight:700}
+#bkBody a.link.b3-last::after{content:"  · last class";color:#6C6884;font-size:12px}</style>
 <script>/* 2815: the app started (pilot check: the frame switches the compact copy off on this device if this never runs) */ try{ if(typeof render === 'function' && typeof applyUpdate === 'function') localStorage.removeItem('coe.mintry'); }catch(e){}</script>
 </body>
 </html>
