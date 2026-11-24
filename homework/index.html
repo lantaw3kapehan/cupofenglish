@@ -307,7 +307,7 @@ ${['grammar', 'spelling', 'words', 'punct'].map(k => `<button type="button" clas
 <button type="button" class="ib" id="tU" aria-label="Undo" title="Undo (${UNDOK})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
 <button type="button" class="ib" id="tR" aria-label="Redo" title="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
 <button type="button" class="chip" id="tE" title="Change the student's text">Edit text</button></div>
-<div class="tools" style="padding-top:0"><span class="xs mute">Stamps:</span>${STAMPS.map(([k, n]) => `<button type="button" class="chip" data-ts="${k}" title="Add ${n}">${k === 'own' ? '<span style="color:#6D28D9;font-weight:600">Your own words…</span>' : `<img src="${stampImg(k)}" alt="${n}" style="height:22px;width:auto">`}</button>`).join('')}</div>`; }
+<div class="tools" style="padding-top:0;flex-wrap:wrap"><span class="xs mute">Stamps:</span>${stRows('data-ts', () => false, 'Your own words…')}</div>`; }
 function emptyHtml(kind){
   return `<div class="empty"><div class="drop"><div class="big">Paste the homework here</div>
 <div class="small mute" style="line-height:1.9">1. In WeChat, copy the student's message or picture.<br>2. Come back here and ${matchMedia('(pointer:coarse)').matches ? 'tap <b>Paste</b> (or choose the saved picture).</div>' : 'press <span class="keys">' + KEY + '</span> on your keyboard, or click <b>Paste</b>.<br><span class="xs">You can also drag a picture into this box.</span></div>'}
@@ -397,18 +397,31 @@ document.addEventListener('keydown', e => {
 /* ================= PICTURE ================= */
 let TOOL = 'pen', COL = '#D92D20', DRAW = null, PK = 1, DPR = 1;
 /* 2316 · stamps (Misty 20:34): one click puts a star, A+ or a short praise badge on the picture */
-const STAMPS = [['star', 'Star'], ['aplus', 'A+'], ['hundred', '100'], ['smile', 'Smiley face'], ['heart', 'Heart'], ['trophy', 'Trophy'],
-  ['excellent', 'Excellent!'], ['great', 'Great job!'], ['good', 'Good work'], ['perfect', 'Perfect!'], ['amazing', 'Amazing!'], ['neat', 'Neat writing'], ['keepup', 'Keep it up!'], ['improve', 'Big improvement!'],
-  ['again', 'Try again'], ['spell', 'Check spelling'], ['gram', 'Check grammar'], ['own', 'Your own words…']];
+/* 2847 (Misty 24 Nov 14:18): stamps for young learners · teal = a skill done well, purple = effort and growth, orange dashed = a gentle fix-it. Each has a Chinese line for parents. The older stamps stay under "Other". */
+const STAMPS = [
+  ['k_neat', 'Neat letters!', 'skill'], ['k_sound', 'Great sound!', 'skill'], ['k_spell', 'Spelled it right!', 'skill'], ['k_word', 'New word!', 'skill'], ['k_cap', 'Capital letter!', 'skill'], ['k_colour', 'Beautiful colouring!', 'skill'], ['k_space', 'Good spacing!', 'skill'],
+  ['e_hard', 'You tried something hard!', 'effort'], ['e_better', 'Better than last time!', 'effort'], ['e_check', 'You checked your work!', 'effort'], ['e_done', 'All done!', 'effort'], ['e_star', 'CupOfEnglish star', 'effort'],
+  ['f_look', 'Look again here', 'fix'], ['f_almost', 'Almost!', 'fix'], ['f_together', "Let's fix it together", 'fix'], ['f_letter', 'Check this letter', 'fix'], ['f_more', 'Try once more', 'fix'],
+  ['star', 'Star', 'other'], ['aplus', 'A+', 'other'], ['hundred', '100', 'other'], ['smile', 'Smiley face', 'other'], ['heart', 'Heart', 'other'], ['trophy', 'Trophy', 'other'],
+  ['excellent', 'Excellent!', 'other'], ['great', 'Great job!', 'other'], ['good', 'Good work', 'other'], ['perfect', 'Perfect!', 'other'], ['amazing', 'Amazing!', 'other'], ['neat', 'Neat writing', 'other'], ['keepup', 'Keep it up!', 'other'], ['improve', 'Big improvement!', 'other'],
+  ['again', 'Try again', 'other'], ['spell', 'Check spelling', 'other'], ['gram', 'Check grammar', 'other'], ['own', 'Your own words…', 'other']];
+const STG = [['skill', 'Did well', '#00707A'], ['effort', 'Effort', '#5B4FC4'], ['fix', 'Fix gently', '#B45309'], ['other', 'Other', '#6B7280']];
 /* 2318 (Misty 20:38 "more options for the teacher that's creative"): more praise, symbols, gentle fix-it stamps and the teacher's own words */
+const KT = '#00707A', KE = '#5B4FC4', KF = '#C2560C';
 const STB = { excellent: ['Excellent!', '#15803D'], great: ['Great job!', '#00707A'], good: ['Good work', '#2563EB'], perfect: ['Perfect!', '#7C3AED'], amazing: ['Amazing!', '#DB2777'],
   neat: ['Neat writing', '#0E7490'], keepup: ['Keep it up!', '#4338CA'], improve: ['Big improvement!', '#15803D'],
-  again: ['Try again', '#B45309'], spell: ['Check spelling', '#C2410C'], gram: ['Check grammar', '#1D4ED8'] };
-const FIXK = ['again', 'spell', 'gram'];
+  again: ['Try again', '#B45309'], spell: ['Check spelling', '#C2410C'], gram: ['Check grammar', '#1D4ED8'],
+  k_neat: ['Neat letters!', KT, '字写得很整齐！'], k_sound: ['Great sound!', KT, '发音很棒！'], k_spell: ['Spelled it right!', KT, '拼写正确！'], k_word: ['New word!', KT, '用上了新单词！'], k_cap: ['Capital letter!', KT, '大写字母用对了！'], k_colour: ['Beautiful colouring!', KT, '涂色真漂亮！'], k_space: ['Good spacing!', KT, '字间距很好！'],
+  e_hard: ['You tried something hard!', KE, '你勇敢挑战了难题！'], e_better: ['Better than last time!', KE, '比上次更棒了！'], e_check: ['You checked your work!', KE, '你自己检查了作业！'], e_done: ['All done!', KE, '全部完成！'], e_star: ['CupOfEnglish star', KE, '英语小明星！'],
+  f_look: ['Look again here', KF, '再看看这里', 1], f_almost: ['Almost!', KF, '差一点就对了！', 1], f_together: ["Let's fix it together", KF, '我们一起改一改', 1], f_letter: ['Check this letter', KF, '检查一下这个字母', 1], f_more: ['Try once more', KF, '再试一次', 1] };
+const FIXK = ['again', 'spell', 'gram', 'f_look', 'f_almost', 'f_together', 'f_letter', 'f_more'];
+/* 2847: grouped stamp chips · attr = data-st (picture) or data-ts (typed); on(k) marks the picked one */
+function stRows(attr, on, ownLbl){ return STG.map(([g, lbl, col]) => '<span class="xs" style="color:' + col + ';font-weight:600;margin-left:4px">' + lbl + ':</span>' + STAMPS.filter(x => x[2] === g).map(([k, n]) => `<button type="button" class="chip" ${attr}="${k}" title="${esc(n)}" style="${on(k) ? 'border-color:#00707A;background:#E6F5F6' : ''}">${k === 'own' ? '<span style="color:#6D28D9;font-weight:600">' + ownLbl + '</span>' : `<img src="${stampImg(k)}" alt="${esc(n)}" style="height:${STB[k] && STB[k][2] ? 30 : 22}px;width:auto">`}</button>`).join('')).join(''); }
+let STW = null; function stHalfW(k, s){ const B = stB(k); if(!B) return s * .6; try{ STW = STW || document.createElement('canvas').getContext('2d'); STW.font = '800 ' + (s * .34) + 'px Inter,sans-serif'; let w = STW.measureText(B[0]).width; if(B[2]){ STW.font = '700 ' + (s * .24) + 'px sans-serif'; w = Math.max(w, STW.measureText(B[2]).width); } return (w + s * .5) / 2 + s * .05; }catch(e){ return s * 1.9; } }
 const stOwn = k => /^own:/.test(k) ? [k.slice(4), '#6D28D9'] : null;   /* "own:<text>" = the teacher's own words */
 const stB = k => STB[k] || stOwn(k);
 let OWN = (() => { try{ return localStorage.getItem('coe.hw.own') || ''; }catch(e){ return ''; } })();
-let STAMP = (() => { try{ const v = localStorage.getItem('coe.hw.stamp'); return STAMPS.some(x => x[0] === v) ? v : 'star'; }catch(e){ return 'star'; } })();
+let STAMP = (() => { try{ const v = localStorage.getItem('coe.hw.stamp'); return STAMPS.some(x => x[0] === v) ? v : 'k_neat'; }catch(e){ return 'k_neat'; } })();
 /* 2313 · mark sizes (Misty 18:29: the tick is small). Medium is the new default; Small is the old size. Remembered on this device. */
 const SZ = { s: { tick: 3.2, pen: .28, text: 2.2, ring: .28 }, m: { tick: 4.6, pen: .36, text: 2.7, ring: .34 }, l: { tick: 7, pen: .5, text: 3.4, ring: .45 } };   /* 2315 (Misty 20:29): 7 was too big; M is now close to the first size */
 let SIZE = 'm';   /* 2770 (Misty 23 Nov 13:00): one standard size for marks and typed notes, as on the books and speaking screens · the teacher zooms if a student needs it bigger (was S / M / L) */
@@ -472,7 +485,7 @@ function drawItem(c, it){
   c.restore(); }
 function bbox(it){ const u = U();
   if(it.t === 'pen'){ let a = 1e9, b = 1e9, c = -1e9, d = -1e9; it.p.forEach(q => { a = Math.min(a, q[0]); b = Math.min(b, q[1]); c = Math.max(c, q[0]); d = Math.max(d, q[1]); }); return [a - u, b - u, c + u, d + u]; }
-  if(it.t === 'stamp'){ const w = stB(it.k) ? it.s * 1.9 : it.s * .6; return [it.x - w, it.y - it.s * .6, it.x + w, it.y + it.s * .6]; }
+  if(it.t === 'stamp'){ const w = stHalfW(it.k, it.s), h = stB(it.k) && stB(it.k)[2] ? it.s * .62 : it.s * .6; return [it.x - w, it.y - h, it.x + w, it.y + h]; }
   if(it.t === 'tick' || it.t === 'cross') return [it.x - it.s * .6, it.y - it.s * .6, it.x + it.s * .6, it.y + it.s * .6];
   if(it.t === 'circle') return [it.x - Math.abs(it.rx) - u, it.y - Math.abs(it.ry) - u, it.x + Math.abs(it.rx) + u, it.y + Math.abs(it.ry) + u];
   if(it.t === 'text'){ const c = document.createElement('canvas').getContext('2d'); c.font = '600 ' + it.s + 'px "COE Card Inter",Inter,sans-serif'; const T = txtL2747(c, it); return [it.x, it.y, it.x + T.w + it.s * .7, it.y + it.s * 1.45 + (T.L.length - 1) * it.s * 1.2]; } return [0, 0, 0, 0]; }
@@ -487,11 +500,11 @@ function tbSync(){ try{ const t = $('tools'); document.documentElement.style.set
 window.addEventListener('resize', tbSync);
 function stampBar(){ setTimeout(tbSync, 0); const t = $('tools'); if(!t || MODE !== 'picture' || !PIC.base){ return; }
   if(TOOL !== 'stamp'){ t.innerHTML = ''; return; }
-  t.innerHTML = '<div class="tools"><span class="xs mute">Pick a stamp, then click the picture:</span>' + STAMPS.map(([k, n]) => { const on = STAMP === k || (k === 'own' && /^own:/.test(STAMP)); return `<button type="button" class="chip" data-st="${k}" title="${n}" style="${on ? 'border-color:#00707A;background:#E6F5F6' : ''}">${k === 'own' ? '<span style="color:#6D28D9;font-weight:600">' + (/^own:/.test(STAMP) ? esc(STAMP.slice(4)) : OWN ? esc(OWN) : 'Your own words…') + '</span>' : `<img src="${stampImg(k)}" alt="${n}" style="height:22px;width:auto">`}</button>`; }).join('') + '</div>';
+  t.innerHTML = '<div class="tools" style="flex-wrap:wrap"><span class="xs mute">Pick a stamp, then click the picture:</span>' + stRows('data-st', k => STAMP === k || (k === 'own' && /^own:/.test(STAMP)), /^own:/.test(STAMP) ? esc(STAMP.slice(4)) : OWN ? esc(OWN) : 'Your own words…') + '</div>';
   t.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { let k = b.dataset.st; if(k === 'own'){ const v = askOwn(); if(!v) return; k = 'own:' + v; } STAMP = k; try{ localStorage.setItem('coe.hw.stamp', STAMP); }catch(e){} stampBar(); }); }
 function askOwn(){ const v = (prompt('Your own stamp words (short, e.g. "Lovely story!"):', OWN) || '').trim().slice(0, 24); if(v){ OWN = v; try{ localStorage.setItem('coe.hw.own', v); }catch(e){} } return v; }
 const SIMG = {};
-function stampImg(k){ if(SIMG[k]) return SIMG[k]; try{ const wide = !!stB(k), s = 120, cv = document.createElement('canvas'); cv.width = wide ? s * (1.2 + .21 * String(stB(k)[0]).length) : s * 1.2; cv.height = s * 1.2; const c = cv.getContext('2d'); drawStamp(c, { k, x: cv.width / 2, y: cv.height / 2, s }); SIMG[k] = cv.toDataURL('image/png'); }catch(e){ SIMG[k] = ''; } return SIMG[k]; }
+function stampImg(k){ if(SIMG[k]) return SIMG[k]; try{ const wide = !!stB(k), s = 120, cv = document.createElement('canvas'); cv.width = wide ? Math.ceil(stHalfW(k, s) * 2 + s * .3) : s * 1.2; cv.height = s * 1.2; const c = cv.getContext('2d'); drawStamp(c, { k, x: cv.width / 2, y: cv.height / 2, s }); SIMG[k] = cv.toDataURL('image/png'); }catch(e){ SIMG[k] = ''; } return SIMG[k]; }
 function drawStamp(c, it){ const s = it.s, x = it.x, y = it.y; c.save(); c.lineJoin = 'round';
   if(it.k === 'star'){ c.beginPath(); for(let i = 0; i < 10; i++){ const r = i % 2 ? s * .22 : s * .52, a = -Math.PI / 2 + i * Math.PI / 5; i ? c.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)) : c.moveTo(x + r * Math.cos(a), y + r * Math.sin(a)); } c.closePath(); c.fillStyle = '#F5B301'; c.fill(); c.lineWidth = s * .05; c.strokeStyle = '#B7791F'; c.stroke(); }
   else if(it.k === 'aplus'){ c.translate(x, y); c.rotate(-.18); c.beginPath(); c.arc(0, 0, s * .55, 0, Math.PI * 2); c.fillStyle = '#D92D20'; c.fill(); c.beginPath(); c.arc(0, 0, s * .45, 0, Math.PI * 2); c.lineWidth = s * .04; c.strokeStyle = '#fff'; c.stroke();
@@ -506,6 +519,11 @@ function drawStamp(c, it){ const s = it.s, x = it.x, y = it.y; c.save(); c.lineJ
     c.beginPath(); c.moveTo(x - s * .32, y - s * .45); c.lineTo(x + s * .32, y - s * .45); c.quadraticCurveTo(x + s * .3, y + s * .1, x, y + s * .14); c.quadraticCurveTo(x - s * .3, y + s * .1, x - s * .32, y - s * .45); c.closePath(); c.fill(); c.stroke();
     [-1, 1].forEach(d => { c.beginPath(); c.arc(x + d * s * .34, y - s * .25, s * .13, d > 0 ? -Math.PI / 2 : Math.PI / 2, d > 0 ? Math.PI / 2 : Math.PI * 1.5, false); c.stroke(); });
     c.fillRect(x - s * .06, y + s * .14, s * .12, s * .16); c.strokeRect(x - s * .06, y + s * .14, s * .12, s * .16); c.fillRect(x - s * .26, y + s * .3, s * .52, s * .14); c.strokeRect(x - s * .26, y + s * .3, s * .52, s * .14); }
+  else if(stB(it.k) && stB(it.k)[2]){ const B = stB(it.k); c.translate(x, y); c.rotate(B[3] ? 0 : -.06);   /* 2847: young-learner stamp · English + Chinese line, dashed when it is a gentle fix-it */
+    const fe = '800 ' + (s * .34) + 'px "COE Card Inter",Inter,sans-serif', fz = '700 ' + (s * .24) + 'px "PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif';
+    c.font = fe; let w = c.measureText(B[0]).width; c.font = fz; w = Math.max(w, c.measureText(B[2]).width) + s * .5; const h = s * 1.0;
+    rr(c, -w / 2, -h / 2, w, h, h * .26); c.fillStyle = B[3] ? '#FFF7ED' : '#fff'; c.fill(); c.lineWidth = s * .07; c.strokeStyle = B[1]; if(B[3]) c.setLineDash([s * .16, s * .1]); c.stroke(); c.setLineDash([]);
+    c.fillStyle = B[1]; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = fe; c.fillText(B[0], 0, -s * .16); c.font = fz; c.globalAlpha = .85; c.fillText(B[2], 0, s * .22); c.globalAlpha = 1; }
   else { const B = stB(it.k) || STB.good; c.translate(x, y); c.rotate(-.12); c.font = '800 ' + (s * .34) + 'px "COE Card Inter",Inter,sans-serif'; const w = c.measureText(B[0]).width + s * .5, h = s * .62;
     rr(c, -w / 2, -h / 2, w, h, h * .28); c.fillStyle = '#fff'; c.fill(); c.lineWidth = s * .07; c.strokeStyle = B[1]; c.stroke();
     rr(c, -w / 2 + s * .07, -h / 2 + s * .07, w - s * .14, h - s * .14, h * .2); c.lineWidth = s * .025; c.stroke();
@@ -708,7 +726,7 @@ async function parentPic(){
     if(title){ const L = wrap(title, '700 30px ' + F, 740); blocks.push(label('Homework', '作业')); blocks.push({ h: L.length * 40 + 22, draw: (c, y) => { c.fillStyle = '#2B2253'; c.font = '700 30px ' + F; L.forEach((t, i) => c.fillText(t, 80, y + 30 + i * 40)); } }); }
     blocks.push(label('Checked on', '批改日期')); blocks.push({ h: 40 + 34 + 22, draw: (c, y) => { c.fillStyle = '#2B2253'; c.font = '400 30px ' + F; c.fillText(dEn, 80, y + 30); c.fillStyle = '#4C4868'; c.font = '400 24px ' + Z; c.fillText(dZh + (!window.coeHdr && ME.name && ME.role !== 'Operations' ? ' · ' + tName(ME.name) : ''), 80, y + 64); } });
     if(MODE === 'text'){
-      if(TX.stamps.length){ const L = TX.stamps.slice(0, 12); blocks.push({ h: 130, draw: (c, y) => { let x = 80; L.forEach(k => { const wide = !!stB(k), s = 84, w = wide ? s * (1 + .2 * String(stB(k)[0]).length) : s * 1.1; if(x + w > W - 80) return; drawStamp(c, { k, x: x + w / 2, y: y + 58, s }); x += w + 14; }); } }); }
+      if(TX.stamps.length){ const L = TX.stamps.slice(0, 12); blocks.push({ h: 130, draw: (c, y) => { let x = 80; L.forEach(k => { const wide = !!stB(k), s = 84, w = wide ? stHalfW(k, s) * 2 : s * 1.1; if(x + w > W - 80) return; drawStamp(c, { k, x: x + w / 2, y: y + 58, s }); x += w + 14; }); } }); }
       const good = TX.marks.filter(x => x.c === 'good').map(x => TX.parts.slice(x.a, x.b + 1).join('')).slice(0, 3);
       if(good.length){ const L = [].concat(...good.map(g => wrap('“' + g + '”', '400 28px ' + F, 700))); const hh = 30 + L.length * 38 + 26;
         blocks.push({ h: hh + 22, draw: (c, y) => { rr(c, 80, y, W - 160, hh, 20); c.fillStyle = '#F0FDF4'; c.fill(); c.fillStyle = '#15803D'; c.font = '700 20px ' + F; c.fillText('Well done / 做得好', 106, y + 34); c.fillStyle = '#14532D'; c.font = '400 28px ' + F; L.forEach((t, i) => c.fillText(t, 106, y + 74 + i * 38)); } }); }
