@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-hw v9 (22 Nov · 2729 where / whereGet: where the class ended and the homework page, per student) · v8 (21 Nov · 2556 trialMark k books) · v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
+// CupOfEnglish · coe-hw v10 (24 Nov · 2864 voice notes on a check, stickers: a student's sticker collection) · v9 (22 Nov · 2729 where / whereGet: where the class ended and the homework page, per student) · v8 (21 Nov · 2556 trialMark k books) · v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
 // correct it and share it). Used by the Homework check page (homework/index.html).
 // POST { token, op, ... }:
 //   me                       → { name, role, mgmt }
@@ -15,14 +15,15 @@ const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 const BUCKET = "homework";
 function fromDataUrl(u: string): { bytes: Uint8Array; type: string; ext: string } | null {
-  const m = /^data:(image\/(png|jpeg|webp));base64,(.+)$/.exec(String(u || ""));
+  const m = /^data:((?:image|audio)\/(png|jpeg|webp|wav|x-wav|webm|mp4|mpeg|ogg))(?:;[^;,]*)*;base64,(.+)$/.exec(String(u || ""));
   if (!m) return null;
   const bin = atob(m[3]); const a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
-  return { bytes: a, type: m[1], ext: m[2] === "jpeg" ? "jpg" : m[2] };
+  const ext = ({ jpeg: "jpg", "x-wav": "wav", mp4: "m4a", mpeg: "mp3" } as Record<string, string>)[m[2]] || m[2];
+  return { bytes: a, type: m[1], ext };
 }
 async function put(code: string, u: string): Promise<string | null> {
   const f = fromDataUrl(u); if (!f) return null;
-  if (f.bytes.length > 12 * 1024 * 1024) throw new Error("The picture is too big (over 12 MB).");
+  if (f.bytes.length > 12 * 1024 * 1024) throw new Error(/^audio/.test(f.type) ? "The voice note is too long." : "The picture is too big (over 12 MB).");
   const path = code + "/" + crypto.randomUUID() + "." + f.ext;
   const { error } = await db.storage.from(BUCKET).upload(path, f.bytes, { contentType: f.type, upsert: false });
   if (error) throw new Error(error.message);
@@ -115,7 +116,9 @@ Deno.serve(async (req: Request) => {
       if (error) throw new Error(error.message);
       const paths = [...new Set((data || []).flatMap((r: any) => [r.img_orig, r.img_marked]).filter(Boolean))] as string[], U: Record<string, string> = {};
       if (paths.length) { const { data: S } = await db.storage.from(BUCKET).createSignedUrls(paths, 3600); (S || []).forEach((x: any) => { if (x && x.path && x.signedUrl) U[x.path] = x.signedUrl; }); }   // one call for all pictures
-      const L = (data || []).map((r: any) => ({ ...r, img_orig_url: U[r.img_orig] || null, img_marked_url: U[r.img_marked] || null }));
+      const vp = (data || []).map((r: any) => r.counts && r.counts.voice).filter(Boolean) as string[];   // v10: voice notes
+      if (vp.length) { const { data: S } = await db.storage.from(BUCKET).createSignedUrls(vp, 3600); (S || []).forEach((x: any) => { if (x && x.path && x.signedUrl) U[x.path] = x.signedUrl; }); }
+      const L = (data || []).map((r: any) => ({ ...r, img_orig_url: U[r.img_orig] || null, img_marked_url: U[r.img_marked] || null, voice_url: (r.counts && U[r.counts.voice]) || null }));
       return out({ ok: true, checks: L });
     }
 
@@ -126,6 +129,8 @@ Deno.serve(async (req: Request) => {
         day: /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? b.day : null, kind, title: clean(b.title, 160), body: clean(b.body, 60000),
         marks: Array.isArray(b.marks) ? b.marks.slice(0, 500) : [], counts: b.counts && typeof b.counts === "object" ? b.counts : {},
         note: clean(b.note, 2000), note_zh: clean(b.note_zh, 2000), by_name: role === 'Teacher' ? 'Teacher ' + name.charAt(0).toUpperCase() + name.slice(1) : role === 'President' ? 'Management' : name, updated_at: new Date().toISOString() };
+      if (b.voice) row.counts = { ...row.counts, voice: await put(code, b.voice) };   // v10: a new voice note (the client sends counts.voice to keep an old one, or none to drop it)
+      else if (row.counts.voice && !/^ST-\d{4}-\d{3}\/[0-9a-f-]{36}\.(wav|webm|m4a|mp3|ogg)$/.test(String(row.counts.voice)) ) delete row.counts.voice;
       if (b.orig) row.img_orig = await put(code, b.orig);
       if (b.marked) row.img_marked = await put(code, b.marked);
       if (b.id) {
@@ -136,6 +141,17 @@ Deno.serve(async (req: Request) => {
       }
       const { data, error } = await db.from("coe_hw_checks").insert(row).select("id").single(); if (error) throw new Error(error.message);
       return out({ ok: true, id: data.id });
+    }
+
+    if (op === "stickers") {   // v10 (2864): a student's sticker collection · every praise stamp on every saved check (gentle fix-it stamps are not stickers)
+      const code = String(b.code || "").toUpperCase(); if (!(await owns(code))) return out({ ok: false, error: "Not your student" }, 403);
+      const FIX = ["again", "spell", "gram", "f_look", "f_almost", "f_together", "f_letter", "f_more"];
+      const { data, error } = await db.from("coe_hw_checks").select("id,kind,marks,counts,created_at").eq("code", code).is("removed_at", null).in("kind", ["text", "picture"]).limit(2000);
+      if (error) throw new Error(error.message);
+      const by: Record<string, number> = {}; let n = 0, checks = 0;
+      (data || []).filter((r: any) => !(b.except && +b.except === r.id)).forEach((r: any) => { const ks = r.kind === "picture" ? (Array.isArray(r.marks) ? r.marks : []).filter((m: any) => m && m.t === "stamp").map((m: any) => String(m.k || "")) : (Array.isArray((r.counts || {}).stamps) ? r.counts.stamps.map(String) : []);
+        const good = ks.filter((k: string) => k && !FIX.includes(k)); if (good.length) checks++; good.forEach((k: string) => { by[k] = (by[k] || 0) + 1; n++; }); });
+      return out({ ok: true, n, checks, by });
     }
 
     if (op === "remove") {
