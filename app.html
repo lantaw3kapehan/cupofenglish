@@ -5586,7 +5586,7 @@ const st = t => { const x = t.root; return x.ack ? '<span class="chip ' + (/^�
 const order = t => t.root.ack ? (/^🙋/.test(t.root.react || '') ? 0 : 3) : t.root.seen ? 2 : 1, list = g.slice().sort((a, b) => order(a) - order(b));
 const pend = g.filter(t => !t.root.ack).map(t => t.teacher);
 openSheet('<h1>Sent to ' + g.length + ' people</h1><div class="mute small">' + esc(msgAt(r.at)) + ' · ✓ ' + c.a + ' replied · ' + c.s + ' seen only · ' + c.n + ' not seen' + (c.q ? ' · 🙋 ' + c.q + ' with a question' : '') + '</div>'
-+ (r.kind === 'memo' ? memoHtml(r) : '<div class="msgs">' + msgBubble(r, 'mgmt') + '</div>')
++ (r.kind === 'memo' ? memoHtml(r, g.length > 1 ? 'All Teachers and Staff (' + g.length + ')' : '') : '<div class="msgs">' + msgBubble(r, 'mgmt') + '</div>')
 + (pend.length ? '<button class="btn ghost block" style="margin-top:10px" onclick="msgRemind(' + gi + ')">🔔 Remind the ' + pend.length + ' who haven’t replied</button>' : '')
 + '<label>Each person</label><div>' + list.map(t => '<div class="li" style="cursor:pointer" onclick="msgOpen(\'' + t.root.id + '\')"><div class="av">' + esc(String(t.teacher).slice(0, 2).toUpperCase()) + '</div><div class="grow" style="min-width:0"><b>' + esc(t.teacher) + '</b>' + (u(t) ? ' <span class="chip red">' + u(t) + ' new</span>' : '') + (t.replies.length ? '<div class="small mute ell">' + esc((t.replies[t.replies.length - 1].role === 'mgmt' ? 'You: ' : '') + t.replies[t.replies.length - 1].text) + '</div>' : '') + '</div>' + st(t) + '<span class="mute">›</span></div>').join('') + '</div>'); }
 function msgRemind(gi){ const g = MSG_G[gi]; if(!g) return; const r = g[0].root, pend = g.filter(t => !t.root.ack).map(t => t.teacher); msgNew(pend);
@@ -5620,7 +5620,7 @@ openSheet('<h1>' + esc(mm ? msgMName(String(r.from).toLowerCase() === String(MSG
 + '<label>Reply</label><textarea id="mgR" class="in-t" rows="3" placeholder="Write a reply"></textarea>' + emojiBar('mgR') + '<button class="btn teal block" style="margin-top:8px" id="mgRB" onclick="msgReply(\'' + id + '\')">Send reply</button>');
 const ids = all.filter(msgNewM).map(x => x.id); if(ids.length){ ids.forEach(i => { const x = all.find(y => y.id === i); if(x) x.seen = 'now'; }); MSG.unread = Math.max(0, MSG.unread - ids.length); MSG_N = MSG.unread; msgBadge(); keep('msgs', MSG); if(VIEW === 'msgs') renderMsgs(); bg(() => api('mgmtMsgSeen', TOKEN, ids)); } }
 const MEMO_FOOT = 'Office Address: MS2-102&amp;103 Bayani Hall Centralé, San Vicente East, Urdaneta City, Philippines 2428<br>Company Registration No: 2022050053289-14<br>Telephone: 075-202-5860<br>Mobile: +639278548503';
-function memoHtml(r){ const s = String(r.signed || '').split('|'), name = s[0] || r.from, title = s[1] || '', auth = s[2] === '1', to = s[3] || r.to;
+function memoHtml(r, toAll){ const s = String(r.signed || '').split('|'), name = s[0] || r.from, title = s[1] || '', auth = s[2] === '1', to = toAll || s[3] || r.to;   /* 2858: a memo sent to many shows "All Teachers and Staff" on the sender's copy; each person's own copy keeps their name */
 const d = new Date(String(r.at).replace(' ', 'T') + ':00'), date = isNaN(d) ? r.at : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 const body = esc(r.text).split(/\n{2,}/).map(p => { let h = '', li = [], tx = []; const flush = () => { if(tx.length){ h += '<p>' + tx.join('<br>') + '</p>'; tx = []; } if(li.length){ h += '<ol class="memo-ol">' + li.map(x => '<li>' + x + '</li>').join('') + '</ol>'; li = []; } };
 p.split('\n').forEach(l => { const k = l.match(/^\s*\d+[.)]\s+(.*)$/); if(k){ if(tx.length && !li.length){ h += '<p class="memo-lead">' + tx.join('<br>') + '</p>'; tx = []; } li.push(k[1]); } else if(li.length && /^\s+\S/.test(l)) li[li.length - 1] += ' ' + l.trim(); else { if(li.length) flush(); tx.push(l); } }); flush(); return h; }).join('');
@@ -7521,7 +7521,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2353;
+const COE_V = 2354;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
