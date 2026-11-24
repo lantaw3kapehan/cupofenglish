@@ -127,6 +127,14 @@ input.tt{width:100%;height:42px;border:1px solid var(--out);border-radius:10px;p
 .stk2864 .bd span{display:inline-flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--ink2);flex:1;min-width:0;text-align:center}
 .stk2864 .bd span.off{opacity:.35;filter:grayscale(1)}
 .hist .vtag{font-size:12px;font-weight:600;color:#5B4FC4;background:#F1EFFC;border-radius:99px;padding:2px 8px;margin-left:6px}
+
+.hist .rw64{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:6px;white-space:normal}
+.hist .rw64 .rwS{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#8A6100;background:#FFF4D6;border-radius:99px;padding:2px 9px}
+.hist .rw64 .rwV{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#5B4FC4;background:#F1EFFC;border:0;border-radius:99px;padding:3px 10px}
+.hist .rw64 .rwV svg{width:14px!important;height:14px!important}
+.hist .rw64 .rwT{flex-basis:100%;font-size:13px;color:var(--ink);background:#FFFCF2;border:1px solid #F1E3B5;border-radius:10px;padding:6px 9px}
+.hist .rw64 .rwT div{display:flex;gap:6px;align-items:flex-start;white-space:normal!important;overflow:visible!important}.hist .rw64 .rwT .w{color:#4338A8;font-weight:600}
+.hist .rw64 .rwT svg{margin-top:2px}
 .hist{display:flex;flex-direction:column}
 .hist .it{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #F0F1F4}
 .hist .it:first-child{border-top:0}
@@ -764,6 +772,17 @@ async function save(){
   finally{ SAVING = false; b.disabled = false; b.textContent = lab; } }
 
 /* ================= earlier checks ================= */
+/* 2864 (Misty 20:51 "ensure those rewards can be seen by teachers, stuck on their students' homework"): every saved check shows its
+   stickers, two stars and a wish and voice note to any teacher who opens this student's homework */
+function rw2864(x){ const c = x.counts || {}, ks = x.kind === 'picture' ? (Array.isArray(x.marks) ? x.marks : []).filter(m => m && m.t === 'stamp').map(m => m.k) : (Array.isArray(c.stamps) ? c.stamps : []), st = ks.filter(k => !FIXK.includes(k)).length, t = c.tsw;
+  if(!st && !t && !x.voice_url) return '';
+  return '<div class="rw64">' + (st ? '<span class="rwS">' + IC64.star.replace('class="ic64"', 'class="ic64" style="width:15px;height:15px"') + st + ' sticker' + (st > 1 ? 's' : '') + '</span>' : '')
+    + (x.voice_url ? '<button type="button" class="rwV" data-v="' + esc(x.voice_url) + '">' + IC64.mic + 'Play voice note</button>' : '')
+    + (t ? '<div class="rwT">' + [t.s1, t.s2].filter(Boolean).map(v => '<div>' + IC64.star.replace('class="ic64"', 'class="ic64" style="width:14px;height:14px"') + esc(v) + '</div>').join('') + (t.w ? '<div class="w">' + IC64.wish.replace('class="ic64"', 'class="ic64" style="width:14px;height:14px"') + esc(t.w) + '</div>' : '') + '</div>' : '') + '</div>'; }
+let RWA = null; document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.rwV'); if(!b) return; e.preventDefault();
+  if(RWA && RWA.__b === b && !RWA.paused){ RWA.pause(); b.lastChild.textContent = 'Play voice note'; return; } if(RWA){ RWA.pause(); if(RWA.__b) RWA.__b.lastChild.textContent = 'Play voice note'; }
+  RWA = new Audio(b.dataset.v); RWA.__b = b; RWA.onended = () => { b.lastChild.textContent = 'Play voice note'; }; RWA.play().then(() => { b.lastChild.textContent = 'Pause'; }).catch(() => toast('The voice note could not be played')); });
+
 async function loadHist(){
   const h = $('hist'); if(!h) return; let r; try{ r = await api('list', { code: CODE }); }catch(e){ h.textContent = e.message; return; }
   if(!r.ok){ h.textContent = r.error || 'Could not load'; return; } HIST = r.checks || [];
@@ -772,7 +791,7 @@ async function loadHist(){
   const dt = s => { const d = new Date(s); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   h.innerHTML = HIST.map(x => { const c = x.counts || {}, err = ERR.reduce((s, k) => s + (+c[k] || 0), 0) + (+c.fix || 0);
     return `<div class="it"><div class="g"><div style="color:var(--ink)"><b>${esc(x.title || (x.kind === 'picture' ? 'Picture' : String(x.body || '').split(/\s+/).slice(0, 6).join(' ') + '…'))}</b></div>
-<div class="xs mute">${dt(x.created_at)} · ${esc(x.by_name)} · ${err} to fix${+c.good ? ' · ' + c.good + ' well done' : ''}${x.voice_url ? '<span class="vtag">Voice</span>' : ''}${c.tsw ? '<span class="vtag" style="color:#8A6100;background:#FFF4D6">2 stars + wish</span>' : ''}</div></div><span class="kd">${x.kind === 'picture' ? 'Picture' : x.kind === 'given' ? 'Given' : x.kind === 'writing' ? 'Writing' : 'Text'}</span>
+<div class="xs mute">${dt(x.created_at)} · ${esc(x.by_name)} · ${err} to fix${+c.good ? ' · ' + c.good + ' well done' : ''}</div>${rw2864(x)}</div><span class="kd">${x.kind === 'picture' ? 'Picture' : x.kind === 'given' ? 'Given' : x.kind === 'writing' ? 'Writing' : 'Text'}</span>
 <button type="button" class="btn sm" data-o="${x.id}">${/^(given|writing)$/.test(x.kind) ? 'View' : CUR.id === x.id ? 'Open now' : 'Open'}</button></div>`; }).join('');
   h.querySelectorAll('[data-o]').forEach(b => b.onclick = () => openCheck(+b.dataset.o)); }
 /* 2412 (Misty 19 Nov 12:59, "Earlier checks · Open cannot be opened"): homework given on Give homework and Writing correction pictures are
