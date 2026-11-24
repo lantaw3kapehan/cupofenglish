@@ -7516,7 +7516,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2337;
+const COE_V = 2338;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -33931,7 +33931,10 @@ body.cap1272 *:not(#cap1272):not(#cap1272 *){visibility:hidden!important}
       var t = x.kind === 'confirm' ? 'Acknowledge ' + who + '\u2019s message in ' + where : 'Reply to ' + who + ' in ' + where;
       return '<div class="li" onclick="chat1400.todoGo(\'' + esc(x.gid) + '\',\'' + esc(x.day) + '\',' + Number(x.id) + ')"><span class="chip coral">Team Chat</span><div class="grow" style="min-width:0"><div class="ell"><b>' + esc(t) + '</b></div><div class="small mute ell">' + esc(x.body || '') + (x.by ? ' · by ' + esc(tm(x.by)) : '') + '</div></div><span class="mute">\u203a</span></div>'; }); };
   setTimeout(boot, 1500);
-  setInterval(function(){ if(!S.on || !hasD() || document.visibilityState !== 'visible') return; if(VIEW === 'chat') return; poll(); }, 30000);
+  /* 2846: a device nobody has touched for 5 minutes checks for new messages every 2 minutes (was every 30 s); any touch checks at once */
+  var ACT2846 = Date.now(), LP2846 = 0;
+  ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(function(ev){ addEventListener(ev, function(){ var idle = Date.now() - ACT2846 > 300000; ACT2846 = Date.now(); if(idle && S.on && hasD() && VIEW !== 'chat' && Date.now() - LP2846 > 10000){ LP2846 = Date.now(); poll(); } }, { passive: true, capture: true }); });
+  setInterval(function(){ if(!S.on || !hasD() || document.visibilityState !== 'visible') return; if(VIEW === 'chat') return; if(Date.now() - ACT2846 > 300000 && Date.now() - LP2846 < 120000) return; LP2846 = Date.now(); poll(); }, 30000);
   setInterval(function(){ if(S.on && hasD() && VIEW === 'chat' && document.visibilityState === 'visible' && S.view === 'chat' && !S.busy) poll(true); }, 4000);
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible' && S.on) poll(VIEW === 'chat'); });
   async function poll(open){ try{ var r = await post('poll', open && S.gid && S.view === 'chat' ? { gid: S.gid } : {}); if(!r || !r.ok) return; if(r.off){ setOn(false); return; }
@@ -44710,7 +44713,7 @@ window.chk2523 = function(code, chk){ try{ if(!chk || chk.now == null || typeof 
     return r; };
   /* Ops Desk (2526): add the records check, refreshed every 10 minutes */
   let REC = {}, RT = 0, busy = false;
-  async function recScan(){ if(busy || Date.now() - RT < 600000 || typeof AT === 'undefined' || !AT || !AT.cols) return; busy = true;
+  async function recScan(){ if(busy || Date.now() - RT < 1800000 || typeof AT === 'undefined' || !AT || !AT.cols || document.hidden || !(function(){ const o = document.getElementById('od2341'); return o && o.offsetParent; })()) return; busy = true;   /* 2846: every 30 min, only while the Ops desk card is on screen (was every 10 min on every management device: about 1,300 calls an hour each) */
     try{ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const seen = {}, L = [];
       AT.rows.forEach(r => { const code = String(r[C.code] || '').toUpperCase(); if(r[C.active] && r[C.enrolled] !== '' && !seen[code]){ seen[code] = 1; L.push(code); } });
       const N = {}; for(let i = 0; i < L.length; i += 12){ await Promise.all(L.slice(i, i + 12).map(async code => { try{ const div = document.createElement('div'); div.innerHTML = lsHtml(code) || ''; const R = await window.rec2527(code, div); if(R && R.bad.length) N[code] = R.bad; }catch(x){} })); }
