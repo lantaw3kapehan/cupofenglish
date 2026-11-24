@@ -5624,7 +5624,14 @@ const MEMO_FOOT = 'Office Address: MS2-102&amp;103 Bayani Hall Centralé, San Vi
    their own drawn signature (the one from their contract) and the date and time. Signatures: docs sys:memosig (management) / <name>:memosig (each reader). */
 let MSIG = null, MSIG_AT = 0;
 function msigLoad(){ if(MSIG_AT && Date.now() - MSIG_AT < 30 * 6e4) return; MSIG_AT = Date.now(); try{ const k = D && D.mgr ? 'sys:memosig' : String((D && D.me && D.me.name) || '').toLowerCase() + ':memosig';
-  sbDoc(k).then(d => { MSIG = d && d.data ? d.data : null; msigFill(); }).catch(() => { MSIG_AT = 0; }); }catch(e){ MSIG_AT = 0; } }
+  sbDoc(k).then(async d => { const m = d && d.data ? d.data : null; if(m){ const T = async o => { for(const x of Object.keys(o)) if(typeof o[x] === 'string' && /^data:image\//.test(o[x])) o[x] = await msigTrim(o[x]); };
+    await T(m); if(m.t) await T(m.t); } MSIG = m; msigFill(); }).catch(() => { MSIG_AT = 0; }); }catch(e){ MSIG_AT = 0; } }
+/* the drawn signatures sit in a large empty pad: cut to the ink, once per load */
+function msigTrim(src){ return new Promise(ok => { const im = new Image(); im.onload = () => { try{ const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+  const D0 = x.getImageData(0, 0, c.width, c.height).data; let a = c.width, b = c.height, e = -1, f = -1;
+  for(let y = 0; y < c.height; y++) for(let q = 0; q < c.width; q++){ const i = (y * c.width + q) * 4; if(D0[i + 3] > 20 && (D0[i] + D0[i + 1] + D0[i + 2]) < 600){ if(q < a) a = q; if(q > e) e = q; if(y < b) b = y; if(y > f) f = y; } }
+  if(e < 0) return ok(src); const pd = 6; a = Math.max(0, a - pd); b = Math.max(0, b - pd); e = Math.min(c.width - 1, e + pd); f = Math.min(c.height - 1, f + pd);
+  const o = document.createElement('canvas'); o.width = e - a + 1; o.height = f - b + 1; o.getContext('2d').drawImage(c, a, b, o.width, o.height, 0, 0, o.width, o.height); ok(o.toDataURL('image/png')); }catch(err){ ok(src); } }; im.onerror = () => ok(src); im.src = src; }); }
 function msigOf(k){ if(!MSIG || !k) return ''; if(k === '@me') return MSIG.me || ''; if(MSIG[k]) return MSIG[k]; return (MSIG.t && MSIG.t[k]) || ''; }
 function msigFill(){ document.querySelectorAll('img.memo-sig[data-sk]').forEach(i => { const v = msigOf(i.dataset.sk); if(v && i.src !== v){ i.src = v; i.classList.add('on'); } }); }
 const msigImg = k => { const v = msigOf(k); return '<img class="memo-sig' + (v ? ' on' : '') + '" data-sk="' + esc(k) + '" alt=""' + (v ? ' src="' + v + '"' : '') + '>'; };
@@ -7534,7 +7541,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2356;
+const COE_V = 2357;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -46285,7 +46292,7 @@ body.pres2630 #app #v-mtoday > #dc2849,body.pres2630 #app #v-home > #dc2849{orde
 })();
 </script>
 <style id="s2859">
-.memo .memo-sig{display:none;height:54px;max-width:200px;object-fit:contain;object-position:left bottom;margin:6px 0 -6px;mix-blend-mode:multiply}
+.memo .memo-sig{display:none;height:52px;max-width:220px;object-fit:contain;object-position:left bottom;margin:10px 0 0;mix-blend-mode:multiply}
 .memo .memo-sig.on{display:block}
 .memo .memo-ack{margin:22px 0 4px;padding:12px 14px;border:1px dashed #CFCBDD;border-radius:10px;font-size:13px;line-height:1.5;color:#2B2253;max-width:340px}
 .memo .memo-ackh{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6B6880;margin-bottom:2px}
