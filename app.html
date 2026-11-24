@@ -6984,7 +6984,7 @@ h += `<section class="gr-hero"><div class="gr-ring">${grRing(e.pct)}</div><div c
 <div class="small mute">${esc(e.period)} evaluation</div>
 <div class="gr-score"><b>${e.avg.toFixed(1)}</b><span>/ 5</span><i class="chip ${/^(Exceeds|Meets)/i.test(e.decision)?'green':/^Developing/i.test(e.decision)?'amber':'red'}">${esc(e.decision)}</i>${pe ? delta(e.avg - pe.avg, String(pe.period).split(' ')[0], '', 1) : '<i class="dl eq">First evaluation</i>'}</div>
 <div class="gr-msg">${esc(msg)}</div>
-<div class="small mute">Observed ${esc(e.observed)}${e.obsDate?' · '+esc((d => { const t = Date.parse(d); return isNaN(t) ? d : new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); })(e.obsDate)):''} · Evaluator ${esc(e.evaluator)}</div></div>
+<div class="small mute">Observed ${esc(String(e.observed || '').replace(/^(ST-\d{4}-\d{3})\s*-\s*(.+)$/, '$2 ($1)'))}${e.obsDate?' · '+esc((d => { const t = Date.parse(d); return isNaN(t) ? d : new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); })(e.obsDate)):''} · Evaluator ${esc(e.evaluator)}</div></div>
 ${trend.length > 1 ? `<div class="gr-trend">${trend.map((x,j) => `<div title="${esc(x.period)} · ${x.avg}"><b class="${j && x.avg > trend[j-1].avg ? 'up' : j && x.avg < trend[j-1].avg ? 'dn' : ''}">${x.avg.toFixed(1)}</b><i style="height:${Math.round(x.avg/5*48)}px" class="${x===e?'on':''}"></i><span>${esc(String(x.period).slice(0,3))}</span></div>`).join('')}</div>` : ''}</section>`;
 } else if(QA) {
 h += `<section class="gr-hero"><div class="grow"><div class="gr-msg">${mgr?'No QA evaluation yet for this teacher.':'Your first QA evaluation will appear here as soon as management submits it.'}</div></div></section>`;
@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2316;
+const COE_V = 2317;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -21652,7 +21652,8 @@ ${(window.ie1854 && ie1854.chip && ie1854.chip(t)) || (t.reportMissing ? `<span 
     const seg = [['all', 'All', T.length], ['pc', 'Progress checks', cN('pc')], ['qa', 'Class QA', cN('qa')], ['notes', 'Notices & memos', nN]].map(([k, l, n]) => `<button type="button" class="${TIF.f === k ? 'on' : ''}" onclick="TIF.f='${k}';renderTInbox()">${l}${n ? ' · ' + n : ''}</button>`).join('');
     const tile = (k, n, lab, sym, c) => `<a class="${TIF.f === k ? 'on' : ''} ${n ? '' : 'z'}" style="--c:${c}" onclick="TIF.f=TIF.f==='${k}'?'all':'${k}';renderTInbox()"><i>${sym}</i><span><b>${n}</b>${lab}</span></a>`;
     const row = t => { const r = t.root, last = t.replies.length ? t.replies[t.replies.length - 1] : r, u = tUnread(t), K = kind(t), memo = r.kind === 'memo';
-      const status = r.role === 'mgmt' && r.need ? (r.ack ? `<span class="pl ${/will do|later|tomorrow|⏰/i.test(ackLbl(r)) ? 'am' : 'ok'}">${rxH(ackLbl(r))}</span>` : '<span class="pl wt">! Needs acknowledgement</span>') : '';
+      const status = r.role === 'mgmt' && r.need ? (r.ack ? `<span class="pl ${/will do|later|tomorrow|⏰/i.test(ackLbl(r)) ? 'am' : 'ok'}">${rxH(ackLbl(r))}</span>` : '<span class="pl wt">! Needs acknowledgement</span>') : '' + (r.role !== 'mgmt' ? (() => { const lm = [...t.replies].reverse().find(x => x.role === 'mgmt');   /* 2823: where a message the teacher sent is */
+        return lm ? `<span class="pl ok">Replied · ${esc(window.who2801 ? who2801(lm).label : 'Management')}</span>` : r.seen ? `<span class="pl ok">Seen by ${esc(/oper|celine/i.test(r.to || '') ? 'Operations' : (r.to || 'Management'))} · ${esc(when(r.seen))}</span>` : '<span class="pl am">Sent · not seen yet</span>'; })() : '');
       return `<div class="m508 ${u ? 'u' : ''}" style="--k:${K[2]}" onclick="tMsgOpen('${r.id}')"><span class="ic">${SV[K[0]]}</span><div class="bd"><div class="tp"><b>${esc(K[1])}</b>${r.role === 'mgmt' && window.sd2801 ? sd2801(r, 'teacher') : ''}<span>${esc(when(t.lastAt))}${memo && r.memoNo ? ' · ' + esc(r.memoNo) : ''}</span>${status}</div>
 <div class="tx">${esc(r.role === 'mgmt' ? r.text : 'You: ' + r.text)}</div>${t.replies.length ? `<div class="rp">↳ ${esc((last.role === 'mgmt' ? (window.who2801 ? who2801(last).label : 'Management') + ': ' : 'You: ') + (String(last.text || '').trim() || (last.img || last.image || last.files || last.file ? 'sent a picture or file' : 'replied')))} · ${t.replies.length} repl${t.replies.length === 1 ? 'y' : 'ies'}</div>` : ''}</div>
 <button type="button" class="sv ${st[r.id] ? 'on' : ''}" title="${st[r.id] ? 'Remove from saved' : 'Save on this device'}" onclick="tStar('${r.id}', event)">${st[r.id] ? '★' : '☆'}</button></div>`; };
@@ -43710,7 +43711,8 @@ window.pass2375 = function(i){ try{ var x = (window.DK2341q || [])[i] || null; i
         L.map(x => '<div class="mbr"><div style="flex:1;min-width:0"><b>' + E(x.type || 'Bonus') + '</b>' + (x.student ? ' · ' + E(x.student) : '') + '<div class="small mute">' + E(x.day) + (x.why ? ' · ' + E(x.why) : '') + '</div></div><span class="amt">+₱' + x.amount.toLocaleString('en-PH') + '</span></div>').join(''); }).join('')
         : '<div class="small" style="margin-top:8px">No bonuses in the last 4 months yet. An enrolment bonus is added as soon as a student you gave the first trial to enrols.</div>') + '</div>';
     let o = document.getElementById('mb2378'); if(o){ if(o.outerHTML !== h) o.outerHTML = h; return; }
-    const lead = v.querySelector(':scope > .lead'); if(lead) lead.insertAdjacentHTML('afterend', h); else v.insertAdjacentHTML('afterbegin', h); }catch(e){} }
+    const lead = v.querySelector(':scope > .lead'), est = [...v.querySelectorAll(':scope > .card')].find(c => c.querySelector('.pt2821'));   /* 2825: under the month estimate */
+    if(est) est.insertAdjacentHTML('afterend', h); else if(lead) lead.insertAdjacentHTML('afterend', h); else v.insertAdjacentHTML('afterbegin', h); }catch(e){} }
   const r0 = window.renderPay; if(typeof r0 === 'function') window.renderPay = function(){ const r = r0.apply(this, arguments); try{ load(); paint(); }catch(e){} return r; };
 })();
 </script>
@@ -45958,13 +45960,29 @@ body #v-train .tx-gr .nm{white-space:nowrap!important}
       const L = lines(row), mon = row.month.replace(/\s+\d{4}$/, '');
       card.innerHTML = '<div class="mute small">Estimated ' + esc(mon) + ' so far · the same figures as the office payroll · final after Ops review</div><div style="font-size:30px;font-weight:700" class="num">' + P(row.net) + '</div>' + table(L.out, row.net, 'Estimated ' + esc(mon));
       card.dataset.v2821 = JSON.stringify(row); }catch(e){}
+
     return r; };
   const s0 = window.paySheet; if(typeof s0 === 'function') window.paySheet = function(p){ const r = s0.apply(this, arguments);
     try{ if(typeof D === 'undefined' || !D || D.mgr || !p) return r; const b = document.getElementById('sheetBody'); const t = b && b.querySelector('table'); if(!t || t.classList.contains('pt2821')) return r;
       const L = lines(p); const w = document.createElement('div'); w.innerHTML = table(L.out, p.net, p.status === 'Paid' ? 'Net paid' : 'Net'); t.replaceWith(w.firstChild); }catch(e){}
     return r; };
+  const r1 = window.renderPay; if(typeof r1 === 'function') window.renderPay = function(){ const r = r1.apply(this, arguments);
+    if(typeof D !== 'undefined' && D && !D.mgr) try{ /* 2825: on a phone the month estimate comes first (it sat under My bonuses); rank details without dots that started a new line */
+      const v = document.getElementById('v-pay'), lead = v && v.querySelector(':scope>.lead'), card = v && [...v.querySelectorAll(':scope>.card')].find(c => c.querySelector('.pt2821'));
+      if(lead && card && lead.nextElementSibling !== card) lead.after(card);
+      v && v.querySelectorAll('.rk509>span').forEach(x => { if(/^\s*·\s*/.test(x.textContent)) x.textContent = x.textContent.replace(/^\s*·\s*/, ''); }); }catch(e){}
+    return r; };
 })();
 </script>
+<style id="s2825">
+/* 2825 (24 Nov, Kat's screens checked one by one) */
+/* Students · "November feedback" broke onto two lines beside its status */
+#v-students .br504>span:first-child{white-space:nowrap}
+/* Books · "By book / By student": the chosen side touched the rounded edge and was cut off on the left */
+#v-books .bl-tog{padding:3px;gap:2px;overflow:visible}
+/* Pay · rank, rate, lifetime units and since-date as small separate items (no line starting with a dot on a phone) */
+#v-pay .rk509{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+</style>
 <script>/* 2815: the app started (pilot check: the frame switches the compact copy off on this device if this never runs) */ try{ if(typeof render === 'function' && typeof applyUpdate === 'function') localStorage.removeItem('coe.mintry'); }catch(e){}</script>
 </body>
 </html>
