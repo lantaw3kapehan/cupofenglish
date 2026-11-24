@@ -320,7 +320,10 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
        before anything showed, 3–5 s on picture books. The answer is kept on this computer per file: the next open shows the page at once and
        the check runs again quietly behind it. */
     { const K1 = 'coe.rd.f1.' + id; let c1 = null; try{ c1 = JSON.parse(localStorage.getItem(K1) || 'null'); }catch(e){}
-      const ffP = findFirst(doc).then(f => { try{ localStorage.setItem(K1, JSON.stringify({ f, s: [...SKIP].filter(n => n < f), n: doc.numPages })); }catch(e){} return f; });
+      if(!c1 && meta && meta.first) c1 = meta.first;   /* 2820b: found once by any teacher, kept on the server for everyone */
+      const ffP = findFirst(doc).then(f => { const v = { f, s: [...SKIP].filter(n => n < f), n: doc.numPages }; try{ localStorage.setItem(K1, JSON.stringify(v)); }catch(e){}
+        if(!(meta && meta.first && meta.first.f === v.f && meta.first.n === v.n)) try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ op: 'f1', token: TOKEN, id }, v)) }).catch(() => {}); }catch(e){}
+        return f; });
       if(c1 && c1.n === doc.numPages && c1.f >= 1 && c1.f <= doc.numPages){ PG1 = c1.f; (c1.s || []).forEach(n => SKIP.add(n)); } else PG1 = await ffP; }
     pageNo = PG1; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > PG1 && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
     if(FIRST) FIRST = false; else try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'log', token: TOKEN, kind: 'pdf', id, title: $('fl').textContent || TITLE, book: LABEL }) }); }catch(e){}
