@@ -5702,10 +5702,12 @@ function reactRow(id, fn){ return '<div class="small mute" style="margin-top:12p
 function reactPop(el, txt){ ding('pop'); try{ const r = el ? el.getBoundingClientRect() : { left: innerWidth / 2, top: innerHeight / 2, width: 0 }, e = String(txt).split(' ')[0];
 for(let k = 0; k < 7; k++){ const s = document.createElement('div'); s.className = 'rpop'; s.textContent = e; s.style.left = (r.left + r.width / 2 + (Math.random() * 120 - 60)) + 'px'; s.style.top = r.top + 'px'; s.style.animationDelay = (k * 60) + 'ms'; document.body.appendChild(s); setTimeout(() => s.remove(), 1500); } }catch(x){} }
 async function tMsgAck(id, i, el){ const react = i == null ? '' : REACTS[i] || '', ask = /^🙋/.test(react), t = TMSG.threads.find(x => x.root.id === id);
+if(document.getElementById('msp61') && window.msigPadGet && !msigPadGet()) return toast('Please sign in the box first');   /* 2861 */
 if(react) reactPop(el, react); const old = t && t.root.ack; if(t){ t.root.ack = 'now'; if(react) t.root.react = react; } keep('tmsgs', TMSG);
 if(ask){ document.querySelectorAll('.reacts').forEach(x => x.remove()); const R = $('tmR'); if(R){ R.placeholder = 'Write your question'; R.focus(); } } else { setTimeout(closeSheet, react ? 450 : 0); }
 if(VIEW === 'today') setTimeout(() => { try{ renderToday(); }catch(x){} }, 500);
-try{ const r = await api('tMsgAck', TOKEN, id, react); if(!r.ok) throw r; if(!ask) toast('✓ ' + r.note); }
+const sig61 = window.msigPadGet ? msigPadGet() : '';   /* 2861 */
+try{ const r = await (sig61 ? api('tMsgAck', TOKEN, id, react, sig61) : api('tMsgAck', TOKEN, id, react)); if(!r.ok) throw r; if(sig61 && typeof MSIG !== 'undefined'){ MSIG = MSIG || {}; MSIG.me = sig61; } if(!ask) toast('✓ ' + r.note); }
 catch(e){ if(t){ t.root.ack = old; t.root.react = ''; } keep('tmsgs', TMSG); toast((e && (e.msg || e.message)) || 'Not saved. Try again.'); if(VIEW === 'today') try{ renderToday(); }catch(x){} } }
 function tMsgNew(){ openSheet('<h1>Message management</h1><div class="seg" id="tmTo" style="margin-top:10px"><button type="button" class="on" data-p="" onclick="tmTo(this)">Management</button><button type="button" data-p="1" onclick="tmTo(this)">Management only</button></div><div class="mute small" id="tmToN">Operations and management see it in the app</div><textarea id="tmR" class="in-t" rows="5" style="margin-top:12px" placeholder="Write your message"></textarea>' + emojiBar('tmR') + '<button class="btn teal block" style="margin-top:10px" id="tmRB" onclick="tMsgSend(\'\')">Send</button>'); }
 function tmTo(b){ document.querySelectorAll('#tmTo button').forEach(x => x.classList.toggle('on', x === b)); const n = $('tmToN'); if(n) n.textContent = b.dataset.p ? 'Only management sees it (private, not Operations)' : 'Operations and management see it in the app'; }
@@ -7541,7 +7543,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2358;
+const COE_V = 2359;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -46297,6 +46299,31 @@ body.pres2630 #app #v-mtoday > #dc2849,body.pres2630 #app #v-home > #dc2849{orde
 .memo .memo-ack{margin:22px 0 4px;padding:12px 14px;border:1px dashed #CFCBDD;border-radius:10px;font-size:13px;line-height:1.5;color:#2B2253;max-width:340px}
 .memo .memo-ackh{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6B6880;margin-bottom:2px}
 </style>
+<style id="s2861">
+#msp61{margin-top:12px;border:1px solid #D8D5E4;border-radius:12px;padding:10px 12px;background:#FBFAFD}
+#msp61 b{font-weight:600;color:#2B2253;font-size:13.5px}
+#msp61 canvas{display:block;width:100%;height:130px;margin-top:8px;background:#fff;border:1px dashed #BEB9D2;border-radius:10px;touch-action:none;cursor:crosshair}
+#msp61 .r{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:12px;color:#6B6880}
+#msp61 .r a{color:#1E6E68;cursor:pointer}
+</style>
+<script id="b2861">
+/* 2861 (Misty 24 Nov 18:31–18:32): a reader with no signature on file (no signed contract yet, e.g. Julia) signs once in the memo before acknowledging.
+   The drawing goes with the acknowledgment (tMsgAck, 4th argument), is kept in coe_memo_sig and appears on this and later memos. A contract signature still comes first. */
+(function(){ if(window.__b2861) return; window.__b2861 = 1; var DRAWN = false;
+  window.msigPadGet = function(){ var c = document.querySelector('#msp61 canvas'); return c && DRAWN ? c.toDataURL('image/png') : ''; };
+  function pad(){ var b = document.getElementById('tmA'); if(!b || document.getElementById('msp61')) return; if(typeof D === 'undefined' || !D || D.mgr) return;
+    if(typeof MSIG === 'undefined' || !MSIG || MSIG.me) return;
+    b.insertAdjacentHTML('beforebegin', '<div id="msp61"><b>Your signature</b><div class="small mute" style="font-size:12px;margin-top:2px">You have no signature on file yet. Sign once with your finger or mouse; it is kept for your next memos.</div><canvas></canvas><div class="r"><span>Sign inside the box</span><a role="button" tabindex="0">Clear</a></div></div>');
+    var w = document.getElementById('msp61'), c = w.querySelector('canvas'), r = c.getBoundingClientRect(), dpr = Math.max(1, window.devicePixelRatio || 1);
+    c.width = Math.round(r.width * dpr); c.height = Math.round(130 * dpr); var x = c.getContext('2d'); x.scale(dpr, dpr); x.lineWidth = 2.2; x.lineCap = 'round'; x.lineJoin = 'round'; x.strokeStyle = '#1B1640';
+    var on = false, P = function(e){ var q = c.getBoundingClientRect(); return [e.clientX - q.left, e.clientY - q.top]; };
+    c.addEventListener('pointerdown', function(e){ on = true; c.setPointerCapture(e.pointerId); var p = P(e); x.beginPath(); x.moveTo(p[0], p[1]); x.lineTo(p[0] + .1, p[1] + .1); x.stroke(); DRAWN = true; e.preventDefault(); });
+    c.addEventListener('pointermove', function(e){ if(!on) return; var p = P(e); x.lineTo(p[0], p[1]); x.stroke(); e.preventDefault(); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function(k){ c.addEventListener(k, function(){ on = false; }); });
+    w.querySelector('.r a').onclick = function(){ x.clearRect(0, 0, c.width, c.height); DRAWN = false; }; DRAWN = false; }
+  setInterval(function(){ try{ if(!document.getElementById('tmA')) DRAWN = false; pad(); }catch(e){} }, 600);
+})();
+</script>
 <script>/* 2815: the app started (pilot check: the frame switches the compact copy off on this device if this never runs) */ try{ if(typeof render === 'function' && typeof applyUpdate === 'function') localStorage.removeItem('coe.mintry'); }catch(e){}</script>
 </body>
 </html>
