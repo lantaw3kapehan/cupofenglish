@@ -7543,7 +7543,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2362;
+const COE_V = 2363;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24346,13 +24346,20 @@ go();
   let MF = (() => { try{ return JSON.parse(localStorage.getItem('coe.vflagsm') || 'null'); }catch(e){ return null; } })(), mBusy = false;
   /* 722 · decisions in the database first */
   let VFD = {}; const vfSent = new Set(), vfK = x => x.id + '@' + (x.ds || '');
+  /* 2863 (Misty 24 Nov 20:40 "marked OK but it's still showing"): a refresh that started before the tap could finish after it and
+     put the old list back. Decisions made on this device are kept here and always win over an older copy; database decisions are
+     merged (newest per video), never replaced by an older answer. */
+  let VLOC = (() => { try{ const o = JSON.parse(localStorage.getItem('coe.vfloc') || '{}') || {}; const cut = Date.now() - 3 * 864e5; return Object.fromEntries(Object.entries(o).filter(([, v]) => v && v.at > cut)); }catch(e){ return {}; } })();
+  const vfBest = k => { const a = VFD[k], b = VLOC[k]; return !a ? b : !b ? a : ((b.at || 0) > (a.at || 0) ? b : a); };
+  const vfJoin = d => { const o = Object.assign({}, VFD); Object.entries(d || {}).forEach(([k, v]) => { if(!o[k] || (v && (v.at || 0) >= (o[k].at || 0))) o[k] = v; }); return o; };
   const vfCall = b => fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-train', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, b)) }).then(x => x.json());
-  const vfMerge = L => L.map(x => { const d = VFD[vfK(x)]; if(!d || (d.at || 0) < (x.at || 0)) return x; if(x.st === d.st) return x;
+  const vfMerge = L => L.map(x => { const d = vfBest(vfK(x)) || vfBest(x.id + '@'); if(!d || (d.at || 0) < (x.at || 0)) return x; if(x.st === d.st) return x;
     if(!vfSent.has(vfK(x))){ vfSent.add(vfK(x)); try{ apiNow('mgmtVidFlagSet', TOKEN, x.id, d.st, d.note || '').catch(() => {}); }catch(e){} }
     return Object.assign({}, x, { st: d.st, by: d.by, dat: d.at, dnote: d.note || '' }); });
-  async function vfDecs(){ try{ const d = await vfCall({ action: 'vf_decs' }); if(d && d.ok){ VFD = d.dec || {}; if(MF){ MF = vfMerge(MF); mPaint(); } } }catch(e){} }
-  async function mLoad(){ if(mBusy || !TOKEN || !D || !D.mgr) return; mBusy = true; try{ vfDecs(); const r = await api('mgmtVidFlags', TOKEN); if(r && r.ok){ const L = vfMerge(r.list || []); if(MF && JSON.stringify(L) === JSON.stringify(MF)) return; MF = L; try{ localStorage.setItem('coe.vflagsm', JSON.stringify(MF)); }catch(e){} mPaint(); } }catch(e){} finally{ mBusy = false; } }
+  async function vfDecs(){ try{ const d = await vfCall({ action: 'vf_decs' }); if(d && d.ok){ VFD = vfJoin(d.dec); if(MF){ MF = vfMerge(MF); mPaint(); } } }catch(e){} }
+  async function mLoad(){ if(mBusy || !TOKEN || !D || !D.mgr) return; mBusy = true; try{ vfDecs(); const r = await api('mgmtVidFlags', TOKEN); if(r && r.ok){ const L = vfMerge(r.list || []).filter(x => !(VLOC[vfK(x)] && VLOC[vfK(x)].rm)); if(MF && JSON.stringify(L) === JSON.stringify(MF)) return; MF = L; try{ localStorage.setItem('coe.vflagsm', JSON.stringify(MF)); }catch(e){} mPaint(); } }catch(e){} finally{ mBusy = false; } }
   function mPaint(){ const root = document.getElementById('v-home'); if(!root || !MF || !D || !D.mgr) return; let box = document.getElementById('vcmBox');
+    MF = MF.map(x => { const d = vfBest(vfK(x)); return (x.st === 'open' && d && d.st !== 'open' && (d.at || 0) >= (x.at || 0)) ? Object.assign({}, x, { st: d.st, by: d.by, dat: d.at, dnote: d.note || '' }) : x; }).filter(x => !(VLOC[vfK(x)] && VLOC[vfK(x)].rm));   /* 2863 */
     const open = MF.filter(x => x.st === 'open'), recent = MF.filter(x => x.st !== 'open').slice(0, 5);
     if(!open.length){ if(box) box.remove(); return; }   /* 720: settled → hidden */
     if(!box || !root.contains(box)){ box = document.createElement('section'); box.id = 'vcmBox'; box.style.cssText = 'margin:0 0 16px'; root.insertBefore(box, root.firstChild); }
@@ -24368,6 +24375,7 @@ go();
       let r = null; try{ r = await vfCall({ action: 'vf_remove', id: x.id, ds: x.ds || String(x.start || '').slice(0, 10), reason: ((x.flags || [])[0] || {}).t || '' }); if(r && !r.ok && /already removed/i.test(r.msg || '')) r = { ok: true }; if(r && !r.ok) r.msg = r.msg || r.error; }catch(e){ r = { ok: false, msg: e.message }; }   /* 2386: the database at once */
       if(r && r.ok){ try{ vfCall({ action: 'vf_dec', k: vfK(x), st: 'ok', note: 'Removed · wrong file' }).catch(() => {}); }catch(e){} try{ apiNow('mgmtVidRemove', TOKEN, { id: x.id, ds: x.ds || String(x.start || '').slice(0, 10) }).catch(() => {}); }catch(e){} }   /* Google's Drive clean-up in the background */
       if(!r || !r.ok){ if(b){ b.disabled = false; b.textContent = 'Remove the wrong video'; } return toast((r && r.msg) || 'Not removed · try again'); }
+      VLOC[vfK(x)] = { st: 'ok', at: Date.now(), rm: 1 }; try{ localStorage.setItem('coe.vfloc', JSON.stringify(VLOC)); }catch(e){}
       closeSheet(); MF = (MF || []).filter(y => y.id !== id); try{ localStorage.setItem('coe.vflagsm', JSON.stringify(MF)); }catch(e){} mPaint();
       toast('Removed ✓ · ' + who + ' was asked to upload the right video'); };
     openSheet('<h3 style="margin:0 0 6px">Remove this video?</h3><div class="small mute">' + esc(who) + ' · ' + esc(x.student || x.code) + ' · ' + esc(when) + '</div>'
@@ -24378,7 +24386,8 @@ go();
     openSheet('<h3 style="margin:0 0 6px">Needs action</h3><div class="small mute">The teacher sees this note on her Today screen. Tag the class under the contract from Schedule or Cases if a penalty applies.</div><textarea id="vcAN" class="in-t" rows="3" style="margin-top:10px;width:100%" placeholder="Note for the teacher"></textarea><button class="btn block" style="margin-top:12px;background:#D4705A;color:#fff;border-color:#D4705A" onclick="_vcAct()">Mark Needs action</button><button class="btn ghost block" style="margin-top:8px" onclick="closeSheet()">Cancel</button>'); };
   window.vcSave = async (id, st, note) => {
     const i = (MF || []).findIndex(x => x.id === id), x = i > -1 ? MF[i] : { id, ds: '' }, me = ((typeof D !== 'undefined' && D && D.me) || {}).name || 'Management';
-    try{ const d = await vfCall({ action: 'vf_dec', k: vfK(x), st, note: note || '' }); if(!d || !d.ok) throw new Error((d && d.error) || 'Not saved · try again'); VFD = d.dec || VFD; }catch(e){ return toast(e.message); }
+    try{ const d = await vfCall({ action: 'vf_dec', k: vfK(x), st, note: note || '' }); if(!d || !d.ok) throw new Error((d && d.error) || 'Not saved · try again'); VFD = vfJoin(d.dec); }catch(e){ return toast(e.message); }
+    VLOC[vfK(x)] = { st, by: me, at: Date.now(), note: note || '' }; try{ localStorage.setItem('coe.vfloc', JSON.stringify(VLOC)); }catch(e){}
     if(i > -1) MF[i] = Object.assign({}, x, { st, by: me, dat: Date.now(), dnote: note || '' }); mPaint(); toast(st === 'ok' ? 'Marked OK ✓' : 'Marked Needs action');
     vfSent.add(vfK(x)); try{ apiNow('mgmtVidFlagSet', TOKEN, id, st, note).catch(() => {}); }catch(e){} };
   try{ const hv = document.getElementById('v-home'); if(hv) new MutationObserver(() => { if(MF && D && D.mgr && !document.getElementById('vcmBox')) mPaint(); }).observe(hv, { childList: true }); }catch(e){}
