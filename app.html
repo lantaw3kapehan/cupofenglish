@@ -4408,10 +4408,15 @@ QA_T = teacher || (() => { const t = store('get', 'coe.qa.lastT') || ''; return 
 const k = kept('qaform');
 if(k && k.form){ QF = k; qaPaint(); } else { openSheet(`<h1>QA evaluation</h1><div class="mute small">Opening the evaluation form…</div><div class="sk" style="margin-top:14px"></div><div class="sk"></div><div class="sk" style="width:60%"></div>`); $('sheet').classList.add('wide'); }
 if(QA_T) qaSide();
-try{ const r = await api('mgmtQaForm', TOKEN); if(!r.ok) throw r; keep('qaform', r);
+try{ const r = await api('mgmtQaForm', TOKEN); if(!r.ok) throw r; keep('qaform', r); keep('qaformAt', Date.now());
 if(!k || JSON.stringify(k.form) !== JSON.stringify(r.form)){ if(k) qaSave(); QF = r; if($('sheet').classList.contains('on')) qaPaint(); } }
 catch(e){ if(!k) $('sheetBody').innerHTML = `<h1>QA evaluation</h1><div class="empty">${esc((e && e.msg) || 'Could not load the form. Try again.')}</div>`; }
 }
+/* 2855 (Misty 24 Nov 17:38 "QA evaluation … loading slowly"): the form came from Google each time (about 4 s) and this device had no copy.
+   Management devices now fetch it quietly 15 s after opening (and again once a day), so the sheet opens at once from the copy. */
+setTimeout(function qaWarm(){ try{ if(!(typeof D !== 'undefined' && D && D.mgr && TOKEN)) return setTimeout(qaWarm, 30e3);
+  var at = kept('qaformAt') || 0; if(kept('qaform') && Date.now() - at < 864e5) return;
+  api('mgmtQaForm', TOKEN).then(function(r){ if(r && r.ok){ keep('qaform', r); keep('qaformAt', Date.now()); } }).catch(function(){}); }catch(e){} }, 15e3);
 let QA_L = null;
 function qaSide(){ const t = QA_T;
 api('mgmtQaLast', TOKEN, t).then(r => { if(t !== QA_T || !r || !r.ok) return; QA_L = r.last; const b = $('qaLast'); if(b) b.innerHTML = qaLastHtml(); }).catch(()=>{});
@@ -7516,7 +7521,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2349;
+const COE_V = 2350;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
