@@ -5655,6 +5655,7 @@ if(on){ try{ if(!MEMOI) MEMOI = await api('mgmtMemoInfo', TOKEN); if(!$('mnNo').
 async function msgSend(){ const to = [...document.querySelectorAll('#mnTo input:checked')].map(i => i.value), t = ($('mnT') || {}).value || '', need = !!($('mnA') || {}).checked;
 if(!to.length) return toast('Choose who gets it'); if(!t.trim()) return toast('Write the message');
 const memo = ($('mnM') || {}).checked ? { no: $('mnNo').value.trim(), subject: $('mnS').value.trim(), signer: $('mnSg').value.trim(), title: $('mnTi').value.trim(), auth: $('mnAu').checked } : null;
+if(memo && to.length >= 5) memo.to = to.some(n => /^(celine|misty|virgo)$/i.test(n)) ? 'All Teachers and Staff' : 'All Teachers';   /* 2858: a memo to a whole group is addressed to the group (each copy used to show only that person's name) */
 if(memo && !memo.subject) return toast('Write the subject');
 closeSheet(); toast('Sending to ' + (to.length === 1 ? to[0] : to.length + ' people') + '…');
 try{ const r = await api('mgmtMsgSend', TOKEN, to, t, need, memo); if(!r.ok) throw r; MEMOI = null; toast('✓ ' + r.note); loadMsgs(true); }
@@ -7521,7 +7522,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2354;
+const COE_V = 2355;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
