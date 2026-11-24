@@ -7516,7 +7516,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2341;
+const COE_V = 2342;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -11232,6 +11232,7 @@ ${pr && pr[1] ? `<a class="ov-ql" onclick="go('perf')"><div class="ov-th"><span>
 #v-mtoday .td2-ok{flex:1 1 260px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:10px 16px;border-radius:14px;background:#F2F8F5;color:#2F6B4F;font-size:13.5px}
 #v-mtoday .td2-ok b{font-weight:700}
 #v-mtoday .td2-ok a{color:#2F6B4F;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+#v-mtoday:has(#dc2849) #fy2630 .fyr[data-k="validity"]{display:none}
 #v-mtoday #tdFocus{border:1.5px solid #00A3AD;background:linear-gradient(180deg,#F3FBFB 0,#fff 90px)}
 #v-mtoday #tdFocus h2{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 #v-mtoday #tdFocus .li{display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:14px;border-top:1px solid #EEF0F4}
@@ -28579,7 +28580,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
     try{
       const focus = v.querySelector(':scope > #tdFocus'), lead = v.querySelector(':scope > .lead');
       // 1 · the queue right under the title
-      const anc = v.querySelector(':scope > #dc2849') || lead;   /* 2849: the President's decisions come first, then the queue */
+      const anc = v.querySelector(':scope > #dc2849') || v.querySelector(':scope > #fy2630') || lead;   /* 2849: the President's decisions come first, then the queue */
       if(focus && anc && anc.nextElementSibling !== focus) anc.after(focus);
       // 2 · most overdue first (only re-orders lines that say "overdue N days"; the rest keep their order)
       if(focus && !focus._s891){ const L = [...focus.querySelectorAll(':scope > .li')], od = li => { const m = /overdue (\d+) day/.exec(li.textContent); return m ? +m[1] : -1; };
@@ -44970,7 +44971,13 @@ body.pres2630 #app #v-home #be2501{display:none!important}
     var vr = (PD && PD.validity) || []; if(vr.length) L.push({ k: 'validity', n: vr.length, t: 'Validity extensions to decide', s: vr.slice(0, 2).map(function(x){ var nm = (((typeof MS !== 'undefined' && Array.isArray(MS)) ? MS : []).find(function(m){ return String(m.code).toUpperCase() === String(x.code).toUpperCase(); }) || {}).name || ''; return (nm ? nm + ' ' : '') + x.code + ' · ' + (x.by || 'Operations') + (x.note ? ': \u201c' + x.note + '\u201d' : ' reviewed'); }).join(' · ') + (vr.length > 2 ? ' · ' + (vr.length - 2) + ' more' : ''), go: vr.length === 1 ? "valRev2588('" + String(vr[0].code).replace(/[^A-Za-z0-9-]/g, '') + "','" + String(vr[0].dl).slice(0, 10) + "')" : "go('mtoday');setTimeout(function(){var p=document.getElementById('vr2609');if(p)p.scrollIntoView({behavior:'smooth',block:'start'});},300)", b: 'Decide' });   /* 2650 */
     var ct = (PD && PD.contracts) || []; if(ct.length){ var lab = function(x){ return x.teacher + (x.status === 'declined' ? ' declined' : x.status === 'signed' ? ' · countersign' : ' · overdue'); }; L.push({ k: 'contracts', n: ct.length, t: 'Contracts', s: ct.slice(0, 3).map(lab).join(' · '), go: "ctAdmin()", b: 'Open' }); }
     var pay = find(/^Teachers to pay/); if(pay && pay.n && /ready to release/.test(pay.s || '') && !/ 0 ready to release/.test(pay.s || '')) L.push({ k: 'pay', n: pay.n, t: 'Pay to release', s: pay.s || '', go: "go('payroll')", b: 'Review' });
-    var M = (PD && PD.marks) || {}; L.forEach(function(x){ x.sig = (x.n + '|' + x.s).slice(0, 300); var m = M[x.k]; x.m = m && m.sig === x.sig ? m : null; });
+    var M = (PD && PD.marks) || {};
+    /* 2850 (Misty 16:51 "I already click done but it's still showing … a cycle"): the mark was matched on the row's wording, and the validity wording
+       gains the student names a moment after loading, so a Done flipped on and off. Validity now matches on the packages themselves (code + date). */
+    var vkey = vr.length ? 'v:' + vr.map(function(x){ return String(x.code).toUpperCase() + '@' + String(x.dl).slice(0, 10); }).sort().join(',') : '';
+    var bare = vr.slice(0, 2).map(function(x){ return x.code + ' · ' + (x.by || 'Operations') + (x.note ? ': \u201c' + x.note + '\u201d' : ' reviewed'); }).join(' · ') + (vr.length > 2 ? ' · ' + (vr.length - 2) + ' more' : '');
+    L.forEach(function(x){ x.sig = (x.k === 'validity' ? x.n + '|' + vkey : x.n + '|' + x.s).slice(0, 300); var m = M[x.k];
+      x.m = m && (m.sig === x.sig || (x.k === 'validity' && (m.sig === (x.n + '|' + bare).slice(0, 300) || m.sig === (x.n + '|' + x.s).slice(0, 300)))) ? m : null; });
     /* 2641: follow-ups that are not one of the items above (tasks sent to Operations, e.g. the 36 package start dates) show as their own rows */
     Object.keys(M).forEach(function(k){ var m = M[k]; if(!m || m.st !== 'followed' || L.some(function(x){ return x.k === k; })) return; L.push({ k: k, n: '\u2192', t: m.t || k, s: m.s || '', sig: m.sig, m: m, go: "go('mtoday')", b: 'Open' }); });
     return L; }
@@ -44978,7 +44985,7 @@ body.pres2630 #app #v-home #be2501{display:none!important}
   function html(){ var L = items(), act = L.filter(function(x){ return !x.m; }), fol = L.filter(function(x){ return x.m && x.m.st === 'followed'; }), dn = L.filter(function(x){ return x.m && x.m.st === 'done'; });
     var N = act.reduce(function(a, x){ return a + (+x.n || 0); }, 0);
     if(!act.length && !fol.length) return '<section id="fy2630" class="fy2630 ok"><div class="fyh"><b>For your decision</b><span class="small" style="color:#1E6E68">Nothing waiting for your decision' + (dn.length ? ' · ' + dn.length + ' marked done' : '') + '</span></div></section>';
-    var row = function(x, st){ var a = '\'' + x.k + '\''; return '<div class="fyr' + (st ? ' fy-' + st : '') + '"><span class="fyn">' + x.n + '</span><span class="fyt"><b>' + E(x.t) + '</b><small>' + (st === 'followed' ? 'Followed up ' + E(hm(x.m.at)) + (x.m.opsDone ? '' : ' · waiting') + (x.m.note ? ' · ' + E(x.m.note) : '') + (x.m.reply ? ' · <b class="fyre">' + E(x.m.replyBy || 'Operations') + ' ' + E(hm(x.m.replyAt)) + ': \u201c' + E(x.m.reply) + '\u201d</b>' : '') + (x.m.opsDone ? ' · <b class="fyre">' + E(x.m.opsDoneBy || 'Operations') + ': done ' + E(hm(x.m.opsDoneAt)) + '</b>' : '') + ' · ' : '') + E(x.s) + '</small></span><span class="fyb">'
+    var row = function(x, st){ var a = '\'' + x.k + '\''; return '<div class="fyr' + (st ? ' fy-' + st : '') + '" data-k="' + E(x.k) + '"><span class="fyn">' + x.n + '</span><span class="fyt"><b>' + E(x.t) + '</b><small>' + (st === 'followed' ? 'Followed up ' + E(hm(x.m.at)) + (x.m.opsDone ? '' : ' · waiting') + (x.m.note ? ' · ' + E(x.m.note) : '') + (x.m.reply ? ' · <b class="fyre">' + E(x.m.replyBy || 'Operations') + ' ' + E(hm(x.m.replyAt)) + ': \u201c' + E(x.m.reply) + '\u201d</b>' : '') + (x.m.opsDone ? ' · <b class="fyre">' + E(x.m.opsDoneBy || 'Operations') + ': done ' + E(hm(x.m.opsDoneAt)) + '</b>' : '') + ' · ' : '') + E(x.s) + '</small></span><span class="fyb">'
       + (st ? '<button class="btn sm ghost" onclick="fy2637(' + a + ',\'\')">Undo</button>' : '<button class="btn sm ghost" onclick="fy2637(' + a + ',\'followed\')" title="You followed it up: it turns grey and stops counting until it changes">Followed up</button>')
       + (st !== 'done' ? '<button class="btn sm ghost" onclick="fy2637(' + a + ',\'done\')" title="Settled: hidden until the item changes">Done</button>' : '')
       + '<button class="btn sm ' + (st ? 'ghost' : 'teal') + '" onclick="' + E(x.go) + '">' + x.b + '</button></span></div>'; };
@@ -44999,7 +45006,7 @@ body.pres2630 #app #v-home #be2501{display:none!important}
     if(ready() && h !== CH){ CH = h; try{ localStorage.setItem('coe.fy2630', h); }catch(e){} }
     /* 2637: the card stays in both screens (nothing removed when you switch), and is put back in the same moment a screen is redrawn */
     var vh = document.getElementById('v-home'), vt = document.getElementById('v-mtoday');
-    if(vh && vh.querySelector('.x-top')) put(vh, vh.querySelector('.x-top'), h); if(vt && vt.querySelector(':scope > .lead')) put(vt, vt.querySelector(':scope > .lead'), h); }
+    if(vh && vh.querySelector('.x-top')) put(vh, vh.querySelector('.x-top'), h); if(vt && vt.querySelector(':scope > .lead')){ var ld = vt.querySelector(':scope > .lead'); put(vt, ld, h); var fy = vt.querySelector(':scope > #fy2630'); if(fy && ld.nextElementSibling !== fy) ld.after(fy); } }   /* 2850: first under the title */
   var MO = null; function watch(){ if(MO) return; var vh = document.getElementById('v-home'), vt = document.getElementById('v-mtoday'); if(!vh || !vt) return;
     MO = new MutationObserver(function(){ try{ if(pres()) paint(); }catch(e){} }); MO.observe(vh, { childList: true }); MO.observe(vt, { childList: true });
     var ovc = vh.querySelector('.ovc'); if(ovc) MO.observe(ovc, { childList: true }); }
@@ -45169,7 +45176,7 @@ body.pres2630 #app #v-mtoday > :is(#o91fix,.o91fix){order:5!important}body.pres2
           + '<button class="btn sm ghost" onclick="dc2849x(' + a + ')">Extend to a date…</button><button class="btn sm ghost" onclick="dc2849(this,' + a + ',\'date_error\')">Date on record is wrong</button>'
           + '<button class="btn sm ghost" onclick="valRev2588(\'' + E(x.code) + '\',\'' + E(x.dl) + '\')">History</button></div>'
           + '<div class="dcx" style="display:none;margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><input type="date" class="in-t" style="max-width:180px"><input class="in-t" placeholder="Reason (optional)" style="flex:1;min-width:160px"><button class="btn sm teal" onclick="dc2849(this,' + a + ',\'extend\')">Save extension</button></div></div>'; }).join('') + '</div>'; }
-  setInterval(function(){ try{ var dc = document.getElementById('dc2849'); if(!dc) return; var v = dc.parentElement, top = v && v.querySelector(':scope > .lead'); if(top && dc.previousElementSibling !== top) v.insertBefore(dc, top.nextSibling); }catch(e){} }, 1500);   /* 2849: stays first even when "Do next" repaints */
+  setInterval(function(){ try{ var dc = document.getElementById('dc2849'); if(!dc) return; var v = dc.parentElement, top = v && (v.querySelector(':scope > #fy2630') || v.querySelector(':scope > .lead')); if(top && dc.previousElementSibling !== top) top.after(dc); }catch(e){} }, 1500);   /* 2849: stays first even when "Do next" repaints */
   window.dc2849x = function(code, dl, id){ var r = document.getElementById(id), w = r && r.querySelector('.dcx'); if(w){ w.style.display = w.style.display === 'none' ? 'flex' : 'none'; var i = w.querySelector('input[type=date]'); if(i && w.style.display !== 'none') i.focus(); } };
   window.dc2849 = function(btn, code, dl, id, kind){ var r = document.getElementById(id), w = r && r.querySelector('.dcx'), d = '', n = '';
     if(kind === 'extend'){ d = (w.querySelector('input[type=date]') || {}).value || ''; n = (w.querySelectorAll('input')[1] || {}).value || ''; if(!d) return toast('Pick the new date first'); }
@@ -45185,7 +45192,7 @@ body.pres2630 #app #v-mtoday > :is(#o91fix,.o91fix){order:5!important}body.pres2
   function host(){ return document.getElementById(ph() ? 'v-home' : 'v-mtoday'); }
   function paint(){ if(!mgr()) return; try{ ov(); }catch(e){} var v = host(); if(!v) return; ['wa2609', 'vr2609'].forEach(function(id){ var o = document.getElementById(id); if(o && o.parentElement !== v) o.remove(); }); put('wa2609', whoHtml(), v); try{ put('vr2609', valHtml(), v); }catch(e){}
     try{ var dc = document.getElementById('dc2849'); if(!(dc && dc.contains(document.activeElement))){ put('dc2849', decHtml(), v); dc = document.getElementById('dc2849'); }   /* 2849: always first, under the heading */
-      if(dc){ var top = v.querySelector(':scope > .lead'), ref = top ? top.nextSibling : v.firstChild; if(dc !== ref && dc.previousSibling !== top) v.insertBefore(dc, ref); else if(!top && v.firstChild !== dc) v.insertBefore(dc, v.firstChild); } }catch(e){} }
+      if(dc){ var top = v.querySelector(':scope > #fy2630') || v.querySelector(':scope > .lead'); if(top){ if(dc.previousElementSibling !== top) top.after(dc); } else if(v.firstChild !== dc) v.insertBefore(dc, v.firstChild); } }catch(e){} }
   function load(){ if(!mgr() || BUSY || Date.now() - AT < 120e3) return paint(); BUSY = 1;
     ops({ op: 'clsbylist' }).then(function(r){ BUSY = 0; AT = Date.now(); if(r && r.ok){ W = r.rows || []; } paint(); }).catch(function(){ BUSY = 0; paint(); }); }
   window.wa2609 = function(btn, id, who){ var row = btn.closest('.li'); if(row) row.style.opacity = '.4';
