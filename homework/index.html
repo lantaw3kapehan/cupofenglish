@@ -94,7 +94,7 @@ h1{margin:0;font:400 28px/1.2 'COE Card Fredoka','Fredoka One',sans-serif;color:
 .rail{position:sticky;top:var(--tb,0px);align-self:flex-start;max-height:calc(100vh - var(--tb,0px));overflow-y:auto;z-index:4}
 #pcv.mv{cursor:move}#pcv.mving{cursor:grabbing}#pcv.rs{cursor:nwse-resize}
 #selb{position:absolute;z-index:5;display:flex;gap:4px;background:#fff;border:1px solid #D7DCE2;border-radius:10px;padding:3px;box-shadow:0 4px 12px rgba(16,24,40,.12)}#selb button{border:0;background:#F4F6F8;border-radius:7px;padding:5px 9px;font:600 13px Inter,sans-serif;cursor:pointer;color:#2B2253}#selb button:hover{background:#E6F5F6}
-#tools .tools{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}#tools .tools>*{flex:none}#tools .tools>.xs{white-space:nowrap}
+#tools .tools{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}#tools .tools>*{flex:none}#tools .tools>.xs{white-space:nowrap}#tools .stg{display:inline-flex;gap:4px;flex:none}
 #pwrap{flex:1;min-width:0;background:#EEF0F3;padding:16px;display:flex;justify-content:center;align-items:flex-start;position:relative;overflow:auto}
 #pcv{display:block;background:#fff;box-shadow:0 6px 18px rgba(16,24,40,.18);touch-action:none}
 #pcv.hand{touch-action:auto;cursor:grab}
@@ -307,7 +307,7 @@ ${['grammar', 'spelling', 'words', 'punct'].map(k => `<button type="button" clas
 <button type="button" class="ib" id="tU" aria-label="Undo" title="Undo (${UNDOK})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
 <button type="button" class="ib" id="tR" aria-label="Redo" title="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
 <button type="button" class="chip" id="tE" title="Change the student's text">Edit text</button></div>
-<div class="tools" style="padding-top:0;flex-wrap:wrap"><span class="xs mute">Stamps:</span>${stRows('data-ts', () => false, 'Your own words…')}</div>`; }
+<div class="tools" style="padding-top:0"><span class="xs mute">Stamps:</span>${stRows('data-ts', () => false, 'Your own words…')}</div>`; }
 function emptyHtml(kind){
   return `<div class="empty"><div class="drop"><div class="big">Paste the homework here</div>
 <div class="small mute" style="line-height:1.9">1. In WeChat, copy the student's message or picture.<br>2. Come back here and ${matchMedia('(pointer:coarse)').matches ? 'tap <b>Paste</b> (or choose the saved picture).</div>' : 'press <span class="keys">' + KEY + '</span> on your keyboard, or click <b>Paste</b>.<br><span class="xs">You can also drag a picture into this box.</span></div>'}
@@ -416,7 +416,14 @@ const STB = { excellent: ['Excellent!', '#15803D'], great: ['Great job!', '#0070
   f_look: ['Look again here', KF, '再看看这里', 1], f_almost: ['Almost!', KF, '差一点就对了！', 1], f_together: ["Let's fix it together", KF, '我们一起改一改', 1], f_letter: ['Check this letter', KF, '检查一下这个字母', 1], f_more: ['Try once more', KF, '再试一次', 1] };
 const FIXK = ['again', 'spell', 'gram', 'f_look', 'f_almost', 'f_together', 'f_letter', 'f_more'];
 /* 2847: grouped stamp chips · attr = data-st (picture) or data-ts (typed); on(k) marks the picked one */
-function stRows(attr, on, ownLbl){ return STG.map(([g, lbl, col]) => '<span class="xs" style="color:' + col + ';font-weight:600;margin-left:4px">' + lbl + ':</span>' + STAMPS.filter(x => x[2] === g).map(([k, n]) => `<button type="button" class="chip" ${attr}="${k}" title="${esc(n)}" style="${on(k) ? 'border-color:#00707A;background:#E6F5F6' : ''}">${k === 'own' ? '<span style="color:#6D28D9;font-weight:600">' + ownLbl + '</span>' : `<img src="${stampImg(k)}" alt="${esc(n)}" style="height:${STB[k] && STB[k][2] ? 30 : 22}px;width:auto">`}</button>`).join('')).join(''); }
+function stRows(attr, on, ownLbl){   /* 2848 (Misty 14:22): one short row that stays pinned · group buttons switch which stamps show, so none hide off to the side */
+  let cur = ''; try{ cur = localStorage.getItem('coe.hw.stg') || ''; }catch(e){}
+  if(!STG.some(g => g[0] === cur)){ const p = STAMPS.find(x => on(x[0])); cur = p ? p[2] : 'skill'; }
+  return '<span class="stg">' + STG.map(([g, lbl, col]) => `<button type="button" class="chip" data-stg="${g}" style="color:${col};font-weight:600;${g === cur ? 'background:' + col + ';color:#fff;border-color:' + col : ''}" data-col="${col}">${lbl}</button>`).join('') + '</span><span class="ln2" style="width:1px;height:28px;background:#E5E7EB;margin:0 4px"></span>'
+    + STAMPS.map(([k, n, g]) => `<button type="button" class="chip" ${attr}="${k}" data-g="${g}" title="${esc(n)}" style="${g === cur ? '' : 'display:none;'}${on(k) ? 'border-color:#00707A;background:#E6F5F6' : ''}">${k === 'own' ? '<span style="color:#6D28D9;font-weight:600">' + ownLbl + '</span>' : `<img src="${stampImg(k)}" alt="${esc(n)}" style="height:${STB[k] && STB[k][2] ? 30 : 22}px;width:auto">`}</button>`).join(''); }
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-stg]'); if(!b) return; const g = b.dataset.stg, row = b.closest('.tools'); try{ localStorage.setItem('coe.hw.stg', g); }catch(x){}
+  row.querySelectorAll('[data-stg]').forEach(x => { const on = x.dataset.stg === g, c = x.dataset.col; x.style.background = on ? c : ''; x.style.color = on ? '#fff' : c; x.style.borderColor = on ? c : ''; });
+  row.querySelectorAll('[data-g]').forEach(x => { x.style.display = x.dataset.g === g ? '' : 'none'; }); row.scrollLeft = 0; setTimeout(tbSync, 0); });
 let STW = null; function stHalfW(k, s){ const B = stB(k); if(!B) return s * .6; try{ STW = STW || document.createElement('canvas').getContext('2d'); STW.font = '800 ' + (s * .34) + 'px Inter,sans-serif'; let w = STW.measureText(B[0]).width; if(B[2]){ STW.font = '700 ' + (s * .24) + 'px sans-serif'; w = Math.max(w, STW.measureText(B[2]).width); } return (w + s * .5) / 2 + s * .05; }catch(e){ return s * 1.9; } }
 const stOwn = k => /^own:/.test(k) ? [k.slice(4), '#6D28D9'] : null;   /* "own:<text>" = the teacher's own words */
 const stB = k => STB[k] || stOwn(k);
@@ -500,7 +507,7 @@ function tbSync(){ try{ const t = $('tools'); document.documentElement.style.set
 window.addEventListener('resize', tbSync);
 function stampBar(){ setTimeout(tbSync, 0); const t = $('tools'); if(!t || MODE !== 'picture' || !PIC.base){ return; }
   if(TOOL !== 'stamp'){ t.innerHTML = ''; return; }
-  t.innerHTML = '<div class="tools" style="flex-wrap:wrap"><span class="xs mute">Pick a stamp, then click the picture:</span>' + stRows('data-st', k => STAMP === k || (k === 'own' && /^own:/.test(STAMP)), /^own:/.test(STAMP) ? esc(STAMP.slice(4)) : OWN ? esc(OWN) : 'Your own words…') + '</div>';
+  t.innerHTML = '<div class="tools"><span class="xs mute">Stamps:</span>' + stRows('data-st', k => STAMP === k || (k === 'own' && /^own:/.test(STAMP)), /^own:/.test(STAMP) ? esc(STAMP.slice(4)) : OWN ? esc(OWN) : 'Your own words…') + '</div>';
   t.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { let k = b.dataset.st; if(k === 'own'){ const v = askOwn(); if(!v) return; k = 'own:' + v; } STAMP = k; try{ localStorage.setItem('coe.hw.stamp', STAMP); }catch(e){} stampBar(); }); }
 function askOwn(){ const v = (prompt('Your own stamp words (short, e.g. "Lovely story!"):', OWN) || '').trim().slice(0, 24); if(v){ OWN = v; try{ localStorage.setItem('coe.hw.own', v); }catch(e){} } return v; }
 const SIMG = {};
