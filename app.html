@@ -7514,7 +7514,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2318;
+const COE_V = 2319;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -9280,7 +9280,10 @@ const isQa = t => /class visit|class note|qa visit|👀|💬 comment/i.test(Stri
 window.msgCats = function(t, unread, teacher){
 const r = t.root, last = t.replies.length ? t.replies[t.replies.length - 1] : r, out = [];
 if(teacher){ if(r.role === 'mgmt' && r.need && !r.ack) out.push('reply'); }
-else { if(last.role !== 'mgmt' || /^🙋/.test(r.react || '') || (unread && unread(t) > 0)) out.push('needs');
+else { /* 2828 (24 Nov): a thread already answered by management, or ending with the teacher's simple "Done ✅ / 👍 / Noted", no longer sits in Needs you */
+  const ACK = new Set("ok okay noted done thanks thank you so much got it yes will do sure received miss maam ma'am po teacher celine misty already".split(' '));
+  const ackOnly = x => { const w = String((x && x.text) || '').replace(/[\u{1F000}-\u{1FFFF}\u2600-\u27BF\uFE0F✓✔]/gu, '').replace(/[^A-Za-z' ]/g, ' ').trim().toLowerCase(); return !w || w.split(/\s+/).every(k => ACK.has(k)); };
+  if((last.role !== 'mgmt' && !(t.replies.length && ackOnly(last))) || (/^🙋/.test(r.react || '') && last.role !== 'mgmt') || (unread && unread(t) > 0)) out.push('needs');
 if(r.role === 'mgmt' && r.need && !r.ack) out.push('waiting'); }
 if(isPc(t)) out.push('pc'); else if(isQa(t)) out.push('qa'); else if(r.role === 'mgmt') out.push('memo'); else out.push('teacher');
 return out;
@@ -17031,9 +17034,11 @@ section.sec{border-color:var(--line)}
       const sc = hmSched(), E = sc ? (sc.events || []) : null, live = E ? E.filter(e => !e.cancelled) : [], t = now.getTime();
       const done = live.filter(e => new Date(e.end) <= t), on = live.filter(e => new Date(e.start) <= t && new Date(e.end) > t), next = live.filter(e => new Date(e.start) > t).sort((a, b) => new Date(a.start) - new Date(b.start));
       const team = (MO && MO.team) || [], tc = s => team.filter(x => x.status === s).length, ontime = tc('On time'), due = ontime + tc('Late') + tc('Missing');
+      /* 2828: teachers teaching today = teachers with a class today that is not cancelled (the same count as Schedule; the time-in list also held teachers whose classes were all cancelled) */
+      const nT = live && live.length ? new Set(live.flatMap(e => (e.teachers || (e.teacher ? [e.teacher] : [])).map(x => String(x).trim().toLowerCase()).filter(Boolean))).size || team.length : team.length;
       const S = students();
       let say = E ? (live.length ? '<b>' + live.length + ' classes</b> today' + (done.length ? ', ' + done.length + ' done' : '') + (on.length ? ', <b>' + on.length + ' on now</b>' : '') + '.' : 'No classes today.') : 'Reading today’s classes…';
-      if(team.length) say += ' ' + team.length + ' teacher' + (team.length === 1 ? '' : 's') + ' teaching' + (due ? ', ' + ontime + ' of ' + due + ' on time so far' : '') + '.';
+      if(nT) say += ' ' + nT + ' teacher' + (nT === 1 ? '' : 's') + ' teaching' + (due ? ', ' + ontime + ' of ' + due + ' on time so far' : '') + '.';
       let h = '<section class="c-hi"><div><div class="d">' + now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + '</div><h1>' + hi + '</h1><p>' + say + '</p></div><div class="c-st">' +
         '<a onclick="go(\'schedule\')"><span>Classes</span><b>' + (E ? done.length + '/' + live.length : '—') + '</b><small>' + (E ? (next.length ? next.length + ' to go' : 'all done') : '') + '</small></a>' +
         '<a onclick="go(\'team\')"><span>On time</span><b>' + (due ? ontime + '/' + due : team.length ? '—' : '—') + '</b><small>' + (team.length ? team.length + ' teaching' : 'no classes') + '</small></a>' +
@@ -17213,7 +17218,7 @@ section.sec{border-color:var(--line)}
       const names = Q.map(x => x.t).concat(W.map(x => x.t));
       let h = '<section class="x-top"><div><div class="d">' + now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + '</div><h1>' + hi + '</h1><p>' + say + '</p></div><div class="x-st">' +
         '<a onclick="go(\'schedule\')"><span>Classes</span><b>' + (E ? done.length + '/' + live.length : '—') + '</b><small>' + (E ? (next.length ? next.length + ' to go' : 'all done') : '') + '</small></a>' +
-        '<a onclick="go(\'team\')"><span>On time</span><b>' + (due ? ontime + '/' + due : '—') + '</b><small>' + (team.length ? team.length + ' teaching' : 'no classes') + '</small></a>' +
+        '<a onclick="go(\'team\')"><span>On time</span><b>' + (due ? ontime + '/' + due : '—') + '</b><small>' + (nT ? nT + ' teaching' : 'no classes') + '</small></a>' +
         '<a onclick="go(\'schedule\')"><span>' + (on.length ? 'On now' : 'Next') + '</span><b>' + (on.length ? on.length : next.length ? tm(next[0].start) : '—') + '</b><small>' + (on.length ? esc(on.map(e => tName(e.teacher)).slice(0, 2).join(', ')) : next.length ? esc(tName(next[0].teacher)) : 'no more today') + '</small></a></div>' +
         '<a class="x-todo ' + (hotN ? 'warm' : '') + '" onclick="go(\'mtoday\')"><i></i><b>' + (function(){ /* 1463: items, the same sum as the Overview badge */
           const sum = L => L.reduce((a, x) => a + (+x.n || 0), 0), nh = sum(Q.filter(x => x.tone === 'hot')), no = sum(Q.filter(x => x.tone !== 'hot'));
@@ -19221,19 +19226,19 @@ body #v-teachers .tc2-line .pg{height:6px!important}
     const X = u => L + (u / mx) * (W - L - R), Y = p => Tp + (hi - p) / (hi - lo) * (H - Tp - B);
     const avg = P.reduce((a, x) => a + (+x.units || 0), 0) / P.length, smax = Math.max(1, ...P.map(x => +x.students || 0));
     const xa = X(avg), yg = Y(85);
-    const zone = (x, y, t, a) => '<text x="' + x + '" y="' + y + '" font-size="12" fill="#726D8C" text-anchor="' + a + '" font-weight="700" letter-spacing=".04em">' + t + '</text>';
+    const zone = (x, y, t, a) => '<text x="' + x + '" y="' + y + '" font-size="10.5" fill="#9A96B0" text-anchor="' + a + '" font-weight="700" letter-spacing=".04em">' + t + '</text>';
     let g = '<rect x="' + xa + '" y="' + Tp + '" width="' + (W - R - xa) + '" height="' + (yg - Tp) + '" fill="#EEF8F3"/>' + '<rect x="' + L + '" y="' + yg + '" width="' + (xa - L) + '" height="' + (H - B - yg) + '" fill="#FDF3F0"/>';
     for(let p = Math.ceil(lo / 10) * 10; p <= 100; p += 10) g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(p) + '" y2="' + Y(p) + '" stroke="#F1F0F6"/><text x="' + (L - 8) + '" y="' + (Y(p) + 4) + '" font-size="11" fill="#736E8D" text-anchor="end">' + p + '%</text>';
     const st = mx > 60 ? 20 : 10; for(let u = 0; u <= mx; u += st) g += '<text x="' + X(u) + '" y="' + (H - B + 16) + '" font-size="11" fill="#736E8D" text-anchor="middle">' + u + '</text>';
     g += '<text x="' + (W - R) + '" y="' + (H - 4) + '" font-size="11" fill="#736E8D" text-anchor="end">units this month →</text>';
     g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yg + '" y2="' + yg + '" stroke="#2E9E6F" stroke-dasharray="5 4"/><text x="' + (L + 4) + '" y="' + (yg - 5) + '" font-size="11" fill="#2D7E67">goal 85% held</text>';
     g += '<line x1="' + xa + '" x2="' + xa + '" y1="' + Tp + '" y2="' + (H - B) + '" stroke="#C9C6D6" stroke-dasharray="5 4"/><text x="' + (xa + 4) + '" y="' + (H - B - 6) + '" font-size="11" fill="#736E8D">team average ' + Math.round(avg * 10) / 10 + '</text>';
-    g += zone(W - R - 6, Tp + 16, 'HIGH WORKLOAD · 85%+ HELD', 'end') + zone(W - R - 6, H - B - 8, 'HIGH WORKLOAD · REVIEW COMPLETION', 'end') + zone(xa - 8, Tp + 16, 'ROOM FOR MORE CLASSES', 'end') + zone(xa - 8, H - B - 8, 'REVIEW COMPLETION', 'end');   /* 2585 */
+    g += zone(W - R - 6, yg - 8, 'HIGH WORKLOAD · 85%+ HELD', 'end') + zone(W - R - 6, H - B - 8, 'HIGH WORKLOAD · REVIEW COMPLETION', 'end') + zone(xa - 8, yg - 8, 'ROOM FOR MORE CLASSES', 'end') + zone(xa - 8, H - B - 8, 'REVIEW COMPLETION', 'end');   /* 2828: the top labels sat on the teachers at 95–100%; now just above the goal line */   /* 2585 */
     const pts = P.map(x => ({ x, cx: X(+x.units || 0), cy: Y(Math.round(x.done / x.sch * 100)), r: 6 + Math.sqrt((+x.students || 0) / smax) * 12 })).sort((a, b) => b.r - a.r);
     { const S = pts.slice().sort((a, b) => a.cy - b.cy), placed = []; S.forEach(p => { let ly = p.cy + 4, lx = p.cx + p.r + 4; for(let k = 0; k < 8; k++){ const hit = placed.find(q => Math.abs(q.x - lx) < 70 && Math.abs(q.y - ly) < 13); if(!hit) break; ly = hit.y + 13; } p.ly = ly; p.lx = lx; placed.push({ x: lx, y: ly }); }); }   /* 445: labels step down instead of overlapping */
     g += pts.map(p => { const c = rk(p.x.rank)[2], pc = Math.round(p.x.done / p.x.sch * 100), nm = String(p.x.name).replace(/^teacher\s+/i, '');
       return '<g><circle class="dot" cx="' + p.cx + '" cy="' + p.cy + '" r="' + p.r + '" fill="' + c + '" fill-opacity=".85" stroke="#fff" stroke-width="1.5" onclick="openTeacher(\'' + esc(p.x.name).replace(/'/g, '') + '\')"><title>' + esc(nm) + ' · ' + p.x.units + ' units · ' + pc + '% completed · ' + p.x.students + ' students · ' + (p.x.late || 0) + ' late · ' + esc(rk(p.x.rank)[0]) + '</title></circle>' +
-        (Math.abs(p.ly - p.cy - 4) > 1 ? '<line x1="' + (p.cx + p.r) + '" y1="' + p.cy + '" x2="' + (p.lx - 1) + '" y2="' + (p.ly - 4) + '" stroke="#C9C6D6" stroke-width="1"/>' : '') + '<text x="' + p.lx + '" y="' + p.ly + '" font-size="11.5" fill="#2B2253" pointer-events="none">' + esc(nm) + '</text></g>'; }).join('');
+        (Math.abs(p.ly - p.cy - 4) > 1 ? '<line x1="' + (p.cx + p.r) + '" y1="' + p.cy + '" x2="' + (p.lx - 1) + '" y2="' + (p.ly - 4) + '" stroke="#C9C6D6" stroke-width="1"/>' : '') + '<text x="' + p.lx + '" y="' + p.ly + '" font-size="11.5" fill="#2B2253" stroke="#fff" stroke-width="3" paint-order="stroke" pointer-events="none">' + esc(nm) + '</text></g>'; }).join('');
     const used = RK.filter(k => P.some(x => rk(x.rank) === k));
     return '<div class="mp43"><div class="h"><span>Team map · workload and calendar completion</span><span>completion = classes held ÷ classes booked up to now this month (cancellations the parent asked for are left out) · dot size = students · click a dot to open</span></div><svg viewBox="0 0 ' + W + ' ' + H + '">' + g + '</svg>' +
       '<div class="lg">' + used.map(k => '<span><i style="background:' + k[2] + '"></i>' + k[0] + '</span>').join('') + '</div></div>'; }
@@ -45992,6 +45997,11 @@ body #v-train .tx-gr .nm{white-space:nowrap!important}
 #v-books .bl-tog{padding:3px;gap:2px;overflow:visible}
 /* Pay · rank, rate, lifetime units and since-date as small separate items (no line starting with a dot on a phone) */
 #v-pay .rk509{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+</style>
+<style id="s2828">
+/* 2828 (24 Nov, management screens checked one by one) */
+/* Finance › The picture: each tile's explanation ran to 7–8 lines; 3 lines on the tile, the full text opens with a tap (as before) */
+#v-money .kp>div>small{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 </style>
 <script>/* 2815: the app started (pilot check: the frame switches the compact copy off on this device if this never runs) */ try{ if(typeof render === 'function' && typeof applyUpdate === 'function') localStorage.removeItem('coe.mintry'); }catch(e){}</script>
 </body>
