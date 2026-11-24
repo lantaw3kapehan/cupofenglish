@@ -315,7 +315,14 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
       if(STEP === 'light copy' && meta && meta.copied && meta.size){ try{ STEP = 'our copy (light failed)'; doc = await ranged(ST(id), +meta.size, opt); }catch(e2){ doc = null; } }   /* 2553 */
       if(!doc){ STEP = 'Drive whole file'; want(id); doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt, { disableRange: true, disableStream: false })).promise; } }   /* 2278 */
     soon(); { const sec = (Date.now() - T0) / 1000; if(STEP === 'Drive whole file' || /failed/.test(STEP)) bookFail('fallback', id, STEP, ERR, sec); else if(sec >= 15) bookFail('slow', id, STEP, ERR, sec); }
-    PRE.clear(); CROP.clear(); PG1 = await findFirst(doc); pageNo = PG1; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > PG1 && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
+    PRE.clear(); CROP.clear();
+    /* 2820 (24 Nov, Misty: "books open slow"): finding the first real page (skipping our cover and title slides) read up to 6 pages one by one
+       before anything showed, 3–5 s on picture books. The answer is kept on this computer per file: the next open shows the page at once and
+       the check runs again quietly behind it. */
+    { const K1 = 'coe.rd.f1.' + id; let c1 = null; try{ c1 = JSON.parse(localStorage.getItem(K1) || 'null'); }catch(e){}
+      const ffP = findFirst(doc).then(f => { try{ localStorage.setItem(K1, JSON.stringify({ f, s: [...SKIP].filter(n => n < f), n: doc.numPages })); }catch(e){} return f; });
+      if(c1 && c1.n === doc.numPages && c1.f >= 1 && c1.f <= doc.numPages){ PG1 = c1.f; (c1.s || []).forEach(n => SKIP.add(n)); } else PG1 = await ffP; }
+    pageNo = PG1; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > PG1 && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
     if(FIRST) FIRST = false; else try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'log', token: TOKEN, kind: 'pdf', id, title: $('fl').textContent || TITLE, book: LABEL }) }); }catch(e){}
   }catch(e){ bookFail('failed', id, STEP, (ERR ? ERR + ' · ' : '') + String((e && e.message) || e).slice(0, 80), (Date.now() - T0) / 1000); msg('This book could not open right now. Please try again, or tell Operations.<br><button class="btn" style="margin-top:10px" onclick="location.reload()">Try again</button>'); } }
 
@@ -895,7 +902,9 @@ function boardOnly(){ doc = { numPages: 0, boardOnly: true }; document.body.clas
   $('bk').textContent = 'CupOfEnglish board'; $('fl').textContent = Q.get('s') ? 'Class with ' + Q.get('s') : 'Blank board';
   $('msg').style.display = 'none'; $('wrap').style.display = ''; render(); }
 if(!FID && Q.get('board') === '1') boardOnly();
-else loadBook().then(() => { if(FID) openFile(FID, TITLE); else msg('Choose a page on the left.'); });
+/* 2820: the page starts downloading at once; the list of the book's files fills in beside it (it used to wait for the list first, about 1 s) */
+else if(FID){ openFile(FID, TITLE); loadBook().then(() => { try{ const f = FILES.find(x => x.id === FID); if(f) $('fl').textContent = isMain(f) ? mainLabel(f.name) : (UNIT != null ? 'Unit ' + UNIT + ' · ' : '') + pLabel(f.name, FILES.filter(v => v.kind === 'video' && unitOf(v) === UNIT)); paintSide(); }catch(e){} }); }
+else loadBook().then(() => msg('Choose a page on the left.'));
 </script>
 <script src="../homework/fresh.js"></script>
 <script>/* 2798 */(function(){ function f(){ try{ var h = document.querySelector("header"); if(h) document.documentElement.style.setProperty("--hh2798", h.offsetHeight + "px"); }catch(e){} } addEventListener("resize", f); addEventListener("load", f); setTimeout(f, 500); })();</script>
