@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2315;
+const COE_V = 2316;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7551,9 +7551,13 @@ const cN = k => window.msgCats ? T.filter(t => msgCats(t, tUnread, 1).indexOf(k)
 const seg = [['all', 'All', T.length], ['unread', 'Unread', nU], ['reply', 'Reply needed', cN('reply')], ['pc', 'Progress checks', cN('pc')], ['qa', 'Class QA', cN('qa')], ['notes', 'Notices & memos', nN], ['saved', '⭐ Saved', nS]].map(([k, l, n]) => `<button type="button" class="${TIF.f === k ? 'on' : ''}" onclick="TIF.f='${k}';renderTInbox()">${l}${n ? ' · ' + n : ''}</button>`).join('');
 const row = t => { const last = t.replies.length ? t.replies[t.replies.length - 1] : t.root, u = tUnread(t), r = t.root, memo = r.kind === 'memo';
 const chip = memo ? '<span class="chip coral">Memo</span>' : window.msgCatChip && msgCatChip(t) ? msgCatChip(t) : r.role === 'mgmt' && r.need ? '<span class="chip teal">Notice</span>' : '';
-const status = r.role === 'mgmt' && r.need ? (r.ack ? `<span class="chip green">${rxH(ackLbl(r))}</span>` : '<span class="chip amber">Reply needed</span>') : '';
+const status = r.role === 'mgmt' && r.need ? (r.ack ? `<span class="chip green">${rxH(ackLbl(r))}</span>` : '<span class="chip amber">Reply needed</span>') : ''
+/* 2823 (24 Nov, Misty: "clear whether Operations or Management has received an update"): a message the teacher sent shows where it is:
+   Replied (by whom) · Seen by Operations/Management (when) · Sent, not seen yet */
+const mine2823 = r.role !== 'mgmt', lastM = [...t.replies].reverse().find(x => x.role === 'mgmt');
+const status2 = mine2823 ? (lastM ? `<span class="chip green">Replied · ${esc(window.who2801 ? who2801(lastM).label : 'Management')}</span>` : r.seen ? `<span class="chip teal">Seen by ${esc(/oper|celine/i.test(r.to || '') ? 'Operations' : (r.to || 'Management'))} · ${esc(msgAt(r.seen))}</span>` : '<span class="chip amber">Sent · not seen yet</span>') : '';
 return `<div class="li" onclick="tMsgOpen('${r.id}')" style="align-items:flex-start;${u ? 'background:#F1FAF9;' : ''}"><div style="width:10px;padding-top:7px">${u ? '<i style="display:block;width:8px;height:8px;border-radius:50%;background:#16BCB0"></i>' : ''}</div>
-<div class="grow" style="min-width:0"><div class="row" style="gap:6px;flex-wrap:wrap;align-items:center">${r.role === 'mgmt' && window.sd2801 ? sd2801(r, 'teacher') : ''}${chip}<span class="small mute">${esc(msgAt(t.lastAt))}${memo && r.memoNo ? ' · ' + esc(r.memoNo) : ''}</span>${status}</div>
+<div class="grow" style="min-width:0"><div class="row" style="gap:6px;flex-wrap:wrap;align-items:center">${r.role === 'mgmt' && window.sd2801 ? sd2801(r, 'teacher') : ''}${chip}<span class="small mute">${esc(msgAt(t.lastAt))}${memo && r.memoNo ? ' · ' + esc(r.memoNo) : ''}</span>${status}${status2}</div>
 <div class="ell" style="${u ? 'font-weight:700' : ''}">${esc(r.role === 'mgmt' ? r.text : 'You: ' + r.text)}</div>
 ${t.replies.length ? `<div class="small mute ell">${esc((last.role === 'mgmt' ? (window.who2801 ? who2801(last).label : 'Management') + ': ' : 'You: ') + last.text)} · ${t.replies.length} repl${t.replies.length === 1 ? 'y' : 'ies'}</div>` : ''}</div>
 <button type="button" class="btn ghost sm" title="${st[r.id] ? 'Remove from saved' : 'Save'}" onclick="tStar('${r.id}', event)" style="min-width:40px">${st[r.id] ? '⭐' : '☆'}</button></div>`; };
