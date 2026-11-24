@@ -4284,7 +4284,7 @@ async function loadTT(name, force){
 if(!name && !TT){ const k = kept('tt'); if(k){ TT = k; renderTeachers(); } }
 if(name && TTC[name]){ TT = TTC[name]; renderTeachers(); }            // instant from memory, then refresh
 if($('ttBody') && TT) $('ttBody').style.opacity = name && TTC[name] ? .8 : .45;
-try{ TT = await api('mgmtTeacherCard', TOKEN, name||'', !!force); TTC[TT.name] = TT; if(!name) keep('tt', TT); URLS = TT.urls || URLS; if(!name || !$('ttN') || $('ttN').value===TT.name) renderTeachers(); }
+try{ TT = await api('mgmtTeacherCard', TOKEN, name||'', !!force); try{ if(TT && TT.name && typeof tch1767 === 'function') TT = await tch1767(TT.name, TT); }catch(e){} TTC[TT.name] = TT;   /* 2839: pay table, rank and this month from the database (My Pay numbers) */ if(!name) keep('tt', TT); URLS = TT.urls || URLS; if(!name || !$('ttN') || $('ttN').value===TT.name) renderTeachers(); }
 catch(e){ toast('Could not load teacher details'); if($('ttBody')) $('ttBody').style.opacity = 1; }
 }
 /* Attendance · last 6 months (T-HISTORY, same numbers as the TEACHERS tab): one bar per month = classes scheduled,
@@ -4309,9 +4309,11 @@ let h = `<div class="card" style="margin-top:10px"><div class="row"><div class="
 <div class="stats" style="margin-top:12px"><div class="stat"><b style="font-size:15px">${esc(m.rank||'—')}</b><span>${m.rate?peso(m.rate)+'/unit':'rank'}${m.rankDate?' · since '+esc(String(m.rankDate).replace(/^Before /,'before ')):''}</span></div>
 <div class="stat"><b class="num">${(m.lifetime||0).toLocaleString()}</b><span>lifetime units</span></div>
 <div class="stat"><b class="num">${t.students}</b><span>students</span></div></div>
-<div class="stats" style="margin-top:10px"><div class="stat"><b class="num">${(m.nowReg||0)+(m.nowTrial||0)+(m.nowSub||0)}</b><span>units this month</span></div>
-<div class="stat"><b class="num">${peso(nowPayOf(m)+(m.monthBonus||0)-(m.monthDeduct||0))}</b><span>pay so far</span></div>
-<div class="stat"><b class="num"><span class="plus">+${peso(m.monthBonus||0)}</span></b><span>bonus · <span class="minus">−${peso(m.monthDeduct||0)}</span></span></div></div>
+${(() => { const d0 = new Date(), mk = d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0'), c = (t.pay || []).find(x => x && x.m === mk && x.src === 'database');   /* 2839: the database month (same as My Pay) when there is one */
+  const u = c ? +c.units : (m.nowReg||0)+(m.nowTrial||0)+(m.nowSub||0), bo = c ? +c.bonus || 0 : (m.monthBonus||0), de = c ? +c.deduct || 0 : (m.monthDeduct||0), pay = c ? (+c.lessonPay || 0) + (+c.base || 0) + bo - de : nowPayOf(m) + bo - de;
+  return `<div class="stats" style="margin-top:10px"><div class="stat"><b class="num">${Math.round(u * 100) / 100}</b><span>units this month</span></div>
+<div class="stat"><b class="num">${peso(pay)}</b><span>pay so far${c && c.gov ? ' · before gov' : ''}</span></div>
+<div class="stat"><b class="num"><span class="plus">+${peso(bo)}</span></b><span>bonus · ${de ? `<span class="minus">−${peso(de)}</span>` : 'no deductions'}</span></div></div>`; })()}
 <label>App sign-in email</label>
 <div class="row" style="gap:8px"><input id="ttE" class="in-t grow" type="email" value="${esc(f.email||'')}" placeholder="teacher@gmail.com"><button class="btn sm" id="ttEGo" onclick="saveEmail()">Save</button></div></div>`;
 h = `<div class="row noprint" style="justify-content:flex-end;margin-top:8px">${printBtn('ttBody', 'Teacher – ' + (f.full||t.name))}</div>` + h;
@@ -7514,7 +7516,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2329;
+const COE_V = 2330;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -45140,7 +45142,7 @@ body.pres2630 #app #v-mtoday > :is(#o91fix,.o91fix){order:5!important}body.pres2
     var rows = function(x){ var R = (window.vr2588Rows && vr2588Rows(x.code, x.dl)) || [], s = R[0], st = !s ? 'review needed' : s.kind === 'review' ? 'review pending' : s.kind === 'extend' ? 'extension approved' : s.kind === 'exception' ? 'exception approved' : 'date to correct';
       var nm = (((typeof MS !== 'undefined' && Array.isArray(MS)) ? MS : []).find(function(m){ return String(m.code).toUpperCase() === x.code; }) || {}).name || '';
       if(s && s.kind === 'review') st = 'reviewed by ' + (s.by_name || 'Operations') + (s.note ? ': \u201c' + s.note + '\u201d' : '');   /* 2650 */
-      return { done: !!s && s.kind !== 'review' && s.kind !== 'date_error', pend: !!s && s.kind === 'review', h: '<div class="li" style="align-items:center;gap:10px"><div class="grow"><b>' + E(nm || x.code) + '</b> <span class="small mute">' + (nm ? E(x.code) + ' · ' : '') + 'validity ended ' + E(x.dl) + ' · ' + x.days + ' days ago</span><div class="small" style="color:' + (st === 'review needed' ? '#A2462C' : '#6C6883') + '">' + E(st) + '</div></div><button class="btn sm ghost" onclick="valRev2588(\'' + x.code + '\',\'' + x.dl + '\')">Review validity</button></div>' }; };
+      return { done: !!s && s.kind !== 'review' && s.kind !== 'date_error', pend: !!s && s.kind === 'review', h: '<div class="li vr2839" style="align-items:center;gap:10px"><div class="grow"><b>' + E(nm || x.code) + '</b> <span class="small mute">' + (nm ? '<span class="nw">' + E(x.code) + '</span> · ' : '') + 'validity ended <span class="nw">' + E((function(d){ var t = new Date(String(d).slice(0, 10) + 'T12:00:00'); return isNaN(t) ? d : t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); })(x.dl)) + '</span> · ' + x.days + ' days ago</span><div class="small" style="color:' + (st === 'review needed' ? '#A2462C' : '#6C6883') + '">' + E(st) + '</div></div><button class="btn sm ghost" onclick="valRev2588(\'' + x.code + '\',\'' + x.dl + '\')">Review validity</button></div>' }; };
     var A = L.map(rows), open = A.filter(function(a){ return !a.done && !a.pend; }), pend = A.filter(function(a){ return a.pend; }), done = A.filter(function(a){ return a.done; });   /* 2650 */
     return '<div class="card" id="vr2609" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3 style="margin:0">Validity to review · ' + open.length + '</h3><span class="small mute">lessons left after the validity date · oldest first · classes continue meanwhile</span></div>'
       + open.slice(0, ph() ? 5 : 15).map(function(a){ return a.h; }).join('') + (open.length > (ph() ? 5 : 15) ? '<details><summary class="small" style="cursor:pointer;margin-top:6px">' + (open.length - (ph() ? 5 : 15)) + ' more</summary>' + open.slice(ph() ? 5 : 15).map(function(a){ return a.h; }).join('') + '</details>' : '')
@@ -46082,6 +46084,24 @@ body #v-train .tx-gr .nm{white-space:nowrap!important}
 /* 2837: the same two labels as the card at the top, as small pills, and the next reader marked with a teal edge */
 #bkBody a.link.b3-next{background:#F2F9F9;box-shadow:inset 3px 0 0 #13636B;border-radius:8px;font-weight:700;padding-left:10px!important}#bkBody a.link.b3-next::after,#bkBody a.link.b3-last::after{display:inline-block;margin-left:10px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.5;vertical-align:2px}#bkBody a.link.b3-next::after{content:"Next";background:#13636B;color:#fff}
 #bkBody a.link.b3-last::after{content:"Last class";background:#E4F1F2;color:#13636B}</style>
+<style id="s2839">
+.nw{white-space:nowrap}
+.stat b[style*="font-size:15px"]{white-space:normal!important;line-height:1.2}
+@media (max-width:600px){
+ #v-msgs .ib22>.li{flex-wrap:wrap;row-gap:4px}
+ #v-msgs .ib22>.li>.grow{flex:1 1 calc(100% - 56px)}
+ #v-msgs .ib22>.li>div[style*="text-align:right"]{flex:1 1 100%;display:flex;align-items:center;gap:8px;text-align:left!important;padding-left:52px}
+ #v-msgs .ib22>.li>div[style*="text-align:right"]>.small{margin:0}
+ #v-msgs .ib22 .li .ell{white-space:normal!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+ .li.vr2839{flex-wrap:wrap}.li.vr2839>.grow{flex:1 1 100%}.li.vr2839>.btn{margin-left:auto}
+ .lqm>.row>a.grow{min-width:min(100%,240px)}
+ .mt14 .rw .c{display:block;margin-left:0;white-space:nowrap}
+ #v-schedule .vw03>div{display:grid!important;grid-template-columns:repeat(4,1fr);width:100%;box-sizing:border-box}
+ #v-schedule .vw03>div>button{padding:8px 4px!important;font-size:13.5px!important;white-space:nowrap;justify-content:center}
+ #v-schedule .vw03>div>button::before{display:none!important}
+ #v-schedule .dg16 .h{flex-wrap:wrap;gap:4px 10px}#v-schedule .dg16 .h b{white-space:nowrap}
+}
+</style>
 <script>/* 2815: the app started (pilot check: the frame switches the compact copy off on this device if this never runs) */ try{ if(typeof render === 'function' && typeof applyUpdate === 'function') localStorage.removeItem('coe.mintry'); }catch(e){}</script>
 </body>
 </html>
