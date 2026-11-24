@@ -7504,7 +7504,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2313;
+const COE_V = 2314;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -45922,6 +45922,45 @@ body #v-train .tx-gr .nm{white-space:nowrap!important}
 /* Tables inside cards on a phone (Performance and others) were wider than the card and ran off the screen: they scroll sideways inside the card instead */
 @media(max-width:600px){#app .card table.small,#app details>table.small{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}}
 </style>
+<script>
+/* 2821 (24 Nov, Misty: "My Pay accurate, up to date, transparent"):
+   1 · "Estimated <month>" uses the same database numbers as the office Payroll (it used the older sheet figures), and shows the sum
+       line by line: units × rate (each rate on its own line), bonuses, deductions, government contributions, and the total.
+   2 · A past month whose recorded total differs from its own lines (old payroll sheet rows with a deduction that was not written in a column)
+       shows that difference as its own line, so the numbers always add up; a month paid at more than one rate says so instead of one rate. */
+(function(){
+  if(window.__2821) return; window.__2821 = 1;
+  const P = v => (typeof peso === 'function' ? peso(v) : '₱' + (Math.round((+v || 0) * 100) / 100).toLocaleString());
+  const n = v => +v || 0;
+  const lines = p => { const out = [];
+    if(p.parts && p.parts.length) p.parts.forEach(x => out.push(['Lessons · ' + (Math.round(n(x.units) * 100) / 100) + ' units × ' + P(x.rate), P(n(x.units) * n(x.rate))]));
+    else if(n(p.units) || n(p.lessonPay)){ const exact = Math.abs(n(p.units) * n(p.rate) - n(p.lessonPay)) < 0.5;
+      out.push(['Lessons · ' + (Math.round(n(p.units) * 100) / 100) + ' units' + (exact ? ' × ' + P(p.rate) : ' · more than one rate this month (trial, sub or rank change)'), P(p.lessonPay)]); }
+    if(n(p.base)) out.push(['Base pay', P(p.base)]);
+    out.push(['Bonuses', '+' + P(p.bonus), 'plus']);
+    out.push(['Deductions', '−' + P(p.deduct), 'minus']);
+    if(n(p.gov)) out.push(['Government (SSS · Pag-IBIG · PhilHealth · BIR)', '−' + P(p.gov), 'minus']);
+    const gap = Math.round((n(p.lessonPay) + n(p.base) + n(p.bonus) - n(p.deduct) - n(p.gov) - n(p.net)) * 100) / 100;
+    if(Math.abs(gap) >= 0.5) out.push([gap > 0 ? 'Other deduction in the payroll record' : 'Other addition in the payroll record', (gap > 0 ? '−' : '+') + P(Math.abs(gap)), gap > 0 ? 'minus' : 'plus', 'Not itemised in the payroll record · Operations can tell you what it was']);
+    return { out, gap }; };
+  const table = (L, net, label) => '<table class="pt2821">' + L.map(x => '<tr><td>' + x[0] + (x[3] ? '<div class="small mute">' + x[3] + '</div>' : '') + '</td><td class="num ' + (x[2] || '') + '">' + x[1] + '</td></tr>').join('') +
+    '<tr class="tot"><td><b>' + label + '</b></td><td class="num"><b>' + P(net) + '</b></td></tr></table>';
+  const st = document.createElement('style'); st.textContent = '.pt2821{width:100%;margin-top:10px;border-collapse:collapse}.pt2821 td{padding:6px 0;border-bottom:1px solid #F0EEF5;vertical-align:top;font-size:14px}.pt2821 td.num{text-align:right;white-space:nowrap;padding-left:12px}.pt2821 tr.tot td{border-bottom:0;padding-top:8px}.pt2821 .plus{color:#2E7D5B}.pt2821 .minus{color:#A2452F}';
+  document.head.appendChild(st);
+  const r0 = window.renderPay; if(typeof r0 === 'function') window.renderPay = function(){ const r = r0.apply(this, arguments);
+    try{ if(typeof D === 'undefined' || !D || D.mgr) return r; const ym = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 7);
+      const row = (D.pay || []).find(p => p && p.m === ym && p.src === 'database'); const v = document.getElementById('v-pay'); if(!row || !v) return r;
+      const card = [...v.querySelectorAll('.card')].find(c => /^Estimated /.test((c.firstElementChild || {}).textContent || '')); if(!card || card.dataset.v2821 === JSON.stringify(row)) return r;
+      const L = lines(row), mon = row.month.replace(/\s+\d{4}$/, '');
+      card.innerHTML = '<div class="mute small">' + esc(mon) + ' so far · the same figures as the office payroll · final after Ops review</div><div style="font-size:30px;font-weight:700" class="num">' + P(row.net) + '</div>' + table(L.out, row.net, 'Estimated ' + esc(mon));
+      card.dataset.v2821 = JSON.stringify(row); }catch(e){}
+    return r; };
+  const s0 = window.paySheet; if(typeof s0 === 'function') window.paySheet = function(p){ const r = s0.apply(this, arguments);
+    try{ if(typeof D === 'undefined' || !D || D.mgr || !p) return r; const b = document.getElementById('sheetBody'); const t = b && b.querySelector('table'); if(!t || t.classList.contains('pt2821')) return r;
+      const L = lines(p); const w = document.createElement('div'); w.innerHTML = table(L.out, p.net, p.status === 'Paid' ? 'Net paid' : 'Net'); t.replaceWith(w.firstChild); }catch(e){}
+    return r; };
+})();
+</script>
 <script>/* 2815: the app started (pilot check: the frame switches the compact copy off on this device if this never runs) */ try{ if(typeof render === 'function' && typeof applyUpdate === 'function') localStorage.removeItem('coe.mintry'); }catch(e){}</script>
 </body>
 </html>
