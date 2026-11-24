@@ -314,7 +314,7 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
     catch(e){ ERR = (ERR ? ERR + ' · ' : '') + STEP + ': ' + String((e && e.message) || e).slice(0, 80);
       if(STEP === 'light copy' && meta && meta.copied && meta.size){ try{ STEP = 'our copy (light failed)'; doc = await ranged(ST(id), +meta.size, opt); }catch(e2){ doc = null; } }   /* 2553 */
       if(!doc){ STEP = 'Drive whole file'; want(id); doc = await pdfjsLib.getDocument(Object.assign({ url: PX(id) }, opt, { disableRange: true, disableStream: false })).promise; } }   /* 2278 */
-    soon(); { const sec = (Date.now() - T0) / 1000; if(STEP === 'Drive whole file' || /failed/.test(STEP)) bookFail('fallback', id, STEP, ERR, sec); else if(sec >= 15) bookFail('slow', id, STEP, ERR, sec); }
+    if(!WARM2831) soon(); { const sec = (Date.now() - T0) / 1000; if(STEP === 'Drive whole file' || /failed/.test(STEP)) bookFail('fallback', id, STEP, ERR, sec); else if(sec >= 15) bookFail('slow', id, STEP, ERR, sec); }
     PRE.clear(); CROP.clear();
     /* 2820 (24 Nov, Misty: "books open slow"): finding the first real page (skipping our cover and title slides) read up to 6 pages one by one
        before anything showed, 3–5 s on picture books. The answer is kept on this computer per file: the next open shows the page at once and
@@ -323,6 +323,7 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
       if(!c1 && meta && meta.first) c1 = meta.first;   /* 2820b: found once by any teacher, kept on the server for everyone */
       const ffP = findFirst(doc).then(f => { const v = { f, s: [...SKIP].filter(n => n < f), n: doc.numPages }; try{ localStorage.setItem(K1, JSON.stringify(v)); }catch(e){}
         if(!(meta && meta.first && meta.first.f === v.f && meta.first.n === v.n)) try{ fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ op: 'f1', token: TOKEN, id }, v)) }).catch(() => {}); }catch(e){}
+        try{ if(WARM2831 && parent !== window) parent.postMessage({ warm2831: id, f }, location.origin); }catch(e){}
         return f; });
       if(c1 && c1.n === doc.numPages && c1.f >= 1 && c1.f <= doc.numPages){ PG1 = c1.f; (c1.s || []).forEach(n => SKIP.add(n)); } else PG1 = await ffP; }
     pageNo = PG1; zoom = 1; try{ const lp = +localStorage.getItem('coe.reader.pg.' + id); if(lp > PG1 && lp <= doc.numPages) pageNo = lp; }catch(e){}   /* 2283: back to the page they stopped on */ $('msg').style.display = 'none'; $('wrap').style.display = ''; await render();
@@ -331,7 +332,8 @@ async function openFile(id, name){ saveAnn(); FID = id; TITLE = name || TITLE;
 
 setInterval(() => { try{ if(!document.hidden) localStorage.setItem('coe.rd.busy', String(Date.now())); }catch(e){} }, 15e3);   /* 2568 */
 /* 2547 · a book that did not open (or opened only after a slow fallback) is recorded, so Operations sees it the same evening */
-function bookFail(outcome, id, step, error, secs){ try{ const c = navigator.connection || {}; fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, keepalive: true, body: JSON.stringify({ op: 'fail', token: TOKEN, outcome, id, book: LABEL, title: $('fl').textContent || TITLE, step, error, secs: Math.round(secs), net: (c.effectiveType || '') + (c.downlink ? ' ' + c.downlink + ' Mbps' : '') + (navigator.onLine === false ? ' offline' : '') }) }).catch(() => {}); }catch(e){} }
+const WARM2831 = new URLSearchParams(location.search).get('warm') === '1';   /* 2831: opened only to find a book's first page ahead of class (no records) */
+function bookFail(outcome, id, step, error, secs){ if(WARM2831) return; try{ const c = navigator.connection || {}; fetch(SB + '/functions/v1/coe-books', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, keepalive: true, body: JSON.stringify({ op: 'fail', token: TOKEN, outcome, id, book: LABEL, title: $('fl').textContent || TITLE, step, error, secs: Math.round(secs), net: (c.effectiveType || '') + (c.downlink ? ' ' + c.downlink + ' Mbps' : '') + (navigator.onLine === false ? ' offline' : '') }) }).catch(() => {}); }catch(e){} }
 /* 2279 · our copy is read page by page (only the bytes of the pages shown), so even a 100 MB book opens at once.
    (Storage does not let the browser see its range headers, so PDF.js would download the whole file: we ask for the ranges ourselves.) */
 /* 2549 (Misty 23:03 "when the teacher opens that book, the next time it's faster"): a book opened once is kept on this computer
