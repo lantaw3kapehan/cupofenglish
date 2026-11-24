@@ -121,10 +121,10 @@ input.tt{width:100%;height:42px;border:1px solid var(--out);border-radius:10px;p
 .vn2864 .rec{display:inline-flex;align-items:center;gap:8px;font-weight:600;color:#B42318}
 .vn2864 .rec i{width:10px;height:10px;border-radius:50%;background:#D92D20;animation:p64 1s infinite}
 @keyframes p64{50%{opacity:.25}}
-.stk2864 .big{display:flex;align-items:baseline;gap:8px}.stk2864 .big b{font:400 34px/1 'COE Card Fredoka','Fredoka One',sans-serif;color:var(--navy)}
+.stk2864 .big{display:flex;align-items:baseline;gap:8px}.stk2864 .big > b{font:400 34px/1 'COE Card Fredoka','Fredoka One',sans-serif;color:var(--navy)}
 .stk2864 .bar{height:10px;border-radius:99px;background:#EEF0F4;overflow:hidden;margin:10px 0 6px}.stk2864 .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#F5B700,#F08C00)}
-.stk2864 .bd{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-.stk2864 .bd span{display:inline-flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--ink2);width:58px;text-align:center}
+.stk2864 .bd{display:flex;gap:4px;margin-top:10px;justify-content:space-between}
+.stk2864 .bd span{display:inline-flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--ink2);flex:1;min-width:0;text-align:center}
 .stk2864 .bd span.off{opacity:.35;filter:grayscale(1)}
 .hist .vtag{font-size:12px;font-weight:600;color:#5B4FC4;background:#F1EFFC;border-radius:99px;padding:2px 8px;margin-left:6px}
 .hist{display:flex;flex-direction:column}
@@ -250,7 +250,7 @@ function vnFmt(s){ s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + '
 function vnPaint(){ const b = $('vnBox'); if(!b) return; const nm = esc(NAME || 'the student');
   if(VN.rec){ b.innerHTML = `<div class="h2" style="margin-bottom:4px">Voice note</div><div class="row"><span class="rec"><i></i>Recording <span id="vnT">${vnFmt((Date.now() - VN.t0) / 1000)}</span> / ${vnFmt(VN_MAX)}</span><button type="button" class="btn sm pri" id="vnStop" style="margin-left:auto">Stop</button></div>`; $('vnStop').onclick = vnStop; return; }
   const src = VN.blob ? URL.createObjectURL(VN.blob) : VN.url;
-  if(src){ b.innerHTML = `<div class="h2" style="margin-bottom:0">Voice note</div><div class="xs mute">${VN.blob ? 'Not saved yet · it is saved with the check.' : 'Saved with this check.'}</div><audio controls preload="metadata" src="${esc(src)}"></audio>
+  if(src){ b.innerHTML = `<div class="h2" style="margin-bottom:0">Voice note</div><div class="xs mute">${VN.path ? 'Saved with this check.' : 'Not saved yet · it is saved with the check.'}</div><audio controls preload="metadata" src="${esc(src)}"></audio>
 <div class="row"><button type="button" class="btn sm" id="vnAgain">${IC64.mic}Record again</button><a class="btn sm" id="vnFile" href="${esc(src)}" download="Voice-note-${esc(NAME || CODE)}.wav">Save file for WeChat</a><button type="button" class="btn sm red" id="vnDel" style="margin-left:auto">Delete</button></div>`;
     $('vnAgain').onclick = vnStart; $('vnDel').onclick = () => { if(!confirm('Delete this voice note?')) return; VN.blob = null; VN.path = ''; VN.url = ''; dirty(); vnPaint(); }; return; }
   b.innerHTML = `<div class="h2" style="margin-bottom:0">Voice note <span class="mute xs" style="font-weight:400">(optional)</span></div><div class="xs mute">Say well done to ${nm} in your own voice, up to 1 minute. Saved with the check; send the file in WeChat with the picture.</div><div class="row"><button type="button" class="btn sm out" id="vnGo">${IC64.mic}Record a voice note</button></div>`;
@@ -284,7 +284,7 @@ function stkInfo(){ const here = stkNow(), tot = (STK.n || 0) + here, got = BADG
   return { here, tot, got, nx, pct: nx ? Math.round((tot - prev) / (nx[0] - prev) * 100) : 100 }; }
 let STKH = ''; function stkPaint(){ const b = $('stkBox'); if(!b) return; if(STK.n == null){ b.innerHTML = '<div class="h2" style="margin:0">Sticker book</div><div class="xs mute">Loading…</div>'; return; }
   const o = stkInfo(), nm = esc(NAME || CODE);
-  const h = `<div class="h2" style="margin-bottom:2px">Sticker book</div><div class="big"><b>${o.tot}</b><span class="small mute">sticker${o.tot === 1 ? '' : 's'} for ${nm}${o.here ? ' · <b style="color:#B45309">+' + o.here + ' on this check</b>' : ''}</span></div>
+  const h = `<div class="h2" style="margin-bottom:2px">Sticker book</div><div class="big"><b>${o.tot}</b><span class="small mute">sticker${o.tot === 1 ? '' : 's'} for ${nm}${o.here ? ' · <span style="color:#B45309;font-weight:700">+' + o.here + ' on this check</span>' : ''}</span></div>
 <div class="bar"><i style="width:${o.pct}%"></i></div><div class="xs mute">${o.nx ? (o.nx[0] - o.tot) + ' more to the <b>' + o.nx[1] + '</b> badge' : 'Every badge collected!'} · every praise stamp is a sticker</div>
 <div class="bd">${BADGES.map(x => `<span class="${o.tot >= x[0] ? '' : 'off'}" title="${x[1]} · ${x[0]} stickers">${badgeSvg(x[3])}${x[0]}</span>`).join('')}</div>`;
   if(h !== STKH){ STKH = h; b.innerHTML = h; } }
@@ -743,7 +743,7 @@ async function zhNow(){ { const bx0 = $('zhBox'); if(bx0) bx0.style.display = 'n
   ZH = { src: t, zh }; if(bx){ bx.style.display = ''; bx.textContent = zh ? 'Chinese translation: ' + zh : 'The Chinese could not be made just now. The picture will show the English only.'; } return zh; }
 
 /* ================= save ================= */
-let SAVING = false, vnAfter = 0;
+let SAVING = false;
 async function save(){
   if(SAVING) return; if(!hasWork()) return toast('Paste the homework first');
   SAVING = true; const b = $('bSave'), lab = b.textContent; b.disabled = true; b.textContent = 'Saving…';
@@ -752,10 +752,10 @@ async function save(){
     const body = { id: CUR.id || undefined, code: CODE, student: NAME, class_id: CLS, day: DAY || new Date().toISOString().slice(0, 10), kind: MODE, title: $('ttl').value.trim(), note, note_zh, counts: counts() };
     if(MODE === 'text'){ body.body = TX.body; body.marks = TX.marks; }
     else { body.marks = PIC.items; body.marked = marked(.8); if(!PIC.origSaved) body.orig = PIC.base.toDataURL('image/jpeg', .85); }
-    { const t = tswGet(); if(t) body.counts.tsw = t; if(VN.blob) body.voice = await blobUrl(VN.blob); else if(VN.path) body.counts.voice = VN.path; }   /* 2864 */
+    { const t = tswGet(); if(t) body.counts.tsw = t; if(VN.blob && !VN.path) body.voice = await blobUrl(VN.blob); else if(VN.path) body.counts.voice = VN.path; }   /* 2864 */
     const r = await api('save', body, 60000); if(!r.ok) throw new Error(r.error || 'Not saved');
     CUR.id = r.id; if(MODE === 'picture') PIC.origSaved = true; DIRTY = false; clearDraft();
-    if(VN.blob){ VN.blob = null; vnAfter = r.id; }   /* 2864: the saved voice file comes back with the list */
+    if(VN.blob || VN.path){ VN.path = r.voice || ''; if(!VN.path) VN.blob = null; vnPaint(); }   /* 2864: the server answers with the saved voice file; the recording stays here for playback */
     toast('Saved to ' + (NAME || CODE) + '’s homework'); $('saveInfo').textContent = 'Saved at ' + new Date().toTimeString().slice(0, 5) + '. Saving again updates the same check.'; loadHist();
     if(MODE === 'text') paintText(); else { $('src').innerHTML = 'Picture · saved check · <a href="#" id="rot">Rotate</a> · <a href="#" id="rep">Paste another</a>'; $('rep').onclick = e => { e.preventDefault(); pasteBtn(); }; $('rot').onclick = e => { e.preventDefault(); rotate(); }; }
   }catch(e){ toast('Not saved: ' + e.message + ' · your work is still here, try again', 5000); }
@@ -765,7 +765,7 @@ async function save(){
 async function loadHist(){
   const h = $('hist'); if(!h) return; let r; try{ r = await api('list', { code: CODE }); }catch(e){ h.textContent = e.message; return; }
   if(!r.ok){ h.textContent = r.error || 'Could not load'; return; } HIST = r.checks || [];
-  if(vnAfter){ const x = HIST.find(y => y.id === vnAfter); vnAfter = 0; if(x && x.counts && x.counts.voice){ VN.path = x.counts.voice; VN.url = x.voice_url || ''; vnPaint(); } }   /* 2864 */
+  { const x = HIST.find(y => y.id === CUR.id); if(x && x.voice_url && VN.path && x.counts && x.counts.voice === VN.path) VN.url = x.voice_url; }   /* 2864 */
   if(!HIST.length){ h.innerHTML = 'No checks saved yet for ' + esc(NAME || CODE) + '.'; return; }
   const dt = s => { const d = new Date(s); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   h.innerHTML = HIST.map(x => { const c = x.counts || {}, err = ERR.reduce((s, k) => s + (+c[k] || 0), 0) + (+c.fix || 0);

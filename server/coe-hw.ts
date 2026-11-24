@@ -137,10 +137,10 @@ Deno.serve(async (req: Request) => {
         const { data: old } = await db.from("coe_hw_checks").select("id,code").eq("id", +b.id).maybeSingle();
         if (!old || old.code !== code) return out({ ok: false, error: "Not found" }, 404);
         const { error } = await db.from("coe_hw_checks").update(row).eq("id", +b.id); if (error) throw new Error(error.message);
-        return out({ ok: true, id: +b.id });
+        return out({ ok: true, id: +b.id, voice: row.counts.voice || "" });
       }
       const { data, error } = await db.from("coe_hw_checks").insert(row).select("id").single(); if (error) throw new Error(error.message);
-      return out({ ok: true, id: data.id });
+      return out({ ok: true, id: data.id, voice: row.counts.voice || "" });
     }
 
     if (op === "stickers") {   // v10 (2864): a student's sticker collection · every praise stamp on every saved check (gentle fix-it stamps are not stickers)
