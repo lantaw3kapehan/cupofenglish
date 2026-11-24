@@ -1,0 +1,5 @@
+-- 2827 (24 Nov 2026, Misty: "repeated information = do what is best"): the automatic 14:00 Meeting ID reminder (coe_auto_remind2 'meet')
+-- is skipped for a teacher whom Operations / the President already asked about the Meeting ID that day (a non-automatic management message
+-- mentioning "meeting id"). Applied live with a replace() on the function body; the added check inside the 'meet' loop is:
+--   if exists (select 1 from coe_msgs m where m.role = 'mgmt' and coalesce(m.src, '') <> 'auto' and lower(m.to_name) = lower(x.t) and m.body ilike '%meeting id%'
+--              and (m.at at time zone 'Asia/Manila')::date = today) then continue; end if;
