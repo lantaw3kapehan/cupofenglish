@@ -7516,7 +7516,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2338;
+const COE_V = 2339;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -45149,13 +45149,41 @@ body.pres2630 #app #v-mtoday > :is(#o91fix,.o91fix){order:5!important}body.pres2
     var A = L.map(rows), open = A.filter(function(a){ return !a.done && !a.pend; }), pend = A.filter(function(a){ return a.pend; }), done = A.filter(function(a){ return a.done; });   /* 2650 */
     return '<div class="card" id="vr2609" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3 style="margin:0">Validity to review · ' + open.length + '</h3><span class="small mute">lessons left after the validity date · oldest first · classes continue meanwhile</span></div>'
       + open.slice(0, ph() ? 5 : 15).map(function(a){ return a.h; }).join('') + (open.length > (ph() ? 5 : 15) ? '<details><summary class="small" style="cursor:pointer;margin-top:6px">' + (open.length - (ph() ? 5 : 15)) + ' more</summary>' + open.slice(ph() ? 5 : 15).map(function(a){ return a.h; }).join('') + '</details>' : '')
-      + (pend.length ? '<details><summary class="small" style="cursor:pointer;margin-top:6px;color:#1E6E68">' + ((typeof isPres === 'function' && isPres()) ? 'Waiting for your decision · ' : 'Sent to the President · ') + pend.length + '</summary>' + pend.map(function(a){ return a.h; }).join('') + '</details>' : '')
+      + (pend.length && !(typeof isPres === 'function' && isPres()) ? '<details><summary class="small" style="cursor:pointer;margin-top:6px;color:#1E6E68">' + 'Sent to the President · ' + pend.length + '</summary>' + pend.map(function(a){ return a.h; }).join('') + '</details>' : '')
       + (done.length ? '<details><summary class="small mute" style="cursor:pointer;margin-top:6px">Decided · ' + done.length + '</summary>' + done.map(function(a){ return a.h; }).join('') + '</details>' : '') + '</div>'; }
+  /* 2849 (Misty 24 Nov 16:42): "needs my decision is at the bottom · this has to be on top and improve it" · the President's validity decisions get their own card
+     at the very top of To do (phone: top of Today), with what Operations found and one-tap answers. The Validity card keeps the rest. */
+  function decHtml(){ if(!(typeof isPres === 'function' && isPres())) return ''; var Ev = window.validityEnded ? validityEnded() : {};
+    var L = Object.keys(Ev).map(function(k){ return Ev[k]; }).map(function(x){ var R = (window.vr2588Rows && vr2588Rows(x.code, x.dl)) || [], s = R[0]; return s && s.kind === 'review' ? { x: x, s: s } : null; }).filter(Boolean)
+      .sort(function(a, b){ return String(a.s.at) < String(b.s.at) ? -1 : 1; });
+    if(!L.length) return '';
+    var fd = function(d){ var t = new Date(String(d).slice(0, 10) + 'T12:00:00'); return isNaN(t) ? E(d) : t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+    var nmOf = function(c){ return (((typeof MS !== 'undefined' && Array.isArray(MS)) ? MS : []).find(function(m){ return String(m.code).toUpperCase() === c; }) || {}).name || ''; };
+    return '<div class="card" id="dc2849" style="margin-top:14px;border:1.5px solid #01B0BF;background:#F4FBFC"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3 style="margin:0;color:#2F2752">Needs your decision · ' + L.length + '</h3><span class="small mute">validity reviews from Operations · oldest first · classes continue until you decide</span></div>'
+      + L.map(function(o){ var x = o.x, s = o.s, nm = nmOf(x.code), id = 'dc' + x.code.replace(/\W/g, '') + String(x.dl).replace(/\W/g, ''), a = "'" + E(x.code) + "','" + E(x.dl) + "','" + id + "'";
+        return '<div class="li" id="' + id + '" style="display:block;padding:12px 0"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><div><b>' + E(nm || x.code) + '</b> <span class="small mute">' + (nm ? '<span class="nw">' + E(x.code) + '</span> · ' : '') + 'validity ended <span class="nw">' + fd(x.dl) + '</span> · ' + x.days + ' days ago</span></div>'
+          + '<span class="small mute nw">asked ' + E(new Date(s.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })) + '</span></div>'
+          + '<div style="margin:8px 0;padding:8px 10px;border-radius:10px;background:#fff;border:1px solid #E3E8EC"><div class="small mute">' + E(s.by_name || 'Operations') + ' found</div><div>' + (s.note ? E(s.note) : '<span class="mute">No note given.</span>') + '</div></div>'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="btn sm teal" onclick="dc2849(this,' + a + ',\'exception\')">Classes continue</button>'
+          + '<button class="btn sm ghost" onclick="dc2849x(' + a + ')">Extend to a date…</button><button class="btn sm ghost" onclick="dc2849(this,' + a + ',\'date_error\')">Date on record is wrong</button>'
+          + '<button class="btn sm ghost" onclick="valRev2588(\'' + E(x.code) + '\',\'' + E(x.dl) + '\')">History</button></div>'
+          + '<div class="dcx" style="display:none;margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><input type="date" class="in-t" style="max-width:180px"><input class="in-t" placeholder="Reason (optional)" style="flex:1;min-width:160px"><button class="btn sm teal" onclick="dc2849(this,' + a + ',\'extend\')">Save extension</button></div></div>'; }).join('') + '</div>'; }
+  window.dc2849x = function(code, dl, id){ var r = document.getElementById(id), w = r && r.querySelector('.dcx'); if(w){ w.style.display = w.style.display === 'none' ? 'flex' : 'none'; var i = w.querySelector('input[type=date]'); if(i && w.style.display !== 'none') i.focus(); } };
+  window.dc2849 = function(btn, code, dl, id, kind){ var r = document.getElementById(id), w = r && r.querySelector('.dcx'), d = '', n = '';
+    if(kind === 'extend'){ d = (w.querySelector('input[type=date]') || {}).value || ''; n = (w.querySelectorAll('input')[1] || {}).value || ''; if(!d) return toast('Pick the new date first'); }
+    else { if(!btn.dataset.sure){ var t0 = btn.textContent; btn.dataset.sure = '1'; btn.textContent = 'Tap again to confirm'; setTimeout(function(){ if(btn.isConnected && btn.dataset.sure){ delete btn.dataset.sure; btn.textContent = t0; } }, 5000); return; }
+      if(kind === 'date_error'){ d = prompt('The right validity date (YYYY-MM-DD):', '') || ''; if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ delete btn.dataset.sure; return toast('Enter the date as YYYY-MM-DD'); } } }
+    if(r) r.style.opacity = '.45';
+    fetch(FAST_URL + '-ops', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'valset', code: code, dl: dl, kind: kind, new_date: d, note: n || (kind === 'exception' ? 'Classes continue on this package' : '') }) }).then(function(x){ return x.json(); })
+      .then(function(x){ if(!x || !x.ok) throw x; toast('✓ Decided'); if(r) r.remove(); try{ window.vr2588Reload(); }catch(e){} setTimeout(paint, 800); })
+      .catch(function(e){ if(r) r.style.opacity = ''; toast((e && e.error) || 'Not saved. Try again.'); }); };
   function put(id, h, v){ var o = document.getElementById(id); if(!h){ if(o) o.remove(); return; } if(o){ if(o.outerHTML !== h) o.outerHTML = h; return; } v.insertAdjacentHTML('beforeend', h); }
   /* 2628 (Misty 15:54): on a phone (no To do screen) both cards show on Today, 5 rows each */
   function ph(){ try{ return matchMedia('(max-width: 760px)').matches; }catch(e){ return false; } }
   function host(){ return document.getElementById(ph() ? 'v-home' : 'v-mtoday'); }
-  function paint(){ if(!mgr()) return; try{ ov(); }catch(e){} var v = host(); if(!v) return; ['wa2609', 'vr2609'].forEach(function(id){ var o = document.getElementById(id); if(o && o.parentElement !== v) o.remove(); }); put('wa2609', whoHtml(), v); try{ put('vr2609', valHtml(), v); }catch(e){} }
+  function paint(){ if(!mgr()) return; try{ ov(); }catch(e){} var v = host(); if(!v) return; ['wa2609', 'vr2609'].forEach(function(id){ var o = document.getElementById(id); if(o && o.parentElement !== v) o.remove(); }); put('wa2609', whoHtml(), v); try{ put('vr2609', valHtml(), v); }catch(e){}
+    try{ var dc = document.getElementById('dc2849'); if(!(dc && dc.contains(document.activeElement))){ put('dc2849', decHtml(), v); dc = document.getElementById('dc2849'); }   /* 2849: always first, under the heading */
+      if(dc){ var top = v.querySelector(':scope > .lead'), ref = top ? top.nextSibling : v.firstChild; if(dc !== ref && dc.previousSibling !== top) v.insertBefore(dc, ref); else if(!top && v.firstChild !== dc) v.insertBefore(dc, v.firstChild); } }catch(e){} }
   function load(){ if(!mgr() || BUSY || Date.now() - AT < 120e3) return paint(); BUSY = 1;
     ops({ op: 'clsbylist' }).then(function(r){ BUSY = 0; AT = Date.now(); if(r && r.ok){ W = r.rows || []; } paint(); }).catch(function(){ BUSY = 0; paint(); }); }
   window.wa2609 = function(btn, id, who){ var row = btn.closest('.li'); if(row) row.style.opacity = '.4';
