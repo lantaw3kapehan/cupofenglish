@@ -7514,7 +7514,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2328;
+const COE_V = 2329;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -42881,6 +42881,24 @@ window.pos2836.other = function(t, code){ var A = /^\s*(ODF|OD|REF|RE|PATHWAYS|P
       d.querySelectorAll('a.link, .au-ex').forEach(x => { const hit = head.includes(q) || (x.textContent || '').toLowerCase().includes(q); x.style.display = hit ? '' : 'none'; if(hit) any = true; });
       d.style.display = any ? '' : 'none'; if(any && !head.includes(q)) d.open = true; }); };
   const S0 = window.bookSheet; if(S0) window.bookSheet = function(stu, evId, only){ const r = S0.apply(this, arguments); Promise.resolve(r).then(() => setTimeout(() => { render(stu, evId, only).catch(() => {}); }, 30), () => {}); return r; };
+  /* 2838 (24 Nov, Misty: "go ahead always do the best"): Open book on a class opens the right page in one tap when the app is sure where the
+     class is: a reader book → the reader after the last class's one (the title must be in this book); a unit book → that unit when it is one
+     file. Otherwise (no note, another book of the series, a unit split into lessons, the pop-up blocked) the book list opens as before.
+     The reader's side list has every file of the book, so another one is one tap away. */
+  window.bkTarget2838 = async function(stu, evId){ try{ if(!stu || !D || D.mgr) return null;
+      const s = (D.students || []).find(x => x.code === stu) || {}, c = (D.schedule || []).find(x => x.id === evId) || {}, list = codes(c.book || s.book); if(list.length !== 1) return null;
+      const k = list[0], L = last(stu); if(!L.t || (window.pos2836 && pos2836.other(L.t, k))) return null;
+      const b = await bkGet(k); if(!b || !(b.files || []).length) return null; const F = b.files, M = F.filter(isMain);
+      if(L.u != null){ const P = F.filter(f => f.kind === 'pdf' && !M.includes(f) && unitOf(f) === L.u); return P.length === 1 ? { f: P[0], why: 'Unit ' + L.u + ' · where the last class ended' } : null; }
+      const nt = norm(L.t), PF = F.filter(f => f.kind === 'pdf' && !M.includes(f)).sort((x, y) => nat(String(x.group || '') + '/' + x.name, String(y.group || '') + '/' + y.name));
+      let hit = null, best = 0; PF.forEach(f => { const ti = norm(String(f.name).replace(/\.pdf$/i, '').replace(/^\s*\d+\s*[-.·]\s*/, '')); if(ti.length >= 4 && nt.includes(ti) && ti.length > best){ best = ti.length; hit = f; } });
+      if(!hit) return null; const i = PF.indexOf(hit), nx = PF.slice(i + 1).find(f => String(f.group || '') === String(hit.group || ''));
+      return nx ? { f: nx, why: 'next after ' + String(hit.name).replace(/\.pdf$/i, '') + ' (last class)' } : null; }catch(e){ return null; } };
+  const S1 = window.bookSheet; if(S1) window.bookSheet = async function(stu, evId, only){
+    if(!only && evId && window.bkReader){ const tg = await window.bkTarget2838(stu, evId);
+      if(tg && window.bkReader(tg.f.id, String(tg.f.name).replace(/\.pdf$/i, ''))){ try{ toast('Opened ' + String(tg.f.name).replace(/\.pdf$/i, '') + ' · ' + tg.why + ' · every page of the book is in the reader’s list'); }catch(e){} return; } }
+    return S1.apply(this, arguments); };
+
 })();
 </script>
 <script id="b2276">
