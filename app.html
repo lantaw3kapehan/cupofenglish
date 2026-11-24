@@ -3308,6 +3308,16 @@ if(k.has('Active')){ store('del','coe.m.active'); AT = null; if(VIEW==='active')
 if(k.has('Schedule')){ Object.keys(SCC).forEach(x => { SCC[x]._t = 0; }); if(SC) loadSchedule(0, true); }
 if(k.has('Trial report')) loadTrials();
 if(k.has('Peer review') && typeof loadPeerM === 'function') loadPeerM();
+/* 2826 (24 Nov, Misty: "updates sync immediately in both directions, without a manual refresh"): a change saved by someone else
+   (President ↔ Operations, or a teacher) now refreshes the screens it touches by itself, as the ↻ button would. Reminder logs and "seen" marks do not. */
+try{ const me = String((D.me && D.me.name) || '').toLowerCase(), fn = new Set(r.items.filter(x => String(x.who || '').toLowerCase() !== me && !/^(mgmtRemindLog|tRemindLog|mgmtMsgSeen|tMsgSeen)$/.test(x.fn || '')).map(x => x.fn || x.kind));
+  if(fn.size){ const has = re => [...fn].some(f => re.test(f));
+    if(has(/Msg/)) loadMsgs(true);
+    if(has(/Trial|Enq/)){ loadTrials(); if(window.TDX1996) TDX1996.side = 0; }
+    if(has(/Case/)){ store('del','coe.m.actions'); AC = null; if(VIEW === 'actions') loadActions(); }
+    if(has(/Leave/)) loadLeave(true);
+    if(has(/Renew|Enrol|Task|SetBook|saveStudent|Avail|Agree|Fix|Pay|Trial|Enq|Case|Leave|decideLate|editClass|addClass/)){ if(window.TDX1996) TDX1996.side = 0;
+      if(Date.now() - (window.__rl2826 || 0) > 15000){ window.__rl2826 = Date.now(); loadMgmt(true); if(typeof tdSide1996 === 'function') tdSide1996(); if(VIEW === 'mtoday') loadMToday(true); if(VIEW === 'astudents' && typeof loadStudents === 'function'){ MS = null; loadStudents(); } } } } }catch(e){}
 }
 }
 const lt = $('liveTag'); if(lt) lt.innerHTML = '<i></i>Connected · ' + PULSE.time;
@@ -7504,7 +7514,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2317;
+const COE_V = 2318;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
