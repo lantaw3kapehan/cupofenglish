@@ -1,3 +1,4 @@
+// v14 (24 Nov 2026 · 2820): op f1 stores a file's first real page; meta returns it as "first"
 // CupOfEnglish · coe-books (16 Nov 2026 · 2270 · Misty: "let us do all"): extras for the Books screens.
 // POST (text/plain JSON) { op, token | stoken, ... }
 //   log      { token, kind, id, title, book, student }   staff: a book file was opened (pdf / audio / video)
@@ -77,21 +78,29 @@ Deno.serve(async (req: Request) => {
       const { data: sc } = await db.from("coe_book_files").select("seen_at").order("seen_at", { ascending: false }).limit(1);
       return out({ ok: true, books: (c && c.data && c.data.books) || [], at: c && c.data ? c.data.at : null, scanned: sc && sc[0] ? sc[0].seen_at : null });
     }
+    if (op === "f1") {   // 2820: the reader found a file's first real page: kept for every teacher, so no one waits for that search again
+      const id = clip(b.id, 80), f = Math.round(Number(b.f)), n = Math.round(Number(b.n)), sk = (Array.isArray(b.s) ? b.s : []).map((x: any) => Math.round(Number(x))).filter((x: number) => x >= 1 && x < f).slice(0, 10);
+      if (!id || !(f >= 1 && n >= f && n < 5000)) return out({ ok: false, error: "bad" }, 400);
+      const { error } = await db.from("coe_book_first").upsert({ id, f, s: sk, n, at: new Date().toISOString(), who: clip(s.name, 60) }, { onConflict: "id" });
+      return out({ ok: !error });
+    }
     if (op === "meta") {   // 2279: the reader needs a file's size and whether our copy is ready (for page-by-page loading)
-      const id = clip(b.id, 80); const { data: f } = await db.from("coe_book_files").select("size,mime").eq("id", id).maybeSingle();
+      const id0 = clip(b.id, 80); const { data: F1 } = await db.from("coe_book_first").select("f,s,n").eq("id", id0).maybeSingle();   // 2820
+      const outM = (o: any, st?: number) => out(F1 && o && typeof o === "object" ? Object.assign({ first: F1 }, o) : o, st);
+      const id = id0; const { data: f } = await db.from("coe_book_files").select("size,mime").eq("id", id).maybeSingle();
       const { data: m } = await db.from("coe_media_mirror").select("done_at").eq("id", id).maybeSingle();
       // 2607 (21 Nov, Rose · The Alphabet U2L2): a corrected copy (coe-pdffix) is a few bytes longer than the Drive size on record, and
       // page-by-page loading with the old size breaks ("Invalid PDF structure"). When our copy is ready, its own stored size is used.
       if (f && m && m.done_at) { try { const { data: os } = await db.rpc("coe_book_obj_size", { p_id: id }); if (os) f.size = Number(os); } catch (_e) { /* keep the size on record */ } }
       // 2548: a light copy made overnight (same pages, text stays text, pictures 150 dpi) opens first, for everyone (Misty 23:14 "make it live")
       const { data: lt } = await db.from("coe_book_light").select("size,use_it,note").eq("id", id).maybeSingle();
-      if (lt && lt.note === "ready" && lt.size) return out({ ok: true, size: f ? f.size : null, copied: !!(m && m.done_at), light: "light-2548/" + id, lightSize: lt.size });
+      if (lt && lt.note === "ready" && lt.size) return outM({ ok: true, size: f ? f.size : null, copied: !!(m && m.done_at), light: "light-2548/" + id, lightSize: lt.size });
       // 2281: not copied yet → a lighter "_APP COPIES" twin that is copied opens instead (same book, same name)
       if (f && !(m && m.done_at)) { const { data: me } = await db.from("coe_book_files").select("path,name").eq("id", id).maybeSingle();
         if (me) { const { data: tw } = await db.from("coe_book_files").select("id,size").eq("name", me.name).eq("path", "_APP COPIES / " + me.path).is("gone_at", null).limit(1);
           const t = tw && tw[0]; if (t) { const { data: tm } = await db.from("coe_media_mirror").select("done_at").eq("id", t.id).maybeSingle();
-            if (tm && tm.done_at) return out({ ok: true, size: f.size, copied: false, alt: t.id, altSize: t.size }); } } }
-      return out({ ok: !!f, size: f ? f.size : null, copied: !!(m && m.done_at) });
+            if (tm && tm.done_at) return outM({ ok: true, size: f.size, copied: false, alt: t.id, altSize: t.size }); } } }
+      return outM({ ok: !!f, size: f ? f.size : null, copied: !!(m && m.done_at) });
     }
     const code = clip(b.code, 20).toUpperCase(), day = clip(b.day, 10);
     if (op === "hwGet" || op === "hwSet") { if (!/^ST-\d{4}-\d{3}$/.test(code) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return out({ ok: false, error: "code/day" }, 400); }
