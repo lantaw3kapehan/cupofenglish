@@ -453,6 +453,9 @@ async function teacherHomeLive(db: any, who: any, base: any) {
     special.push({ date: d, time: hm(cell(r, 0)), type: cell(r, 2), code: cell(r, 3), student: cell(r, 4), book: cell(r, 6), cefr: cell(r, 7), units: cell(r, 8), status: cell(r, 2) === "Trial" && !cell(r, 9) && laterTrial(r, d) ? (String(cell(r, 3) || "").trim().toUpperCase() in enrolledBy && enrolledBy[String(cell(r, 3) || "").trim().toUpperCase()] < d ? "Trying a new teacher · no trial report" : "Second trial · report by the first teacher") : cell(r, 9),
       reportMissing: cell(r, 2) === "Trial" && !/cancel/i.test(String(cell(r, 9))) && !laterTrial(r, d) && !reported[d + "|" + String(cell(r, 4)).trim().toLowerCase()] }); });
   special.sort((a, b) => b.date.localeCompare(a.date));
+  // 2824 (24 Nov, Kat's Students: Fan Fan enrolled after her trial but showed "—"): the class table's status column is filled only by some
+  // follow-ups; an enrolment on record (coe_packages, bought on or after the trial day) now reads "Enrolled" here too
+  special.forEach((x: any) => { const c = String(x.code || "").trim().toUpperCase(); if (x.type === "Trial" && !String(x.status || "").trim() && c && enrolledBy[c] && enrolledBy[c] >= x.date) x.status = "Enrolled"; });
   const nameByCode: Record<string, string> = {}, teacherByCode: Record<string, string> = {}; students.forEach((s) => nameByCode[s.code] = s.name);
   act.rows.forEach((r) => { const c = String(cell(r, iCode)); if (!/^ST-/.test(c)) return; if (!nameByCode[c]) nameByCode[c] = String(cell(r, iName)); teacherByCode[c] = (teacherByCode[c] ? teacherByCode[c] + "," : "") + String(cell(r, iT) || ""); });
   const schedule = CL.map((x: any) => { const e = x.data || {}, code = e.code || ((String(e.title || "").match(/ST-\d{4}-\d{3}/) || [""])[0]);
