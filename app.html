@@ -5620,15 +5620,27 @@ openSheet('<h1>' + esc(mm ? msgMName(String(r.from).toLowerCase() === String(MSG
 + '<label>Reply</label><textarea id="mgR" class="in-t" rows="3" placeholder="Write a reply"></textarea>' + emojiBar('mgR') + '<button class="btn teal block" style="margin-top:8px" id="mgRB" onclick="msgReply(\'' + id + '\')">Send reply</button>');
 const ids = all.filter(msgNewM).map(x => x.id); if(ids.length){ ids.forEach(i => { const x = all.find(y => y.id === i); if(x) x.seen = 'now'; }); MSG.unread = Math.max(0, MSG.unread - ids.length); MSG_N = MSG.unread; msgBadge(); keep('msgs', MSG); if(VIEW === 'msgs') renderMsgs(); bg(() => api('mgmtMsgSeen', TOKEN, ids)); } }
 const MEMO_FOOT = 'Office Address: MS2-102&amp;103 Bayani Hall Centralé, San Vicente East, Urdaneta City, Philippines 2428<br>Company Registration No: 2022050053289-14<br>Telephone: 075-202-5860<br>Mobile: +639278548503';
+/* 2859 (Misty 24 Nov 18:22): a memo shows the signer's drawn signature and the date and time it was issued; the reader's acknowledgment shows their full name,
+   their own drawn signature (the one from their contract) and the date and time. Signatures: docs sys:memosig (management) / <name>:memosig (each reader). */
+let MSIG = null, MSIG_AT = 0;
+function msigLoad(){ if(MSIG_AT && Date.now() - MSIG_AT < 30 * 6e4) return; MSIG_AT = Date.now(); try{ const k = D && D.mgr ? 'sys:memosig' : String((D && D.me && D.me.name) || '').toLowerCase() + ':memosig';
+  sbDoc(k).then(d => { MSIG = d && d.data ? d.data : null; msigFill(); }).catch(() => { MSIG_AT = 0; }); }catch(e){ MSIG_AT = 0; } }
+function msigOf(k){ if(!MSIG || !k) return ''; if(k === '@me') return MSIG.me || ''; if(MSIG[k]) return MSIG[k]; return (MSIG.t && MSIG.t[k]) || ''; }
+function msigFill(){ document.querySelectorAll('img.memo-sig[data-sk]').forEach(i => { const v = msigOf(i.dataset.sk); if(v && i.src !== v){ i.src = v; i.classList.add('on'); } }); }
+const msigImg = k => { const v = msigOf(k); return '<img class="memo-sig' + (v ? ' on' : '') + '" data-sk="' + esc(k) + '" alt=""' + (v ? ' src="' + v + '"' : '') + '>'; };
+const memoWhen = x => { const d = new Date(String(x).replace(' ', 'T') + (/T\d\d:\d\d$|\s\d\d:\d\d$/.test(String(x)) ? ':00' : '')); return isNaN(d) ? String(x || '') : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); };
 function memoHtml(r, toAll){ const s = String(r.signed || '').split('|'), name = s[0] || r.from, title = s[1] || '', auth = s[2] === '1', to = toAll || s[3] || r.to;   /* 2858: a memo sent to many shows "All Teachers and Staff" on the sender's copy; each person's own copy keeps their name */
-const d = new Date(String(r.at).replace(' ', 'T') + ':00'), date = isNaN(d) ? r.at : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-const body = esc(r.text).split(/\n{2,}/).map(p => { let h = '', li = [], tx = []; const flush = () => { if(tx.length){ h += '<p>' + tx.join('<br>') + '</p>'; tx = []; } if(li.length){ h += '<ol class="memo-ol">' + li.map(x => '<li>' + x + '</li>').join('') + '</ol>'; li = []; } };
-p.split('\n').forEach(l => { const k = l.match(/^\s*\d+[.)]\s+(.*)$/); if(k){ if(tx.length && !li.length){ h += '<p class="memo-lead">' + tx.join('<br>') + '</p>'; tx = []; } li.push(k[1]); } else if(li.length && /^\s+\S/.test(l)) li[li.length - 1] += ' ' + l.trim(); else { if(li.length) flush(); tx.push(l); } }); flush(); return h; }).join('');
+msigLoad();
+const date = memoWhen(r.at);
+const body = esc(r.text).split(/\n{2,}/).map(p => { let h = '', li = [], tx = [], st = 1; const flush = () => { if(tx.length){ h += '<p>' + tx.join('<br>') + '</p>'; tx = []; } if(li.length){ h += '<ol class="memo-ol"' + (st > 1 ? ' start="' + st + '"' : '') + '>' + li.map(x => '<li>' + x + '</li>').join('') + '</ol>'; li = []; } };   /* 2859: "2." stays 2 (it restarted at 1) */
+p.split('\n').forEach(l => { const k = l.match(/^\s*(\d+)[.)]\s+(.*)$/); if(k){ if(tx.length && !li.length){ h += '<p class="memo-lead">' + tx.join('<br>') + '</p>'; tx = []; } if(!li.length) st = +k[1] || 1; li.push(k[2]); } else if(li.length && /^\s+\S/.test(l)) li[li.length - 1] += ' ' + l.trim(); else { if(li.length) flush(); tx.push(l); } }); flush(); return h; }).join('');
 const logo = (document.querySelector('#login img') || {}).src || '';
+const sk = /misty/i.test(name) ? 'misty' : /celine|xyrene/i.test(name) ? 'celine' : '';
+const rk = String(r.to || '').toLowerCase(), mine = !(D && D.mgr), ackName = (mine ? (MSIG && MSIG.full) : (MSIG && MSIG.full && MSIG.full[rk])) || r.to || '';
 return '<div class="memo" id="memoDoc">' + (logo ? '<img class="memo-logo" src="' + logo + '" alt="CupOfEnglish">' : '<b>CupOfEnglish</b>') + '<div class="memo-no">' + esc(r.memoNo || '') + '</div>'
 + '<table class="memo-h"><tr><td colspan="2"><b>MEMORANDUM</b></td></tr><tr><td><b>TO</b></td><td><b>: ' + esc(to) + '</b></td></tr><tr><td><b>SUBJECT</b></td><td><b>: ' + esc(r.subject) + '</b></td></tr><tr><td><b>DATE</b></td><td><b>: ' + esc(date) + '</b></td></tr></table><hr>'
-+ '<div class="memo-b">' + body + '</div><div class="memo-s"><b>' + esc(String(name).toUpperCase()) + '</b><br>' + esc(title) + (auth ? '<br>By Authority of the President' : '') + '<br><b>CupOfEnglish (OPC)</b></div>'
-+ (r.ack ? '<div class="memo-ack">Received and acknowledged by ' + esc(to) + ' · ' + esc(msgAt(r.ack)) + '</div>' : '') + '<div class="memo-f">' + MEMO_FOOT + '</div></div>'; }
++ '<div class="memo-b">' + body + '</div><div class="memo-s">' + (sk ? msigImg(sk) : '') + '<b>' + esc(String(name).toUpperCase()) + '</b><br>' + esc(title) + (auth ? '<br>By Authority of the President' : '') + '<br><b>CupOfEnglish (OPC)</b></div>'
++ (r.ack && !toAll ? '<div class="memo-ack"><div class="memo-ackh">Received and acknowledged</div>' + msigImg(mine ? '@me' : rk) + '<b>' + esc(String(ackName).toUpperCase()) + '</b><br>' + esc(memoWhen(r.ack)) + '</div>' : '') + '<div class="memo-f">' + MEMO_FOOT + '</div></div>'; }
 async function memoPic(save){ const el = $('memoDoc'); if(!el) return; toast('Making the picture…');
 try{ const h = await h2c(), cv = await h(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false }), blob = await new Promise(r => cv.toBlob(r, 'image/png')), name = 'CupOfEnglish-memo.png';
 if(!save){ try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Memo copied as a picture'); return; }catch(x){} }
@@ -7522,7 +7534,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2355;
+const COE_V = 2356;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -46272,6 +46284,12 @@ body.pres2630 #app #v-mtoday > #dc2849,body.pres2630 #app #v-home > #dc2849{orde
   setInterval(function(){ try{ load(); banner(); }catch(e){} }, 3000);
 })();
 </script>
+<style id="s2859">
+.memo .memo-sig{display:none;height:54px;max-width:200px;object-fit:contain;object-position:left bottom;margin:6px 0 -6px;mix-blend-mode:multiply}
+.memo .memo-sig.on{display:block}
+.memo .memo-ack{margin:22px 0 4px;padding:12px 14px;border:1px dashed #CFCBDD;border-radius:10px;font-size:13px;line-height:1.5;color:#2B2253;max-width:340px}
+.memo .memo-ackh{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6B6880;margin-bottom:2px}
+</style>
 <script>/* 2815: the app started (pilot check: the frame switches the compact copy off on this device if this never runs) */ try{ if(typeof render === 'function' && typeof applyUpdate === 'function') localStorage.removeItem('coe.mintry'); }catch(e){}</script>
 </body>
 </html>
