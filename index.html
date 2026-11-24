@@ -27,7 +27,7 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
   var API = 'https://script.google.com/macros/s/AKfycbyqAYrjEQ3CdeTzogP8mZ8tMRx59nV0vMvOHtoQ0wudTBNNXV7YeE_mJPYcqIRhmRbu/exec';
   var KEY = 'coe.app', CK = 'coe-4', CU = 'app-copy.html', cached = null, painted = false;
   try { cached = localStorage.getItem(KEY); } catch (e) {}
-  function paint(h) { if (painted) return; painted = true; document.open(); document.write(h); document.close(); }
+  function paint(h) { if (painted) return; painted = true; try { if (MIN) localStorage.setItem('coe.mintry', String(Date.now())); } catch (e) {} document.open(); document.write(h); document.close(); }
   function ver(x) { var m = /const COE_V = (\d+);/.exec(x || ''); return m ? +m[1] : 0; }
   function get(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('bad'); return r.text(); }).then(function (h) { if (h.indexOf('COE_API') < 0) throw new Error('bad'); return h; }); }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
@@ -44,7 +44,29 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
     try { localStorage.removeItem(KEY); } catch (e) {}
     return true;
   }
-  var netP = null, net = { then: function (a, b) { if (!netP) netP = get('app.html?v=' + Date.now()).catch(function () { return get(API + '?app=1'); }); return netP.then(a, b); } };   // backup: the old Apps Script copy · 1970: fetched only when needed
+  /* 2815 (24 Nov, faster-download plan Step 1, pilot): the Teacher Misty account downloads app.min.html, the same app with the notes and
+     spaces taken out. Everyone else is unchanged. Any problem → app.html, as before: the compact copy fails to download, is older than the
+     newest version, or did not start last time (coe.mintry left behind) → the pilot switches itself off on this device (coe.min = 0). */
+  function pilot() {
+    try {
+      var o = localStorage.getItem('coe.min'); if (o === '0') return false; if (o === '1') return true;
+      if (localStorage.getItem('coe.mintry')) { localStorage.setItem('coe.min', '0'); localStorage.removeItem('coe.mintry'); return false; }
+      var d = JSON.parse(localStorage.getItem('coe.data') || 'null');
+      return !!(d && !d.mgr && d.me && String(d.me.name || '').trim().toLowerCase() === 'misty');
+    } catch (e) { return false; }
+  }
+  var MIN = pilot();
+  if (MIN) CU = 'app-min-copy.html';
+  try { if (MIN) localStorage.setItem('coe.appf', 'app.min.html'); else localStorage.removeItem('coe.appf'); } catch (e) {}
+  function full() { return get('app.html?v=' + Date.now()).catch(function () { return get(API + '?app=1'); }); }
+  function fetchApp() {
+    if (!MIN) return full();
+    return Promise.all([get('app.min.html?v=' + Date.now()), vNow().catch(function () { return 0; })]).then(function (r) {
+      if (r[1] && ver(r[0]) < r[1]) return full();   // the compact copy was not rebuilt for the newest version
+      return r[0];
+    }).catch(full);
+  }
+  var netP = null, net = { then: function (a, b) { if (!netP) netP = fetchApp(); return netP.then(a, b); } };   // backup: the old Apps Script copy · 1970: fetched only when needed
   /* 23 Oct · 738 · opening the app waits up to 2.5 s for the newest screens; if they arrive in time the newest version opens right away
      (teachers kept seeing an old version because the saved copy always opened first). Slow or no internet → the saved copy, as before. */
   function show(h) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { paint(h); }); else paint(h); }
