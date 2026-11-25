@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2398;
+const COE_V = 2399;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -44577,6 +44577,16 @@ body.is-mgr #app #v-mtoday > *::before{box-shadow:none}
     '#v-mcal .x11-p.nx{box-shadow:0 0 0 2px #fff,0 0 0 3.5px #0E6F68}',
     '.x11-lg{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;color:#6C6786;margin:10px 2px 0}.x11-lg span{display:inline-flex;align-items:center;gap:6px}',
     '.x11-lg i{display:inline-block;width:16px;height:11px;border-radius:3px}.x11-lg i.nx{background:#0E6F68;box-shadow:0 0 0 1.5px #fff,0 0 0 3px #0E6F68}.x11-lg i.ov{background:#fff;box-shadow:inset 0 0 0 1.5px #C0563F}.x11-lg i.tdy{background:#FFFFFF;box-shadow:inset 0 0 0 1.5px #0E6F68}',
+    /* 2922: agenda grouped by day; filters that are off read as off; pill text never half cut */
+    '#v-mcal .x11-p{display:block;-webkit-line-clamp:unset}#v-mcal .x11-p span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}',
+    '.x11-ag{display:grid;grid-template-columns:48px minmax(0,1fr);gap:12px;align-items:start;padding:12px 0;border-top:1px solid #F1F0F5}.x11-ag:first-of-type{border-top:0}',
+    '.x11-ag .dd{width:48px;padding-top:2px}.x11-ag .dd b{font-size:22px}.x11-ag.tdy .dd b,.x11-ag .dd.t b{color:#0E6F68}.x11-ag.tdy .dd small{color:#0E6F68}',
+    '.x11-ag .its{display:grid;gap:8px;min-width:0}.x11-ai{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:center;border-radius:10px;padding:4px 6px;margin:-4px -6px}.x11-ai[onclick]:hover{background:#F6F5FA}',
+    '.x11-ai .x b{display:block;color:#2F2752;font-weight:600;font-size:14.5px;line-height:1.3}.x11-ai .x small{display:block;color:#6F6B85;font-size:13px;line-height:1.35;margin-top:1px}',
+    '.x11-st.nx{color:#0E6F68}',
+    '.x11-sl{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#8A879C;margin:14px 0 2px}.x11-sl.warn{color:#B4472F;margin-top:6px}',
+    '#v-mcal .x11-chip.off{opacity:1!important;color:#B5B2C3!important;text-decoration:line-through;background:#FAFAFC!important}#v-mcal .x11-chip.off svg{opacity:.5}',
+    '.x11-all{border:0;background:none;color:#0E6F68;font-weight:600;font-size:13.5px;cursor:pointer;padding:5px 6px}',
     '.x11-back{display:none;align-items:center;gap:4px}.x11-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 16px;align-items:start}',
     '@media(max-width:899px){.x11-wrap,.x11-fw,.x11-two{grid-template-columns:minmax(0,1fr)}.x11-grid{display:none}.x11-hideph{display:none}.x11-k{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px}.x11-t b{font-size:22px}.x11-hero .x11-fn{font-size:19px}#v-mcal .x11-chips{flex-wrap:nowrap;overflow-x:auto;margin-right:-16px;padding-right:16px;scrollbar-width:none}#v-mcal .x11-chip{flex:none}.x11-nav b{min-width:0;font-size:15px}',
     '#v-families.det .x11-fcol{display:none}#v-families:not(.det) .x11-dcol{display:none}.x11-back{display:inline-flex}.x11-fl{max-height:none}}'
@@ -44607,9 +44617,12 @@ body.is-mgr #app #v-mtoday > *::before{box-shadow:none}
     return L.sort((a, b) => a.day.localeCompare(b.day) || ord[a.kind] - ord[b.kind]);
   }
   async function loadM(m){ if(C.busy[m] || C.r[m]) return; C.busy[m] = 1; try{ C.r[m] = await API({ op: 'deadlines', month: m }); C.err = ''; }catch(e){ C.err = String(e.message || e); } finally { C.busy[m] = 0; } if(VIEW === 'mcal') paintC(); }
-  const pill = x => { const k = KIND[x.kind], t = today(); return '<div class="x11-p' + (x.done ? ' done' : '') + (x.st && x.st[0] === 'late' ? ' late' : x.day < t ? ' dn' : '') + (C.nx && C.nx === x ? ' nx' : '') + '" style="--c:' + k.c + '" title="' + E(x.title + '. ' + x.sub) + '">' + E(x.s || x.title) + '</div>'; };
+  const pill = x => { const k = KIND[x.kind], t = today(); return '<div class="x11-p' + (x.done ? ' done' : '') + (x.st && x.st[0] === 'late' ? ' late' : x.day < t ? ' dn' : '') + (C.nx && C.nx === x ? ' nx' : '') + '" style="--c:' + k.c + '" title="' + E(x.title + '. ' + x.sub) + '"><span>' + E(x.s || x.title) + '</span></div>'; };
   const WDS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const agRow = x => { const t = today(), d = new Date(x.day + 'T00:00:00Z'), k = KIND[x.kind]; return '<div class="x11-ag"' + (x.code ? ' style="cursor:pointer" onclick="openStudent(\'' + E(x.code) + '\')"' : x.ev ? ' style="cursor:pointer" onclick="dl2911.ev(null,\'' + E(x.ev.id) + '\')"' : '') + '><div class="dd' + (x.day === t ? ' t' : '') + '"><b>' + d.getUTCDate() + '</b><small>' + (x.day === t ? 'Today' : x.day.slice(0, 7) !== C.m ? MS3[d.getUTCMonth()] : WDS[d.getUTCDay()]) + '</small></div><div class="x"><b><i style="background:' + k.c + '"></i>' + E(x.title) + '</b><small>' + E(x.sub) + '</small></div>' + (x.st ? '<span class="x11-st ' + x.st[0] + '">' + E(x.st[1] === 'Not Recorded' ? 'Overdue' : x.st[1]) + '</span>' : '') + '</div>'; };
+  const agItem = x => '<div class="x11-ai"' + (x.code ? ' onclick="openStudent(\'' + E(x.code) + '\')"' : x.ev ? ' onclick="dl2911.ev(null,\'' + E(x.ev.id) + '\')"' : '') + (x.code || x.ev ? ' style="cursor:pointer"' : '') + '>' + ico(x.kind) + '<div class="x"><b>' + E(x.title) + '</b><small>' + E(x.sub) + '</small></div>' + (x.st ? '<span class="x11-st ' + x.st[0] + '">' + E(x.st[1] === 'Not Recorded' ? 'Overdue' : x.st[1]) + '</span>' : (C.nx && C.nx === x ? '<span class="x11-st nx">Next</span>' : '')) + '</div>';
+  const agList = X => { const t = today(), G = []; X.forEach(x => { const g = G[G.length - 1]; if(g && g.day === x.day) g.L.push(x); else G.push({ day: x.day, L: [x] }); });
+    return G.map(g => { const d = new Date(g.day + 'T00:00:00Z'); return '<div class="x11-ag' + (g.day === t ? ' tdy' : '') + '"><div class="dd' + (g.day === t ? ' t' : '') + '"><b>' + d.getUTCDate() + '</b><small>' + (g.day === t ? 'Today' : g.day.slice(0, 7) !== C.m ? MS3[d.getUTCMonth()] : WDS[d.getUTCDay()]) + '</small></div><div class="its">' + g.L.map(agItem).join('') + '</div></div>'; }).join(''); };
   const row = x => { return '<div class="x11-it"' + (x.code ? ' style="cursor:pointer" onclick="openStudent(\'' + E(x.code) + '\')"' : '') + '>' + ico(x.kind) + '<div><b>' + E(x.title) + '</b><small>' + E(x.sub) + '</small></div>' + (x.st ? '<span class="x11-st ' + x.st[0] + '">' + E(x.st[1]) + '</span>' : '<span></span>') + '</div>'; };
   function paintC(){
     const v = document.getElementById('v-mcal'); if(!v) return; const m = C.m, t = today(), r = C.r[m];
@@ -44617,7 +44630,7 @@ body.is-mgr #app #v-mtoday > *::before{box-shadow:none}
     let h = '<div class="x11-hero"><div class="x11-h"><div><h1>Deadlines</h1><div class="x11-sub">Pay, dues, reports, memos, trainings, holidays and package ends in one month.</div></div>'
       + '<div class="x11-nav"><button class="x11-ib" onclick="dl2911.mv(-1)" aria-label="Previous month">' + IC.l + '</button><b>' + MN[+m.slice(5, 7) - 1] + ' ' + m.slice(0, 4) + '</b><button class="x11-ib" onclick="dl2911.mv(1)" aria-label="Next month">' + IC.r + '</button>'
       + (m !== t.slice(0, 7) ? '<button class="x11-tb" onclick="dl2911.mv(0)">This Month</button>' : '') + '<button class="x11-tb x11-add" onclick="dl2911.ev()">+ Add Event</button></div></div>';
-    h += '<div class="x11-chips">' + Object.keys(KIND).map(k => { const n = all.filter(x => x.kind === k).length; return '<button class="x11-chip' + (C.off[k] ? ' off' : '') + '" style="color:' + KIND[k].c + '" onclick="dl2911.tg(\'' + k + '\')">' + KI[k] + KIND[k].l + ' ' + n + '</button>'; }).join('') + '</div>';
+    h += '<div class="x11-chips">' + Object.keys(KIND).map(k => { const n = all.filter(x => x.kind === k).length; return '<button class="x11-chip' + (C.off[k] ? ' off' : '') + '" style="color:' + KIND[k].c + '" onclick="dl2911.tg(\'' + k + '\')">' + KI[k] + KIND[k].l + ' ' + n + '</button>'; }).join('') + (Object.keys(C.off).some(k => C.off[k]) ? '<button class="x11-all" onclick="dl2911.all()">Show All</button>' : '') + '</div>';
     if(!r){ h = h.replace('<div class="x11-chips">', '</div><div class="x11-chips">'); v.innerHTML = h + (C.err ? '<div class="x11-card x11-empty">Could not load. ' + E(C.err) + ' <button class="x11-tb" onclick="dl2911.re()">Try again</button></div>' : '<div class="x11-skel" style="height:420px"></div>'); return; }
     const by = {}; L.forEach(x => (by[x.day] = by[x.day] || []).push(x));
     C.nx = L.filter(x => x.day >= t && x.due && !x.done)[0] || null;
@@ -44635,11 +44648,12 @@ body.is-mgr #app #v-mtoday > *::before{box-shadow:none}
     g += '</div><div class="x11-lg"><span><i style="background:#0E6F68"></i>Coming</span><span><i style="background:#0E6F68;opacity:.4"></i>Done</span><span><i class="nx"></i>Next deadline</span><span><i class="ov"></i>Overdue</span><span><i class="tdy"></i>Today</span></div>';
     /* side: chosen day, or what is next */
     let s = '';
-    if(C.sel && C.sel.slice(0, 7) === m){ const X = by[C.sel] || []; s = '<h2>' + dLong(C.sel) + '</h2><div class="x11-sub">' + (X.length ? X.length + (X.length === 1 ? ' item. ' : ' items. ') : 'Nothing due. ') + '<a style="cursor:pointer;color:#0E6F68" onclick="dl2911.pick(null)">Show the Month</a></div>' + X.map(agRow).join('') + '<button class="x11-tb" style="margin-top:12px" onclick="dl2911.ev(\'' + C.sel + '\')">+ Add an Event on This Day</button>'; }
+    if(C.sel && C.sel.slice(0, 7) === m){ const X = by[C.sel] || []; s = '<h2>' + dLong(C.sel) + '</h2><div class="x11-sub">' + (X.length ? X.length + (X.length === 1 ? ' item. ' : ' items. ') : 'Nothing due. ') + '<a style="cursor:pointer;color:#0E6F68" onclick="dl2911.pick(null)">Show the Month</a></div>' + agList(X) + '<button class="x11-tb" style="margin-top:12px" onclick="dl2911.ev(\'' + C.sel + '\')">+ Add an Event on This Day</button>'; }
     else { const from = m === t.slice(0, 7) ? t : m + '-01', U = L.filter(x => x.day >= from), late = L.filter(x => x.st && x.st[0] === 'late');
-      s = '<h2>' + (m === t.slice(0, 7) ? 'Coming Up' : 'This Month') + '</h2><div class="x11-sub">' + (late.length ? late.length + ' past and not done.' : 'Tap a day to see it.') + '</div>';
-      s += late.map(agRow).join('') + U.filter(x => !(x.st && x.st[0] === 'late')).map(agRow).join('');
-      if(m === t.slice(0, 7)){ const n2 = items(addM(m, 1)).filter(x => x.due && !x.done)[0]; if(n2) s += agRow(n2); }
+      s = '<h2>' + (m === t.slice(0, 7) ? 'Coming Up' : 'This Month') + '</h2><div class="x11-sub">' + (late.length ? late.length + ' past and not done. ' : '') + 'Tap a day on the calendar to see it.</div>';
+      const n2 = m === t.slice(0, 7) ? items(addM(m, 1)).filter(x => x.due && !x.done)[0] : null, R2 = U.filter(x => !(x.st && x.st[0] === 'late')).concat(n2 ? [n2] : []);
+      if(late.length) s += '<div class="x11-sl warn">Needs You</div>' + agList(late);
+      if(R2.length) s += (late.length ? '<div class="x11-sl">Coming Up</div>' : '') + agList(R2);
       if(!U.length && !late.length) s += '<div class="x11-empty">Nothing else this month.</div>'; }
     v.innerHTML = h + '<div class="x11-wrap"><div class="x11-card x11-hideph" style="padding:12px">' + g + '</div><div class="x11-card x11-side">' + s + '</div></div>';
   }
@@ -44647,6 +44661,7 @@ body.is-mgr #app #v-mtoday > *::before{box-shadow:none}
     mv(n){ C.m = n ? addM(C.m, n) : today().slice(0, 7); C.sel = null; paintC(); loadM(C.m); },
     tg(k){ C.off[k] = !C.off[k]; try{ localStorage.setItem('coe.dl2911', JSON.stringify(C.off)); }catch(e){} paintC(); },
     pick(d){ C.sel = d; paintC(); },
+    all(){ C.off = {}; try{ localStorage.removeItem('coe.dl2911'); }catch(e){} paintC(); },
     ev(day, id){
       const c0 = id ? (((C.r[C.m] || {}).events) || []).find(x => x.id === id) : null, cur = c0 ? Object.assign({}, c0, { day: c0.base || c0.day }) : null, e = cur || { day: day || (C.sel || today()), title: '', start: '', end: '', note: '', repeat: '', until: '' };
       const RP = [['', 'Does not repeat'], ['week', 'Every week'], ['month', 'Every month, same date'], ['year', 'Every year']];
