@@ -108,13 +108,14 @@ Deno.serve(async (req: Request) => {
         db.from("coe_invoices").select("no,day,code,total,currency,partner,method,status,items").in("code", codes).order("day", { ascending: false }).limit(40),
         db.from("coe_fb_reports").select("code,month,teacher,total,submitted").in("code", codes).order("month", { ascending: false }).limit(40),
         db.from("coe_trials").select("trial_date,teacher,student,student_code,cefr_teacher,pdf").is("removed_at", null).in("student_code", codes).order("trial_date", { ascending: false }).limit(10),
-        db.from("classes").select("id,code,student,starts_at,cancelled,teachers,data").in("code", codes).eq("cancelled", true).gte("starts_at", since).order("starts_at", { ascending: false }).limit(60),
+        db.from("classes").select("id,code,student,starts_at,cancelled,teachers,data").in("code", codes).eq("cancelled", true).gte("starts_at", since).lte("starts_at", new Date(Date.now() + 45 * 864e5).toISOString()).order("starts_at", { ascending: false }).limit(60),
         db.from("classes").select("code,starts_at,teachers").in("code", codes).eq("cancelled", false).gte("starts_at", new Date().toISOString()).order("starts_at").limit(40),
       ]);
       for (const q of [pQ, iQ, fQ, tQ, cQ, nQ]) if (q.error) throw new Error(q.error.message);
       const next: Record<string, any> = {}; for (const r of nQ.data || []) if (!next[r.code]) next[r.code] = { at: r.starts_at, t: (r.teachers || [])[0] || "" };
-      const asks = (cQ.data || []).map((r: any) => { const d = r.data || {}; const why = String(d.why || d.reason || ""); return { code: r.code, student: r.student, at: r.starts_at, t: (r.teachers || [])[0] || "", why }; }).filter((x: any) => /from the parent/i.test(x.why)).slice(0, 20);
-      return out({ ok: true, codes, packages: pQ.data || [], payments: (iQ.data || []).filter((r: any) => r.status !== "void"), reports: fQ.data || [], trials: tQ.data || [], asks, next });
+      const asks = (cQ.data || []).map((r: any) => { const d = r.data || {}; const why = String(d.why || d.reason || ""); return { code: r.code, student: r.student, at: r.starts_at, t: (r.teachers || [])[0] || "", why, by: d.by || "" }; }).filter((x: any) => x.by === "parent" || /from (the )?parent/i.test(x.why));
+      const seenW = new Set<string>(); const asks2: any[] = []; for (const x of asks.reverse()) { const k = x.code + "|" + x.why; if (x.why && seenW.has(k)) { const o = asks2.find((y) => y.code + "|" + y.why === k); if (o) o.n = (o.n || 1) + 1; continue; } seenW.add(k); asks2.push({ ...x, n: 1 }); }
+      return out({ ok: true, codes, packages: pQ.data || [], payments: (iQ.data || []).filter((r: any) => r.status !== "void"), reports: fQ.data || [], trials: tQ.data || [], asks: asks2.reverse().slice(0, 20), next });
     }
 
     if (op === "growth") {   // 2908: management › Growth (trials → students, new and renewed packages, sources, renewals coming up)
