@@ -2839,7 +2839,7 @@ if(!inAlready && back){
 const toPrevEnd = (new Date(prev.end) - now) / 60000, pw = prev.student || prev.code || 'your student';
 if(toPrevEnd <= 5 && toPrevEnd > 0 && once('wrap:' + c.id)) nudge('quiet', 'Wrap up with ' + pw + ' · next: ' + who + ' at ' + tm(c.start));
 if(toPrevEnd <= 0 && toStart > -3 && once('now:' + c.id)){ nudge(teaching ? 'quiet' : (toStart > 2 ? 'soon' : 'now'), 'Next: ' + who + ' at ' + tm(c.start) + (toStart > 0.5 ? ' · in ' + Math.ceil(toStart) + ' min' : ' · now') + ' · tap I\'m in');
-notify('Next · ' + who + ' at ' + tm(c.start), (c.book ? c.book + '. ' : '') + 'Homework for ' + pw + ' after class. Tap I\'m in when you start.', 'coe-now-' + c.id, true); }
+notify('Next · ' + who + ' at ' + tm(c.start), (c.book ? c.book + '. ' : '') + (prev.code && prev.type !== 'Trial' && !prev.cancelled ? 'Homework for ' + pw + ' after class. ' : '') + 'Tap I\'m in when you start.', 'coe-now-' + c.id, true); }
 }
 if(!back && !inAlready && toStart <= 10 && toStart > 0 && !remTold('pre:' + c.id)) notify('Class at ' + tm(c.start) + ' · ' + who, 'Starts in ' + Math.max(1, Math.round(toStart)) + ' min' + (c.book ? ' · ' + c.book : '') + '. Tap Class brief for last class notes.', 'coe-pre-' + c.id);
 if(c.code && c.type!=='Trial' && !(D.hw||{})[c.id] && toEnd <= 10 && toEnd > -5 && !HW_TOLD[c.id]){ HW_TOLD[c.id] = 1;
@@ -2973,6 +2973,8 @@ const STU_CACHE = {};
 let NSK = [];
 function nW2730(el, L){ if(!el || !L.length || el.dataset.w2730) return false; el.dataset.w2730 = 1; const v = el.value.toLowerCase(); return !L.every(x => v.includes(x.w.toLowerCase())); }
 function noteSheet(code, eventId, day){
+window.NTRIAL = (() => { try{ const dd0 = day || D.today, c = (D.schedule||[]).find(x => x.id === eventId) || (D.schedule||[]).find(x => x.code === code && x.day === dd0 && !x.cancelled); return !!(c && c.type === 'Trial'); }catch(e){ return false; } })();   /* 2868 (Misty 25 Nov): a trial class gives no homework */
+setTimeout(() => { if(!window.NTRIAL) return; const h = $('nH'), b = $('nNoH'); [h && h.previousElementSibling && /homework/i.test(h.previousElementSibling.textContent) ? h.previousElementSibling : null, h, b && b.closest('label')].forEach(x => { if(x) x.style.display = 'none'; }); }, 0);
 const s = (D.students||[]).find(x=>x.code===code) || (D.moved||[]).find(x=>x.code===code) || {code}, n0 = s.note || {}; NSK = [];
 const dd = day || D.today, mine = n0.date === dd && (!eventId || !n0.eventId || n0.eventId === eventId) && n0.obs ? n0 : null;   // today's note for this class → open it to view or edit
 const dr = noteDraft(code, dd), cur = dr || mine, n = mine ? {} : n0;
@@ -2995,7 +2997,7 @@ NUPD = !!mine; nReady(); setTimeout(()=>{ const o = $('nO'); if(o && !o.value) o
 NKEEP = { code: code, day: dd, base: JSON.stringify(nNow()) }; const sb = $('sheetBody'); if(sb){ sb.addEventListener('input', nKeep); sb.addEventListener('change', nKeep); sb.addEventListener('click', nKeepClick); }
 }
 function nMiss(){ const v = id => (($(id)||{}).value||'').trim();
-return v('nO').length < 10 ? ['nO','Write what you noticed today'] : !v('nE') ? ['nE','Add where you ended'] : !($('nNoH') && $('nNoH').checked) && !v('nH') ? ['nH','Add the homework · or tick No homework'] : null; }
+return v('nO').length < 10 ? ['nO','Write what you noticed today'] : !v('nE') ? ['nE','Add where you ended'] : !window.NTRIAL && !($('nNoH') && $('nNoH').checked) && !v('nH') ? ['nH','Add the homework · or tick No homework'] : null; }
 function nReady(){ const b = $('nGo'), m = nMiss(); if(!b) return; b.textContent = m ? m[1] : (NUPD ? 'Update note' : 'Save'); b.style.opacity = m ? '.55' : '';
 ['nO','nE','nH'].forEach(id => { const el = $(id); if(el && (!m || m[0] !== id)) el.classList.remove('bad'); }); if(!m && $('nErr')) $('nErr').textContent = ''; }
 let NUPD = false, NSAVING = 0, NKEEP = null;
@@ -3009,7 +3011,7 @@ const miss = nMiss(); if(miss){ const el = $(miss[0]), e = $('nErr'); if(e) e.te
 const obs = $('nO').value.trim(), ended = $('nE').value.trim();
 const s = (D.students||[]).find(x=>x.code===code) || (D.moved||[]).find(x=>x.code===code) || {};
 const noH = $('nNoH') && $('nNoH').checked, hwT = noH ? 'No homework (parent/student asked)' : $('nH').value.trim();
-if(!hwT) return toast('Write the homework you gave · or tick No homework if the parent asked');
+if(!hwT && !window.NTRIAL) return toast('Write the homework you gave · or tick No homework if the parent asked');
 if(!eventId){ const tc = (D.schedule||[]).find(x => x.code === code && x.day === (day || D.today) && !x.cancelled); if(tc) eventId = tc.id; }
 const n = { code, student: s.name || ((D.schedule||[]).find(x => x.code === code && x.student) || {}).student || '', eventId, date: day || D.today, ended, obs, skills: NSK.slice(), next: $('nN').value.trim(), homework: hwT };
 const b = $('nGo'); if(b){ b.disabled = true; b.textContent = 'Saving…'; } NSAVING = Date.now();
@@ -7543,7 +7545,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2365;
+const COE_V = 2366;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
