@@ -12,7 +12,18 @@ window.COE_GUIDES=[
    {h:'Typing a correction in four taps',p:'Put it just below or beside the word, never on top. Double-click a tag to change its words.',img:'img/typing.webp'},
    {h:'Before you send',list:['Every correction is red and beside the mistake','"To fix" matches the mistakes you marked','You tapped Save and saw "Saved at…"','You pasted the picture, not a screenshot of the screen']}
   ]},
- {id:'trial-feedback',title:'Trial Class Feedback',cat:'Classes',icon:'star',soon:1,sum:'Fill in the trial report after a trial class.'},
+ {id:'trial-feedback',title:'Trial Class Feedback',cat:'Classes',icon:'star',updated:'2026-11-25T13:20',mins:3,
+  sum:'Fill in the trial report: fair ratings, real examples and the best-fitting book.',
+  rule:'Be objective: rate only what you saw in the trial, with a real example for each line. Recommend the book that fits the level, not the one you like most.',
+  parts:[
+   {h:'Open it',p:'After the trial class: Today › the trial class card › Trial report. Fill it in the same day.'},
+   {h:'Be objective',red:1,img:'img/trial-objective.webp'},
+   {h:'Learner type and recommended book',p:'Pick the learner type first; the books for that type come first. Then pick the one book the student should start with.',img:'img/trial-tr2.webp'},
+   {h:'Rate each line, with one real example',p:'Nine lines: 5 speaking, 2 listening, 2 reading. For each, pick what you saw and write the words the student actually said or did.',img:'img/trial-tr3.webp'},
+   {h:'Check the level and the book',red:1,p:'The total and the CEFR level are worked out for you. The book you recommended should be one of the Suggested materials for that level. If it is not, change the book, not the ratings.',img:'img/trial-tr4.webp'},
+   {h:'Comments, next steps and send',p:'Strengths match your highest ratings; areas to improve match your lowest. Next steps start with the book you chose. Then tap Send trial report.',img:'img/trial-tr5.webp'},
+   {h:'Before you send',list:['Every line has a rating and a real example','The ratings show what you saw, not what the parent hopes','The book is in the Suggested materials for the level','Strengths and areas match your ratings','Next steps start with the recommended book']}
+  ]},
  {id:'meeting-id',title:'Meeting ID on VooV',cat:'Classes',icon:'video',updated:'2026-11-25T13:10',mins:2,cover:'img/cover-meet.webp',
   sum:'Set up one recurring VooV meeting per student, so the parent keeps the same meeting ID.',
   rule:'One RECURRING meeting per student, ending as late as VooV allows. No meeting password. Parents keep the same ID, so they are never asked to change it.',
