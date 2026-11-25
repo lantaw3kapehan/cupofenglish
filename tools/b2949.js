@@ -38,7 +38,7 @@ const reScript = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g;
 while ((m = reScript.exec(s))) {
   const js = m[1];
   const reStr = /'((?:[^'\\\n]|\\.){8,})'|"((?:[^"\\\n]|\\.){8,})"|`([^`$]{8,})`/g; let k;
-  while ((k = reStr.exec(js))) { const t = k[1] || k[2] || k[3]; if (/\{[^{}]*:[^{}]*\}/.test(t) && /#[0-9a-f]{6}|rgba/i.test(t)) sheets.push({at: m.index + k.index, css: t.replace(/\\'/g, "'").replace(/\\"/g, '"')}); }
+  while ((k = reStr.exec(js))) { const t = k[1] || k[2] || k[3]; if (/\{[^{}]*:[^{}]*\}/.test(t) && /#[0-9a-f]{6}|rgba|uppercase/i.test(t)) sheets.push({at: m.index + k.index, css: t.replace(/\\'/g, "'").replace(/\\"/g, '"')}); }
 }
 
 sheets.sort((a, b) => a.at - b.at);
