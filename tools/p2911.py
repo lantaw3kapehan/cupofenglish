@@ -46,7 +46,7 @@ R("""'><i style="background:' + k.c + '"></i><div><b>'""","""'>' + ico(x.kind) +
 R("const row = x => { const k = KIND[x.kind]; return","const row = x => { return")
 
 R("""    const by = {}; L.forEach(x => (by[x.day] = by[x.day] || []).push(x));""","""    const by = {}; L.forEach(x => (by[x.day] = by[x.day] || []).push(x));
-    { const late = all.filter(x => x.st && x.st[0] === 'late'), nx = all.filter(x => x.day >= t && x.due && !x.done)[0], pk = all.filter(x => x.kind === 'pkg');
+    { const late = all.filter(x => x.st && x.st[0] === 'late'), nx = all.filter(x => x.day >= t && x.due && !x.done)[0] || (m === t.slice(0, 7) ? items(addM(m, 1)).filter(x => x.due && !x.done)[0] : null), pk = all.filter(x => x.kind === 'pkg');
       h = h.replace('<div class="x11-chips">', '<div class="x11-k"><div class="x11-t' + (late.length ? ' warn' : '') + '"><span>Needs you</span><b>' + late.length + '</b><small>' + (late.length ? E(late.map(x => x.title).join(', ')) : 'Nothing past and undone') + '</small></div>'
         + '<div class="x11-t"><span>Next deadline</span><b class="sm">' + (nx ? E(nx.title) : 'None this month') + '</b><small>' + (nx ? (nx.day === t ? 'Today' : dLong(nx.day)) + ' · ' + E(nx.sub) : '&nbsp;') + '</small></div>'
         + '<div class="x11-t"><span>Packages ending</span><b>' + pk.length + '</b><small>' + (pk.length ? E(pk.slice(0, 3).map(x => x.s.replace(/ ends$/, '')).join(', ')) + (pk.length > 3 ? ' and ' + (pk.length - 3) + ' more' : '') : 'None this month') + '</small></div>'
