@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-act v1 (25 Nov 2026 · 2895, Misty: "more professional, historical, traceable and accountable")
+// CupOfEnglish · coe-act v4 (2898 guide views) · v1 (25 Nov 2026 · 2895, Misty: "more professional, historical, traceable and accountable")
 // The class-by-class history of one teacher's day, from the records the app already keeps, plus what her Today card showed.
 // POST { token, op, ... }:
 //   seen { day, cards: [{ id, st }] }   teacher → saves what her Today card shows (st = 4 letters In/H/N/V: d done, n to do, l later)
@@ -36,6 +36,27 @@ Deno.serve(async (req: Request) => {
       const rows = cards.filter((c: any) => prev[c.id] !== c.st).map((c: any) => ({ teacher: name, day, class_id: c.id, st: c.st, dev: String(b.dev || "").slice(0, 80) || null }));
       if (rows.length) { const { error } = await db.from("coe_card_seen").insert(rows); if (error) throw new Error(error.message); }
       return out({ ok: true, n: rows.length });
+    }
+
+    if (op === "gview") {   // 2898: a guide was opened
+      const g = String(b.id || ""); if (!/^[a-z0-9-]{2,40}$/.test(g)) return out({ ok: false, error: "id" }, 400);
+      const since = new Date(Date.now() - 10 * 60e3).toISOString();
+      const { data: rec } = await db.from("coe_guide_views").select("id").eq("guide", g).eq("name", name).gte("at", since).limit(1);
+      if (!rec || !rec.length) { const { error } = await db.from("coe_guide_views").insert({ guide: g, name, role }); if (error) throw new Error(error.message); }
+      return out({ ok: true });
+    }
+    if (op === "gstats") {   // 2898: views per guide; management also sees who opened it and who has not
+      const [vQ, tQ] = await Promise.all([
+        db.from("coe_guide_views").select("guide,name,role,at").order("at").limit(5000),
+        db.from("app_sessions").select("name").eq("role", "Teacher").gte("exp", new Date(Date.now() - 14 * 864e5).toISOString()).limit(2000),
+      ]);
+      if (vQ.error) throw new Error(vQ.error.message);
+      const team = [...new Set((tQ.data || []).map((r: any) => String(r.name)).filter((n: string) => n && !/^(misty|cupofenglish)$/i.test(n)))].sort();
+      const per: Record<string, any> = {};
+      for (const v of vQ.data || []) { if (v.role !== "Teacher" || /^(misty|cupofenglish)$/i.test(v.name)) continue; const o = per[v.guide] ||= { views: 0, who: {} as Record<string, { n: number; last: string }> }; o.views++; const w = o.who[v.name] ||= { n: 0, last: v.at }; w.n++; w.last = v.at; }
+      const res: Record<string, any> = {};
+      for (const [g, o] of Object.entries(per) as any) { const names = Object.keys(o.who); res[g] = { views: o.views, teachers: names.length, ...(mgmt ? { who: names.map((n) => ({ name: n, n: o.who[n].n, last: o.who[n].last })).sort((x, y) => y.last.localeCompare(x.last)), not: team.filter((t) => !names.some((n) => n.toLowerCase() === t.toLowerCase())) } : {}) }; }
+      return out({ ok: true, team: team.length, mgmt, g: res, ...(mgmt ? { teamNames: team } : {}) });
     }
 
     if (op === "day") {
