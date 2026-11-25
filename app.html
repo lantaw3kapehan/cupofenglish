@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2382;
+const COE_V = 2383;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -44440,6 +44440,11 @@ body.is-mgr #app #v-mtoday > *::before{box-shadow:none}
           if(j < 0){ try{ toast('This class changed while it was open · close it and open it again', 5000); }catch(x){} return; }
           const a = [].slice.call(arguments); a[0] = j; return se.apply(this, a); } }catch(x){}
       return se.apply(this, arguments); }; window.sendEdit = w; try{ sendEdit = w; }catch(x){} }
+  /* 2910: each cancellation picture copied or saved is logged with its classes, so To do › Data to check can flag a picture for a class that is still on */
+  const idOf = x => { const id = String((x && x.id) || ''); if(!id) return ''; return id.indexOf('|') > -1 ? id : (x.start ? id + '|' + new Date(x.start).toISOString() : id); };
+  const logPic = () => { try{ const P = window.CXP || (typeof CXP !== 'undefined' ? CXP : null); if(!P || P.kind !== 'cancel' || !P.e) return; const L = (P.multi && P.multi.length > 1 ? P.multi : [P.e]).map(idOf).filter(Boolean); if(!L.length) return;
+      fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-act', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'cxpic', ids: L, code: P.e.code || '' }) }).catch(() => {}); }catch(x){} };
+  ['cxCopy', 'cxSave'].forEach(n => { const f = window[n]; if(typeof f !== 'function') return; const w = function(){ logPic(); return f.apply(this, arguments); }; window[n] = w; try{ if(n === 'cxCopy') cxCopy = w; else cxSave = w; }catch(x){} });
 })();
 </script>
 <script id="b2886">
