@@ -552,10 +552,42 @@ const SZ = { s: { tick: 3.2, pen: .28, text: 2.2, ring: .28 }, m: { tick: 4.6, p
 let SIZE = 'm';   /* 2770 (Misty 23 Nov 13:00): one standard size for marks and typed notes, as on the books and speaking screens · the teacher zooms if a student needs it bigger (was S / M / L) */
 const SZN = () => SZ[SIZE] || SZ.m;
 const COLS = [['#D92D20', 'Red'], ['#2563EB', 'Blue'], ['#16A34A', 'Green']];
+/* 2888 (Misty 25 Nov 12:05): "that logo should show only once" · a picture we made ourselves (the Homework Feedback card, or the Give homework /
+   book page picture) pasted back in would put a second logo and header inside the new card. Keep only the homework part of it:
+   · a Homework Feedback card (grey frame, white card): keep the photo inside it (repeats for a card inside a card)
+   · a Give homework or book page picture (white, logo header over a hairline): drop the header above the hairline
+   Anything else (a student's own photo) is used as it is. "Use whole picture" under the picture undoes it. */
+function trim2888(im){ try{ let cur = im; for(let n = 0; n < 4; n++){ const nx = trimOnce2888(cur); if(nx === cur) break; cur = nx; } return cur; }catch(e){ return im; } }
+function trimOnce2888(im){ const W = im.naturalWidth || im.width, H = im.naturalHeight || im.height; if(W < 300 || H < 300) return im;
+  const k = Math.min(1, 1200 / W), w = Math.round(W * k), h = Math.round(H * k), c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0, w, h);
+  const D = g.getImageData(0, 0, w, h).data, P = (x, y) => { x = Math.max(0, Math.min(w - 1, Math.round(x))); y = Math.max(0, Math.min(h - 1, Math.round(y))); const i = (y * w + x) * 4; return [D[i], D[i + 1], D[i + 2]]; };
+  const near = (p, q, t) => Math.abs(p[0] - q[0]) <= t && Math.abs(p[1] - q[1]) <= t && Math.abs(p[2] - q[2]) <= t, WH = [255, 255, 255], FR = [243, 246, 247], LN = [227, 225, 234];
+  const cut = (x0, y0, x1, y1) => { const o = document.createElement('canvas'); o.width = Math.round((x1 - x0) / k); o.height = Math.round((y1 - y0) / k); o.getContext('2d').drawImage(im, Math.round(x0 / k), Math.round(y0 / k), o.width, o.height, 0, 0, o.width, o.height); return Object.assign(o, { naturalWidth: o.width, naturalHeight: o.height }); };
+  /* 1 · Homework Feedback card: grey frame 40/900 of the width, white card, the photo from 80/900 to 820/900 */
+  const f = w / 900;
+  if(near(P(3, 3), FR, 7) && near(P(w - 4, 3), FR, 7) && near(P(3, h - 4), FR, 7) && near(P(w / 2, 46 * f), WH, 6) && near(P(46 * f, h / 2), WH, 6)){
+    const xa = 84 * f, xb = 816 * f, N = 40, busy = y => { let b = 0; for(let i = 0; i < N; i++){ const p = P(xa + (xb - xa) * i / (N - 1), y); if(!near(p, WH, 14) && !near(p, [243, 244, 246], 4)) b++; } return b / N; };
+    let best = [0, 0], y0 = -1; for(let y = Math.round(h * 0.08); y < h - 40 * f; y++){ const on = busy(y) >= 0.6; if(on && y0 < 0) y0 = y; if((!on || y === h - 41 * f) && y0 >= 0){ if(y - y0 > best[1] - best[0]) best = [y0, y]; y0 = -1; } }
+    if(best[1] - best[0] > 120 * f) return cut(80 * f, best[0], 820 * f, best[1]);
+    /* a white picture inside it (a Give homework card): from its own hairline under its logo down to the first coloured box (To fix, stars, stickers, note) */
+    for(let y = Math.round(190 * f); y < h * 0.6; y++){ let ok = 0; for(let i = 0; i < 20; i++) if(near(P(xa + 30 * f + (xb - xa - 60 * f) * i / 19, y), LN, 10)) ok++; if(ok < 17) continue;
+      let teal = 0; for(let yy = Math.max(0, Math.round(y - 70 * f)); yy < y - 3; yy += 2) for(let xx = Math.round(xa); xx < xa + 0.35 * (xb - xa); xx += 2){ const p = P(xx, yy); if(p[0] < 120 && p[1] > 140 && p[2] > 150 && p[1] - p[0] > 50) teal++; }
+      if(teal <= 10) continue;
+      const band = y2 => { const S = []; for(let i = 0; i < 40; i++) S.push(P(xa + (xb - xa) * i / 39, y2)); const c0 = S[20]; return !near(c0, WH, 3) && Math.max(...c0) - Math.min(...c0) >= 3 && S.filter(q => near(q, c0, 6)).length >= 34; };
+      let yb = h - 126 * f, run = 0; for(let y2 = Math.round(y + 40 * f); y2 < h - 126 * f; y2++){ run = band(y2) ? run + 1 : 0; if(run >= Math.round(10 * f)){ yb = y2 - run + 1; break; } }
+      return cut(80 * f, y + 3, 820 * f, yb - 24 * f); }
+    return im; }
+  /* 2 · Give homework / book page picture: white top, a hairline right under the logo header (76/750 of the width) */
+  if(near(P(3, 3), WH, 4) && near(P(w - 4, 3), WH, 4)){ const u = w / 750;
+    for(let y = Math.round(66 * u); y <= Math.round(90 * u); y++){ let ok = 0; for(let i = 0; i < 20; i++) if(near(P(w * (0.08 + 0.84 * i / 19), y), LN, 12)) ok++;
+      if(ok >= 18){ let teal = 0; for(let yy = Math.round(20 * u); yy < y - 4; yy += 2) for(let xx = Math.round(24 * u); xx < w * 0.3; xx += 2){ const p = P(xx, yy); if(p[0] < 120 && p[1] > 140 && p[2] > 150 && p[1] - p[0] > 50) teal++; }
+        if(teal > 15) return cut(0, y + Math.max(2, Math.round(3 * u)), w, h); return im; } } }
+  return im; }
 async function loadPicture(file){
   if(!file) return; if(!okReplace()) return;
   try{ const url = URL.createObjectURL(file); const im = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
-    setBase(im); URL.revokeObjectURL(url); PIC.items = []; PIC.origSaved = false; PIC.cats = { grammar: 0, spelling: 0, words: 0, punct: 0 }; CUR = { id: null }; UNDO = []; REDO = []; MODE = 'picture'; DIRTY = true; paintMode(); toast('Picture pasted · mark it with the pen'); }
+    const tr = trim2888(im); PIC.whole = tr !== im ? im : null; setBase(tr); URL.revokeObjectURL(url); PIC.items = []; PIC.origSaved = false; PIC.cats = { grammar: 0, spelling: 0, words: 0, punct: 0 }; CUR = { id: null }; UNDO = []; REDO = []; MODE = 'picture'; DIRTY = true; paintMode();
+    toast(PIC.whole ? 'Our logo was already on this picture · kept only the homework, so the logo shows once' : 'Picture pasted · mark it with the pen'); }
   catch(e){ toast('That picture could not be opened'); } }
 function setBase(im){ const L = 2400, w = im.naturalWidth || im.width, h = im.naturalHeight || im.height, s = Math.min(1, L / Math.max(w, h));
   const c = document.createElement('canvas'); c.width = Math.round(w * s); c.height = Math.round(h * s); const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height); PIC.base = c; }
@@ -571,7 +603,8 @@ const ICO = {
   erase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16l10-10 7 7-6 6"/></svg>' };
 const TIPS = { hand: 'Scroll', pen: 'Pen', text: 'Text label', tick: 'Tick', cross: 'Cross', circle: 'Circle', stamp: 'Stamps (stars, A+, Excellent!)', erase: 'Eraser (tap a mark)' };
 function paintPic(){
-  $('src').innerHTML = PIC.base ? ('Picture' + (CUR.id ? ' · saved check' : '') + ' · <a href="#" id="rot">Rotate</a> · <a href="#" id="rep">Paste another</a>') : '';
+  $('src').innerHTML = PIC.base ? ('Picture' + (CUR.id ? ' · saved check' : '') + ' · <a href="#" id="rot">Rotate</a> · <a href="#" id="rep">Paste another</a>' + (PIC.whole && !PIC.items.length ? ' · <a href="#" id="whole">Use whole picture</a>' : '')) : '';
+  const wh = $('whole'); if(wh) wh.onclick = e => { e.preventDefault(); if(PIC.items.length) return toast('Clear your marks first'); setBase(PIC.whole); PIC.whole = null; paintMode(); toast('Using the whole picture'); };
   const r = $('rep'); if(r) r.onclick = e => { e.preventDefault(); pasteBtn(); };
   const ro = $('rot'); if(ro) ro.onclick = e => { e.preventDefault(); rotate(); };
   $('tools').innerHTML = '';
@@ -840,12 +873,12 @@ async function openCheck(id){
   const x = HIST.find(r => r.id === id); if(!x) return; if(/^(given|writing)$/.test(x.kind)) return viewPic(x); if(DIRTY && hasWork() && !confirm('Open this saved check? Unsaved marks on screen will be lost.')) return;
   closeEd(); UNDO = []; REDO = []; CUR = { id: x.id }; $('note').value = x.note || ''; $('ttl').value = x.title || ''; ZH = { src: (x.note || '').trim(), zh: x.note_zh || '' };
   if(x.kind === 'text'){ setText(x.body || ''); TX.marks = Array.isArray(x.marks) ? x.marks : []; TX.stamps = Array.isArray((x.counts || {}).stamps) ? x.counts.stamps : []; MODE = 'text'; }
-  else { try{ const im = await new Promise((ok, no) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = no; i.src = x.img_orig_url || x.img_marked_url; }); setBase(im); }catch(e){ return toast('The picture could not be loaded'); }
+  else { try{ const im = await new Promise((ok, no) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = no; i.src = x.img_orig_url || x.img_marked_url; }); PIC.whole = null; setBase(im); }catch(e){ return toast('The picture could not be loaded'); }
     PIC.items = Array.isArray(x.marks) ? x.marks : []; PIC.origSaved = true; const c = x.counts || {}; PIC.cats = { grammar: +c.grammar || 0, spelling: +c.spelling || 0, words: +c.words || 0, punct: +c.punct || 0 }; if(c.fixSet != null && +c.fixSet >= 0) PIC.cats.fixSet = +c.fixSet; MODE = 'picture'; }   /* 2810: the teacher's own To fix number comes back with the check */
   tswSet((x.counts || {}).tsw); VN = { path: (x.counts || {}).voice || '', url: x.voice_url || '', blob: null, rec: null }; vnPaint(); STK.n = null; stkPaint(); stkLoad();   /* 2864 */
   DIRTY = false; clearDraft(); paintMode(); loadHist(); const bx = $('zhBox'); if(bx){ bx.style.display = 'none'; bx.textContent = 'Chinese translation: ' + ZH.zh; } window.scrollTo({ top: 0, behavior: 'smooth' }); }
 function newCheck(){ if(DIRTY && hasWork() && !confirm('Start a new check? Unsaved marks on screen will be lost.')) return;
-  closeEd(); TX.body = ''; TX.parts = []; TX.marks = []; TX.stamps = []; PIC.base = null; PIC.items = []; PIC.origSaved = false; PIC.cats = { grammar: 0, spelling: 0, words: 0, punct: 0 }; CUR = { id: null }; UNDO = []; REDO = []; DIRTY = false; clearDraft();
+  closeEd(); TX.body = ''; TX.parts = []; TX.marks = []; TX.stamps = []; PIC.base = null; PIC.whole = null; PIC.items = []; PIC.origSaved = false; PIC.cats = { grammar: 0, spelling: 0, words: 0, punct: 0 }; CUR = { id: null }; UNDO = []; REDO = []; DIRTY = false; clearDraft();
   tswSet(null); vnStop(); VN = { path: '', url: '', blob: null, rec: null }; vnPaint(); STK.n = null; stkPaint(); stkLoad();   /* 2864 */
   $('note').value = ''; $('ttl').value = ''; ZH = { src: '', zh: '' }; $('zhBox').style.display = 'none'; $('saveInfo').textContent = 'Saving keeps the corrected copy with ' + (NAME || CODE) + '’s homework, so you can open it again later.'; paintMode(); loadHist(); }
 
