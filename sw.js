@@ -31,6 +31,7 @@ self.addEventListener('fetch', e => {
   if (/\/verify\//.test(u.pathname)) return;   // 21 Oct · the public verify page is never cached as the app frame
   if (/\/(partner|student|assess)\//.test(u.pathname)) return;  // 27 Oct · partner and parent pages are separate, never cached as the app frame (5 Nov: + assess)
   if (/\/portal-update\.js$/.test(u.pathname)) return;
+  if (/\/guides\//.test(u.pathname)) return;   // 2891 · the Guides screen and its pictures always come fresh (new guides show at once)
   if (/\/paused\.html$/.test(u.pathname)) return;   // 2022 · the 'open in another window' page is never kept as the app frame
   if (/\/version\.txt$/.test(u.pathname)) return;   // 1970 · the version check is always live (the app frame opens its saved copy when it is the newest)  // 1354 · the portals' shared updater is always fetched live
   // 2685 (22 Nov): a versioned file (?v=) or a freshness check (?fresh=) always comes from the internet; it is never answered with, or saved as, an older copy
