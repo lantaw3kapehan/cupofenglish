@@ -101,7 +101,7 @@ h1{margin:0;font:400 28px/1.2 'COE Card Fredoka','Fredoka One',sans-serif;color:
 #pwrap{flex:1;min-width:0;background:#EEF0F3;padding:16px;display:flex;justify-content:center;align-items:flex-start;position:relative;overflow:auto}
 #pcv{display:block;background:#fff;box-shadow:0 6px 18px rgba(16,24,40,.18);touch-action:none}
 #pcv.hand{touch-action:auto;cursor:grab}
-#ptxt{position:absolute;z-index:4;min-width:160px;max-width:70%;font-size:15px;font-weight:600;line-height:1.2;border:1.5px solid var(--teal);border-radius:10px;padding:4px 8px;background:rgba(255,255,255,.94);box-shadow:0 2px 8px rgba(16,24,40,.18),0 0 0 3px rgba(0,112,122,.12);resize:none;overflow:hidden;outline:none}#ptxt::placeholder{color:#98A2B3;font-weight:500}
+#ptxt{position:absolute;z-index:4;min-width:70px;max-width:70%;font-size:15px;font-weight:600;line-height:1.2;border:1.5px solid var(--teal);border-radius:10px;padding:4px 8px;background:rgba(255,255,255,.94);box-shadow:0 2px 8px rgba(16,24,40,.18),0 0 0 3px rgba(0,112,122,.12);resize:none;overflow:hidden;outline:none}#ptxt::placeholder{color:#98A2B3;font-weight:500}
 /* side */
 .cnt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;text-align:center}
 .cnt div{border-radius:10px;padding:9px 4px}
@@ -716,7 +716,7 @@ function pUp(){ if(RSZ){ const r = RSZ; RSZ = null; if(r.pushed){ dirty(); draw(
   if(!DRAW) return; const it = DRAW.it; DRAW = null; if(it.t === 'circle' && Math.abs(it.rx) < U() * .6 && Math.abs(it.ry) < U() * .6){ draw(); return; }
   if(it.t === 'pen'){ const b = bbox(it); if(Math.max(b[2] - b[0], b[3] - b[1]) < U() * .5){ draw(); return; } }   /* 2865 (Misty 24 Nov 20:52, Candy's card said 1 to fix): a tap with the pen leaves no dot */
   push(); PIC.items.push(it); draw(); side(); }
-function openTxt(x, y, e){ const w = $('pwrap'), r = w.getBoundingClientRect(), inp = document.createElement('textarea'); inp.id = 'ptxt'; inp.rows = 1; inp.placeholder = 'Type here · click outside to finish'; inp.dataset.c = COL; inp.style.color = COL; tFit2770(inp);
+function openTxt(x, y, e){ const w = $('pwrap'), r = w.getBoundingClientRect(), inp = document.createElement('textarea'); inp.id = 'ptxt'; inp.rows = 1; inp.placeholder = 'Type here'; inp.dataset.c = COL; inp.style.color = COL; tFit2770(inp);
   inp.style.left = (e.clientX - r.left + w.scrollLeft) + 'px'; inp.style.top = (e.clientY - r.top + w.scrollTop - 14) + 'px'; inp.style.borderColor = COL; w.appendChild(inp); setTimeout(() => inp.focus(), 10);
   let gone = false; const done = () => { if(gone) return; gone = true; const v = inp.value.replace(/\s+$/, '').replace(/^\s*\n/, ''); inp.remove(); if(v.trim()){ push(); PIC.items.push({ t: 'text', c: inp.dataset.c || COL, x, y: y - U() * SZN().text * .55, s: U() * SZN().text, txt: v }); SELI = PIC.items[PIC.items.length - 1]; draw(); side(); } };
   inp.oninput = () => tFit2770(inp); inp.onkeydown = ev => { if(ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)){ ev.preventDefault(); done(); } else if(ev.key === 'Escape'){ ev.preventDefault(); done(); } }; inp.onblur = done; }
@@ -725,7 +725,9 @@ function editTxt(it, e){ closeTxt(); const w = $('pwrap'), r = w.getBoundingClie
   let gone = false; const done = () => { if(gone) return; gone = true; const v = inp.value.replace(/\s+$/, ''), nc = inp.dataset.c || it.c; inp.remove(); if(v.trim() && (v !== it.txt || nc !== it.c)){ push(); it.txt = v; it.c = nc; draw(); side(); } };
   inp.oninput = () => tFit2770(inp); inp.onkeydown = ev => { if(ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)){ ev.preventDefault(); done(); } else if(ev.key === 'Escape'){ ev.preventDefault(); done(); } }; inp.onblur = done; }
 /* 2770: the typing box is see-through (dashed outline in the note's colour), in the note's real size, and grows as you type */
-function tFit2770(inp){ try{ const px = Math.max(12, U() * SZN().text * PK); inp.style.fontSize = px + 'px'; inp.style.borderColor = inp.dataset.c || COL; inp.style.height = 'auto'; inp.style.height = (inp.scrollHeight + 2) + 'px'; }catch(e){} }
+function tFit2770(inp){ try{ const px = Math.max(12, U() * SZN().text * PK); inp.style.fontSize = px + 'px'; inp.style.borderColor = inp.dataset.c || COL; inp.style.height = 'auto'; inp.style.height = (inp.scrollHeight + 2) + 'px';
+  /* 2881: the box is as wide as the words typed (a correction covers as little of the student's writing as possible) */
+  const c = document.createElement('canvas').getContext('2d'); c.font = '600 ' + px + 'px Inter,sans-serif'; const longest = Math.max(c.measureText(inp.placeholder && !inp.value ? 'Type here' : '').width, ...String(inp.value || '').split('\n').map(t => c.measureText(t).width)); inp.style.width = Math.ceil(longest + px * 1.2 + 22) + 'px'; inp.style.height = 'auto'; inp.style.height = (inp.scrollHeight + 2) + 'px'; }catch(e){} }
 function closeTxt(){ const t = $('ptxt'); if(t) t.blur(); }
 function rotate(){ if(!PIC.base) return; if(PIC.items.length && !confirm('Rotating clears the marks on this picture. Rotate?')) return;
   const b = PIC.base, c = document.createElement('canvas'); c.width = b.height; c.height = b.width; const x = c.getContext('2d'); x.translate(c.width, 0); x.rotate(Math.PI / 2); x.drawImage(b, 0, 0);
