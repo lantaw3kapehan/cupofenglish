@@ -37,6 +37,9 @@ h1{margin:0;font:400 28px/1.2 'COE Card Fredoka','Fredoka One',sans-serif;color:
 .grid{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
 .main{flex:999 1 600px;min-width:0}
 .side{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:14px}
+/* 2869 (Misty 25 Nov "when I scroll down … the header moves too so I can't see the tools"): beside the homework, the right column scrolls
+   on its own, so the page is never longer than the homework and the tools stay pinned */
+@media(min-width:1000px){.side{position:sticky;top:12px;align-self:flex-start;max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:0 4px 12px 0;scrollbar-width:thin}.side>*{flex-shrink:0}}
 .card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .pad{padding:16px 18px}
 .h2{font-size:18px;font-weight:600;color:var(--navy);margin:0 0 10px}
@@ -287,7 +290,10 @@ const blobUrl = b => new Promise((ok, no) => { const f = new FileReader(); f.onl
 /* sticker book · STK.n = stickers on the other saved checks; this check's praise stamps are added live */
 let STK = { n: null, code: '' };
 const stkNow = () => { const c = counts(); return MODE === 'text' ? (c.stamps || []).filter(k => !FIXK.includes(k)).length : PIC.items.filter(i => i.t === 'stamp' && !FIXK.includes(i.k)).length; };
-async function stkLoad(){ if(!CODE) return; try{ const r = await api('stickers', { code: CODE, except: CUR.id || 0 }); if(r && r.ok){ STK = { n: r.n, code: CODE }; stkPaint(); } }catch(e){} }
+async function stkLoad(tries){ if(!CODE) return; const code = CODE; tries = tries || 0;   /* 2869: a slow answer is asked again, and never leaves "Loading…" */
+  try{ const r = await api('stickers', { code, except: CUR.id || 0 }, 9000); if(code !== CODE) return; if(r && r.ok){ STK = { n: r.n, code }; stkPaint(); return; } }catch(e){}
+  if(code !== CODE) return; if(tries < 3) return setTimeout(() => stkLoad(tries + 1), 1500 * (tries + 1));
+  try{ STK = { n: (HIST || []).filter(x => x.id !== CUR.id).reduce((t, x) => { const c = x.counts || {}, ks = x.kind === 'picture' ? (Array.isArray(x.marks) ? x.marks : []).filter(m => m && m.t === 'stamp').map(m => m.k) : (Array.isArray(c.stamps) ? c.stamps : []); return t + ks.filter(k => k && !FIXK.includes(k)).length; }, 0), code, approx: 1 }; stkPaint(); }catch(e){} }
 function stkInfo(){ const here = stkNow(), tot = (STK.n || 0) + here, got = BADGES.filter(b => tot >= b[0]), nx = BADGES.find(b => tot < b[0]), prev = got.length ? got[got.length - 1][0] : 0;
   return { here, tot, got, nx, pct: nx ? Math.round((tot - prev) / (nx[0] - prev) * 100) : 100 }; }
 let STKH = ''; function stkPaint(){ const b = $('stkBox'); if(!b) return; if(STK.n == null){ b.innerHTML = '<div class="h2" style="margin:0">Sticker book</div><div class="xs mute">Loading…</div>'; return; }
