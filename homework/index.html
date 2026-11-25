@@ -115,9 +115,9 @@ input.tt{width:100%;height:42px;border:1px solid var(--out);border-radius:10px;p
 /* 2864 · two stars and a wish, voice note, sticker book */
 .tsw2864{margin-top:14px;border:1px solid #F1E3B5;background:#FFFCF2;border-radius:12px;padding:10px 12px}
 .tsw2864 .hd{display:flex;align-items:center;gap:8px;width:100%;background:none;border:0;padding:0;text-align:left;font-weight:600;color:var(--navy);font-size:15px}
-.tsw2864 .hd .ch{margin-left:auto;color:var(--ink2);font-weight:500;font-size:13px}
-.tsw2864 .f{display:grid;grid-template-columns:28px 1fr;align-items:center;gap:8px 8px;margin-top:10px}
-.tsw2864 .f input{height:40px;border:1px solid var(--out);border-radius:10px;padding:0 12px;font-size:15px;width:100%;background:#fff}
+.tsw2864 .hd .ch{margin-left:auto;color:var(--ink2);font-weight:400;font-size:12px}
+.tsw2864 .f{display:grid;grid-template-columns:24px 1fr;align-items:center;gap:6px 8px;margin-top:8px}
+.tsw2864 .f input{height:36px;border:1px solid var(--out);border-radius:10px;padding:0 12px;font-size:15px;width:100%;background:#fff}
 .ic64{width:22px;height:22px;display:inline-block;flex:none}
 .vn2864 .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
 .vn2864 audio{width:100%;height:40px;margin-top:8px}
@@ -251,8 +251,8 @@ const BADGES = [[10, 'Bronze star', '铜星', '#B87333'], [25, 'Silver star', '�
 const badgeSvg = (col, sz) => '<svg width="' + (sz || 34) + '" height="' + (sz || 34) + '" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="' + col + '"/><circle cx="20" cy="20" r="14.5" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.5"/><path d="M20 9.5l3.1 6.4 7 1-5.1 4.9 1.2 7-6.2-3.3-6.2 3.3 1.2-7-5.1-4.9 7-1z" fill="#fff"/></svg>';
 function tswGet(){ const v = id => (($(id) || {}).value || '').trim(); const o = { s1: v('ts1'), s2: v('ts2'), w: v('ts3') }; return (o.s1 || o.s2 || o.w) ? o : null; }
 function tswSet(o){ o = o || {}; ['ts1', 'ts2', 'ts3'].forEach((id, i) => { const e = $(id); if(e) e.value = [o.s1, o.s2, o.w][i] || ''; }); tswOpen(!!(o.s1 || o.s2 || o.w)); }
-function tswOpen(on){ const f = $('tswF'), t = $('tswT'), c = $('tswC'); if(!f) return; f.hidden = !on; t.setAttribute('aria-expanded', on ? 'true' : 'false'); c.textContent = on ? (tswGet() ? 'Added' : 'Hide') : (tswGet() ? 'Added · show' : 'Add'); }
-function tswWire(){ const t = $('tswT'); if(!t) return; t.onclick = () => { const on = $('tswF').hidden; tswOpen(on); if(on) setTimeout(() => $('ts1').focus(), 20); };
+function tswOpen(on){ return;   /* 2876: always open, first in the right column */ const f = $('tswF'), t = $('tswT'), c = $('tswC'); if(!f) return; f.hidden = !on; t.setAttribute('aria-expanded', on ? 'true' : 'false'); c.textContent = on ? (tswGet() ? 'Added' : 'Hide') : (tswGet() ? 'Added · show' : 'Add'); }
+function tswWire(){ const t = $('tswT'); if(!t) return;
   ['ts1', 'ts2', 'ts3'].forEach(id => { $(id).oninput = () => { dirty(); }; $(id).onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); const n = { ts1: 'ts2', ts2: 'ts3' }[id]; if(n) $(n).focus(); else e.target.blur(); } }; }); }
 
 /* voice note · VN.path = the saved file, VN.blob = a new recording not saved yet */
@@ -343,20 +343,21 @@ function layout(){
   </div></div>
   <div class="side">
     <div class="card pad stk2864" id="stkBox"></div>
+    <div class="card pad" id="wrBox">
+      <div class="tsw2864" id="tswBox" style="margin-top:0"><div class="hd" id="tswT" aria-expanded="true">${IC64.star}Two stars and a wish<span class="ch" id="tswC">optional</span></div>
+        <div id="tswF"><div class="f">
+          ${IC64.star}<input id="ts1" maxlength="90" placeholder="Star 1 · something done well" autocomplete="off">
+          ${IC64.star}<input id="ts2" maxlength="90" placeholder="Star 2 · another thing done well" autocomplete="off">
+          ${IC64.wish}<input id="ts3" maxlength="90" placeholder="Wish · one thing to try next time" autocomplete="off">
+        </div></div></div>
+      <label class="h2" for="note" style="display:block;margin-top:14px">Note to ${esc(nm)} <span class="mute xs" style="font-weight:400">(English + Chinese on the picture)</span></label>
+      <textarea id="note" class="note" rows="3" placeholder="What went well, and one thing to work on. Short, simple sentences translate best."></textarea>
+      <div id="zhBox" class="zh" style="margin-top:8px;display:none"></div>
+    </div>
     <div class="card pad" id="cntBox"></div>
     <div class="card pad">
       <label class="h2" for="ttl" style="display:block">Homework title <span class="mute xs" style="font-weight:400">(optional)</span></label>
       <input id="ttl" class="tt" placeholder="e.g. My weekend" autocomplete="off">
-      <label class="h2" for="note" style="display:block;margin-top:14px">Note to ${esc(nm)} (and parents, if a child)</label>
-      <textarea id="note" class="note" placeholder="What went well, and one thing to work on. Short, simple sentences translate best."></textarea>
-      <div class="xs mute" style="margin-top:6px">The picture shows your note in English and Chinese.</div>
-      <div id="zhBox" class="zh" style="margin-top:8px;display:none"></div>
-      <div class="tsw2864" id="tswBox"><button type="button" class="hd" id="tswT" aria-expanded="false">${IC64.star}Two stars and a wish<span class="ch" id="tswC">Add</span></button>
-        <div id="tswF" hidden><div class="f">
-          ${IC64.star}<input id="ts1" maxlength="90" placeholder="Star 1 · something done well" autocomplete="off">
-          ${IC64.star}<input id="ts2" maxlength="90" placeholder="Star 2 · another thing done well" autocomplete="off">
-          ${IC64.wish}<input id="ts3" maxlength="90" placeholder="Wish · one thing to try next time" autocomplete="off">
-        </div><div class="xs mute" style="margin-top:6px">Shown on the picture as two gold stars and a wish. Keep each one short.</div></div></div>
     </div>
     <div class="card pad" id="saveCard" style="display:flex;flex-direction:column;gap:10px">
       <div class="sv73"><button class="btn pri" id="bSave" type="button" title="Save to ${esc(nm)}'s homework">Save</button>
