@@ -24,6 +24,18 @@ window.COE_GUIDES=[
    {h:'Comments, next steps and send',p:'Strengths match your highest ratings; areas to improve match your lowest. Next steps start with the book you chose. Then tap Send trial report.',img:'img/trial-tr5.webp'},
    {h:'Before you send',list:['Every line has a rating and a real example','The ratings show what you saw, not what the parent hopes','The book is in the Suggested materials for the level','Strengths and areas match your ratings','Next steps start with the recommended book']}
   ]},
+ {id:'ielts-trial',title:'IELTS Trial Assessment',cat:'Classes',icon:'star',updated:'2026-11-25T14:00',mins:4,
+  sum:'For IELTS trial classes: score speaking with real evidence, then recommend the best-fitting pathway.',
+  rule:'Be objective: give each band from what you heard in the trial, not from what the student or parent hopes. Your ticks show the range; if your band is outside it, check your evidence. Recommend the pathway that fits the result.',
+  parts:[
+   {h:'Open it',p:'After an IELTS trial: Today › the trial class card › Trial report. It opens the IELTS assessment, not the young-learner report. You can edit it later from Students › Your online IELTS trial assessments.'},
+   {h:'Set up: test, questions and parts reached',p:'Share only the Student screen on the call. Choose IELTS (or KET / PET for those exams). Work through Speaking, Writing and Result in order. Pick the question set you taught from, and mark only the parts you really reached.',img:'img/ielts-1.webp'},
+   {h:'Part 2: cue card, timers and notes',p:'Read the cue card to the student. Use the timers: 1 minute to prepare, 1 to 2 minutes to speak. In the notes, write what the student actually said.',img:'img/ielts-2.webp'},
+   {h:'Tick what you heard, then choose the band',red:1,p:'For each of the four criteria (Fluency and Coherence, Lexical Resource, Grammatical Range and Accuracy, Pronunciation), tick only what you heard. Your ticks point to a band range; choose a band from 0 to 9 inside that range.',img:'img/ielts-3.webp'},
+   {h:'Outside the range? Check your evidence',red:1,p:'If the band you chose is outside the range of your ticks, the app warns you. Look at your ticks and notes again and fix whichever is wrong. The Speaking band and CEFR level are worked out for you.',img:'img/ielts-4.webp'},
+   {h:'Result: strengths, areas and pathway',p:'Strengths: real examples from the class. Areas for improvement: match your lowest bands. Then choose the one pathway that fits: Integrated Speaking and Academic Writing, Speaking and Communication Skills, or Academic Writing Development.',img:'img/ielts-5.webp'},
+   {h:'Before you send',list:['Only the parts you really reached are marked','Every band is inside the range of your ticks, or you checked why','Notes and strengths use what the student actually said','Areas for improvement match the lowest bands','The pathway fits the result, not the student\'s wish']}
+  ]},
  {id:'meeting-id',title:'Meeting ID on VooV',cat:'Classes',icon:'video',updated:'2026-11-25T13:10',mins:2,cover:'img/cover-meet.webp',
   sum:'Set up one recurring VooV meeting per student, so the parent keeps the same meeting ID.',
   rule:'One RECURRING meeting per student, ending as late as VooV allows. No meeting password. Parents keep the same ID, so they are never asked to change it.',

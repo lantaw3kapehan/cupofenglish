@@ -71,6 +71,12 @@ h1{margin:2px 0 0;font:400 34px/1.15 'COE Card Fredoka',sans-serif;color:var(--n
 .gk{display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;text-decoration:none;color:inherit;transition:box-shadow .15s,border-color .15s,transform .15s}
 a.gk:hover{border-color:#99D5D9;box-shadow:0 10px 28px rgba(47,39,82,.10);transform:translateY(-2px)}
 .gk .tp{position:relative;height:120px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#E6F5F6,#F1EEFB)}
+.gk .tp.ph{height:150px;display:block;background:#F6F7FA top left/cover no-repeat;border-bottom:1px solid var(--line)}
+.gk .tp.ph .big{position:absolute;left:14px;bottom:-22px;width:46px;height:46px;border-radius:14px;border:1px solid var(--line)}
+.gk .tp.ph+.bd2{padding-top:30px}
+.gk .vw{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:13px;color:var(--ink2);min-height:18px}.gk .ft2 b{white-space:nowrap}
+.gm{margin-top:18px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:#fff;font-size:14px;color:var(--ink2)}
+.gm b{color:var(--navy)}.gm .n{color:#B4472F}
 .gk .tp .big{width:64px;height:64px;border-radius:18px;background:#fff;color:var(--teal);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(47,39,82,.10)}
 .gk .tp .nw{position:absolute;top:12px;right:12px}
 .gk .bd2{padding:16px 18px 18px;display:flex;flex-direction:column;gap:6px;flex:1}
@@ -86,7 +92,7 @@ a.gk:hover{border-color:#99D5D9;box-shadow:0 10px 28px rgba(47,39,82,.10);transf
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>Back to the App</span></a></div></div>
 <div class="wrap" id="root"></div>
 <div class="zoom" id="zoom"><img alt=""></div>
-<script src="guides.js?v=2894"></script>
+<script src="guides.js?v=2898"></script>
 <script>
 (function(){
 const G=window.COE_GUIDES||[],root=document.getElementById('root'),Z=document.getElementById('zoom');
@@ -105,10 +111,11 @@ function list(){
   const cats=[...new Set(G.map(g=>g.cat||'Other'))];
   cats.forEach(c=>{ const L=G.filter(g=>(g.cat||'Other')===c).sort((a,b)=>(a.soon?1:0)-(b.soon?1:0));
     h+='<section class="cat"><h2>'+esc(c)+'</h2><div class="grid3">'+L.map(g=>{
-      const top='<div class="tp"><div class="big">'+svg(g.icon,30)+'</div>'+(g.soon?'<span class="tag nw">Soon</span>':fresh(g)?'<span class="new nw">'+(seenAll()[g.id]?'UPDATED':'NEW')+'</span>':'')+'</div>';
-      const body='<div class="bd2"><h3>'+esc(g.title)+'</h3><p>'+esc(g.sum)+'</p><div class="ft2">'+(g.soon?'<span>Coming soon</span>':'<span>'+pics(g)+' pictures'+(g.mins?' · '+g.mins+' min':'')+'</span><b>Open guide ›</b>')+'</div></div>';
+      const th=g.thumb||g.cover||((g.parts||[]).find(p=>p.img)||{}).img;
+      const top='<div class="tp'+(th&&!g.soon?' ph" style="background-image:url('+th+'?v='+VV+')"':'"')+'><div class="big">'+svg(g.icon,th&&!g.soon?22:30)+'</div>'+(g.soon?'<span class="tag nw">Soon</span>':fresh(g)?'<span class="new nw">'+(seenAll()[g.id]?'UPDATED':'NEW')+'</span>':'')+'</div>';
+      const body='<div class="bd2"><h3>'+esc(g.title)+'</h3><p>'+esc(g.sum)+'</p>'+(g.soon?'':'<div class="vw" data-vw="'+g.id+'"></div>')+'<div class="ft2">'+(g.soon?'<span>Coming soon</span>':'<span>'+pics(g)+' pictures'+(g.mins?' · '+g.mins+' min':'')+'</span><b>Open guide ›</b>')+'</div></div>';
       return g.soon?'<div class="gk off">'+top+body+'</div>':'<a class="gk" href="#'+g.id+'">'+top+body+'</a>'; }).join('')+'</div></section>'; });
-  root.innerHTML=h+'</div>';scrollTo(0,0);
+  root.innerHTML=h+'</div>';scrollTo(0,0);stats().then(paint);
 }
 function one(g){
   document.title='How to: '+g.title+' · CupOfEnglish';
@@ -118,8 +125,18 @@ function one(g){
   if(g.rule) h+='<div class="rule"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span>'+esc(g.rule)+'</span></div>';
   P.forEach((p,i)=>{h+='<section class="pt'+(p.red?' r':'')+'" id="s'+(i+1)+'"><h2><i>'+(i+1)+'</i>'+esc(tc(p.h))+'</h2>'+(p.p?'<p>'+esc(p.p)+'</p>':'')+(p.img?'<figure><img src="'+p.img+'?v=2894" alt="'+esc(p.h)+'" loading="eager"><figcaption>Tap the picture to see it bigger</figcaption></figure>':'')+(p.list?'<ul>'+p.list.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':'')+'</section>'});
   h+='<div class="cta"><a class="btn" href="#">‹ All Guides</a>'+(g.open?'<a class="btn pri" href="'+g.open+'">Open '+esc(g.title)+' ›</a>':'')+'</div>';
-  root.innerHTML='<div class="gv">'+toc+'<div>'+h+'</div></div>';mark(g);
+  root.innerHTML='<div class="gv">'+toc+'<div>'+h+'<div id="gm"></div></div></div>';mark(g);view(g.id);
 }
+/* 2898: views. The app's sign-in on this device says who opened the guide; counts show on each card, names only for management */
+const FN='https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-act',VV=2898;
+const TK=()=>{try{return localStorage.getItem('coe.token')||''}catch(e){return ''}};
+const call=(op,o)=>TK()?fetch(FN,{method:'POST',headers:{'content-type':'text/plain'},body:JSON.stringify(Object.assign({token:TK(),op},o||{}))}).then(r=>r.json()).catch(()=>null):Promise.resolve(null);
+let ST=null,STa=0;const stats=()=>Date.now()-STa<60000&&ST?Promise.resolve(ST):call('gstats').then(r=>{if(r&&r.ok){ST=r;STa=Date.now()}return ST});
+const ago=t=>{const d=new Date(t);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'Asia/Manila'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Manila'})};
+const EYE='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+function paint(r){if(!r)return;root.querySelectorAll('[data-vw]').forEach(el=>{const o=r.g[el.dataset.vw]||{views:0,teachers:0};el.innerHTML=EYE+(r.mgmt?'Opened by '+o.teachers+' of '+r.team+' teachers':o.views+' view'+(o.views===1?'':'s')+' by teachers');el.title=o.views+' views by '+o.teachers+' teachers'})}
+function view(id){call('gview',{id}).then(()=>{STa=0;return stats()}).then(r=>{const el=document.getElementById('gm');if(!el||!r||!r.mgmt)return;const o=r.g[id]||{views:0,teachers:0,who:[],not:r.teamNames||[]};
+  el.innerHTML='<div class="gm"><b>Opened by '+o.teachers+' of '+r.team+' teachers</b> · '+o.views+' views'+(o.who&&o.who.length?'<div style="margin-top:6px">'+o.who.map(w=>esc(w.name)+' <span style="color:#8A8FA0">'+ago(w.last)+(w.n>1?' · '+w.n+'×':'')+'</span>').join(' · ')+'</div>':'')+(o.not&&o.not.length?'<div style="margin-top:6px" class="n">Not opened yet: '+o.not.map(esc).join(', ')+'</div>':'')+'<div style="margin-top:6px;font-size:12.5px;color:#8A8FA0">Only management sees names.</div></div>'})}
 function go(){const [id,sec]=location.hash.slice(1).split('/'),g=G.find(x=>x.id===id&&!x.soon);
   if(g){if(!root.querySelector('.gv')||document.title.indexOf(g.title)<0)one(g);const el=sec&&document.getElementById('s'+sec);el?el.scrollIntoView({behavior:'smooth'}):scrollTo(0,0)}else list()}
 root.addEventListener('click',e=>{const im=e.target.closest('figure img');if(im){Z.firstChild.src=im.src;Z.classList.add('on');document.body.style.overflow='hidden'}});
