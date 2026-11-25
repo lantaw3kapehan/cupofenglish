@@ -578,7 +578,7 @@ ${Object.keys(ICO).map(k => `<button type="button" class="tb${TOOL === k ? ' on'
   $('area').querySelectorAll('[data-t]').forEach(b => b.onclick = () => { TOOL = b.dataset.t; $('area').querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === b)); $('pcv').classList.toggle('hand', TOOL === 'hand'); stampBar(); });
   stampBar();
   $('area').querySelectorAll('[data-c]').forEach(b => b.onmousedown = ev => { if($('ptxt')) ev.preventDefault(); });   /* 2770: pressing a colour while typing keeps the box open */
-  $('area').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { COL = b.dataset.c; { const t = $('ptxt'); if(t){ t.dataset.c = COL; t.style.color = COL; t.style.borderColor = COL; } } if(SELI && PIC.items.includes(SELI) && SELI.t !== 'stamp' && SELI.c !== COL){ push(); SELI.c = COL; draw(); side(); } $('area').querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('area').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { COL = b.dataset.c; { const t = $('ptxt'); if(t){ t.dataset.c = COL; t.style.color = COL; t.style.borderColor = COL; } } if(SELI && PIC.items.includes(SELI) && SELI.t !== 'stamp' && SELI.t !== 'cross' && SELI.c !== COL){ push(); SELI.c = COL; draw(); side(); } $('area').querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b)); });
   $('area').querySelectorAll('[data-z]').forEach(b => b.onclick = () => { SIZE = b.dataset.z; try{ localStorage.setItem('coe.hw.size', SIZE); }catch(e){} $('area').querySelectorAll('[data-z]').forEach(x => x.classList.toggle('on', x === b)); });
   $('pU').onclick = undo; $('pR').onclick = redo;
   const cv = $('pcv'); cv.classList.toggle('hand', TOOL === 'hand');
@@ -690,7 +690,7 @@ function pDown(e){ { const [hx, hy] = pt(e); if(onHdl(hx, hy)){ e.preventDefault
   if(TOOL === 'hand'){ if(SELI){ SELI = null; draw(); } return; } e.preventDefault(); const [x, y] = pt(e), u = U(); closeTxt(); SELI = null;
   if(TOOL === 'pen'){ DRAW = { it: { t: 'pen', c: COL, w: u * SZN().pen, p: [[x, y]] } }; $('pcv').setPointerCapture(e.pointerId); }
   else if(TOOL === 'circle'){ DRAW = { x0: x, y0: y, it: { t: 'circle', c: COL, w: u * SZN().ring, x, y, rx: 1, ry: 1 } }; $('pcv').setPointerCapture(e.pointerId); }
-  else if(TOOL === 'tick' || TOOL === 'cross'){ push(); PIC.items.push({ t: TOOL, c: TOOL === 'tick' && COL === '#D92D20' ? '#16A34A' : COL, x, y, s: u * SZN().tick }); SELI = PIC.items[PIC.items.length - 1]; draw(); side(); }
+  else if(TOOL === 'tick' || TOOL === 'cross'){ push(); PIC.items.push({ t: TOOL, c: TOOL === 'cross' ? '#D92D20' : TOOL === 'tick' && COL === '#D92D20' ? '#16A34A' : COL, x, y, s: u * SZN().tick });   /* 2877: a cross is always a red mistake mark */ SELI = PIC.items[PIC.items.length - 1]; draw(); side(); }
   else if(TOOL === 'stamp'){ push(); PIC.items.push({ t: 'stamp', k: STAMP, x, y, s: u * SZN().tick * 1.6 }); SELI = PIC.items[PIC.items.length - 1]; draw(); side(); }
   else if(TOOL === 'text') openTxt(x, y, e);
   else if(TOOL === 'erase'){ for(let i = PIC.items.length - 1; i >= 0; i--){ const b = bbox(PIC.items[i]); if(x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]){ push(); PIC.items.splice(i, 1); draw(); side(); return; } } } }
@@ -725,14 +725,14 @@ function marked(q){ const c = document.createElement('canvas'); c.width = PIC.ba
 /* ================= side panel ================= */
 function counts(){
   if(MODE === 'text'){ const o = { grammar: 0, spelling: 0, words: 0, punct: 0, good: 0, note: 0 }; TX.marks.forEach(m => o[m.c] = (o[m.c] || 0) + 1); o.stamps = TX.stamps.slice(); o.good += TX.stamps.filter(k => !FIXK.includes(k)).length; return o; }
-  const green = PIC.items.filter(i => (i.t === 'stamp' && !FIXK.includes(i.k)) || (i.t !== 'stamp' && i.c === '#16A34A' && i.t !== 'pen')).length;
+  const green = PIC.items.filter(i => (i.t === 'stamp' && !FIXK.includes(i.k)) || (i.t !== 'stamp' && i.t !== 'cross' && i.c === '#16A34A' && i.t !== 'pen')).length;
   const auto = fixGroups2810(), set = PIC.cats.fixSet;
   return Object.assign({}, PIC.cats, { fix: set >= 0 ? set : auto, fixAuto: auto, good: green }); }
 /* 2810 (Misty 18:23): 'To fix' counts MISTAKES, not marks. Red marks on the same line close together (a cross + its correction) are one mistake;
    red pen corrections count too. The teacher can set the exact number with − / + (saved with the check, shown on the card). */
 function fixGroups2810(){ try{   /* 2812: each red correction (text) = 1 mistake; circles, crosses and pen marks next to it belong to it; marks with no correction near them count once per spot */
   const tiny = i => { if(i.t !== 'pen') return false; const b = bbox(i); return Math.max(b[2] - b[0], b[3] - b[1]) < ((PIC.base && PIC.base.width) || 1000) * .015; };   /* 2865: a stray red dot is not a mistake */
-  const R = PIC.items.filter(i => (i.t === 'stamp' && FIXK.includes(i.k)) || (i.t !== 'stamp' && i.c === '#D92D20' && i.t !== 'tick' && !tiny(i))); if(!R.length) return 0;
+  const R = PIC.items.filter(i => (i.t === 'stamp' && FIXK.includes(i.k)) || (i.t === 'cross') || (i.t !== 'stamp' && i.c === '#D92D20' && i.t !== 'tick' && !tiny(i))); if(!R.length) return 0;
   const W = (PIC.base && PIC.base.width) || 1000, G = W * .04, B = R.map(i => bbox(i));
   const gap = (A, C) => Math.max(Math.max(0, Math.max(A[0], C[0]) - Math.min(A[2], C[2])), Math.max(0, Math.max(A[1], C[1]) - Math.min(A[3], C[3])));
   const vov = (A, C) => Math.min(A[3], C[3]) - Math.max(A[1], C[1]) > Math.min(A[3] - A[1], C[3] - C[1]) * .3;
