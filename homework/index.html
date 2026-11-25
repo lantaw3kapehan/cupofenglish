@@ -118,6 +118,8 @@ input.tt{width:100%;height:42px;border:1px solid var(--out);border-radius:10px;p
 .tsw2864 .hd .ch{margin-left:auto;color:var(--ink2);font-weight:400;font-size:12px}
 .tsw2864 .f{display:grid;grid-template-columns:24px 1fr;align-items:center;gap:6px 8px;margin-top:8px}
 .tsw2864 .f input{height:36px;border:1px solid var(--out);border-radius:10px;padding:0 12px;font-size:15px;width:100%;background:#fff}
+.tsw2864 .f input.need2928{border-color:#C0392B;box-shadow:0 0 0 3px rgba(192,57,43,.12)}
+.tsw2864 .hd .ch{color:#C0392B;font-weight:600}
 .ic64{width:22px;height:22px;display:inline-block;flex:none}
 .vn2864 .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
 .vn2864 audio{width:100%;height:40px;margin-top:8px}
@@ -253,8 +255,14 @@ const badgeSvg = (col, sz) => '<svg width="' + (sz || 34) + '" height="' + (sz |
 function tswGet(){ const v = id => (($(id) || {}).value || '').trim(); const o = { s1: v('ts1'), s2: v('ts2'), w: v('ts3') }; return (o.s1 || o.s2 || o.w) ? o : null; }
 function tswSet(o){ o = o || {}; ['ts1', 'ts2', 'ts3'].forEach((id, i) => { const e = $(id); if(e) e.value = [o.s1, o.s2, o.w][i] || ''; }); tswOpen(!!(o.s1 || o.s2 || o.w)); }
 function tswOpen(on){ return;   /* 2876: always open, first in the right column */ const f = $('tswF'), t = $('tswT'), c = $('tswC'); if(!f) return; f.hidden = !on; t.setAttribute('aria-expanded', on ? 'true' : 'false'); c.textContent = on ? (tswGet() ? 'Added' : 'Hide') : (tswGet() ? 'Added · show' : 'Add'); }
+/* 2928 (Misty 25 Nov 18:15): Two Stars and a Wish must be filled in full (Star 1, Star 2 and the Wish) before the check is saved or the picture is made */
+function tswNeed(){ const ids = ['ts1', 'ts2', 'ts3'].filter(id => $(id) && !$(id).value.trim()); if(!$('ts1')) return false;
+  ['ts1', 'ts2', 'ts3'].forEach(id => $(id).classList.toggle('need2928', ids.includes(id)));
+  if(!ids.length) return false; const nm = { ts1: 'Star 1', ts2: 'Star 2', ts3: 'the Wish' }, l = ids.map(i => nm[i]);
+  toast('Please fill in ' + (l.length > 1 ? l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1] : l[0]) + ' of Two Stars and a Wish.', 4000);
+  const e = $(ids[0]); try{ e.scrollIntoView({ block: 'center', behavior: 'smooth' }); }catch(x){} e.focus(); return true; }
 function tswWire(){ const t = $('tswT'); if(!t) return;
-  ['ts1', 'ts2', 'ts3'].forEach(id => { $(id).oninput = () => { dirty(); }; $(id).onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); const n = { ts1: 'ts2', ts2: 'ts3' }[id]; if(n) $(n).focus(); else e.target.blur(); } }; }); }
+  ['ts1', 'ts2', 'ts3'].forEach(id => { $(id).oninput = () => { dirty(); if($(id).value.trim()) $(id).classList.remove('need2928'); }; $(id).onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); const n = { ts1: 'ts2', ts2: 'ts3' }[id]; if(n) $(n).focus(); else e.target.blur(); } }; }); }
 
 /* voice note · VN.path = the saved file, VN.blob = a new recording not saved yet */
 let VN = { path: '', url: '', blob: null, rec: null, t0: 0, tick: 0 };
@@ -349,11 +357,11 @@ function layout(){
   <div class="side">
     <div class="card pad stk2864" id="stkBox"></div>
     <div class="card pad" id="wrBox">
-      <div class="tsw2864" id="tswBox" style="margin-top:0"><div class="hd" id="tswT" aria-expanded="true">${IC64.star}Two stars and a wish<span class="ch" id="tswC">optional</span></div>
+      <div class="tsw2864" id="tswBox" style="margin-top:0"><div class="hd" id="tswT" aria-expanded="true">${IC64.star}Two Stars and a Wish<span class="ch" id="tswC">Required</span></div>
         <div id="tswF"><div class="f">
-          ${IC64.star}<input id="ts1" maxlength="90" placeholder="Star 1 · something done well" autocomplete="off">
-          ${IC64.star}<input id="ts2" maxlength="90" placeholder="Star 2 · another thing done well" autocomplete="off">
-          ${IC64.wish}<input id="ts3" maxlength="90" placeholder="Wish · one thing to try next time" autocomplete="off">
+          ${IC64.star}<input id="ts1" maxlength="90" placeholder="Star 1: something done well" autocomplete="off">
+          ${IC64.star}<input id="ts2" maxlength="90" placeholder="Star 2: another thing done well" autocomplete="off">
+          ${IC64.wish}<input id="ts3" maxlength="90" placeholder="Wish: one thing to try next time" autocomplete="off">
         </div></div></div>
       <label class="h2" for="note" style="display:block;margin-top:14px">Note to ${esc(nm)} <span class="mute xs" style="font-weight:400">(English + Chinese on the picture)</span></label>
       <textarea id="note" class="note" rows="3" placeholder="What went well, and one thing to work on. Short, simple sentences translate best."></textarea>
@@ -825,7 +833,7 @@ async function zhNow(){ { const bx0 = $('zhBox'); if(bx0) bx0.style.display = 'n
 /* ================= save ================= */
 let SAVING = false;
 async function save(){
-  if(SAVING) return; if(!hasWork()) return toast('Paste the homework first');
+  if(SAVING) return; if(!hasWork()) return toast('Paste the homework first'); if(tswNeed()) return;
   SAVING = true; const b = $('bSave'), lab = b.textContent; b.disabled = true; b.textContent = 'Saving…';
   /* 2771 (Misty 23 Nov 13:01: saving should always be fast): the Chinese of the note is used from the translation already made while typing; a new one is waited for at most 1.5 s (the picture is copied with the newest Chinese anyway), and the pictures go up a little lighter */
   try{ const note = $('note').value.trim(), note_zh = !note ? '' : (ZH && ZH.src === note && ZH.zh) ? ZH.zh : await Promise.race([zhNow(), new Promise(z => setTimeout(() => z(ZH && ZH.src === note ? ZH.zh : ''), 1500))]);
@@ -904,7 +912,7 @@ document.addEventListener('keydown', e => { const w = $('work'); if(e.key !== 'E
 /* ================= parent picture ================= */
 async function img(src){ return new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; }); }
 async function parentPic(){
-  if(!hasWork()) return toast('Paste the homework first');
+  if(!hasWork()) return toast('Paste the homework first'); if(tswNeed()) return;
   const btn = $('bPic'), lab = btn.textContent; btn.disabled = true; btn.textContent = 'Making the picture…';
   try{
     try{ await document.fonts.ready; await Promise.all(['400 40px "COE Card Fredoka"', '600 20px "COE Card Inter"', '400 20px "Noto Sans SC"', '700 20px "Noto Sans SC"'].map(f => document.fonts.load(f).catch(() => 0))); }catch(e){}
@@ -952,7 +960,7 @@ async function parentPic(){
     const tsw = tswGet();
     if(tsw){ const rows = [['s', tsw.s1], ['s', tsw.s2], ['w', tsw.w]].filter(r => r[1]).map(r => [r[0], wrap(r[1], '400 27px ' + F, 640)]), hh = 70 + rows.reduce((t, r) => t + r[1].length * 37 + 16, 0) + 8;
       blocks.push({ h: hh + 22, draw: (c, y) => { rr(c, 80, y, W - 160, hh, 20); c.fillStyle = '#FFFBEB'; c.fill(); c.strokeStyle = '#F4E2A8'; c.lineWidth = 2; c.stroke();
-        c.fillStyle = '#8A6100'; c.font = '700 20px ' + F; c.fillText('Two stars and a wish / 两颗星和一个愿望', 106, y + 36);
+        c.fillStyle = '#8A6100'; c.font = '700 20px ' + F; c.fillText('Two Stars and a Wish / 两颗星和一个愿望', 106, y + 36);
         let yy = y + 70; rows.forEach(([k, L]) => { if(k === 's') star64(c, 124, yy + 14, 17); else sprout64(c, 124, yy + 16, 14);
           c.fillStyle = k === 's' ? '#2B2253' : '#4338A8'; c.font = (k === 's' ? '400' : '600') + ' 27px ' + F; L.forEach((t, i) => c.fillText(t, 156, yy + 24 + i * 37)); yy += L.length * 37 + 16; }); } }); }
     /* 2927 (Misty 25 Nov 18:08): the Sticker Book panel shows today's stickers, a progress bar to the next badge (the badge in its own colour
