@@ -32,6 +32,19 @@
     hol:  { l: 'Holidays', c: '#B4472F', bg: '#FCECE7' },
     pkg:  { l: 'Packages', c: '#5E5A76', bg: '#F1F0F5' }
   };
+  const sv = d => '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  const KI = {
+    pay: sv('<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h3"/>'),
+    gov: sv('<path d="M3 9.5L12 4l9 5.5M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3.5 20h17"/>'),
+    fb:  sv('<path d="M7 3.5h7l4.5 4.5V20a.5.5 0 0 1-.5.5H7a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M14 3.5V8h4.5M9 12.5h6M9 16h4"/>'),
+    memo: sv('<path d="M4 10v4h3l6 4V6L7 10H4z"/><path d="M16.5 9a4 4 0 0 1 0 6"/>'),
+    tr:  sv('<path d="M3 9l9-4 9 4-9 4-9-4z"/><path d="M7 11v4.5c1.5 1.3 3.2 2 5 2s3.5-.7 5-2V11M21 9v5"/>'),
+    hol: sv('<path d="M5 21V4M5 4.5h11l-2 3.5 2 3.5H5"/>'),
+    pkg: sv('<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>')
+  };
+  const ico = k => '<span class="x11-ic" style="background:' + KIND[k].bg + ';color:' + KIND[k].c + '">' + KI[k] + '</span>';
+  const PAL = [['#E6F6F7', '#0E6F68'], ['#EEEDFE', '#3C3489'], ['#FCF1E3', '#8A4B0F'], ['#E3F4EC', '#1D7A52'], ['#FCECE7', '#B4472F'], ['#EEEDF5', '#2F2752']];
+  const av = (n, big) => { const t = String(n || '?'), h = [...t].reduce((a, c) => a + c.charCodeAt(0), 0), p = PAL[h % PAL.length]; return '<span class="x11-av' + (big ? ' big' : '') + '" style="background:' + p[0] + ';color:' + p[1] + '">' + E(t.trim().charAt(0).toUpperCase()) + '</span>'; };
 
   /* menu: Today › Deadlines, People › Families */
   try{
@@ -55,13 +68,13 @@
     '.x11-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid #F1F0F5;border-left:1px solid #F1F0F5;border-radius:12px;overflow:hidden}',
     '.x11-dw{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8A879C;padding:6px 8px;border-right:1px solid #F1F0F5;border-bottom:1px solid #F1F0F5;background:#FAFAFC}',
     '.x11-d{min-height:104px;padding:6px 6px 8px;border-right:1px solid #F1F0F5;border-bottom:1px solid #F1F0F5;cursor:pointer;display:flex;flex-direction:column;gap:3px;min-width:0}',
-    '.x11-d:hover{background:#FAFCFD}.x11-d.x11-o{background:#FBFBFD;cursor:default}.x11-d.sel{box-shadow:inset 0 0 0 2px #01B0BF}',
+    '.x11-d:hover{background:#F7FCFD}.x11-d.we{background:#FCFCFE}.x11-d.past .x11-n{color:#B5B2C3}.x11-d.past .x11-p{opacity:.6}.x11-d.x11-o{background:#FBFBFD;cursor:default}.x11-d.sel{box-shadow:inset 0 0 0 2px #01B0BF}',
     '.x11-n{font-size:13px;font-weight:700;color:#3B3757;display:flex;justify-content:space-between;align-items:center}.x11-d.t .x11-n span{background:#2F2752;color:#fff;border-radius:999px;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}',
-    '.x11-p{font-size:11.5px;line-height:1.3;border-radius:6px;padding:2px 6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-weight:600;border-left:3px solid}',
-    '.x11-p.done{opacity:.55;text-decoration:line-through}.x11-more{font-size:11.5px;color:#6F6B85;padding-left:4px}',
+    '.x11-p{font-size:11.5px;line-height:1.3;border-radius:7px;padding:3px 7px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-weight:600}',
+    '.x11-p.done{opacity:.55;text-decoration:line-through}.x11-p.late{box-shadow:inset 0 0 0 1.5px #E2876F}.x11-more{font-size:11.5px;color:#6F6B85;padding-left:4px}',
     '.x11-side h2{font-size:16px;margin:0 0 2px;color:#2F2752}.x11-side .x11-sub{margin:0 0 10px;font-size:13px}',
-    '.x11-it{display:grid;grid-template-columns:4px minmax(0,1fr) auto;gap:10px;padding:9px 0;border-top:1px solid #F4F3F8;align-items:start}.x11-it:first-of-type{border-top:0}',
-    '.x11-it > i{border-radius:4px;align-self:stretch}.x11-it b{display:block;font-size:14px;color:#2F2752}.x11-it small{display:block;font-size:12.5px;color:#6F6B85;margin-top:2px}',
+    '.x11-it{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:11px;padding:9px 0;border-top:1px solid #F4F3F8;align-items:center}.x11-it:first-of-type{border-top:0}',
+    '.x11-it b{display:block;font-size:14px;color:#2F2752}.x11-it small{display:block;font-size:12.5px;color:#6F6B85;margin-top:2px}',
     '.x11-st{font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap}.x11-st.ok{background:#E3F4EC;color:#1D7A52}.x11-st.late{background:#FCECE7;color:#B4472F}.x11-st.soon{background:#FCF1E3;color:#8A4B0F}',
     '.x11-day{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8A879C;margin:14px 0 2px}.x11-day:first-child{margin-top:0}',
     '.x11-empty{color:#8A879C;font-size:13.5px;padding:10px 0}',
@@ -70,9 +83,9 @@
     '.x11-fw{display:grid;grid-template-columns:360px minmax(0,1fr);gap:16px;align-items:start}',
     '.x11-q{width:100%;height:40px;border:1px solid #E4E2EC;border-radius:12px;padding:0 12px;font-size:14px;box-sizing:border-box;margin-bottom:10px}',
     '.x11-fl{max-height:calc(100vh - 250px);overflow:auto;margin:0 -6px;padding:0 6px}',
-    '.x11-f{display:block;width:100%;text-align:left;background:#fff;border:1px solid #ECEAF1;border-radius:14px;padding:11px 13px;margin-bottom:8px;cursor:pointer;font:inherit;color:inherit}',
+    '.x11-f{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:#fff;border:1px solid #ECEAF1;border-radius:14px;padding:11px 13px;margin-bottom:8px;cursor:pointer;font:inherit;color:inherit}',
     '.x11-f:hover{border-color:#B9E8EC}.x11-f.on{border-color:#01B0BF;box-shadow:0 0 0 1px #01B0BF}',
-    '.x11-f b{font-size:14.5px;color:#2F2752}.x11-f small{display:block;color:#6F6B85;font-size:12.5px;margin-top:3px}',
+    '.x11-fm{flex:1;min-width:0}.x11-fm b,.x11-fm small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.x11-f b{font-size:14.5px;color:#2F2752}.x11-f small{color:#6F6B85;font-size:12.5px;margin-top:2px}.x11-fu{text-align:right;flex:none}.x11-fu b{font-variant-numeric:tabular-nums}.x11-fu small{display:block;font-size:11px}',
     '.x11-tag{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:1px;background:#E6F6F7;color:#0E6F68}.x11-tag.g{background:#EEEDFE;color:#3C3489}',
     '.x11-kids{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:12px 0 4px}',
     '.x11-kid{border:1px solid #ECEAF1;border-radius:14px;padding:12px 14px;background:#FCFCFE;cursor:pointer}.x11-kid:hover{border-color:#01B0BF}',
@@ -83,8 +96,19 @@
     '.x11-tr b{color:#2F2752;font-weight:600}.x11-tr span{color:#6F6B85}.x11-tr .v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;color:#3B3757}',
     '.x11-msg{border-top:1px solid #F4F3F8;padding:9px 0;font-size:13.5px}.x11-msg:first-of-type{border-top:0}.x11-msg small{display:block;color:#8A879C;font-size:12px;margin-bottom:2px}',
     '.x11-msg div{color:#3B3757;line-height:1.45}',
+    '.x11-ic{width:30px;height:30px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;flex:none}',
+    '.x11-av{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none;box-shadow:0 0 0 2px #fff}.x11-av.big{width:44px;height:44px;font-size:18px}',
+    '.x11-avs{display:inline-flex;flex:none}.x11-avs .x11-av + .x11-av{margin-left:-8px}',
+    '.x11-k{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 14px}',
+    '.x11-t{background:#fff;border:1px solid #ECEAF1;border-radius:16px;padding:14px 16px;min-width:0}',
+    '.x11-t > span{display:block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:#8A879C}',
+    '.x11-t b{display:block;font-size:26px;line-height:1.15;color:#2F2752;margin:6px 0 2px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.x11-t b.sm{font-size:16px;margin:8px 0 4px}',
+    '.x11-t small{display:block;font-size:12.5px;color:#6F6B85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.x11-t.warn{border-color:#F3C9BD;background:#FFF9F7}.x11-t.warn b{color:#B4472F}',
+    '.x11-sh{display:flex;align-items:center;gap:10px;margin:0 0 6px}.x11-sh h3{margin:0}',
+    '.x11-low{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;background:#FCF1E3;color:#8A4B0F;margin-left:6px;vertical-align:2px}',
+    '.x11-fn{font-size:21px;font-weight:700;color:#2F2752;line-height:1.2}',
     '.x11-back{display:none;align-items:center;gap:4px}.x11-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 16px;align-items:start}',
-    '@media(max-width:899px){.x11-wrap,.x11-fw,.x11-two{grid-template-columns:minmax(0,1fr)}.x11-grid{display:none}.x11-hideph{display:none}.x11-nav b{min-width:0;font-size:15px}',
+    '@media(max-width:899px){.x11-wrap,.x11-fw,.x11-two{grid-template-columns:minmax(0,1fr)}.x11-grid{display:none}.x11-hideph{display:none}.x11-k{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px}.x11-t b{font-size:22px}#v-mcal .x11-chips{flex-wrap:nowrap;overflow-x:auto;margin-right:-16px;padding-right:16px;scrollbar-width:none}#v-mcal .x11-chip{flex:none}.x11-nav b{min-width:0;font-size:15px}',
     '#v-families.det .x11-fcol{display:none}#v-families:not(.det) .x11-dcol{display:none}.x11-back{display:inline-flex}.x11-fl{max-height:none}}'
   ].join(''); document.head.appendChild(css);
 
@@ -112,8 +136,8 @@
     return L.sort((a, b) => a.day.localeCompare(b.day) || ord[a.kind] - ord[b.kind]);
   }
   async function loadM(m){ if(C.busy[m] || C.r[m]) return; C.busy[m] = 1; try{ C.r[m] = await API({ op: 'deadlines', month: m }); C.err = ''; }catch(e){ C.err = String(e.message || e); } finally { C.busy[m] = 0; } if(VIEW === 'mcal') paintC(); }
-  const pill = x => { const k = KIND[x.kind]; return '<div class="x11-p' + (x.done ? ' done' : '') + '" style="background:' + k.bg + ';color:' + k.c + ';border-color:' + k.c + '" title="' + E(x.title + ' · ' + x.sub) + '">' + E(x.s || x.title) + '</div>'; };
-  const row = x => { const k = KIND[x.kind]; return '<div class="x11-it"' + (x.code ? ' style="cursor:pointer" onclick="openStudent(\'' + E(x.code) + '\')"' : '') + '><i style="background:' + k.c + '"></i><div><b>' + E(x.title) + '</b><small>' + E(x.sub) + '</small></div>' + (x.st ? '<span class="x11-st ' + x.st[0] + '">' + E(x.st[1]) + '</span>' : '<span></span>') + '</div>'; };
+  const pill = x => { const k = KIND[x.kind]; return '<div class="x11-p' + (x.done ? ' done' : '') + (x.st && x.st[0] === 'late' ? ' late' : '') + '" style="background:' + k.bg + ';color:' + k.c + '" title="' + E(x.title + ' · ' + x.sub) + '">' + E(x.s || x.title) + '</div>'; };
+  const row = x => { return '<div class="x11-it"' + (x.code ? ' style="cursor:pointer" onclick="openStudent(\'' + E(x.code) + '\')"' : '') + '>' + ico(x.kind) + '<div><b>' + E(x.title) + '</b><small>' + E(x.sub) + '</small></div>' + (x.st ? '<span class="x11-st ' + x.st[0] + '">' + E(x.st[1]) + '</span>' : '<span></span>') + '</div>'; };
   function paintC(){
     const v = document.getElementById('v-mcal'); if(!v) return; const m = C.m, t = today(), r = C.r[m];
     const all = r ? items(m) : [], L = all.filter(x => !C.off[x.kind]);
@@ -123,12 +147,17 @@
     h += '<div class="x11-chips">' + Object.keys(KIND).map(k => { const n = all.filter(x => x.kind === k).length; return '<button class="x11-chip' + (C.off[k] ? ' off' : '') + '" onclick="dl2911.tg(\'' + k + '\')"><i style="background:' + KIND[k].c + '"></i>' + KIND[k].l + ' <small>' + n + '</small></button>'; }).join('') + '</div>';
     if(!r){ v.innerHTML = h + (C.err ? '<div class="x11-card x11-empty">Could not load. ' + E(C.err) + ' <button class="x11-tb" onclick="dl2911.re()">Try again</button></div>' : '<div class="x11-skel" style="height:420px"></div>'); return; }
     const by = {}; L.forEach(x => (by[x.day] = by[x.day] || []).push(x));
+    { const late = all.filter(x => x.st && x.st[0] === 'late'), nx = all.filter(x => x.day >= t && x.due && !x.done)[0], pk = all.filter(x => x.kind === 'pkg');
+      h = h.replace('<div class="x11-chips">', '<div class="x11-k"><div class="x11-t' + (late.length ? ' warn' : '') + '"><span>Needs you</span><b>' + late.length + '</b><small>' + (late.length ? E(late.map(x => x.title).join(', ')) : 'Nothing past and undone') + '</small></div>'
+        + '<div class="x11-t"><span>Next deadline</span><b class="sm">' + (nx ? E(nx.title) : 'None this month') + '</b><small>' + (nx ? (nx.day === t ? 'Today' : dLong(nx.day)) + ' · ' + E(nx.sub) : '&nbsp;') + '</small></div>'
+        + '<div class="x11-t"><span>Packages ending</span><b>' + pk.length + '</b><small>' + (pk.length ? E(pk.slice(0, 3).map(x => x.s.replace(/ ends$/, '')).join(', ')) + (pk.length > 3 ? ' and ' + (pk.length - 3) + ' more' : '') : 'None this month') + '</small></div>'
+        + '<div class="x11-t"><span>Trainings and holidays</span><b>' + all.filter(x => x.kind === 'tr' || x.kind === 'hol').length + '</b><small>' + all.filter(x => x.kind === 'tr').length + ' training · ' + all.filter(x => x.kind === 'hol').length + ' holiday days</small></div></div><div class="x11-chips">'); }
     const y = +m.slice(0, 4), mo = +m.slice(5, 7) - 1, first = new Date(Date.UTC(y, mo, 1)), lead = (first.getUTCDay() + 6) % 7, nd = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
     let g = '<div class="x11-grid">' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => '<div class="x11-dw">' + d + '</div>').join('');
     const cells = Math.ceil((lead + nd) / 7) * 7;
     for(let i = 0; i < cells; i++){ const dn = i - lead + 1; if(dn < 1 || dn > nd){ g += '<div class="x11-d x11-o"></div>'; continue; }
       const d = m + '-' + String(dn).padStart(2, '0'), X = by[d] || [];
-      g += '<div class="x11-d' + (d === t ? ' t' : '') + (d === C.sel ? ' sel' : '') + '" onclick="dl2911.pick(\'' + d + '\')"><div class="x11-n"><span>' + dn + '</span></div>' + X.slice(0, 3).map(pill).join('') + (X.length > 3 ? '<div class="x11-more">+' + (X.length - 3) + ' more</div>' : '') + '</div>'; }
+      const wd = (lead + dn - 1) % 7; g += '<div class="x11-d' + (d === t ? ' t' : '') + (d < t ? ' past' : '') + (wd > 4 ? ' we' : '') + (d === C.sel ? ' sel' : '') + '" onclick="dl2911.pick(\'' + d + '\')"><div class="x11-n"><span>' + dn + '</span></div>' + X.slice(0, 3).map(pill).join('') + (X.length > 3 ? '<div class="x11-more">+' + (X.length - 3) + ' more</div>' : '') + '</div>'; }
     g += '</div>';
     /* side: chosen day, or what is next */
     let s = '';
@@ -167,11 +196,18 @@
   function famDet(f){
     const d = F.d[f.id] || {}, nm = c => (f.kids.find(k => String(k.code).toUpperCase() === String(c).toUpperCase()) || {}).name || c;
     let h = '<button class="x11-tb x11-back" style="margin-bottom:10px" onclick="fam2911.back()">' + IC.l + ' All families</button>';
-    h += '<div class="x11-card"><h2 style="margin:0;font-size:20px;color:#2F2752">' + E(f.name) + '</h2><div class="x11-sub">' + (f.kids.length > 1 ? f.kids.length + ' children' : '1 child') + ' · ' + E(f.teachers.join(', ') || 'No teacher yet') + '</div>';
-    h += '<div class="x11-kids">' + f.kids.map(k => { const nx = d.next && d.next[String(k.code).toUpperCase()]; return '<div class="x11-kid" onclick="openStudent(\'' + E(k.code) + '\')"><b>' + E(k.name) + '</b><span class="cn">' + E(k.cn || '') + '</span><small>' + E(k.code) + ' · ' + E((k.teachers || []).join(', ')) + (k.book ? ' · ' + E(k.book) : '') + '</small><div class="big">' + (k.left == null ? '–' : (+k.left).toLocaleString('en-US')) + '<span>units left</span></div><small>' + (nx ? 'Next class ' + dLong(dOf(nx.at)) + ' ' + hm(nx.at) : 'No class booked') + '</small></div>'; }).join('') + '</div></div>';
+    const nexts = f.kids.map(k => d.next && d.next[String(k.code).toUpperCase()]).filter(Boolean).sort((a, b) => a.at.localeCompare(b.at)), pays = (d.payments || []), cur = {}; pays.forEach(p => { cur[p.currency || 'PHP'] = (cur[p.currency || 'PHP'] || 0) + (+p.total || 0); });
+    const src = [...new Set((d.packages || []).map(p => p.source).filter(Boolean))];
+    h += '<div class="x11-card"><div style="display:flex;align-items:center;gap:14px"><span class="x11-avs">' + f.kids.slice(0, 3).map(k => av(k.name, 1)).join('') + '</span><div style="min-width:0"><div class="x11-fn">' + E(f.name) + '</div><div class="x11-sub" style="margin:2px 0 0">' + (f.kids.length > 1 ? f.kids.length + ' children' : '1 child') + ' · ' + E(f.teachers.join(', ') || 'No teacher yet') + (src.length ? ' · ' + E(src.join(', ')) : '') + '</div></div></div>';
+    if(d.packages) h += '<div class="x11-k" style="margin:16px 0 4px"><div class="x11-t"><span>Units left</span><b>' + f.left.toLocaleString('en-US') + '</b><small>' + f.kids.map(k => E(k.name) + ' ' + (k.left == null ? '–' : (+k.left).toLocaleString('en-US'))).join(' · ') + '</small></div>'
+      + '<div class="x11-t"><span>Next class</span><b class="sm">' + (nexts[0] ? dLong(dOf(nexts[0].at)) + ' ' + hm(nexts[0].at) : 'None booked') + '</b><small>' + (nexts[0] ? 'with ' + E(String(nexts[0].t || '').replace(/^./, c => c.toUpperCase())) : '&nbsp;') + '</small></div>'
+      + '<div class="x11-t"><span>Paid</span><b class="sm">' + (Object.keys(cur).length ? Object.keys(cur).map(c => money(cur[c], c)).join(' + ') : 'None recorded') + '</b><small>' + pays.length + (pays.length === 1 ? ' payment' : ' payments') + (pays[0] ? ' · last ' + dShort(pays[0].day) : '') + '</small></div>'
+      + '<div class="x11-t"><span>Parent requests</span><b>' + (d.asks ? d.asks.length : 0) + '</b><small>Last 4 months</small></div></div>';
+    h += '<div class="x11-kids">' + f.kids.map(k => { const nx = d.next && d.next[String(k.code).toUpperCase()]; return '<div class="x11-kid" onclick="openStudent(\'' + E(k.code) + '\')"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' + av(k.name) + '<div style="min-width:0"><b>' + E(k.name) + '</b><span class="cn">' + E(k.cn || '') + '</span>' + (k.left != null && +k.left <= 8 ? '<span class="x11-low">Renew soon</span>' : '') + '</div></div><small>' + E(k.code) + ' · ' + E((k.teachers || []).join(', ')) + (k.book ? ' · ' + E(k.book) : '') + '</small><div class="big">' + (k.left == null ? '–' : (+k.left).toLocaleString('en-US')) + '<span>units left</span></div><small>' + (nx ? 'Next class ' + dLong(dOf(nx.at)) + ' ' + hm(nx.at) : 'No class booked') + '</small></div>'; }).join('') + '</div></div>';
     if(d.busy || !d.packages && !d.err) return h + '<div class="x11-skel" style="margin-top:12px"></div><div class="x11-skel"></div>';
     if(d.err) return h + '<div class="x11-card x11-empty" style="margin-top:12px">Could not load. ' + E(d.err) + '</div>';
-    const sec = (t, body, n) => '<div class="x11-card x11-sec"><h3>' + t + (n != null ? ' · ' + n : '') + '</h3>' + (body || '<div class="x11-empty">None yet.</div>') + '</div>';
+    const SI = { Packages: 'pkg', Payments: 'pay', Reports: 'fb', 'Parent requests': 'memo' };
+    const sec = (t, body, n) => '<div class="x11-card x11-sec"><div class="x11-sh">' + ico(SI[t]) + '<h3>' + t + (n != null ? ' · ' + n : '') + '</h3></div>' + (body || '<div class="x11-empty">None yet.</div>') + '</div>';
     const pk = (d.packages || []).map(p => '<div class="x11-tr"><div><b>' + E(nm(p.code)) + '</b> ' + (p.active ? '<span class="x11-tag">Active</span>' : '<span class="x11-tag g">Ended</span>') + (p.shared ? '<span class="x11-tag g">Shared</span>' : '') + '</div><span>' + E([p.teacher, p.source, p.course].filter(Boolean).join(' · ')) + '</span><div class="v">' + (p.buy ? dShort(p.buy) : '') + (p.deadline ? ' – ' + dShort(p.deadline) : '') + '</div></div>').join('');
     const pay = (d.payments || []).map(p => { const it = (p.items || []).filter(i => +i.amt > 0).map(i => i.name).join(', '); return '<div class="x11-tr"><div><b>' + dShort(p.day) + '</b> · ' + E(nm(p.code)) + '</div><span>' + E([it, p.method, p.partner && p.partner !== 'CupOfEnglish' ? p.partner : ''].filter(Boolean).join(' · ')) + '</span><div class="v">' + money(p.total, p.currency) + '</div></div>'; }).join('');
     const rep = (d.reports || []).map(p => '<div class="x11-tr"><div><b>' + E(String(p.month || '').slice(0, 7).replace(/^(\d{4})-(\d{2})$/, (a, y, mo) => MN[+mo - 1] + ' ' + y)) + '</b> · ' + E(nm(p.code)) + '</div><span>Monthly feedback · ' + E(p.teacher || '') + '</span><div class="v">' + (p.total != null ? E(p.total) : '') + '</div></div>').join('')
@@ -188,7 +224,7 @@
     if(q) L = L.filter(f => f.kids.some(k => [k.name, k.cn, k.code].concat(k.teachers || []).join(' ').toLowerCase().includes(q)));
     if(!F.sel && window.innerWidth >= 900 && L.length) F.sel = L[0].id;
     const fl = '<div class="x11-chips">' + [['all', 'All', F.list.length], ['sib', 'Siblings', sib.length], ['multi', 'Several teachers', multi.length]].map(([k, l, n]) => '<button class="x11-chip' + (F.f === k ? '' : ' off') + '" onclick="fam2911.f(\'' + k + '\')">' + l + ' <small>' + n + '</small></button>').join('') + '</div>';
-    const list = L.map(f => '<button class="x11-f' + (f.id === F.sel ? ' on' : '') + '" onclick="fam2911.open(\'' + f.id + '\')"><b>' + E(f.name) + '</b>' + (f.kids.length > 1 ? '<span class="x11-tag">' + f.kids.length + ' children</span>' : '') + '<small>' + E(f.teachers.join(', ') || 'No teacher') + ' · ' + f.left.toLocaleString('en-US') + ' units left</small></button>').join('') || '<div class="x11-empty">No family matches.</div>';
+    const list = L.map(f => '<button class="x11-f' + (f.id === F.sel ? ' on' : '') + '" onclick="fam2911.open(\'' + f.id + '\')"><span class="x11-avs">' + f.kids.slice(0, 3).map(k => av(k.name)).join('') + '</span><span class="x11-fm"><b>' + E(f.name) + '</b><small>' + E(f.teachers.join(', ') || 'No teacher') + '</small></span><span class="x11-fu"><b>' + f.left.toLocaleString('en-US') + '</b><small>units left</small></span></button>').join('') || '<div class="x11-empty">No family matches.</div>';
     const sel = F.list.find(f => f.id === F.sel);
     v.innerHTML = h + '<div class="x11-fw"><div class="x11-fcol">' + fl + '<input class="x11-q" id="q2911" placeholder="Search a child, Chinese name, code or teacher" value="' + E(F.q) + '" oninput="fam2911.q(this.value)"><div class="x11-fl">' + list + '</div></div><div class="x11-dcol">' + (sel ? famDet(sel) : '<div class="x11-card x11-empty">Choose a family.</div>') + '</div></div>';
     if(sel) loadD(sel.id);
