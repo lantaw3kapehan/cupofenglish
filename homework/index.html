@@ -301,7 +301,11 @@ async function stkLoad(tries){ if(!CODE) return; const code = CODE; tries = trie
   try{ STK = { n: (HIST || []).filter(x => x.id !== CUR.id).reduce((t, x) => { const c = x.counts || {}, ks = x.kind === 'picture' ? (Array.isArray(x.marks) ? x.marks : []).filter(m => m && m.t === 'stamp').map(m => m.k) : (Array.isArray(c.stamps) ? c.stamps : []); return t + ks.filter(k => k && !FIXK.includes(k)).length; }, 0), code, approx: 1 }; stkPaint(); }catch(e){} }
 function stkInfo(){ const here = stkNow(), tot = (STK.n || 0) + here, got = BADGES.filter(b => tot >= b[0]), nx = BADGES.find(b => tot < b[0]), prev = got.length ? got[got.length - 1][0] : 0;
   return { here, tot, got, nx, pct: nx ? Math.round((tot - prev) / (nx[0] - prev) * 100) : 100 }; }
-let STKH = ''; function stkPaint(){ const b = $('stkBox'); if(!b) return; if(STK.n == null){ b.innerHTML = '<div class="h2" style="margin:0">' + STN().t + '</div><div class="xs mute">Loading…</div>'; return; }
+/* 2879 (Misty 25 Nov 11:25 "the sticker book is loading slowly"): never wait on the server — show the last count this device saw,
+   or the count from the checks already listed, at once; the server's answer replaces it quietly */
+function stkQuick(){ if(STK.n != null || !CODE) return; try{ const k = JSON.parse(localStorage.getItem(stkKey(CODE)) || 'null'); if(k && k.ex === (CUR.id || 0) && Date.now() - (k.at || 0) < 7 * 864e5){ STK = { n: k.n, code: CODE, band: k.band, approx: 1 }; return; } }catch(e){}
+  if(HISTOK === CODE && HIST.length < 20){ try{ STK = { n: HIST.filter(x => x.id !== CUR.id).reduce((t, x) => { const c = x.counts || {}, ks = x.kind === 'picture' ? (Array.isArray(x.marks) ? x.marks : []).filter(m => m && m.t === 'stamp').map(m => m.k) : (Array.isArray(c.stamps) ? c.stamps : []); return t + ks.filter(k => k && !FIXK.includes(k)).length; }, 0), code: CODE, band: STK.band || '', approx: 1 }; }catch(e){} } }
+let HISTOK = '', STKH = ''; function stkPaint(){ const b = $('stkBox'); if(!b) return; stkQuick(); if(STK.n == null){ b.innerHTML = '<div class="h2" style="margin:0">' + STN().t + '</div><div class="xs mute">Loading…</div>'; return; }
   const o = stkInfo(), nm = esc(NAME || CODE);
   const last = o.got.length ? o.got[o.got.length - 1] : null;   /* 2872: one compact card, near the counts, so it is seen without scrolling */
   const h = `<div style="display:flex;align-items:center;gap:10px">${badgeSvg(last ? last[3] : '#D9DCE3', 30)}<div style="min-width:0;flex:1"><div class="xs mute" style="font-weight:600;letter-spacing:.02em">${STN().t.toUpperCase()}${last ? ' · ' + last[1].toUpperCase() : ''}</div>
@@ -810,7 +814,7 @@ let RWA = null; document.addEventListener('click', e => { const b = e.target.clo
 
 async function loadHist(){
   const h = $('hist'); if(!h) return; let r; try{ r = await api('list', { code: CODE }); }catch(e){ h.textContent = e.message; return; }
-  if(!r.ok){ h.textContent = r.error || 'Could not load'; return; } HIST = r.checks || [];
+  if(!r.ok){ h.textContent = r.error || 'Could not load'; return; } HIST = r.checks || []; HISTOK = CODE; try{ stkPaint(); }catch(e){}
   { const x = HIST.find(y => y.id === CUR.id); if(x && x.voice_url && VN.path && x.counts && x.counts.voice === VN.path) VN.url = x.voice_url; }   /* 2864 */
   if(!HIST.length){ h.innerHTML = 'No checks saved yet for ' + esc(NAME || CODE) + '.'; return; }
   const dt = s => { const d = new Date(s); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
