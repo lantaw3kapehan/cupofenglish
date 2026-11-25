@@ -36,6 +36,18 @@ window.COE_GUIDES=[
    {h:'Result: strengths, areas and pathway',p:'Strengths: real examples from the class. Areas for improvement: match your lowest bands. Then choose the one pathway that fits: Integrated Speaking and Academic Writing, Speaking and Communication Skills, or Academic Writing Development.',img:'img/ielts-5.webp'},
    {h:'Before you send',list:['Only the parts you really reached are marked','Every band is inside the range of your ticks, or you checked why','Notes and strengths use what the student actually said','Areas for improvement match the lowest bands','The pathway fits the result, not the student\'s wish']}
   ]},
+ {id:'class-video',title:'Class Video Upload',cat:'Classes',icon:'upload',updated:'2026-11-25T14:40',mins:2,cover:'img/video-1.webp',
+  sum:'Upload every class video the same day, by 23:59, and check that V turns green.',
+  rule:'Every class video, the same day, by 23:59. Only a GREEN V means the video arrived. Grey means not due yet, not done. If V is still red, it has not arrived.',
+  parts:[
+   {h:'After class: V turns red',p:'When the class ends, V on the class card turns red: the video is due. Tap Upload video on that class and choose the file. No renaming: the app names, files and checks it.',img:'img/video-1.webp'},
+   {h:'Check that V is green',red:1,p:'When the video has arrived, the card shows Class video uploaded ✓ with the time, and V turns green. Wait for this before you close the app.',img:'img/video-2.webp'},
+   {h:'What the chips mean',p:'In · H homework · N note · V video. Grey = not due yet (it is NOT done). Red = due now. Green = done and received.',img:'img/video-3.webp'},
+   {h:'The deadline: 23:59 the same day',red:1,p:'Upload right after class. If a video is still missing, the app reminds you at 22:30. After 23:59 the video is late: it is still needed, and a late case is opened.',img:'img/video-4.webp'},
+   {h:'No recording? Late cancellation?',p:'If the class was not recorded, or the student cancelled late, upload a screen proof on the same class instead, by 23:59.'},
+   {h:'Check your day',p:'Activity log (on a phone: More › Activity log) › Class by class shows each of your classes with the time each step arrived on our server, and when V turned green.'},
+   {h:'Before you finish for the day',list:['Every class card shows Class video uploaded ✓','Every V is green, not grey or red','Anything missing is uploaded before 23:59']}
+  ]},
  {id:'meeting-id',title:'Meeting ID on VooV',cat:'Classes',icon:'video',updated:'2026-11-25T13:10',mins:2,cover:'img/cover-meet.webp',
   sum:'Set up one recurring VooV meeting per student, so the parent keeps the same meeting ID.',
   rule:'One RECURRING meeting per student, ending as late as VooV allows. No meeting password. Parents keep the same ID, so they are never asked to change it.',
