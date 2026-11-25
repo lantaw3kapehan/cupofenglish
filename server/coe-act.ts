@@ -72,13 +72,14 @@ Deno.serve(async (req: Request) => {
       if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
       const m = String(b.month || ""); if (!/^\d{4}-\d{2}$/.test(m)) return out({ ok: false, error: "month" }, 400);
       const from = m + "-01", y = +m.slice(0, 4), mo = +m.slice(5, 7), to = (mo === 12 ? (y + 1) + "-01" : y + "-" + String(mo + 1).padStart(2, "0")) + "-01";
-      const [gQ, tQ, trQ, mQ, pQ, sQ] = await Promise.all([
+      const [gQ, tQ, trQ, mQ, pQ, sQ, eQ] = await Promise.all([
         db.from("coe_gov").select("month,paid_on,sss,pagibig,philhealth,bir,sec,charges,status").gte("month", from).lt("month", to),
         db.from("coe_training_sessions").select("id,training_id,starts_at,mins,facilitator,invited,note,status").gte("starts_at", PH(from)).lt("starts_at", PH(to)).order("starts_at"),
         db.from("coe_trainings").select("id,title"),
         db.from("coe_msgs").select("at,subject,memo_no").eq("kind", "memo").gte("at", PH(from)).lt("at", PH(to)).order("at"),
         db.from("coe_packages").select("code,name,teacher,deadline,active,renewal_status").is("removed_at", null).eq("active", true).gte("deadline", from).lt("deadline", to).order("deadline"),
         db.from("docs").select("data").eq("key", "sys:sunbonus").maybeSingle(),
+        db.from("docs").select("data").eq("key", "mgmt:events").maybeSingle(),
       ]);
       for (const q of [gQ, tQ, trQ, mQ, pQ]) if (q.error) throw new Error(q.error.message);
       const T: Record<string, string> = {}; for (const r of trQ.data || []) T[r.id] = r.title;
@@ -88,7 +89,25 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, month: m,
         gov: (gQ.data || []).map((r: any) => ({ month: String(r.month).slice(0, 7), due: String(r.month).slice(0, 7) + "-15", paid: r.paid_on || null, status: r.status || "", amount: (+r.sss || 0) + (+r.pagibig || 0) + (+r.philhealth || 0) + (+r.bir || 0) + (+r.sec || 0) + (+r.charges || 0), parts: { sss: +r.sss || 0, pagibig: +r.pagibig || 0, philhealth: +r.philhealth || 0, bir: +r.bir || 0 } })),
         trainings: (tQ.data || []).filter((r: any) => r.status !== "cancelled").map((r: any) => ({ at: r.starts_at, mins: r.mins, title: T[r.training_id] || (r.training_id === "coach" ? "Coaching" : r.training_id), who: r.facilitator, invited: r.invited || [], note: r.note || "", status: r.status })),
-        memos, expiries: Object.values(pk), sunbonus: (sQ.data && (sQ.data as any).data && (sQ.data as any).data.from) || null });
+        memos, expiries: Object.values(pk), events: (((eQ.data && (eQ.data as any).data) || {}).list || []).filter((x: any) => x && x.day >= from && x.day < to), sunbonus: (sQ.data && (sQ.data as any).data && (sQ.data as any).data.from) || null });
+    }
+    if (op === "event") {   // 2914: management adds or removes its own dated events (team party, meetings) on Deadlines
+      if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
+      const cur = await db.from("docs").select("data").eq("key", "mgmt:events").maybeSingle();
+      const list: any[] = ((cur.data && (cur.data as any).data) || {}).list || [];
+      let L = list;
+      if (b.del) L = list.filter((x: any) => x.id !== String(b.del));
+      else {
+        const e = b.e || {}; const day = String(e.day || ""), title = String(e.title || "").trim().slice(0, 80), st = String(e.start || ""), en = String(e.end || ""), note = String(e.note || "").trim().slice(0, 300);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !title) return out({ ok: false, error: "Add a title and a date" }, 400);
+        if ((st && !/^\d{2}:\d{2}$/.test(st)) || (en && !/^\d{2}:\d{2}$/.test(en))) return out({ ok: false, error: "time" }, 400);
+        const id = String(e.id || "") || ("ev" + Date.now().toString(36));
+        const row = { id, day, title, start: st, end: en, note, by: name, at: new Date().toISOString() };
+        L = list.filter((x: any) => x.id !== id).concat([row]).sort((x: any, y: any) => (x.day + x.start).localeCompare(y.day + y.start));
+      }
+      const w = await db.from("docs").upsert({ key: "mgmt:events", scope: "mgmt", data: { list: L }, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (w.error) throw new Error(w.error.message);
+      return out({ ok: true, list: L });
     }
     if (op === "famlinks") {   // 2911: management › Families · which students are one family (shared package, or one WeChat group)
       if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
