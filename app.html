@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2381;
+const COE_V = 2382;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -44421,6 +44421,25 @@ body.is-mgr #app #v-mtoday > *::before{box-shadow:none}
   const _go = window.go; window.go = function(v){ if(v === 'mgrowth' && !mgr()) v = 'today'; const r = _go.apply(this, arguments.length ? [v].concat([].slice.call(arguments, 1)) : arguments); try{ if(v === 'mgrowth'){ paint(); load(0); } }catch(e){} return r; };
   try{ go = window.go; }catch(e){}
   (function w(){ try{ if(typeof D === 'undefined' || !D){ setTimeout(w, 800); return; } if(mgr() && typeof VIEW !== 'undefined' && VIEW === 'mgrowth'){ paint(); load(0); } }catch(e){ setTimeout(w, 1500); } })();
+})();
+</script>
+<script id="b2909">
+/* 2909 (Misty 25 Nov 15:41 "ensure this similar issue won't happen again"): Grace's 18:30 class stayed on while the parent's picture said cancelled.
+   Class buttons pointed at a position in the schedule list; the list refreshes every minute, so a sheet opened on one class could save to,
+   or make a picture of, another. Now the sheet remembers the class it was opened for (its id) and every save goes to that class;
+   if that class is no longer in the list, nothing is saved and the person is asked to open it again. */
+(function(){
+  if(window.__2909) return; window.__2909 = 1;
+  let PIN = null;
+  const L = src => { try{ return evList(src || '') || []; }catch(e){ return []; } };
+  const ce = window.classEdit;
+  if(typeof ce === 'function'){ const w = function(i, src){ try{ const e = L(src)[i]; PIN = e && e.id ? { id: e.id, src: src || '', at: Date.now() } : null; }catch(x){ PIN = null; } return ce.apply(this, arguments); }; window.classEdit = w; try{ classEdit = w; }catch(x){} }
+  const se = window.sendEdit;
+  if(typeof se === 'function'){ const w = function(i, action, src){ try{ const list = L(src), cur = list[i];
+        if(PIN && (src || '') === PIN.src && (!cur || cur.id !== PIN.id)){ const j = list.findIndex(x => x && x.id === PIN.id);
+          if(j < 0){ try{ toast('This class changed while it was open · close it and open it again', 5000); }catch(x){} return; }
+          const a = [].slice.call(arguments); a[0] = j; return se.apply(this, a); } }catch(x){}
+      return se.apply(this, arguments); }; window.sendEdit = w; try{ sendEdit = w; }catch(x){} }
 })();
 </script>
 <script id="b2886">
