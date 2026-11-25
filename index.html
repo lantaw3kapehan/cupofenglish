@@ -48,8 +48,8 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
      spaces taken out. Everyone else is unchanged. Any problem → app.html, as before: the compact copy fails to download, is older than the
      newest version, or did not start last time (coe.mintry left behind) → the pilot switches itself off on this device (coe.min = 0). */
   function pilot() {
-    return false;   /* 2944 (25 Nov 21:30): paused. The web host stopped updating app.min.html at 16:14 (it still serves 2384), so every teacher
-       downloaded the old compact copy, found it out of date and then downloaded app.html as well. Everyone gets app.html until the host is fixed. */
+    /* 2945 (25 Nov 21:40): the web host stopped updating app.min.html at 16:14 (it kept serving 2384), so the compact copy is now read from
+       appm.html, which the host updates normally. The pilot is back on for teachers. */
     try {
       var o = localStorage.getItem('coe.min'); if (o === '0') return false; if (o === '1') return true;
       if (localStorage.getItem('coe.mintry')) { localStorage.setItem('coe.min', '0'); localStorage.removeItem('coe.mintry'); return false; }
@@ -59,11 +59,11 @@ html,body{margin:0;height:100%;background:#fff;font-family:Rockwell,"Rockwell No
   }
   var MIN = pilot();
   if (MIN) CU = 'app-min-copy.html';
-  try { if (MIN) localStorage.setItem('coe.appf', 'app.min.html'); else localStorage.removeItem('coe.appf'); } catch (e) {}
+  try { if (MIN) localStorage.setItem('coe.appf', 'appm.html'); else localStorage.removeItem('coe.appf'); } catch (e) {}
   function full() { return get('app.html?v=' + Date.now()).catch(function () { return get(API + '?app=1'); }); }
   function fetchApp() {
     if (!MIN) return full();
-    return Promise.all([get('app.min.html?v=' + Date.now()), vNow().catch(function () { return 0; })]).then(function (r) {
+    return Promise.all([get('appm.html?v=' + Date.now()), vNow().catch(function () { return 0; })]).then(function (r) {
       if (r[1] && ver(r[0]) < r[1]) return full();   // the compact copy was not rebuilt for the newest version
       return r[0];
     }).catch(full);
