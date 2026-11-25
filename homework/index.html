@@ -522,7 +522,7 @@ const FIXK = ['again', 'spell', 'gram', 'f_look', 'f_almost', 'f_together', 'f_l
 /* 2847: grouped stamp chips · attr = data-st (picture) or data-ts (typed); on(k) marks the picked one */
 function stRows(attr, on, ownLbl){   /* 2848 (Misty 14:22): one short row that stays pinned · group buttons switch which stamps show, so none hide off to the side */
   let cur = ''; try{ cur = localStorage.getItem('coe.hw.stg') || ''; }catch(e){}
-  if(!STG.some(g => g[0] === cur)){ const p = STAMPS.find(x => on(x[0])); cur = p ? p[2] : 'skill'; }
+  { const p = STAMPS.find(x => on(x[0])); if(p) cur = p[2]; else if(!STG.some(g => g[0] === cur)) cur = 'skill'; }   /* 2871: the row opens on the group of the chosen stamp */
   return '<span class="stg">' + STG.map(([g, lbl, col]) => `<button type="button" class="chip" data-stg="${g}" style="color:${col};font-weight:600;${g === cur ? 'background:' + col + ';color:#fff;border-color:' + col : ''}" data-col="${col}">${lbl}</button>`).join('') + '</span><span class="ln2" style="width:1px;height:28px;background:#E5E7EB;margin:0 4px"></span>'
     + STAMPS.map(([k, n, g]) => `<button type="button" class="chip" ${attr}="${k}" data-g="${g}" title="${esc(n)}" style="${g === cur ? '' : 'display:none;'}${on(k) ? 'border-color:#00707A;background:#E6F5F6' : ''}">${k === 'own' ? '<span style="color:#6D28D9;font-weight:600">' + ownLbl + '</span>' : `<img src="${stampImg(k)}" alt="${esc(n)}" style="height:${STB[k] && STB[k][2] ? 30 : 22}px;width:auto">`}</button>`).join(''); }
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-stg]'); if(!b) return; const g = b.dataset.stg, row = b.closest('.tools'); try{ localStorage.setItem('coe.hw.stg', g); }catch(x){}
@@ -612,7 +612,14 @@ window.addEventListener('resize', tbSync);
 function stampBar(){ setTimeout(tbSync, 0); const t = $('tools'); if(!t || MODE !== 'picture' || !PIC.base){ return; }
   if(TOOL !== 'stamp'){ t.innerHTML = ''; return; }
   t.innerHTML = '<div class="tools"><span class="xs mute">Stamps:</span>' + stRows('data-st', k => STAMP === k || (k === 'own' && /^own:/.test(STAMP)), /^own:/.test(STAMP) ? esc(STAMP.slice(4)) : OWN ? esc(OWN) : 'Your own words…') + '</div>';
-  t.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { let k = b.dataset.st; if(k === 'own'){ const v = askOwn(); if(!v) return; k = 'own:' + v; } STAMP = k; try{ localStorage.setItem('coe.hw.stamp', STAMP); }catch(e){} stampBar(); }); }
+  t.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { let k = b.dataset.st; if(k === 'own'){ const v = askOwn(); if(!v) return; k = 'own:' + v; } STAMP = k; try{ localStorage.setItem('coe.hw.stamp', STAMP); }catch(e){} stampBar(); });
+  /* 2871 (Misty 25 Nov "I click the star icon and heart comes out"): the chosen stamp is always in view in the row, and the stamp tool shows it */
+  setTimeout(() => { try{ const on = [...t.querySelectorAll('[data-st]')].find(b => b.dataset.st === STAMP || (b.dataset.st === 'own' && /^own:/.test(STAMP))), row = t.querySelector('.tools') || t;
+    if(on && row){ const r = on.getBoundingClientRect(), R = row.getBoundingClientRect(); if(r.right > R.right - 8 || r.left < R.left + 8) row.scrollLeft += (r.left + r.width / 2) - (R.left + R.width / 2); } }catch(e){} stTool(); }, 0); }
+function stTool(){ try{ const b = document.querySelector('.tb[data-t="stamp"]'); if(!b) return; const src = stampImg(STAMP); if(!src) return; let im = b.querySelector('img.st71');
+    if(!im){ b.innerHTML = '<img class="st71" alt="" style="max-width:34px;max-height:26px;display:block;margin:auto">'; im = b.querySelector('img.st71'); } if(im.getAttribute('src') !== src) im.src = src;
+    const n = (STAMPS.find(x => x[0] === STAMP) || [])[1] || (/^own:/.test(STAMP) ? STAMP.slice(4) : ''); b.title = 'Stamp · ' + (n || 'stamp') + ' · tap the picture to place it, or pick another stamp above'; b.setAttribute('aria-label', b.title); }catch(e){} }
+setInterval(stTool, 1500);
 function askOwn(){ const v = (prompt('Your own stamp words (short, e.g. "Lovely story!"):', OWN) || '').trim().slice(0, 24); if(v){ OWN = v; try{ localStorage.setItem('coe.hw.own', v); }catch(e){} } return v; }
 const SIMG = {};
 function stampImg(k){ if(SIMG[k]) return SIMG[k]; try{ const wide = !!stB(k), s = 120, cv = document.createElement('canvas'); cv.width = wide ? Math.ceil(stHalfW(k, s) * 2 + s * .3) : s * 1.2; cv.height = s * 1.2; const c = cv.getContext('2d'); drawStamp(c, { k, x: cv.width / 2, y: cv.height / 2, s }); SIMG[k] = cv.toDataURL('image/png'); }catch(e){ SIMG[k] = ''; } return SIMG[k]; }
