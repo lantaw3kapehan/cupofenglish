@@ -17,6 +17,7 @@
   function hidden(L){ const t = today(), slot = {}, key = e => (e.code || e.student || '') + '|' + wdOf(e) + '|' + hmOf(e);
     L.forEach(e => { if(e && e.cancelled && dayOf(e) > t) slot[key(e)] = (slot[key(e)] || 0) + 1; });
     return L.filter(e => e && e.cancelled && dayOf(e) > t && (/stopped from/i.test(String(e.why || '')) || early(e) || slot[key(e)] >= 3)); }
+  window.hid2917List = L => hidden(L || []);   /* also used by the parent's class calendar picture */
   function prep(X){ if(!X || !Array.isArray(X.events)) return; if(X.events !== X._f2917) X._all2917 = X.events;
     const H = hidden(X._all2917), hs = new Set(H); X._hid2917 = H; const keep = SHOW ? X._all2917 : X._all2917.filter(e => !hs.has(e)); X._f2917 = keep; X.events = keep; }
   function summary(H){ const g = {}; H.forEach(e => { const k = (e.student || e.code || '') + '|' + wdOf(e) + '|' + hmOf(e); (g[k] = g[k] || []).push(e); });
