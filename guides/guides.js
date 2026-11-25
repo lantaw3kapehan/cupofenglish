@@ -1,7 +1,7 @@
 /* 2885 · Teacher guides (Misty 25 Nov): one place for every "how to".
    To add or update a guide, edit this list only. `updated` shows a "New" or "Updated" badge for 14 days. */
 window.COE_GUIDES=[
- {id:'check-homework',title:'Check Homework',cat:'Homework',icon:'check',updated:'2026-11-25T12:10',
+ {id:'check-homework',title:'Check Homework',cat:'Homework',icon:'check',updated:'2026-11-25T19:00',
   sum:'Mark a photo of homework and send the parent a picture.',open:'../homework/',cover:'img/cover-check.webp',mins:2,
   rule:'Type corrections in RED, beside the mistake. Only red counts as "To fix" for the parent.',
   parts:[
@@ -10,7 +10,7 @@ window.COE_GUIDES=[
    {h:'Five steps, photo to parent',img:'img/flow.webp'},
    {h:'Red, not blue or green',red:1,p:'Blue and green are for comments and praise only.',img:'img/redblue.webp'},
    {h:'Typing a correction in four taps',p:'Put it just below or beside the word, never on top. Double-click a tag to change its words.',img:'img/typing.webp'},
-   {h:'Before you send',list:['Every correction is red and beside the mistake','"To fix" matches the mistakes you marked','You tapped Save and saw "Saved at…"','You pasted the picture, not a screenshot of the screen']}
+   {h:'Before you send',list:['Every correction is red and beside the mistake','"To fix" matches the mistakes you marked','Two Stars and a Wish has all three lines filled in','You tapped Copy picture and saw "Saved to … homework" (Copy picture saves the check for you)','You pasted the picture, not a screenshot of the screen']}
   ]},
  {id:'trial-feedback',title:'Trial Class Feedback',cat:'Classes',icon:'star',updated:'2026-11-25T13:20',mins:3,
   sum:'Fill in the trial report: fair ratings, real examples and the best-fitting book.',
