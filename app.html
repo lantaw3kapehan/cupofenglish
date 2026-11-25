@@ -7543,7 +7543,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2364;
+const COE_V = 2365;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -36627,12 +36627,14 @@ window.selfShot1497 = function(b64){ return new Promise(function(z){ if(!b64) re
     /* 1591 · four bands (same as the partner portal): Early Years 2–6 · Young Learners 7–12 · Teens 13–17 · Adults 18+.
        Order: a learner type passed in by the caller → age (birthdate, else AGE) → trial report → course → grade → student list. */
     const byAge = a => a <= 6 ? 'early' : a <= 12 ? 'young' : a <= 17 ? 'teen' : 'adult';
-    const byGrp = x => /^adult/i.test(x) ? 'adult' : /teen/i.test(x) ? 'teen' : 'young';
+    /* 2867 (Misty 25 Nov "Yufan being detected as young learner … going in cycle"): a trial report's group says the band only when it
+       names one. "IELTS" (or any other course word) is not an age, so it no longer reads as Young Learners; the next clue decides. */
+    const byGrp = x => /^adult/i.test(x) ? 'adult' : /teen/i.test(x) ? 'teen' : /early|幼儿/i.test(x) ? 'early' : /young|kid|child|≤ ?10|少儿/i.test(x) ? 'young' : '';
     const gr = o.grade, gn = (gr.match(/^G\s*(\d{1,2})$/i) || [])[1];
     let band = '';
-    if(hint.group && !/pick/i.test(hint.group)){ band = byGrp(hint.group); o.from = 'trial report'; }
+    if(hint.group && !/pick/i.test(hint.group) && byGrp(hint.group)){ band = byGrp(hint.group); o.from = 'trial report'; }
     else if(o.age != null && o.age > 0){ band = byAge(o.age); o.from = o.ageFrom === 'birthdate' ? 'birthdate' : 'age'; }
-    else if(o.group){ band = byGrp(o.group); o.from = 'trial report'; }
+    else if(o.group && byGrp(o.group)){ band = byGrp(o.group); o.from = 'trial report'; }
     else if(AD.test(c)){ band = 'adult'; o.from = 'course'; }
     else if(KID.test(c)){ band = 'young'; o.from = 'course'; }
     else if(/^(GK|K\d?|KG|PK|Pre-?K|Nursery|Preschool|Kinder(garten)?)$/i.test(gr)){ band = 'early'; o.from = 'grade'; }
