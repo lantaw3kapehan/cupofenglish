@@ -129,6 +129,12 @@
     '#v-families .x11-two{gap:0 16px}#v-families .x11-sec{margin-top:0;margin-bottom:16px}',
     '.x11-ef label{display:block;font-size:13px;font-weight:600;color:#6F6B85;margin:14px 0 6px}.x11-ef .r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}',
     '.x11-ef .in{width:100%;box-sizing:border-box}.x11-ef .acts{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap}',
+    /* 2916 (Misty 16:37): every chip and tag uses the Birthday / New Book look */
+    '.x11-chip,#v-mcal .x11-chip,#v-families .x11-chip,#v-families .x11-chip:not(.off),#v-families .x11-chip.off{background:#fff!important;border:1px solid #E4E2EC!important;border-radius:999px;padding:5px 13px;font-size:13.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;box-shadow:none;opacity:1}',
+    '.x11-chip svg{width:15px;height:15px;flex:none}.x11-chip i{display:none!important}#v-mcal .x11-chip.off{opacity:.4}',
+    '#v-families .x11-chip.off{color:#6F6B85!important}#v-families .x11-chip.off small{color:#8A879C!important}#v-families .x11-chip:not(.off){color:#0E6F68!important;border-color:#9ADDE3!important}#v-families .x11-chip:not(.off) small{color:#0E6F68!important}',
+    '.x11-tag,.x11-low,.x11-st{background:#fff!important;border:1px solid #E4E2EC;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600}',
+    '.x11-tag{color:#0E6F68}.x11-tag.g{color:#3C3489}.x11-low{color:#9A5512}.x11-st.ok{color:#1D7A52}.x11-st.late{color:#B4472F}.x11-st.soon{color:#9A5512}',
     '.x11-back{display:none;align-items:center;gap:4px}.x11-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 16px;align-items:start}',
     '@media(max-width:899px){.x11-wrap,.x11-fw,.x11-two{grid-template-columns:minmax(0,1fr)}.x11-grid{display:none}.x11-hideph{display:none}.x11-k{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px}.x11-t b{font-size:22px}.x11-hero .x11-fn{font-size:19px}#v-mcal .x11-chips{flex-wrap:nowrap;overflow-x:auto;margin-right:-16px;padding-right:16px;scrollbar-width:none}#v-mcal .x11-chip{flex:none}.x11-nav b{min-width:0;font-size:15px}',
     '#v-families.det .x11-fcol{display:none}#v-families:not(.det) .x11-dcol{display:none}.x11-back{display:inline-flex}.x11-fl{max-height:none}}'
@@ -140,28 +146,28 @@
     const r = C.r[m] || {}, L = [], t = today();
     const add = (day, kind, title, sub, x) => { if(day && day.slice(0, 7) === m) L.push(Object.assign({ day, kind, title, sub: sub || '' }, x || {})); };
     const pm = MN[+addM(m, -1).slice(5, 7) - 1], tm = MN[+m.slice(5, 7) - 1];
-    add(m + '-01', 'pay', 'Teachers check their pay', pm + ' pay opens for checking', { s: 'Pay check opens' });
-    add(m + '-09', 'pay', 'Pay day', pm + ' salaries', { due: 1, s: 'Pay day' });
-    add(m + '-09', 'fb', 'Monthly feedback due', pm + ' reports to parents', { due: 1, s: 'Feedback due' });
-    add(m + '-25', 'fb', 'Monthly feedback opens', tm + ' reports', { s: 'Feedback opens' });
-    if(m.slice(5, 7) === '12') add(m + '-24', 'pay', '13th month pay', 'By 24 December', { due: 1, s: '13th month' });
+    add(m + '-01', 'pay', 'Teachers Check Their Pay', pm + ' pay opens for checking.', { s: 'Pay Check Opens' });
+    add(m + '-09', 'pay', 'Pay Day', pm + ' salaries.', { due: 1, s: 'Pay Day' });
+    add(m + '-09', 'fb', 'Monthly Feedback Due', pm + ' reports to parents.', { due: 1, s: 'Feedback Due' });
+    add(m + '-25', 'fb', 'Monthly Feedback Opens', tm + ' reports.', { s: 'Feedback Opens' });
+    if(m.slice(5, 7) === '12') add(m + '-24', 'pay', '13th Month Pay', 'By 24 December.', { due: 1, s: '13th Month' });
     const g = (r.gov || [])[0];
-    if(g) add(g.due, 'gov', 'Government dues', (g.amount ? '₱' + Number(g.amount).toLocaleString('en-US') + ' · ' : '') + 'SSS, Pag-IBIG, PhilHealth, BIR', { due: 1, done: !!g.paid, paidOn: g.paid, s: 'Gov dues' });
-    else add(m + '-15', 'gov', 'Government dues', 'SSS, Pag-IBIG, PhilHealth, BIR', { due: 1, s: 'Gov dues' });
-    if(r.sunbonus) add(r.sunbonus, 'pay', 'Sunday class incentive starts', 'First Sunday counted', { s: 'Sunday incentive' });
-    (r.memos || []).forEach(x => add(x.day, 'memo', 'Memo sent', x.subject, { s: 'Memo' }));
+    if(g) add(g.due, 'gov', 'Government dues', (g.amount ? '₱' + Number(g.amount).toLocaleString('en-US') + ' · ' : '') + 'SSS, Pag-IBIG, PhilHealth, BIR', { due: 1, done: !!g.paid, paidOn: g.paid, s: 'Gov Dues' });
+    else add(m + '-15', 'gov', 'Government dues', 'SSS, Pag-IBIG, PhilHealth, BIR', { due: 1, s: 'Gov Dues' });
+    if(r.sunbonus) add(r.sunbonus, 'pay', 'Sunday Class Incentive Starts', 'The first Sunday counted.', { s: 'Sunday Incentive' });
+    (r.memos || []).forEach(x => add(x.day, 'memo', 'Memo Sent', x.subject, { s: 'Memo' }));
     (r.trainings || []).forEach(x => add(dOf(x.at), 'tr', x.title || 'Training', hm(x.at) + (x.mins ? ' · ' + x.mins + ' min' : '') + (x.who ? ' · ' + x.who : '') + (x.invited && x.invited.length ? ' · ' + x.invited.length + ' invited' : '')));
-    (window.CN2195 || []).forEach(h => { let a = h.a, b = h.b || h.a; for(let d = a; d <= b; d = new Date(Date.parse(d + 'T00:00:00Z') + 864e5).toISOString().slice(0, 10)){ add(d, 'hol', h.n, (h.k === 'h' ? 'Holiday in China' : 'China') + (h.t ? ' · ' + h.t : '')); if(d === b) break; } });
+    (window.CN2195 || []).forEach(h => { let a = h.a, b = h.b || h.a; for(let d = a; d <= b; d = new Date(Date.parse(d + 'T00:00:00Z') + 864e5).toISOString().slice(0, 10)){ add(d, 'hol', h.n, (h.k === 'h' ? 'Holiday in China.' : 'China') + (h.t ? ' · ' + h.t : '')); if(d === b) break; } });
     (r.events || []).forEach(x => add(x.day, 'evt', x.title, (x.start ? x.start + (x.end ? ' to ' + x.end : '') : 'All day') + (x.note ? '. ' + x.note : ''), { s: x.title, ev: x }));
-    (r.expiries || []).forEach(x => add(x.day, 'pkg', x.name + ' · package ends', x.code + (x.teachers && x.teachers.length ? ' · ' + x.teachers.join(', ') : '') + (x.status ? ' · ' + x.status : ''), { code: x.code, s: x.name + ' ends' }));
-    L.forEach(x => { if(x.done) x.st = ['ok', 'Paid ' + dShort(x.paidOn).replace(/ \d{4}$/, '')]; else if(x.kind === 'gov' && x.day < t) x.st = ['late', 'Not recorded']; else if(x.due && (Date.parse(x.day) - Date.parse(t)) / 864e5 <= 5) x.st = ['soon', 'Soon']; });
+    (r.expiries || []).forEach(x => add(x.day, 'pkg', x.name + '’s Package Ends', x.code + (x.teachers && x.teachers.length ? ' · ' + x.teachers.join(', ') : '') + (x.status ? ' · ' + x.status : ''), { code: x.code, s: x.name + ' Ends' }));
+    L.forEach(x => { if(x.done) x.st = ['ok', 'Paid ' + dShort(x.paidOn).replace(/ \d{4}$/, '')]; else if(x.kind === 'gov' && x.day < t) x.st = ['late', 'Not Recorded']; else if(x.due && (Date.parse(x.day) - Date.parse(t)) / 864e5 <= 5) x.st = ['soon', 'Soon']; });
     const ord = { evt: 0, pay: 1, gov: 2, fb: 3, tr: 4, memo: 5, pkg: 6, hol: 7 };
     return L.sort((a, b) => a.day.localeCompare(b.day) || ord[a.kind] - ord[b.kind]);
   }
   async function loadM(m){ if(C.busy[m] || C.r[m]) return; C.busy[m] = 1; try{ C.r[m] = await API({ op: 'deadlines', month: m }); C.err = ''; }catch(e){ C.err = String(e.message || e); } finally { C.busy[m] = 0; } if(VIEW === 'mcal') paintC(); }
   const pill = x => { const k = KIND[x.kind]; return '<div class="x11-p' + (x.done ? ' done' : '') + (x.st && x.st[0] === 'late' ? ' late' : '') + '" style="background:' + k.bg + ';color:' + k.c + '" title="' + E(x.title + ' · ' + x.sub) + '">' + E(x.s || x.title) + '</div>'; };
   const WDS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const agRow = x => { const t = today(), d = new Date(x.day + 'T00:00:00Z'), k = KIND[x.kind]; return '<div class="x11-ag"' + (x.code ? ' style="cursor:pointer" onclick="openStudent(\'' + E(x.code) + '\')"' : x.ev ? ' style="cursor:pointer" onclick="dl2911.ev(null,\'' + E(x.ev.id) + '\')"' : '') + '><div class="dd' + (x.day === t ? ' t' : '') + '"><b>' + d.getUTCDate() + '</b><small>' + (x.day === t ? 'Today' : x.day.slice(0, 7) !== C.m ? MS3[d.getUTCMonth()] : WDS[d.getUTCDay()]) + '</small></div><div class="x"><b><i style="background:' + k.c + '"></i>' + E(x.title) + '</b><small>' + E(x.sub) + '</small></div>' + (x.st ? '<span class="x11-st ' + x.st[0] + '">' + E(x.st[1] === 'Not recorded' ? 'Overdue' : x.st[1]) + '</span>' : '') + '</div>'; };
+  const agRow = x => { const t = today(), d = new Date(x.day + 'T00:00:00Z'), k = KIND[x.kind]; return '<div class="x11-ag"' + (x.code ? ' style="cursor:pointer" onclick="openStudent(\'' + E(x.code) + '\')"' : x.ev ? ' style="cursor:pointer" onclick="dl2911.ev(null,\'' + E(x.ev.id) + '\')"' : '') + '><div class="dd' + (x.day === t ? ' t' : '') + '"><b>' + d.getUTCDate() + '</b><small>' + (x.day === t ? 'Today' : x.day.slice(0, 7) !== C.m ? MS3[d.getUTCMonth()] : WDS[d.getUTCDay()]) + '</small></div><div class="x"><b><i style="background:' + k.c + '"></i>' + E(x.title) + '</b><small>' + E(x.sub) + '</small></div>' + (x.st ? '<span class="x11-st ' + x.st[0] + '">' + E(x.st[1] === 'Not Recorded' ? 'Overdue' : x.st[1]) + '</span>' : '') + '</div>'; };
   const row = x => { return '<div class="x11-it"' + (x.code ? ' style="cursor:pointer" onclick="openStudent(\'' + E(x.code) + '\')"' : '') + '>' + ico(x.kind) + '<div><b>' + E(x.title) + '</b><small>' + E(x.sub) + '</small></div>' + (x.st ? '<span class="x11-st ' + x.st[0] + '">' + E(x.st[1]) + '</span>' : '<span></span>') + '</div>'; };
   function paintC(){
     const v = document.getElementById('v-mcal'); if(!v) return; const m = C.m, t = today(), r = C.r[m];
@@ -169,13 +175,13 @@
     let h = '<div class="x11-hero"><div class="x11-h"><div><h1>Deadlines</h1><div class="x11-sub">Pay, dues, reports, memos, trainings, holidays and package ends in one month.</div></div>'
       + '<div class="x11-nav"><button class="x11-ib" onclick="dl2911.mv(-1)" aria-label="Previous month">' + IC.l + '</button><b>' + MN[+m.slice(5, 7) - 1] + ' ' + m.slice(0, 4) + '</b><button class="x11-ib" onclick="dl2911.mv(1)" aria-label="Next month">' + IC.r + '</button>'
       + (m !== t.slice(0, 7) ? '<button class="x11-tb" onclick="dl2911.mv(0)">This Month</button>' : '') + '<button class="x11-tb x11-add" onclick="dl2911.ev()">+ Add Event</button></div></div>';
-    h += '<div class="x11-chips">' + Object.keys(KIND).map(k => { const n = all.filter(x => x.kind === k).length; return '<button class="x11-chip' + (C.off[k] ? ' off' : '') + '" style="background:' + KIND[k].bg + ';color:' + KIND[k].c + '" onclick="dl2911.tg(\'' + k + '\')"><i style="background:' + KIND[k].c + '"></i>' + KIND[k].l + ' ' + n + '</button>'; }).join('') + '</div>';
+    h += '<div class="x11-chips">' + Object.keys(KIND).map(k => { const n = all.filter(x => x.kind === k).length; return '<button class="x11-chip' + (C.off[k] ? ' off' : '') + '" style="color:' + KIND[k].c + '" onclick="dl2911.tg(\'' + k + '\')">' + KI[k] + KIND[k].l + ' ' + n + '</button>'; }).join('') + '</div>';
     if(!r){ h = h.replace('<div class="x11-chips">', '</div><div class="x11-chips">'); v.innerHTML = h + (C.err ? '<div class="x11-card x11-empty">Could not load. ' + E(C.err) + ' <button class="x11-tb" onclick="dl2911.re()">Try again</button></div>' : '<div class="x11-skel" style="height:420px"></div>'); return; }
     const by = {}; L.forEach(x => (by[x.day] = by[x.day] || []).push(x));
     { const late = all.filter(x => x.st && x.st[0] === 'late'), nx = all.filter(x => x.day >= t && x.due && !x.done)[0] || (m === t.slice(0, 7) ? items(addM(m, 1)).filter(x => x.due && !x.done)[0] : null), pk = all.filter(x => x.kind === 'pkg');
-      h = h.replace('<div class="x11-chips">', '<div class="x11-k"><div class="x11-t' + (late.length ? ' warn' : '') + '"><span>Needs You</span><b>' + late.length + '</b><small>' + (late.length ? E(late.map(x => x.title).join(', ')) : 'Nothing past and undone') + '</small></div>'
+      h = h.replace('<div class="x11-chips">', '<div class="x11-k"><div class="x11-t' + (late.length ? ' warn' : '') + '"><span>Needs You</span><b>' + late.length + '</b><small>' + (late.length ? E(late.map(x => x.title).join(', ')) : 'Nothing past and undone.') + '</small></div>'
         + '<div class="x11-t"><span>Next Deadline</span><b class="sm">' + (nx ? E(nx.title) : 'None this month') + '</b><small>' + (nx ? (nx.day === t ? 'Today' : dLong(nx.day)) + ', ' + E(nx.sub) : '&nbsp;') + '</small></div>'
-        + '<div class="x11-t"><span>Packages Ending</span><b>' + pk.length + '</b><small>' + (pk.length ? E(pk.slice(0, 3).map(x => x.s.replace(/ ends$/, '')).join(', ')) + (pk.length > 3 ? ' and ' + (pk.length - 3) + ' more' : '') : 'None this month') + '</small></div>'
+        + '<div class="x11-t"><span>Packages Ending</span><b>' + pk.length + '</b><small>' + (pk.length ? E(pk.slice(0, 3).map(x => x.s.replace(/ Ends$/, '')).join(', ')) + (pk.length > 3 ? ' and ' + (pk.length - 3) + ' more' : '') : 'None this month') + '</small></div>'
         + '<div class="x11-t"><span>Events</span><b>' + all.filter(x => x.kind === 'tr' || x.kind === 'hol' || x.kind === 'evt').length + '</b><small>' + (all.filter(x => x.kind === 'evt').length ? all.filter(x => x.kind === 'evt').map(x => x.title).slice(0, 2).join(', ') : all.filter(x => x.kind === 'tr').length + (all.filter(x => x.kind === 'tr').length === 1 ? ' training' : ' trainings') + ', ' + all.filter(x => x.kind === 'hol').length + ' holiday days') + '</small></div></div></div><div class="x11-chips">'); }
     const y = +m.slice(0, 4), mo = +m.slice(5, 7) - 1, first = new Date(Date.UTC(y, mo, 1)), lead = (first.getUTCDay() + 6) % 7, nd = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
     let g = '<div class="x11-grid">' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => '<div class="x11-dw">' + d + '</div>').join('');
@@ -186,7 +192,7 @@
     g += '</div>';
     /* side: chosen day, or what is next */
     let s = '';
-    if(C.sel && C.sel.slice(0, 7) === m){ const X = by[C.sel] || []; s = '<h2>' + dLong(C.sel) + '</h2><div class="x11-sub">' + (X.length ? X.length + (X.length === 1 ? ' item. ' : ' items. ') : 'Nothing due. ') + '<a style="cursor:pointer;color:#0E6F68" onclick="dl2911.pick(null)">Show the month</a></div>' + X.map(agRow).join('') + '<button class="x11-tb" style="margin-top:12px" onclick="dl2911.ev(\'' + C.sel + '\')">+ Add an Event on This Day</button>'; }
+    if(C.sel && C.sel.slice(0, 7) === m){ const X = by[C.sel] || []; s = '<h2>' + dLong(C.sel) + '</h2><div class="x11-sub">' + (X.length ? X.length + (X.length === 1 ? ' item. ' : ' items. ') : 'Nothing due. ') + '<a style="cursor:pointer;color:#0E6F68" onclick="dl2911.pick(null)">Show the Month</a></div>' + X.map(agRow).join('') + '<button class="x11-tb" style="margin-top:12px" onclick="dl2911.ev(\'' + C.sel + '\')">+ Add an Event on This Day</button>'; }
     else { const from = m === t.slice(0, 7) ? t : m + '-01', U = L.filter(x => x.day >= from), late = L.filter(x => x.st && x.st[0] === 'late');
       s = '<h2>' + (m === t.slice(0, 7) ? 'Coming Up' : 'This Month') + '</h2><div class="x11-sub">' + (late.length ? late.length + ' past and not done.' : 'Tap a day to see it.') + '</div>';
       s += late.map(agRow).join('') + U.filter(x => !(x.st && x.st[0] === 'late')).map(agRow).join('');
@@ -241,7 +247,7 @@
     if(VIEW === 'families' && F.sel === id) paintF(); }
   function famDet(f){
     const d = F.d[f.id] || {}, nm = c => (f.kids.find(k => String(k.code).toUpperCase() === String(c).toUpperCase()) || {}).name || c;
-    let h = '<button class="x11-tb x11-back" style="margin-bottom:10px" onclick="fam2911.back()">' + IC.l + ' All families</button>';
+    let h = '<button class="x11-tb x11-back" style="margin-bottom:10px" onclick="fam2911.back()">' + IC.l + ' All Families</button>';
     const nexts = f.kids.map(k => d.next && d.next[String(k.code).toUpperCase()]).filter(Boolean).sort((a, b) => a.at.localeCompare(b.at)), pays = (d.payments || []), cur = {}; pays.forEach(p => { cur[p.currency || 'PHP'] = (cur[p.currency || 'PHP'] || 0) + (+p.total || 0); });
     const src = [...new Set((d.packages || []).map(p => p.source).filter(Boolean))];
     const tn = a => a.map(x => 'Teacher ' + x).join(', ');
@@ -251,7 +257,7 @@
       + '<div class="x11-t"><span>Paid</span><b class="sm">' + (Object.keys(cur).length ? Object.keys(cur).map(c => money(cur[c], c)).join(' + ') : 'None recorded') + '</b><small>' + pays.length + (pays.length === 1 ? ' payment' : ' payments') + (pays[0] ? ', last ' + dShort(pays[0].day) : '') + '</small></div>'
       + '<div class="x11-t"><span>Parent Requests</span><b>' + (d.asks ? d.asks.length : 0) + '</b><small>Last 4 months</small></div></div>';
     h += '</div>';
-    h += '<div class="x11-kids2">' + f.kids.map(k => { const nx = d.next && d.next[String(k.code).toUpperCase()]; return '<div class="x11-kd" onclick="openStudent(\'' + E(k.code) + '\')">' + av(k.name, 1) + '<div style="min-width:0"><b>' + E(k.name) + '</b><span class="cn">' + E(k.cn || '') + '</span>' + (k.left != null && +k.left <= 8 ? '<span class="x11-low">Renew Soon</span>' : '') + '<small>' + E(k.code) + ', ' + E(tn(k.teachers || [])) + '</small><small>' + (k.book ? E(k.book) + '. ' : '') + (nx ? 'Next class ' + dLong(dOf(nx.at)) + ', ' + hm(nx.at) : 'No class booked') + '</small></div><div class="big">' + (k.left == null ? '–' : (+k.left).toLocaleString('en-US')) + '<small>units left</small></div></div>'; }).join('') + '</div>';
+    h += '<div class="x11-kids2">' + f.kids.map(k => { const nx = d.next && d.next[String(k.code).toUpperCase()]; return '<div class="x11-kd" onclick="openStudent(\'' + E(k.code) + '\')">' + av(k.name, 1) + '<div style="min-width:0"><b>' + E(k.name) + '</b><span class="cn">' + E(k.cn || '') + '</span>' + (k.left != null && +k.left <= 8 ? '<span class="x11-low">Renew Soon</span>' : '') + '<small>' + E(k.code) + ', ' + E(tn(k.teachers || [])) + '</small><small>' + (k.book ? E(k.book) + '. ' : '') + (nx ? 'Next class ' + dLong(dOf(nx.at)) + ', ' + hm(nx.at) : 'No class booked yet') + '</small></div><div class="big">' + (k.left == null ? '–' : (+k.left).toLocaleString('en-US')) + '<small>Units Left</small></div></div>'; }).join('') + '</div>';
     if(d.busy || !d.packages && !d.err) return h + '<div class="x11-skel" style="margin-top:12px"></div><div class="x11-skel"></div>';
     if(d.err) return h + '<div class="x11-card x11-empty" style="margin-top:12px">Could not load. ' + E(d.err) + '</div>';
     const SI = { Packages: 'pkg', Payments: 'pay', Reports: 'fb', 'Parent Requests': 'memo' };
@@ -272,7 +278,7 @@
     if(q) L = L.filter(f => f.kids.some(k => [k.name, k.cn, k.code].concat(k.teachers || []).join(' ').toLowerCase().includes(q)));
     if(!F.sel && window.innerWidth >= 900 && L.length) F.sel = L[0].id;
     const fl = '<div class="x11-chips">' + [['all', 'All', F.list.length], ['sib', 'Siblings', sib.length], ['multi', 'Several Teachers', multi.length]].map(([k, l, n]) => '<button class="x11-chip' + (F.f === k ? '' : ' off') + '" onclick="fam2911.f(\'' + k + '\')">' + l + ' <small>' + n + '</small></button>').join('') + '</div>';
-    const list = L.map(f => '<button class="x11-f' + (f.id === F.sel ? ' on' : '') + '" onclick="fam2911.open(\'' + f.id + '\')"><span class="x11-avs">' + f.kids.slice(0, 3).map(k => av(k.name)).join('') + '</span><span class="x11-fm"><b>' + E(f.name) + '</b><small>' + E(f.teachers.join(', ') || 'No teacher') + '</small></span><span class="x11-fu"><b>' + f.left.toLocaleString('en-US') + '</b><small>units left</small></span></button>').join('') || '<div class="x11-empty">No family matches.</div>';
+    const list = L.map(f => '<button class="x11-f' + (f.id === F.sel ? ' on' : '') + '" onclick="fam2911.open(\'' + f.id + '\')"><span class="x11-avs">' + f.kids.slice(0, 3).map(k => av(k.name)).join('') + '</span><span class="x11-fm"><b>' + E(f.name) + '</b><small>' + E(f.teachers.join(', ') || 'No teacher') + '</small></span><span class="x11-fu"><b>' + f.left.toLocaleString('en-US') + '</b><small>Units Left</small></span></button>').join('') || '<div class="x11-empty">No family matches.</div>';
     const sel = F.list.find(f => f.id === F.sel);
     v.innerHTML = h + '<div class="x11-fw"><div class="x11-fcol">' + fl + '<div class="x11-list"><div class="qw"><input class="x11-q" id="q2911" placeholder="Search a child, Chinese name, code or teacher" value="' + E(F.q) + '" oninput="fam2911.q(this.value)"></div><div class="x11-fl">' + list + '</div></div></div><div class="x11-dcol">' + (sel ? famDet(sel) : '<div class="x11-card x11-empty">Choose a family.</div>') + '</div></div>';
     if(sel) loadD(sel.id);
