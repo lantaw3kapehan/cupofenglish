@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-hw v10 (24 Nov · 2864 voice notes on a check, stickers: a student's sticker collection) · v9 (22 Nov · 2729 where / whereGet: where the class ended and the homework page, per student) · v8 (21 Nov · 2556 trialMark k books) · v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
+// CupOfEnglish · coe-hw v12 (25 Nov · 2873 stickers op returns the learner band) · v10 (24 Nov · 2864 voice notes on a check, stickers: a student's sticker collection) · v9 (22 Nov · 2729 where / whereGet: where the class ended and the homework page, per student) · v8 (21 Nov · 2556 trialMark k books) · v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
 // correct it and share it). Used by the Homework check page (homework/index.html).
 // POST { token, op, ... }:
 //   me                       → { name, role, mgmt }
@@ -151,7 +151,22 @@ Deno.serve(async (req: Request) => {
       const by: Record<string, number> = {}; let n = 0, checks = 0;
       (data || []).filter((r: any) => !(b.except && +b.except === r.id)).forEach((r: any) => { const ks = r.kind === "picture" ? (Array.isArray(r.marks) ? r.marks : []).filter((m: any) => m && m.t === "stamp").map((m: any) => String(m.k || "")) : (Array.isArray((r.counts || {}).stamps) ? r.counts.stamps.map(String) : []);
         const good = ks.filter((k: string) => k && !FIX.includes(k)); if (good.length) checks++; good.forEach((k: string) => { by[k] = (by[k] || 0) + 1; n++; }); });
-      return out({ ok: true, n, checks, by });
+      // v12 (2873): the learner band names the collection ("Sticker book" for children, "Achievements" for teens and adults)
+      // same order as the app's learner rule: trial learner type (when it names a band) → birthdate → age → grade
+      let band = "";
+      try {
+        const { data: T } = await db.from("coe_trials").select("learner_group,trial_date").eq("student_code", code).is("removed_at", null).order("trial_date", { ascending: false }).limit(1);
+        const g = String((T && T[0] && T[0].learner_group) || "");
+        const { data: S } = await db.from("coe_students").select("data,app").eq("code", code).is("removed_at", null).limit(1);
+        const row = S && S[0] ? (() => { const d = Array.isArray(S[0].data) ? S[0].data.slice() : []; Object.entries(S[0].app || {}).forEach(([k, v]) => { d[+k] = v; }); return d; })() : [];
+        const birth = String(row[5] || ""), ageCol = +row[6] || 0, grade = String(row[8] || "").trim(), gn = (grade.match(/^G\s*(\d{1,2})$/i) || [])[1];
+        let age = 0; if (/^\d{4}-\d{2}-\d{2}/.test(birth)) { const b = new Date(birth.slice(0, 10)); age = Math.floor((Date.now() - b.getTime()) / 31557600000); } else if (ageCol > 0) age = ageCol;
+        if (/^adult/i.test(g)) band = "adult"; else if (/teen/i.test(g)) band = "teen"; else if (/young|kid|child|early|≤ ?10/i.test(g)) band = "young";
+        else if (age > 0) band = age <= 12 ? "young" : age <= 17 ? "teen" : "adult";
+        else if (/^(WA|UM|U\d|PhD|ADULT|College|University)$/i.test(grade)) band = "adult";
+        else if (gn) band = +gn <= 6 ? "young" : "teen";
+      } catch (_e) { /* band stays unknown → "Sticker book" */ }
+      return out({ ok: true, n, checks, by, band });
     }
 
     if (op === "remove") {

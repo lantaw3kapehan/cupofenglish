@@ -39,7 +39,7 @@ h1{margin:0;font:400 28px/1.2 'COE Card Fredoka','Fredoka One',sans-serif;color:
 .side{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:14px}
 /* 2869 (Misty 25 Nov "when I scroll down … the header moves too so I can't see the tools"): beside the homework, the right column scrolls
    on its own, so the page is never longer than the homework and the tools stay pinned */
-@media(min-width:1000px){.side{position:sticky;top:12px;align-self:flex-start;max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:0 4px 12px 0;scrollbar-width:thin}.side>*{flex-shrink:0}#saveCard{position:sticky;bottom:0;z-index:3;box-shadow:0 -6px 16px rgba(16,24,40,.08)}#saveCard{gap:8px!important;padding-top:12px;padding-bottom:12px}}
+@media(min-width:1000px){.side{position:sticky;top:12px;align-self:flex-start;max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:0 4px 12px 0;scrollbar-width:thin}.side>*{flex-shrink:0}#saveCard{position:sticky;bottom:0;z-index:3;box-shadow:0 -6px 16px rgba(16,24,40,.08)}#saveCard{gap:6px!important;padding-top:12px;padding-bottom:12px}}
 .card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .pad{padding:16px 18px}
 .h2{font-size:18px;font-weight:600;color:var(--navy);margin:0 0 10px}
@@ -138,6 +138,7 @@ input.tt{width:100%;height:42px;border:1px solid var(--out);border-radius:10px;p
 .hist .rw64 .rwT{flex-basis:100%;font-size:13px;color:var(--ink);background:#FFFCF2;border:1px solid #F1E3B5;border-radius:10px;padding:6px 9px}
 .hist .rw64 .rwT div{display:flex;gap:6px;align-items:flex-start;white-space:normal!important;overflow:visible!important}.hist .rw64 .rwT .w{color:#4338A8;font-weight:600}
 .hist .rw64 .rwT svg{margin-top:2px}
+.sv73{display:flex;gap:8px}.sv73 .btn{flex:1;min-width:0}
 .hist{display:flex;flex-direction:column}
 .hist .it{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #F0F1F4}
 .hist .it:first-child{border-top:0}
@@ -289,19 +290,23 @@ const blobUrl = b => new Promise((ok, no) => { const f = new FileReader(); f.onl
 
 /* sticker book · STK.n = stickers on the other saved checks; this check's praise stamps are added live */
 let STK = { n: null, code: '' };
+/* 2873 (Misty 25 Nov): children keep a Sticker book; teens and adults collect Achievements (stars) */
+const STN = () => STK.band === 'teen' || STK.band === 'adult' ? { t: 'Achievements', zh: '学习成就', u: 'star', us: 'stars', uzh: '颗星' } : { t: 'Sticker book', zh: '贴纸册', u: 'sticker', us: 'stickers', uzh: '张贴纸' };
+const stkKey = c => 'coe.hw.stk:' + c;
 const stkNow = () => { const c = counts(); return MODE === 'text' ? (c.stamps || []).filter(k => !FIXK.includes(k)).length : PIC.items.filter(i => i.t === 'stamp' && !FIXK.includes(i.k)).length; };
 async function stkLoad(tries){ if(!CODE) return; const code = CODE; tries = tries || 0;   /* 2869: a slow answer is asked again, and never leaves "Loading…" */
-  try{ const r = await api('stickers', { code, except: CUR.id || 0 }, 9000); if(code !== CODE) return; if(r && r.ok){ STK = { n: r.n, code }; stkPaint(); return; } }catch(e){}
+  try{ const r = await api('stickers', { code, except: CUR.id || 0 }, 9000); if(code !== CODE) return; if(r && r.ok){ STK = { n: r.n, code, band: r.band || '' }; try{ localStorage.setItem(stkKey(code), JSON.stringify({ n: r.n, band: r.band || '', ex: CUR.id || 0, at: Date.now() })); }catch(e){} stkPaint(); return; } }catch(e){}
   if(code !== CODE) return; if(tries < 3) return setTimeout(() => stkLoad(tries + 1), 1500 * (tries + 1));
+  try{ const k = JSON.parse(localStorage.getItem(stkKey(code)) || 'null'); if(k && k.ex === (CUR.id || 0)){ STK = { n: k.n, code, band: k.band, approx: 1 }; stkPaint(); return; } }catch(e){}   /* the last count this device saw */
   try{ STK = { n: (HIST || []).filter(x => x.id !== CUR.id).reduce((t, x) => { const c = x.counts || {}, ks = x.kind === 'picture' ? (Array.isArray(x.marks) ? x.marks : []).filter(m => m && m.t === 'stamp').map(m => m.k) : (Array.isArray(c.stamps) ? c.stamps : []); return t + ks.filter(k => k && !FIXK.includes(k)).length; }, 0), code, approx: 1 }; stkPaint(); }catch(e){} }
 function stkInfo(){ const here = stkNow(), tot = (STK.n || 0) + here, got = BADGES.filter(b => tot >= b[0]), nx = BADGES.find(b => tot < b[0]), prev = got.length ? got[got.length - 1][0] : 0;
   return { here, tot, got, nx, pct: nx ? Math.round((tot - prev) / (nx[0] - prev) * 100) : 100 }; }
-let STKH = ''; function stkPaint(){ const b = $('stkBox'); if(!b) return; if(STK.n == null){ b.innerHTML = '<div class="h2" style="margin:0">Sticker book</div><div class="xs mute">Loading…</div>'; return; }
+let STKH = ''; function stkPaint(){ const b = $('stkBox'); if(!b) return; if(STK.n == null){ b.innerHTML = '<div class="h2" style="margin:0">' + STN().t + '</div><div class="xs mute">Loading…</div>'; return; }
   const o = stkInfo(), nm = esc(NAME || CODE);
   const last = o.got.length ? o.got[o.got.length - 1] : null;   /* 2872: one compact card, near the counts, so it is seen without scrolling */
-  const h = `<div style="display:flex;align-items:center;gap:10px">${badgeSvg(last ? last[3] : '#D9DCE3', 30)}<div style="min-width:0;flex:1"><div class="xs mute" style="font-weight:600;letter-spacing:.02em">STICKER BOOK${last ? ' · ' + last[1].toUpperCase() : ''}</div>
-<div class="big"><b>${o.tot}</b><span class="small mute">sticker${o.tot === 1 ? '' : 's'}${o.here ? ' · <span style="color:#B45309;font-weight:700">+' + o.here + ' on this check</span>' : ''}</span></div></div></div>
-<div class="bar"><i style="width:${o.pct}%"></i></div><div class="xs mute">${o.nx ? (o.nx[0] - o.tot) + ' more to <b>' + o.nx[1] + '</b> (' + o.nx[0] + ')' : 'Every badge collected!'} · each praise stamp = 1 sticker</div>`;
+  const h = `<div style="display:flex;align-items:center;gap:10px">${badgeSvg(last ? last[3] : '#D9DCE3', 30)}<div style="min-width:0;flex:1"><div class="xs mute" style="font-weight:600;letter-spacing:.02em">${STN().t.toUpperCase()}${last ? ' · ' + last[1].toUpperCase() : ''}</div>
+<div class="big"><b>${o.tot}</b><span class="small mute">${o.tot === 1 ? STN().u : STN().us}${o.here ? ' · <span style="color:#B45309;font-weight:700">+' + o.here + ' on this check</span>' : ''}</span></div></div></div>
+<div class="bar"><i style="width:${o.pct}%"></i></div><div class="xs mute">${o.nx ? (o.nx[0] - o.tot) + ' more to <b>' + o.nx[1] + '</b> (' + o.nx[0] + ')' : 'Every badge collected!'} · each praise stamp = 1 ${STN().u}</div>`;
   if(h !== STKH){ STKH = h; b.innerHTML = h; } }
 setInterval(() => { try{ stkPaint(); }catch(e){} }, 1200);
 
@@ -354,9 +359,9 @@ function layout(){
         </div><div class="xs mute" style="margin-top:6px">Shown on the picture as two gold stars and a wish. Keep each one short.</div></div></div>
     </div>
     <div class="card pad" id="saveCard" style="display:flex;flex-direction:column;gap:10px">
-      <button class="btn pri" id="bSave" type="button">Save to ${esc(nm)}'s homework</button>
-      <button class="btn out" id="bPic" type="button">Copy picture for the parent/student</button>
-      <div class="xs mute" id="saveInfo">Saving keeps the corrected copy with ${esc(nm)}'s homework, so you can open it again later.</div>
+      <div class="sv73"><button class="btn pri" id="bSave" type="button" title="Save to ${esc(nm)}'s homework">Save</button>
+      <button class="btn out" id="bPic" type="button" title="Copy the picture for the parent or student">Copy picture</button></div>
+      <div class="xs mute" id="saveInfo">Save keeps the corrected copy with ${esc(nm)}'s homework.</div>
     </div>
     <div class="card pad"><div class="h2">Earlier checks</div><div id="hist" class="hist small mute">Loading…</div></div>
   </div>
@@ -906,8 +911,8 @@ async function parentPic(){
       blocks.push({ h: 150, draw: (c, y) => { rr(c, 80, y, W - 160, 128, 20); c.fillStyle = '#F7F6FB'; c.fill();
         const bx = 140, by = y + 64; c.beginPath(); c.arc(bx, by, 36, 0, Math.PI * 2); c.fillStyle = last ? last[3] : '#E3E1EA'; c.fill(); c.beginPath(); c.arc(bx, by, 29, 0, Math.PI * 2); c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 2; c.stroke();
         c.save(); c.beginPath(); for(let i = 0; i < 10; i++){ const a = -Math.PI / 2 + i * Math.PI / 5, r2 = i % 2 ? 9 : 20; c.lineTo(bx + Math.cos(a) * r2, by + 2 + Math.sin(a) * r2); } c.closePath(); c.fillStyle = '#fff'; c.fill(); c.restore();
-        c.fillStyle = '#2B2253'; c.font = '700 20px ' + F; c.fillText('Sticker book / 贴纸收藏', 200, y + 38);
-        c.font = '400 34px ' + B; c.fillText(String(so.tot), 200, y + 80); const nw = c.measureText(String(so.tot)).width; c.font = '400 22px ' + F; c.fillStyle = '#4C4868'; c.fillText('stickers / 张贴纸' + (so.here ? ' · +' + so.here + ' today / 今天' : '') + (last ? ' · ' + last[1] + ' / ' + last[2] : ''), 200 + nw + 12, y + 79);
+        c.fillStyle = '#2B2253'; c.font = '700 20px ' + F; c.fillText(STN().t + ' / ' + STN().zh, 200, y + 38);
+        c.font = '400 34px ' + B; c.fillText(String(so.tot), 200, y + 80); const nw = c.measureText(String(so.tot)).width; c.font = '400 22px ' + F; c.fillStyle = '#4C4868'; c.fillText(STN().us + ' / ' + STN().uzh + (so.here ? ' · +' + so.here + ' today / 今天' : '') + (last ? ' · ' + last[1] + ' / ' + last[2] : ''), 200 + nw + 12, y + 79);
         c.fillStyle = '#6F6B85'; c.font = '400 19px ' + F; c.fillText(nxT, 200, y + 110); } }); } }
     if(VN.blob || VN.path){ blocks.push({ h: 64, draw: (c, y) => { rr(c, 80, y, W - 160, 48, 24); c.fillStyle = '#F1EFFC'; c.fill(); c.save(); c.strokeStyle = '#5B4FC4'; c.lineWidth = 3; c.lineCap = 'round';
         const x0 = 112, y0 = y + 24; c.beginPath(); c.arc(x0, y0, 10, Math.PI, 0); c.stroke(); c.fillStyle = '#5B4FC4'; rr(c, x0 - 13, y0 - 2, 6, 12, 3); c.fill(); rr(c, x0 + 7, y0 - 2, 6, 12, 3); c.fill(); c.restore();
