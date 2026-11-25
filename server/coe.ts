@@ -441,6 +441,11 @@ async function teacherHomeLive(db: any, who: any, base: any) {
   const tc = tableOf(TC, "ST CODE"), trows = tableOf(TR, "Trial date").rows, reported: Record<string, number> = {};
   trows.forEach((r) => { const d = ymdOf(cell(r, 2)); if (d) reported[d + "|" + String(cell(r, 5)).trim().toLowerCase()] = 1; });
   ((base && base.special) || []).forEach((x: any) => { if (x && x.type === "Trial" && !x.reportMissing) reported[x.date + "|" + String(x.student).trim().toLowerCase()] = 1; });
+  // v65 (25 Nov, Misty: "Yufan is showing but his trial report is already finished"): the trial reports table itself also counts, so a
+  // report never shows as missing while the TR-DATA copy is being refreshed · by date + name and by date + student code
+  const repCode: Record<string, number> = {};
+  { const { data: TRL } = await db.from("coe_trials").select("trial_date,student,student_code,redo").is("removed_at", null).gte("trial_date", addD(monthStart, -62)).limit(3000);
+    (TRL || []).forEach((t: any) => { const d = String(t.trial_date || "").slice(0, 10); if (!d || t.redo) return; reported[d + "|" + String(t.student || "").trim().toLowerCase()] = 1; if (t.student_code) repCode[d + "|" + String(t.student_code).trim().toUpperCase()] = 1; }); }
   const special: any[] = [], typeByEvent: Record<string, any> = {};
   // 18 Nov (Misty): only the first trial (first touch) has the official trial report; a later trial with another teacher never asks for one
   const firstTr: Record<string, string> = {};
@@ -451,7 +456,7 @@ async function teacherHomeLive(db: any, who: any, base: any) {
   const laterTrial = (r: any, d: string) => { const ce = String(cell(r, 3) || "").trim().toUpperCase(); if (ce && enrolledBy[ce] && enrolledBy[ce] < d) return true; const k = String(cell(r, 3) || cell(r, 4) || "").trim().toUpperCase(), f = firstTr[k]; return !!f && f < d + " " + hm(cell(r, 0)) && (Date.parse(d) - Date.parse(f.slice(0, 10))) / 864e5 <= 60; };
   tc.rows.forEach((r) => { if (cell(r, 12)) typeByEvent[String(cell(r, 12))] = cell(r, 2); const d = ymdOf(cell(r, 0)); if (!d || !nameIn(cell(r, 5), lc) || d < monthStart) return;
     special.push({ date: d, time: hm(cell(r, 0)), type: cell(r, 2), code: cell(r, 3), student: cell(r, 4), book: cell(r, 6), cefr: cell(r, 7), units: cell(r, 8), status: cell(r, 2) === "Trial" && !cell(r, 9) && laterTrial(r, d) ? (String(cell(r, 3) || "").trim().toUpperCase() in enrolledBy && enrolledBy[String(cell(r, 3) || "").trim().toUpperCase()] < d ? "Trying a new teacher · no trial report" : "Second trial · report by the first teacher") : cell(r, 9),
-      reportMissing: cell(r, 2) === "Trial" && !/cancel/i.test(String(cell(r, 9))) && !laterTrial(r, d) && !reported[d + "|" + String(cell(r, 4)).trim().toLowerCase()] }); });
+      reportMissing: cell(r, 2) === "Trial" && !/cancel/i.test(String(cell(r, 9))) && !laterTrial(r, d) && !reported[d + "|" + String(cell(r, 4)).trim().toLowerCase()] && !repCode[d + "|" + String(cell(r, 3) || "").trim().toUpperCase()] }); });
   special.sort((a, b) => b.date.localeCompare(a.date));
   // 2824 (24 Nov, Kat's Students: Fan Fan enrolled after her trial but showed "—"): the class table's status column is filled only by some
   // follow-ups; an enrolment on record (coe_packages, bought on or after the trial day) now reads "Enrolled" here too
