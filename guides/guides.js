@@ -7,7 +7,7 @@ window.COE_GUIDES=[
   parts:[
    {h:'The screen',p:'Each number points to one part.',img:'img/screen.webp'},
    {h:'Paste the photo the student sent',p:'Copy it in WeChat, click the homework area, then press ⌘ Cmd + V (Ctrl + V on Windows). If it is one of our own pictures, the app keeps only the homework, so the logo shows once.',img:'img/paste.webp'},
-   {h:'Five steps, photo to parent',img:'img/flow.webp'},
+   {h:'Five steps, photo to parent',img:'img/flow-2930.webp'},
    {h:'Red, not blue or green',red:1,p:'Blue and green are for comments and praise only.',img:'img/redblue.webp'},
    {h:'Typing a correction in four taps',p:'Put it just below or beside the word, never on top. Double-click a tag to change its words.',img:'img/typing.webp'},
    {h:'Before you send',list:['Every correction is red and beside the mistake','"To fix" matches the mistakes you marked','Two Stars and a Wish has all three lines filled in','You tapped Copy picture and saw "Saved to … homework" (Copy picture saves the check for you)','You pasted the picture, not a screenshot of the screen']}
