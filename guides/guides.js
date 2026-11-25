@@ -2,7 +2,7 @@
    To add or update a guide, edit this list only. `updated` shows a "New" or "Updated" badge for 14 days. */
 window.COE_GUIDES=[
  {id:'check-homework',title:'Check homework',icon:'check',updated:'2026-11-25',
-  sum:'Mark a photo of homework and send the parent a picture.',open:'../homework/',
+  sum:'Mark a photo of homework and send the parent a picture.',open:'../homework/',cover:'img/flow.webp',mins:2,
   rule:'Type corrections in RED, beside the mistake. Only red counts as "To fix" for the parent.',
   parts:[
    {h:'The screen',p:'Each number points to one part.',img:'img/screen.webp'},
