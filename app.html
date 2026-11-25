@@ -7545,7 +7545,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2373;
+const COE_V = 2374;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -44096,6 +44096,112 @@ window.pass2375 = function(i){ try{ var x = (window.DK2341q || [])[i] || null; i
 })();
 </script>
 <style id="u2425">#v-mtoday>#talk2425m{order:2}@media (max-width:760px){#talk2425>div:nth-child(2){grid-template-columns:1fr!important}}</style>
+<script id="b2895">
+/* 2895 · Activity history by class (Misty 25 Nov 13:28: "more professional, historical, traceable and accountable").
+   Management: a teacher's sheet › "Activity history" · one block per class with every save, video, reminder and message (server times),
+   the four chips (In · H · N · V) as they stood after each step, and what the teacher's own Today card showed (recorded from today on).
+   Teachers' Today cards send their chip states to coe-act (only when they change). */
+(function(){
+  if(window.__2895) return; window.__2895 = 1;
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-act';
+  const call = b => fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN }, b)) }).then(x => x.json());
+  const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const PHd = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const shift = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+  const hm = iso => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' });
+  const hms = iso => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Manila' });
+  const dOf = iso => new Date(Date.parse(iso) + 8 * 3600e3).toISOString().slice(0, 10);
+  const dayLab = d => new Date(d + 'T12:00:00+08:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const short = d => new Date(d + 'T12:00:00+08:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const css = document.createElement('style'); css.textContent = '.ah95 .blk{border:1px solid #ECEAF1;border-radius:16px;padding:6px 14px;margin-top:12px;background:#fff}'
+    + '.ah95 .bh{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0 6px}.ah95 .bh b{color:#2F2752;font-size:15px}.ah95 .bdg{font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px}'
+    + '.ah95 .ok{background:#E3F4EC;color:#1D7A52}.ah95 .bad{background:#FCECE7;color:#B4472F}.ah95 .mid{background:#FFF4DC;color:#8A5A00}'
+    + '.ah95 .r{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid #F2F1F6;font-size:13.5px}'
+    + '.ah95 .r .t{font-variant-numeric:tabular-nums;color:#4B4866;font-weight:600}.ah95 .r .s{color:#6F6B85;font-size:12.5px;margin-top:1px}.ah95 .r.al b{color:#B8621B}.ah95 .r.sn b{color:#3C3489}.ah95 .r.miss b{color:#B4472F}'
+    + '.ah95 .cp{display:inline-flex;gap:3px}.ah95 .cp i{font-style:normal;width:24px;height:22px;border-radius:6px;display:inline-grid;place-items:center;font-size:11px;font-weight:700}'
+    + '.ah95 .cp .d{background:#E3F4EC;color:#1D7A52}.ah95 .cp .n{background:#FCECE7;color:#B4472F}.ah95 .cp .l{background:#F1F0F5;color:#A3A0B5}';
+  document.head.appendChild(css);
+  const LAB = ['In', 'H', 'N', 'V'];
+  const chips = st => st ? '<span class="cp">' + st.split('').map((x, i) => '<i class="' + x + '">' + LAB[i] + '</i>').join('') + '</span>' : '';
+  /* the four chips after an event, the way the Today card works them out */
+  function state(c, t, first){ const T = Date.parse(t), done = k => c.ev.some(e => (Array.isArray(k) ? k.includes(e.k) : e.k === k) && Date.parse(e.at) <= T), st = Date.parse(c.start), en = Date.parse(c.end);
+    return (done('in') ? 'd' : T >= st - (first ? 40 : 5) * 6e4 ? 'n' : 'l') + (done(['hw', 'hwpic']) ? 'd' : T >= st ? 'n' : 'l') + (done('note') ? 'd' : T >= en ? 'n' : 'l') + (done('vid') ? 'd' : T >= en ? 'n' : 'l'); }
+  const isTrial = c => /trial|试听|(^|-)\s*TC\s*$/i.test(c.title || '');
+  let S = null;
+  async function load(name, day){ S = { name, day, r: null, err: '', miss: S && S.name === name ? S.miss : false }; paint();
+    try{ const r = await call({ op: 'day', teacher: name, day }); if(!S || S.day !== day || S.name !== name) return; if(!r || !r.ok) throw new Error((r && r.error) || 'Could not load'); S.r = r; }
+    catch(e){ if(S && S.day === day) S.err = String(e.message || e); } paint(); }
+  function badge(c){ if(c.cancelled) return '<span class="bdg mid">Cancelled</span>'; if(isTrial(c)) return '<span class="bdg mid">Trial</span>';
+    const now = new Date().toISOString(), s = state(c, now), late = c.ev.find(e => e.k === 'vid' && e.late), cs = late && /case (\S+)/.exec(late.s || '');
+    if(s === 'dddd'){ const last = c.ev.filter(e => ['in', 'hw', 'hwpic', 'note', 'vid'].includes(e.k)).map(e => e.at).sort().pop(); return late ? '<span class="bdg bad">Video late' + (cs ? ' · ' + E(cs[1]) : '') + '</span>' : '<span class="bdg ok">All done' + (last ? ' ' + E(dOf(last) === S.day ? hm(last) : short(dOf(last)) + ' ' + hm(last)) : '') + '</span>'; }
+    const m = []; if(s[0] !== 'd') m.push('I’m in'); if(s[1] !== 'd') m.push('homework'); if(s[2] !== 'd') m.push('note'); if(s[3] !== 'd') m.push('video');
+    return Date.parse(c.end) > Date.now() ? '<span class="bdg mid">In progress</span>' : '<span class="bdg bad">Missing: ' + E(m.join(', ')) + '</span>'; }
+  const ICO = { in: '\u{1F552}', note: '\u{1F4DD}', hw: '\u{1F4D8}', hwpic: '\u{1F5BC}️', vid: '\u{1F3AC}', alert: '\u{1F514}', msg: '✉️', due: '⏰', seen: '\u{1F4F1}' };
+  function rowHtml(c, e, first){ const when = dOf(e.at) === S.day ? hms(e.at) : short(dOf(e.at)) + '<br>' + hm(e.at), cls = e.k === 'alert' || e.k === 'msg' ? 'al' : e.k === 'seen' ? 'sn' : e.miss ? 'miss' : '';
+    const st = !c ? '' : e.k === 'seen' ? e.st : (e.k === 'alert' || e.k === 'msg') ? state(c, e.at, first) : state(c, e.at, first);
+    return '<div class="r ' + cls + '"><span class="t">' + (e.k === 'due' ? '23:59' : when) + '</span><div><b>' + (ICO[e.k] || '') + ' ' + E(e.t) + (e.k === 'seen' ? ' <span class="s" style="font-weight:400">(her screen' + (e.dev ? ' · ' + E(e.dev) : '') + ')</span>' : '') + '</b>' + (e.s ? '<div class="s">' + E(e.s) + '</div>' : '') + '</div>' + (c && !c.cancelled && !isTrial(c) ? chips(st) : '<span></span>') + '</div>'; }
+  function paint(){ if(!S) return; const r = S.r;
+    let h = '<div class="ah95"><h1 style="padding-right:48px">Activity history</h1><div class="small mute">' + E(typeof tName === 'function' ? tName(S.name) : S.name) + ' · class by class · server times (Philippine time) · the chips show In · Homework · Note · Video after each step</div>'
+      + '<div class="row" style="gap:8px;align-items:center;margin:12px 0"><button class="btn sm ghost" onclick="ah2895.day(-1)">‹</button><b class="grow" style="text-align:center">' + E(dayLab(S.day)) + '</b><button class="btn sm ghost" onclick="ah2895.day(1)"' + (S.day >= PHd() ? ' disabled' : '') + '>›</button></div>'
+      + '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn sm ' + (S.miss ? 'ghost' : 'teal') + '" onclick="ah2895.miss(false)">All classes</button><button class="btn sm ' + (S.miss ? 'teal' : 'ghost') + '" onclick="ah2895.miss(true)">Missing or late only</button><button class="btn sm ghost" onclick="actLog(\'' + E(S.name) + '\',\'' + S.day + '\')">Every save (log)</button></div>';
+    if(S.err) h += '<div class="empty">' + E(S.err) + '</div>';
+    else if(!r) h += '<div class="empty" aria-busy="true" style="color:#A3A0B5">Loading this day…</div>';
+    else { const firstId = (r.classes.filter(c => !c.cancelled)[0] || {}).id;
+      let L = r.classes; if(S.miss) L = L.filter(c => !c.cancelled && !isTrial(c) && (state(c, new Date().toISOString()) !== 'dddd' || c.ev.some(e => e.k === 'vid' && e.late)));
+      if(!r.classes.length) h += '<div class="empty">No classes on this day.</div>';
+      else if(!L.length) h += '<div class="empty">Every class that day was complete and on time.</div>';
+      L.forEach(c => { h += '<div class="blk"><div class="bh"><b>' + E(c.student || c.code) + ' · ' + E(hm(c.start)) + '–' + E(hm(c.end)) + '</b><span class="small mute">' + E([c.code, String(c.book || '').replace(/([a-z])([A-Z])/g, '$1 $2')].filter(Boolean).join(' · ')) + '</span>' + badge(c) + '</div>'
+        + (c.ev.length ? c.ev.map(e => rowHtml(c, e, c.id === firstId)).join('') : '<div class="r"><span class="t"></span><div class="s">Nothing saved for this class.</div><span></span></div>') + '</div>'; });
+      if(!S.miss && r.other.length) h += '<div class="blk"><div class="bh"><b>The day</b><span class="small mute">time-in, reminders and messages not about one class</span></div>' + r.other.map(e => rowHtml(null, e)).join('') + '</div>';
+      h += '<div class="small mute" style="margin-top:10px">\u{1F4F1} rows are what the teacher’s own Today card showed, recorded from 25 Nov 2026. Earlier days show the chips worked out from the records.</div>'
+        + '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn teal" onclick="ah2895.pic()">Copy picture for the teacher</button><button class="btn ghost" onclick="ah2895.text()">Copy as text</button></div>'; }
+    h += '</div>';
+    if($('sheet').classList.contains('on') && $('sheetBody').querySelector('#ah95')) $('sheetBody').querySelector('#ah95').innerHTML = h; else { openSheet('<div id="ah95">' + h + '</div>'); try{ $('sheet').classList.add('wide'); }catch(e){} } }
+  function text(){ if(!S || !S.r) return ''; const r = S.r, firstId = (r.classes.filter(c => !c.cancelled)[0] || {}).id;
+    let t = 'CupOfEnglish · activity history\nTeacher ' + (typeof tName === 'function' ? tName(S.name) : S.name) + ' · ' + dayLab(S.day) + '\nServer times, Philippine time. Chips: In · Homework · Note · Video (✓ done, ✗ to do, · not due yet).\n';
+    const sym = st => st ? ' [' + st.split('').map((x, i) => LAB[i] + (x === 'd' ? '✓' : x === 'n' ? '✗' : '·')).join(' ') + ']' : '';
+    (S.miss ? r.classes.filter(c => !c.cancelled && !isTrial(c) && (state(c, new Date().toISOString()) !== 'dddd' || c.ev.some(e => e.k === 'vid' && e.late))) : r.classes).forEach(c => { t += '\n' + (c.student || c.code) + ' · ' + hm(c.start) + '–' + hm(c.end) + (c.cancelled ? ' · cancelled' : '') + '\n';
+      c.ev.forEach(e => { t += '  ' + (e.k === 'due' ? '23:59' : (dOf(e.at) === S.day ? '' : short(dOf(e.at)) + ' ') + hms(e.at)) + ' · ' + e.t + (e.s ? ' · ' + e.s : '') + (c.cancelled || isTrial(c) ? '' : sym(e.k === 'seen' ? e.st : state(c, e.at, c.id === firstId))) + '\n'; }); });
+    return t; }
+  /* the picture: one class (the first missing or late one, else the first) or the whole list when short */
+  function pic(){ if(!S || !S.r) return; const r = S.r, firstId = (r.classes.filter(c => !c.cancelled)[0] || {}).id;
+    let L = r.classes.filter(c => !c.cancelled && !isTrial(c)); const bad = L.filter(c => state(c, new Date().toISOString()) !== 'dddd' || c.ev.some(e => e.k === 'vid' && e.late)); if(S.miss || bad.length) L = bad.length ? bad : L;
+    const W = 1100, rows = []; L.forEach(c => { rows.push({ h: c }); c.ev.forEach(e => rows.push({ c, e })); });
+    const H = 150 + rows.reduce((a, x) => a + (x.h ? 70 : 64), 0) + 60, cv = document.createElement('canvas'); cv.width = W * 2; cv.height = H * 2; const g = cv.getContext('2d'); g.scale(2, 2);
+    g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); const F = w => w + ' ' + '"COE Card Inter",Inter,sans-serif';
+    g.fillStyle = '#2F2752'; g.font = F('700 30px'); g.fillText((typeof tName === 'function' ? tName(S.name) : S.name) + ' · ' + dayLab(S.day), 40, 58);
+    g.fillStyle = '#6F6B85'; g.font = F('400 17px'); g.fillText('CupOfEnglish activity history · server times (Philippine time) · In · Homework · Note · Video after each step', 40, 92);
+    let y = 130; const COL = { d: ['#E3F4EC', '#1D7A52'], n: ['#FCECE7', '#B4472F'], l: ['#F1F0F5', '#A3A0B5'] };
+    const rr = (x, y0, w, h0, rad) => { g.beginPath(); g.moveTo(x + rad, y0); g.arcTo(x + w, y0, x + w, y0 + h0, rad); g.arcTo(x + w, y0 + h0, x, y0 + h0, rad); g.arcTo(x, y0 + h0, x, y0, rad); g.arcTo(x, y0, x + w, y0, rad); g.closePath(); };
+    rows.forEach(x => { if(x.h){ const c = x.h; y += 14; g.fillStyle = '#2F2752'; g.font = F('700 21px'); g.fillText((c.student || c.code) + ' · ' + hm(c.start) + '–' + hm(c.end), 40, y + 26); y += 56; return; }
+      const e = x.e, c = x.c, st = e.k === 'seen' ? e.st : state(c, e.at, c.id === firstId);
+      g.fillStyle = '#ECEAF1'; g.fillRect(40, y - 4, W - 80, 1);
+      g.fillStyle = '#4B4866'; g.font = F('700 16px'); g.fillText(e.k === 'due' ? '23:59' : (dOf(e.at) === S.day ? '' : short(dOf(e.at)) + ' ') + hm(e.at), 40, y + 24);
+      g.fillStyle = e.k === 'alert' || e.k === 'msg' ? '#B8621B' : e.miss ? '#B4472F' : e.k === 'seen' ? '#3C3489' : '#2F2752'; g.font = F('600 16px');
+      let t1 = e.t + (e.k === 'seen' ? ' (her screen)' : ''); while(g.measureText(t1).width > 640 && t1.length > 10) t1 = t1.slice(0, -2); g.fillText(t1, 170, y + 20);
+      if(e.s){ g.fillStyle = '#6F6B85'; g.font = F('400 14px'); let t2 = e.s; while(g.measureText(t2).width > 640 && t2.length > 10) t2 = t2.slice(0, -2) ; g.fillText(t2 + (t2 !== e.s ? '…' : ''), 170, y + 42); }
+      st.split('').forEach((s0, i) => { const cx = W - 40 - (4 - i) * 46; g.fillStyle = COL[s0][0]; rr(cx, y + 6, 40, 32, 8); g.fill(); g.fillStyle = COL[s0][1]; g.font = F('700 14px'); g.textAlign = 'center'; g.fillText(LAB[i], cx + 20, y + 27); g.textAlign = 'left'; });
+      y += 64; });
+    g.fillStyle = '#6F6B85'; g.font = F('400 14px'); g.fillText('Kept by the CupOfEnglish server; cannot be edited from the app.', 40, H - 24);
+    cv.toBlob(async bl => { try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': bl })]); toast('Picture copied · paste it in WeChat'); }
+      catch(e){ const u = URL.createObjectURL(bl); openSheet('<h1>Activity history picture</h1><img src="' + u + '" style="width:100%;border:1px solid #ECEAF1;border-radius:12px"><div class="small mute" style="margin-top:8px">Press and hold (or right-click) the picture to copy or save it.</div>'); } }, 'image/png'); }
+  window.ah2895 = { open: (name, day) => load(name, day || PHd()), day: n => { if(!S) return; const d = shift(S.day, n); if(d > PHd()) return; load(S.name, d); }, miss: v => { if(S){ S.miss = !!v; paint(); } },
+    text: async () => { const t = text(); try{ await navigator.clipboard.writeText(t); toast('Copied ✓ · paste it in WeChat'); }catch(e){ openSheet('<h1>Copy as text</h1><textarea style="width:100%;height:60vh">' + E(t) + '</textarea>'); } }, pic };
+  /* the button on a teacher's sheet */
+  const th = window.tchHtml; if(typeof th === 'function'){ const w = function(name){ const h = th.apply(this, arguments); try{ return h.replace(/(<button class="btn ghost sm" onclick="actLog\()/, '<button class="btn teal sm" onclick="ah2895.open(\'' + E(name).replace(/'/g, '&#39;') + '\')">Activity history</button>$1'); }catch(e){ return h; } }; window.tchHtml = w; try{ tchHtml = w; }catch(e){} }
+  /* teacher: what her Today card shows, sent when it changes */
+  let SIG = '', BUSY = 0;
+  function idOf(card){ const b = card.querySelector('[onclick^="classBrief("]'); return b && (b.getAttribute('onclick').match(/classBrief\('([^']+)'/) || [])[1]; }
+  function send(){ try{ if(typeof D === 'undefined' || !D || D.mgr || !TOKEN || document.hidden || BUSY) return; if(typeof VIEW !== 'undefined' && VIEW !== 'today') return; const v = $('v-today'); if(!v) return;
+      const m = new Map(); v.querySelectorAll('.cls').forEach(card => { const id = idOf(card); if(!id || m.has(id)) return; const S0 = [...card.querySelectorAll('.cs93 > span')]; if(S0.length < 4) return;
+        m.set(id, S0.slice(0, 4).map(x => x.classList.contains('d') ? 'd' : x.classList.contains('n') ? 'n' : 'l').join('')); });
+      if(!m.size) return; const cards = [...m].map(([id, st]) => ({ id, st })), sig = D.today + JSON.stringify(cards); if(sig === SIG) return;
+      const k = 'coe.cs2895.' + D.today; let prev = ''; try{ prev = localStorage.getItem(k) || ''; }catch(e){} if(prev === sig){ SIG = sig; return; }
+      BUSY = 1; const ua = navigator.userAgent, dev = (/iPhone|Android.+Mobile/.test(ua) ? 'phone' : /iPad|Tablet|Android/.test(ua) ? 'tablet' : 'laptop');
+      call({ op: 'seen', day: D.today, cards, dev }).then(r => { if(r && r.ok){ SIG = sig; try{ localStorage.setItem(k, sig); }catch(e){} } }).catch(() => {}).finally(() => { BUSY = 0; }); }catch(e){ BUSY = 0; } }
+  setInterval(send, 20000); setTimeout(send, 6000); document.addEventListener('visibilitychange', () => { if(!document.hidden) setTimeout(send, 3000); });
+})();
+</script>
 <script id="b2886">
 /* 2886 · Guides (Misty 25 Nov): one "how to" screen for teachers and management (guides/). Red dot while a guide is new or updated and not opened. */
 (function(){
