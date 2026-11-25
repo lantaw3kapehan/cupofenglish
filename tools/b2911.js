@@ -184,7 +184,7 @@
     (window.CN2195 || []).forEach(h => { let a = h.a, b = h.b || h.a; for(let d = a; d <= b; d = new Date(Date.parse(d + 'T00:00:00Z') + 864e5).toISOString().slice(0, 10)){ add(d, 'hol', h.n, (h.k === 'h' ? 'Holiday in China.' : 'China.') + (h.t ? ' ' + h.t : '')); if(d === b) break; } });
     (r.events || []).forEach(x => add(x.day, 'evt', x.title, (x.start ? x.start + (x.end ? ' to ' + x.end : '') : 'All day') + '.' + (x.repeat ? ' ' + ({ week: 'Every week', month: 'Every month', year: 'Every year' }[x.repeat]) + (x.until ? ' until ' + dShort(x.until) : '') + '.' : '') + (x.note ? ' ' + x.note : ''), { s: x.title, ev: x }));
     (r.expiries || []).forEach(x => add(x.day, 'pkg', x.name + "'s Package Ends", x.code + (x.teachers && x.teachers.length ? ', Teacher ' + x.teachers.join(', Teacher ') : '') + (x.status ? ', ' + x.status : '') + '.', { code: x.code, s: x.name + ' Ends' }));
-    L.forEach(x => { if(x.done) x.st = ['ok', 'Paid ' + dShort(x.paidOn).replace(/ \d{4}$/, '')]; else if(x.kind === 'gov' && x.day < t) x.st = ['late', 'Not Recorded']; else if(x.due && (Date.parse(x.day) - Date.parse(t)) / 864e5 <= 5) x.st = ['soon', 'Soon']; });
+    L.forEach(x => { if(x.done) x.st = ['ok', 'Paid ' + dShort(x.paidOn).replace(/ \d{4}$/, '')]; else if(x.kind === 'gov' && x.day < t) x.st = ['late', 'Not Recorded']; else if(x.due && x.day >= t && (Date.parse(x.day) - Date.parse(t)) / 864e5 <= 5) x.st = ['soon', 'Soon']; });
     const ord = { evt: 0, pay: 1, gov: 2, fb: 3, tr: 4, memo: 5, pkg: 6, hol: 7 };
     return L.sort((a, b) => a.day.localeCompare(b.day) || ord[a.kind] - ord[b.kind]);
   }
