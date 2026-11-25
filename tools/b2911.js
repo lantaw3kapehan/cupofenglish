@@ -23,15 +23,15 @@
     fam: SV('<circle cx="8" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.4"/><path d="M2.8 19.5c.6-3.2 2.7-5 5.2-5s4.6 1.8 5.2 5M13.6 19.5c.4-2.5 1.8-3.9 3.4-3.9s3 1.4 3.4 3.9"/>'),
     l: SV('<path d="M15 6l-6 6 6 6"/>'), r: SV('<path d="M9 6l6 6-6 6"/>')
   };
-  const KIND = {
-    pay:  { l: 'Payroll', c: '#2F2752', bg: '#EEEDF5' },
-    gov:  { l: 'Government', c: '#8A4B0F', bg: '#FCF1E3' },
-    fb:   { l: 'Feedback', c: '#0E6F68', bg: '#F1F0F5' },
-    memo: { l: 'Memos', c: '#3C3489', bg: '#EEEDFE' },
-    tr:   { l: 'Trainings', c: '#1D7A52', bg: '#E3F4EC' },
-    hol:  { l: 'Holidays', c: '#B4472F', bg: '#FCECE7' },
-    pkg:  { l: 'Packages', c: '#5E5A76', bg: '#F1F0F5' },
-    evt:  { l: 'Team Events', c: '#0B7F8A', bg: '#F1F0F5' }
+  const KIND = {   /* 2923 (Misty 17:38 "per category, ensure colours are different"): eight clearly different colours, all dark enough for white text */
+    pay:  { l: 'Payroll', c: '#2F2752', bg: '#ECEAF4' },
+    gov:  { l: 'Government', c: '#A15C07', bg: '#FBF0E1' },
+    fb:   { l: 'Feedback', c: '#0E6F68', bg: '#E4F2F0' },
+    memo: { l: 'Memos', c: '#6B46C1', bg: '#F0EBFB' },
+    tr:   { l: 'Trainings', c: '#3B7D23', bg: '#EAF4E4' },
+    hol:  { l: 'Holidays', c: '#C0392B', bg: '#FBEAE8' },
+    pkg:  { l: 'Packages', c: '#5B6B82', bg: '#EDF0F4' },
+    evt:  { l: 'Team Events', c: '#B0306E', bg: '#FAE8F1' }
   };
   const sv = d => '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
   const KI = {
