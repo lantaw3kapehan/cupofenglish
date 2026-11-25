@@ -48608,11 +48608,11 @@ body.is-mgr #sheet #sheetBody .ov72 .ax em{display:block;font-style:normal;color
     const now = Date.now(), C = (STU.cls || []).filter(c => c && c.start), done = C.filter(c => !c.cancelled && Date.parse(c.start) < now).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
     const r = STU.r || {}, trial = r.trial && r.trial.date, first = done[0] && done[0].start;
     const since = first ? dd(first) : ''; const mo = first ? Math.max(0, Math.round((now - Date.parse(first)) / (30.44 * 864e5))) : 0;
-    const units = done.reduce((a, c) => a + Math.max(0.5, Math.round((Date.parse(c.end) - Date.parse(c.start)) / 6e5) / 5), 0);
+    const units = done.reduce((a, c) => a + (Math.round((Date.parse(c.end) - Date.parse(c.start)) / 6e4 / 25) / 2 || 0.5), 0);
     const jy = '<div class="cd jy"><div class="top"><b>With us ' + (mo < 1 ? 'under a month' : mo + ' month' + (mo === 1 ? '' : 's')) + '</b><span>' + (since ? 'since ' + since : '') + '</span></div><div class="ln">'
       + (trial ? '<div class="ms"><i style="background:#B0306E"></i><b>Trial</b>' + E(dd(trial + 'T12:00:00+08:00')) + '</div>' : '')
       + (first ? '<div class="ms m"><i style="background:#2B6CB0"></i><b>First class</b>' + E(since) + '</div>' : '')
-      + '<div class="ms l"><i style="background:#0E6F68"></i><b>Today</b>' + E(units ? units.toLocaleString('en-US') + ' lessons done' : dd(new Date().toISOString())) + '</div></div></div>';
+      + '<div class="ms l"><i style="background:#0E6F68"></i><b>Today</b>' + E(units ? units.toLocaleString('en-US') + ' units used' : dd(new Date().toISOString())) + '</div></div></div>';
     const L = kv(/lessons left/i), CE = kv(/cefr/i), LA = kv(/latest/i), ST = kv(/sticker|k-st/i);
     const mStart = new Date(Date.parse(new Date().toISOString().slice(0, 7) + '-01T00:00:00+08:00')); const thisM = C.filter(c => !c.cancelled && Date.parse(c.start) >= mStart.getTime() && Date.parse(c.start) < now).length;
     const up = C.filter(c => !c.cancelled && Date.parse(c.end) > now).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
@@ -48627,8 +48627,8 @@ body.is-mgr #sheet #sheetBody .ov72 .ax em{display:block;font-style:normal;color
       + tile('cls', '#2E9E6F', 'Classes · ' + MN[new Date().getMonth()], String(thisM), 'held so far')
       + tile('cls', '#B0306E', 'Next Class', up[0] ? wk(up[0].start) + ' ' + hm(up[0].start) : '—', up[0] ? dd(up[0].start) : 'nothing booked') + '</div>';
     const rows = up.slice(0, 6).map(c => '<div class="r"><b>' + E(hm(c.start)) + '</b><i style="background:' + BKC(c.book || '') + '"></i><span>' + E(wk(c.start) + ' ' + dd(c.start).replace(/ \d{4}$/, '')) + '<span class="bk">' + E(String(c.book || '').replace(/([a-z])([A-Z])/g, '$1 $2')) + '</span></span><span class="d">' + E(c.teacher || '') + '</span></div>').join('') || '<div class="r"><span class="d" style="grid-column:1/-1">No classes booked.</span></div>';
-    const months = []; for(let i = 5; i >= 0; i--){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); months.push(d.toISOString().slice(0, 7)); }
-    const per = months.map(m => C.filter(c => !c.cancelled && mnl(c.start).toISOString().slice(0, 7) === m && Date.parse(c.start) < now).reduce((a, c) => a + Math.max(0.5, Math.round((Date.parse(c.end) - Date.parse(c.start)) / 6e5) / 5), 0));
+    const months = []; for(let i = 5; i >= 0; i--){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); months.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')); }
+    const per = months.map(m => C.filter(c => !c.cancelled && mnl(c.start).toISOString().slice(0, 7) === m && Date.parse(c.start) < now).reduce((a, c) => a + (Math.round((Date.parse(c.end) - Date.parse(c.start)) / 6e4 / 25) / 2 || 0.5), 0));
     const mx = Math.max(1, ...per); const sc = months.map(m => { const f = fb.find(x => x.month === m); return f ? f.total : ''; });
     const chart = '<div class="cs">' + per.map((u, i) => '<div class="' + (i === 5 ? 'cur' : '') + '"><b>' + (u ? u.toLocaleString('en-US') : '') + '</b><i style="height:' + Math.round(u / mx * 100) + '%"></i></div>').join('') + '</div><div class="ax">' + months.map((m, i) => '<span>' + MN[+m.slice(5, 7) - 1] + '<em>' + (sc[i] ? sc[i] + '/100' : '&nbsp;') + '</em></span>').join('') + '</div>';
     const g2 = '<div class="g2"><div class="cd"><h3><span>Coming Classes · ' + up.length + '</span><span>' + E(new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })) + '</span></h3>' + rows + '</div><div class="cd"><h3><span>Lessons Used · Last 6 Months</span><span>score /100 under each month</span></h3>' + chart + '</div></div>';
