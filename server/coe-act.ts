@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-act v4 (2898 guide views) · v1 (25 Nov 2026 · 2895, Misty: "more professional, historical, traceable and accountable")
+// CupOfEnglish · coe-act v5 (2908 growth · 2898 guide views) · v1 (25 Nov 2026 · 2895, Misty: "more professional, historical, traceable and accountable")
 // The class-by-class history of one teacher's day, from the records the app already keeps, plus what her Today card showed.
 // POST { token, op, ... }:
 //   seen { day, cards: [{ id, st }] }   teacher → saves what her Today card shows (st = 4 letters In/H/N/V: d done, n to do, l later)
@@ -57,6 +57,14 @@ Deno.serve(async (req: Request) => {
       const res: Record<string, any> = {};
       for (const [g, o] of Object.entries(per) as any) { const names = Object.keys(o.who); res[g] = { views: o.views, teachers: names.length, ...(mgmt ? { who: names.map((n) => ({ name: n, n: o.who[n].n, last: o.who[n].last })).sort((x, y) => y.last.localeCompare(x.last)), not: team.filter((t) => !names.some((n) => n.toLowerCase() === t.toLowerCase())) } : {}) }; }
       return out({ ok: true, team: team.length, mgmt, g: res, ...(mgmt ? { teamNames: team } : {}) });
+    }
+
+    if (op === "growth") {   // 2908: management › Growth (trials → students, new and renewed packages, sources, renewals coming up)
+      if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
+      const [g, f] = await Promise.all([db.rpc("coe_growth", { nm: 6 }), db.rpc("coe_fin_growth")]);
+      if (g.error) throw new Error(g.error.message);
+      const fm: any = (f.data || {}) as any, more = fm.more || {};
+      return out({ ok: true, g: g.data, pipe: more.pipe || null, owe: more.owe || [], renewing: fm.renewing || null, capacity: fm.capacity || null, price: fm.price || null });
     }
 
     if (op === "day") {
