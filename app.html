@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2426;
+const COE_V = 2427;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -10357,7 +10357,7 @@ toast(t.student + ' enrolled · trial and enquiry updated'); if(VIEW === 'trials
     return { C: C, by: by }; }
   const agr = code => (typeof AGM !== 'undefined' && AGM && typeof agrOf === 'function') ? agrOf(code) : undefined;
   const agrBit = (o) => { if(!o || !o.active || o.shared) return ''; const a = agr(o.code); if(a === undefined) return ''; const c = esc(o.code);
-    return a && a.how !== 'Sent' ? '<span class="chip green" style="font-size:11px">Agreement</span>' : a ? '<span class="chip" style="font-size:11px;cursor:pointer;color:#90612D" onclick="event.stopPropagation();agrOpen({code:\'' + c + '\'})">Agreement sent ' + esc(typeof tfuDay === 'function' ? tfuDay(a.at) : '') + ' · remind</span>' : '<span class="chip coral" style="font-size:11px;cursor:pointer" onclick="event.stopPropagation();agrOpen({code:\'' + c + '\'})">No agreement · send</span>'; };
+    return a && a.how !== 'Sent' ? '<span class="chip green agok" style="font-size:11px">Agreement</span>' : a ? '<span class="chip" style="font-size:11px;cursor:pointer;color:#90612D" onclick="event.stopPropagation();agrOpen({code:\'' + c + '\'})">Agreement sent ' + esc(typeof tfuDay === 'function' ? tfuDay(a.at) : '') + ' · remind</span>' : '<span class="chip coral" style="font-size:11px;cursor:pointer" onclick="event.stopPropagation();agrOpen({code:\'' + c + '\'})">No agreement · send</span>'; };
   window.stF = function(f){ STF = f; renderAStudents(); };
   /* 758 · search */
   const norm = v => String(v == null ? '' : v).toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
@@ -47470,5 +47470,55 @@ body.is-mgr #app #v-mtoday > #enqTd::before{position:absolute!important;top:16px
 #app #v-teachers .tc2-bar > span{text-transform:capitalize!important;letter-spacing:0!important;font-size:12.5px!important;font-weight:600!important}
 #app #v-teachers .tc2-bar button{text-transform:capitalize!important}
 </style>
+<style id="css2943">
+/* 2943 (Misty 25 Nov 21:06): management Students list, best fit. One row per student on a soft grey tile, in two lines:
+   name, Chinese name and code; then teacher, books and source. The learner group is the colour of the avatar ring (legend on the
+   Learner filter), so the "Young Learners" chip is not repeated on every row. Agreement shows only when it is missing.
+   Level, Lessons Left, A Week and Valid Until sit in fixed columns under their headings. */
+#app #v-astudents .li.sa:not(#q1):not(#q2){display:grid!important;grid-template-columns:40px minmax(0,1fr) 80px 100px 210px 130px!important;align-items:center;gap:14px!important;background:#FAFAFC!important;border:0!important;border-radius:12px!important;padding:12px 16px!important;margin:0 0 8px!important;box-shadow:none!important}
+#app #v-astudents .li.sa:hover{background:#F3F2F8!important}
+#app #v-astudents .li.sa .av{width:40px;height:40px;border-radius:50%;background:#fff!important;border:2px solid var(--lb,#8C88A3);color:var(--lb,#8C88A3)!important;font-weight:700;display:grid;place-items:center}
+#app #v-astudents .li.sa[data-lb="early"]{--lb:#B0306E}#app #v-astudents .li.sa[data-lb="young"]{--lb:#2B6CB0}#app #v-astudents .li.sa[data-lb="teen"]{--lb:#6B46C1}#app #v-astudents .li.sa[data-lb="adult"]{--lb:#A15C07}
+#app #v-astudents .li.sa .lt1588{display:none!important}
+#app #v-astudents .li.sa b.ell{font-size:15.5px;color:#2B2253}
+#app #v-astudents .li.sa .grow > .small.mute.ell{display:inline}
+#app #v-astudents .li.sa .grow > div:has(> .sa-src){display:inline;font-size:13px;color:#6F6B85}
+#app #v-astudents .li.sa .grow > .small.mute.ell + div:has(> .sa-src)::before{content:' · '}
+#app #v-astudents .li.sa .grow > .tags + div:has(> .sa-src){display:block}
+#app #v-astudents .li.sa .sa-src:not(#q1){display:inline-flex!important;align-items:center;gap:4px;background:none!important;border:0!important;padding:0!important;margin:0!important;font-size:13px!important;color:#6F6B85!important}
+#app #v-astudents .li.sa .sa-src.none:not(#q1){color:#C0392B!important}
+#app #v-astudents .li.sa .chip.agok{display:none!important}
+#app #v-astudents .li.sa .tags:not(:has(> :not(.agok))){display:none!important}
+#app #v-astudents .li.sa .sa-r:not(#q1):not(#q2){display:contents!important}
+#app #v-astudents .li.sa .sa-r > *{grid-row:1;align-self:center;margin:0!important;justify-self:start;text-align:left!important}
+#app #v-astudents .li.sa > .av{grid-column:1!important;grid-row:1!important}
+#app #v-astudents .li.sa > .grow{grid-column:2!important;grid-row:1!important}
+#app #v-astudents .li.sa .sa-r > .sa-c{grid-column:3!important}
+#app #v-astudents .li.sa .sa-r > .sa-l{grid-column:4!important}
+#app #v-astudents .li.sa .sa-r > .sa-w{grid-column:5!important}
+#app #v-astudents .li.sa .sa-r > .sa-d{grid-column:6!important}
+#app #v-astudents .li.sa .sa-r .sa-l:not(#q1):not(#q2):not(#q3):not(#q4){background:none!important;border:0!important;padding:0!important;box-shadow:none!important;font-size:15px!important;font-weight:700!important;color:#2B2253!important}
+#app #v-astudents .li.sa .sa-r .sa-l.soon:not(#q1):not(#q2):not(#q3):not(#q4){color:#A15C07!important}
+#app #v-astudents .sa-h:not(#q1):not(#q2){display:grid!important;grid-template-columns:minmax(0,1fr) 80px 100px 210px 130px!important;gap:14px!important;padding:8px 16px 8px 70px!important;background:none!important;border:0!important}
+#app #v-astudents .sa-h > *{text-align:left!important;justify-self:start}
+#app #v-astudents .ltf1590 button[data-k]:not([data-k=""])::before{content:'';display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:#8C88A3;vertical-align:0}
+#app #v-astudents .ltf1590 button[data-k="early"]::before{background:#B0306E}#app #v-astudents .ltf1590 button[data-k="young"]::before{background:#2B6CB0}
+#app #v-astudents .ltf1590 button[data-k="teen"]::before{background:#6B46C1}#app #v-astudents .ltf1590 button[data-k="adult"]::before{background:#A15C07}
+@media (max-width:1100px){#app #v-astudents .li.sa{grid-template-columns:40px minmax(0,1fr)}#app #v-astudents .li.sa .sa-r{grid-column:2;grid-template-columns:80px 100px minmax(0,1fr) 120px}#app #v-astudents .sa-h{display:none!important}}
+/* 2943 · the student page (management): same look. Chips outlined with coloured words, no light teal fills, weekly times as outlined
+   dark teal chips, labels in Title Case, the numbers box on soft grey with Renew Soon as an amber outlined tile. */
+body.is-mgr #sheet .stu2 .lt1588{background:#fff!important;border:1px solid #E4E2EC!important}
+body.is-mgr #sheet .stu2 .lt1588.early{color:#B0306E!important}body.is-mgr #sheet .stu2 .lt1588.young{color:#2B6CB0!important}body.is-mgr #sheet .stu2 .lt1588.teen{color:#6B46C1!important}body.is-mgr #sheet .stu2 .lt1588.adult{color:#A15C07!important}
+body.is-mgr #sheet .stu2 .stp{background:#fff!important;border:1.5px solid currentColor!important}
+body.is-mgr #sheet .stu2 .stp.soon{color:#A15C07!important}
+body.is-mgr #sheet .stu2 .kpis:not(#q1){background:#FAFAFC!important;border:0!important}
+body.is-mgr #sheet .stu2 .kpis .k-soon:not(#q1){background:#fff!important;border:1.5px solid #A15C07!important;border-radius:12px}
+body.is-mgr #sheet .stu2 .shwk .sl:not(#q1){background:#fff!important;color:#0E6F68!important;border:1.5px solid #0E6F68!important}
+body.is-mgr #sheet .stu2 .shwk .sl b{color:#0E6F68!important}
+body.is-mgr #sheet .stu2 .lb{text-transform:capitalize!important;letter-spacing:0!important;font-size:13px!important;font-weight:600!important;color:#6F6B85!important}
+body.is-mgr #sheet .stu2 .shbk button:not(#q1){background:#fff!important;border:1px solid #E4E2EC!important;color:#0E6F68!important}
+body.is-mgr #sheet .stu2 .stat:not(#q1){background:#FAFAFC!important;border:0!important}
+</style>
+
 </body>
 </html>
