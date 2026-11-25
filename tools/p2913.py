@@ -37,7 +37,7 @@ R("""    let h = '<div class="x11-h"><div><h1>Deadlines</h1><div class="x11-sub"
 R("""    if(!r){ v.innerHTML = h + (C.err""","""    if(!r){ h = h.replace('<div class="x11-chips">', '</div><div class="x11-chips">'); v.innerHTML = h + (C.err""")
 R("""<small>' + all.filter(x => x.kind === 'tr').length + ' training · ' + all.filter(x => x.kind === 'hol').length + ' holiday days</small></div></div><div class="x11-chips">'); }""",
   """<small>' + all.filter(x => x.kind === 'tr').length + (all.filter(x => x.kind === 'tr').length === 1 ? ' training' : ' trainings') + ', ' + all.filter(x => x.kind === 'hol').length + ' holiday days</small></div></div></div><div class="x11-chips">'); }""")
-R("""'<div class="x11-t' + (late.length ? ' warn' : '') + '"><span>Needs you</span>""","""'<div class="x11-t' + (late.length ? ' warn' : '') + '"><span>Needs You</span>""")
+R("""<div class="x11-t' + (late.length ? ' warn' : '') + '"><span>Needs you</span>""","""<div class="x11-t' + (late.length ? ' warn' : '') + '"><span>Needs You</span>""")
 R("<span>Next deadline</span>","<span>Next Deadline</span>")
 R("<span>Packages ending</span>","<span>Packages Ending</span>")
 R("""(nx.day === t ? 'Today' : dLong(nx.day)) + ' · ' + E(nx.sub)""","""(nx.day === t ? 'Today' : dLong(nx.day)) + ', ' + E(nx.sub)""")
@@ -67,7 +67,7 @@ R("""['multi', 'Several teachers', multi.length]""","""['multi', 'Several Teache
 R("""    h += '<div class="x11-card"><div style="display:flex;align-items:center;gap:14px"><span class="x11-avs">' + f.kids.slice(0, 3).map(k => av(k.name, 1)).join('') + '</span><div style="min-width:0"><div class="x11-fn">' + E(f.name) + '</div><div class="x11-sub" style="margin:2px 0 0">' + (f.kids.length > 1 ? f.kids.length + ' children' : '1 child') + ' · ' + E(f.teachers.join(', ') || 'No teacher yet') + '</div></div></div>';""",
   """    const tn = a => a.map(x => 'Teacher ' + x).join(', ');
     h += '<div class="x11-hero"><div class="x11-fh"><span class="x11-avs">' + f.kids.slice(0, 3).map(k => av(k.name, 1)).join('') + '</span><div style="min-width:0"><div class="x11-fn">' + E(f.name) + '</div><div class="x11-sub" style="margin:2px 0 0">' + (f.kids.length > 1 ? f.kids.length + ' children with ' : '1 child with ') + E(tn(f.teachers) || 'no teacher yet') + '.</div></div></div>';""")
-R("""'<div class="x11-t"><span>Units left</span>""","""'<div class="x11-t"><span>Units Left</span>""")
+R("""<div class="x11-t"><span>Units left</span>""","""<div class="x11-t"><span>Units Left</span>""")
 R("""'<div class="x11-t"><span>Next class</span>""","""'<div class="x11-t"><span>Next Class</span>""")
 R("""f.kids.map(k => E(k.name) + ' ' + (k.left == null ? '–' : (+k.left).toLocaleString('en-US'))).join(' · ')""","""f.kids.map(k => E(k.name) + ' ' + (k.left == null ? '–' : (+k.left).toLocaleString('en-US'))).join(', ')""")
 R("""(pays[0] ? ' · last ' + dShort(pays[0].day) : '')""","""(pays[0] ? ', last ' + dShort(pays[0].day) : '')""")
