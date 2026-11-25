@@ -13,7 +13,17 @@ window.COE_GUIDES=[
    {h:'Before you send',list:['Every correction is red and beside the mistake','"To fix" matches the mistakes you marked','You tapped Save and saw "Saved at…"','You pasted the picture, not a screenshot of the screen']}
   ]},
  {id:'trial-feedback',title:'Trial class feedback',icon:'star',soon:1,sum:'Fill in the trial report after a trial class.'},
- {id:'meeting-id',title:'Meeting ID',icon:'video',soon:1,sum:'Find and share the class meeting ID.'},
+ {id:'meeting-id',title:'Meeting ID on VooV',icon:'video',updated:'2026-11-25T13:10',mins:2,cover:'img/cover-meet.webp',
+  sum:'Set up one recurring VooV meeting per student, so the parent keeps the same meeting ID.',
+  rule:'One RECURRING meeting per student, ending as late as VooV allows. No meeting password. Parents keep the same ID, so they are never asked to change it.',
+  parts:[
+   {h:'Name it: STUDENT NAME: COURSEWARE',p:'In capitals, so the parent and every teacher see at once whose class it is.',img:'img/meet-naming.webp'},
+   {h:'Schedule it in VooV',red:1,p:'Schedule › fill in the Topic, the class day and time (Philippine time) › change Recurring from Never to the class repeat › set the end as far as VooV allows (up to 200 classes) › Schedule.',img:'img/meet-vv1.webp'},
+   {h:'Security: no password',red:1,p:'Scroll down to Security. Leave Meeting Password and Waiting Room unticked; keep Attendees can join before host ticked.',img:'img/meet-vv2.webp'},
+   {h:'Check it and copy the ID',p:'In your meeting list the class shows Recurring next to its meeting ID. Copy that ID.',img:'img/meet-vv3.webp'},
+   {h:'Add the ID in our app',p:'On Today, or on your Schedule week calendar, tap + Meeting ID on the class (or tap the class block). Paste and save: it goes on all your upcoming classes with that student.',img:'img/meet-appid.webp'},
+   {h:'Before you send it to the parent',list:['The title is STUDENT NAME: COURSEWARE in capitals','It says Recurring, and the end is as late as VooV allows','No meeting password','The same ID is saved in our app','Send the parent the ID once; it stays the same for every class']}
+  ]},
  {id:'give-homework',title:'Give homework',icon:'book',updated:'2026-11-25',mins:2,cover:'img/cover-give.webp',open:'../homework/give.html',
   sum:'Make the homework picture after class and send it to the parent.',
   rule:'Copy a photo or worksheet from anywhere, then paste it in the Pictures box. No need to save or upload files.',
