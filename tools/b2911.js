@@ -135,6 +135,20 @@
     '#v-families .x11-chip.off{color:#6F6B85!important}#v-families .x11-chip.off small{color:#8A879C!important}#v-families .x11-chip:not(.off){color:#0E6F68!important;border-color:#9ADDE3!important}#v-families .x11-chip:not(.off) small{color:#0E6F68!important}',
     '.x11-tag,.x11-low,.x11-st{background:#fff!important;border:1px solid #E4E2EC;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600}',
     '.x11-tag{color:#0E6F68}.x11-tag.g{color:#3C3489}.x11-low{color:#9A5512}.x11-st.ok{color:#1D7A52}.x11-st.late{color:#B4472F}.x11-st.soon{color:#9A5512}',
+    /* 2920 (Misty 17:18 "aligned with the Students' calendar view"): separate rounded day tiles, solid coloured entries, faded when done, ringed when next */
+    '#v-mcal .x11-grid{border:0;gap:4px;border-radius:0;overflow:visible}',
+    '#v-mcal .x11-dw{border:0;background:none;text-align:center;font-size:12.5px;font-weight:600;letter-spacing:0;text-transform:none;color:#6C6786;padding:0 0 4px}',
+    '#v-mcal .x11-d{border:0;border-radius:10px;background:#FAFAFC;min-height:100px;padding:6px 6px 8px;gap:4px}#v-mcal .x11-d:hover{background:#F2FAFA}',
+    '#v-mcal .x11-d.we{background:#F6F5FA}#v-mcal .x11-d.x11-o{background:transparent}',
+    '#v-mcal .x11-d.t{box-shadow:inset 0 0 0 1.5px #00A3AD;background:#F2FAFA}#v-mcal .x11-d.t .x11-n span{background:none;color:#00707A;min-width:0;height:auto;padding:0}',
+    '#v-mcal .x11-d.sel{box-shadow:inset 0 0 0 2px #00A3AD}#v-mcal .x11-d.past .x11-n{opacity:.55}#v-mcal .x11-d.past .x11-p{opacity:1}',
+    '#v-mcal .x11-n{font-size:12.5px;color:#6C6786;padding-left:2px}',
+    '#v-mcal .x11-p{background:var(--c)!important;color:#fff!important;border-radius:6px;padding:5px 6px;font-size:11.5px;font-weight:700;text-align:center;box-shadow:none}',
+    '#v-mcal .x11-p.dn{opacity:.4}#v-mcal .x11-p.done{opacity:.4;text-decoration:none}',
+    '#v-mcal .x11-p.late{background:#fff!important;color:#C0563F!important;box-shadow:inset 0 0 0 1.5px #C0563F}',
+    '#v-mcal .x11-p.nx{box-shadow:0 0 0 2px #fff,0 0 0 3.5px #00A3AD}',
+    '.x11-lg{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;color:#6C6786;margin:10px 2px 0}.x11-lg span{display:inline-flex;align-items:center;gap:6px}',
+    '.x11-lg i{display:inline-block;width:16px;height:11px;border-radius:3px}.x11-lg i.nx{background:#3FB3BE;box-shadow:0 0 0 1.5px #fff,0 0 0 3px #00A3AD}.x11-lg i.ov{background:#fff;box-shadow:inset 0 0 0 1.5px #C0563F}.x11-lg i.tdy{background:#F2FAFA;box-shadow:inset 0 0 0 1.5px #00A3AD}',
     '.x11-back{display:none;align-items:center;gap:4px}.x11-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 16px;align-items:start}',
     '@media(max-width:899px){.x11-wrap,.x11-fw,.x11-two{grid-template-columns:minmax(0,1fr)}.x11-grid{display:none}.x11-hideph{display:none}.x11-k{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px}.x11-t b{font-size:22px}.x11-hero .x11-fn{font-size:19px}#v-mcal .x11-chips{flex-wrap:nowrap;overflow-x:auto;margin-right:-16px;padding-right:16px;scrollbar-width:none}#v-mcal .x11-chip{flex:none}.x11-nav b{min-width:0;font-size:15px}',
     '#v-families.det .x11-fcol{display:none}#v-families:not(.det) .x11-dcol{display:none}.x11-back{display:inline-flex}.x11-fl{max-height:none}}'
@@ -165,7 +179,7 @@
     return L.sort((a, b) => a.day.localeCompare(b.day) || ord[a.kind] - ord[b.kind]);
   }
   async function loadM(m){ if(C.busy[m] || C.r[m]) return; C.busy[m] = 1; try{ C.r[m] = await API({ op: 'deadlines', month: m }); C.err = ''; }catch(e){ C.err = String(e.message || e); } finally { C.busy[m] = 0; } if(VIEW === 'mcal') paintC(); }
-  const pill = x => { const k = KIND[x.kind]; return '<div class="x11-p' + (x.done ? ' done' : '') + (x.st && x.st[0] === 'late' ? ' late' : '') + '" style="background:' + k.bg + ';color:' + k.c + '" title="' + E(x.title + ' · ' + x.sub) + '">' + E(x.s || x.title) + '</div>'; };
+  const pill = x => { const k = KIND[x.kind], t = today(); return '<div class="x11-p' + (x.done ? ' done' : '') + (x.st && x.st[0] === 'late' ? ' late' : x.day < t ? ' dn' : '') + (C.nx && C.nx === x ? ' nx' : '') + '" style="--c:' + k.c + '" title="' + E(x.title + '. ' + x.sub) + '">' + E(x.s || x.title) + '</div>'; };
   const WDS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const agRow = x => { const t = today(), d = new Date(x.day + 'T00:00:00Z'), k = KIND[x.kind]; return '<div class="x11-ag"' + (x.code ? ' style="cursor:pointer" onclick="openStudent(\'' + E(x.code) + '\')"' : x.ev ? ' style="cursor:pointer" onclick="dl2911.ev(null,\'' + E(x.ev.id) + '\')"' : '') + '><div class="dd' + (x.day === t ? ' t' : '') + '"><b>' + d.getUTCDate() + '</b><small>' + (x.day === t ? 'Today' : x.day.slice(0, 7) !== C.m ? MS3[d.getUTCMonth()] : WDS[d.getUTCDay()]) + '</small></div><div class="x"><b><i style="background:' + k.c + '"></i>' + E(x.title) + '</b><small>' + E(x.sub) + '</small></div>' + (x.st ? '<span class="x11-st ' + x.st[0] + '">' + E(x.st[1] === 'Not Recorded' ? 'Overdue' : x.st[1]) + '</span>' : '') + '</div>'; };
   const row = x => { return '<div class="x11-it"' + (x.code ? ' style="cursor:pointer" onclick="openStudent(\'' + E(x.code) + '\')"' : '') + '>' + ico(x.kind) + '<div><b>' + E(x.title) + '</b><small>' + E(x.sub) + '</small></div>' + (x.st ? '<span class="x11-st ' + x.st[0] + '">' + E(x.st[1]) + '</span>' : '<span></span>') + '</div>'; };
@@ -178,6 +192,7 @@
     h += '<div class="x11-chips">' + Object.keys(KIND).map(k => { const n = all.filter(x => x.kind === k).length; return '<button class="x11-chip' + (C.off[k] ? ' off' : '') + '" style="color:' + KIND[k].c + '" onclick="dl2911.tg(\'' + k + '\')">' + KI[k] + KIND[k].l + ' ' + n + '</button>'; }).join('') + '</div>';
     if(!r){ h = h.replace('<div class="x11-chips">', '</div><div class="x11-chips">'); v.innerHTML = h + (C.err ? '<div class="x11-card x11-empty">Could not load. ' + E(C.err) + ' <button class="x11-tb" onclick="dl2911.re()">Try again</button></div>' : '<div class="x11-skel" style="height:420px"></div>'); return; }
     const by = {}; L.forEach(x => (by[x.day] = by[x.day] || []).push(x));
+    C.nx = L.filter(x => x.day >= t && x.due && !x.done)[0] || null;
     { const late = all.filter(x => x.st && x.st[0] === 'late'), nx = all.filter(x => x.day >= t && x.due && !x.done)[0] || (m === t.slice(0, 7) ? items(addM(m, 1)).filter(x => x.due && !x.done)[0] : null), pk = all.filter(x => x.kind === 'pkg');
       h = h.replace('<div class="x11-chips">', '<div class="x11-k"><div class="x11-t' + (late.length ? ' warn' : '') + '"><span>Needs You</span><b>' + late.length + '</b><small>' + (late.length ? E(late.map(x => x.title).join(', ')) : 'Nothing past and undone.') + '</small></div>'
         + '<div class="x11-t"><span>Next Deadline</span><b class="sm">' + (nx ? E(nx.title) : 'None this month') + '</b><small>' + (nx ? (nx.day === t ? 'Today' : dLong(nx.day)) + ', ' + E(nx.sub) : '&nbsp;') + '</small></div>'
@@ -189,7 +204,7 @@
     for(let i = 0; i < cells; i++){ const dn = i - lead + 1; if(dn < 1 || dn > nd){ g += '<div class="x11-d x11-o"></div>'; continue; }
       const d = m + '-' + String(dn).padStart(2, '0'), X = by[d] || [];
       const wd = (lead + dn - 1) % 7; g += '<div class="x11-d' + (d === t ? ' t' : '') + (d < t ? ' past' : '') + (wd > 4 ? ' we' : '') + (d === C.sel ? ' sel' : '') + '" onclick="dl2911.pick(\'' + d + '\')"><div class="x11-n"><span>' + dn + '</span></div>' + X.slice(0, 3).map(pill).join('') + (X.length > 3 ? '<div class="x11-more">+' + (X.length - 3) + ' more</div>' : '') + '</div>'; }
-    g += '</div>';
+    g += '</div><div class="x11-lg"><span><i style="background:#3FB3BE"></i>Coming</span><span><i style="background:#3FB3BE;opacity:.4"></i>Done</span><span><i class="nx"></i>Next deadline</span><span><i class="ov"></i>Overdue</span><span><i class="tdy"></i>Today</span></div>';
     /* side: chosen day, or what is next */
     let s = '';
     if(C.sel && C.sel.slice(0, 7) === m){ const X = by[C.sel] || []; s = '<h2>' + dLong(C.sel) + '</h2><div class="x11-sub">' + (X.length ? X.length + (X.length === 1 ? ' item. ' : ' items. ') : 'Nothing due. ') + '<a style="cursor:pointer;color:#0E6F68" onclick="dl2911.pick(null)">Show the Month</a></div>' + X.map(agRow).join('') + '<button class="x11-tb" style="margin-top:12px" onclick="dl2911.ev(\'' + C.sel + '\')">+ Add an Event on This Day</button>'; }
