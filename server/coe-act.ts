@@ -12,6 +12,7 @@ const ORIGINS = ["https://app.cupofenglishatph.com"];
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 const PH = (d: string, h = 0) => new Date(Date.parse(d + "T00:00:00+08:00") + h * 3600e3).toISOString();
+const dOfPH = (iso: string) => new Date(Date.parse(iso) + 8 * 3600e3).toISOString().slice(0, 10);
 const hmPH = (iso: string) => new Date(Date.parse(iso) + 8 * 3600e3).toISOString().slice(11, 16);
 
 Deno.serve(async (req: Request) => {
@@ -67,6 +68,55 @@ Deno.serve(async (req: Request) => {
       if (error) throw new Error(error.message);
       return out({ ok: true });
     }
+    if (op === "deadlines") {   // 2911: management › Deadlines · dated items for one month (fixed monthly dates are added on the screen)
+      if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
+      const m = String(b.month || ""); if (!/^\d{4}-\d{2}$/.test(m)) return out({ ok: false, error: "month" }, 400);
+      const from = m + "-01", y = +m.slice(0, 4), mo = +m.slice(5, 7), to = (mo === 12 ? (y + 1) + "-01" : y + "-" + String(mo + 1).padStart(2, "0")) + "-01";
+      const [gQ, tQ, trQ, mQ, pQ, sQ] = await Promise.all([
+        db.from("coe_gov").select("month,paid_on,sss,pagibig,philhealth,bir,sec,charges,status").gte("month", from).lt("month", to),
+        db.from("coe_training_sessions").select("id,training_id,starts_at,mins,facilitator,invited,note,status").gte("starts_at", PH(from)).lt("starts_at", PH(to)).order("starts_at"),
+        db.from("coe_trainings").select("id,title"),
+        db.from("coe_msgs").select("at,subject,memo_no").eq("kind", "memo").gte("at", PH(from)).lt("at", PH(to)).order("at"),
+        db.from("coe_packages").select("code,name,teacher,deadline,active,renewal_status").is("removed_at", null).eq("active", true).gte("deadline", from).lt("deadline", to).order("deadline"),
+        db.from("docs").select("data").eq("key", "sys:sunbonus").maybeSingle(),
+      ]);
+      for (const q of [gQ, tQ, trQ, mQ, pQ]) if (q.error) throw new Error(q.error.message);
+      const T: Record<string, string> = {}; for (const r of trQ.data || []) T[r.id] = r.title;
+      const memos: any[] = []; const seenM = new Set<string>();
+      for (const r of mQ.data || []) { const subj = String(r.subject || "").trim(); if (!subj || /test/i.test(subj)) continue; const d = dOfPH(r.at), k = d + "|" + subj; if (seenM.has(k)) continue; seenM.add(k); memos.push({ day: d, subject: subj, no: r.memo_no || null }); }
+      const pk: Record<string, any> = {}; for (const r of pQ.data || []) { const k = r.code + "|" + r.deadline; if (!pk[k]) pk[k] = { day: r.deadline, code: r.code, name: r.name, teachers: [], status: r.renewal_status || "" }; if (r.teacher && !pk[k].teachers.includes(r.teacher)) pk[k].teachers.push(r.teacher); }
+      return out({ ok: true, month: m,
+        gov: (gQ.data || []).map((r: any) => ({ month: String(r.month).slice(0, 7), due: String(r.month).slice(0, 7) + "-15", paid: r.paid_on || null, status: r.status || "", amount: (+r.sss || 0) + (+r.pagibig || 0) + (+r.philhealth || 0) + (+r.bir || 0) + (+r.sec || 0) + (+r.charges || 0), parts: { sss: +r.sss || 0, pagibig: +r.pagibig || 0, philhealth: +r.philhealth || 0, bir: +r.bir || 0 } })),
+        trainings: (tQ.data || []).filter((r: any) => r.status !== "cancelled").map((r: any) => ({ at: r.starts_at, mins: r.mins, title: T[r.training_id] || (r.training_id === "coach" ? "Coaching" : r.training_id), who: r.facilitator, invited: r.invited || [], note: r.note || "", status: r.status })),
+        memos, expiries: Object.values(pk), sunbonus: (sQ.data && (sQ.data as any).data && (sQ.data as any).data.from) || null });
+    }
+    if (op === "famlinks") {   // 2911: management › Families · which students are one family (shared package, or one WeChat group)
+      if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
+      const [sQ, wQ] = await Promise.all([db.from("coe_packages").select("code,shared").is("removed_at", null).not("shared", "is", null), db.from("docs").select("data").eq("key", "mgmt:wxgroup").maybeSingle()]);
+      if (sQ.error) throw new Error(sQ.error.message);
+      const L: string[][] = []; for (const r of sQ.data || []) { const a2 = String(r.code || "").toUpperCase(), b2 = String(r.shared || "").toUpperCase(); if (/^ST-\d{4}-\d{3}$/.test(a2) && /^ST-\d{4}-\d{3}$/.test(b2) && a2 !== b2) L.push([a2, b2]); }
+      const W: any = (wQ.data && (wQ.data as any).data) || {}; for (const k of Object.keys(W)) { const t = String((W[k] && W[k].to) || "").toUpperCase(); if (/^ST-\d{4}-\d{3}$/.test(t) && t !== k.toUpperCase()) L.push([k.toUpperCase(), t]); }
+      return out({ ok: true, links: L });
+    }
+    if (op === "family") {   // 2911: one family's packages, payments, reports, trials and the parent's messages (class cancellations they asked for)
+      if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
+      const codes = (Array.isArray(b.codes) ? b.codes : []).map((x: any) => String(x || "").toUpperCase()).filter((x: string) => /^ST-\d{4}-\d{3}$/.test(x)).slice(0, 8);
+      if (!codes.length) return out({ ok: false, error: "codes" }, 400);
+      const since = new Date(Date.now() - 120 * 864e5).toISOString();
+      const [pQ, iQ, fQ, tQ, cQ, nQ] = await Promise.all([
+        db.from("coe_packages").select("code,name,cn,teacher,buy,deadline,active,source,renewal_status,enrolled,gift,carry,course,shared").is("removed_at", null).in("code", codes).order("buy", { ascending: false }),
+        db.from("coe_invoices").select("no,day,code,total,currency,partner,method,status,items").in("code", codes).order("day", { ascending: false }).limit(40),
+        db.from("coe_fb_reports").select("code,month,teacher,total,submitted").in("code", codes).order("month", { ascending: false }).limit(40),
+        db.from("coe_trials").select("trial_date,teacher,student,student_code,cefr_teacher,pdf").is("removed_at", null).in("student_code", codes).order("trial_date", { ascending: false }).limit(10),
+        db.from("classes").select("id,code,student,starts_at,cancelled,teachers,data").in("code", codes).eq("cancelled", true).gte("starts_at", since).order("starts_at", { ascending: false }).limit(60),
+        db.from("classes").select("code,starts_at,teachers").in("code", codes).eq("cancelled", false).gte("starts_at", new Date().toISOString()).order("starts_at").limit(40),
+      ]);
+      for (const q of [pQ, iQ, fQ, tQ, cQ, nQ]) if (q.error) throw new Error(q.error.message);
+      const next: Record<string, any> = {}; for (const r of nQ.data || []) if (!next[r.code]) next[r.code] = { at: r.starts_at, t: (r.teachers || [])[0] || "" };
+      const asks = (cQ.data || []).map((r: any) => { const d = r.data || {}; const why = String(d.why || d.reason || ""); return { code: r.code, student: r.student, at: r.starts_at, t: (r.teachers || [])[0] || "", why }; }).filter((x: any) => /from the parent/i.test(x.why)).slice(0, 20);
+      return out({ ok: true, codes, packages: pQ.data || [], payments: (iQ.data || []).filter((r: any) => r.status !== "void"), reports: fQ.data || [], trials: tQ.data || [], asks, next });
+    }
+
     if (op === "growth") {   // 2908: management › Growth (trials → students, new and renewed packages, sources, renewals coming up)
       if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
       const [g, f] = await Promise.all([db.rpc("coe_growth", { nm: 6 }), db.rpc("coe_fin_growth")]);
