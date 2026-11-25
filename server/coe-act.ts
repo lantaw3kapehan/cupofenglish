@@ -12,6 +12,19 @@ const ORIGINS = ["https://app.cupofenglishatph.com"];
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 const PH = (d: string, h = 0) => new Date(Date.parse(d + "T00:00:00+08:00") + h * 3600e3).toISOString();
+// 2921: a repeating event (weekly, monthly on the same date, yearly) gives one entry per date in [from, to); a month without that date uses its last day
+const occ = (list: any[], from: string, to: string) => { const out: any[] = []; const ymd = (d: Date) => d.toISOString().slice(0, 10);
+  for (const x of list) { if (!x || !x.day) continue; const rp = x.repeat || "", until = x.until || "9999-12-31";
+    if (!rp) { if (x.day >= from && x.day < to) out.push(x); continue; }
+    const s0 = new Date(x.day + "T00:00:00Z"), f = new Date(from + "T00:00:00Z"), t = new Date(to + "T00:00:00Z");
+    if (rp === "week") { let d = new Date(s0); if (d < f) { const k = Math.ceil((f.getTime() - d.getTime()) / (7 * 864e5)); d = new Date(d.getTime() + k * 7 * 864e5); }
+      for (; d < t; d = new Date(d.getTime() + 7 * 864e5)) { const y = ymd(d); if (y >= x.day && y <= until) out.push({ ...x, day: y, base: x.day }); } }
+    else if (rp === "month" || rp === "year") { const dd = +x.day.slice(8, 10), m0 = +x.day.slice(5, 7);
+      for (let cur = new Date(Date.UTC(f.getUTCFullYear(), f.getUTCMonth(), 1)); cur < t; cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1))) {
+        if (rp === "year" && cur.getUTCMonth() + 1 !== m0) continue;
+        const last = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 0)).getUTCDate(), y = ymd(new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth(), Math.min(dd, last))));
+        if (y >= x.day && y <= until && y >= from && y < to) out.push({ ...x, day: y, base: x.day }); } } }
+  return out; };
 const dOfPH = (iso: string) => new Date(Date.parse(iso) + 8 * 3600e3).toISOString().slice(0, 10);
 const hmPH = (iso: string) => new Date(Date.parse(iso) + 8 * 3600e3).toISOString().slice(11, 16);
 
@@ -89,7 +102,7 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, month: m,
         gov: (gQ.data || []).map((r: any) => ({ month: String(r.month).slice(0, 7), due: String(r.month).slice(0, 7) + "-15", paid: r.paid_on || null, status: r.status || "", amount: (+r.sss || 0) + (+r.pagibig || 0) + (+r.philhealth || 0) + (+r.bir || 0) + (+r.sec || 0) + (+r.charges || 0), parts: { sss: +r.sss || 0, pagibig: +r.pagibig || 0, philhealth: +r.philhealth || 0, bir: +r.bir || 0 } })),
         trainings: (tQ.data || []).filter((r: any) => r.status !== "cancelled").map((r: any) => ({ at: r.starts_at, mins: r.mins, title: T[r.training_id] || (r.training_id === "coach" ? "Coaching" : r.training_id), who: r.facilitator, invited: r.invited || [], note: r.note || "", status: r.status })),
-        memos, expiries: Object.values(pk), events: (((eQ.data && (eQ.data as any).data) || {}).list || []).filter((x: any) => x && x.day >= from && x.day < to), sunbonus: (sQ.data && (sQ.data as any).data && (sQ.data as any).data.from) || null });
+        memos, expiries: Object.values(pk), events: occ((((eQ.data && (eQ.data as any).data) || {}).list || []), from, to), sunbonus: (sQ.data && (sQ.data as any).data && (sQ.data as any).data.from) || null });
     }
     if (op === "event") {   // 2914: management adds or removes its own dated events (team party, meetings) on Deadlines
       if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
@@ -102,7 +115,8 @@ Deno.serve(async (req: Request) => {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !title) return out({ ok: false, error: "Add a title and a date" }, 400);
         if ((st && !/^\d{2}:\d{2}$/.test(st)) || (en && !/^\d{2}:\d{2}$/.test(en))) return out({ ok: false, error: "time" }, 400);
         const id = String(e.id || "") || ("ev" + Date.now().toString(36));
-        const row = { id, day, title, start: st, end: en, note, by: name, at: new Date().toISOString() };
+        const repeat = ["week", "month", "year"].includes(String(e.repeat || "")) ? String(e.repeat) : "", until = /^\d{4}-\d{2}-\d{2}$/.test(String(e.until || "")) ? String(e.until) : "";
+        const row = { id, day, title, start: st, end: en, note, repeat, until, by: name, at: new Date().toISOString() };
         L = list.filter((x: any) => x.id !== id).concat([row]).sort((x: any, y: any) => (x.day + x.start).localeCompare(y.day + y.start));
       }
       const w = await db.from("docs").upsert({ key: "mgmt:events", scope: "mgmt", data: { list: L }, updated_at: new Date().toISOString() }, { onConflict: "key" });
