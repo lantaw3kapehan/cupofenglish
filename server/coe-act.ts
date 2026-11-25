@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
       const T = mgmt ? String(b.teacher || "").trim() : name; if (!T) return out({ ok: false, error: "teacher" }, 400);
       const tl = T.toLowerCase(), from = PH(day), to = PH(day, 48), alertTo = PH(day, 30);
       const [cQ, wQ, vQ, lQ, pQ, mQ, sQ] = await Promise.all([
-        db.from("classes").select("id,data,starts_at,ends_at,cancelled,code,student,teachers").eq("day", day).contains("teachers", [tl]).order("starts_at"),
+        db.from("classes").select("id,data,starts_at,ends_at,cancelled,code,student,teachers").eq("day", day).filter("teachers", "cs", JSON.stringify([tl])).order("starts_at"),
         db.from("writes").select("id,fn,args,status,created_at").ilike("who", T).gte("created_at", from).lt("created_at", to).in("fn", ["classIn", "saveNote", "markHomework", "tTrialSubmit", "timeIn"]).order("created_at").limit(500),
         db.from("coe_class_video_days").select("event_id,code,name,via,late,case_id,uploaded_at,size_bytes,dur_sec,proof").eq("day", day).ilike("teacher", T),
         db.from("coe_vid_log").select("code,starts_at,checks,found_at,last_check").eq("day", day).eq("teacher", tl),
