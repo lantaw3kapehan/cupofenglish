@@ -39,7 +39,7 @@ h1{margin:0;font:400 28px/1.2 'COE Card Fredoka','Fredoka One',sans-serif;color:
 .side{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:14px}
 /* 2869 (Misty 25 Nov "when I scroll down … the header moves too so I can't see the tools"): beside the homework, the right column scrolls
    on its own, so the page is never longer than the homework and the tools stay pinned */
-@media(min-width:1000px){.side{position:sticky;top:12px;align-self:flex-start;max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:0 4px 12px 0;scrollbar-width:thin}.side>*{flex-shrink:0}}
+@media(min-width:1000px){.side{position:sticky;top:12px;align-self:flex-start;max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:0 4px 12px 0;scrollbar-width:thin}.side>*{flex-shrink:0}#saveCard{position:sticky;bottom:0;z-index:3;box-shadow:0 -6px 16px rgba(16,24,40,.08)}#saveCard{gap:8px!important;padding-top:12px;padding-bottom:12px}}
 .card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .pad{padding:16px 18px}
 .h2{font-size:18px;font-weight:600;color:var(--navy);margin:0 0 10px}
@@ -124,7 +124,7 @@ input.tt{width:100%;height:42px;border:1px solid var(--out);border-radius:10px;p
 .vn2864 .rec{display:inline-flex;align-items:center;gap:8px;font-weight:600;color:#B42318}
 .vn2864 .rec i{width:10px;height:10px;border-radius:50%;background:#D92D20;animation:p64 1s infinite}
 @keyframes p64{50%{opacity:.25}}
-.stk2864 .big{display:flex;align-items:baseline;gap:8px}.stk2864 .big > b{font:400 34px/1 'COE Card Fredoka','Fredoka One',sans-serif;color:var(--navy)}
+.stk2864 .big{display:flex;align-items:baseline;gap:8px}.stk2864 .big > b{font:400 26px/1 'COE Card Fredoka','Fredoka One',sans-serif;color:var(--navy)}
 .stk2864 .bar{height:10px;border-radius:99px;background:#EEF0F4;overflow:hidden;margin:10px 0 6px}.stk2864 .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#F5B700,#F08C00)}
 .stk2864 .bd{display:flex;gap:4px;margin-top:10px;justify-content:space-between}
 .stk2864 .bd span{display:inline-flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--ink2);flex:1;min-width:0;text-align:center}
@@ -298,9 +298,10 @@ function stkInfo(){ const here = stkNow(), tot = (STK.n || 0) + here, got = BADG
   return { here, tot, got, nx, pct: nx ? Math.round((tot - prev) / (nx[0] - prev) * 100) : 100 }; }
 let STKH = ''; function stkPaint(){ const b = $('stkBox'); if(!b) return; if(STK.n == null){ b.innerHTML = '<div class="h2" style="margin:0">Sticker book</div><div class="xs mute">Loading…</div>'; return; }
   const o = stkInfo(), nm = esc(NAME || CODE);
-  const h = `<div class="h2" style="margin-bottom:2px">Sticker book</div><div class="big"><b>${o.tot}</b><span class="small mute">sticker${o.tot === 1 ? '' : 's'} for ${nm}${o.here ? ' · <span style="color:#B45309;font-weight:700">+' + o.here + ' on this check</span>' : ''}</span></div>
-<div class="bar"><i style="width:${o.pct}%"></i></div><div class="xs mute">${o.nx ? (o.nx[0] - o.tot) + ' more to the <b>' + o.nx[1] + '</b> badge' : 'Every badge collected!'} · every praise stamp is a sticker</div>
-<div class="bd">${BADGES.map(x => `<span class="${o.tot >= x[0] ? '' : 'off'}" title="${x[1]} · ${x[0]} stickers">${badgeSvg(x[3])}${x[0]}</span>`).join('')}</div>`;
+  const last = o.got.length ? o.got[o.got.length - 1] : null;   /* 2872: one compact card, near the counts, so it is seen without scrolling */
+  const h = `<div style="display:flex;align-items:center;gap:10px">${badgeSvg(last ? last[3] : '#D9DCE3', 30)}<div style="min-width:0;flex:1"><div class="xs mute" style="font-weight:600;letter-spacing:.02em">STICKER BOOK${last ? ' · ' + last[1].toUpperCase() : ''}</div>
+<div class="big"><b>${o.tot}</b><span class="small mute">sticker${o.tot === 1 ? '' : 's'}${o.here ? ' · <span style="color:#B45309;font-weight:700">+' + o.here + ' on this check</span>' : ''}</span></div></div></div>
+<div class="bar"><i style="width:${o.pct}%"></i></div><div class="xs mute">${o.nx ? (o.nx[0] - o.tot) + ' more to <b>' + o.nx[1] + '</b> (' + o.nx[0] + ')' : 'Every badge collected!'} · each praise stamp = 1 sticker</div>`;
   if(h !== STKH){ STKH = h; b.innerHTML = h; } }
 setInterval(() => { try{ stkPaint(); }catch(e){} }, 1200);
 
@@ -337,6 +338,7 @@ function layout(){
   </div></div>
   <div class="side">
     <div class="card pad" id="cntBox"></div>
+    <div class="card pad stk2864" id="stkBox"></div>
     <div class="card pad">
       <label class="h2" for="ttl" style="display:block">Homework title <span class="mute xs" style="font-weight:400">(optional)</span></label>
       <input id="ttl" class="tt" placeholder="e.g. My weekend" autocomplete="off">
@@ -351,8 +353,7 @@ function layout(){
           ${IC64.wish}<input id="ts3" maxlength="90" placeholder="Wish · one thing to try next time" autocomplete="off">
         </div><div class="xs mute" style="margin-top:6px">Shown on the picture as two gold stars and a wish. Keep each one short.</div></div></div>
     </div>
-    <div class="card pad stk2864" id="stkBox"></div>
-    <div class="card pad" style="display:flex;flex-direction:column;gap:10px">
+    <div class="card pad" id="saveCard" style="display:flex;flex-direction:column;gap:10px">
       <button class="btn pri" id="bSave" type="button">Save to ${esc(nm)}'s homework</button>
       <button class="btn out" id="bPic" type="button">Copy picture for the parent/student</button>
       <div class="xs mute" id="saveInfo">Saving keeps the corrected copy with ${esc(nm)}'s homework, so you can open it again later.</div>
