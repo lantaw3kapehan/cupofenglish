@@ -1,4 +1,4 @@
-p='tools/b2911.js'; s=open(p).read()
+p='tools/b2911.js'; s=open('tools/b2911.base.js').read()
 def R(a,b):
   global s
   assert s.count(a)==1, a[:80]; s=s.replace(a,b)
@@ -62,11 +62,11 @@ R(".x11-f b{font-size:14.5px;color:#2F2752}.x11-f small{display:block;color:#6F6
 R("""    h += '<div class="x11-card"><h2 style="margin:0;font-size:20px;color:#2F2752">' + E(f.name) + '</h2><div class="x11-sub">' + (f.kids.length > 1 ? f.kids.length + ' children' : '1 child') + ' · ' + E(f.teachers.join(', ') || 'No teacher yet') + '</div>';""",
 """    const nexts = f.kids.map(k => d.next && d.next[String(k.code).toUpperCase()]).filter(Boolean).sort((a, b) => a.at.localeCompare(b.at)), pays = (d.payments || []), cur = {}; pays.forEach(p => { cur[p.currency || 'PHP'] = (cur[p.currency || 'PHP'] || 0) + (+p.total || 0); });
     const src = [...new Set((d.packages || []).map(p => p.source).filter(Boolean))];
-    h += '<div class="x11-card"><div style="display:flex;align-items:center;gap:14px"><span class="x11-avs">' + f.kids.slice(0, 3).map(k => av(k.name, 1)).join('') + '</span><div style="min-width:0"><div class="x11-fn">' + E(f.name) + '</div><div class="x11-sub" style="margin:2px 0 0">' + (f.kids.length > 1 ? f.kids.length + ' children' : '1 child') + ' · ' + E(f.teachers.join(', ') || 'No teacher yet') + (src.length ? ' · ' + E(src.join(', ')) : '') + '</div></div></div>';
+    h += '<div class="x11-card"><div style="display:flex;align-items:center;gap:14px"><span class="x11-avs">' + f.kids.slice(0, 3).map(k => av(k.name, 1)).join('') + '</span><div style="min-width:0"><div class="x11-fn">' + E(f.name) + '</div><div class="x11-sub" style="margin:2px 0 0">' + (f.kids.length > 1 ? f.kids.length + ' children' : '1 child') + ' · ' + E(f.teachers.join(', ') || 'No teacher yet') + '</div></div></div>';
     if(d.packages) h += '<div class="x11-k" style="margin:16px 0 4px"><div class="x11-t"><span>Units left</span><b>' + f.left.toLocaleString('en-US') + '</b><small>' + f.kids.map(k => E(k.name) + ' ' + (k.left == null ? '–' : (+k.left).toLocaleString('en-US'))).join(' · ') + '</small></div>'
-      + '<div class="x11-t"><span>Next class</span><b class="sm">' + (nexts[0] ? dLong(dOf(nexts[0].at)) + ' ' + hm(nexts[0].at) : 'None booked') + '</b><small>' + (nexts[0] ? 'with ' + E(String(nexts[0].t || '').replace(/^./, c => c.toUpperCase())) : '&nbsp;') + '</small></div>'
+      + '<div class="x11-t"><span>Next class</span><b class="sm">' + (nexts[0] ? dLong(dOf(nexts[0].at)) : 'None booked') + '</b><small>' + (nexts[0] ? hm(nexts[0].at) + ' with ' + E(String(nexts[0].t || '').replace(/^./, c => c.toUpperCase())) : '&nbsp;') + '</small></div>'
       + '<div class="x11-t"><span>Paid</span><b class="sm">' + (Object.keys(cur).length ? Object.keys(cur).map(c => money(cur[c], c)).join(' + ') : 'None recorded') + '</b><small>' + pays.length + (pays.length === 1 ? ' payment' : ' payments') + (pays[0] ? ' · last ' + dShort(pays[0].day) : '') + '</small></div>'
-      + '<div class="x11-t"><span>Parent requests</span><b>' + (d.asks ? d.asks.length : 0) + '</b><small>Last 4 months</small></div></div>';""")
+      + '<div class="x11-t"><span>Requests</span><b>' + (d.asks ? d.asks.length : 0) + '</b><small>Last 4 months</small></div></div>';""")
 R("""return '<div class="x11-kid" onclick="openStudent(\\'' + E(k.code) + '\\')"><b>' + E(k.name) + '</b><span class="cn">' + E(k.cn || '') + '</span>""",
   """return '<div class="x11-kid" onclick="openStudent(\\'' + E(k.code) + '\\')"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' + av(k.name) + '<div style="min-width:0"><b>' + E(k.name) + '</b><span class="cn">' + E(k.cn || '') + '</span>' + (k.left != null && +k.left <= 8 ? '<span class="x11-low">Renew soon</span>' : '') + '</div></div>""")
 R("""const sec = (t, body, n) => '<div class="x11-card x11-sec"><h3>' + t + (n != null ? ' · ' + n : '') + '</h3>'""",
