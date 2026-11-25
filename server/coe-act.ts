@@ -59,6 +59,14 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, team: team.length, mgmt, g: res, ...(mgmt ? { teamNames: team } : {}) });
     }
 
+    if (op === "cxpic") {   // 2910: a cancellation picture was made (copied or saved) for these classes
+      if (!mgmt) return out({ ok: true, skipped: true });
+      const ids = (Array.isArray(b.ids) ? b.ids : []).map((x: any) => String(x || "").slice(0, 120)).filter((x: string) => x).slice(0, 20);
+      if (!ids.length) return out({ ok: false, error: "ids" }, 400);
+      const { error } = await db.from("coe_cx_pics").insert({ class_ids: ids, code: String(b.code || "").slice(0, 20) || null, by_name: name });
+      if (error) throw new Error(error.message);
+      return out({ ok: true });
+    }
     if (op === "growth") {   // 2908: management › Growth (trials → students, new and renewed packages, sources, renewals coming up)
       if (!mgmt) return out({ ok: false, error: "not allowed" }, 403);
       const [g, f] = await Promise.all([db.rpc("coe_growth", { nm: 6 }), db.rpc("coe_fin_growth")]);

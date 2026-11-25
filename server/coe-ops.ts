@@ -78,12 +78,13 @@ Deno.serve(async (req: Request) => {
     return out({ ok: true });
   }
   if (op === "check") {
-    const { data, error } = await db.rpc("coe_ops_check");
-    if (error) return out({ ok: false, error: "db" }, 500);
-    return out({ ok: true, items: (data && data.items) || [], at: data && data.at });
+    const [r1, r2] = await Promise.all([db.rpc("coe_ops_check"), db.rpc("coe_ops_check2")]);   // 2910: + cancellation pictures for classes still on, teachers booked twice
+    if (r1.error) return out({ ok: false, error: "db" }, 500);
+    const data: any = r1.data, more = (!r2.error && r2.data && (r2.data as any).items) || [];
+    return out({ ok: true, items: more.concat((data && data.items) || []), at: data && data.at });
   }
   if (op === "ok") {
-    const ref = String(b.ref || "").slice(0, 120); if (!/^(sale|dbl|nt|shot|renew|risk|tfu|tagain|vidkeep|fm):/.test(ref))   /* v21 (2539): vidkeep = a late-video case reviewed, penalty kept */ return out({ ok: false, error: "not allowed" }, 400);
+    const ref = String(b.ref || "").slice(0, 120); if (!/^(sale|dbl|nt|shot|renew|risk|tfu|tagain|vidkeep|fm|cxp|tdbl):/.test(ref))   /* v21 (2539): vidkeep = a late-video case reviewed, penalty kept */ return out({ ok: false, error: "not allowed" }, 400);
     const { error } = await db.from("coe_ops_ok").upsert({ ref, by_name: me, at: new Date().toISOString() }, { onConflict: "ref" });
     if (error) return out({ ok: false, error: "not saved" }, 500);
     return out({ ok: true });
