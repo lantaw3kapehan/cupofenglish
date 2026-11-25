@@ -418,7 +418,7 @@ ${['grammar', 'spelling', 'words', 'punct'].map(k => `<button type="button" clas
 <button type="button" class="ib" id="tU" aria-label="Undo" title="Undo (${UNDOK})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
 <button type="button" class="ib" id="tR" aria-label="Redo" title="Redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
 <button type="button" class="chip" id="tE" title="Change the student's text">Edit text</button></div>
-<div class="tools" style="padding-top:0"><span class="xs mute">Stamps:</span>${stRows('data-ts', () => false, 'Your own words…')}</div>`; }
+<div class="tools" style="padding-top:0"><span class="xs mute">Stamps:</span>${stRows('data-ts', k => TX.stamps.includes(k) || (k === 'own' && TX.stamps.some(x => /^own:/.test(x))), 'Your own words…')}</div>`; }
 function emptyHtml(kind){
   return `<div class="empty"><div class="drop"><div class="big">Paste the homework here</div>
 <div class="small mute" style="line-height:1.9">1. In WeChat, copy the student's message or picture.<br>2. Come back here and ${matchMedia('(pointer:coarse)').matches ? 'tap <b>Paste</b> (or choose the saved picture).</div>' : 'press <span class="keys">' + KEY + '</span> on your keyboard, or click <b>Paste</b>.<br><span class="xs">You can also drag a picture into this box.</span></div>'}
@@ -433,7 +433,8 @@ function paintText(){
   $('tools').innerHTML = toolsText();
   $('tools').querySelectorAll('[data-cat]').forEach(b => { b.onmousedown = e => e.preventDefault(); b.onclick = () => addMark(b.dataset.cat); });
   $('tU').onclick = undo; $('tR').onclick = redo; $('tE').onclick = editText;
-  $('tools').querySelectorAll('[data-ts]').forEach(b => b.onclick = () => { if(TX.stamps.length >= 12) return toast('That is plenty of stamps'); let k = b.dataset.ts; if(k === 'own'){ const v = askOwn(); if(!v) return; k = 'own:' + v; } TX.stamps.push(k); dirty(); renderText(); side(); });
+  $('tools').querySelectorAll('[data-ts]').forEach(b => b.onclick = () => { if(TX.stamps.length >= 12) return toast('That is plenty of stamps'); let k = b.dataset.ts; if(k === 'own'){ const v = askOwn(); if(!v) return; k = 'own:' + v; } const at = TX.stamps.indexOf(k); if(at > -1){ TX.stamps.splice(at, 1); dirty(); renderText(); side(); return toast('Stamp removed'); }   /* 2878: a second tap takes the stamp off (no double stickers) */
+    TX.stamps.push(k); dirty(); renderText(); side(); });
   $('area').innerHTML = '<div class="body" id="ebody"><div class="ttl" id="eTtl"></div><div id="tStamps" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:2px 0 6px"></div><div id="essay"></div><div class="why" id="whyL" style="display:none"></div></div>';
   const es = $('essay'); es.addEventListener('mouseup', pickSel); es.addEventListener('touchend', () => setTimeout(pickSel, 30));
   renderText(); }
