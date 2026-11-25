@@ -231,7 +231,7 @@ const snap = () => JSON.stringify(MODE === 'text' ? TX.marks : PIC.items);
 function push(){ UNDO.push({ m: MODE, s: snap() }); if(UNDO.length > 80) UNDO.shift(); REDO = []; dirty(); }
 function undo(){ const u = UNDO.pop(); if(!u || u.m !== MODE){ if(u) UNDO.push(u); return; } REDO.push({ m: MODE, s: snap() }); if(MODE === 'text'){ TX.marks = JSON.parse(u.s); closeEd(); renderText(); } else { PIC.items = JSON.parse(u.s); draw(); } side(); }
 function redo(){ const u = REDO.pop(); if(!u || u.m !== MODE){ if(u) REDO.push(u); return; } UNDO.push({ m: MODE, s: snap() }); if(MODE === 'text'){ TX.marks = JSON.parse(u.s); closeEd(); renderText(); } else { PIC.items = JSON.parse(u.s); draw(); } side(); }
-function dirty(){ DIRTY = true; saveDraft(); }
+function dirty(){ DIRTY = true; saveDraft(); try{ stkPaint(); }catch(e){} }   /* 2874: a stamp added or removed shows in the sticker book at once */
 window.addEventListener('beforeunload', e => { if(DIRTY){ e.preventDefault(); e.returnValue = ''; } });
 const DK = () => 'coe.hw.draft.' + CODE;
 function saveDraft(){ try{ if(!CODE) return; if(MODE !== 'text' || !TX.body){ return; } localStorage.setItem(DK(), JSON.stringify({ at: Date.now(), id: CUR.id, body: TX.body, marks: TX.marks, stamps: TX.stamps, note: ($('note') || {}).value || '', title: ($('ttl') || {}).value || '' })); }catch(e){} }
