@@ -1,7 +1,7 @@
 /* 2885 · Teacher guides (Misty 25 Nov): one place for every "how to".
    To add or update a guide, edit this list only. `updated` shows a "New" or "Updated" badge for 14 days. */
 window.COE_GUIDES=[
- {id:'check-homework',title:'Check homework',icon:'check',updated:'2026-11-25T12:10',
+ {id:'check-homework',title:'Check Homework',cat:'Homework',icon:'check',updated:'2026-11-25T12:10',
   sum:'Mark a photo of homework and send the parent a picture.',open:'../homework/',cover:'img/cover-check.webp',mins:2,
   rule:'Type corrections in RED, beside the mistake. Only red counts as "To fix" for the parent.',
   parts:[
@@ -12,8 +12,8 @@ window.COE_GUIDES=[
    {h:'Typing a correction in four taps',p:'Put it just below or beside the word, never on top. Double-click a tag to change its words.',img:'img/typing.webp'},
    {h:'Before you send',list:['Every correction is red and beside the mistake','"To fix" matches the mistakes you marked','You tapped Save and saw "Saved at…"','You pasted the picture, not a screenshot of the screen']}
   ]},
- {id:'trial-feedback',title:'Trial class feedback',icon:'star',soon:1,sum:'Fill in the trial report after a trial class.'},
- {id:'meeting-id',title:'Meeting ID on VooV',icon:'video',updated:'2026-11-25T13:10',mins:2,cover:'img/cover-meet.webp',
+ {id:'trial-feedback',title:'Trial Class Feedback',cat:'Classes',icon:'star',soon:1,sum:'Fill in the trial report after a trial class.'},
+ {id:'meeting-id',title:'Meeting ID on VooV',cat:'Classes',icon:'video',updated:'2026-11-25T13:10',mins:2,cover:'img/cover-meet.webp',
   sum:'Set up one recurring VooV meeting per student, so the parent keeps the same meeting ID.',
   rule:'One RECURRING meeting per student, ending as late as VooV allows. No meeting password. Parents keep the same ID, so they are never asked to change it.',
   parts:[
@@ -24,7 +24,7 @@ window.COE_GUIDES=[
    {h:'Add the ID in our app',p:'On Today, or on your Schedule week calendar, tap + Meeting ID on the class (or tap the class block). Paste and save: it goes on all your upcoming classes with that student.',img:'img/meet-appid.webp'},
    {h:'Before you send it to the parent',list:['The title is STUDENT NAME: COURSEWARE in capitals','It says Recurring, and the end is as late as VooV allows','No meeting password','The same ID is saved in our app','Send the parent the ID once; it stays the same for every class']}
   ]},
- {id:'give-homework',title:'Give homework',icon:'book',updated:'2026-11-25',mins:2,cover:'img/cover-give.webp',open:'../homework/give.html',
+ {id:'give-homework',title:'Give Homework',cat:'Homework',icon:'book',updated:'2026-11-25',mins:2,cover:'img/cover-give.webp',open:'../homework/give.html',
   sum:'Make the homework picture after class and send it to the parent.',
   rule:'Copy a photo or worksheet from anywhere, then paste it in the Pictures box. No need to save or upload files.',
   parts:[
