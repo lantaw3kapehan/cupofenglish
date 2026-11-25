@@ -551,7 +551,7 @@ let STAMP = (() => { try{ const v = localStorage.getItem('coe.hw.stamp'); return
 const SZ = { s: { tick: 3.2, pen: .28, text: 2.2, ring: .28 }, m: { tick: 4.6, pen: .36, text: 2.3, ring: .34 }, l: { tick: 7, pen: .5, text: 3.4, ring: .45 } };   /* 2315 (Misty 20:29): 7 was too big; M is now close to the first size */
 let SIZE = 'm';   /* 2770 (Misty 23 Nov 13:00): one standard size for marks and typed notes, as on the books and speaking screens · the teacher zooms if a student needs it bigger (was S / M / L) */
 const SZN = () => SZ[SIZE] || SZ.m;
-const COLS = [['#D92D20', 'Red'], ['#2563EB', 'Blue'], ['#16A34A', 'Green']];
+const COLS = [['#D92D20', 'Red · a mistake (counts as to fix)'], ['#2563EB', 'Blue · a note or comment (not counted)'], ['#16A34A', 'Green · a note or comment (not counted)']];   /* 2896: Misty, blue and green are the teacher's notes while checking */
 /* 2888 (Misty 25 Nov 12:05): "that logo should show only once" · a picture we made ourselves (the Homework Feedback card, or the Give homework /
    book page picture) pasted back in would put a second logo and header inside the new card. Keep only the homework part of it:
    · a Homework Feedback card (grey frame, white card): keep the photo inside it (repeats for a card inside a card)
@@ -772,7 +772,7 @@ function marked(q){ const c = document.createElement('canvas'); c.width = PIC.ba
 /* ================= side panel ================= */
 function counts(){
   if(MODE === 'text'){ const o = { grammar: 0, spelling: 0, words: 0, punct: 0, good: 0, note: 0 }; TX.marks.forEach(m => o[m.c] = (o[m.c] || 0) + 1); o.stamps = TX.stamps.slice(); o.good += TX.stamps.filter(k => !FIXK.includes(k)).length; return o; }
-  const green = PIC.items.filter(i => (i.t === 'stamp' && !FIXK.includes(i.k)) || i.t === 'tick' || (i.t !== 'stamp' && i.t !== 'cross' && i.c === '#16A34A' && i.t !== 'pen')).length;   /* 2877: every tick is a well done, whatever its colour */
+  const green = PIC.items.filter(i => (i.t === 'stamp' && !FIXK.includes(i.k)) || i.t === 'tick' || (i.t !== 'stamp' && i.t !== 'cross' && i.c === '#16A34A' && i.t !== 'pen' && i.t !== 'text')).length;   /* 2896: green typed notes are comments, not a well done */   /* 2877: every tick is a well done, whatever its colour */
   const auto = fixGroups2810(), set = PIC.cats.fixSet;
   return Object.assign({}, PIC.cats, { fix: set >= 0 ? set : auto, fixAuto: auto, good: green }); }
 /* 2810 (Misty 18:23): 'To fix' counts MISTAKES, not marks. Red marks on the same line close together (a cross + its correction) are one mistake;
@@ -798,7 +798,7 @@ function side(){ setTimeout(() => { try{ stkPaint(); }catch(e){} }, 0);   /* 287
   if(MODE === 'text'){ const top = ERR.map(k => [k, o[k] || 0]).sort((a, c) => c[1] - a[1])[0]; if(top && top[1] >= 2) tip = `<div class="small" style="margin-top:10px;color:#374151"><b style="color:${CAT[top[0]].c}">${CAT[top[0]].en}</b> came up ${top[1]} times. It could be a good focus for the next classes.</div>`;
     if(o.good) tip += `<div class="small" style="margin-top:6px;color:#15803D">${o.good} part${o.good > 1 ? 's' : ''} marked Well done.</div>`; }
   else tip = `<div class="fx2810"><span>To fix on the card</span><button type="button" data-fx="-1" aria-label="One less">−</button><b>${o.fix}</b><button type="button" data-fx="1" aria-label="One more">+</button>${PIC.cats.fixSet >= 0 ? `<button type="button" class="au" data-fx="0">Auto (${o.fixAuto})</button>` : ''}</div>`
-    + `<div class="small" style="margin-top:6px;color:#4B5563">${PIC.cats.fixSet >= 0 ? 'Set by you.' : 'Counted from your red marks: each red correction is one mistake, with its circles and cross; a red circle or cross with no correction counts once. Unanswered parts you circle in red count as to fix.'} Check it matches the mistakes before you copy. <b style="color:#15803D">${o.good} well done</b>. Use + above to tag what the mistakes were about.</div>`;
+    + `<div class="small" style="margin-top:6px;color:#4B5563">${PIC.cats.fixSet >= 0 ? 'Set by you.' : 'Counted from your red marks: each red correction is one mistake, with its circles and cross; a red circle or cross with no correction counts once. Unanswered parts you circle in red count as to fix. Blue and green notes are comments and are not counted.'} Check it matches the mistakes before you copy. <b style="color:#15803D">${o.good} well done</b>. Use + above to tag what the mistakes were about.</div>`;
   b.innerHTML = `<div class="h2">This check</div><div class="cnt">${ERR.map(box).join('')}</div>${tip}`;
   b.querySelectorAll('[data-s]').forEach(x => x.onclick = () => { const k = x.dataset.s; PIC.cats[k] = Math.max(0, (PIC.cats[k] || 0) + +x.dataset.d); dirty(); side(); });
   b.querySelectorAll('[data-fx]').forEach(x => x.onclick = () => { const d = +x.dataset.fx; if(!d) delete PIC.cats.fixSet; else PIC.cats.fixSet = Math.max(0, o.fix + d); dirty(); side(); try{ if(typeof draw === 'function') draw(); }catch(e){} }); }
