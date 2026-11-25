@@ -172,7 +172,7 @@
     (r.memos || []).forEach(x => add(x.day, 'memo', 'Memo Sent', x.subject, { s: 'Memo' }));
     (r.trainings || []).forEach(x => add(dOf(x.at), 'tr', x.title || 'Training', hm(x.at) + (x.mins ? ', ' + x.mins + ' minutes' : '') + (x.who ? ', with Teacher ' + x.who : '') + (x.invited && x.invited.length ? ', ' + x.invited.length + ' invited' : '') + '.'));
     (window.CN2195 || []).forEach(h => { let a = h.a, b = h.b || h.a; for(let d = a; d <= b; d = new Date(Date.parse(d + 'T00:00:00Z') + 864e5).toISOString().slice(0, 10)){ add(d, 'hol', h.n, (h.k === 'h' ? 'Holiday in China.' : 'China.') + (h.t ? ' ' + h.t : '')); if(d === b) break; } });
-    (r.events || []).forEach(x => add(x.day, 'evt', x.title, (x.start ? x.start + (x.end ? ' to ' + x.end : '') : 'All day') + '.' + (x.note ? ' ' + x.note : ''), { s: x.title, ev: x }));
+    (r.events || []).forEach(x => add(x.day, 'evt', x.title, (x.start ? x.start + (x.end ? ' to ' + x.end : '') : 'All day') + '.' + (x.repeat ? ' ' + ({ week: 'Every week', month: 'Every month', year: 'Every year' }[x.repeat]) + (x.until ? ' until ' + dShort(x.until) : '') + '.' : '') + (x.note ? ' ' + x.note : ''), { s: x.title, ev: x }));
     (r.expiries || []).forEach(x => add(x.day, 'pkg', x.name + "'s Package Ends", x.code + (x.teachers && x.teachers.length ? ', Teacher ' + x.teachers.join(', Teacher ') : '') + (x.status ? ', ' + x.status : '') + '.', { code: x.code, s: x.name + ' Ends' }));
     L.forEach(x => { if(x.done) x.st = ['ok', 'Paid ' + dShort(x.paidOn).replace(/ \d{4}$/, '')]; else if(x.kind === 'gov' && x.day < t) x.st = ['late', 'Not Recorded']; else if(x.due && (Date.parse(x.day) - Date.parse(t)) / 864e5 <= 5) x.st = ['soon', 'Soon']; });
     const ord = { evt: 0, pay: 1, gov: 2, fb: 3, tr: 4, memo: 5, pkg: 6, hol: 7 };
@@ -220,25 +220,28 @@
     tg(k){ C.off[k] = !C.off[k]; try{ localStorage.setItem('coe.dl2911', JSON.stringify(C.off)); }catch(e){} paintC(); },
     pick(d){ C.sel = d; paintC(); },
     ev(day, id){
-      const cur = id ? (((C.r[C.m] || {}).events) || []).find(x => x.id === id) : null, e = cur || { day: day || (C.sel || today()), title: '', start: '', end: '', note: '' };
+      const c0 = id ? (((C.r[C.m] || {}).events) || []).find(x => x.id === id) : null, cur = c0 ? Object.assign({}, c0, { day: c0.base || c0.day }) : null, e = cur || { day: day || (C.sel || today()), title: '', start: '', end: '', note: '', repeat: '', until: '' };
+      const RP = [['', 'Does not repeat'], ['week', 'Every week'], ['month', 'Every month, same date'], ['year', 'Every year']];
       const T = ['']; for(let h = 6; h <= 23; h++) for(const mm of ['00', '30']) T.push(String(h).padStart(2, '0') + ':' + mm);
       const opt = v => T.map(x => '<option value="' + x + '"' + (x === v ? ' selected' : '') + '>' + (x || 'No time') + '</option>').join('');
       openSheet('<h1>' + (cur ? 'Edit Event' : 'Add an Event') + '</h1><p class="small mute">Shows on Deadlines for management only. Teachers do not see it.</p><div class="x11-ef">'
-        + '<label>Title</label><input class="in" id="ev11t" maxlength="80" placeholder="Christmas Party" value="' + E(e.title) + '">'
+        + '<label>Title</label><input class="in" id="ev11t" maxlength="80" placeholder="Christmas Party, Office Rent" value="' + E(e.title) + '">'
         + '<label>Date</label><input class="in" type="date" id="ev11d" value="' + E(e.day) + '">'
         + '<div class="r2"><div><label>Starts</label><select class="in" id="ev11s">' + opt(e.start) + '</select></div><div><label>Ends</label><select class="in" id="ev11e">' + opt(e.end) + '</select></div></div>'
+        + '<div class="r2"><div><label>Repeats</label><select class="in" id="ev11r" onchange="document.getElementById(\'ev11uw\').style.display=this.value?\'\':\'none\'">' + RP.map(([v, l]) => '<option value="' + v + '"' + ((e.repeat || '') === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div><div id="ev11uw" style="' + (e.repeat ? '' : 'display:none') + '"><label>Until (optional)</label><input class="in" type="date" id="ev11u" value="' + E(e.until || '') + '"></div></div>'
         + '<label>Note (optional)</label><input class="in" id="ev11n" maxlength="300" placeholder="Venue, what to bring" value="' + E(e.note) + '">'
         + '<div class="acts"><button class="btn teal grow" onclick="dl2911.evSave(\'' + E(cur ? cur.id : '') + '\')">Save</button>' + (cur ? '<button class="btn ghost" onclick="dl2911.evDel(\'' + E(cur.id) + '\')">Delete</button>' : '') + '</div></div>');
       setTimeout(() => { const i = document.getElementById('ev11t'); if(i && !cur) i.focus(); }, 60);
     },
     async evSave(id){
-      const g = k => (document.getElementById(k) || {}).value || '', e = { id, title: g('ev11t').trim(), day: g('ev11d'), start: g('ev11s'), end: g('ev11e'), note: g('ev11n').trim() };
+      const g = k => (document.getElementById(k) || {}).value || '', e = { id, title: g('ev11t').trim(), day: g('ev11d'), start: g('ev11s'), end: g('ev11e'), note: g('ev11n').trim(), repeat: g('ev11r'), until: g('ev11r') ? g('ev11u') : '' };
+      if(e.until && e.until < e.day) return toast('The end date is before the first date');
       if(!e.title || !e.day) return toast('Add a title and a date');
       if(e.start && e.end && e.end <= e.start) return toast('The end time is before the start');
-      try{ await API({ op: 'event', e }); closeSheet(); toast('Saved'); const mm = e.day.slice(0, 7); delete C.r[mm]; if(C.m !== mm) delete C.r[C.m]; C.m = mm; C.sel = e.day; paintC(); loadM(mm); }
+      try{ await API({ op: 'event', e }); closeSheet(); toast('Saved'); const mm = e.day.slice(0, 7); C.r = {}; C.m = id ? C.m : mm; C.sel = e.day; paintC(); loadM(mm); }
       catch(x){ toast((x && x.message) || 'Not saved. Try again.'); }
     },
-    async evDel(id){ try{ await API({ op: 'event', del: id }); closeSheet(); toast('Deleted'); delete C.r[C.m]; paintC(); loadM(C.m); }catch(x){ toast((x && x.message) || 'Not deleted. Try again.'); } },
+    async evDel(id){ try{ await API({ op: 'event', del: id }); closeSheet(); toast('Deleted'); C.r = {}; paintC(); loadM(C.m); }catch(x){ toast((x && x.message) || 'Not deleted. Try again.'); } },
     re(){ C.err = ''; delete C.r[C.m]; paintC(); loadM(C.m); }
   };
 
