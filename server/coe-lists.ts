@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-lists v11 (18 Nov 2026: trials wait list skips existing students and later trials · rollback v10) · was (5 Nov 2026): screens that still made people wait on Google, worked out from the database.
+// CupOfEnglish · coe-lists v13 (26 Nov 2026 · 3064 video checklist from the database from November) · was v11 (18 Nov 2026: trials wait list skips existing students and later trials · rollback v10) · was (5 Nov 2026): screens that still made people wait on Google, worked out from the database.
 // Each op answers the SAME JSON as the Google function it replaces ("data"); "src" says where parts came from.
 // Round 1: schedule (mgmtSchedule) · tab (mgmtTab PAY/MONEY/TODAY) · bootstrap (getBootstrap, management) · tmsgs (tMsgs) · active (mgmtActive)
 // Round 2: shadow {fn:'getBootstrap', google} → kept in docs sys:shadow:getBootstrap (last 20) · classinfo {ev} (mgmtClassInfo)
@@ -582,7 +582,12 @@ async function payReady() {
   const D = fbDoneMap(B, RFall, fk);
   for (const t of teachersOf(B.U)) (await fbPending(B, RFall, t.name, fk, D)).forEach((x) => get(String(t.name).toLowerCase()).fb.push(x.name));
   P.filter((r: any) => r.status === "Assigned" && peerYm(r) === pk).forEach((r: any) => get(String(r.evaluator).trim().toLowerCase()).peer.push(String(r.teacher || "")));
-  if (gOk) Object.keys(gt).forEach((k) => { if (!gt[k].ops && (gt[k].vid || []).length) get(k).vid = gt[k].vid.slice(); });
+  let vidSrc = "Google's last list " + (G ? G.at : "none");
+  if (pk >= "2026-11") {   // 3064 (26 Nov 2026): from November the video checklist comes from the database (coe_class_video_days + coe_vid_log); videos stay in Drive
+    const { data: VM, error: vErr } = await db.rpc("coe_vid_missing", { p_month: pk + "-01" });
+    if (vErr) throw new Error("db vid: " + vErr.message);
+    Object.keys(VM || {}).forEach((k) => { if (Array.isArray(VM[k]) && VM[k].length) get(k).vid = VM[k].slice(); }); vidSrc = "database (coe_vid_missing)";
+  } else if (gOk) Object.keys(gt).forEach((k) => { if (!gt[k].ops && (gt[k].vid || []).length) get(k).vid = gt[k].vid.slice(); });
   const ops = B.U.filter((u: any) => /operation|ops/i.test(String(u.role || "")));
   if (ops.length) {
     const R = (await reports(pk, B)).data, tr = ((await trials()).data.rows || []).filter((x: any) => String(x.date).slice(0, 7) === pk), pr = P.filter((x: any) => peerYm(x) === pk && x.status !== "Cancelled");
@@ -594,7 +599,7 @@ async function payReady() {
       out[lc] = { ops: true, rep, trl, trlIds, set: pr.length ? [] : ["No peer-review class set for " + MONL[+pk.slice(5, 7) - 1]],
         fol: go ? go.fol : [], ren: go ? go.ren : [], late: go ? go.late : [], info: { auto, fix: go && go.info ? go.info.fix : 0 }, fb: [], peer: [], vid: [] }; });
   }
-  return { data: { month: label, fbMonth: label, at: n.slice(11, 16), t: out }, src: { fb: "ACTIVE + sys:tmap + DAILY copies + " + B.fbSrc + " + sys:fbs (app)", peer: "coe_peer", vid: "Google's last list " + (G ? G.at : "none"), ops: "reports/trials/peer/T-TIMEIN from the database; fol, ren, late, fix from Google's last list" } };
+  return { data: { month: label, fbMonth: label, at: n.slice(11, 16), t: out }, src: { fb: "ACTIVE + sys:tmap + DAILY copies + " + B.fbSrc + " + sys:fbs (app)", peer: "coe_peer", vid: vidSrc, ops: "reports/trials/peer/T-TIMEIN from the database; fol, ren, late, fix from Google's last list" } };
 }
 async function tPayReady(name: string) {
   const r = (await payReady()).data, lc = name.toLowerCase(), last = await doc(lc + ":tPayReady|[]"), nz = last && last.data && last.data.nudge;
