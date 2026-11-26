@@ -599,7 +599,7 @@ function boardPic(notes){ const bi = +pageNo.slice(1) - 1; const scr = boardPicS
     if(window.coeHdr) coeHdr.draw(g, Wc, { unit: u2, logo: BLOGO.complete && BLOGO.naturalWidth ? BLOGO : null, title: notes === false ? 'Homework / 作业' : 'Class Notes / 课堂笔记', meta: [t ? 'Teacher / 老师: ' + t : '', Q.get('s') ? 'For / 学生: ' + Q.get('s') : ''].filter(Boolean) });
     g.drawImage(bc, 0, sh, Wc, Hc - sh, 0, hT, Wc, Hc - sh); return o; }
   const W = 1600, H = Math.round(W * BH / BW), out = document.createElement('canvas'); out.width = W; out.height = H; paintBoard(out.getContext('2d'), W, H, BRD[+pageNo.slice(1) - 1] || 'plain', notes); drawInk(out); return out; }
-function boardUI(){ const on = isB(); if(on){ const r = $('wrap').getBoundingClientRect(); if(r.width) $('bbar').style.left = Math.round(r.left + r.width / 2) + 'px'; }   /* 2619: the style bar sits under the page, never over the toolbar */ document.body.classList.toggle('board', on); $('boardBtT').textContent = on ? 'Back to book' : 'Blank board'; $('pboard').textContent = on ? 'Book' : 'Board';
+function boardUI(){ const on = isB(); try{ const c = $('copyCn'); if(c) c.style.display = on ? '' : 'none'; }catch(e){} if(on){ const r = $('wrap').getBoundingClientRect(); if(r.width) $('bbar').style.left = Math.round(r.left + r.width / 2) + 'px'; }   /* 2619: the style bar sits under the page, never over the toolbar */ document.body.classList.toggle('board', on); $('boardBtT').textContent = on ? 'Back to book' : 'Blank board'; $('pboard').textContent = on ? 'Book' : 'Board';
   const stl = on ? (BRD[+pageNo.slice(1) - 1] || 'plain') : ''; document.querySelectorAll('[data-bs]').forEach(b => b.classList.toggle('on', b.dataset.bs === stl)); }
 function board(on){ if(!doc || doc.boardOnly) return; if(on && !isB()){ BBACK = pageNo; if(!BRD.length && !boardRestore()){ BRD.push('plain'); BAS[0] = newAspect(); } pageNo = 'b' + Math.min(BI, BRD.length); zoom = 1; }
   else if(!on && isB()){ BI = +pageNo.slice(1); pageNo = BBACK; zoom = 1; }
@@ -824,6 +824,9 @@ setInterval(wrShow, 1500); wrShow();
    WeChat group gets a clean page instead of a screenshot that includes the Tencent video windows */
 $('pcopy').onclick = () => copyPage($('pcopy'), true);
 $('copyPg').onclick = () => copyPage($('copyPg'), false);
+/* 3029 (Misty 26 Nov 14:41): on a board, "Copy class notes" sits in the top bar too (it was only on the presenting bar) */
+{ const b = document.createElement('button'); b.className = 'btn'; b.id = 'copyCn'; b.type = 'button'; b.title = 'Copy this board page as the Class Notes picture for the WeChat group'; b.innerHTML = $('copyPg').innerHTML; const tx = [...b.childNodes].reverse().find(n => n.nodeType === 3 && n.textContent.trim()); if(tx) tx.textContent = ' Copy class notes'; else b.textContent = 'Copy class notes';
+  b.onclick = () => copyPage(b, true); b.style.display = isB() ? '' : 'none'; $('copyPg').insertAdjacentElement('beforebegin', b); }
 /* 2726: the page copied for homework is remembered (Student's Book / Workbook, printed page, unit), so the class note's Homework fills itself */
 function hwRec2726(){ try{ if(!BOOK || typeof pageNo !== 'number') return; const cf = FILES.find(x => x.id === FID), nm = String((cf && cf.name) || TITLE || ''), kind = /work\s*book|\bWB\b/i.test(nm) ? 'wb' : /teacher|answer|\bTG\b/i.test(nm) ? '' : 'sb'; if(!kind) return;
   let p = null; const ck = 'coe.rd.ocr.' + FID; try{ const C = JSON.parse(localStorage.getItem(ck) || '{}') || {}; if(C[pageNo] && C[pageNo].p != null) p = C[pageNo].p; }catch(e){}
