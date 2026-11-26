@@ -308,6 +308,9 @@ Deno.serve(async (req: Request) => {
       const { error: me } = await db.from("classes").insert({ id: mkId, day: mk.day, starts_at: mk.a1, ends_at: mk.a2, code: row.code, student: row.student, teachers: row.teachers, cancelled: false, data: md2, updated_at: now.toISOString() });
       if (me) console.warn("makeup row", me.message); }
     const google = (async () => {
+      // 26 Nov 2026 · 3067 (Misty: "google calendar should be already switched off"): the class table is the calendar (sys:live classDbFinal, 11 Nov);
+      // a cancel / restore / move is no longer sent to Google at all, so Google can never undo it. The writes row is already done (coe_class_edit_dbfinal).
+      try { const { data: lv } = await db.from("docs").select("data").eq("key", "sys:live").maybeSingle(); if (lv && lv.data && lv.data.classDbFinal) return; } catch (_e) { return; }
       let st = "new", result: any = null, err = "";
       try {
         const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 120000);
