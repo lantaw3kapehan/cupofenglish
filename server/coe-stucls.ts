@@ -29,10 +29,11 @@ Deno.serve(async (req: Request) => {
   if (s.mode !== "mgmt") return out({ ok: false, error: "Management only." }, 403);
   const code = String(b.code || "").trim().toUpperCase(); if (!/^ST-\d{4}-\d{3}$/.test(code)) return out({ ok: false, error: "code" }, 400);
   const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
-  const { data, error } = await db.from("classes").select("day,data").eq("code", code).gte("day", today).order("day", { ascending: true }).limit(2000);
+  let q = db.from("classes").select("day,data").eq("code", code); if (b.all !== true) q = q.gte("day", today);   // 26 Nov 2026 · 2984: { all: true } = every class since the first one (attendance history)
+  const { data, error } = await q.order("day", { ascending: true }).limit(3000);
   if (error) return out({ ok: false, error: "db" }, 500);
   const classes = (data || []).map((r: any) => { const e = r.data || {}, p = parseTeacher(e.title || "");
-    return { id: e.id, start: e.start, end: e.end, title: e.title, teacher: p.teacher, book: p.book, cancelled: !!e.cancelled, why: e.why || "", mv: e.mv || null }; })
+    return { id: e.id, start: e.start, end: e.end, title: e.title, teacher: p.teacher, book: p.book, cancelled: !!e.cancelled, why: e.why || "", mv: e.mv || null, makeup: !!e.makeup }; })
     .filter((x: any) => x.id && x.start).sort((x: any, y: any) => String(x.start).localeCompare(String(y.start)));
   return out({ ok: true, classes, at: new Date().toISOString() });
 });
