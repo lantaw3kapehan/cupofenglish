@@ -43734,7 +43734,8 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
     { id: 'lqmBox', ok: mgr, host: function(){ return document.getElementById('v-home'); }, put: function(h, html){ h.insertAdjacentHTML('afterbegin', html); } }
   ];
   var key = function(id){ return 'coe.slot.' + who().toLowerCase() + '.' + id; };
-  function ensure(){ if(!who()) return; SLOTS.forEach(function(s){ try{ if(!s.ok()) return; var h = s.host(); if(!h || h.offsetParent === null) return;
+  var shown = function(h){ var v = h.id && /^v-/.test(h.id) ? h : h.closest('[id^="v-"]'); return !!v && !v.classList.contains('hide') && !document.hidden; };   /* 3050: no layout read every 0.8 s */
+  function ensure(){ if(!who()) return; SLOTS.forEach(function(s){ try{ if(!s.ok()) return; var h = s.host(); if(!h || !shown(h)) return;
       var el = s.find ? s.find(h) : document.getElementById(s.id); if(el) return; var html = localStorage.getItem(key(s.id)); if(!html) return;
       s.put(h, html.replace('id="' + s.id + '"', 'id="' + s.id + '" data-c2363="1"')); }catch(e){} }); }
   function save(){ if(!who()) return; SLOTS.forEach(function(s){ try{ if(!s.ok()) return; var h = s.host(); if(!h) return; var el = s.find ? s.find(h) : document.getElementById(s.id);
@@ -43764,7 +43765,9 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
    place; next time the screen opens, the last copy is drawn there at once (greyed and not clickable until the real one arrives), and the
    real card takes its place, so the page does not jump. A copy that is not replaced within 12 s is taken away (the card is no longer needed). */
 (function(){ if(window.__b2368) return; window.__b2368 = 1;
-  var who = function(){ try{ return String((D && D.me && D.me.name) || '').toLowerCase(); }catch(e){ return ''; } };
+  /* 3050 (Misty 26 Nov: flicker and slow buttons on management screens): not for management. Showing a saved copy of the screen first and
+     then the real one was the flash-then-adjust, and saving copies every 0.7 s cost 40 ms each time. Teachers keep it. */
+  var who = function(){ try{ if(D && D.mgr) return ''; return String((D && D.me && D.me.name) || '').toLowerCase(); }catch(e){ return ''; } };
   var keyOf = function(e){ if(!e || e.nodeType !== 1) return ''; if(e.id && !/^(sheet|toast)/.test(e.id)) return '#' + e.id; var c = String(e.className || '').split(/\s+/).filter(function(x){ return /\d/.test(x); })[0]; return c ? e.tagName + '.' + c : ''; };
   var SK = function(v){ return 'coe.st2368.' + who() + '.' + v; };
   var vis = function(){ return [].slice.call(document.querySelectorAll('[id^="v-"]')).filter(function(e){ return e.offsetParent !== null; })[0]; };
@@ -43788,7 +43791,7 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
   function real(c){ c.removeAttribute('data-c2368'); c.removeAttribute('inert'); c.style.opacity = ''; c.style.pointerEvents = ''; }
   function watchCopy(c){ try{ var o = new MutationObserver(function(){ o.disconnect(); if(c.hasAttribute('data-c2368')) real(c); }); o.observe(c, { childList: true, subtree: true, characterData: true }); setTimeout(function(){ o.disconnect(); }, 13000); }catch(e){} }
   var g0 = window.go; if(typeof g0 === 'function') window.go = function(){ var r = g0.apply(this, arguments); try{ var v = vis(); if(v){ OPEN[v.id] = Date.now(); fill(v); } }catch(e){} return r; };
-  watchViews(); setInterval(function(){ if(document.hidden) return; watchViews(); var v = vis(); if(!v) return; if(!OPEN[v.id]){ OPEN[v.id] = Date.now(); fill(v); } else if(Date.now() - OPEN[v.id] < 1500) fill(v); snap(v);
+  watchViews(); setInterval(function(){ if(document.hidden || !who()) return; watchViews(); var v = vis(); if(!v) return; if(!OPEN[v.id]){ OPEN[v.id] = Date.now(); fill(v); } else if(Date.now() - OPEN[v.id] < 1500) fill(v); snap(v);
     [].slice.call(document.querySelectorAll('[data-c2368]')).forEach(function(c){ if(Date.now() - +c.getAttribute('data-c2368') > 6000) c.remove(); }); }, 700);
 })();
 </script>
