@@ -7556,7 +7556,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2565;
+const COE_V = 2566;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -12748,7 +12748,7 @@ try{ if(VIEW === 'payroll') renderPayroll(); }catch(e){}
       const nm = c.querySelector('.nm'); const box = nm ? (nm.closest('.row') || nm) : null; if(!box) return;
       box.insertAdjacentHTML('afterend', chip(v).replace('class="vn"', 'class="vn vn-row" data-k="' + v.dl + v.days + '"')); });
     // student lists and the student page heading
-    document.querySelectorAll('[onclick^="openStudent(\'"]').forEach(el => { if(el.closest('.cls') || el.closest('#v-mtoday') || el.closest('#v-mcal') || el.closest('#v-families')) return;   /* 2922: Deadlines and Families have their own layout */ const m = (el.getAttribute('onclick').match(/openStudent\('([^']+)'/) || [])[1], v = m && E[m.toUpperCase()];
+    document.querySelectorAll('[onclick^="openStudent(\'"]').forEach(el => { if(el.closest('.cls') || el.closest('#v-mtoday') || el.closest('#v-mcal') || el.closest('#v-families') || el.closest('.s4')) return;   /* 3074: the Students list shows the review in Valid Until */   /* 2922: Deadlines and Families have their own layout */ const m = (el.getAttribute('onclick').match(/openStudent\('([^']+)'/) || [])[1], v = m && E[m.toUpperCase()];
       const old = el.querySelector(':scope .vn'); if(!v){ if(old) old.remove(); return; } if(old) return;
       const nm = el.querySelector('b, .nm, .t'); const line = nm && nm.parentElement && nm.parentElement !== el ? nm.parentElement : nm;
       if(line && line !== el) line.insertAdjacentHTML('afterend', chip(v).replace('class="vn"', 'class="vn vn-row vn-li"')); else el.insertAdjacentHTML('beforeend', chip(v)); });
@@ -49676,7 +49676,7 @@ body.is-mgr #v-astudents.s4on > :not(.grp-tabs):not(.s4){display:none!important}
 #v-astudents .s4-pop button.on{color:var(--teal);font-weight:600}
 #v-astudents .s4-pop button em{font-style:normal;color:var(--mute);font-weight:500}
 #v-astudents .s4-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:nowrap}
-#v-astudents .s4-q{position:relative;flex:1 1 200px;min-width:150px;max-width:300px}
+#v-astudents .s4-q{position:relative;flex:0 0 230px}
 #v-astudents .s4-q svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--mute)}
 #v-astudents .s4-q input{all:unset;box-sizing:border-box;width:100%;height:36px;padding:0 34px 0 36px;border:1px solid #E1DEEA;border-radius:999px;background:#fff;font:400 14px Inter,system-ui,sans-serif;color:var(--ink)}
 #v-astudents .s4-q input::placeholder{color:var(--mute)}
@@ -49831,6 +49831,16 @@ body.is-mgr #v-astudents.s4on > :not(.grp-tabs):not(.s4){display:none!important}
   const agr = code => (typeof AGM !== 'undefined' && AGM && typeof agrOf === 'function') ? agrOf(code) : undefined;
   const noAgr = it => { if(!it.on || !it.o || !it.o.active || it.o.shared) return false; const a = agr(it.o.code); return a !== undefined && !(a && a.how !== 'Sent'); };
 
+  /* the validity review of an ended package (Celine's review, the President's decision) */
+  let VRL = 0; const vrSt = (k, dl) => { let L = []; try{ L = window.vr2588Rows ? vr2588Rows(k, String(dl).slice(0, 10)) : []; }catch(e){}
+    if(!L.length && !VRL && window.vr2588Reload){ VRL = 1; try{ vr2588Reload(); }catch(e){} setTimeout(() => { LASTL = ''; draw('list'); }, 1800); }
+    const x = L[0], nd = x && x.new_date ? String(x.new_date).slice(0, 10) : '';
+    if(!x) return '>Review Validity';
+    if(x.kind === 'review') return ' style="color:#A15C07">Review Pending';
+    if(x.kind === 'extend') return nd && pd(nd) < today() ? '>Extension Also Passed · Review' : ' style="color:#1D7A52">Extended to ' + E(dmy(pd(nd) || today()));
+    if(x.kind === 'exception') return ' style="color:#1D7A52">Exception Approved';
+    if(x.kind === 'date_error') return '>Date on Record Is Wrong';
+    return '>Review Validity'; };
   /* one row */
   function row(it, P, S){ const s = it.s, o = it.o, k = up(s.code), L = lrn(k), left = s.left != null ? s.left : o ? o.left : null;
     const nm = '<b>' + E(s.name || k) + '</b>' + (s.cn ? '<span class="cn">' + E(s.cn) + '</span>' : '') + '<span class="cd">' + E(k) + '</span>' + (L.html || '') +
@@ -49849,7 +49859,7 @@ body.is-mgr #v-astudents.s4on > :not(.grp-tabs):not(.s4){display:none!important}
     let dl = '<div class="s4-d"></div>'; const dd = it.on && o && o.deadline ? pd(o.deadline) : null;
     if(dd){ const days = Math.round((dd - today()) / 864e5), rv = days < 0 && lf != null && lf > 0 && typeof window.valRev2588 === 'function';
       dl = '<div class="s4-d' + (days < 0 ? ' end' : days <= 30 ? ' soon' : '') + (rv ? ' rv' : '') + '"' + (rv ? ' role="button" tabindex="0" onclick="event.stopPropagation();valRev2588(\'' + E(k) + '\',\'' + E(o.deadline) + '\')" title="Validity ended with lessons left · review"' : ' title="' + (days < 0 ? 'Validity ended ' + (-days) + ' days ago' : days <= 30 ? 'Validity ends in ' + days + ' days' : 'Package valid until this date') + '"') + '>' +
-        (days < 0 ? 'Ended ' + dmy(dd) : days <= 30 ? 'Ends ' + (days > 60 ? dmy(dd) : dm(dd)) : 'Until ' + dmy(dd)) + (rv ? '<small>Review validity</small>' : '') + '</div>'; }
+        (days < 0 ? 'Ended ' + dmy(dd) : days <= 30 ? 'Ends ' + (days > 60 ? dmy(dd) : dm(dd)) : 'Until ' + dmy(dd)) + (rv ? '<small' + vrSt(k, o.deadline) + '</small>' : '') + '</div>'; }
     else if(!it.on) dl = '<div class="s4-d" style="color:#9A96B0">Not active</div>';
     return '<div class="s4-r s4-g" role="link" tabindex="0" data-c="' + E(k) + '"' + (it.on ? ' onpointerdown="stuPre(\'' + E(k) + '\')"' : '') + ' onclick="openStudent(\'' + E(k) + '\')" onkeydown="if(event.key===\'Enter\')openStudent(\'' + E(k) + '\')">' +
       '<div style="min-width:0"><div class="s4-n">' + nm + '</div><div class="s4-s">' + sub.filter(Boolean).join('') + '</div>' + pl + '</div>' + lv + lft + week(s) + dl + '</div>'; }
@@ -49907,6 +49917,7 @@ body.is-mgr #v-astudents.s4on > :not(.grp-tabs):not(.s4){display:none!important}
 
   function host(){ const v = document.getElementById('v-astudents'); if(!v) return null; let h = v.querySelector(':scope > .s4');
     if(!h){ h = document.createElement('div'); h.className = 's4'; h.innerHTML = '<div class="s4-b"></div><div class="s4-l"></div>'; v.appendChild(h); }
+    [...v.children].forEach(c => { if(c !== h && !c.classList.contains('grp-tabs')) c.remove(); });   /* the previous list's header and bar: gone, not only hidden */
     v.classList.add('s4on'); return h; }
   function draw(only){ if(!mgr() || !ON()) return false; const h = host(); if(!h) return false;
     if(MS !== MSref){ MSref = MS; MSat = Date.now(); }
