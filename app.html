@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2495;
+const COE_V = 2496;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -48980,13 +48980,17 @@ body.is-mgr #sheet #sheetBody .ov72 h3 > span:last-child{font-size:12.5px;color:
     if(I.isNew) L.push(['#B0306E', 'New student', 'since ' + dd(I.first) + ' · ' + I.held + ' class' + (I.held === 1 ? '' : 'es') + ' so far · a good time to check in with the parent', 'Class Notice', 'cn']);
     if(I.justRen) L.push(['#6B46C1', 'Just renewed', dd(I.ren) + ' · new package started', 'Lessons Left', 'left']);
     if((!isNaN(I.left) && I.left <= 5) || I.soon) L.push(['#A15C07', 'Renew soon', I.left + ' lesson' + (I.left === 1 ? '' : 's') + ' left · ask the parent about the next package', 'Note the Answer', 'rn']);
-    if(!I.up.length) L.push(['#C0392B', 'No classes booked', 'nothing on the calendar after today', '+ Class', 'add']);
-    if(!document.querySelector('#sheetBody .agok') && document.querySelector('#sheetBody #stuPkg')) L.push(['#C0392B', 'No agreement on file', 'send the service agreement to the parent', 'Agreement', 'ag']);
+    const stt = ((document.querySelector('#sheetBody .shero h1 .stp') || {}).textContent || '').trim(), active = /active/i.test(stt), vn = document.querySelector('#sheetBody .shero h1 .vn');   /* 2996: a trial, finished or paused student gets their own line, not "book classes" */
+    if(vn) L.push(['#A15C07', 'Validity', vn.textContent.trim().replace(/\s*·\s*$/, ''), 'Lessons Left', 'left']);
+    if(/trial/i.test(stt)) L.push(['#B0306E', 'Trial student', 'not enrolled yet · follow up with the parent about the first package', 'Class Notice', 'cn']);
+    else if(!active && stt) L.push(['#8C88A3', stt, 'not studying now · note what the parent said', 'Update Status', 'st']);
+    if(active && !I.up.length) L.push(['#C0392B', 'No classes booked', 'nothing on the calendar after today', '+ Class', 'add']);
+    if(active && !document.querySelector('#sheetBody .agok') && document.querySelector('#sheetBody #stuPkg')) L.push(['#C0392B', 'No agreement on file', 'send the service agreement to the parent', 'Agreement', 'ag']);
     const h = L.length ? L.map(x => '<div style="--c:' + x[0] + '"><b>' + E(x[1]) + '</b><span>' + E(x[2]) + '</span><button type="button" onclick="nd89(\'' + x[4] + '\')">' + E(x[3]) + '</button></div>').join('') : '';
     if(!h){ if(n) n.remove(); return; } if(!n){ n = document.createElement('div'); n.className = 'nd89'; ov.insertBefore(n, ov.firstChild); } if(n.innerHTML !== h) n.innerHTML = h; }
   window.nd89 = function(k){ try{ const btn = t => [...document.querySelectorAll('#sheetBody .stu-bar .btn, #sheetBody .stu-bar button')].find(x => x.textContent.trim() === t);
       if(k === 'cn'){ const b = btn('Class Notice'); if(b) b.click(); } else if(k === 'left'){ const b = btn('Lessons Left'); if(b) b.click(); } else if(k === 'ag'){ const b = btn('Agreement'); if(b) b.click(); }
-      else if(k === 'add'){ if(typeof classForm === 'function') classForm(STU.code); } else if(k === 'rn'){ const d = document.querySelector('#stuRn details'); if(d){ d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } }catch(e){} };
+      else if(k === 'add'){ if(typeof classForm === 'function') classForm(STU.code); } else if(k === 'st'){ if(typeof stOpen === 'function') stOpen(); } else if(k === 'rn'){ const d = document.querySelector('#stuRn details'); if(d){ d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } }catch(e){} };
   function run(){ try{ if(!(typeof D !== 'undefined' && D && D.mgr) || typeof STU === 'undefined' || !STU || !document.querySelector('#sheetBody .stu-tabs')) return; const I = info(); head(I); needs(I); }catch(e){ console.warn('2989', e); } }
   window.run2989 = run;
   const r0 = window.stuRender; if(r0) window.stuRender = function(){ const r = r0.apply(this, arguments); run(); setTimeout(run, 900); return r; };
@@ -49081,6 +49085,33 @@ body.is-mgr #sheet #sheetBody #stuPkg .tr:not(#q1){border-radius:4px;overflow:hi
   window.run2991 = run;
   ['stuRender', 'stuTab', 'ov72Draw', 'cal28Go', 'chTab'].forEach(n => { const o = window[n]; if(typeof o === 'function') window[n] = function(){ const r = o.apply(this, arguments); run(); return r; }; });
   const r0 = window.stuRender; window.stuRender = function(){ const r = r0.apply(this, arguments); setTimeout(run, 950); setTimeout(run, 2500); return r; };
+})();
+</script>
+<style id="css2996">
+/* 2996 (Misty 26 Nov 11:27 "do all that you didn't finish"): one coloured badge next to the name, and the windows opened from the student page in the same style */
+body.is-mgr #sheet #sheetBody .shero h1 .lt1588.q96:not(#q1):not(#q2):not(#q3){background:#fff!important;border:1.5px solid var(--g96)!important;color:var(--g96)!important;box-shadow:none!important}
+body.is-mgr #sheet #sheetBody .shero h1 .vn:not(#q1):not(#q2):not(#q3){display:none!important}
+body.is-mgr #sheet #sheetBody[data-f84] h1:not(#q1):not(#q2){font-size:24px!important;font-weight:650!important;color:#1E1B3A!important;line-height:1.25!important;margin:6px 0 4px!important}
+body.is-mgr #sheet #sheetBody[data-f84] .sbk:not(#q1):not(#q2){height:32px;padding:0 12px!important;border-radius:8px!important;border:1px solid #E4E2EC!important;background:#fff!important;color:#4A4666!important;font-size:13.5px!important;font-weight:600!important}
+body.is-mgr #sheet #sheetBody[data-f84] .row:not(.seg):not(#q1){align-items:flex-start}
+body.is-mgr #sheet #sheetBody[data-f84] label:not(.check):not(#q1){font-size:13.5px!important;font-weight:600!important;color:#4A4666!important}
+body.is-mgr #sheet #sheetBody[data-f84] .in-t:not(#q1):not(#q2),body.is-mgr #sheet #sheetBody[data-f84] input:not([type=checkbox]):not([type=radio]):not([type=range]):not(#q1),body.is-mgr #sheet #sheetBody[data-f84] select:not(#q1){border:1px solid #E4E2EC!important;border-radius:10px!important;font-size:15px!important;color:#1E1B3A!important}
+body.is-mgr #sheet #sheetBody[data-f84] .in-t:focus,body.is-mgr #sheet #sheetBody[data-f84] input:focus,body.is-mgr #sheet #sheetBody[data-f84] select:focus{border-color:#0E6F68!important;outline:0;box-shadow:0 0 0 3px rgba(14,111,104,.12)!important}
+</style>
+<script id="b2996">
+(function(){
+  const EM = /^(?:[\u{1F100}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]️?\s*)+/u;
+  function badges(){ const h1 = document.querySelector('#sheetBody .shero h1'); if(!h1) return;
+    const lt = h1.querySelector('.lt1588'); if(lt && !lt.classList.contains('q96')){ const c = getComputedStyle(lt).backgroundColor; lt.style.setProperty('--g96', c); lt.classList.add('q96'); }
+    const st = h1.querySelector('.stp'); const nd = document.querySelector('#sheetBody .nd89'); if(st && nd && /renew/i.test(nd.textContent) && / · /.test(st.textContent)){ const n = [...st.childNodes].find(x => x.nodeType === 3 && / · /.test(x.textContent)); if(n) n.textContent = n.textContent.split(' · ')[0]; else st.textContent = st.textContent.split(' · ')[0]; } }
+  function sub(){ const sb = document.getElementById('sheetBody'); if(!sb || sb.querySelector('.stu-tabs')){ if(sb) delete sb.dataset.f84; return; }
+    if(!(typeof STU !== 'undefined' && STU) || !sb.querySelector('.sbk')){ delete sb.dataset.f84; return; } sb.dataset.f84 = 1;
+    const bk = sb.querySelector('.sbk'); if(bk && !bk.dataset.b96){ const nm = (STU.s && STU.s.name) || ((document.title || '').split(' ')[0]) || ''; const first = String(bk.textContent).replace(/^‹\s*Back to\s*/, '').split(/\s|[一-鿿]/)[0]; bk.textContent = '‹ Back to ' + (first || nm); bk.dataset.b96 = 1; }
+    sb.querySelectorAll('.chip').forEach(c => { const t = [...c.childNodes].find(x => x.nodeType === 3 && /\S/.test(x.textContent)); if(t && EM.test(t.textContent)) t.textContent = t.textContent.replace(EM, ''); }); }
+  window.sub2996 = sub;
+  ['stuRender', 'stuTab', 'ov72Draw'].forEach(n => { const o = window[n]; if(typeof o === 'function') window[n] = function(){ const r = o.apply(this, arguments); try{ badges(); }catch(e){} return r; }; });
+  const r0 = window.stuRender; window.stuRender = function(){ const r = r0.apply(this, arguments); setTimeout(badges, 1000); setTimeout(badges, 2600); return r; };
+  const os = window.openSheet; if(typeof os === 'function') window.openSheet = function(){ const r = os.apply(this, arguments); try{ sub(); setTimeout(sub, 400); setTimeout(sub, 1500); }catch(e){} return r; };
 })();
 </script>
 </body>
