@@ -2117,6 +2117,11 @@ window.addEventListener('beforeunload', ev => { if(API_PEND > 0){ ev.preventDefa
 function apiOnce(fn, args, ms, rid){
 try{ (window.__gc = window.__gc || []).push({ fn: fn, at: Math.round(performance.now()), view: String(location.hash || ''), st: String(new Error().stack || '').split('\n').slice(2, 9).map(l => l.replace(/\(?https?:[^ ]*\/(app[^:]*)?/, '').trim()).join(' < ') }); }catch(e){}   /* 3061: list of every Google call (proof for the switch-off) */
 const ac = ms && window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), ms) : 0;
+/* 3063 (Misty 26 Nov): the one door to Google. Management reads that the database answers never go to Google (no "check behind"); Google only
+   for the few reads it still works out (SB_GONLY) or when the database has no answer at all. Saves are untouched (they carry a rid). */
+try{ if(!rid && typeof D !== 'undefined' && D && D.mgr && typeof SB_R !== 'undefined' && SB_R.test(fn) && !(typeof SB_GONLY !== 'undefined' && SB_GONLY.test(fn)) && typeof sbDocV === 'function' && typeof sbKey === 'function'){
+  const g = () => fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({fn, args}), signal: ac ? ac.signal : undefined}).then(r => r.json()).finally(() => clearTimeout(tid));
+  return Promise.resolve(sbDocV(sbKey(fn, args), fn)).then(d => { if(d && d.data){ clearTimeout(tid); try{ window.__gc.pop(); (window.__gdb = window.__gdb || []).push(fn); }catch(e){} return { ok: true, data: d.data }; } return g(); }, g); } }catch(e){}
 return fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(rid ? {fn, args, rid} : {fn, args}), signal: ac ? ac.signal : undefined})
 .then(r => r.json()).finally(() => clearTimeout(tid));
 }
@@ -7551,7 +7556,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2554;
+const COE_V = 2555;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
