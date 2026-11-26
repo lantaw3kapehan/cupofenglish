@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2537;
+const COE_V = 2538;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -49503,6 +49503,38 @@ body.is-mgr #sheet .stu2 .cd72.many46 .ax72 em:not(.y84),body.is-mgr #sheet .stu
     d.innerHTML = '<b>Lessons left: ' + fixed + ' in the app, ' + raw + ' in the sheet.</b> ' + what + ' was made in the app only. The renewal is saved from the sheet, so it would carry over <b>' + raw + '</b>. Correct the month in the sheet first if it should carry over ' + fixed + '.';
     P.appendChild(d); }
   let n = 0; const t = setInterval(() => { const a = wrapCx(), b = wrapRp(); if((a && b) || ++n > 40) clearInterval(t); }, 250); wrapCx(); wrapRp();
+})();
+</script>
+<script id="b3048">
+/* 3048 (Misty 26 Nov 16:41, second version: the first wrapped the app's api and loadActive and froze the screen; this one wraps neither)
+   A) A month corrected in Correct a month is written into the ACTIVE sheet too (the "Fix this package" save, mgmtPkgFix), so renewals,
+      which Google saves from the sheet, carry over the right number (Yoyo: 4). On saving or undoing a correction, and when Renewed · Paid
+      opens for a student with an older correction. One-row packages only.
+   (B, the status right after a renewal, is done separately.) */
+(function(){
+  if(window.__b3048) return; window.__b3048 = 1;
+  const up = s => String(s || '').trim().toUpperCase(), mgr = () => document.body.classList.contains('is-mgr');
+  const K = 'coe.s3048', P = 'coe.p3048';
+  const get = k => { try{ return JSON.parse(localStorage.getItem(k) || '{}') || {}; }catch(e){ return {}; } }, put = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+  const hasAT = () => typeof AT !== 'undefined' && AT && Array.isArray(AT.cols) && Array.isArray(AT.rows);
+  const cols = () => { const C = {}; AT.cols.forEach((c, i) => C[c] = i); return C; };
+  function rowOf(code){ if(!hasAT()) return null; const C = cols(); const R = AT.rows.filter(x => up(x[C.code]) === up(code)); return R.length === 1 ? R[0][C.row != null ? C.row : 0] : null; }
+  async function sheet(code, ym, v){ const row = rowOf(code); if(row == null || typeof v !== 'number' || !isFinite(v)) return false; const ch = { months: {} }; ch.months[ym + '-01'] = v;
+    try{ const r = await api('mgmtPkgFix', TOKEN, row, up(code), ch); if(r && r.ok === false) return false; const S = get(K); S[up(code) + '|' + ym] = v; put(K, S); return true; }catch(e){ return false; } }
+  function pending(code){ const S = get(K), U = up(code); return ((hasAT() && AT.fixes) || []).filter(f => f && up(f.code) === U && !f.left && typeof f.v === 'number' && typeof f.was === 'number' && f.v !== f.was && S[U + '|' + f.ym] !== f.v); }
+  window.sync3048 = async function(code){ let n = 0; for(const f of pending(code)) if(await sheet(code, f.ym, f.v)) n++; return n; };
+  function wrapLf(){ const o = window.lf2456; if(typeof o !== 'function') return false; if(o.__w3048) return true;
+    const w = async function(code, ym, v){ const U = up(code), before = ((hasAT() && AT.fixes) || []).find(x => up(x.code) === U && x.ym === ym); const r = await o.apply(this, arguments);
+      try{ const now = ((hasAT() && AT.fixes) || []).find(x => up(x.code) === U && x.ym === ym);
+        if(v === null && before && !now){ const S = get(K); delete S[U + '|' + ym]; put(K, S); await sheet(U, ym, +before.was); }
+        else if(now && !now.left && typeof now.v === 'number') await sheet(U, ym, now.v); }catch(e){} return r; };
+    w.__w3048 = 1; window.lf2456 = w; return true; }
+  function wrapRp(){ const o = window.renPaidSheet; if(typeof o !== 'function') return false; if(o.__w3048) return true;
+    const w = async function(code){ const args = arguments; try{ if(mgr() && pending(code).length){ toast('Bringing the month correction into the sheet…'); const n = await window.sync3048(code);
+        if(n){ Object.keys(RP_PRE).forEach(k => { if(k.split('|')[0] === up(code)) delete RP_PRE[k]; }); toast('Correction is in the sheet · checking the package'); } } }catch(e){}
+      return o.apply(this, args); };
+    w.__w3048 = 1; window.renPaidSheet = w; return true; }
+  let n = 0; const t = setInterval(() => { const a = wrapLf(), b = wrapRp(); if((a && b) || ++n > 40) clearInterval(t); }, 250);
 })();
 </script>
 </body>
