@@ -398,8 +398,13 @@ Deno.serve(async (req: Request) => {
       if (off.length) await db.from("writes").update({ args: [token, g, { pend: true, days: make.map((z) => z.day), off: off.map((x: any) => ({ id: x.id, data: x.data })) }] }).eq("id", w.id);
     }
     const google = (async () => {
-      if (!sc && await gcalOff()) {   // 3069: the classes are made here only; marking the save done turns the pending rows into the classes (coe_class_pend_done)
-        await db.from("writes").update({ status: "done", result: { ok: true, db: true, note: "Saved in the app" }, done_at: new Date().toISOString() }).eq("id", w.id);
+      if (await gcalOff()) {   // 3069: the classes are made here only; marking the save done turns the pending rows into the classes (coe_class_pend_done)
+        let note2 = "Saved in the app";
+        if (sc) {   // 3071 (Misty 26 Nov): the substitute's absence case from the database, Google's exact rule (coe_sub_out: Unexcused under 4 h / no notice, POLICY penalty, absences this month)
+          try { const { data: so, error: se } = await db.rpc("coe_sub_out", { p_code: code, p_student: student, p_start: make[0].st.toISOString(), p_sub: teacher, p_abs: (f.abs && typeof f.abs === "object") ? f.abs : {}, p_who: s.name });
+            note2 = se ? "Saved in the app · absence case NOT made (" + se.message.slice(0, 120) + ") · add it by hand" : "Saved in the app" + String(so || ""); } catch (e) { note2 = "Saved in the app · absence case NOT made · add it by hand"; }
+        }
+        await db.from("writes").update({ status: "done", result: { ok: true, db: true, note: note2 }, done_at: new Date().toISOString() }).eq("id", w.id);
         return; }
       let st = "done", result: any = null, err = "";
       try {
