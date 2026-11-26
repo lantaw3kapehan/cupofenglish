@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-pkc (27 Oct 2026) · "Checking the package…" from the database (read-only).
+// CupOfEnglish · coe-pkc v6 (26 Nov 2026: lessons left from the database renewal) · first 27 Oct 2026 · "Checking the package…" from the database (read-only).
 // POST { token, op: "renew", code, teacher?, date?, row? }  → the same answer as Google's mgmtRenewPaid({ dry: true })
 // POST { token, op: "enrol", code }                  → the same answer as Google's mgmtEnrolPaid({ dry: true })
 // 2249 (15 Nov): "row" picks one ACTIVE row when a student has two packages with the same teacher (Merlin: Reading / Writing);
@@ -86,5 +86,13 @@ Deno.serve(async (req: Request) => {
     db.from("coe_packages").select("sheet_r,course,teacher,active").eq("code", code).is("removed_at", null).not("enrolled", "is", null).order("sheet_r")]);
   const leftOf = (r: number) => { const a = (L.act || []).find((x: any) => x.c === code && num(x.r) === r); return a ? num(a.au) : null; };
   const alts = (P || []).map((p: any) => ({ row: p.sheet_r, course: String(p.course || ""), teacher: String(p.teacher || ""), active: !!p.active, left: leftOf(num(p.sheet_r)) }));
-  return out(Object.assign(renewDry(L, { code, teacher: b.teacher, date: ymd, row: b.row }, () => nc), { alts, src: "db", at: L.at }));
+  const A: any = renewDry(L, { code, teacher: b.teacher, date: ymd, row: b.row }, () => nc);
+  // 26 Nov (v6 · app 3054, Misty: "isn't everything on the database?"): the renewal itself is saved by the database (coe_renew_db ›
+  // coe_renew_preview), so the form now shows the database's own "lessons left" — the number that will be saved as carried over —
+  // not the sheet copy's (Yoyo: the copy said 3.5 and the save gave 4). The rest (name, last sale, partner, method) still comes from the copy.
+  if (A && A.ok) { try {
+    const { data: pv } = await db.rpc("coe_renew_preview", { p_code: code, p_teacher: String(A.teacher || b.teacher || "") + (A.row ? "|" + A.row : ""), p_date: ymd, p_pkg: null, p_free: null, p_at: new Date().toISOString() });
+    if (pv && pv.ok && pv.left != null && isFinite(Number(pv.left))) { const dl = Number(pv.left); if (Math.abs(dl - num(A.left)) > 0.01) A.sheetLeft = A.left; A.left = dl; A.total = Math.round((dl + num(A.pkg) + num(A.free)) * 10) / 10; A.dbLeft = true; }
+  } catch (_e) { /* keep the copy's answer */ } }
+  return out(Object.assign(A, { alts, src: "db", at: L.at }));
 });
