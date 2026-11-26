@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2541;
+const COE_V = 2542;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -49538,7 +49538,18 @@ body.is-mgr #sheet .stu2 .cd72.many46 .ax72 em:not(.y84),body.is-mgr #sheet .stu
         if(n){ Object.keys(RP_PRE).forEach(k => { if(k.split('|')[0] === up(code)) delete RP_PRE[k]; }); toast('Correction is in the sheet · checking the package'); } } }catch(e){}
       return o.apply(this, args); };
     w.__w3048 = 1; window.renPaidSheet = w; return true; }
-  let n = 0; const t = setInterval(() => { const a = wrapLf(), b = wrapRp(); if((a && b) || ++n > 40) clearInterval(t); }, 250);
+  /* 3052 (Misty 26 Nov 17:13, Yoyo "-0.5 completed, 72.5 left"): a correction already written into the sheet is part of the carry-over once the
+     student renews, so it is retired right after the renewal is saved; otherwise the app applied it a second time to the new package. */
+  async function retire(code, paid){ const S = get(K), U = up(code), pm = String(paid || '').slice(0, 7); if(!pm) return;
+    const F = ((hasAT() && AT.fixes) || []).filter(f => f && up(f.code) === U && !f.left && f.ym < pm && S[U + '|' + f.ym] === f.v);
+    for(const f of F){ try{ const r = await fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-ops', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'lessonfix', code: U, ym: f.ym, v: null, was: f.was, note: 'retired: in the carry-over of the renewal on ' + paid, left: false }) }).then(x => x.json());
+        if(r && r.ok){ const S2 = get(K); delete S2[U + '|' + f.ym]; put(K, S2); } }catch(e){} } }
+  function wrapSave(){ const o = window.renPaidSave; if(typeof o !== 'function') return false; if(o.__w3052) return true;
+    const w = async function(){ const code = (typeof RPS !== 'undefined' && RPS) ? RPS.code : '', paid = (document.getElementById('rpD') || {}).value || ''; const r = await o.apply(this, arguments);
+      try{ const p = typeof RN_PIC !== 'undefined' ? RN_PIC : null; if(code && p && up(p.code) === up(code) && Date.now() - p.t < 60000){ await retire(code, paid); try{ await loadActive(true); }catch(e){} } }catch(e){}
+      return r; };
+    w.__w3052 = 1; window.renPaidSave = w; return true; }
+  let n = 0; const t = setInterval(() => { const a = wrapLf(), b = wrapRp(), c = wrapSave(); if((a && b && c) || ++n > 40) clearInterval(t); }, 250);
 })();
 </script>
 <script id="b3049">
