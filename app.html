@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2538;
+const COE_V = 2539;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -49535,6 +49535,24 @@ body.is-mgr #sheet .stu2 .cd72.many46 .ax72 em:not(.y84),body.is-mgr #sheet .stu
       return o.apply(this, args); };
     w.__w3048 = 1; window.renPaidSheet = w; return true; }
   let n = 0; const t = setInterval(() => { const a = wrapLf(), b = wrapRp(); if((a && b) || ++n > 40) clearInterval(t); }, 250);
+})();
+</script>
+<script id="b3049">
+/* 3049 (Misty 26 Nov 16:56 "My screen is still frozen"): a freeze can't report itself, so the app now keeps a small note of the last click
+   and a heartbeat. If the app was closed without a normal exit while the heartbeat had stopped, the next opening sends
+   "freeze:" + the last click to the speed records (coe_speed), so the exact button can be found. Management and teachers alike; nothing on screen. */
+(function(){
+  if(window.__b3049) return; window.__b3049 = 1;
+  const g = k => { try{ return JSON.parse(localStorage.getItem(k) || 'null'); }catch(e){ return null; } }, s = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+  const prev = { hb: g('coe.hb49'), clean: g('coe.cl49'), click: g('coe.ck49') };
+  setTimeout(() => { try{ if(prev.hb && prev.click && prev.clean !== prev.hb && prev.click.t >= prev.hb - 8000 && typeof TOKEN !== 'undefined' && TOKEN){
+      const row = { fn: ('freeze:' + prev.click.d).slice(0, 40), ms: Math.round(Math.max(0, prev.hb - prev.click.t)), ui: true, view: prev.click.view || '', v: prev.click.v || 0, dev: (innerWidth || 0) < 900 ? 'phone' : 'laptop', at: new Date(prev.click.t).toISOString() };
+      fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-notice', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'speed', rows: [row] }) }).catch(() => {}); } }catch(e){} }, 15000);
+  const beat = () => { const t = Date.now(); s('coe.hb49', t); return t; }; let last = beat(); setInterval(() => { last = beat(); }, 2000);
+  addEventListener('pagehide', () => { s('coe.cl49', last); });
+  document.addEventListener('click', e => { try{ const el = e.target && e.target.closest ? (e.target.closest('button,a,[onclick],[role=button],summary,.li,select,input') || e.target) : e.target; if(!el || !el.tagName) return;
+    const txt = (el.getAttribute && (el.getAttribute('onclick') || '')).slice(0, 18) || (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 18);
+    s('coe.ck49', { t: Date.now(), d: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + ' ' + txt, view: typeof VIEW !== 'undefined' ? String(VIEW || '') : '', v: typeof COE_V !== 'undefined' ? COE_V : 0 }); }catch(x){} }, true);
 })();
 </script>
 </body>
