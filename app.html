@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2535;
+const COE_V = 2536;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -49445,8 +49445,9 @@ body.is-mgr #sheet .stu2 .cd72.many46 .ax72 em:not(.y84),body.is-mgr #sheet .stu
   const SKIP = '.paper,.docprint,#printArea,[data-doc],.memo,pre,textarea,[contenteditable],.vn,.kph,.note,.nt,.fb-body';
   const SEL = 'button,label,h1,h2,h3,dt,summary,.at80s span,.lg80 span,.nums span,.wk72 .lb,.pf2962 em,.tg em,.chip,.stu2 em,.stu2 b';
   const MON = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+  const SELN = SEL.split(',').map(x => x + ':not([data-t46])').join(',');
   function pass(){ const s = document.getElementById('sheetBody'); if(!s || !document.body.classList.contains('is-mgr')) return 0; let ch = 0;
-    s.querySelectorAll(SEL).forEach(e => { if(e.dataset.t46 || e.closest(SKIP)) return; e.dataset.t46 = '1';
+    s.querySelectorAll(SELN).forEach(e => { e.dataset.t46 = '1'; if(e.closest(SKIP)) return;
       const tn = [...e.childNodes].find(c => c.nodeType === 3 && c.textContent.trim()); if(!tn) return; const t = tn.textContent;
       if(t.trim().split(/\s+/).length > ((e.tagName === 'B' || e.tagName === 'EM') ? 3 : 5) || /@|https?:|\.com/.test(t) || !/[a-z]/.test(t) || ((e.tagName === 'B' || e.tagName === 'EM') && /[.!?]$/.test(t.trim()))) return; const nt = tc(t); if(nt !== t){ tn.textContent = nt; ch++; } });
     const stu = s.classList.contains('stu2') ? s : s.querySelector('.stu2'); if(stu){
@@ -49455,7 +49456,7 @@ body.is-mgr #sheet .stu2 .cd72.many46 .ax72 em:not(.y84),body.is-mgr #sheet .stu
       /* lesson tiles */
       stu.querySelectorAll('.nums span').forEach(x => { if(x.textContent === 'Lesson'){ x.textContent = 'Lessons'; ch++; } });
       /* trial teacher written twice */
-      stu.querySelectorAll('.tg span, span').forEach(sp => { const em = sp.querySelector(':scope > em'), b = sp.querySelector(':scope > b'); if(em && b && /^Teacher$/i.test(em.textContent.trim()) && /^Teacher /.test(b.textContent)){ b.textContent = b.textContent.replace(/^Teacher /, ''); ch++; } });
+      stu.querySelectorAll('span:not([data-q46])').forEach(sp => { sp.dataset.q46 = '1'; const em = sp.querySelector(':scope > em'), b = sp.querySelector(':scope > b'); if(em && b && /^Teacher$/i.test(em.textContent.trim()) && /^Teacher /.test(b.textContent)){ b.textContent = b.textContent.replace(/^Teacher /, ''); ch++; } });
       /* birthdate: real date, no emoji; drop the extra card that only repeats it */
       const extra = [...stu.querySelectorAll('.pf2962')].find(c => !c.classList.contains('h46') && /^Student$/i.test((c.querySelector('h3') || {}).textContent || '') && c.querySelectorAll('.tg > span').length === 1 && /^Birthdate/i.test(c.textContent.replace(/^Student/i, '').trim()));
       const bdTxt = extra ? (extra.querySelector('.tg > span').textContent.replace(/^Birthdate/i, '').trim()) : '';
@@ -49503,6 +49504,55 @@ body.is-mgr #sheet .stu2 .cd72.many46 .ax72 em:not(.y84),body.is-mgr #sheet .stu
     d.innerHTML = '<b>Lessons left: ' + fixed + ' in the app, ' + raw + ' in the sheet.</b> ' + what + ' was made in the app only. The renewal is saved from the sheet, so it would carry over <b>' + raw + '</b>. Correct the month in the sheet first if it should carry over ' + fixed + '.';
     P.appendChild(d); }
   let n = 0; const t = setInterval(() => { const a = wrapCx(), b = wrapRp(); if((a && b) || ++n > 40) clearInterval(t); }, 250); wrapCx(); wrapRp();
+})();
+</script>
+<script id="b3048">
+/* 3048 (Misty 26 Nov 16:41 "OK go ahead, also when they just renewed, their status changed instantly too especially if payment confirmation has been made")
+   A) A month corrected in the app (Correct a month) is written into the ACTIVE sheet too (the same "Fix this package" save, mgmtPkgFix),
+      so the renewal, which Google saves from the sheet, carries over the right number (Yoyo: 4, not 3.5). Done when the correction is saved
+      or undone, and for older corrections when Renewed · Paid opens. One-teacher packages only; a package shared by several teacher rows is left as it is.
+   B) Right after Renewed · Paid is saved, the student shows the new package at once (lessons left, valid until, start), while Google writes the
+      sheet in the background (up to a minute). The local numbers stop as soon as the sheet has them, or after a day. */
+(function(){
+  if(window.__b3048) return; window.__b3048 = 1;
+  const up = s => String(s || '').trim().toUpperCase(), r1 = x => Math.round(x * 10) / 10, mgr = () => document.body.classList.contains('is-mgr');
+  const K = 'coe.s3048', P = 'coe.p3048';
+  const get = k => { try{ return JSON.parse(localStorage.getItem(k) || '{}') || {}; }catch(e){ return {}; } }, put = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+  const cols = () => { const C = {}; (AT.cols || []).forEach((c, i) => C[c] = i); return C; };
+  /* ---------- A: corrections into the sheet ---------- */
+  function rowOf(code){ if(typeof AT === 'undefined' || !AT || !AT.cols) return null; const C = cols(); const R = AT.rows.filter(x => up(x[C.code]) === up(code)); return R.length === 1 ? R[0][C.row != null ? C.row : 0] : null; }
+  async function sheet(code, ym, v){ const row = rowOf(code); if(row == null || typeof v !== 'number' || !isFinite(v)) return false;
+    const call = window.__api3045 || api; const ch = { months: {} }; ch.months[ym + '-01'] = v;
+    try{ const r = await call('mgmtPkgFix', TOKEN, row, up(code), ch); if(r && r.ok === false) return false; const S = get(K); S[up(code) + '|' + ym] = v; put(K, S); return true; }catch(e){ return false; } }
+  function pending(code){ const S = get(K), U = up(code); return ((typeof AT !== 'undefined' && AT && AT.fixes) || []).filter(f => f && up(f.code) === U && !f.left && typeof f.v === 'number' && typeof f.was === 'number' && f.v !== f.was && S[U + '|' + f.ym] !== f.v); }
+  window.sync3048 = async function(code){ let n = 0; for(const f of pending(code)) if(await sheet(code, f.ym, f.v)) n++; return n; };
+  function wrapLf(){ const o = window.lf2456; if(typeof o !== 'function' || o.__w3048) return !!(o && o.__w3048);
+    const w = async function(code, ym, v){ const U = up(code), before = ((AT && AT.fixes) || []).find(x => up(x.code) === U && x.ym === ym); const r = await o.apply(this, arguments);
+      try{ const now = ((AT && AT.fixes) || []).find(x => up(x.code) === U && x.ym === ym);
+        if(v === null && before && !now){ const S = get(K); delete S[U + '|' + ym]; put(K, S); await sheet(U, ym, +before.was); }
+        else if(now && !now.left && typeof now.v === 'number') await sheet(U, ym, now.v); }catch(e){} return r; };
+    w.__w3048 = 1; window.lf2456 = w; return true; }
+  function wrapRp(){ const o = window.renPaidSheet; if(typeof o !== 'function' || o.__w3048) return !!(o && o.__w3048);
+    const w = async function(code){ const args = arguments; try{ if(mgr() && pending(code).length){ toast('Bringing the month correction into the sheet…'); const n = await window.sync3048(code);
+        if(n){ Object.keys(RP_PRE).forEach(k => { if(k.split('|')[0] === up(code)) delete RP_PRE[k]; }); try{ await Promise.race([loadActive(true), new Promise(r => setTimeout(r, 6000))]); }catch(e){} toast('Correction is in the sheet · checking the package'); } } }catch(e){}
+      return o.apply(this, args); };
+    w.__w3048 = 1; window.renPaidSheet = w; try{ renPaidSheet = w; }catch(e){} return true; }
+  /* ---------- B: a renewal shows at once ---------- */
+  function patch(){ if(typeof AT === 'undefined' || !AT || !AT.cols) return; const Q = get(P), C = cols(); let ch = 0;
+    Object.keys(Q).forEach(code => { const q = Q[code]; if(!q || Date.now() - q.at > 864e5){ delete Q[code]; ch = 1; return; }
+      const R = AT.rows.filter(x => up(x[C.code]) === code); const r = R.find(x => x[C.available] !== '' && x[C.available] != null) || R[0]; if(!r) return;
+      const inSheet = String(r[C.start] || '').slice(0, 10) >= q.start || (+r[C.available] || 0) >= q.balance - 0.05; if(inSheet && !r.__p3048){ delete Q[code]; ch = 1; return; }
+      if(!r.__p3048){ r[C.available] = q.balance; if(q.deadline) r[C.deadline] = q.deadline; if(q.start) r[C.start] = q.start; if(q.carry != null && C.carry != null) r[C.carry] = q.carry; r.__p3048 = 1; } });
+    if(ch) put(P, Q); }
+  window.patch3048 = patch;
+  function wrapApi(){ const o = window.api; if(typeof o !== 'function' || o.__w3048) return !!(o && o.__w3048);
+    const w = async function(fn, tok, f){ const r = await o.apply(this, arguments);
+      try{ if(fn === 'mgmtRenewPaid' && f && !f.dry && r && (r.saleRow || r.queued) && r.balance != null){ const Q = get(P); Q[up(f.code)] = { at: Date.now(), balance: +r.balance, carry: r.left != null ? +r.left : null, deadline: r.deadline || '', start: f.date || '' }; put(P, Q); setTimeout(() => { patch(); try{ if(typeof renderAStudents === 'function') renderAStudents(); }catch(e){} }, 50); } }catch(e){}
+      return r; };
+    Object.keys(o).forEach(k => { try{ w[k] = o[k]; }catch(e){} }); w.__w3048 = 1; window.api = w; try{ api = w; }catch(e){} return true; }
+  function wrapLoad(){ const o = window.loadActive; if(typeof o !== 'function' || o.__w3048) return !!(o && o.__w3048);
+    const w = async function(){ const r = await o.apply(this, arguments); try{ patch(); }catch(e){} return r; }; w.__w3048 = 1; window.loadActive = w; try{ loadActive = w; }catch(e){} return true; }
+  let n = 0; const t = setInterval(() => { const a = wrapLf(), b = wrapRp(), c = wrapApi(), d = wrapLoad(); try{ patch(); }catch(e){} if((a && b && c && d) || ++n > 60) clearInterval(t); }, 250);
 })();
 </script>
 </body>
