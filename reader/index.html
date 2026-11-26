@@ -841,7 +841,8 @@ async function copyPage(b, notes){ if(!doc || b.disabled) return; if(notes === f
   if(sp) sp.textContent = 'Copying…'; else if(notes){ b.dataset.was = b.textContent; b.textContent = 'Copying…'; }
   const blobP = pagePic(notes).then(c => new Promise(z => c.toBlob(z, 'image/png')));
   const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent), key = mac ? '⌘ Cmd + V' : 'Ctrl + V';
-  try{ await Promise.race([navigator.clipboard.write([new ClipboardItem({ 'image/png': blobP })]), blobP.then(() => new Promise((z, no) => setTimeout(() => no(new Error('slow')), 8000)))]); toast('Copied. Paste it in the WeChat group (' + key + ').'); markCopied(); }
+  const PCLIP = (() => { try{ return window.parent !== window && typeof window.parent.coeClip3032 === 'function' ? window.parent.coeClip3032 : null; }catch(e){ return null; } })();   /* 3032: inside Speaking (Safari), the page around the board writes the clipboard */
+  try{ await Promise.race([PCLIP ? PCLIP(blobP) : navigator.clipboard.write([new ClipboardItem({ 'image/png': blobP })]), blobP.then(() => new Promise((z, no) => setTimeout(() => no(new Error('slow')), 8000)))]); toast('Copied. Paste it in the WeChat group (' + key + ').'); markCopied(); }
   catch(e){ try{ const bl = await blobP, a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = (String(LABEL || 'page').replace(/[^\w-]+/g, '-') + (UNIT != null ? '-unit-' + UNIT : '') + '-p' + pageNo + '.png'); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Saved to your downloads. Send it in WeChat.'); markCopied(); }
     catch(e2){ toast('The page could not be copied. Please try again.'); } }
   $('toastU').style.display = 'none'; setTimeout(() => { $('toastU').style.display = ''; }, 7200);
