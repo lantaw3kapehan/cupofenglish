@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2507;
+const COE_V = 2508;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -18254,7 +18254,7 @@ nav .dot,#navIn .dot{background:#3FA3A9!important;color:#fff!important;box-shado
       /* validity into the date column */
       const vn = li.querySelector('.vn'), d = li.querySelector('.sa-d'); if(vn && d){ const t = vn.textContent.match(/ended\s+([^·]+)·\s*(?:extended\s+)?(\d+)/i); if(t && !d.querySelector('small')){ d.classList.add('end'); d.insertAdjacentHTML('beforeend', '<small>+' + t[2] + ' days past</small>'); } } }); }
   const r0 = window.renderAStudents; if(r0) window.renderAStudents = function(){ const r = r0.apply(this, arguments); try{ paint(); }catch(e){} setTimeout(() => { try{ paint(); }catch(e){} }, 400); setTimeout(() => { try{ paint(); }catch(e){} }, 1500); return r; };
-  try{ const v = $('v-astudents'); let t = 0; if(v) new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { try{ paint(); }catch(e){} }, 120); }).observe(v, { childList: true, subtree: true }); }catch(e){}
+  try{ const v = $('v-astudents'); let t = 0; if(v) new MutationObserver(() => { if(t) return; t = 1; Promise.resolve().then(() => { t = 0; try{ paint(); }catch(e){} }); }).observe(v, { childList: true, subtree: true });   /* 3008: before the frame is painted, no jump */ }catch(e){}
 })();
 </script>
 <script>
@@ -49216,6 +49216,24 @@ body.is-mgr #app #v-astudents .li.sa .sa-sub .src06{color:#6F6B85}
       if(sub && !sub.dataset.s06){ sub.dataset.s06 = 1; [...sub.children].forEach((x, i) => { if(i) x.insertAdjacentHTML('beforebegin', '<span class="sp06">·</span>'); }); } }); }
   window.rows3006 = rows;
   const r0 = window.renderAStudents; if(r0) window.renderAStudents = function(){ const r = r0.apply(this, arguments); try{ rows(); }catch(e){} return r; };
+})();
+</script>
+<style id="css3008">
+/* 3008 (Misty 26 Nov 12:07): Students opens still - the rows wait until colours, badges and lines are final, then show once */
+body.is-mgr #v-astudents a.li.sa{transition:opacity .16s ease}
+body.is-mgr #v-astudents.hold08 a.li.sa{opacity:0!important;transition:none!important}
+</style>
+<script id="b3008">
+(function(){
+  const v = document.getElementById('v-astudents'); if(!v) return;
+  let q = 0, last = Date.now(), t0 = 0, iv = 0;
+  const ready = () => { try{ return !!(typeof DB !== 'undefined' && DB && DB.rows && DB.rows.length && typeof AT !== 'undefined' && AT && AT.rows && v.querySelector('a.li.sa')); }catch(e){ return false; } };
+  new MutationObserver(() => { last = Date.now(); if(q) return; q = 1; Promise.resolve().then(() => { q = 0; try{ window.rows3006 && window.rows3006(); }catch(e){} }); }).observe(v, { childList: true, subtree: true });
+  function hold(){ if(!document.body.classList.contains('is-mgr') && !/#students/.test(location.hash)) return; v.classList.add('hold08'); t0 = Date.now(); last = Date.now(); clearInterval(iv);
+    iv = setInterval(() => { const el = Date.now() - t0; if((ready() && Date.now() - last > 180) || el > 3500){ clearInterval(iv); try{ window.rows3006 && window.rows3006(); }catch(e){} v.classList.remove('hold08'); } }, 60); }
+  window.hold3008 = hold;
+  const g0 = window.go; if(typeof g0 === 'function') window.go = function(n){ if(n === 'astudents' && typeof VIEW !== 'undefined' && VIEW !== 'astudents') hold(); return g0.apply(this, arguments); };
+  if(/^#students\b/.test(location.hash)) hold();
 })();
 </script>
 </body>
