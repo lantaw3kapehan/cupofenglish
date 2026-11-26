@@ -250,7 +250,18 @@ const IC64 = {
   star: '<svg class="ic64" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z" fill="#F5B700" stroke="#C98A00" stroke-width="1.2" stroke-linejoin="round"/></svg>',
   wish: '<svg class="ic64" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#5B4FC4" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21v-8"/><path d="M12 13c0-3.5-2.5-6-6-6 0 3.5 2.5 6 6 6z" fill="#E7E3FB"/><path d="M12 11c0-3.5 2.5-6 6-6 0 3.5-2.5 6-6 6z" fill="#E7E3FB"/></svg>',
   mic: '<svg class="ic64" style="width:18px;height:18px" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>' };
-const BADGES = [[10, 'Bronze Star', '铜星', '#B87333'], [25, 'Silver Star', '银星', '#9AA3AE'], [50, 'Gold Star', '金星', '#E0A100'], [100, 'Super Star', '超级之星', '#5B4FC4'], [200, 'Champion', '冠军', '#00707A']];
+/* 3078 (Misty 26 Nov 20:46 "sustainable while maintaining motivation and making it objective"): the levels never run out ·
+   Bronze 10, Silver 25, Gold 50, Super Star 100, then a new Star Level every 50 (150 = Star Level 2, 200 = Star Level 3 …) */
+const BADGES = [[10, 'Bronze Star', '铜星', '#B87333'], [25, 'Silver Star', '银星', '#9AA3AE'], [50, 'Gold Star', '金星', '#E0A100'], [100, 'Super Star', '超级之星', '#5B4FC4']].concat(Array.from({ length: 200 }, (_, i) => [150 + 50 * i, 'Star Level ' + (i + 2), '星级 ' + (i + 2), '#00707A']));
+/* 3078: from 26 Nov 21:00 a homework earns stickers by one fixed rule, the same with every teacher (teachers stamp exactly as before):
+   +1 handed in · +1 good work (2 or fewer to fix) · +1 as good as or better than the last homework (first homework: nothing to fix).
+   Stickers counted before then stay as they were (every praise stamp). Same rule as the server (coe-hw v13). */
+const CUT78 = Date.parse('2026-11-26T13:00:00Z');
+const fix78 = x => { const c = x.counts || {}; return x.kind === 'picture' ? (+c.fix || 0) : ['grammar', 'spelling', 'punct', 'words'].reduce((t, k) => t + (+c[k] || 0), 0); };
+const pts78 = (f, last) => 1 + (f <= 2 ? 1 : 0) + ((last == null ? f === 0 : f <= last) ? 1 : 0);
+function sum78(list){ let n = 0, last = null; list.filter(x => x && (x.kind === 'text' || x.kind === 'picture')).slice().sort((a, b) => (Date.parse(a.created_at) || 0) - (Date.parse(b.created_at) || 0)).forEach(x => { const f = fix78(x);
+    if(Date.parse(x.created_at) >= CUT78) n += pts78(f, last); else { const c = x.counts || {}, ks = x.kind === 'picture' ? (Array.isArray(x.marks) ? x.marks : []).filter(m => m && m.t === 'stamp').map(m => m.k) : (Array.isArray(c.stamps) ? c.stamps : []); n += ks.filter(k => k && !FIXK.includes(k)).length; }
+    last = f; }); return { n, last }; }
 const badgeSvg = (col, sz) => '<svg width="' + (sz || 34) + '" height="' + (sz || 34) + '" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="' + col + '"/><circle cx="20" cy="20" r="14.5" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.5"/><path d="M20 9.5l3.1 6.4 7 1-5.1 4.9 1.2 7-6.2-3.3-6.2 3.3 1.2-7-5.1-4.9 7-1z" fill="#fff"/></svg>';
 function tswGet(){ const v = id => (($(id) || {}).value || '').trim(); const o = { s1: v('ts1'), s2: v('ts2'), w: v('ts3') }; return (o.s1 || o.s2 || o.w) ? o : null; }
 function tswSet(o){ o = o || {}; ['ts1', 'ts2', 'ts3'].forEach((id, i) => { const e = $(id); if(e) e.value = [o.s1, o.s2, o.w][i] || ''; }); tswOpen(!!(o.s1 || o.s2 || o.w)); }
@@ -302,24 +313,27 @@ let STK = { n: null, code: '' };
 /* 2873 (Misty 25 Nov): children keep a Sticker book; teens and adults collect Achievements (stars) */
 const STN = () => STK.band === 'teen' || STK.band === 'adult' ? { t: 'Achievements', zh: '学习成就', u: 'praise stamp', us: 'praise stamps', uzh: '个表扬印章' } : { t: 'Sticker Book', zh: '贴纸册', u: 'sticker', us: 'stickers', uzh: '张贴纸' };
 const stkKey = c => 'coe.hw.stk:' + c;
-const stkNow = () => { const c = counts(); return MODE === 'text' ? (c.stamps || []).filter(k => !FIXK.includes(k)).length : PIC.items.filter(i => i.t === 'stamp' && !FIXK.includes(i.k)).length; };
+const stkNow = () => { const c = counts();
+  if(CUR.at && Date.parse(CUR.at) < CUT78) return MODE === 'text' ? (c.stamps || []).filter(k => !FIXK.includes(k)).length : PIC.items.filter(i => i.t === 'stamp' && !FIXK.includes(i.k)).length;   /* a check saved before the rule keeps its old count */
+  if(!(MODE === 'text' ? (TX.body || '').trim() : PIC.base)) return 0;
+  return pts78(fix78({ kind: MODE === 'text' ? 'text' : 'picture', counts: c }), STK.last); };
 async function stkLoad(tries){ if(!CODE) return; const code = CODE; tries = tries || 0;   /* 2869: a slow answer is asked again, and never leaves "Loading…" */
-  try{ const r = await api('stickers', { code, except: CUR.id || 0 }, 9000); if(code !== CODE) return; if(r && r.ok){ STK = { n: r.n, code, band: r.band || '' }; try{ localStorage.setItem(stkKey(code), JSON.stringify({ n: r.n, band: r.band || '', ex: CUR.id || 0, at: Date.now() })); }catch(e){} stkPaint(); return; } }catch(e){}
+  try{ const r = await api('stickers', { code, except: CUR.id || 0 }, 9000); if(code !== CODE) return; if(r && r.ok){ STK = { n: r.n, code, band: r.band || '', last: r.last }; try{ localStorage.setItem(stkKey(code), JSON.stringify({ n: r.n, band: r.band || '', last: r.last, ex: CUR.id || 0, at: Date.now() })); }catch(e){} stkPaint(); return; } }catch(e){}
   if(code !== CODE) return; if(tries < 3) return setTimeout(() => stkLoad(tries + 1), 1500 * (tries + 1));
-  try{ const k = JSON.parse(localStorage.getItem(stkKey(code)) || 'null'); if(k && k.ex === (CUR.id || 0)){ STK = { n: k.n, code, band: k.band, approx: 1 }; stkPaint(); return; } }catch(e){}   /* the last count this device saw */
-  try{ STK = { n: (HIST || []).filter(x => x.id !== CUR.id).reduce((t, x) => { const c = x.counts || {}, ks = x.kind === 'picture' ? (Array.isArray(x.marks) ? x.marks : []).filter(m => m && m.t === 'stamp').map(m => m.k) : (Array.isArray(c.stamps) ? c.stamps : []); return t + ks.filter(k => k && !FIXK.includes(k)).length; }, 0), code, approx: 1 }; stkPaint(); }catch(e){} }
+  try{ const k = JSON.parse(localStorage.getItem(stkKey(code)) || 'null'); if(k && k.ex === (CUR.id || 0)){ STK = { n: k.n, code, band: k.band, last: k.last, approx: 1 }; stkPaint(); return; } }catch(e){}   /* the last count this device saw */
+  try{ const o = sum78((HIST || []).filter(x => x.id !== CUR.id)); STK = { n: o.n, last: o.last, code, approx: 1 }; stkPaint(); }catch(e){} }
 function stkInfo(){ const here = stkNow(), tot = (STK.n || 0) + here, got = BADGES.filter(b => tot >= b[0]), nx = BADGES.find(b => tot < b[0]), prev = got.length ? got[got.length - 1][0] : 0;
   return { here, tot, got, nx, pct: nx ? Math.round((tot - prev) / (nx[0] - prev) * 100) : 100 }; }
 /* 2879 (Misty 25 Nov 11:25 "the sticker book is loading slowly"): never wait on the server — show the last count this device saw,
    or the count from the checks already listed, at once; the server's answer replaces it quietly */
-function stkQuick(){ if(STK.n != null || !CODE) return; try{ const k = JSON.parse(localStorage.getItem(stkKey(CODE)) || 'null'); if(k && k.ex === (CUR.id || 0) && Date.now() - (k.at || 0) < 7 * 864e5){ STK = { n: k.n, code: CODE, band: k.band, approx: 1 }; return; } }catch(e){}
-  if(HISTOK === CODE && HIST.length < 20){ try{ STK = { n: HIST.filter(x => x.id !== CUR.id).reduce((t, x) => { const c = x.counts || {}, ks = x.kind === 'picture' ? (Array.isArray(x.marks) ? x.marks : []).filter(m => m && m.t === 'stamp').map(m => m.k) : (Array.isArray(c.stamps) ? c.stamps : []); return t + ks.filter(k => k && !FIXK.includes(k)).length; }, 0), code: CODE, band: STK.band || '', approx: 1 }; }catch(e){} } }
+function stkQuick(){ if(STK.n != null || !CODE) return; try{ const k = JSON.parse(localStorage.getItem(stkKey(CODE)) || 'null'); if(k && k.ex === (CUR.id || 0) && Date.now() - (k.at || 0) < 7 * 864e5){ STK = { n: k.n, code: CODE, band: k.band, last: k.last, approx: 1 }; return; } }catch(e){}
+  if(HISTOK === CODE && HIST.length < 20){ try{ const o = sum78(HIST.filter(x => x.id !== CUR.id)); STK = { n: o.n, last: o.last, code: CODE, band: STK.band || '', approx: 1 }; }catch(e){} } }
 let HISTOK = '', STKH = ''; function stkPaint(){ const b = $('stkBox'); if(!b) return; stkQuick(); if(STK.n == null){ b.innerHTML = '<div class="h2" style="margin:0">' + STN().t + '</div><div class="xs mute">Loading…</div>'; return; }
   const o = stkInfo(), nm = esc(NAME || CODE);
   const last = o.got.length ? o.got[o.got.length - 1] : null;   /* 2872: one compact card, near the counts, so it is seen without scrolling */
   const h = `<div style="display:flex;align-items:center;gap:10px">${badgeSvg(last ? last[3] : '#D9DCE3', 30)}<div style="min-width:0;flex:1"><div class="xs mute" style="font-weight:600;letter-spacing:.02em">${STN().t.toUpperCase()}${last ? ' · ' + last[1].toUpperCase() : ''}</div>
 <div class="big"><b>${o.tot}</b><span class="small mute">${o.tot === 1 ? STN().u : STN().us}${o.here ? ' · <span style="color:#B45309;font-weight:700">+' + o.here + ' on this check</span>' : ''}</span></div></div></div>
-<div class="bar"><i style="width:${o.pct}%"></i></div><div class="xs mute">${o.nx ? (o.nx[0] - o.tot) + ' more to <b>' + o.nx[1] + '</b> (' + o.nx[0] + ')' : 'Every badge collected!'} ${STK.band === 'teen' || STK.band === 'adult' ? '· every praise stamp counts' : '· each praise stamp = 1 sticker'}</div>`;
+<div class="bar"><i style="width:${o.pct}%"></i></div><div class="xs mute">${o.nx ? (o.nx[0] - o.tot) + ' more to <b>' + o.nx[1] + '</b> (' + o.nx[0] + ')' : 'Every badge collected!'} · up to 3 per homework: handed in, good work, as good as or better than last time</div>`;
   if(h !== STKH){ STKH = h; b.innerHTML = h; } }
 setInterval(() => { try{ stkPaint(); }catch(e){} }, 1200);
 
@@ -879,7 +893,7 @@ function viewPic(x){ const u = x.img_marked_url || x.img_orig_url; if(!u) return
   m.querySelector('img').src = u; m.onclick = e => { if(e.target === m || e.target.tagName === 'BUTTON') m.remove(); }; document.body.appendChild(m); }
 async function openCheck(id){
   const x = HIST.find(r => r.id === id); if(!x) return; if(/^(given|writing)$/.test(x.kind)) return viewPic(x); if(DIRTY && hasWork() && !confirm('Open this saved check? Unsaved marks on screen will be lost.')) return;
-  closeEd(); UNDO = []; REDO = []; CUR = { id: x.id }; $('note').value = x.note || ''; $('ttl').value = x.title || ''; ZH = { src: (x.note || '').trim(), zh: x.note_zh || '' };
+  closeEd(); UNDO = []; REDO = []; CUR = { id: x.id, at: x.created_at || '' }; $('note').value = x.note || ''; $('ttl').value = x.title || ''; ZH = { src: (x.note || '').trim(), zh: x.note_zh || '' };
   if(x.kind === 'text'){ setText(x.body || ''); TX.marks = Array.isArray(x.marks) ? x.marks : []; TX.stamps = Array.isArray((x.counts || {}).stamps) ? x.counts.stamps : []; MODE = 'text'; }
   else { try{ const im = await new Promise((ok, no) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = no; i.src = x.img_orig_url || x.img_marked_url; }); PIC.whole = null; setBase(im); }catch(e){ return toast('The picture could not be loaded'); }
     PIC.items = Array.isArray(x.marks) ? x.marks : []; PIC.origSaved = true; const c = x.counts || {}; PIC.cats = { grammar: +c.grammar || 0, spelling: +c.spelling || 0, words: +c.words || 0, punct: +c.punct || 0 }; if(c.fixSet != null && +c.fixSet >= 0) PIC.cats.fixSet = +c.fixSet; MODE = 'picture'; }   /* 2810: the teacher's own To fix number comes back with the check */

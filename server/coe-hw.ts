@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-hw v12 (25 Nov · 2873 stickers op returns the learner band) · v10 (24 Nov · 2864 voice notes on a check, stickers: a student's sticker collection) · v9 (22 Nov · 2729 where / whereGet: where the class ended and the homework page, per student) · v8 (21 Nov · 2556 trialMark k books) · v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
+// CupOfEnglish · coe-hw v13 (26 Nov · 3078 stickers by one fixed rule from 26 Nov 21:00) · v12 (25 Nov · 2873 stickers op returns the learner band) · v10 (24 Nov · 2864 voice notes on a check, stickers: a student's sticker collection) · v9 (22 Nov · 2729 where / whereGet: where the class ended and the homework page, per student) · v8 (21 Nov · 2556 trialMark k books) · v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
 // correct it and share it). Used by the Homework check page (homework/index.html).
 // POST { token, op, ... }:
 //   me                       → { name, role, mgmt }
@@ -146,11 +146,18 @@ Deno.serve(async (req: Request) => {
     if (op === "stickers") {   // v10 (2864): a student's sticker collection · every praise stamp on every saved check (gentle fix-it stamps are not stickers)
       const code = String(b.code || "").toUpperCase(); if (!(await owns(code))) return out({ ok: false, error: "Not your student" }, 403);
       const FIX = ["again", "spell", "gram", "f_look", "f_almost", "f_together", "f_letter", "f_more"];
-      const { data, error } = await db.from("coe_hw_checks").select("id,kind,marks,counts,created_at").eq("code", code).is("removed_at", null).in("kind", ["text", "picture"]).limit(2000);
+      const { data, error } = await db.from("coe_hw_checks").select("id,kind,marks,counts,created_at").eq("code", code).is("removed_at", null).in("kind", ["text", "picture"]).order("created_at", { ascending: true }).limit(2000);
       if (error) throw new Error(error.message);
-      const by: Record<string, number> = {}; let n = 0, checks = 0;
-      (data || []).filter((r: any) => !(b.except && +b.except === r.id)).forEach((r: any) => { const ks = r.kind === "picture" ? (Array.isArray(r.marks) ? r.marks : []).filter((m: any) => m && m.t === "stamp").map((m: any) => String(m.k || "")) : (Array.isArray((r.counts || {}).stamps) ? r.counts.stamps.map(String) : []);
-        const good = ks.filter((k: string) => k && !FIX.includes(k)); if (good.length) checks++; good.forEach((k: string) => { by[k] = (by[k] || 0) + 1; n++; }); });
+      const by: Record<string, number> = {}; let n = 0, checks = 0; const pts: Record<string, number> = {}; let last: number | null = null;
+      // v13 (3078, Misty 26 Nov 20:46): from 26 Nov 21:00 a homework earns stickers by one fixed rule, the same with every teacher:
+      // +1 handed in · +1 good work (2 or fewer to fix) · +1 as good as or better than the last homework (first homework: nothing to fix).
+      // Stickers counted before then stay as they were (every praise stamp). Teachers stamp exactly as before.
+      const CUT = Date.parse("2026-11-26T13:00:00Z");
+      const fixOf = (r: any) => { const c = r.counts || {}; return r.kind === "picture" ? (+c.fix || 0) : (+c.grammar || 0) + (+c.spelling || 0) + (+c.punct || 0) + (+c.words || 0); };
+      (data || []).filter((r: any) => !(b.except && +b.except === r.id)).forEach((r: any) => { const f = fixOf(r);
+        if (Date.parse(r.created_at) >= CUT) { const p = 1 + (f <= 2 ? 1 : 0) + ((last == null ? f === 0 : f <= last) ? 1 : 0); pts[r.id] = p; n += p; if (p) checks++; last = f; return; }
+        last = f; const ks = r.kind === "picture" ? (Array.isArray(r.marks) ? r.marks : []).filter((m: any) => m && m.t === "stamp").map((m: any) => String(m.k || "")) : (Array.isArray((r.counts || {}).stamps) ? r.counts.stamps.map(String) : []);
+        const good = ks.filter((k: string) => k && !FIX.includes(k)); if (good.length) checks++; pts[r.id] = good.length; good.forEach((k: string) => { by[k] = (by[k] || 0) + 1; n++; }); });
       // v12 (2873): the learner band names the collection ("Sticker book" for children, "Achievements" for teens and adults)
       // same order as the app's learner rule: trial learner type (when it names a band) → birthdate → age → grade
       let band = "";
@@ -166,7 +173,7 @@ Deno.serve(async (req: Request) => {
         else if (/^(WA|UM|U\d|PhD|ADULT|College|University)$/i.test(grade)) band = "adult";
         else if (gn) band = +gn <= 6 ? "young" : "teen";
       } catch (_e) { /* band stays unknown → "Sticker book" */ }
-      return out({ ok: true, n, checks, by, band });
+      return out({ ok: true, n, checks, by, band, pts, last, rule: 3078 });
     }
 
     if (op === "remove") {
