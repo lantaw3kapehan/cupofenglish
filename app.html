@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2479;
+const COE_V = 2480;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -48648,13 +48648,17 @@ body.is-mgr #sheet #sheetBody .shero #occ1706 .btn:not(#q1):not(#q2):not(#q3):no
       + tile('cls', '#2E9E6F', 'Classes · ' + MN[new Date().getMonth()], String(thisM), 'held so far')
       + tile('cls', '#B0306E', 'Next Class', up[0] ? hm(up[0].start) : '—', up[0] ? wk(up[0].start) + ' · ' + dd(up[0].start) : 'nothing booked') + '</div>';
     const upX = C.filter(c => Date.parse(c.end) > now).sort((a, b) => Date.parse(a.start) - Date.parse(b.start)); const rows = upX.slice(0, 8).map(c => c.cancelled ? '<div class="r72 cx76"><b>' + E(hm(c.start)) + '</b><i style="background:#C0392B"></i><span><s>' + E(wk(c.start) + ' ' + dd(c.start).replace(/ \d{4}$/, '')) + '</s><em>Cancelled</em></span><button type="button" class="pf76" onclick="cxProof(\'' + E(c.id) + '\',\'stu\',\'' + E(c.start) + '\')">Proof to Send</button></div>' : '<div class="r72"><b>' + E(hm(c.start)) + '</b><i style="background:' + BKC(c.book || '') + '"></i><span>' + E(wk(c.start) + ' ' + dd(c.start).replace(/ \d{4}$/, '')) + '<span class="bk">' + E(String(c.book || '').replace(/([a-z])([A-Z])/g, '$1 $2')) + '</span></span><span class="d">' + E(c.teacher || '') + '</span></div>').join('') || '<div class="r72"><span class="d" style="grid-column:1/-1">No classes booked.</span></div>';
-    const months = []; for(let i = 5; i >= 0; i--){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); months.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')); }
-    const per = months.map(m => C.filter(c => !c.cancelled && mnl(c.start).toISOString().slice(0, 7) === m && Date.parse(c.start) < now).reduce((a, c) => a + (Math.round((Date.parse(c.end) - Date.parse(c.start)) / 6e4 / 25) / 2 || 0.5), 0));
-    const mx = Math.max(1, ...per); const sc = months.map(m => { const f = fb.find(x => x.month === m); return f ? f.total : ''; });
-    const chart = '<div class="cs72">' + per.map((u, i) => '<div class="' + (i === 5 ? 'cur' : '') + '"><b>' + (u ? u.toLocaleString('en-US') : '') + '</b><i style="height:' + Math.round(u / mx * 100) + '%"></i></div>').join('') + '</div><div class="ax72">' + months.map((m, i) => '<span>' + MN[+m.slice(5, 7) - 1] + '<em>' + (sc[i] ? sc[i] + '/100' : '&nbsp;') + '</em></span>').join('') + '</div>';
+    const AT80 = window.att80 ? att80(C) : null;   /* 2980: attendance by month (held, make-up, family, teacher/school, other) */
+    const chart = AT80 && AT80.months.length ? (() => { const mx = Math.max(1, ...AT80.months.map(m => m.held + m.mk + m.fam + m.tch + m.oth)); const COL = { held: '#1D7A52', mk: '#0E6F68', fam: '#A15C07', tch: '#C0392B', oth: '#B9B6C6' };
+        const sc = m => { const f = fb.find(x => x.month === m.key); return f ? f.total + '/100' : '&nbsp;'; };
+        return '<div class="at80s"><div><b>' + (AT80.rate == null ? '—' : AT80.rate + '%') + '</b><span>Attended</span></div><div><b>' + AT80.T.held + '</b><span>Classes held</span></div><div><b>' + AT80.T.fam + '</b><span>Family cancelled</span></div><div><b>' + AT80.T.tch + '</b><span>Teacher / school cancelled</span></div></div>'
+          + '<div class="cs72 at80">' + AT80.months.map(m => { const t = m.held + m.mk + m.fam + m.tch + m.oth; return '<div class="' + (m.cur ? 'cur' : '') + '"><b>' + (t ? (m.held + m.mk) + '/' + t : '') + '</b><div class="st80" style="height:' + Math.round(t / mx * 100) + '%">' + ['oth', 'tch', 'fam', 'mk', 'held'].filter(k => m[k]).map(k => '<i style="flex:' + m[k] + ';background:' + COL[k] + '" title="' + m[k] + '"></i>').join('') + '</div></div>'; }).join('') + '</div>'
+          + '<div class="ax72">' + AT80.months.map(m => '<span>' + MN[m.mo] + '<em>' + sc(m) + '</em></span>').join('') + '</div>'
+          + '<div class="lg80"><span><i style="background:#1D7A52"></i>Held</span><span><i style="background:#0E6F68"></i>Make-up</span><span><i style="background:#A15C07"></i>Family cancelled</span><span><i style="background:#C0392B"></i>Teacher / school cancelled</span>' + (AT80.T.oth ? '<span><i style="background:#B9B6C6"></i>Other</span>' : '') + '</div>'
+          + '<div class="ft80"><span>' + E(AT80.since ? 'From ' + dd(AT80.since) + ' · calendar records' : '') + '</span><button type="button" class="pic72" onclick="attPic80()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Attendance Picture</button></div>'; })() : '<div class="r72"><span class="d" style="grid-column:1/-1">No classes on the calendar yet.</span></div>';
     const slots = hero ? [...hero.querySelectorAll('.shwk .sl')].map(x => x.textContent.replace(/(\D)(\d)/, '$1 $2').trim()) : [];
     const wkl = '<div class="wk72">' + (slots.length ? '<span class="lb">Every week</span>' + slots.map(x => '<span class="sl">' + E(x) + '</span>').join('') : '<span class="lb">No weekly classes yet</span>') + '<button type="button" class="pic72 wk" onclick="go72(\'wk\')">Weekly Picture</button><button type="button" class="pic72" onclick="go72(\'pic\')">' + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Calendar Picture for Parents</button></div>';
-    const g2 = '<div class="g272"><div class="cd72"><h3><span>Coming Classes · ' + up.length + '</span><span>' + E(new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })) + '</span></h3>' + wkl + rows + '</div><div class="cd72"><h3><span>Lessons Used · Last 6 Months</span><span>score /100 under each month</span></h3>' + chart + '</div></div>';
+    const g2 = '<div class="g272"><div class="cd72"><h3><span>Coming Classes · ' + up.length + '</span><span>' + E(new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })) + '</span></h3>' + wkl + rows + '</div><div class="cd72"><h3><span>Attendance · Last 6 Months</span><span>held / scheduled · score under each month</span></h3>' + chart + '</div></div>';
     w = document.createElement('div'); w.className = 'ov72'; w.dataset.c = STU.code; w.innerHTML = jy + tl + g2; tabs.insertAdjacentElement('afterend', w);
   }catch(e){ console.warn('ov72', e); } }
   function st(){ try{ const t = document.querySelector('#sheetBody .ov72 .tl72 > div[data-go="st"]'); const k = document.querySelector('#sheetBody .shero .kpis > .k-st'); if(!t || !k) return; const b = t.querySelector('b'), sp = t.querySelector('span'); const v = (k.querySelector('b') || {}).textContent || '', e = (k.querySelector('em') || {}).textContent || ''; if(b && b.textContent !== v) b.textContent = v; if(sp && sp.textContent !== e) sp.textContent = e; }catch(e){} }   /* the sticker count arrives a moment later */
@@ -48751,6 +48755,83 @@ body.is-mgr #sheet #sheetBody .ov72 .r72 .pf76:hover{background:#C0392B;color:#f
       return p; };
     for(const k in a0) try{ w[k] = a0[k]; }catch(e){}
     window.api = w; }
+})();
+</script>
+<style id="css2980">
+/* 2980 (Misty 26 Nov 10:37): attendance and cancellations on the student Overview, and a picture to send to partners and parents */
+body.is-mgr #sheet #sheetBody .ov72 .at80s{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 6px}
+body.is-mgr #sheet #sheetBody .ov72 .at80s > div{background:#FAFAFC;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+body.is-mgr #sheet #sheetBody .ov72 .at80s b{font-size:20px;color:#1E1B3A;font-variant-numeric:tabular-nums}
+body.is-mgr #sheet #sheetBody .ov72 .at80s span{font-size:12px;color:#6F6B85;line-height:1.25}
+body.is-mgr #sheet #sheetBody .ov72 .at80s > div:nth-child(3) b{color:#A15C07}
+body.is-mgr #sheet #sheetBody .ov72 .at80s > div:nth-child(4) b{color:#C0392B}
+body.is-mgr #sheet #sheetBody .ov72 .cs72.at80{height:140px}
+body.is-mgr #sheet #sheetBody .ov72 .cs72.at80 .st80{width:100%;display:flex;flex-direction:column;border-radius:6px 6px 0 0;overflow:hidden;min-height:3px;gap:1px}
+body.is-mgr #sheet #sheetBody .ov72 .cs72.at80 .st80 i{display:block;width:100%;border-radius:0;min-height:0}
+body.is-mgr #sheet #sheetBody .ov72 .cs72.at80 b{font-size:12.5px;color:#4A4666;font-weight:600}
+body.is-mgr #sheet #sheetBody .ov72 .lg80{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12.5px;color:#6F6B85}
+body.is-mgr #sheet #sheetBody .ov72 .lg80 span{display:inline-flex;align-items:center;gap:6px}
+body.is-mgr #sheet #sheetBody .ov72 .lg80 i{width:10px;height:10px;border-radius:3px;display:inline-block}
+body.is-mgr #sheet #sheetBody .ov72 .ft80{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;font-size:12.5px;color:#9A96B0}
+body.is-mgr #sheet #sheetBody .ov72 .ft80 .pic72{margin-left:auto}
+@media (max-width:900px){ body.is-mgr #sheet #sheetBody .ov72 .at80s{grid-template-columns:repeat(2,minmax(0,1fr))} }
+</style>
+<script id="b2980">
+/* 2980: who cancelled, read from the saved reason (the "Who asked" choice, the reason chips, a pasted Chinese parent message) */
+(function(){
+  const kind = e => { const w = String(e.why || '');
+    if(/from (the )?parent|-\s*from parent/i.test(w)) return 'fam';
+    if(/from (the )?teacher|teacher (is )?(on leave|unavailable|sick|absent)|^sub\s*·|substitute/i.test(w)) return 'tch';
+    if(/from cupofenglish|force majeure|typhoon|earthquake/i.test(w)) return 'tch';
+    if(/parent|student|school exam|family|holiday|moved to another day|no-show|sick|trip|travel/i.test(w) || /[一-鿿]/.test(w)) return 'fam';
+    if(/internet|power|outage|teacher/i.test(w)) return 'tch';
+    return 'oth'; };
+  window.kind80 = kind;
+  window.att80 = function(C){ const now = Date.now(), L = (C || []).filter(c => c && c.start && Date.parse(c.start) < now && !/-TC(\s+X)?$/i.test(String(c.title || ''))).sort((a, b) => Date.parse(a.start) - Date.parse(b.start)); if(!L.length) return { months: [], T: { held: 0, mk: 0, fam: 0, tch: 0, oth: 0 }, rate: null, since: '', list: [] };
+    const ml = d => { const t = new Date(Date.parse(d) + 8 * 3600e3); return t.getUTCFullYear() + '-' + String(t.getUTCMonth() + 1).padStart(2, '0'); };
+    const keys = []; for(let i = 5; i >= 0; i--){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); keys.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')); }
+    const first = ml(L[0].start), K = keys.filter(k => k >= first), T = { held: 0, mk: 0, fam: 0, tch: 0, oth: 0 }, list = [];
+    const months = K.map((k, i) => ({ key: k, mo: +k.slice(5, 7) - 1, cur: i === K.length - 1, held: 0, mk: 0, fam: 0, tch: 0, oth: 0 }));
+    L.forEach(c => { const m = months.find(x => x.key === ml(c.start)); if(!m) return; const k = c.cancelled ? kind(c) : c.makeup ? 'mk' : 'held'; m[k]++; T[k]++; if(c.cancelled) list.push({ c, k }); });
+    const att = T.held + T.mk, rate = att + T.fam ? Math.round(att / (att + T.fam) * 100) : null;
+    return { months, T, rate, since: L.find(c => ml(c.start) >= (K[0] || first)) ? L.find(c => ml(c.start) >= (K[0] || first)).start : '', list }; };
+  const img = u => new Promise(ok => { if(!u) return ok(null); const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = () => ok(null); i.src = u; });
+  async function draw(){ const C = (STU && STU.cls) || [], A = att80(C), code = STU.code || '';
+    const nm = (() => { try{ const h = document.querySelector('#sheetBody .nm2956, #sheetBody .shero h1'); const en = h ? String(h.childNodes[0] && h.childNodes[0].textContent || h.textContent).trim() : ''; const S = (typeof MS !== 'undefined' && Array.isArray(MS)) ? MS.find(x => x && String(x.code).toUpperCase() === code.toUpperCase()) : null; return { en: (S && S.name) || en || code, zh: (S && S.cn) || '' }; }catch(e){ return { en: code, zh: '' }; } })();
+    const T = [...new Set(C.filter(c => c && c.teacher && !c.cancelled).map(c => String(c.teacher).replace(/^teacher\s+/i, '').trim()))].slice(-2);
+    const [logo, tag] = await Promise.all([img((document.querySelector('#login img') || {}).src), img((document.querySelector('#login .tagl img') || {}).src)]);
+    const WD = 1080, SC = 2, BR = '"Fredoka One",sans-serif', F = 'Inter,"PingFang SC","Microsoft YaHei",sans-serif', NAVY = '#2B2253', MUTE = '#6B6880', PAD = 56;
+    const LI = A.list.slice(-10), H = 1060 + (LI.length ? 80 + LI.length * 44 : 0) + 200;
+    const cv = document.createElement('canvas'); cv.width = WD * SC; cv.height = H * SC; const c = cv.getContext('2d'); c.scale(SC, SC);
+    const rr = (x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+    c.fillStyle = '#F1F5F6'; c.fillRect(0, 0, WD, H); c.fillStyle = '#fff'; rr(24, 24, WD - 48, H - 48, 40); c.fill();
+    if(logo){ const lh = 96, lw = lh * logo.width / logo.height; c.drawImage(logo, PAD, 56, lw, lh); } else { c.fillStyle = NAVY; c.font = '400 40px ' + BR; c.fillText('CUPOFENGLISH', PAD, 110); }
+    const pill = 'Attendance · 出勤记录'; c.font = '700 26px ' + F; const pw = c.measureText(pill).width + 48; c.fillStyle = '#ECE9F7'; rr(WD - PAD - pw, 70, pw, 60, 30); c.fill(); c.fillStyle = NAVY; c.textBaseline = 'middle'; c.fillText(pill, WD - PAD - pw + 24, 100); c.textBaseline = 'alphabetic';
+    c.fillStyle = '#E8E6EF'; c.fillRect(PAD, 182, WD - PAD * 2, 2);
+    c.fillStyle = MUTE; c.font = '400 24px ' + F; c.fillText('Student · 学生', PAD, 232); c.fillStyle = NAVY; c.font = '400 64px ' + BR; c.fillText(nm.en, PAD, 306); c.fillStyle = '#4A4766'; c.font = '400 32px ' + F; c.fillText([nm.zh, code].filter(Boolean).join('  ·  '), PAD, 356);
+    if(T.length){ c.textAlign = 'right'; c.fillStyle = MUTE; c.font = '400 24px ' + F; c.fillText('Teacher · 老师', WD - PAD, 232); c.fillStyle = NAVY; c.font = '600 32px ' + F; c.fillText(T.map(t => 'Teacher ' + t).join(' · '), WD - PAD, 290); c.fillStyle = '#4A4766'; c.font = '400 28px ' + F; c.fillText(T.map(t => t + '老师').join(' · '), WD - PAD, 334); c.textAlign = 'left'; }
+    let y = 410; const tw = (WD - PAD * 2 - 3 * 16) / 4;
+    [[A.rate == null ? '—' : A.rate + '%', 'Attended', '出勤率', NAVY], [String(A.T.held + A.T.mk), 'Classes held', '已上课', '#1D7A52'], [String(A.T.fam), 'Family cancelled', '家长请假', '#A15C07'], [String(A.T.tch), 'Teacher / school cancelled', '老师/学校取消', '#C0392B']].forEach((t, i) => { const x = PAD + i * (tw + 16); c.fillStyle = '#FAFAFC'; rr(x, y, tw, 150, 18); c.fill(); c.fillStyle = t[3]; c.font = '700 52px ' + F; c.fillText(t[0], x + 22, y + 70); c.fillStyle = '#4A4766'; c.font = '600 20px ' + F; c.fillText(t[1], x + 22, y + 108); c.fillStyle = MUTE; c.font = '400 19px ' + F; c.fillText(t[2], x + 22, y + 134); });
+    y += 200; c.fillStyle = NAVY; c.font = '700 28px ' + F; c.fillText('Classes by month · 每月上课情况', PAD, y); y += 24;
+    const COL = { held: '#1D7A52', mk: '#0E6F68', fam: '#A15C07', tch: '#C0392B', oth: '#B9B6C6' }, MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const ch = 300, n = Math.max(1, A.months.length), bw = Math.min(120, (WD - PAD * 2 - (n - 1) * 24) / n), mx = Math.max(1, ...A.months.map(m => m.held + m.mk + m.fam + m.tch + m.oth)), x0 = PAD + ((WD - PAD * 2) - (n * bw + (n - 1) * 24)) / 2;
+    A.months.forEach((m, i) => { const x = x0 + i * (bw + 24), tot = m.held + m.mk + m.fam + m.tch + m.oth; let yy = y + 40 + ch; ['held', 'mk', 'fam', 'tch', 'oth'].forEach(k => { if(!m[k]) return; const h = m[k] / mx * ch; c.fillStyle = COL[k]; c.fillRect(x, yy - h, bw, h - 2); yy -= h; });
+      c.fillStyle = NAVY; c.font = '700 24px ' + F; c.textAlign = 'center'; if(tot) c.fillText((m.held + m.mk) + '/' + tot, x + bw / 2, yy - 12); c.fillStyle = '#4A4766'; c.font = '600 22px ' + F; c.fillText(MN[m.mo], x + bw / 2, y + ch + 76); c.fillStyle = MUTE; c.font = '400 19px ' + F; c.fillText((m.mo + 1) + '月', x + bw / 2, y + ch + 102); c.textAlign = 'left'; });
+    y += ch + 140; let lx = PAD; c.font = '400 21px ' + F; [['held', 'Held · 已上'], ['mk', 'Make-up · 补课'], ['fam', 'Family cancelled · 家长请假'], ['tch', 'Teacher / school cancelled · 老师/学校取消']].concat(A.T.oth ? [['oth', 'Other · 其他']] : []).forEach(([k, lab]) => { const w = 40 + c.measureText(lab).width + 26; if(lx + w > WD - PAD){ lx = PAD; y += 36; } c.fillStyle = COL[k]; rr(lx, y - 18, 28, 20, 5); c.fill(); c.fillStyle = MUTE; c.fillText(lab, lx + 38, y); lx += w; });
+    if(LI.length){ y += 70; c.fillStyle = NAVY; c.font = '700 26px ' + F; c.fillText('Cancelled classes · 已取消课程', PAD, y); y += 10;
+      const WZ = '日一二三四五六', LAB = { fam: ['Family', '家长请假'], tch: ['Teacher / school', '老师/学校'], oth: ['Other', '其他'] };
+      LI.forEach(o => { y += 44; const d = new Date(o.c.start); c.fillStyle = NAVY; c.font = '600 22px ' + F; c.fillText(d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ' · ' + (d.getMonth() + 1) + '月' + d.getDate() + '日 周' + WZ[d.getDay()], PAD, y);
+        c.textAlign = 'right'; c.fillStyle = COL[o.k]; c.font = '600 21px ' + F; c.fillText(LAB[o.k][0] + ' · ' + LAB[o.k][1], WD - PAD, y); c.textAlign = 'left'; }); }
+    y += 60; c.fillStyle = MUTE; c.font = '400 20px ' + F; c.textAlign = 'center'; const nw = new Date();
+    c.fillText((A.since ? 'From ' + new Date(A.since).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '  ·  ' : '') + 'China time · 北京时间  ·  As of ' + nw.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + String(nw.getHours()).padStart(2, '0') + ':' + String(nw.getMinutes()).padStart(2, '0') + ' · 截至' + (nw.getMonth() + 1) + '月' + nw.getDate() + '日', WD / 2, y); c.textAlign = 'left';
+    c.fillStyle = '#E8E6EF'; c.fillRect(PAD, y + 30, WD - PAD * 2, 2); if(tag){ const tw2 = 240, th = tw2 * tag.height / tag.width; c.drawImage(tag, WD / 2 - tw2 / 2, y + 56, tw2, th); }
+    return new Promise(ok => cv.toBlob(ok, 'image/png')); }
+  window.attPic80 = async function(){ if(typeof STU === 'undefined' || !STU) return; const name = 'CupOfEnglish-attendance-' + (STU.code || '') + '.png'; try{ toast('Making the attendance picture…'); }catch(e){}
+    const pb = draw();
+    try{ if(window.ClipboardItem && navigator.clipboard && navigator.clipboard.write){ await navigator.clipboard.write([new ClipboardItem({ 'image/png': pb })]); toast('Attendance picture copied ✓ · paste it in WeChat'); }  }catch(e){}
+    try{ const b = await pb, u = URL.createObjectURL(b); const ov = document.createElement('div'); ov.style.cssText = 'position:fixed;inset:0;background:rgba(20,18,40,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+      ov.innerHTML = '<div style="background:#fff;border-radius:16px;padding:14px;max-width:520px;width:100%;max-height:92vh;overflow:auto"><img src="' + u + '" alt="Attendance" style="width:100%;border-radius:10px"><div style="display:flex;gap:8px;margin-top:10px"><a class="btn teal" style="flex:1;text-align:center" download="' + name + '" href="' + u + '">Save picture</a><button type="button" class="btn ghost" style="flex:1">Close</button></div></div>';
+      ov.addEventListener('click', ev => { if(ev.target === ov || ev.target.tagName === 'BUTTON'){ ov.remove(); URL.revokeObjectURL(u); } }); document.body.appendChild(ov); }catch(e){ try{ toast('Could not make the picture'); }catch(x){} } };
 })();
 </script>
 </body>
