@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2527;
+const COE_V = 2528;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -49420,6 +49420,54 @@ body.is-mgr #app #v-astudents .li .d45.soon{color:#A15C07!important;font-weight:
   let last = 0; const pre = () => { if(!document.body.classList.contains('is-mgr') || typeof TOKEN === 'undefined' || !TOKEN || !window.__api3045) return; if(Date.now() - last < 5e5) return; last = Date.now(); fetchPC().catch(() => {}); };
   if(v) new MutationObserver(() => { if(v.offsetParent) pre(); }).observe(v, { childList: true });
   setTimeout(pre, 8000);
+})();
+</script>
+<style id="css3046">
+/* 3046 (Misty 26 Nov 16:20): student page click-by-click fixes (management only) */
+body.is-mgr #sheet .stu2 .stu-tabs::before{content:"";position:absolute;left:-2px;right:-2px;bottom:100%;height:28px;background:#fff;pointer-events:none}
+body.is-mgr #sheet .stu2 .wk72 .sl:empty{display:none!important}
+body.is-mgr #sheet .stu2 .at80s span{white-space:normal!important;text-overflow:clip!important;overflow:visible!important;line-height:1.25}
+body.is-mgr #sheet .stu2 #stuSch h2 > .btn.teal{margin-left:auto!important}
+body.is-mgr #sheet .stu2 #stuSch h2 > .tg91{margin-left:8px!important}
+body.is-mgr #sheet .stu2 .cd72 [style*="0E6F68"]{background:#7FBFB8!important}
+body.is-mgr #sheet .stu2 .pf2962.h46{display:none!important}
+</style>
+<script id="b3046">
+(function(){
+  if(window.__b3046) return; window.__b3046 = 1;
+  const SMALL = /^(a|an|the|and|or|of|in|on|to|for|by|with|at|from|as|per|via)$/i;
+  const tc = t => t.replace(/[A-Za-z][A-Za-z']*/g, (w, i) => (i > 0 && SMALL.test(w) && !/[:·(\/]\s*$/.test(t.slice(0, i))) ? w.toLowerCase() : (/[A-Z]/.test(w.slice(1)) ? w : w[0].toUpperCase() + w.slice(1)));
+  const SKIP = '.paper,.docprint,#printArea,[data-doc],.memo,pre,textarea,[contenteditable],.vn,.kph,.note,.nt,.fb-body';
+  const SEL = 'button,label,h1,h2,h3,dt,summary,.at80s span,.lg80 span,.nums span,.wk72 .lb,.pf2962 em,.tg em,.chip';
+  const MON = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+  function pass(){ const s = document.getElementById('sheetBody'); if(!s || !document.body.classList.contains('is-mgr')) return 0; let ch = 0;
+    s.querySelectorAll(SEL).forEach(e => { if(e.dataset.t46 || e.closest(SKIP)) return; e.dataset.t46 = '1';
+      const tn = [...e.childNodes].find(c => c.nodeType === 3 && c.textContent.trim()); if(!tn) return; const t = tn.textContent;
+      if(t.trim().split(/\s+/).length > 5 || /@|https?:|\.com/.test(t) || !/[a-z]/.test(t)) return; const nt = tc(t); if(nt !== t){ tn.textContent = nt; ch++; } });
+    const stu = s.classList.contains('stu2') ? s : s.querySelector('.stu2'); if(stu){
+      /* Every week with no regular time */
+      stu.querySelectorAll('.wk72').forEach(w => { const sl = w.querySelector('.sl'), lb = w.querySelector('.lb'); if(sl && lb && !sl.textContent.trim() && !sl.children.length && lb.textContent !== 'No Regular Time'){ lb.textContent = 'No Regular Time'; ch++; } });
+      /* lesson tiles */
+      stu.querySelectorAll('.nums span').forEach(x => { if(x.textContent === 'Lesson'){ x.textContent = 'Lessons'; ch++; } });
+      /* trial teacher written twice */
+      stu.querySelectorAll('.tg span, span').forEach(sp => { const em = sp.querySelector(':scope > em'), b = sp.querySelector(':scope > b'); if(em && b && /^Teacher$/i.test(em.textContent.trim()) && /^Teacher /.test(b.textContent)){ b.textContent = b.textContent.replace(/^Teacher /, ''); ch++; } });
+      /* birthdate: real date, no emoji; drop the extra card that only repeats it */
+      const extra = [...stu.querySelectorAll('.pf2962')].find(c => !c.classList.contains('h46') && /^Student$/i.test((c.querySelector('h3') || {}).textContent || '') && c.querySelectorAll('.tg > span').length === 1 && /^Birthdate/i.test(c.textContent.replace(/^Student/i, '').trim()));
+      const bdTxt = extra ? (extra.querySelector('.tg > span').textContent.replace(/^Birthdate/i, '').trim()) : '';
+      stu.querySelectorAll('.pf29 dt').forEach(dt => { if(!/^Birthdate$/i.test(dt.textContent.trim())) return; const dd = dt.nextElementSibling; if(!dd || dd.dataset.b46) return;
+        const raw = dd.textContent.replace(/\p{Extended_Pictographic}|️/gu, '').trim(); let out = raw;
+        const m = bdTxt.match(/(\d{1,2}) ([A-Z][a-z]{2}) (\d{4})/);
+        if(m && /coming soon|today|^$/i.test(raw)){ const now = new Date(); now.setHours(0, 0, 0, 0); let nx = new Date(now.getFullYear(), MON[m[2]], +m[1]); if(nx < now) nx = new Date(now.getFullYear() + 1, MON[m[2]], +m[1]); const d = Math.round((nx - now) / 864e5);
+          out = bdTxt + (d === 0 ? ' · Birthday Today' : d <= 45 ? ' · Birthday in ' + d + ' Days' : ''); }
+        dd.dataset.b46 = '1'; if(dd.textContent !== out){ dd.textContent = out; ch++; } });
+      if(extra){ extra.classList.add('h46'); ch++; }
+    }
+    return ch; }
+  window.pass3046 = pass;
+  let burst = 0, bt = 0, q = 0;
+  const run = () => { if(q) return; q = 1; Promise.resolve().then(() => { q = 0; if(burst > 12) return; let ch = 0; try{ ch = pass(); }catch(e){} if(ch) burst++; clearTimeout(bt); bt = setTimeout(() => { burst = 0; }, 1000); }); };
+  const sb = document.getElementById('sheet'); if(sb) new MutationObserver(run).observe(sb, { childList: true, subtree: true });
+  run();
 })();
 </script>
 </body>
