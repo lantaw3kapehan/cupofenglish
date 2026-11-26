@@ -7292,7 +7292,7 @@ window.enTfS = function(){ const box = $('enTS'), i = $('enTf'); if(!box || !i) 
     : '<div class="small mute">No student with a package in Packages matches · if the giver is an old student not in our sheet, tick the box below</div>'; };
 window.ENPRE = window.ENPRE || {};
 window.enPre = function(code){ const k = String(code || '').toUpperCase(), x = ENPRE[k]; if(x && Date.now() - x.t < 300000) return x.p;
-  const g = api('mgmtEnrolPaid', TOKEN, { code: k, dry: true }).catch(e => ({ ok: false, msg: String((e && (e.msg || e.message)) || e), gerr: 1 })), d = window.pkcDb ? pkcDb('enrol', { code: k }) : Promise.resolve(null), p = d.then(x => x || g); if(window.pkcVerify) pkcVerify('enrol', k, d, g); ENPRE[k] = { t: Date.now(), p: p };   /* 1290 */
+  const g = () => api('mgmtEnrolPaid', TOKEN, { code: k, dry: true }).catch(e => ({ ok: false, msg: String((e && (e.msg || e.message)) || e), gerr: 1 })), d = window.pkcDb ? pkcDb('enrol', { code: k }) : Promise.resolve(null), p = d.then(x => x || g()); ENPRE[k] = { t: Date.now(), p: p };   /* 1290 · 3055: the database answers; Google only if it can't (no second check behind it) */
   p.then(r => { if(!r || !r.ok) delete ENPRE[k]; }); return p; };
 window.enDoneFu = function(code, name, r){ const T = (typeof TRL !== 'undefined' && TRL && TRL.rows) || [], up = s => String(s || '').toUpperCase();
   const t = T.filter(x => up(x.code) === up(code)).sort((a, b) => String(b.date).localeCompare(String(a.date)))[0]; if(!t) return;
@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2545;
+const COE_V = 2546;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -7792,8 +7792,8 @@ function rpOther(){ RPS.pkg = ''; RPS.free = 0; document.querySelectorAll('.rpk'
 const RP_PRE = {};
 function rpWarm(code, teacher){ const rw2249 = (window.RP_ROW || {})[String(code).toUpperCase()] || '', k = String(code).toUpperCase() + (rw2249 ? '|' + rw2249 : ''), x = RP_PRE[k]; if(x && Date.now() - x.t < 120000) return x.p;
   const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
-  const g = rw2249 ? Promise.resolve({ ok: false, gerr: 1 }) : api('mgmtRenewPaid', TOKEN, { code, teacher, dry: true, date: today }).catch(e => ({ ok: false, msg: String(e && e.message || e), gerr: 1 })), sc = api('mgmtStuClasses', TOKEN, code).catch(() => null), d = window.pkcDb ? pkcDb('renew', { code, teacher, date: today, row: rw2249 ? +rw2249 : undefined }) : Promise.resolve(null);   /* 1290 */
-  const p = Promise.all([d.then(x => x || g), sc]); if(window.pkcVerify) pkcVerify('renew', k, d, g, sc);
+  const g = () => rw2249 ? Promise.resolve({ ok: false, gerr: 1 }) : api('mgmtRenewPaid', TOKEN, { code, teacher, dry: true, date: today }).catch(e => ({ ok: false, msg: String(e && e.message || e), gerr: 1 })), sc = api('mgmtStuClasses', TOKEN, code).catch(() => null), d = window.pkcDb ? pkcDb('renew', { code, teacher, date: today, row: rw2249 ? +rw2249 : undefined }) : Promise.resolve(null);   /* 1290 */
+  const p = Promise.all([d.then(x => x || g()), sc]);   /* 3055 (Misty 26 Nov: "everything is on the database"): the database answers; Google is asked only if the database can't, never as a second check that wins */
   RP_PRE[k] = { t: Date.now(), p }; p.then(([r]) => { if(!r || !r.ok) delete RP_PRE[k]; }); return p; }
 async function renPaidSheet(code, name, teacher, again){ RPS = { code, name, teacher, pkg: 30, free: 3, info: null, sched: '', again: !!again, touched: false };
 const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), pend = rpWarm(code, teacher);
