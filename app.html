@@ -7556,7 +7556,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2580;
+const COE_V = 2581;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -18495,13 +18495,17 @@ details.lv28>summary{font-size:12.5px;color:#2F6F77;font-weight:700;cursor:point
       const len = take(EN, /length/i), fc = take(EN, /first class/i), les = take(EN, /^lesson/i), tot = take(EN, /^total/i), cb = take(EN, /cefr/i), src = take(/./, /^source/i), fr = take(/./, /free/i), rd = take(/./, /renewal date/i);
       /* journey */
       const today = new Date(); today.setHours(0, 0, 0, 0);
-      const M = [[pd(tD), 'Trial', '#E0A030'], [pd(fc), 'First class', '#00A3AD'], [pd(rd), 'Renewed' + (cyc ? ' · cycle ' + cyc : ''), '#2B2253'], [today, 'Today', '#00808A']].filter(x => x[0]);
+      let M = [[pd(tD), 'Trial', '#E0A030'], [pd(fc), 'First class', '#00A3AD'], [pd(rd), 'Renewed' + (cyc ? ' · cycle ' + cyc : ''), '#2B2253']].filter(x => x[0]);
+      /* 3078: time-with-us milestones (3 months, 6 months, 1 year, every year), then Today and the next milestone */
+      let nx78 = ''; try{ const f0 = pd(fc); const T78 = f0 && window.LV78 ? LV78.ten(new Date(f0.getTime() - f0.getTimezoneOffset() * 6e4).toISOString().slice(0, 10)) : null;
+        if(T78){ M = M.filter(x => !(T78.done.length > 1 && /^Renewed/.test(x[1]))).concat(T78.done.slice(-3).map(m => [m[2], m[1], '#C98F00'])).sort((a, b) => a[0] - b[0]); M.push([today, 'Today', '#00808A']);
+          if(T78.nx){ const dn = Math.ceil((T78.nx[2] - Date.now()) / 864e5); M.push([T78.nx[2], T78.nx[1], '#C98F00']); nx78 = ' · in ' + dn + ' day' + (dn === 1 ? '' : 's'); } } else M.push([today, 'Today', '#00808A']); }catch(e){ M.push([today, 'Today', '#00808A']); }
       let jy = '';
       if(M.length >= 2){ const a = Math.min(...M.map(x => +x[0])), b = Math.max(...M.map(x => +x[0])), sp = Math.max(1, b - a);
         for(let i = M.length - 1; i > 0; i--) if(+M[i][0] === +M[i - 1][0]){ M[i - 1][1] += ' · ' + M[i][1]; M.splice(i, 1); }   /* 430: same day (trial and first class) = one dot */
         const pos = M.map((x, i) => M.length > 1 ? i / (M.length - 1) * 100 : 0);   /* 430: evenly spaced so labels never overlap */
         jy = '<div class="cd jy"><div class="top"><b>' + esc(len ? 'With us ' + len.replace(/,\s*\d+\s*days?$/i, '').replace(/^0 years?,\s*/, '').replace(/,\s*0 months?$/, '').replace(/\b1 years\b/, '1 year').replace(/\b1 months\b/, '1 month') : 'Journey') + '</b><span>' + (fc ? 'since ' + esc(fd(pd(fc))) : '') + '</span></div><div class="ln">' +
-          M.map((x, i) => '<div class="ms' + (i === 0 ? ' f' : i === M.length - 1 ? ' l' : '') + '" style="left:' + pos[i] + '%;--c:' + x[2] + '"><i></i><b>' + esc(x[1]) + '</b><span>' + esc(fd(x[0])) + '</span></div>').join('') + '</div></div>'; }
+          M.map((x, i) => '<div class="ms' + (i === 0 ? ' f' : i === M.length - 1 ? ' l' : '') + '" style="left:' + pos[i] + '%;--c:' + x[2] + '"><i></i><b>' + esc(x[1]) + '</b><span>' + esc(fd(x[0])) + (i === M.length - 1 && nx78 ? nx78 : '') + '</span></div>').join('') + '</div></div>'; }
       const row = (k, v) => v ? '<dt>' + k + '</dt><dd>' + esc(v) + '</dd>' : '';
       const stu = '<div class="cd"><h3>Student</h3><dl>' + row('Chinese name', cn) + row('English name', en) + row('Student type', ty) + row('Birthdate', bd ? fd(pd(bd)) || bd : '') + row('Age', age) + row('Gender', gen) + row('School grade', gr) + row('Living city', city) + '</dl></div>';
       const num = (v, l) => v !== '' ? '<div><b>' + esc(v) + '</b><span>' + l + '</span></div>' : '';
@@ -23142,8 +23146,13 @@ go();
       const fdx = x => x.getDate() + ' ' + MON[x.getMonth()] + ' ' + x.getFullYear();
       const top = jy.querySelector('.top'); if(top) top.innerHTML = '<b>With us ' + esc(len) + '</b><span>since ' + esc(fdx(d)) + '</span>';
       const today = new Date(); today.setHours(0, 0, 0, 0);
-      const M = S.map((x, i) => [x.d, (i ? 'Added' : 'Started') + (x.p ? ' · ' + x.p : ''), i ? '#2B2253' : '#00A3AD']).concat([[today, 'Today', '#00808A']]);
-      const ln = jy.querySelector('.ln'); if(ln) ln.innerHTML = M.map((x, i) => '<div class="ms' + (i === 0 ? ' f' : i === M.length - 1 ? ' l' : '') + '" style="left:' + (i / (M.length - 1) * 100) + '%;--c:' + x[2] + '"><i></i><b>' + esc(x[1]) + '</b><span>' + esc(fdx(x[0])) + '</span></div>').join('');
+      let M = S.map((x, i) => [x.d, (i ? 'Added' : 'Started') + (x.p ? ' · ' + x.p : ''), i ? '#2B2253' : '#00A3AD']);
+      /* 3078: time-with-us milestones (3 months, 6 months, 1 year, every year) and the next one, the same as Overview */
+      const T78 = window.LV78 ? LV78.ten(new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10)) : null;
+      if(T78) M = M.concat(T78.done.slice(-3).map(m => [m[2], m[1], '#C98F00'])).sort((a, b) => a[0] - b[0]);
+      M = M.concat([[today, 'Today', '#00808A']]); let nxt = '';
+      if(T78 && T78.nx){ const dn = Math.ceil((T78.nx[2] - Date.now()) / 864e5); M.push([T78.nx[2], T78.nx[1], '#C98F00']); nxt = ' · in ' + dn + ' day' + (dn === 1 ? '' : 's'); }
+      const ln = jy.querySelector('.ln'); if(ln) ln.innerHTML = M.map((x, i) => '<div class="ms' + (i === 0 ? ' f' : i === M.length - 1 ? ' l' : '') + '" style="left:' + (i / (M.length - 1) * 100) + '%;--c:' + x[2] + '"><i></i><b>' + esc(x[1]) + '</b><span>' + esc(fdx(x[0])) + (i === M.length - 1 && nxt ? nxt : '') + '</span></div>').join('');
       return t.innerHTML; }catch(e){ return h; } };
 })();
 </script>
@@ -47158,14 +47167,14 @@ body.is-mgr #sheet #sheetBody .shero h1 .lv78 em{font-style:normal;color:#8C88A3
 body.is-mgr #sheet #sheetBody .ov72 .ln78{position:relative;height:72px;margin:16px 4px 0}
 body.is-mgr #sheet #sheetBody .ov72 .ln78::before{content:"";position:absolute;left:0;right:0;top:9px;height:4px;border-radius:2px;background:#ECEAF2}
 body.is-mgr #sheet #sheetBody .ov72 .ln78 .fill{position:absolute;left:0;top:9px;height:4px;border-radius:2px;background:#0E6F68}
-body.is-mgr #sheet #sheetBody .ov72 .ln78 .m{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;text-align:center;font-size:12.5px;color:#8C88A3;line-height:1.35;white-space:nowrap}
-body.is-mgr #sheet #sheetBody .ov72 .ln78 .m.f{transform:none;align-items:flex-start;text-align:left}
-body.is-mgr #sheet #sheetBody .ov72 .ln78 .m.l{transform:translateX(-100%);align-items:flex-end;text-align:right}
-body.is-mgr #sheet #sheetBody .ov72 .ln78 .m i{width:22px;height:22px;border-radius:50%;background:var(--c);border:3px solid #fff;box-shadow:0 0 0 1px #E4E2EC;margin-bottom:4px;display:flex;align-items:center;justify-content:center;margin-top:0}
-body.is-mgr #sheet #sheetBody .ov72 .ln78 .m.ms i::after{content:"";width:8px;height:8px;border-radius:50%;background:#fff}
-body.is-mgr #sheet #sheetBody .ov72 .ln78 .m.nx i{background:#fff;box-shadow:0 0 0 2px var(--c)}
-body.is-mgr #sheet #sheetBody .ov72 .ln78 .m b{font-weight:700;color:#2B2253;font-size:13.5px;white-space:nowrap}
-body.is-mgr #sheet #sheetBody .ov72 .ln78 .m.nx b{color:var(--c)}
+body.is-mgr #sheet #sheetBody .ov72 .ln78 .p78{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;text-align:center;font-size:12.5px;color:#8C88A3;line-height:1.35;white-space:nowrap}
+body.is-mgr #sheet #sheetBody .ov72 .ln78 .p78.f{transform:none;align-items:flex-start;text-align:left}
+body.is-mgr #sheet #sheetBody .ov72 .ln78 .p78.l{transform:translateX(-100%);align-items:flex-end;text-align:right}
+body.is-mgr #sheet #sheetBody .ov72 .ln78 .p78 i{width:22px;height:22px;border-radius:50%;background:var(--c);border:3px solid #fff;box-shadow:0 0 0 1px #E4E2EC;margin-bottom:4px;display:flex;align-items:center;justify-content:center;margin-top:0}
+body.is-mgr #sheet #sheetBody .ov72 .ln78 .p78.ms i::after{content:"";width:8px;height:8px;border-radius:50%;background:#fff}
+body.is-mgr #sheet #sheetBody .ov72 .ln78 .p78.nx i{background:#fff;box-shadow:0 0 0 2px var(--c)}
+body.is-mgr #sheet #sheetBody .ov72 .ln78 .p78 b{font-weight:700;color:#2B2253;font-size:13.5px;white-space:nowrap}
+body.is-mgr #sheet #sheetBody .ov72 .ln78 .p78.nx b{color:var(--c)}
 body.is-mgr #sheet #sheetBody .ov72 .jy72 .gl78{margin-top:12px;padding-top:10px;border-top:1px solid #F1F0F5;font-size:12.5px;color:#6F6B85}
 body.is-mgr #sheet #sheetBody .ov72 .jy72 .gl78 b{color:#2B2253}
 </style>
@@ -48714,10 +48723,10 @@ body.is-mgr #sheet #sheetBody .shero #occ1706 .btn:not(#q1):not(#q2):not(#q3):no
     if(T78) T78.done.slice(-3).forEach(m => { const k = new Date(m[2].getTime() + 8 * 3600e3).toISOString().slice(0, 10); ms.push({ c: '#C98F00', t: m[1], d: D0(k), k, ms: 1 }); });
     if(ren && ren !== first && !(T78 && T78.done.length > 1)) ms.push({ c: '#6B46C1', t: 'Renewed', d: D0(ren), k: ren });
     ms.sort((x, y) => x.k < y.k ? -1 : x.k > y.k ? 1 : 0);
-    ms.push({ c: '#0E6F68', t: 'Today', d: usedU ? usedU.toLocaleString('en-US') + ' units done on this package' : dd(new Date().toISOString()), today: 1 });
+    ms.push({ c: '#0E6F68', t: 'Today', d: dd(new Date().toISOString()), today: 1 });
     if(T78 && T78.nx){ const dn = Math.ceil((T78.nx[2].getTime() - now) / 864e5); ms.push({ c: '#C98F00', t: T78.nx[1], d: D0(new Date(T78.nx[2].getTime() + 8 * 3600e3).toISOString().slice(0, 10)) + ' · in ' + dn + ' day' + (dn === 1 ? '' : 's'), nx: 1 }); }
     const ti = ms.findIndex(m => m.today), pc = ms.length > 1 ? ti / (ms.length - 1) * 100 : 100;
-    const jy = '<div class="cd72 jy72"><div class="top"><b>With us ' + E(withUs || 'under a month') + '</b><span>' + (since ? 'since ' + since : '') + '</span></div><div class="ln78"><div class="fill" style="width:' + pc + '%"></div>' + ms.map((m, i) => '<div class="m' + (m.ms ? ' ms' : '') + (m.nx ? ' nx' : '') + (i === 0 ? ' f' : i === ms.length - 1 ? ' l' : '') + '" style="--c:' + m.c + ';left:' + (ms.length > 1 ? i / (ms.length - 1) * 100 : 0) + '%"><i></i><b>' + E(m.t) + '</b><span>' + E(m.d) + '</span></div>').join('') + '</div>'
+    const jy = '<div class="cd72 jy72"><div class="top"><b>With us ' + E(withUs || 'under a month') + '</b><span>' + (since ? 'since ' + since : '') + (usedU ? ' · ' + usedU.toLocaleString('en-US') + ' units done on this package' : '') + '</span></div><div class="ln78"><div class="fill" style="width:' + pc + '%"></div>' + ms.map((m, i) => '<div class="p78' + (m.ms ? ' ms' : '') + (m.nx ? ' nx' : '') + (i === 0 ? ' f' : i === ms.length - 1 ? ' l' : '') + '" style="--c:' + m.c + ';left:' + (ms.length > 1 ? i / (ms.length - 1) * 100 : 0) + '%"><i></i><b>' + E(m.t) + '</b><span>' + E(m.d) + '</span></div>').join('') + '</div>'
       + (T78 ? '<div class="gl78">Milestone certificate at <b>3 months</b>, <b>6 months</b>, <b>1 year</b> and every year after' + (T78.done.length ? ' · reached: ' + E(T78.done.map(m => m[1]).join(', ')) : '') + '</div>' : '') + '</div>';
     const L = kv(/lessons left/i), CE = kv(/cefr/i), LA = kv(/latest/i), ST = kv(/sticker|k-st/i);
     const mStart = new Date(Date.parse(new Date().toISOString().slice(0, 7) + '-01T00:00:00+08:00')); const thisM = C.filter(c => !c.cancelled && Date.parse(c.start) >= mStart.getTime() && Date.parse(c.start) < now).length;
