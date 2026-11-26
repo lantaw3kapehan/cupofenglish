@@ -57,6 +57,8 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
     if(a.k === 'heart'){ const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, sx = Math.abs(x1 - x0) / 34, sy = Math.abs(y1 - y0) / 30; for(let i = 0; i <= 60; i++){ const t = i / 60 * Math.PI * 2; P.push([cx + sx * 16 * Math.pow(Math.sin(t), 3), cy - sy * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) - sy * 1.5]); } return P; }
     if(a.k === 'star'){ const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, R = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) / 2; for(let i = 0; i <= 10; i++){ const r = i % 2 ? R * 0.45 : R, t = -Math.PI / 2 + i * Math.PI / 5; P.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]); } return P; }
     return [[x0, y0], [x1, y1]]; }
+  /* 3025 (Misty 26 Nov 14:23): typed class notes are plain text, no box - a thin white edge around the letters keeps them readable over the page */
+  function plain3025(x, X, Y, L, fz, lh, col){ x.save(); x.lineJoin = 'round'; x.miterLimit = 2; x.lineWidth = Math.max(3, fz * .16); x.strokeStyle = 'rgba(255,255,255,.95)'; L.forEach((t, i) => x.strokeText(t, X, Y + i * lh)); x.restore(); x.fillStyle = col; L.forEach((t, i) => x.fillText(t, X, Y + i * lh)); }
   function tag2900(x, X, Y, L, fz, lh, col){ const mw = Math.max(...L.map(t => x.measureText(t).width)), bx = X - fz * .28, by = Y - fz * .2, w = mw + fz * .56, h = (L.length - 1) * lh + fz * 1.32, r = Math.min(fz * .38, h / 2);   /* 2900 (Misty 25 Nov): the same soft white tag as on homework check (2880) */
     x.save(); x.shadowColor = 'rgba(16,24,40,.18)'; x.shadowBlur = fz * .35; x.shadowOffsetY = fz * .06; x.beginPath(); x.roundRect ? x.roundRect(bx, by, w, h, r) : x.rect(bx, by, w, h); x.fillStyle = 'rgba(255,255,255,.92)'; x.fill(); x.restore();
     x.save(); x.beginPath(); x.roundRect ? x.roundRect(bx, by, w, h, r) : x.rect(bx, by, w, h); x.lineWidth = Math.max(1.5, fz * .07); x.strokeStyle = col; x.globalAlpha = .55; x.stroke(); x.restore(); x.fillStyle = col; L.forEach((t, i) => x.fillText(t, X, Y + i * lh)); }
@@ -64,7 +66,7 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
     (ANN[key] || []).forEach(a => { if(a.t === 'text'){ const T = lines(x, a, w);
       /* 2748 (Misty 23 Nov 11:19): the white card behind typed notes covered the book's words. Now only a thin white outline
          hugs the letters, so notes stay readable without hiding what is under them. */
-      x.textBaseline = 'top'; tag2900(x, a.x * w, a.y * w, T.L, T.fs, T.lh, a.c); return; }
+      x.textBaseline = 'top'; plain3025(x, a.x * w, a.y * w, T.L, T.fs, T.lh, a.c); return; }
       x.globalAlpha = a.t === 'hl' ? 0.32 : 1; x.strokeStyle = a.c; x.lineWidth = Math.max(1.5, a.w * w); x.lineCap = a.t === 'hl' ? 'butt' : 'round'; x.lineJoin = 'round';
       if(a.t === 'shape' && FILL[a.k]){ const P = shapePts(a, w); x.beginPath(); P.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); x.closePath(); x.fillStyle = FILL[a.k][0]; x.fill(); x.strokeStyle = FILL[a.k][1]; x.lineWidth = Math.max(1.5, a.w * w * 0.7); x.stroke(); x.globalAlpha = 1; return; }
       if(a.t === 'shape' && a.k === 'tick') x.lineWidth = Math.max(3, a.w * w * 2.2);
