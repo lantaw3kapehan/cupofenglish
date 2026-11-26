@@ -71,7 +71,9 @@ body.ink-on:not(.ink-min) #app{padding-left:66px}body.ink-on.ink-min #app{paddin
       if(a.t === 'shape'){ const P = shapePts(a, w); x.beginPath(); P.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); x.stroke();
         if(a.k === 'arrow'){ const [ax, ay] = P[0], [bx, by] = P[1], g = Math.atan2(by - ay, bx - ax), L = Math.max(14, a.w * w * 5); x.beginPath(); x.moveTo(bx - L * Math.cos(g - 0.45), by - L * Math.sin(g - 0.45)); x.lineTo(bx, by); x.lineTo(bx - L * Math.cos(g + 0.45), by - L * Math.sin(g + 0.45)); x.stroke(); }
         x.globalAlpha = 1; return; }
-      x.beginPath(); a.p.forEach((q, i) => i ? x.lineTo(q[0] * w, q[1] * w) : x.moveTo(q[0] * w, q[1] * w)); if(a.p.length === 1) x.lineTo(a.p[0][0] * w + 0.1, a.p[0][1] * w); x.stroke(); x.globalAlpha = 1; }); saveSoon(); }
+      x.beginPath(); a.p.forEach((q, i) => i ? x.lineTo(q[0] * w, q[1] * w) : x.moveTo(q[0] * w, q[1] * w)); if(a.p.length === 1) x.lineTo(a.p[0][0] * w + 0.1, a.p[0][1] * w); x.stroke(); x.globalAlpha = 1; }); saveSoon(); grow3017(); }
+  /* 3017: a note dragged or drawn low grows the screen too (not only a newly typed note) */
+  let g3017 = 0; function grow3017(){ if(g3017 || !host || !cv) return; try{ const ft = document.querySelector('.knav'), n = need2746(host.scrollWidth); if(!n) return; const want = n + (ft ? Math.round(ft.getBoundingClientRect().height) : 70) + 12; if(want > host.scrollHeight + 2){ g3017 = 1; requestAnimationFrame(() => { g3017 = 0; fit(); }); } }catch(e){} }
   /* 2746: a note or drawing low on the screen was cut off at the bottom of the drawing area (on screen and in Copy screen).
      The screen now grows to hold every note and drawing. */
   function need2746(w){ let m = 0; try{ const x = cv.getContext('2d'); (ANN[key] || []).forEach(a => { if(a.t === 'text'){ const T = lines(x, a, w); m = Math.max(m, a.y * w + T.L.length * T.lh + 16); } else if(a.p){ a.p.forEach(q => { m = Math.max(m, q[1] * w + 16); }); } }); }catch(e){} return Math.ceil(m); }
