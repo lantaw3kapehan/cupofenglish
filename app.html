@@ -7559,7 +7559,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2558;
+const COE_V = 2559;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -33253,7 +33253,21 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   var _tap = window.tapTimeIn; if(typeof _tap === 'function') window.tapTimeIn = function(){ window.__wcTap1270 = 1; setTimeout(function(){ window.__wcTap1270 = 0; }, 120000); return _tap.apply(this, arguments); };
 
   /* ── B · the picture (landscape, readable as a WeChat thumbnail) ── */
+  /* 3068 (Misty 26 Nov): teachers who teach from the office · office computer and office internet (Wi-Fi or cable) are fine, location = the office */
+  var OFFT = { misty: 1 }, OFFLL = [15.9829, 120.5726];
+  function offDist(x){ var la = +x.lat, lo = +x.lng; if(isNaN(la) || isNaN(lo)){ var m = String(x.place || '').match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/); if(m){ la = +m[1]; lo = +m[2]; } } if(isNaN(la) || isNaN(lo)) return null;
+    var r = Math.PI / 180, dy = (la - OFFLL[0]) * 111.2, dx = (lo - OFFLL[1]) * 111.2 * Math.cos(OFFLL[0] * r); return Math.sqrt(dx * dx + dy * dy); }
   function checks(x){
+    var nm = String(x.name || '').replace(/^teacher\s+/i, '').trim().toLowerCase();
+    if(OFFT[nm]){ var L0 = [], st0 = String(x.status || ''), late0 = /late/i.test(st0);
+      L0.push(st0 ? { ok: !late0, t: late0 ? 'Late' + (Math.abs(+x.mins || 0) ? ' ' + Math.abs(+x.mins) + ' min' : '') : st0 === 'On time' ? 'On time' : st0 } : { ok: null, t: 'On time · being checked' });
+      L0.push({ ok: true, t: 'Office computer' });
+      L0.push({ ok: true, t: 'Office internet' });
+      L0.push(x.shot ? { ok: 'look', t: 'Screen proof · check VooV + date/time' } : { ok: false, t: 'No screen proof' });
+      var q0 = window.netQ ? window.netQ(x.speed) : { lvl: '', label: '' };
+      L0.push(x.measuring ? { ok: null, t: 'Internet · measuring…' } : !q0.lvl ? { ok: null, t: 'Internet · not measured' } : { ok: q0.lvl === 'good' ? true : q0.lvl === 'ok' ? 'warn' : false, t: q0.lvl === 'good' ? 'Good internet' : String((q0.issues && q0.issues[0] && q0.issues[0].t) || q0.label).replace('Unstable connection · high jitter', 'Unstable · jitter') });
+      var d0 = offDist(x); L0.push(d0 == null ? { ok: false, t: 'Location · ' + (x.locErr || 'not shared') } : d0 <= 0.5 ? { ok: true, t: 'At the office' } : { ok: 'warn', t: 'Not at the office · ' + (d0 < 10 ? d0.toFixed(1) : Math.round(d0)) + ' km away' });
+      return L0; }
     var L = [], st = String(x.status || ''), late = /late/i.test(st);
     L.push(st ? { ok: !late, t: late ? 'Late' + (Math.abs(+x.mins || 0) ? ' ' + Math.abs(+x.mins) + ' min' : '') : st === 'On time' ? 'On time' : st } : { ok: null, t: 'On time · being checked' });
     var lap = /^Laptop/.test(x.device || ''); L.push({ ok: lap, t: lap ? 'Class laptop' : (String(x.device || 'Unknown device').split(' · ')[0]) + ' · not the class laptop' });
