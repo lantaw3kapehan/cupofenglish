@@ -227,11 +227,11 @@ Deno.serve(async (req: Request) => {
     const { data: row } = await db.from("classes").select("*").eq("id", id + "|" + String(f.start || "")).maybeSingle();
     if (!row || !row.data) return out({ ok: false, error: "google" }, 404);
     const d = JSON.parse(JSON.stringify(row.data)), now = new Date(), hm = (x: Date) => new Date(x.getTime() + 8 * 3600e3).toISOString().slice(11, 16);
-    const md = now.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Manila" });
+    const md = now.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Manila" }) + ", " + now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Manila" });   // 26 Nov 2026 · 2978: date and time of the cancel (Misty)
     let nrow: any = null, note = "";
     const t0 = String(d.title || "").trim().replace(/\s+X$/i, "");
     if (act !== "move") {
-      const cancel = act === "cancel", rs = String(f.reason || "").replace(/\s+/g, " ").trim().slice(0, 120);
+      const cancel = act === "cancel", rs = String(f.reason || "").replace(/\s+/g, " ").trim().slice(0, 600);   // 2978: was 120, the English of a long parent message was cut off (Lily 26 Nov)
       d.cancelled = cancel; d.title = t0 + (cancel ? " X" : ""); d.why = cancel ? (rs ? rs + " · " + s.name + " · " + md : "") : "";
       nrow = { ...row, cancelled: cancel, data: d, updated_at: now.toISOString() };
       note = (cancel ? "Cancelled " : "Restored ") + t0 + " · " + String(row.day) + " " + hm(new Date(row.starts_at)) + (cancel && rs ? " · " + rs : "");
@@ -384,7 +384,7 @@ Deno.serve(async (req: Request) => {
     let off: any[] = [];
     if (sc) {   // the regular class at that time: cancelled here at once (Google: " X", RSVP No, "Cancelled: Sub · …", no make-up)
       const ab = (f.abs && typeof f.abs === "object") ? f.abs : {}, why = String(ab.why || "");
-      const md = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Manila" });
+      const md = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Manila" }) + ", " + new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Manila" });
       const rs = "Sub · Teacher " + teacher + " · " + (why === "leave" ? "approved leave" : why === "coe" ? "CupOfEnglish reason" : why === "none" ? "no notice" : "informed " + String(ab.told || "?")) + " · " + s.name + " · " + md;
       const { data: O } = await db.from("classes").select("*").eq("code", code).eq("cancelled", false).eq("starts_at", make[0].st.toISOString()).limit(5);
       off = (O || []).filter((x: any) => !String(x.id).startsWith("pend-") && !/-SC$/i.test(String((x.data || {}).title || "").trim()));

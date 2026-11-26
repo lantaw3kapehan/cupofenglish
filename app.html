@@ -6023,7 +6023,7 @@ const x = $(id); if(x && !x.classList.contains('hide')) setTimeout(() => x.scrol
 const CX_ZH = [[/schedule stopped|stopped from/i,'家长停上该时段课程'],[/teacher.{0,20}(leave|sick|ill|absent|emergency)|(leave|sick|absent).{0,10}teacher|老师请假/i,'老师请假'],[/(parent|mom|dad|family).*(move|resched|change)|(move|resched|change).*(parent|mom|dad)/i,'家长要求调课'],[/parent asked|leave|请假/i,'家长请假'],[/sick|ill|fever/i,'学生身体不适'],[/exam|test/i,'学校考试'],[/school|make-?up day|调休/i,'学校上课（调休）'],[/trip|travel/i,'家庭出行'],[/holiday|festival/i,'节假日休息'],[/moved|resched/i,'课程改期'],[/no-?show/i,'学生未到课'],[/teacher/i,'老师临时有事'],[/internet|network|wifi/i,'网络问题'],[/power|outage|brownout/i,'停电']];
 const cxZh = w => { const m = CX_ZH.find(x => x[0].test(String(w || ''))); return m ? m[1] : ''; };
 let CXP = null;
-const cxSplit = w => { const p = String(w || '').split(' · ').map(s => s.trim()).filter(Boolean); if(p.length >= 3 && /^([A-Z][a-z]{2} \d{1,2}|\d{1,2} [A-Z][a-z]{2}|\d{4}-\d\d-\d\d)$/.test(p[p.length - 1])) return { r: p.slice(0, -2).join(' · '), by: p.slice(-2).join(' · ') }; return { r: p.join(' · '), by: '' }; };
+const cxSplit = w => { const p = String(w || '').split(' · ').map(s => s.trim()).filter(Boolean); if(p.length >= 3 && /^([A-Z][a-z]{2} \d{1,2}|\d{1,2} [A-Z][a-z]{2}|\d{4}-\d\d-\d\d)(,? \d{1,2}:\d\d)?$/.test(p[p.length - 1])) return { r: p.slice(0, -2).join(' · '), by: p.slice(-2).join(' · ') }; return { r: p.join(' · '), by: '' }; };
 const cxWho2293 = r => { const re = /\s*(?:·|[-–—])\s*(from\s+(?:the\s+)?(parent|student|teacher|cupofenglish|school|management)|force majeure)\s*[.!]?\s*$/i; let m = String(r || '').match(re), k = '';
   if(m){ const w = (m[2] || '').toLowerCase(); k = /force/i.test(m[1]) ? 'force' : (w === 'parent' || w === 'student') ? 'parent' : w === 'teacher' ? 'teacher' : 'company'; r = String(r).slice(0, m.index); }
   return { r: String(r || ''), k }; };
@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2477;
+const COE_V = 2478;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -15598,7 +15598,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
   let SHOW = false;
   const MON = 'janfebmaraprmayjunjulaugsepoctnovdec';
   const dayOf = e => new Date(new Date(e.start).getTime() + 8 * 3600e3).toISOString().slice(0, 10);
-  function early(e){ if(!e || !e.cancelled) return false; const m = String(e.why || '').match(/·\s*([A-Za-z]{3})[a-z]*\s+(\d{1,2})\s*$/); if(!m) return false;
+  function early(e){ if(!e || !e.cancelled) return false; const m = String(e.why || '').match(/·\s*([A-Za-z]{3})[a-z]*\s+(\d{1,2})(?:,?\s*\d{1,2}:\d\d)?\s*$/); if(!m) return false;
     const M = MON.indexOf(m[1].toLowerCase()) / 3 + 1; if(M < 1) return false; const d = dayOf(e), y = +d.slice(0, 4), cm = +d.slice(5, 7);
     const cy = M > cm + 1 ? y - 1 : y, c = cy + '-' + String(M).padStart(2, '0') + '-' + String(+m[2]).padStart(2, '0'); return c < d; }
   window.scHiddenToggle = () => { SHOW = !SHOW; try{ renderSchedule(); }catch(e){} };
@@ -47147,12 +47147,13 @@ body.pres2630 #app #v-mtoday > #dc2849,body.pres2630 #app #v-home > #dc2849{orde
   const ph = iso => new Date(new Date(iso).getTime() + 8 * 3600e3);
   const dayOf = e => ph(e.start).toISOString().slice(0, 10), hmOf = e => ph(e.start).toISOString().slice(11, 16), wdOf = e => ph(e.start).getUTCDay();
   const today = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
-  function early(e){ const m = String(e.why || '').match(/·\s*([A-Za-z]{3})[a-z]*\s+(\d{1,2})\s*$/); if(!m) return false;
+  function early(e){ const m = String(e.why || '').match(/·\s*([A-Za-z]{3})[a-z]*\s+(\d{1,2})(?:,?\s*\d{1,2}:\d\d)?\s*$/); if(!m) return false;
     const M = MON.indexOf(m[1].toLowerCase()) / 3 + 1; if(M < 1) return false; const d = dayOf(e), y = +d.slice(0, 4), cm = +d.slice(5, 7);
     const cy = M > cm + 1 ? y - 1 : y, c = cy + '-' + String(M).padStart(2, '0') + '-' + String(+m[2]).padStart(2, '0'); return c < d; }
   function hidden(L){ const t = today(), slot = {}, key = e => (e.code || e.student || '') + '|' + wdOf(e) + '|' + hmOf(e);
     L.forEach(e => { if(e && e.cancelled && dayOf(e) > t) slot[key(e)] = (slot[key(e)] || 0) + 1; });
-    return L.filter(e => e && e.cancelled && dayOf(e) > t && (/stopped from/i.test(String(e.why || '')) || early(e) || slot[key(e)] >= 3)); }
+    const lim = new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);   /* 2978: a class cancelled for the next two weeks stays in view (with its proof), e.g. Lily 27 Nov */
+    return L.filter(e => e && e.cancelled && dayOf(e) > t && (/stopped from/i.test(String(e.why || '')) || ((early(e) || slot[key(e)] >= 3) && dayOf(e) > lim))); }
   window.hid2917List = L => hidden(L || []);   /* also used by the parent's class calendar picture */
   function prep(X){ if(!X || !Array.isArray(X.events)) return; if(X.events !== X._f2917) X._all2917 = X.events;
     const H = hidden(X._all2917), hs = new Set(H); X._hid2917 = H; const keep = SHOW ? X._all2917 : X._all2917.filter(e => !hs.has(e)); X._f2917 = keep; X.events = keep; }
@@ -48640,7 +48641,7 @@ body.is-mgr #sheet #sheetBody .shero #occ1706 .btn:not(#q1):not(#q2):not(#q3):no
       + tile('st', '#A15C07', 'Stickers', ST && ST.b, ST && ST.em)
       + tile('cls', '#2E9E6F', 'Classes · ' + MN[new Date().getMonth()], String(thisM), 'held so far')
       + tile('cls', '#B0306E', 'Next Class', up[0] ? hm(up[0].start) : '—', up[0] ? wk(up[0].start) + ' · ' + dd(up[0].start) : 'nothing booked') + '</div>';
-    const upX = C.filter(c => Date.parse(c.end) > now).sort((a, b) => Date.parse(a.start) - Date.parse(b.start)); const rows = upX.slice(0, 8).map(c => c.cancelled ? '<div class="r72 x"><b>' + E(hm(c.start)) + '</b><i style="background:#C0392B"></i><span>' + E(wk(c.start) + ' ' + dd(c.start).replace(/ \d{4}$/, '')) + ' · cancelled</span><button type="button" class="pf76" onclick="cxProof(\'' + E(c.id) + '\',\'stu\',\'' + E(c.start) + '\')">Proof to Send</button></div>' : '<div class="r72"><b>' + E(hm(c.start)) + '</b><i style="background:' + BKC(c.book || '') + '"></i><span>' + E(wk(c.start) + ' ' + dd(c.start).replace(/ \d{4}$/, '')) + '<span class="bk">' + E(String(c.book || '').replace(/([a-z])([A-Z])/g, '$1 $2')) + '</span></span><span class="d">' + E(c.teacher || '') + '</span></div>').join('') || '<div class="r72"><span class="d" style="grid-column:1/-1">No classes booked.</span></div>';
+    const upX = C.filter(c => Date.parse(c.end) > now).sort((a, b) => Date.parse(a.start) - Date.parse(b.start)); const rows = upX.slice(0, 8).map(c => c.cancelled ? '<div class="r72 cx76"><b>' + E(hm(c.start)) + '</b><i style="background:#C0392B"></i><span><s>' + E(wk(c.start) + ' ' + dd(c.start).replace(/ \d{4}$/, '')) + '</s><em>Cancelled</em></span><button type="button" class="pf76" onclick="cxProof(\'' + E(c.id) + '\',\'stu\',\'' + E(c.start) + '\')">Proof to Send</button></div>' : '<div class="r72"><b>' + E(hm(c.start)) + '</b><i style="background:' + BKC(c.book || '') + '"></i><span>' + E(wk(c.start) + ' ' + dd(c.start).replace(/ \d{4}$/, '')) + '<span class="bk">' + E(String(c.book || '').replace(/([a-z])([A-Z])/g, '$1 $2')) + '</span></span><span class="d">' + E(c.teacher || '') + '</span></div>').join('') || '<div class="r72"><span class="d" style="grid-column:1/-1">No classes booked.</span></div>';
     const months = []; for(let i = 5; i >= 0; i--){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); months.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')); }
     const per = months.map(m => C.filter(c => !c.cancelled && mnl(c.start).toISOString().slice(0, 7) === m && Date.parse(c.start) < now).reduce((a, c) => a + (Math.round((Date.parse(c.end) - Date.parse(c.start)) / 6e4 / 25) / 2 || 0.5), 0));
     const mx = Math.max(1, ...per); const sc = months.map(m => { const f = fb.find(x => x.month === m); return f ? f.total : ''; });
@@ -48719,8 +48720,10 @@ body.is-mgr #app #v-astudents .as74 a{color:#0E6F68;cursor:pointer;text-decorati
 </script>
 <style id="css2976">
 /* 2976 (Misty 26 Nov 10:16, Lily of Pam): after a cancel the proof picture opens by itself; cancelled coming classes stay in Coming Classes with Proof to Send */
-body.is-mgr #sheet #sheetBody .ov72 .r72.x{text-decoration:none!important;color:#8C88A3}
-body.is-mgr #sheet #sheetBody .ov72 .r72.x > b,body.is-mgr #sheet #sheetBody .ov72 .r72.x > span{text-decoration:line-through}
+body.is-mgr #sheet #sheetBody .ov72 .r72.cx76 > b{text-decoration:line-through;color:#8C88A3}
+body.is-mgr #sheet #sheetBody .ov72 .r72.cx76 > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#8C88A3}
+body.is-mgr #sheet #sheetBody .ov72 .r72.cx76 > span em{font-style:normal;margin-left:8px;display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:6px;background:#C0392B;color:#fff;font-size:12px;font-weight:600}
+body.is-mgr #sheet #sheetBody .ov72 .r72 .pf76{white-space:nowrap}
 body.is-mgr #sheet #sheetBody .ov72 .r72 .pf76{height:28px;padding:0 12px;border-radius:8px;border:1px solid #C0392B;background:#fff;color:#C0392B;font:600 13px Inter,system-ui,sans-serif;cursor:pointer;text-decoration:none}
 body.is-mgr #sheet #sheetBody .ov72 .r72 .pf76:hover{background:#C0392B;color:#fff}
 </style>
