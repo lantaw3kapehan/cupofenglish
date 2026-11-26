@@ -4180,7 +4180,7 @@ CXP = { kind: 'class', week: { slots: K.slots, from: f.start, multi: tt.length >
 cxSheet(); }
 async function pkgCheck(){
 $('sheet').classList.add('wide'); openSheet('<h1>Package check</h1><div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>');
-try{ await loadActive(true); }catch(e){} let srv = null; try{ srv = await api('mgmtPkgCheck', TOKEN); }catch(e){}
+try{ await loadActive(true); }catch(e){} let srv = null; try{ srv = (window.pkcDb && await pkcDb('pkgcheck', {})) || await api('mgmtPkgCheck', TOKEN); }catch(e){}   /* 3058: from the database (Google only if it can't answer) */
 if(!AT || !AT.cols){ $('sheetBody').innerHTML = '<h1>Package check</h1><div class="empty">Could not load ACTIVE. Try again.</div>'; return; }
 const C = {}; AT.cols.forEach((c, i) => C[c] = i); const M = AT.months || [], today = ymdLocal(new Date());
 const ymOf = lab => { const d = new Date('1 ' + String(lab).replace(/(\w+) (\d+)$/, '$1 20$2')); return isNaN(d) ? '' : d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }, MY = M.map(ymOf);
@@ -7548,7 +7548,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2548;
+const COE_V = 2549;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -49424,7 +49424,7 @@ body.is-mgr #app #v-astudents .li .d45.soon{color:#A15C07!important;font-weight:
     const w = async function(fn){ if(fn === 'mgmtPkgCheck' && document.body.classList.contains('is-mgr')){ const fresh = C.val && Date.now() - C.at < 6e5 && (typeof SB_LASTW !== 'undefined' ? SB_LASTW : 0) === C.w; if(fresh) return C.val; return fetchPC(); } return orig.apply(this, arguments); };
     w.__w3045 = 1; window.api = w; try{ api = w; }catch(e){} return true; }
   let tries = 0; const hk = setInterval(() => { if(hook() || ++tries > 40) clearInterval(hk); }, 250); hook();
-  let last = 0; const pre = () => { if(!document.body.classList.contains('is-mgr') || typeof TOKEN === 'undefined' || !TOKEN || !window.__api3045) return; if(Date.now() - last < 5e5) return; last = Date.now(); fetchPC().catch(() => {}); };
+  const pre = () => {};   /* 3058: Package Check comes from the database now; no Google call ahead */
   if(v) new MutationObserver(() => { if(v.offsetParent) pre(); }).observe(v, { childList: true });
   setTimeout(pre, 8000);
 })();

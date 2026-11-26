@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-pkc v6 (26 Nov 2026: lessons left from the database renewal) · first 27 Oct 2026 · "Checking the package…" from the database (read-only).
+// CupOfEnglish · coe-pkc v7 (26 Nov 2026: + pkgcheck; v6 lessons left from the database renewal) · first 27 Oct 2026 · "Checking the package…" from the database (read-only).
 // POST { token, op: "renew", code, teacher?, date?, row? }  → the same answer as Google's mgmtRenewPaid({ dry: true })
 // POST { token, op: "enrol", code }                  → the same answer as Google's mgmtEnrolPaid({ dry: true })
 // 2249 (15 Nov): "row" picks one ACTIVE row when a student has two packages with the same teacher (Merlin: Reading / Writing);
@@ -66,7 +66,7 @@ Deno.serve(async (req: Request) => {
   const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
   if (!s || new Date(s.exp).getTime() < Date.now() || s.mode !== "mgmt") return out({ ok: false, error: "AUTH" }, 401);
   const op = String(b.op || ""), code = String(b.code || "").trim().toUpperCase();
-  if (op !== "renew" && op !== "enrol") return out({ ok: false, error: "op" }, 400);
+  if (op !== "renew" && op !== "enrol" && op !== "pkgcheck") return out({ ok: false, error: "op" }, 400);
   const [{ data: doc }, { data: W }] = await Promise.all([
     db.from("docs").select("data").eq("key", "sys:pkglink").maybeSingle(),
     db.from("writes").select("fn,status,args,done_at,created_at").in("fn", ["mgmtEnrolPaid", "mgmtRenewPaid"]).gte("created_at", new Date(Date.now() - 2 * MS_DAY).toISOString()).limit(200)]);
@@ -76,6 +76,14 @@ Deno.serve(async (req: Request) => {
     if (w.status === "error" || w.status === "test") return false; if (w.status !== "done") return true; return !w.done_at || Date.parse(w.done_at) > at - 5000; });
   if (late) return out({ ok: false, fallback: 1, why: "pending" });
   if (op === "enrol") return out(Object.assign(enrolDry(L, { code }, Date.now()), { src: "db", at: L.at }));
+  if (op === "pkgcheck") {   // v7 (26 Nov · app 3058): Google's mgmtPkgCheck from the database copy — a package whose linked payment is in a later month than its start
+    const ym = (t: number) => t ? new Date(t + 8 * 3600e3).toISOString().slice(0, 7) : "", H: string[] = L.hdr || [], rows: any[] = [];
+    (L.act || []).forEach((a: any) => { if (!a.link || !a.c) return; const sale = (L.sales || []).find((x: any) => x.row === a.link); if (!sale || !sale.d) return;
+      const sy = String(sale.d).slice(0, 7), ty = ym(num(a.aw)); if (!ty || sy <= ty) return;
+      let pre = 0; H.forEach((y: string, j: number) => { if (y && y >= "2025-01" && y >= ty && y < sy) pre += num((a.m || [])[j]); });
+      rows.push({ row: a.r, code: a.c, name: a.n, teacher: a.t, invoice: String(sale.inv || ""), paid: String(sale.d).slice(0, 10), start: new Date(num(a.aw) + 8 * 3600e3).toISOString().slice(0, 10), pre: Math.round(pre * 10) / 10, available: a.au }); });
+    return out({ ok: true, rows, src: "db", at: L.at });
+  }
   const nextClass = async (c: string, from: string) => {
     const { data } = await db.from("classes").select("starts_at,cancelled,data").eq("code", c).gte("starts_at", from + "T00:00:00+08:00").order("starts_at").limit(40);
     const x = (data || []).find((e: any) => !e.cancelled && !/-TC\s*$/i.test(String((e.data && e.data.title) || "").replace(/\s+X$/i, "")));
