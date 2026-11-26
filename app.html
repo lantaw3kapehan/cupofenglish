@@ -7556,7 +7556,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2567;
+const COE_V = 2568;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -49777,6 +49777,10 @@ body.is-mgr #v-astudents.s4on > :not(.grp-tabs):not(.s4){display:none!important}
   /* state (the same keys the earlier list kept, so each person's choice carries over) */
   let F = 'active', SRC = ls('coe.s4src', ''), LRN = ls('coe.ltF', ''), SORT = ls('coe.stSort', 'name'), LIM = 60, MSref = null, MSat = 0, LASTL = '', LASTB = '';
   if(!/^(name|left|dl|wk)$/.test(SORT)) SORT = 'name';
+  /* facts that arrive a moment after the list (learner group, source, validity review) are kept on this device, so the first frame is already the final one */
+  let KC = (() => { try{ return JSON.parse(localStorage.getItem('coe.s4c') || 'null') || {}; }catch(e){ return {}; } })(); KC.lt = KC.lt || {}; KC.src = KC.src || {}; KC.vr = KC.vr || {};
+  let KCT = 0; const kcSave = () => { clearTimeout(KCT); KCT = setTimeout(() => { try{ localStorage.setItem('coe.s4c', JSON.stringify(KC)); }catch(e){} }, 1500); };
+  const dbOk = () => { try{ return !!(typeof DB !== 'undefined' && DB && DB.rows && DB.rows.length); }catch(e){ return false; } };
 
   /* packages by student (Packages / ACTIVE, live from the database) */
   function pk(){ if(typeof AT === 'undefined' || !AT || !AT.cols) return null; const C = {}; AT.cols.forEach((c, i) => C[c] = i);
@@ -49799,7 +49803,9 @@ body.is-mgr #v-astudents.s4on > :not(.grp-tabs):not(.s4){display:none!important}
   let SRCS = null, SRCSat = 0;
   function sources(P){ if(SRCS && Date.now() - SRCSat < 4000) return SRCS; const out = {};
     if(P) Object.keys(P.by).forEach(k => { out[k] = P.by[k].src || ''; });
-    try{ if(typeof DB !== 'undefined' && DB && DB.rows){ const seen = {}; DB.rows.forEach(r => { const k = up(r[0]); if(!/^ST-/.test(k) || seen[k]) return; seen[k] = 1; const v = String(r[22] || '').trim(); if(v && !/^n\/?a$/i.test(v)) out[k] = v; }); } }catch(e){}
+    if(dbOk()){ try{ const seen = {}; DB.rows.forEach(r => { const k = up(r[0]); if(!/^ST-/.test(k) || seen[k]) return; seen[k] = 1; const v = String(r[22] || '').trim(); if(v && !/^n\/?a$/i.test(v)) out[k] = v; }); }catch(e){}
+      Object.keys(out).forEach(k => { if(KC.src[k] !== out[k]){ KC.src[k] = out[k]; kcSave(); } }); }
+    else Object.keys(KC.src).forEach(k => { if(KC.src[k]) out[k] = KC.src[k]; });
     SRCS = out; SRCSat = Date.now(); return out; }
   const srcKind = v => { v = String(v || '').trim(); if(!v || /^n\/?a$/i.test(v)) return 'none'; if(/^ST-\d{4}-\d{3}\s*[–-]/i.test(v)) return 'ref'; if(/^(COE|CupOfEnglish)\b/i.test(v)) return 'coe'; return 'pt'; };
   const srcText = v => { v = String(v || '').trim(); const k = srcKind(v); if(k === 'none') return '<span class="ns">Source Not Set</span>';
@@ -49807,7 +49813,9 @@ body.is-mgr #v-astudents.s4on > :not(.grp-tabs):not(.s4){display:none!important}
     if(k === 'coe') return '<span>CupOfEnglish</span>'; return '<span>' + E(v) + '</span>'; };
   const SRCL = [['pt', 'Partners'], ['ref', 'Referrals'], ['coe', 'CupOfEnglish'], ['none', 'Not Set']];
   const LRNL = [['early', 'Early Years'], ['young', 'Young Learners'], ['teen', 'Teens'], ['adult', 'Adults'], ['unk', 'Not Set']];
-  const lrn = code => { try{ const t = window.learnerTag1588 ? learnerTag1588(code) : null; return t && t.k ? t : { k: 'unk', html: '' }; }catch(e){ return { k: 'unk', html: '' }; } };
+  const lrn = code => { if(dbOk()){ try{ const t = window.learnerTag1588 ? learnerTag1588(code) : null, v = t && t.k && /^(early|young|teen|adult)$/.test(t.k) ? { k: t.k, html: t.html } : { k: 'unk', html: '' };
+      const c = KC.lt[code]; if(!c || c[0] !== v.k || c[1] !== v.html){ KC.lt[code] = [v.k, v.html]; kcSave(); } return v; }catch(e){} }
+    const c = KC.lt[code]; return c ? { k: c[0], html: c[1] } : { k: 'unk', html: '' }; };
   /* book names: the level part is already in the Level column */
   const CEFRX = /^(pre-?\s*a1|[abc][12]\+?)(\s*(→|->)\s*(pre-?\s*a1|[abc][12]\+?))*$/i;
   const bookName = b => { b = String(b || '').trim(); if(!b) return ''; let t = window.bookText3050 ? bookText3050(b) : b; if(t !== b) return t;
@@ -49832,8 +49840,10 @@ body.is-mgr #v-astudents.s4on > :not(.grp-tabs):not(.s4){display:none!important}
   const noAgr = it => { if(!it.on || !it.o || !it.o.active || it.o.shared) return false; const a = agr(it.o.code); return a !== undefined && !(a && a.how !== 'Sent'); };
 
   /* the validity review of an ended package (Celine's review, the President's decision) */
-  let VRL = 0; const vrSt = (k, dl) => { let L = []; try{ L = window.vr2588Rows ? vr2588Rows(k, String(dl).slice(0, 10)) : []; }catch(e){}
-    if(!L.length && !VRL && window.vr2588Reload){ VRL = 1; try{ vr2588Reload(); }catch(e){} setTimeout(() => { LASTL = ''; draw('list'); }, 1800); }
+  let VRL = 0, VROK = 0; const vrSt = (k, dl) => { const key = k + '|' + String(dl).slice(0, 10); if(!VRL && window.vr2588Reload){ VRL = 1; try{ vr2588Reload(); }catch(e){} setTimeout(() => { VROK = 1; draw('list'); }, 2500); }
+    if(!VROK) return KC.vr[key] || '>Review Validity';
+    const out = vrSt0(k, dl); if(KC.vr[key] !== out){ KC.vr[key] = out; kcSave(); } return out; };
+  const vrSt0 = (k, dl) => { let L = []; try{ L = window.vr2588Rows ? vr2588Rows(k, String(dl).slice(0, 10)) : []; }catch(e){}
     const x = L[0], nd = x && x.new_date ? String(x.new_date).slice(0, 10) : '';
     if(!x) return '>Review Validity';
     if(x.kind === 'review') return ' style="color:#A15C07">Review Pending';
@@ -49851,7 +49861,7 @@ body.is-mgr #v-astudents.s4on > :not(.grp-tabs):not(.s4){display:none!important}
     if(it.on && o && o.active && !o.shared){ const a = agr(k); if(a === null) sub.push('<span class="no" role="button" tabindex="0" onclick="event.stopPropagation();agrOpen({code:\'' + E(k) + '\'})" title="Send the service agreement">No Agreement · Send</span>');
       else if(a && a.how === 'Sent') sub.push('<span class="rm" role="button" tabindex="0" onclick="event.stopPropagation();agrOpen({code:\'' + E(k) + '\'})" title="Agreement sent, not signed yet">Agreement Sent' + (typeof tfuDay === 'function' && a.at ? ' ' + E(tfuDay(a.at)) : '') + ' · Remind</span>'); }
     if(o && it.on && /^(Renewing|Reminder sent|Paused)/.test(o.st)){ const t = o.st.split(' · ')[0]; sub.push('<span class="st">' + E(t === 'Reminder sent' ? 'Renewal Reminder Sent' : t) + '</span>'); }
-    let pl = ''; if(o && P && P.C.course != null){ const C = P.C, R = o.rows.filter(r => r[C.enrolled] !== ''); if(R.length > 1) pl = '<div class="s4-p">' + R.map(r => E((window.pkCourse && pkCourse(r[C.course])) || r[C.teacher] || '') + ' <i class="' + (r[C.available] !== '' && +r[C.available] <= 5 ? 'lo' : '') + '">' + (r[C.available] === '' ? 'shared' : E(num(r[C.available])) + ' left') + '</i>').join(' · ') + '</div>'; }
+    let pl = ''; if(o && P && P.C.course != null){ const C = P.C, R = o.rows.filter(r => r[C.enrolled] !== ''); if(R.length > 1) pl = '<div class="s4-p">' + R.map(r => E(String(r[C.course] || '').split(',').map(x => bookName(x.trim())).filter(Boolean).join(' + ') || r[C.teacher] || '') + ' <i class="' + (r[C.available] !== '' && +r[C.available] <= 5 ? 'lo' : '') + '">' + (r[C.available] === '' ? 'shared' : E(num(r[C.available])) + ' left') + '</i>').join(' · ') + '</div>'; }
     const lv = s.cefr ? '<span class="s4-lv">' + E(s.cefr) + '</span>' : '<span class="s4-lv" style="color:#9A96B0;border-style:dashed" title="No progress check yet">—</span>';
     const g = pkgOf(P, k), lf = left == null ? null : +left, cl = lf == null ? 'none' : lf <= 3 ? 'now' : lf <= 8 ? 'soon' : '';
     const col = cl === 'now' ? '#C0392B' : cl === 'soon' ? '#A15C07' : '#0E6F68', nd = g && g.tot > 0 ? (g.left <= 0 ? 0 : Math.max(1, Math.round(Math.max(0, Math.min(100, Math.round(g.left / g.tot * 100))) / 10))) : -1;
@@ -49942,6 +49952,7 @@ body.is-mgr #v-astudents.s4on > :not(.grp-tabs):not(.s4){display:none!important}
   /* take over the list: every caller of renderAStudents now gets this one draw; the previous list stays behind the switch */
   const old = window.renderAStudents;
   const loadOnce = () => { try{ if(typeof AT === 'undefined' || !AT || !AT.cols){ if(typeof loadActive === 'function' && !window._s4AT){ window._s4AT = 1; loadActive(true).then(() => { window._s4AT = 0; draw(); }).catch(() => { window._s4AT = 0; }); } }
+      if(!dbOk() && !window._s4DB && typeof api === 'function'){ window._s4DB = 1; api('mgmtDatabase', TOKEN).then(v => { if(v && v.rows){ DB = v; draw(); } }).catch(() => {}).then(() => { setTimeout(() => { window._s4DB = 0; }, 60000); }); }
       if(typeof AGM !== 'undefined' && !AGM && typeof agrMap === 'function' && !window._s4AG){ window._s4AG = 1; agrMap().then(() => { window._s4AG = 0; draw(); }).catch(() => { window._s4AG = 0; }); } }catch(e){} };
   window.renderAStudents = function(){ if(mgr() && ON()){ draw(); loadOnce(); return; } const v = document.getElementById('v-astudents'); if(v) v.classList.remove('s4on'); return old && old.apply(this, arguments); };
   try{ renderAStudents = window.renderAStudents; }catch(e){}
