@@ -945,5 +945,36 @@ body.tm19 .tg19{color:#0E6F68;font-weight:600}
   go();
 })();
 </script>
+<style id="css3020">
+/* 3020 (Misty 26 Nov 14:11): Part 2 - the two buttons are the timers (1 min prepare, 2 min speak), with pause, reset and a soft chime */
+#kMini{display:none!important}
+#kPrep.t20,#kSpeak.t20{font-variant-numeric:tabular-nums;min-width:200px}
+#kPrep.t20.run,#kSpeak.t20.run{background:#0E6F68!important;color:#fff!important;border-color:#0E6F68!important}
+#kPrep.t20.pz,#kSpeak.t20.pz{background:#fff!important;color:#0E6F68!important;border:1.5px solid #0E6F68!important}
+#kPrep.t20.end,#kSpeak.t20.end{background:#FDECEA!important;color:#C0392B!important;border-color:#F3C3BC!important}
+#kSpeak.nx20{background:#0E6F68!important;color:#fff!important;border-color:#0E6F68!important;box-shadow:0 0 0 4px rgba(14,111,104,.15)}
+.rs20{background:none;border:0;color:#9A96B0;font:500 13.5px Inter,system-ui,sans-serif;cursor:pointer;padding:6px 8px;border-radius:8px}
+.rs20:hover{color:#0E6F68;background:#fff}
+</style>
+<script id="b3020">
+(function(){
+  const LB = { kPrep: ['1 min to prepare', 'Preparing', 60, 'Speak now'], kSpeak: ['Speak · 2 min', 'Speaking', 120, 'Time’s Up'] };
+  let T = null, iv = 0, nx = false;
+  const left = () => !T ? 0 : T.run ? Math.max(0, Math.ceil((T.end - Date.now()) / 1000)) : T.rest;
+  const mm = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  function chime(){ try{ const A = window.AudioContext || window.webkitAudioContext; if(!A) return; const c = chime.c || (chime.c = new A()); [0, .22].forEach((d, i) => { const o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.value = i ? 1046.5 : 784; g.gain.setValueAtTime(.0001, c.currentTime + d); g.gain.exponentialRampToValueAtTime(.25, c.currentTime + d + .02); g.gain.exponentialRampToValueAtTime(.0001, c.currentTime + d + .9); o.connect(g).connect(c.destination); o.start(c.currentTime + d); o.stop(c.currentTime + d + 1); }); }catch(e){} }
+  function show(){ ['kPrep', 'kSpeak'].forEach(id => { const b = document.getElementById(id); if(!b) return; const L = LB[id]; b.classList.add('t20'); b.classList.remove('run', 'pz', 'end');
+      let t = L[0]; if(T && T.id === id){ const s = left(); if(T.done){ t = L[3]; b.classList.add('end'); } else if(T.run){ t = L[1] + ' · ' + mm(s); b.classList.add('run'); } else { t = 'Paused · ' + mm(s); b.classList.add('pz'); } }
+      if(b.textContent !== t) b.textContent = t; b.title = T && T.id === id && !T.done ? (T.run ? 'Click to pause' : 'Click to continue') : 'Start the ' + (id === 'kPrep' ? '1-minute preparation' : '2-minute speaking') + ' timer';
+      b.classList.toggle('nx20', id === 'kSpeak' && nx && !(T && T.id === 'kSpeak'));
+      const row = b.parentNode; let r = row.querySelector('.rs20'); if(T && !r && id === 'kSpeak'){ b.insertAdjacentHTML('afterend', '<button type="button" class="rs20" title="Stop and reset the timer">Reset</button>'); } else if(!T && r) r.remove(); }); }
+  function tick(){ if(!T || !T.run) return; if(left() <= 0){ T.run = false; T.done = true; clearInterval(iv); chime(); if(T.id === 'kPrep') nx = true; } show(); }
+  document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('#kPrep, #kSpeak, .rs20'); if(!b) return; e.stopImmediatePropagation(); e.preventDefault();
+    if(b.classList.contains('rs20')){ T = null; nx = false; clearInterval(iv); show(); return; }
+    const id = b.id; if(T && T.id === id && !T.done){ if(T.run){ T.rest = left(); T.run = false; clearInterval(iv); } else { T.end = Date.now() + T.rest * 1000; T.run = true; iv = setInterval(tick, 250); } show(); return; }
+    if(id === 'kSpeak') nx = false; T = { id, run: true, end: Date.now() + LB[id][2] * 1000, rest: 0, done: false }; clearInterval(iv); iv = setInterval(tick, 250); try{ chime.c && chime.c.resume(); }catch(x){} show(); }, true);
+  const a = document.getElementById('app'); let q = 0, had = false; if(a) new MutationObserver(() => { if(q) return; q = 1; Promise.resolve().then(() => { q = 0; const h = !!document.getElementById('kPrep'); if(!h && had){ T = null; nx = false; clearInterval(iv); } had = h; if(h) show(); }); }).observe(a, { childList: true, subtree: true });
+})();
+</script>
 </body>
 </html>
