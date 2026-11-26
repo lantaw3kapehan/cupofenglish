@@ -21,6 +21,8 @@ import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const ORIGINS = ["https://app.cupofenglishatph.com"];
 const GAS_URL = "https://script.google.com/a/cupofenglishatph.com/macros/s/AKfycbyqAYrjEQ3CdeTzogP8mZ8tMRx59nV0vMvOHtoQ0wudTBNNXV7YeE_mJPYcqIRhmRbu/exec";   // the app's Google web app (same address as app.html)
+// 26 Nov 2026 · 3069: Google Calendar is off for class saves (Misty). True when the class table is the calendar (sys:live classDbFinal).
+async function gcalOff(): Promise<boolean> { try { const { data } = await db.from("docs").select("data").eq("key", "sys:live").maybeSingle(); return !!(data && data.data && data.data.classDbFinal); } catch (_e) { return true; } }
 const FNS = new Set(["mgmtRenewPaid", "mgmtEnrolPaid", "mgmtRenewal"]);
 const cors = (o: string) => ({ "Access-Control-Allow-Origin": ORIGINS.includes(o) ? o : ORIGINS[0], "Access-Control-Allow-Headers": "content-type", "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin" });
 async function sha(t: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
@@ -310,7 +312,7 @@ Deno.serve(async (req: Request) => {
     const google = (async () => {
       // 26 Nov 2026 · 3067 (Misty: "google calendar should be already switched off"): the class table is the calendar (sys:live classDbFinal, 11 Nov);
       // a cancel / restore / move is no longer sent to Google at all, so Google can never undo it. The writes row is already done (coe_class_edit_dbfinal).
-      try { const { data: lv } = await db.from("docs").select("data").eq("key", "sys:live").maybeSingle(); if (lv && lv.data && lv.data.classDbFinal) return; } catch (_e) { return; }
+      if (await gcalOff()) return;
       let st = "new", result: any = null, err = "";
       try {
         const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 120000);
@@ -396,6 +398,9 @@ Deno.serve(async (req: Request) => {
       if (off.length) await db.from("writes").update({ args: [token, g, { pend: true, days: make.map((z) => z.day), off: off.map((x: any) => ({ id: x.id, data: x.data })) }] }).eq("id", w.id);
     }
     const google = (async () => {
+      if (!sc && await gcalOff()) {   // 3069: the classes are made here only; marking the save done turns the pending rows into the classes (coe_class_pend_done)
+        await db.from("writes").update({ status: "done", result: { ok: true, db: true, note: "Saved in the app" }, done_at: new Date().toISOString() }).eq("id", w.id);
+        return; }
       let st = "done", result: any = null, err = "";
       try {
         const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 380000);
@@ -460,6 +465,9 @@ Deno.serve(async (req: Request) => {
     const { data: w } = await db.from("writes").insert({ fn: "mgmtSetBook", args: [token, A[0], A[1], A[2], A[3] || "", { rows }], who: s.name, mode: s.mode, status: "busy" }).select("id").single();
     if (!w) { for (const y of rows) await db.from("classes").update({ data: y.data }).eq("id", y.id); return out({ ok: false, error: "google" }, 500); }
     const google = (async () => {
+      if (await gcalOff()) {   // 3069: the book is changed here only
+        await db.from("writes").update({ status: "done", result: Object.assign({ ok: true, db: true }, r), done_at: new Date().toISOString() }).eq("id", w.id).eq("status", "busy");
+        return; }
       let st = "new", result: any = null, err = "";
       try {
         const ac = new AbortController(), tid = setTimeout(() => ac.abort(), 120000);
