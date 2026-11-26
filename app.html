@@ -7546,7 +7546,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2542;
+const COE_V = 2543;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -49580,6 +49580,45 @@ body.is-mgr #sheet .stu2 .cd72.many46 .ax72 em:not(.y84),body.is-mgr #sheet .stu
     const w = function(){ const r = o.apply(this, arguments); try{ if(typeof STU !== 'undefined' && STU && STU.code && STU.r && STU.r.ok !== false) store('set', 'coe.stu.' + STU.code, JSON.stringify(STU.r)); }catch(e){} return r; };
     w.__w3051 = 1; window.stuRender = w; return true; }
   let n = 0; const t = setInterval(() => { if(wrap() || ++n > 40) clearInterval(t); }, 250); wrap();
+})();
+</script>
+<script id="b3053">
+/* 3053 (Misty 26 Nov 17:17 "making the status change the moment a renewal is saved"): Renewed · Paid is saved at once, but Google writes the
+   new package into ACTIVE about a minute later, so the list ("4 left"), the student page and the status kept the old package until then.
+   Now the new package (lessons left, carried over, start, valid until) shows the moment the renewal is saved, in the package copy (AT) and the
+   student list (MS), until Google's copy has it (or 24 h). Only after a successful save; nothing is written anywhere. Wraps renPaidSave only. */
+(function(){
+  if(window.__b3053) return; window.__b3053 = 1;
+  const up = s => String(s || '').trim().toUpperCase(), K = 'coe.p3053', r1 = x => Math.round(x * 10) / 10;
+  const get = () => { try{ return JSON.parse(localStorage.getItem(K) || '{}') || {}; }catch(e){ return {}; } }, put = v => { try{ localStorage.setItem(K, JSON.stringify(v)); }catch(e){} };
+  const MON = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+  const ymd = t => { const m = String(t || '').match(/(\d{1,2}) ([A-Z][a-z]{2})[a-z]* (\d{4})/); return m && MON[m[2]] ? m[3] + '-' + MON[m[2]] + '-' + ('0' + m[1]).slice(-2) : ''; };
+  function apply(){ const Q = get(), codes = Object.keys(Q); if(!codes.length) return 0; let ch = 0, keep = 0;
+    const hasAT = typeof AT !== 'undefined' && AT && Array.isArray(AT.cols) && Array.isArray(AT.rows), C = {}; if(hasAT) AT.cols.forEach((c, i) => C[c] = i);
+    codes.forEach(code => { const q = Q[code]; if(!q || Date.now() - q.at > 864e5){ delete Q[code]; return; }
+      if(hasAT){ const R = AT.rows.filter(x => up(x[C.code]) === code); const r = R.find(x => x[C.available] !== '' && x[C.available] != null) || R[0];
+        if(r){ const there = !r.__p3053 && (String(r[C.start] || '').slice(0, 10) >= q.start || (q.old != null && Math.abs((+r[C.available] || 0) - q.old) > 0.05));   /* Google's copy has the new package */
+          if(there){ delete Q[code]; return; }
+          if(!r.__p3053 || r[C.available] !== q.balance){ r[C.available] = q.balance; if(q.start) r[C.start] = q.start; if(q.deadline) r[C.deadline] = q.deadline; if(q.carry != null && C.carry != null) r[C.carry] = q.carry; if(q.tot && C.enrolled != null) r[C.enrolled] = q.tot; if(C.finished != null) r[C.finished] = 0; r.__p3053 = 1; ch++; } } }
+      const m = (typeof MS !== 'undefined' && Array.isArray(MS)) ? MS.find(x => up(x.code) === code) : null; if(m && m.left !== q.balance){ m.left = q.balance; ch++; }
+      keep++; });
+    put(Q); return ch; }
+  function redraw(){ try{ const v = document.getElementById('v-astudents'); if(v && !v.classList.contains('hide') && typeof renderAStudents === 'function') renderAStudents(); }catch(e){}
+    try{ const sh = document.getElementById('sheet'); if(sh && sh.classList.contains('on') && typeof STU !== 'undefined' && STU && get()[up(STU.code)] && document.querySelector('#sheetBody .stu-tabs') && typeof stuRender === 'function'){ const y = sh.scrollTop; stuRender(); sh.scrollTop = y; } }catch(e){} }
+  window.pend3053 = { apply, get };
+  function wrapSave(){ const o = window.renPaidSave; if(typeof o !== 'function') return false; if(o.__w3053) return true;
+    const w = async function(){ const code = (typeof RPS !== 'undefined' && RPS) ? up(RPS.code) : '', old = (() => { try{ const C = {}; AT.cols.forEach((c, i) => C[c] = i); const R = AT.rows.filter(x => up(x[C.code]) === code); const r = R.find(x => x[C.available] !== '' && x[C.available] != null); return r ? +r[C.available] : null; }catch(e){ return null; } })(), paid = (document.getElementById('rpD') || {}).value || '', until = ymd(((document.getElementById('rpP') || {}).textContent || '').match(/Valid until ([^·(]+)/i)?.[1]);
+      const r = await o.apply(this, arguments);
+      try{ const p = typeof RN_PIC !== 'undefined' ? RN_PIC : null; if(code && p && up(p.code) === code && Date.now() - p.t < 60000){
+          const Q = get(); Q[code] = { at: Date.now(), balance: r1((+p.carry || 0) + (+p.tot || 0)), carry: +p.carry || 0, tot: +p.tot || 0, start: paid || p.paid || '', deadline: until, old };
+          const bt = ((document.getElementById('sheetBody') || {}).textContent || '').match(/valid until\s*([0-9]{1,2} [A-Z][a-z]{2} [0-9]{4})/i); if(bt && ymd(bt[1])) Q[code].deadline = ymd(bt[1]);
+          put(Q); if(apply()) setTimeout(redraw, 0); } }catch(e){}
+      return r; };
+    w.__w3053 = 1; window.renPaidSave = w; return true; }
+  let n = 0; const t = setInterval(() => { if(wrapSave() || ++n > 40) clearInterval(t); }, 250);
+  /* keep it on top of reloads until Google's copy has it: a cheap check every 2 s, redraw only when something changed */
+  setInterval(() => { try{ if(document.hidden || !Object.keys(get()).length) return; if(apply()) redraw(); }catch(e){} }, 2000);
+  try{ apply(); }catch(e){}
 })();
 </script>
 </body>
