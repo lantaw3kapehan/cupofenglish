@@ -40,7 +40,7 @@ const SAFE2740 = new Map(), SVG2743 = new WeakMap();   /* 2740: which photos can
           /* 2743 (23 Nov): a run with no spaces that wraps over several lines (Chinese) was drawn on one line, past the card's edge.
              Such a run is now drawn character by character, each where the browser shows it. */
           if(RR.length > 1){ let i = 0; for(const ch of k[0]){ rg.setStart(n, k.index + i); rg.setEnd(n, k.index + i + ch.length); const c1 = rg.getClientRects()[0]; if(c1) g.fillText(tt === 'uppercase' ? ch.toUpperCase() : ch, c1.left, c1.top + asc); i += ch.length; } continue; }
-          let t = k[0]; if(tt === 'uppercase') t = t.toUpperCase(); else if(tt === 'lowercase') t = t.toLowerCase();
+          let t = k[0]; if(tt === 'uppercase') t = t.toUpperCase(); else if(tt === 'lowercase') t = t.toLowerCase(); else if(tt === 'capitalize') t = t.replace(/^(\P{L}*)(\p{Ll})/u, (m, a1, c) => a1 + c.toUpperCase());   /* 3021: Title Case labels look the same on the copy as on the screen */
           const ls = parseFloat(cs.letterSpacing) || 0; if(ls && g.letterSpacing !== undefined) g.letterSpacing = ls + 'px';
           g.fillText(t, q.left, by); if(ls && g.letterSpacing !== undefined) g.letterSpacing = '0px';
         }
