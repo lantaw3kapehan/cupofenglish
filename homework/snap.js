@@ -15,13 +15,16 @@ const SAFE2740 = new Map(), SVG2743 = new WeakMap();   /* 2740: which photos can
     const deco = (n, root) => { const o = []; for(let e = n; e && e !== root.parentNode; e = e.parentNode){ if(e.nodeType !== 1) continue; const cs = getComputedStyle(e), l = cs.textDecorationLine || '';
         if(/line-through/.test(l)) o.push(['s', cs.textDecorationColor || cs.color]); if(/underline/.test(l)) o.push(['u', cs.textDecorationColor || cs.color]); } return o; };
     const skip = opt.skip || (() => false);
+    /* 3024: parts of a screen can be enlarged with CSS zoom (Speaking class view) - sizes from getComputedStyle are unzoomed, positions are zoomed */
+    const ZM = new WeakMap(), zOf = el => { if(!el || el.nodeType !== 1) return 1; if(ZM.has(el)) return ZM.get(el); const z = (parseFloat(getComputedStyle(el).zoom) || 1) * (el.parentElement ? zOf(el.parentElement) : 1); ZM.set(el, z); return z; };
+    const fz = (cs, el) => { const z = zOf(el); return cs.fontStyle + ' ' + cs.fontWeight + ' ' + (parseFloat(cs.fontSize) * z) + 'px ' + cs.fontFamily; };
     const paint = root => { const walk = n => {
         if(n.nodeType === 1){ if(skip(n) || (n.classList && (n.classList.contains('ink-c') || n.classList.contains('ink-in') || n.classList.contains('ink-grip')))) return;
           const cs = getComputedStyle(n); if(cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return; const r = n.getBoundingClientRect(); if(!r.width && !r.height && !n.childNodes.length) return;
-          const rad = parseFloat(cs.borderTopLeftRadius) || 0;
+          const zz = zOf(n), rad = (parseFloat(cs.borderTopLeftRadius) || 0) * zz;
           if(!tr(cs.backgroundColor)){ g.fillStyle = cs.backgroundColor; rr(r.left, r.top, r.width, r.height, rad); g.fill(); }
-          const bw = ['Top', 'Right', 'Bottom', 'Left'].map(k => parseFloat(cs['border' + k + 'Width']) || 0), bc = ['Top', 'Right', 'Bottom', 'Left'].map(k => cs['border' + k + 'Color']);
-          if(bw.every(x => x > 0 && x < 3) && bc.every(c => c === bc[0]) && !tr(bc[0]) && cs.borderTopStyle !== 'none'){ g.strokeStyle = bc[0]; g.lineWidth = bw[0]; rr(r.left + bw[0] / 2, r.top + bw[0] / 2, r.width - bw[0], r.height - bw[0], rad); g.stroke(); }
+          const bw = ['Top', 'Right', 'Bottom', 'Left'].map(k => (parseFloat(cs['border' + k + 'Width']) || 0) * zz), bc = ['Top', 'Right', 'Bottom', 'Left'].map(k => cs['border' + k + 'Color']);
+          if(bw.every(x => x > 0 && x < 3 * zz) && bc.every(c => c === bc[0]) && !tr(bc[0]) && cs.borderTopStyle !== 'none'){ g.strokeStyle = bc[0]; g.lineWidth = bw[0]; rr(r.left + bw[0] / 2, r.top + bw[0] / 2, r.width - bw[0], r.height - bw[0], rad); g.stroke(); }
           else { [[0, () => [r.left, r.top, r.width, bw[0]]], [1, () => [r.right - bw[1], r.top, bw[1], r.height]], [2, () => [r.left, r.bottom - bw[2], r.width, bw[2]]], [3, () => [r.left, r.top, bw[3], r.height]]].forEach(([i, f]) => {
               if(bw[i] > 0 && !tr(bc[i]) && cs['border' + ['Top', 'Right', 'Bottom', 'Left'][i] + 'Style'] !== 'none'){ g.fillStyle = bc[i]; const q = f(); g.fillRect(q[0], q[1], q[2], q[3]); } }); }
           /* 2740 (Misty 23 Nov 10:46): a photo the browser will not let into a picture (no CORS) made the whole copy fail without a word.
@@ -31,17 +34,17 @@ const SAFE2740 = new Map(), SVG2743 = new WeakMap();   /* 2740: which photos can
             if(ok){ try{ g.drawImage(n, r.left, r.top, r.width, r.height); }catch(e){} } else { g.fillStyle = '#EEF0F4'; rr(r.left, r.top, r.width, r.height, rad); g.fill(); } return; }
           if(n.tagName === 'CANVAS' && !n.classList.contains('ink-c')){ try{ g.drawImage(n, r.left, r.top, r.width, r.height); }catch(e){} return; }
           if(n.tagName === 'SVG' || n.tagName === 'svg'){ const im = SVG2743.get(n); if(im) try{ g.drawImage(im, r.left, r.top, r.width, r.height); }catch(e){} return; }   /* 2743: icons are copied too */
-          if((n.tagName === 'INPUT' || n.tagName === 'TEXTAREA') && n.value){ g.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily; g.fillStyle = cs.color; g.textBaseline = 'top'; g.fillText(n.value, r.left + (parseFloat(cs.paddingLeft) || 0), r.top + (parseFloat(cs.paddingTop) || 0)); return; }
+          if((n.tagName === 'INPUT' || n.tagName === 'TEXTAREA') && n.value){ g.font = fz(cs, n); g.fillStyle = cs.color; g.textBaseline = 'top'; g.fillText(n.value, r.left + (parseFloat(cs.paddingLeft) || 0) * zz, r.top + (parseFloat(cs.paddingTop) || 0) * zz); return; }
           n.childNodes.forEach(walk); return; }
-        if(n.nodeType !== 3 || !n.nodeValue.replace(/[\s​]/g, '')) return; const el = n.parentNode, cs = getComputedStyle(el), fs = parseFloat(cs.fontSize);
-        g.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily; g.fillStyle = cs.color; g.textBaseline = 'alphabetic'; const D = deco(el, root);
+        if(n.nodeType !== 3 || !n.nodeValue.replace(/[\s​]/g, '')) return; const el = n.parentNode, cs = getComputedStyle(el), zt = zOf(el), fs = parseFloat(cs.fontSize) * zt;
+        g.font = fz(cs, el); g.fillStyle = cs.color; g.textBaseline = 'alphabetic'; const D = deco(el, root);
         const tt = cs.textTransform, m = g.measureText('Hg'), asc = m.fontBoundingBoxAscent || fs * 0.8, re = /[^\s​]+/g, rg = document.createRange(); let k;
         while((k = re.exec(n.nodeValue))){ rg.setStart(n, k.index); rg.setEnd(n, k.index + k[0].length); const RR = rg.getClientRects(), q = RR[0]; if(!q) continue; const by = q.top + asc;
           /* 2743 (23 Nov): a run with no spaces that wraps over several lines (Chinese) was drawn on one line, past the card's edge.
              Such a run is now drawn character by character, each where the browser shows it. */
           if(RR.length > 1){ let i = 0; for(const ch of k[0]){ rg.setStart(n, k.index + i); rg.setEnd(n, k.index + i + ch.length); const c1 = rg.getClientRects()[0]; if(c1) g.fillText(tt === 'uppercase' ? ch.toUpperCase() : ch, c1.left, c1.top + asc); i += ch.length; } continue; }
           let t = k[0]; if(tt === 'uppercase') t = t.toUpperCase(); else if(tt === 'lowercase') t = t.toLowerCase(); else if(tt === 'capitalize') t = t.replace(/^(\P{L}*)(\p{Ll})/u, (m, a1, c) => a1 + c.toUpperCase());   /* 3021: Title Case labels look the same on the copy as on the screen */
-          const ls = parseFloat(cs.letterSpacing) || 0; if(ls && g.letterSpacing !== undefined) g.letterSpacing = ls + 'px';
+          const ls = (parseFloat(cs.letterSpacing) || 0) * zt; if(ls && g.letterSpacing !== undefined) g.letterSpacing = ls + 'px';
           g.fillText(t, q.left, by); if(ls && g.letterSpacing !== undefined) g.letterSpacing = '0px';
         }
         /* 2743: underline / line-through drawn once per screen line of the whole text (no gaps between words) */
