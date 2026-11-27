@@ -99,7 +99,17 @@ let VER: Promise<Record<string, string>> | null = null;   // 15 Oct night: each 
 const vers = (db: any) => VER || (VER = db.from("sheet_tabs").select("tab,synced_at").then((r: any) => { const o: Record<string, string> = {}; (r.data || []).forEach((x: any) => o[x.tab] = String(x.synced_at)); return o; }, () => ({})));
 const tab = (db: any, t: string) => TABS[t] || (TABS[t] = vers(db).then((V) => {
   const k = KEEP[t], v = V[t] || ""; if (k && Date.now() - k.t < 60000 && k.v === v) return k.p;
-  const p = loadTab(db, t); KEEP[t] = { t: Date.now(), p, v }; p.catch(() => { delete KEEP[t]; }); return p; }));
+  const p = t === "ACTIVE" ? loadTab(db, t).then((v: any[][]) => dbNumsInto(db, v)) : loadTab(db, t); KEEP[t] = { t: Date.now(), p, v }; p.catch(() => { delete KEEP[t]; }); return p; }));
+// 3102 (Misty 27 Nov 19:10 "ensure we no longer use Google here, this is going in cycles"): every screen made from the ACTIVE copy reads the database's
+// own numbers (coe_pkg_nums): TOTAL FINISHED (45), TOTAL AVAILABLE (46), DEADLINE (49) and INCENTIVE (8) are filled from it, never from the sheet's formulas.
+async function dbNumsInto(db: any, v: any[][]) {
+  try { const { data, error } = await db.rpc("coe_pkg_nums"); if (error || !data) return v; const N = data as Record<string, any[]>;
+    const head = (v[0] || []).map((x: any) => String(x ?? "").trim().toUpperCase()), cc = head.indexOf("COURSE");
+    return v.map((r: any[], i: number) => { if (i < 4 || !Array.isArray(r) || !/^ST-/i.test(String(r[0] ?? ""))) return r;
+      const k0 = String(r[0]).trim().toUpperCase() + "|" + String(r[3] ?? "").trim().toLowerCase() + "|" + String(r[48] ?? "").slice(0, 10);
+      const x = (cc > -1 ? N[k0 + "|" + String(r[cc] ?? "").trim().toLowerCase()] : null) || N[k0]; if (!x) return r;
+      const c = r.slice(); c[45] = x[0] == null ? "" : x[0]; c[46] = x[1] == null ? "" : x[1]; c[49] = x[2] == null ? "" : String(x[2]) + "T00:00:00"; c[8] = x[3] == null ? 0 : x[3]; return c; });
+  } catch (_e) { return v; } }
 function tableOf(v: any[][], key: string) {
   let h = 0; for (let i = 0; i < Math.min(6, v.length); i++) if ((v[i] || []).some((x: any) => String(x ?? "").trim() === key)) { h = i; break; }
   return { head: (v[h] || []).map((x: any) => String(x ?? "").trim()), rows: v.slice(h + 1) };

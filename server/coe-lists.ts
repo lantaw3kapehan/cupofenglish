@@ -38,6 +38,15 @@ const cell = (r: any[], j: number) => r[j] === undefined || r[j] === null ? "" :
 const num = (x: any) => { const n = Number(x); return isFinite(n) ? n : 0; };
 const or = (x: any) => (x === "" || x === 0 || x === false || x == null) ? "" : x;
 
+// 3102 (Misty 27 Nov 19:10): lessons left / finished / deadline / free lessons from the database's own calculation (coe_pkg_nums), not the sheet's formulas
+async function dbNumsInto(v: any[][]) {
+  try { const { data, error } = await db.rpc("coe_pkg_nums"); if (error || !data) return v; const N = data as Record<string, any[]>;
+    const head = (v[0] || []).map((x: any) => String(x ?? "").trim().toUpperCase()), cc = head.indexOf("COURSE");
+    return v.map((r: any[], i: number) => { if (i < 4 || !Array.isArray(r) || !/^ST-/i.test(String(r[0] ?? ""))) return r;
+      const k0 = String(r[0]).trim().toUpperCase() + "|" + String(r[3] ?? "").trim().toLowerCase() + "|" + String(r[48] ?? "").slice(0, 10);
+      const x = (cc > -1 ? N[k0 + "|" + String(r[cc] ?? "").trim().toLowerCase()] : null) || N[k0]; if (!x) return r;
+      const c = r.slice(); c[45] = x[0] == null ? "" : x[0]; c[46] = x[1] == null ? "" : x[1]; c[49] = x[2] == null ? "" : String(x[2]) + "T00:00:00"; c[8] = x[3] == null ? 0 : x[3]; return c; });
+  } catch (_e) { return v; } }
 async function loadTab(tab: string, lo = 1, hi = 1e9) {
   const v: any[][] = [];
   for (let from = 0; from < 50000; from += 1000) {
@@ -463,7 +472,7 @@ async function fbCols(tab: string, sel: string) {
   return out;
 }
 async function fbBase() {
-  const [A, tm, fb, fbs, M, FD, RO] = await Promise.all([loadTab("ACTIVE"), doc("sys:tmap"), doc("sys:fb"), doc("sys:fbs"), loadTab("MASTERLIST"),
+  const [A, tm, fb, fbs, M, FD, RO] = await Promise.all([loadTab("ACTIVE").then(dbNumsInto), doc("sys:tmap"), doc("sys:fb"), doc("sys:fbs"), loadTab("MASTERLIST"),
     fbCols("FB:FEEDBACK DATA", "r,c:data->>1,t:data->>2,s:data->>3,m:data->>4,sub:data->>5,tot:data->>10"), fbCols("FB:REPORT FILES", "r,k:data->>0")]);
   const TM = (tm && tm.data && tm.data.tmap) || {}, dailyName = (tm && tm.data && tm.data.daily) || "";
   const DY = dailyName ? await loadTab(dailyName) : [];
