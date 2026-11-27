@@ -7557,7 +7557,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2680;
+const COE_V = 2681;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -50930,6 +50930,54 @@ body.is-mgr #app #v-trials #tpList .rp-row:last-child{border-bottom:0!important}
       b.childNodes.forEach(function(n){ if(n.nodeType === 3 && /[a-z]/.test(n.nodeValue) && /\s[a-z]/.test(n.nodeValue)){ var v = tc(n.nodeValue); if(v !== n.nodeValue) n.nodeValue = v; } }); }); }
   var on = 0; function q(){ if(on) return; on = 1; requestAnimationFrame(function(){ on = 0; try{ if(document.body.classList.contains('is-mgr')) fix(document.getElementById('v-enquiry')); }catch(e){} }); }
   (function w(){ var v = document.getElementById('v-enquiry'); if(!v) return setTimeout(w, 1000); new MutationObserver(q).observe(v, { childList: true, subtree: true, characterData: true }); q(); })();
+})();
+</script>
+<script id="b3124">
+/* 3124 (Misty 27 Nov 23:34): "count each teacher's leave, approved or not, and show a marker". Every leave request counts
+   (approved, declined or waiting); only a request the teacher cancelled herself does not. Counted by the month of the leave day.
+   More than 1 request in a month = over the limit. Months over the limit in a row give the marker: Month 1 of 3 · Month 2 of 3 ·
+   Month 3 of 3 (the policy step: reminder · warning · end of the service agreement). A month within the limit resets the count. */
+(function(){
+  var LIM = 1, MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function ym(d){ return String(d || '').slice(0, 7); }
+  function addM(y, k){ var a = +y.slice(0, 4), m = +y.slice(5, 7) - 1 + k; a += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return a + '-' + String(m + 1).padStart(2, '0'); }
+  function data(){ var R = (window.LV && LV.rows) || [], by = {};
+    R.forEach(function(r){ if(!r || /cancel/i.test(r.status || '') || !r.teacher || !r.from) return; var t = r.teacher, m = ym(r.from);
+      (by[t] = by[t] || {}); (by[t][m] = by[t][m] || []).push(r); });
+    return by; }
+  function streak(M, cur){   /* months over the limit in a row, ending this month (or last month if this month is still within) */
+    var end = (M[cur] || []).length > LIM ? cur : addM(cur, -1), n = 0;
+    for(var k = 0; k < 24; k++){ var m = addM(end, -k); if((M[m] || []).length > LIM) n++; else break; } return n; }
+  function mark(n){ if(!n) return ''; var c = n >= 3 ? '#C0392B' : n === 2 ? '#B4513B' : '#A15C07', bg = n >= 3 ? '#FBEAEA' : n === 2 ? '#FBEEE9' : '#FDF3E3';
+    return '<span class="lv3124m" style="display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font:600 12px Inter,sans-serif;color:' + c + ';background:' + bg + ';white-space:nowrap">Month ' + Math.min(n, 3) + ' of 3</span>'; }
+  window.lv3124 = function(t){ var by = data(), cur = ym(ymdLocal(new Date())); return streak(by[t] || {}, cur); };
+  function paint(){ var v = document.getElementById('v-leave'); if(!v || !window.LV) return;
+    var by = data(), cur = ym(ymdLocal(new Date())), cols = [addM(cur, -3), addM(cur, -2), addM(cur, -1), cur, addM(cur, 1)];
+    var T = Object.keys(by).filter(function(t){ return cols.some(function(m){ return (by[t][m] || []).length; }); })
+      .map(function(t){ return { t: t, n: streak(by[t], cur), c: (by[t][cur] || []).length }; })
+      .sort(function(a, b){ return b.n - a.n || b.c - a.c || a.t.localeCompare(b.t); });
+    var old = v.querySelector('.lv3124'); if(old) old.remove();
+    var cell = function(n, m){ var over = n > LIM; return '<div style="width:52px;text-align:center;font:' + (n ? '600' : '400') + ' 13.5px Inter,sans-serif;color:' + (over ? '#C0392B' : n ? '#1E1B3A' : '#C9C6D6') + (m === cur ? ';background:#F6F5FA;border-radius:8px;padding:2px 0' : '') + '">' + (n || '–') + '</div>'; };
+    var h = '<div class="lv3124" style="margin-top:22px"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Leave Count by Month</h2>'
+      + '<span style="font:13px Inter,sans-serif;color:#9A96B0">Every request counts: approved, declined or waiting · more than ' + LIM + ' in a month is over the limit</span></div>'
+      + '<div style="margin-top:10px;border:1px solid #ECEAF2;border-radius:16px;background:#fff;overflow:hidden">'
+      + '<div style="display:flex;align-items:center;gap:6px;padding:10px 16px;border-bottom:1px solid #ECEAF2;font:600 12.5px Inter,sans-serif;color:#4A4666"><div style="flex:1">Teacher</div>'
+      + cols.map(function(m){ return '<div style="width:52px;text-align:center">' + MN[+m.slice(5, 7) - 1] + '</div>'; }).join('') + '<div style="width:104px;text-align:right">Marker</div></div>'
+      + (T.length ? T.map(function(x){ return '<div style="display:flex;align-items:center;gap:6px;padding:10px 16px;border-top:1px solid #F1F0F5;cursor:pointer" onclick="LV_Q=\'' + esc(x.t) + '\';renderLeave()">'
+          + '<div style="flex:1;min-width:0;font:600 14px Inter,sans-serif;color:#1E1B3A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(tName(x.t)) + '</div>'
+          + cols.map(function(m){ return cell((by[x.t][m] || []).length, m); }).join('') + '<div style="width:104px;text-align:right">' + (mark(x.n) || '<span style="font:12.5px Inter,sans-serif;color:#1D7A52">Within</span>') + '</div></div>'; }).join('')
+        : '<div style="padding:14px 16px;font:13px Inter,sans-serif;color:#9A96B0">No leave requests in these months.</div>')
+      + '</div><div style="margin-top:8px;font:12.5px Inter,sans-serif;color:#9A96B0">Month 1 of 3: reminder · Month 2 of 3: formal warning · Month 3 of 3: end of the service agreement · a month within the limit resets the count · tap a teacher for her requests</div></div>';
+    var hs = [].slice.call(v.querySelectorAll('h2')), at = hs.find(function(e){ return /On leave now/i.test(e.textContent); }) || hs.find(function(e){ return /Days of leave/i.test(e.textContent); });
+    if(at){ var box = at.closest('.lv3124') ? null : at; var wrap = document.createElement('div'); wrap.innerHTML = h; var node = wrap.firstChild;
+      var host = at; while(host.parentElement && host.parentElement !== v && !host.previousElementSibling) host = host.parentElement; host.parentElement.insertBefore(node, host); }
+    else { var w2 = document.createElement('div'); w2.innerHTML = h; v.appendChild(w2.firstChild); }
+    /* the marker on each request row, next to the teacher's name */
+    v.querySelectorAll('[onclick^="lvSheet(\'"]').forEach(function(el){ if(el.querySelector('.lv3124m')) return; var id = (el.getAttribute('onclick').match(/lvSheet\('([^']+)'/) || [])[1];
+      var r = id && (LV.rows || []).find(function(z){ return z.id === id; }); if(!r) return; var n = streak(by[r.teacher] || {}, cur); if(!n) return;
+      var b = el.querySelector('b'); if(!b) return; var sp = document.createElement('span'); sp.innerHTML = mark(n); sp.firstChild.style.marginLeft = '8px'; b.insertAdjacentElement('afterend', sp.firstChild); });
+  }
+  var _r = window.renderLeave; if(typeof _r === 'function') window.renderLeave = function(){ var r = _r.apply(this, arguments); try{ paint(); }catch(e){ console.warn('lv3124', e); } return r; };
 })();
 </script>
 </body>
