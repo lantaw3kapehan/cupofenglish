@@ -7556,7 +7556,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2612;
+const COE_V = 2613;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -49268,10 +49268,14 @@ body.is-mgr #sheet #sheetBody .ov72 .cs72.at80 > div{min-width:0}
     fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-stucls', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, code, all: true }) }).then(r => r.json()).then(j => { if(!j || !j.ok || !Array.isArray(j.classes)) return; HIST84[code] = j.classes;
       /* 3079 (audit 26 Nov 22:03, Abby: banner "15 classes so far" vs Attendance "14 held"): the page's class list can hold an older copy of a past class
          (Abby 10 Nov: cancelled in the class table, not cancelled in the copy) · the class table is the truth, so past classes take its cancelled state and title */
-      try{ if(typeof STU !== 'undefined' && STU && STU.code === code && Array.isArray(STU.cls)){ const by = {}; j.classes.forEach(h => { if(h && h.start) by[h.id] = h; by['t' + Date.parse(h.start)] = h; });
-        STU.cls.forEach(c => { if(!c || !c.start) return; const h = by[c.id] || by['t' + Date.parse(c.start)]; if(h && !!h.cancelled !== !!c.cancelled){ c.cancelled = !!h.cancelled; if(h.title) c.title = h.title; if(h.why) c.why = h.why; } }); } }catch(e){}
+      rc(code);
       if(typeof STU !== 'undefined' && STU && STU.code === code && window.ov72Draw){ ov72Draw(); if(window.fix2983) fix2983(); } }).catch(() => { asked[code] = 0; }); };
-  const r0 = window.stuRender; if(r0) window.stuRender = function(){ const r = r0.apply(this, arguments); try{ if(D && D.mgr && STU && STU.code) get(STU.code); }catch(e){} return r; };
+  /* 3083 (27 Nov): the reconcile also runs before every student-page draw, so a cached history (second open) or a later reload of the class list
+     never brings the old copy's state back (Iris had 9 past classes with the wrong cancelled state) */
+  function rc(code){ try{ const H = HIST84[code]; if(!H || typeof STU === 'undefined' || !STU || STU.code !== code || !Array.isArray(STU.cls)) return; const by = {};
+      H.forEach(h => { if(!h || !h.start) return; by[h.id] = h; by['t' + Date.parse(h.start)] = h; });
+      STU.cls.forEach(c => { if(!c || !c.start) return; const h = by[c.id] || by['t' + Date.parse(c.start)]; if(h && !!h.cancelled !== !!c.cancelled){ c.cancelled = !!h.cancelled; if(h.title) c.title = h.title; if(h.why) c.why = h.why; } }); }catch(e){} }
+  const r0 = window.stuRender; if(r0) window.stuRender = function(){ try{ if(typeof STU !== 'undefined' && STU && STU.code) rc(STU.code); }catch(e){} const r = r0.apply(this, arguments); try{ if(D && D.mgr && STU && STU.code) get(STU.code); }catch(e){} return r; };
 })();
 </script>
 <script id="b2984b">
