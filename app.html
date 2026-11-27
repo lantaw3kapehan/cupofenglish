@@ -7556,7 +7556,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2631;
+const COE_V = 2632;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -50351,7 +50351,7 @@ body.is-mgr #v-astudents .s4-q input:not(#q1):not(#q2):not(#q3):focus,body.is-mg
     const prev = pv0.map(x => String(x).toLowerCase()), T0 = (s.teachers || []).filter(Boolean), az = (a, b) => String(a).localeCompare(String(b)), T = T0.filter(t => prev.indexOf(String(t).toLowerCase()) < 0).sort(az).concat(T0.filter(t => prev.indexOf(String(t).toLowerCase()) > -1).sort(az));   /* a fixed order: never swaps when fresh data arrives */
     /* 3078 (Misty 26 Nov 20:55): each teacher is a chip that opens the teacher; previous teachers are a lighter chip */
     const tc = t => { const pv = prev.indexOf(String(t).toLowerCase()) > -1, q = String(t).replace(/['"\\]/g, '');
-      return /cupofenglish|office/i.test(t) || typeof window.openTeacher !== 'function' ? '<i class="s4-tc x' + (pv ? ' pv' : '') + '">' + E(t) + (pv ? ' · previous' : '') + '</i>'
+      return /cupofenglish|office/i.test(t) || typeof window.openTeacher !== 'function' || !(typeof D !== 'undefined' && D && D.mgr) ? '<i class="s4-tc x' + (pv ? ' pv' : '') + '">' + E(t) + (pv ? ' · previous' : '') + '</i>'
         : '<i class="s4-tc' + (pv ? ' pv' : '') + '" role="button" tabindex="0" title="Open Teacher ' + E(t) + '" onclick="event.stopPropagation();openTeacher(\'' + E(q) + '\')" onkeydown="if(event.key===\'Enter\'){event.stopPropagation();openTeacher(\'' + E(q) + '\')}">' + E(t) + (pv ? ' · previous' : '') + '</i>'; };
     const tch = T.length ? '<span class="s4-tcs">' + T.map(tc).join('') + '</span>' : '';
     const bk = books(s.book), sub = [tch, bk ? '<span>' + E(bk) + '</span>' : '', (k in S) ? srcText(S[k]) : ''];
@@ -50478,6 +50478,18 @@ body.is-mgr #v-astudents .s4-q input:not(#q1):not(#q2):not(#q3):focus,body.is-mg
   const mo = new MutationObserver(() => { if(!q) q = setTimeout(sweep, 60); });
   const go2 = () => { document.querySelectorAll(SEL).forEach(el => { if(!el._d3092){ el._d3092 = 1; mo.observe(el, { childList: true, subtree: true, characterData: true }); } }); sweep(); };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go2); else go2(); setTimeout(go2, 3000); setTimeout(go2, 10000);
+})();
+</script>
+<script id="b3093">
+/* 3093 (Misty 27 Nov 12:46): a teacher who taps a teacher's name (student page, Students list) got an empty "Could not load" sheet,
+   because a teacher's page is for management. For teachers the names are plain text, and a #teacher= address opens Students instead. */
+(function(){
+  const mgr = () => typeof D !== 'undefined' && D && D.mgr;
+  const wrap = () => { const ot = window.openTeacher; if(typeof ot !== 'function' || ot._t3093) return; const w = function(){ if(!mgr()) return; return ot.apply(this, arguments); }; w._t3093 = 1; window.openTeacher = w; try{ openTeacher = w; }catch(e){} };
+  const hash = () => { if(!mgr() && /^#teacher[=\/]/.test(location.hash) && typeof D !== 'undefined' && D){ try{ closeSheet(); }catch(e){} try{ history.replaceState(history.state, '', '#students'); go('students'); }catch(e){} } };
+  wrap(); setTimeout(wrap, 0); setTimeout(wrap, 3000); setTimeout(() => { wrap(); hash(); }, 4000); window.addEventListener('hashchange', hash);
+  const st = document.createElement('style'); st.textContent = 'body.is-tch [onclick*="openTeacher"]{cursor:default!important}body.is-tch [onclick*="openTeacher"]:hover{text-decoration:none!important}';
+  document.head.appendChild(st);
 })();
 </script>
 </body>
