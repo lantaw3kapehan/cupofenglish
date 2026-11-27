@@ -154,7 +154,7 @@ async function activeFromTables(db: any) {
   const months = mcols.map((j) => { const s = String(mrow[j]); return MON[+s.slice(5, 7) - 1] + " " + s.slice(2, 4); });
   // 3102 (Misty 27 Nov 19:10 "ensure we no longer use Google here"): finished, available, deadline and the referral free lessons come from the
   // database's own calculation (coe_pkg_nums), not from the sheet's formula cells. The sheet copy only supplies the rows and month columns.
-  try { const N = await pkgNums(db); out.forEach((r) => { const x = N[String(r[1]).toUpperCase() + "|" + String(r[4] || "").trim().toLowerCase() + "|" + String(r[9] || "")]; if (!x) return;
+  try { const N = await pkgNums(db); out.forEach((r) => { const k0 = String(r[1]).toUpperCase() + "|" + String(r[4] || "").trim().toLowerCase() + "|" + String(r[9] || ""), x = N[k0 + "|" + String(r[17] || "").trim().toLowerCase()] || N[k0]; if (!x) return;
     r[6] = x[0] == null ? "" : x[0]; r[7] = x[1] == null ? "" : x[1]; r[10] = x[2] == null ? "" : String(x[2]); r[18] = x[3] == null ? 0 : x[3]; }); } catch (_e) {}
   const { data: t } = await db.from("sheet_tabs").select("synced_at").eq("tab", "ACTIVE").maybeSingle();
   return { months, rows: out, full: 1, at: t ? t.synced_at : null,
@@ -184,7 +184,8 @@ async function studentsFromTables(db: any) {
   Object.keys(TM).forEach((c) => Object.keys(TM[c] || {}).forEach((t) => add(c, t)));
   const act = tableOf(A, "STUDENTS CODE"), out: Record<string, any> = {}, leftBy: Record<string, any> = {}, nameBy: Record<string, string> = {};
   let NUM: Record<string, any[]> = {}; try { NUM = await pkgNums(db); } catch (_e) {}   // 3102: lessons left from the database's calculation
-  const left46 = (r: any) => { const x = NUM[String(cell(r, 0)).toUpperCase() + "|" + String(cell(r, 3) || "").trim().toLowerCase() + "|" + dd(cell(r, 48))]; return x ? (x[1] == null ? "" : x[1]) : cell(r, 46); };
+  const ccA = (A[0] || []).map((x: any) => String(x ?? "").trim().toUpperCase()).indexOf("COURSE");
+  const left46 = (r: any) => { const k0 = String(cell(r, 0)).toUpperCase() + "|" + String(cell(r, 3) || "").trim().toLowerCase() + "|" + dd(cell(r, 48)), x = (ccA > -1 ? NUM[k0 + "|" + String(cell(r, ccA) || "").trim().toLowerCase()] : null) || NUM[k0]; return x ? (x[1] == null ? "" : x[1]) : cell(r, 46); };
   act.rows.forEach((r) => { const c = String(cell(r, 0)); if (!/^ST-/.test(c)) return; nameBy[c] = String(cell(r, 1)); const lv = left46(r); if (lv !== "" && leftBy[c] === undefined) leftBy[c] = lv; });
   act.rows.forEach((r) => {
     const code = String(cell(r, 0)); if (!/^ST-/.test(code)) return;
