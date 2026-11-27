@@ -7556,7 +7556,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2627;
+const COE_V = 2628;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -47420,8 +47420,16 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
   const leg90 = y => [(ENW[y] ? ENW[y][0].toUpperCase() + ENW[y].slice(1) : y) + ' years with CupOfEnglish—what an incredible journey! Your dedication, resilience, and continued growth have made you a valued part of our learning community.', '祝贺{n}同学在一杯英语学习满' + (ZNW[y] || y) + '年！感谢你一路以来的投入、坚持与成长。你早已成为一杯英语学习社群中珍贵的一员。'];
   const CLOSE = ['Thank you for being a valued part of our learning community.', '感谢你成为一杯英语学习社群中珍贵的一员。'];
   /* wraps a line to the width; Chinese wraps between characters */
-  const wrap = (x, t, w) => { const out = []; const cjk = /[　-鿿＀-￯]/.test(t); const parts = cjk ? [...t] : t.split(' '); let cur = '';
-    parts.forEach(p => { const nx = cur ? (cjk ? cur + p : cur + ' ' + p) : p; if(x.measureText(nx).width > w && cur){ out.push(cur); cur = p; } else cur = nx; }); if(cur) out.push(cur); return out; };
+  /* 3090c (Misty 27 Nov 12:05 "reading fluency line per line"): every sentence starts on its own line; a sentence too long for one line is split into
+     even lines (a comma is the preferred place to break), so no line ends with a lone word or a lone 庆祝。 */
+  const wrap = (x, t, w) => { const cjk = /[　-鿿＀-￯]/.test(t), out = [];
+    const sents = cjk ? (t.match(/[^！。？]+[！。？]?/g) || [t]) : t.split(/(?<=[!?.])\s+/);
+    sents.forEach(se => { se = se.trim(); if(!se) return; const full = x.measureText(se).width; if(full <= w){ out.push(se); return; }
+      const k = Math.ceil(full / w), lim = Math.min(w, full / k * 1.15), parts = cjk ? [...se] : se.split(' '); let cur = '', lines = [];
+      parts.forEach((pt, i) => { const nx = cur ? (cjk ? cur + pt : cur + ' ' + pt) : pt; const soft = lines.length < k - 1 && /[,，、；;]$/.test(cur) && x.measureText(cur).width > lim * .7;
+        if((x.measureText(nx).width > lim && cur) || soft){ lines.push(cur); cur = pt; } else cur = nx; });
+      if(cur) lines.push(cur); out.push(...lines); });
+    return out; };
   async function draw(kind, pv){ const code = String(STU.code).toUpperCase(), W = 1600, H = 1130, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
     const p = who(code), zn = p.cn || p.en; let col, head, headZh, mile, title, titleZh, badge, badgeZh, msg, foot;
     if(kind === 't'){ let T = LV78.tenure(code); if(pv){ const r = LV78.T.find(t => t[0] === pv) || LV78.T[LV78.T.length - 1]; T = { since: (T && T.since) || new Date(), cur: [r[0], r[1], null, r[2], r[3], r[4], r[5], r[6], r[7]] }; } if(!T || !T.cur) throw new Error('No milestone reached yet'); const m = T.cur; col = m[4]; head = 'Learning Milestone Certificate'; headZh = '学习里程碑证书';
@@ -47443,11 +47451,11 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
     x.font = '400 80px ' + B; x.fillStyle = col; x.fillText(p.en, W / 2, 458); if(p.cn) T1(p.cn, '500 30px', '#4C4868', 500);
     x.strokeStyle = '#E2DFEA'; x.lineWidth = 2; x.beginPath(); x.moveTo(W / 2 - 330, 522); x.lineTo(W / 2 + 330, 522); x.stroke();
     T1(mile, '600 22px', '#6F6B85', 556); T1(title, '700 30px', col, 592); T1(titleZh, '600 24px', col, 624);
-    let y = 666; x.font = 'italic 400 22px ' + F; wrap(x, msg[0], 1060).forEach(l => { T1(l, 'italic 400 22px', '#2B2253', y); y += 30; });
-    y += 4; x.font = '400 21px ' + F; wrap(x, msg[1], 1060).forEach(l => { T1(l, '400 21px', '#4C4868', y); y += 30; });
+    let y = 664; x.font = 'italic 400 22px ' + F; wrap(x, msg[0], 1180).forEach(l => { T1(l, 'italic 400 22px', '#2B2253', y); y += 29; });
+    y += 6; x.font = '400 21px ' + F; wrap(x, msg[1], 1180).forEach(l => { T1(l, '400 21px', '#4C4868', y); y += 29; });
     y += 10; T1(CLOSE[0], '500 20px', '#6F6B85', y); T1(CLOSE[1], '400 19px', '#8C88A3', y + 28);
     /* the badge: the tinted cup in a ring, then its name on its own line (English, then Chinese) */
-    const by = Math.max(y + 96, 916); x.beginPath(); x.arc(W / 2, by, 40, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); x.lineWidth = 5; x.strokeStyle = col; x.stroke();
+    const by = Math.max(y + 86, 906); x.beginPath(); x.arc(W / 2, by, 40, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); x.lineWidth = 5; x.strokeStyle = col; x.stroke();
     if(cup) x.drawImage(tint(cup, col, 46, 53), W / 2 - 23, by - 28, 46, 53);
     T1(badge, '700 22px', col, by + 70); T1(badgeZh, '600 20px', col, by + 98);
     x.strokeStyle = '#CFCBDA'; x.lineWidth = 2; x.beginPath(); x.moveTo(W - 440, 978); x.lineTo(W - 150, 978); x.stroke(); x.beginPath(); x.moveTo(150, 978); x.lineTo(440, 978); x.stroke();
