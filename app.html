@@ -7557,7 +7557,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2679;
+const COE_V = 2680;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -43111,6 +43111,10 @@ window.pos2836.other = function(t, code){ var A = /^\s*(ODF|OD|REF|RE|PATHWAYS|P
   function stu3122(cx, bk){ try{
     const C = window.bkCodes, S = (typeof D !== 'undefined' && D && D.schedule) || []; if(!bk || !C) return cx;
     const b = String(bk).toLowerCase().replace(/[^a-z0-9]/g, ''), has = x => C(x.book).indexOf(b) > -1;
+    /* 3123: a class on this book happening now (30 min before its start to 30 min after its end) decides first */
+    const now = Date.now(), live = S.filter(x => !x.cancelled && x.code && has(x) && x.start && now >= new Date(x.start).getTime() - 30 * 6e4 && now <= new Date(x.end || x.start).getTime() + 30 * 6e4);
+    const lc = [...new Set(live.map(x => String(x.code).toUpperCase()))];
+    if(lc.length === 1){ const x = live[0]; return { name: String(x.student || '').replace(/\s+X$/i, ''), code: lc[0] }; }
     const mine = S.filter(x => cx.code && String(x.code || '').toUpperCase() === String(cx.code).toUpperCase());
     if(mine.some(has)) return cx;
     const by = {}; S.filter(has).forEach(x => { const c = String(x.code || '').toUpperCase(); if(c) by[c] = { name: String(x.student || '').replace(/\s+X$/i, ''), code: c }; });
