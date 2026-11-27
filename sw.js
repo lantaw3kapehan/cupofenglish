@@ -1,7 +1,7 @@
 // CupOfEnglish: keeps the app frame on the phone so it opens instantly and installs as an app.
 const V = 'coe-4', SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL))); self.skipWaiting(); });
-self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== V && x !== BOOKS).map(x => caches.delete(x))))); self.clients.claim(); });   // 2554: the saved books stay
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== V && x !== BOOKS).map(x => caches.delete(x)))).then(() => caches.open(V)).then(c => c.keys().then(l => Promise.all(l.filter(r => { try { const q = new URL(r.url); return q.search && !/[?&]v=/.test(q.search) && !/copy\.html$/.test(q.pathname); } catch (x) { return false; } }).map(r => c.delete(r))))).catch(() => {})); self.clients.claim(); });   // 3097: one-off copies left from earlier are cleared   // 2554: the saved books stay
 // 2554 (Misty 23:19): class audio and video saved on this computer before class (app 2552) play from here, with no buffering.
 // Only audio/video requests for our book files; anything not saved goes to the internet exactly as before.
 const BOOKS = 'coe-books-pre', MEDIA = 'https://rlxkiahqjsabopmuhern.supabase.co/storage/v1/object/public/book-media/';
@@ -38,7 +38,7 @@ self.addEventListener('fetch', e => {
   if (/[?&](v|fresh)=/.test(u.search)) return;
   const page = e.request.mode === 'navigate' || /\/(index\.html)?$/.test(u.pathname);
   e.respondWith(caches.open(V).then(c => {
-    const net = fetch(e.request, { cache: 'no-cache' }).then(r => { if (r.ok) c.put(page ? './' : e.request, r.clone()); return r; });
+    const net = fetch(e.request, { cache: 'no-cache' }).then(r => { if (r.ok && (page || !u.search)) c.put(page ? './' : e.request, r.clone()); return r; });   // 3097: a one-off address (?x=…) is not kept, so the phone copy stays small
     if (page) return net.catch(() => c.match('./'));                         // the frame: newest first, phone copy when offline
     return c.match(e.request, { ignoreSearch: !/[?&]v=/.test(u.search) }).then(hit => hit || net);   // icons: phone copy first · 2684: a file asked for with ?v= (a new version) is never answered with an older saved copy
   }));
