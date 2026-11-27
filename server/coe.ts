@@ -152,10 +152,15 @@ async function activeFromTables(db: any) {
       cc > -1 ? String(g(cc) || "").trim() : "", g(8) === "" || g(8) == null ? "" : (typeof g(8) === "number" ? n1(g(8)) : String(g(8)).trim())]);
   }
   const months = mcols.map((j) => { const s = String(mrow[j]); return MON[+s.slice(5, 7) - 1] + " " + s.slice(2, 4); });
+  // 3102 (Misty 27 Nov 19:10 "ensure we no longer use Google here"): finished, available, deadline and the referral free lessons come from the
+  // database's own calculation (coe_pkg_nums), not from the sheet's formula cells. The sheet copy only supplies the rows and month columns.
+  try { const N = await pkgNums(db); out.forEach((r) => { const x = N[String(r[1]).toUpperCase() + "|" + String(r[4] || "").trim().toLowerCase() + "|" + String(r[9] || "")]; if (!x) return;
+    r[6] = x[0] == null ? "" : x[0]; r[7] = x[1] == null ? "" : x[1]; r[10] = x[2] == null ? "" : String(x[2]); r[18] = x[3] == null ? 0 : x[3]; }); } catch (_e) {}
   const { data: t } = await db.from("sheet_tabs").select("synced_at").eq("tab", "ACTIVE").maybeSingle();
   return { months, rows: out, full: 1, at: t ? t.synced_at : null,
     cols: ["row", "code", "name", "cn", "teacher", "enrolled", "finished", "available", "active", "start", "deadline", "shared", "source", "months", "sub", "carry", "transfer", "course", "incentive"] };
 }
+async function pkgNums(db: any): Promise<Record<string, any[]>> { const { data, error } = await db.rpc("coe_pkg_nums"); if (error) throw error; return (data || {}) as Record<string, any[]>; }   // 3102
 async function activeLive(db: any) {
   const [A, G] = await Promise.all([activeFromTables(db), liveGap(db)]);
   const per: Record<string, number> = {}; A.rows.forEach((r: any[]) => per[r[1]] = (per[r[1]] || 0) + 1);
@@ -178,11 +183,13 @@ async function studentsFromTables(db: any) {
   DY.forEach((r) => { const c = String(cell(r, 0)).trim(); if (/^ST-/.test(c)) String(cell(r, 2) || "").split(/[,/&+]| and /).forEach((t) => add(c, t)); });
   Object.keys(TM).forEach((c) => Object.keys(TM[c] || {}).forEach((t) => add(c, t)));
   const act = tableOf(A, "STUDENTS CODE"), out: Record<string, any> = {}, leftBy: Record<string, any> = {}, nameBy: Record<string, string> = {};
-  act.rows.forEach((r) => { const c = String(cell(r, 0)); if (!/^ST-/.test(c)) return; nameBy[c] = String(cell(r, 1)); if (cell(r, 46) !== "" && leftBy[c] === undefined) leftBy[c] = cell(r, 46); });
+  let NUM: Record<string, any[]> = {}; try { NUM = await pkgNums(db); } catch (_e) {}   // 3102: lessons left from the database's calculation
+  const left46 = (r: any) => { const x = NUM[String(cell(r, 0)).toUpperCase() + "|" + String(cell(r, 3) || "").trim().toLowerCase() + "|" + dd(cell(r, 48))]; return x ? (x[1] == null ? "" : x[1]) : cell(r, 46); };
+  act.rows.forEach((r) => { const c = String(cell(r, 0)); if (!/^ST-/.test(c)) return; nameBy[c] = String(cell(r, 1)); const lv = left46(r); if (lv !== "" && leftBy[c] === undefined) leftBy[c] = lv; });
   act.rows.forEach((r) => {
     const code = String(cell(r, 0)); if (!/^ST-/.test(code)) return;
     const pkg = String(cell(r, 51) || cell(r, 50) || "").trim(), sharedWith = pkg && pkg !== code ? pkg : "";
-    let left = cell(r, 46);
+    let left = left46(r);
     if (left === "" && sharedWith && leftBy[sharedWith] !== undefined) left = leftBy[sharedWith];
     if (left !== "" && Number(left) <= 0) return;
     if (cell(r, 47) !== true && !String(cell(r, 3) || "").split(/[,/&+]| and /).some((t) => TN[code] && TN[code][t.trim().toLowerCase()])) return;
