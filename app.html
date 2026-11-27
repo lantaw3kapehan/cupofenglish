@@ -7557,7 +7557,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2669;
+const COE_V = 2671;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -47462,7 +47462,7 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
        periods closer than 45 days are one stretch, a longer gap is a pause. A milestone is reached when the learning time adds up to it. */
     tenure(code){ const k = String(code || '').toUpperCase(), DAY = 864e5, MO = 30.4375 * DAY, td = new Date(); td.setHours(0, 0, 0, 0);
       const pdx = v => { v = String(v || '').trim(); if(!v) return null; if(/^\d{4}-\d{2}-\d{2}/.test(v)) return new Date(v.slice(0, 10) + 'T00:00:00'); const d = new Date(v.replace(/-/g, ' ')); return isNaN(d) ? null : (d.setHours(0, 0, 0, 0), d); };
-      let R = []; try{ (typeof DB !== 'undefined' && DB && DB.rows || []).forEach(r => { if(String(r[0]).trim().toUpperCase() !== k) return; const a = pdx(r[16]); if(a) R.push({ a, e: pdx(r[20]) }); }); }catch(e){}
+      let R = []; try{ (typeof DB !== 'undefined' && DB && DB.rows || []).forEach(r => { if(String(r[0]).trim().toUpperCase() !== k) return; const a = pdx(r[16]); if(a) R.push({ a, e: pdx(r[20]), n: parseFloat(String(r[18] == null ? '' : r[18]).replace(/[^\d.]/g, '')) || 0 }); }); }catch(e){}
       const fromDB = R.length > 0;
       if(!R.length && this.P && this.P[k]) this.P[k].forEach(p => { const a = pdx(p[0]); if(a) R.push({ a, e: pdx(p[1]) }); });   /* 3078y: teachers get the periods from coe-hw (op tenure) */
       if(!R.length) return null; R.sort((x, y) => x.a - y.a);
@@ -47474,6 +47474,10 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
       if(this.LM && fromDB){ const Y26 = new Date('2026-01-01T00:00:00'), E25 = new Date('2025-12-31T00:00:00'), LMk = (this.LM[k] || []).filter(Array.isArray).slice().sort((x, y) => x[0] < y[0] ? -1 : 1), early = LMk.length && LMk[0][0] <= '2026-02';
         P = []; R.forEach((x, i) => { if(x.a >= Y26) return; const nx = R[i + 1]; let b; if(x.e && x.e >= x.a) b = x.e; else if(nx && nx.a < Y26) b = nx.a; else { b = E25; if(!early) guess = true; } if(b > E25) b = E25; if(b > x.a) P.push([x.a, b, false]); });
         LMk.forEach((m, i) => { const a = pdx(m[1]); let b = pdx(m[2]); if(!a || !b) return; if(i === LMk.length - 1 && td - b < 45 * DAY) b = td; if(b > td) b = td; if(b >= a) P.push([a, b, b >= td]); });   /* first to last lesson of each month; the last one runs to today while the student is still taking lessons */
+        /* the lessons bought before 2026 must fit the time counted before 2026 (at least 2 a month), otherwise a break is likely missing */
+        /* lessons taken before 2026 = all lessons taken (DATABASE total − lessons left) − the lessons held from January 2026; they must fit the time counted before 2026 (at least 2 a month) */
+        try{ const preMo = P.filter(p => p[1] <= E25).reduce((t, p) => t + (p[1] - p[0]), 0) / MO, st = (typeof MS !== 'undefined' && Array.isArray(MS) ? MS : []).find(x => String(x.code || '').toUpperCase() === k), tot = Math.max(0, ...R.map(x => x.n));
+          if(preMo >= 1 && st && st.left != null && !st.shared && tot > 0){ const taken = tot - Number(st.left), held26 = LMk.reduce((t, m) => t + (+m[3] || 0), 0), preN = taken - held26; if(preN < 2 * preMo) guess = true; } }catch(e){}
         P.sort((x, y) => x[0] - y[0]); if(!P.length) return null; }
       else P = R.map((x, i) => { const nx = R[i + 1]; let b = x.e && x.e >= x.a ? x.e : nx ? nx.a : td; if(b > td) b = td; return [x.a, b, !x.e && !nx]; });
       const M = []; P.forEach(p => { const l = M[M.length - 1]; if(l && p[0] - l[1] < 45 * DAY){ if(p[1] > l[1]) l[1] = p[1]; l[2] = l[2] || p[2]; } else M.push(p.slice()); });
@@ -47484,10 +47488,10 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
       const nx = n ? [n[0], n[1], active ? new Date(td.getTime() + (n[0] * MO - learn)) : null, n[2], n[3], n[4], n[5], n[6], n[7]] : null;
       return { since: M[0][0], periods: M, pauses, active, learnMo: Math.floor(learn / MO + 1e-6), done, cur: done[done.length - 1] || null, nx, guess, byLessons: !!(this.LM && fromDB) }; },
     /* 3115: months with lessons held from Jan 2026, per student (management) · kept 6 hours */
-    LM: (() => { try{ const c = JSON.parse(localStorage.getItem('coe.lm3115b') || 'null'); return c && Date.now() - c.at < 6 * 36e5 ? c.map : null; }catch(e){ return null; } })(),
+    LM: (() => { try{ const c = JSON.parse(localStorage.getItem('coe.lm3115c') || 'null'); return c && Date.now() - c.at < 6 * 36e5 ? c.map : null; }catch(e){ return null; } })(),
     loadLM(){ if(this._lmP) return this._lmP; if(typeof D === 'undefined' || !D || !D.mgr || typeof TOKEN === 'undefined' || !TOKEN) return Promise.resolve(this.LM);
       this._lmP = fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-ops', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'learnmo' }) }).then(r => r.json())
-        .then(r => { if(r && r.ok && r.map){ const ch = JSON.stringify(r.map) !== JSON.stringify(this.LM); this.LM = r.map; try{ localStorage.setItem('coe.lm3115b', JSON.stringify({ at: Date.now(), map: r.map })); }catch(e){} if(ch) try{ window.dispatchEvent(new Event('lm3115')); }catch(e){} } return this.LM; })
+        .then(r => { if(r && r.ok && r.map){ const ch = JSON.stringify(r.map) !== JSON.stringify(this.LM); this.LM = r.map; try{ localStorage.setItem('coe.lm3115c', JSON.stringify({ at: Date.now(), map: r.map })); }catch(e){} if(ch) try{ window.dispatchEvent(new Event('lm3115')); }catch(e){} } return this.LM; })
         .catch(() => this.LM).finally(() => { setTimeout(() => { this._lmP = null; }, 30 * 6e4); }); return this._lmP; },
     moTxt(mo){ const y = Math.floor(mo / 12), m = mo % 12; return mo < 1 ? 'under a month' : (y ? y + ' year' + (y > 1 ? 's' : '') : '') + (y && m ? ', ' : '') + (m ? m + ' month' + (m > 1 ? 's' : '') : ''); },
     len(first){ const d = new Date(String(first).slice(0, 10) + 'T00:00:00+08:00'); if(isNaN(d)) return ''; const n = new Date(); let mo = (n.getFullYear() - d.getFullYear()) * 12 + n.getMonth() - d.getMonth(); if(n.getDate() < d.getDate()) mo--; mo = Math.max(0, mo);
