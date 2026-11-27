@@ -7556,7 +7556,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2639;
+const COE_V = 2640;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -43451,8 +43451,8 @@ window.bon2331 = function(adj){ try{ const m0 = new Date(Date.now() + 8 * 3600e3
   window.od2341Go = function(i){ var x = item(i); if(!x) return; try{ if(x.go === 'student' && x.code) openStudent(x.code); else go(x.go); }catch(e){ say('Could not open it'); } };
   window.od2341Next = function(){ if(DK && DK.queue && DK.queue.length) return od2341Go(0); var el = document.querySelector('#od2341 .ck'); if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   window.od2341Done = function(i){ var x = item(i); if(!x) return; say('Checking it again…');
-    (/^(risk|tfu):/.test(x.ref) ? call({ op: 'ok', ref: x.ref }).catch(function(){}) : Promise.resolve()).then(function(){ return call({ op: 'done', ref: x.ref, title: x.title }); })   /* contacted (the same as To do's button), then checked again */.then(function(r){ if(!r || !r.ok) return say('Not saved. Try again.');
-      if(r.cleared){ say('Cleared ✓ · ' + x.title); DK.queue.splice(i, 1); }
+    (/^(risk|tfu|covers):/.test(x.ref) ? call({ op: 'ok', ref: x.ref }).catch(function(){}) : Promise.resolve()).then(function(){ return call({ op: 'done', ref: x.ref, title: x.title }); })   /* contacted (the same as To do's button), then checked again */.then(function(r){ if(!r || !r.ok) return say('Not saved. Try again.');
+      if(r.cleared || /^(tfu|covers):/.test(x.ref)){ say(/^tfu:/.test(x.ref) ? 'Done ✓ · back in 7 days if still open in Trials' : 'Done ✓ · ' + x.title); DK.queue.splice(i, 1); }   /* 3099: these rest after Done (the server keeps them hidden) */
       else { var hm = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }), why = /^trep:/.test(x.ref) ? 'no trial report is saved yet. Ask the teacher to write it in Trials' : /meet/.test(x.ref) ? 'the meeting ID is still empty in Schedule. Add it there' : /^tin:/.test(x.ref) ? 'the teacher has still not timed in. Message or call the teacher' : 'the app still sees this problem. Fix it'; window.__od2348 = window.__od2348 || {}; window.__od2348[x.ref] = 'Not cleared · checked at ' + hm + ': ' + why + ', then press Done again. If it is really not a problem, press Not a problem and say why.'; say('Not cleared yet · see the note under it'); }
       if(r.day) DK.day = r.day; paint(); }).catch(function(){ say('Not saved. Try again.'); }); };
   window.od2341Skip = function(i){ var x = item(i); if(!x) return; var why = prompt('Why is it not a problem? (Management sees this)', ''); if(why == null) return;
@@ -45840,8 +45840,11 @@ body.pres2630 #app #v-home #be2501{display:none!important}
       + (dn.length ? '<div class="fyd"><button class="lnk" onclick="fy2637show()">' + dn.length + ' marked done ' + (SHOWDONE ? '· hide' : '· show') + '</button></div>' + (SHOWDONE ? dn.map(function(x){ return row(x, 'done'); }).join('') : '') : '') + '</section>'; }
   window.fy2637 = function(k, st){ var L = items(), x = L.find(function(y){ return y.k === k; }); if(!x) return; var note = '';
     if(st === 'followed'){ note = String(window.__fy2651 || ''); window.__fy2651 = ''; }
-    PD = PD || {}; PD.marks = PD.marks || {}; if(st) PD.marks[k] = { st: st, sig: x.sig, note: note, at: new Date().toISOString() }; else delete PD.marks[k]; paint();
-    call({ op: 'presmark', k: k, st: st, sig: x.sig, note: note, t: x.t, s: x.s }).then(function(r){ if(r && r.ok){ PD.marks = r.marks || PD.marks; paint(); } else throw r; }).catch(function(){ toast('Not saved. Try again.'); load(true); }); };
+    /* 3099 (Misty 27 Nov 18:31 "I clicked Done but it's still coming back"): Done on validity replaced the earlier Done, so a package already marked
+       done (Kimi) came back when new reviews were marked. The new Done now keeps the earlier done packages too. */
+    var sig = x.sig; if(k === 'validity' && st === 'done'){ try{ var om = PD && PD.marks && PD.marks.validity; if(om && om.st === 'done' && om.sig){ var keep = String(om.sig).replace(/^[^|]*\|v:/, '').split(',').filter(function(z){ return z && sig.indexOf(z) < 0; }); if(keep.length) sig = sig + ',' + keep.join(','); } }catch(e){} }
+    PD = PD || {}; PD.marks = PD.marks || {}; if(st) PD.marks[k] = { st: st, sig: sig, note: note, at: new Date().toISOString() }; else delete PD.marks[k]; paint();
+    call({ op: 'presmark', k: k, st: st, sig: sig, note: note, t: x.t, s: x.s }).then(function(r){ if(r && r.ok){ PD.marks = r.marks || PD.marks; paint(); } else throw r; }).catch(function(){ toast('Not saved. Try again.'); load(true); }); };
   window.fy2637show = function(){ SHOWDONE = SHOWDONE ? 0 : 1; paint(); };
   function put(v, after, h){ if(!v) return; var A = v.querySelectorAll('#fy2630'), o = A[0] || null; for(var i = 1; i < A.length; i++) A[i].remove();   /* 2643 */
     if(!o){ var t = document.createElement('div'); t.innerHTML = h; o = t.firstChild; o.__h = h; if(after && after.parentElement === v) after.after(o); else v.prepend(o); return; }
