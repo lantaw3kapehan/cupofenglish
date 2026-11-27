@@ -3210,7 +3210,7 @@ closeSheet(); render(); toast('Peer review sent · ' + r.total + '/125 · thank 
 function peerHtml(P, mgr){
 if(!P) return ''; const L = P.list || [], T = P.titles || [];
 if(!L.length) return `<section class="sec"><h2>Peer feedback <span class="c">from fellow teachers</span></h2>${mgr ? '' : (window.pr2059 ? pr2059() : '')}<div class="mute small">${mgr?'No peer review for this teacher yet.':'When a fellow teacher reviews one of your classes, it shows here.'}</div></section>`;
-const one = (x, open) => `<details class="fbold" ${open?'open':''}><summary class="row" style="gap:10px"><div class="grow"><b>${esc(x.at)}</b> <span class="small mute">by ${esc(tName(x.evaluator))}${x.student?' · class with '+esc(x.student):''}</span></div><b class="num">${x.total}/125</b><span class="chip ${x.pct>=80?'green':x.pct>=70?'teal':'coral'}">${x.pct}%</span></summary>
+const one = (x, open) => `<details class="fbold" ${open?'open':''}><summary class="row" style="gap:10px"><div class="grow"><b>${esc(/^\d{4}-\d{2}-\d{2}$/.test(String(x.at)) ? new Date(x.at + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : x.at)}</b> <span class="small mute">by ${esc(tName(x.evaluator))}${x.student?' · class with '+esc(x.student):''}</span></div><b class="num">${x.total}/125</b><span class="chip ${x.pct>=80?'green':x.pct>=70?'teal':'coral'}">${x.pct}%</span></summary>
 <div class="pr-sc">${x.scores.map((s,i) => `<div><b class="num">${s}</b><span>${esc(T[i]||'')}</span></div>`).join('')}</div>
 ${x.overall?`<div class="gr-k">Overall</div><div class="gr-text small">${nl2br(x.overall)}</div>`:''}
 ${x.comments.map((c,i) => c ? `<div class="gr-k">${esc(T[i]||'')}</div><div class="gr-text small">${nl2br(c)}</div>` : '').join('')}</details>`;
@@ -7556,7 +7556,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2630;
+const COE_V = 2631;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -50463,5 +50463,22 @@ body.is-mgr #v-astudents .s4-q input:not(#q1):not(#q2):not(#q3):focus,body.is-mg
 })();
 </script>
 
+<script id="b3092">
+/* 3092 (Misty 27 Nov "align teacher's login, screen per screen"): dates on the teacher's own screens read like the rest of the app
+   (9 Jul 2026, 6 Nov 2026 17:30) instead of 2026-07-09. Display text only; inputs, notes being typed and saved records are never touched. */
+(function(){
+  const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const RX = /\b(20\d{2})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?\b/g;
+  const fix = t => t.replace(RX, (m, y, mo, d, h, mi) => { const k = +mo - 1; if(k < 0 || k > 11) return m; return (+d) + ' ' + MN[k] + ' ' + y + (h ? ' ' + h + ':' + mi : ''); });
+  const SEL = '#v-growth,#v-qa,#v-act,#v-pay,#v-contract,#v-train,#v-tinbox,#v-guides';
+  function run(root){ if(!document.body.classList.contains('is-tch')) return; const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; const todo = [];
+    while((n = w.nextNode())){ const v = n.nodeValue; if(!v || v.indexOf('-') < 0) continue; RX.lastIndex = 0; if(!RX.test(v)) continue; const p = n.parentElement; if(!p || p.closest('input,textarea,select,[contenteditable],script,style,code,pre')) continue; todo.push(n); }
+    todo.forEach(n => { RX.lastIndex = 0; const v = fix(n.nodeValue); if(v !== n.nodeValue) n.nodeValue = v; }); }
+  let q = 0; const sweep = () => { q = 0; document.querySelectorAll(SEL).forEach(run); };
+  const mo = new MutationObserver(() => { if(!q) q = setTimeout(sweep, 60); });
+  const go2 = () => { document.querySelectorAll(SEL).forEach(el => { if(!el._d3092){ el._d3092 = 1; mo.observe(el, { childList: true, subtree: true, characterData: true }); } }); sweep(); };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go2); else go2(); setTimeout(go2, 3000); setTimeout(go2, 10000);
+})();
+</script>
 </body>
 </html>
