@@ -7557,7 +7557,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2678;
+const COE_V = 2679;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -13247,6 +13247,7 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
   const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const codes = s => String(s || '').split(/\s*[,;/]\s*/).map(x => x.trim()).filter(p => p && !/^(pre[-\s]?)?[abc][12]\+?$/i.test(p)).map(norm).filter(x => x && !NONE.test(x));
   window.bkHas = s => codes(s).length > 0;
+  window.bkCodes = codes;   /* 3122 */
   const BK = {};
   async function bkGet(code){ const k = norm(code); if(BK[k] && Date.now() - BK[k].t < 6 * 36e5) return BK[k].b;
     try{ const c = JSON.parse(store('get', 'coe.bk.' + k) || 'null'); if(c && Date.now() - c.t < 864e5){ BK[k] = c; bkFetch(k); return c.b; } }catch(e){}
@@ -13307,6 +13308,7 @@ function vnLine(dl, left){ try{ if(!dl || !(+left > 0) || !(D && D.mgr)) return 
   const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const codes = s => String(s || '').split(/\s*[,;/]\s*/).map(x => x.trim()).filter(p => p && !/^(pre[-\s]?)?[abc][12]\+?$/i.test(p)).map(norm).filter(x => x && !NONE.test(x));
   window.bkHas = s => codes(s).length > 0;
+  window.bkCodes = codes;   /* 3122 */
   const BK = {}, BKF = {}; window.bkU = () => String((D && D.me && D.me.name) || (D && D.mgr ? 'mgmt' : '') || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const bkU0 = { u: null }; const bkFresh = () => { const u = bkU(); if(bkU0.u !== u){ Object.keys(BK).forEach(k => delete BK[k]); bkU0.u = u; } };
   const cached = k => { bkFresh(); if(BK[k]) return BK[k]; try{ const c = JSON.parse(store('get', 'coe.bk3.' + bkU() + '.' + k) || 'null'); if(c && Date.now() - c.t < 3 * 864e5){ BK[k] = c; return c; } }catch(e){} return null; };
@@ -43103,9 +43105,20 @@ window.pos2836.other = function(t, code){ var A = /^\s*(ODF|OD|REF|RE|PATHWAYS|P
 (function(){
   function bookOf(id){ try{ for(let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if(!/^coe\.bk3\./.test(k)) continue;
       const c = JSON.parse(localStorage.getItem(k) || 'null'), F = (c && c.b && c.b.files) || [], f = F.find(x => x.id === id); if(f) return { code: (c.b.code || k.split('.').pop()), f }; } }catch(e){} return null; }
+  /* 3122 (Pam via Misty 27 Nov): Class Notes showed Austin on Lucas's book. The student remembered from the last tap can be stale
+     (a student page opened earlier). The name on the page must belong to a student who studies this book: if the remembered
+     student does not, the one student in the teacher's schedule who does is used; if none or several, no name rather than a wrong one. */
+  function stu3122(cx, bk){ try{
+    const C = window.bkCodes, S = (typeof D !== 'undefined' && D && D.schedule) || []; if(!bk || !C) return cx;
+    const b = String(bk).toLowerCase().replace(/[^a-z0-9]/g, ''), has = x => C(x.book).indexOf(b) > -1;
+    const mine = S.filter(x => cx.code && String(x.code || '').toUpperCase() === String(cx.code).toUpperCase());
+    if(mine.some(has)) return cx;
+    const by = {}; S.filter(has).forEach(x => { const c = String(x.code || '').toUpperCase(); if(c) by[c] = { name: String(x.student || '').replace(/\s+X$/i, ''), code: c }; });
+    const k = Object.keys(by); if(!mine.length && !k.length) return cx;   /* nothing to check against: keep */
+    return k.length === 1 && by[k[0]].name ? by[k[0]] : null; }catch(e){ return cx; } }
   window.bkReader = function(id, title){ const hit = bookOf(id); if(hit && hit.f.kind !== 'pdf') return false;
     const q = new URLSearchParams({ id, t: String(title || (hit && hit.f.name) || '').slice(0, 120), n: '1' }); if(hit && hit.code) q.set('b', hit.code);
-    try{ const cx = window._bkStu2407; if(cx && Date.now() - cx.t < 15 * 6e4 && cx.name){ q.set('s', cx.name); if(cx.code) q.set('code', cx.code); } }catch(e){}   /* 2407 · 2729 */
+    try{ const cx = window._bkStu2407; if(cx && Date.now() - cx.t < 15 * 6e4 && cx.name){ const st = stu3122(cx, hit && hit.code); if(st){ q.set('s', st.name); if(st.code) q.set('code', st.code); } } }catch(e){}   /* 2407 · 2729 · 3122 */
     const w = window.open('reader/?' + q.toString(), 'coeReader'); if(!w){ toast('Allow pop-ups for this site to open books'); return false; } try{ w.focus(); }catch(e){} return true; };
   /* 2407: the student of the class card or student page a book is opened from */
   document.addEventListener('click', ev => { try{ if(!D || !ev.target || !ev.target.closest) return; let nm = '';
