@@ -7556,7 +7556,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2652;
+const COE_V = 2653;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -27509,7 +27509,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
       '</div></div></div>';
     const T = F.rows ? txAll().filter(r => r.d <= today()).slice(0, 6) : null;
     h += '<div class="fx-card"><div class="fx-ch"><h2>Recent transactions</h2><span class="grow"></span><a onclick="go(\'expenses\')">View all ›</a></div>' + (T ? '<table><tbody>' + T.map(r => '<tr class="rw" onclick="go(\'expenses\')"><td class="d">' + dL(r.d) + '</td><td class="n"><b>' + esc(r.t) + '</b><span class="m">' + esc(r.c) + '</span></td><td class="ref">' + esc(r.ref) + '</td><td class="c">' + esc(r.c) + '</td><td class="a r ' + r.k + '">' + ((r.k === 'in') === (+r.a >= 0) ? '+' : '−') + P2(Math.abs(+r.a || 0)) + '</td></tr>').join('') + '</tbody></table>' : '<div class="sk"></div>') + '</div>';
-    h += '<div class="fx-sync"><span>Sales, costs, net: money summary' + (M.upd ? ', updated ' + esc(M.upd) : '') + '</span><span>Transactions: database copy ' + syncAt(F.at) + '</span><span>Payroll: PAY tab</span></div>';
+    h += '<div class="fx-sync"><span>Sales, costs, net: money summary' + (M.upd ? ', updated ' + esc(M.upd) : '') + '</span><span>Transactions: database copy ' + syncAt(F.at) + '</span><span>Payroll: database</span></div>';
     v.innerHTML = '<div class="fx">' + h + '</div>'; }
   async function openOv(){ paintOv(); loadF(); try{ if(SC() && typeof loadMoney === 'function'){ const p = loadMoney(true); if(p && p.then) p.then(() => { if(VIEW === 'finov') paintOv(); }, () => {}); } }catch(e){} setTimeout(() => { if(VIEW === 'finov') paintOv(); }, 2500); }
   const _go = window.go; window.go = function(v){ const r = _go.apply(this, arguments); try{ if(v === 'finov') openOv(); }catch(e){} return r; };
@@ -41342,9 +41342,9 @@ window.att2180 = function(p){ try{
     if(+x.noEmail) fix.push(n(x.noEmail) + ' payment confirmation' + (+x.noEmail === 1 ? ' has' : 's have') + ' no email address.');
     return '<div class="fo81">'
       + '<div class="c pay"><div class="t">Payroll<span class="st ' + (payLeft ? 'todo' : 'ok') + '">' + (payLeft ? payLeft + ' to pay' : 'All paid') + '</span></div><div class="big">' + n(x.payPaid) + ' of ' + n(x.payPeople) + '<span>' + pm + ' pay released</span></div><p>' + n(x.payVerified) + ' teacher' + (+x.payVerified === 1 ? ' has' : 's have') + ' checked and verified their pay.</p><button type="button" onclick="go(\'payroll\')">Open Payroll</button></div>'
-      + '<div class="c gov"><div class="t">Government<span class="st ' + (govPaid ? 'ok' : 'todo') + '">' + (govPaid ? 'Paid' : (new Date(Date.now() + 8 * 36e5).getUTCDate() > 15 ? 'Overdue · was due ' : 'Due ') + String(x.govDue || '').replace(/^([A-Z][a-z]+) (\d{1,2})$/, '$2 $1')) + '</span></div><div class="big">' + (govPaid ? (gov.month || ML(x.month)) : 'Next payment: ' + String(gov.month || ML(x.month) || '').split(' ')[0]) + '</div><p>' + (govPaid ? 'SSS, Pag-IBIG, PhilHealth and BIR were paid' + (gov.paid_on ? ' on ' + pd(gov.paid_on) : '') + '.' : 'SSS, Pag-IBIG, PhilHealth and BIR ' + (new Date(Date.now() + 8 * 36e5).getUTCDate() > 15 ? 'were due on ' : 'are due on ') + (x.govDue ? String(x.govDue).replace(/^([A-Z][a-z]+) (\d{1,2})$/, '$2 $1') : 'the 15th') + '. Record the payment when it is done.') + '</p><button type="button" onclick="go(\'gov\')">Open Government</button></div>'
-      + '<div class="c sal"><div class="t">Payments<span class="st ' + (fix.length ? 'todo' : 'ok') + '">' + (fix.length ? fix.length + ' to check' : 'All in order') + '</span></div><div class="big">' + n(x.sales) + '<span>recorded in ' + (x.month || '') + '</span></div><p>' + n(x.salesWeek) + ' in the last 7 days. ' + n(x.confirmations) + ' payment confirmation' + (+x.confirmations === 1 ? '' : 's') + ' issued this month.' + (fix.length ? ' ' + fix.join(' ') : '') + '</p><button type="button" onclick="go(\'expenses\');fxK(\'in\')">Open sales</button></div>'
-      + '<div class="c exp"><div class="t">Expenses</div><div class="big">' + n(x.expenses) + '<span>recorded in ' + (x.month || '') + '</span></div><p>Record each expense with its receipt on the day it is paid.</p><button type="button" onclick="go(\'expenses\');fxK(\'out\')">Open expenses</button></div>'
+      + '<div class="c gov"><div class="t">Government<span class="st ' + (govPaid ? 'ok' : (new Date(Date.now() + 8 * 36e5).getUTCDate() > 15 ? 'late' : 'todo')) + '">' + (govPaid ? 'Paid' : (new Date(Date.now() + 8 * 36e5).getUTCDate() > 15 ? 'Overdue · was due ' : 'Due ') + String(x.govDue || '').replace(/^([A-Z][a-z]+) (\d{1,2})$/, '$2 $1')) + '</span></div><div class="big">' + (govPaid ? String(gov.month || ML(x.month) || '') + '<span>dues paid</span>' : String(gov.month || ML(x.month) || '').split(' ')[0] + '<span>next payment</span>') + '</div><p>' + (govPaid ? 'SSS, Pag-IBIG, PhilHealth and BIR were paid' + (gov.paid_on ? ' on ' + pd(gov.paid_on) : '') + '.' : 'SSS, Pag-IBIG, PhilHealth and BIR ' + (new Date(Date.now() + 8 * 36e5).getUTCDate() > 15 ? 'were due on ' : 'are due on ') + (x.govDue ? String(x.govDue).replace(/^([A-Z][a-z]+) (\d{1,2})$/, '$2 $1') : 'the 15th') + '. Record the payment when it is done.') + '</p><button type="button" onclick="go(\'gov\')">Open Government</button></div>'
+      + '<div class="c sal"><div class="t">Payments<span class="st ' + (fix.length ? 'todo' : 'ok') + '">' + (fix.length ? fix.length + ' to check' : 'All in order') + '</span></div><div class="big">' + n(x.sales) + '<span>recorded in ' + (x.month || '') + '</span></div><p>' + n(x.salesWeek) + ' in the last 7 days. ' + n(x.confirmations) + ' payment confirmation' + (+x.confirmations === 1 ? '' : 's') + ' issued this month.' + (fix.length ? ' ' + fix.join(' ') : '') + '</p><button type="button" onclick="go(\'expenses\');fxK(\'in\')">Open Sales</button></div>'
+      + '<div class="c exp"><div class="t">Expenses</div><div class="big">' + n(x.expenses) + '<span>recorded in ' + (x.month || '') + '</span></div><p>Record each expense with its receipt on the day it is paid.</p><button type="button" onclick="go(\'expenses\');fxK(\'out\')">Open Expenses</button></div>'
       + '</div>';
   };
   (function w2184(){ if(typeof window.go !== 'function' || typeof isPres !== 'function') return setTimeout(w2184, 300); if(window.go.x2184) return; const g0 = window.go;
@@ -50682,6 +50682,51 @@ body.is-mgr #app #v-chat .ch-cmp:not(#q1){border-top:1px solid #ECEAF2!important
 body.is-mgr #app #v-chat .ch-row:not(#q1){background:#fff!important;border:1px solid #E1DEEA!important;border-radius:14px!important}
 body.is-mgr #app #v-chat .ch-mem:not(#q1){background:#fff!important;border-left:1px solid #ECEAF2!important}
 @media(max-width:700px){body.is-mgr #app #v-chat .ch:not(#q1){height:calc(100dvh - 320px)!important;min-height:400px}body.is-mgr #main1467:has(#v-chat .ch.conv) > .tc04-lead{display:none!important}body.is-mgr #app #v-chat .ch.conv:not(#q1){height:calc(100dvh - 268px)!important}}
+</style>
+<style id="css3105">
+/* 3105 (Misty 27 Nov 20:21 "let's do FINANCE ON MANAGEMENT SCREEN") · Finance tabs like Students, Families and Teachers · management only */
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) h1:not(#q1){font:400 30px/36px "Fredoka One",Fredoka,Inter,sans-serif!important;color:#2B2450!important;margin:0!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) :is(.fx-h,.gv-h){align-items:center;gap:12px;margin-bottom:16px}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) :is(.fx-h .fx-sub,.py-top .sub,.gv-h .small){font:500 13px/1.5 Inter,system-ui,sans-serif!important;color:#9A96B0!important}
+/* buttons: like the Teachers header · 36px, radius 10, dark teal */
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .btn.teal:not(#q1):not(#q2){height:36px!important;min-height:36px!important;padding:0 14px!important;border-radius:10px!important;background:#0E6F68!important;border:1px solid #0E6F68!important;color:#fff!important;font:600 13.5px Inter,system-ui,sans-serif!important;box-shadow:none!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .btn.ghost:not(#q1):not(#q2){height:36px!important;min-height:36px!important;padding:0 14px!important;border-radius:10px!important;background:#fff!important;border:1px solid #0E6F68!important;color:#0E6F68!important;font:600 13.5px Inter,system-ui,sans-serif!important;box-shadow:none!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fo81 .c > button:not(#q1){align-self:flex-start;height:36px;padding:0 14px;border:1px solid #0E6F68!important;border-radius:10px!important;background:#fff!important;color:#0E6F68!important;font:600 13.5px Inter,system-ui,sans-serif!important;cursor:pointer}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fo81 .c > button:hover,body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .btn.ghost:hover{background:#F1F8F7!important}
+/* filters: pills like Families */
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fx-seg:not(#q1){background:none!important;padding:0!important;gap:8px;height:auto!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) :is(.fx-seg,.ex-ch,.py-chips) > button:not(#q1):not(#q2){height:36px!important;min-height:36px!important;padding:0 13px!important;border:1px solid #E1DEEA!important;border-radius:999px!important;background:#fff!important;color:#4A4666!important;font:500 13.5px Inter,system-ui,sans-serif!important;box-shadow:none!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) :is(.fx-seg,.ex-ch,.py-chips) > button.on:not(#q1):not(#q2){border-color:#0E6F68!important;background:#F1F8F7!important;color:#0E6F68!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .py-chips > button b{color:inherit!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) :is(.fx-m,.fx-pill,.fx-bar select,.fx-bar input,.py-find .search):not(#q1){height:36px!important;min-height:36px!important;border:1px solid #E1DEEA!important;border-radius:999px!important;background-color:#fff!important;box-shadow:none!important;font-size:14px!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) :is(.fx-bar input,.py-find .search):not(#q1){padding:0 14px!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) :is(.fx-bar input,.fx-bar select,.py-find .search):focus{border-color:#0E6F68!important;box-shadow:0 0 0 3px rgba(14,111,104,.12)!important;outline:0}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fx-m b{font-size:14px!important}
+/* cards: white, hairline, radius 16, no shadow, no coloured edges */
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) :is(.fx-card,.gv-c,.fo81 .c,.k824,.fx-k,.py-list,details.py-done,.bd63,details.pi824,.bz-card,.mx-c,details.f877):not(#q1){background:#fff!important;border:1px solid #ECEAF2!important;border-radius:16px!important;box-shadow:none!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fx-card table:not(#q1){border:0!important;border-radius:0!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) :is(.fx-card,.gv-c) h2:not(#q1){font:700 17px/24px Inter,system-ui,sans-serif!important;color:#1E1B3A!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fx-ch a{color:#0E6F68!important;font-weight:600!important}
+/* number strips: one card with hairlines, labels not in capitals */
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) :is(.fx-k,.k824) > div > span:not(.t824):not(.fx-tag):not(#q1){font:600 12.5px Inter,system-ui,sans-serif!important;letter-spacing:0!important;text-transform:none!important;color:#4A4666!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) :is(.fx-k,.k824,.gv-k) b:not(#q1){font:700 22px/30px Inter,system-ui,sans-serif!important;color:#1E1B3A!important;font-variant-numeric:tabular-nums}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fx-k b.in{color:#1D7A52!important}body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fx-k b.out{color:#C0392B!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) :is(.fx-k,.k824,.gv-k) small:not(#q1){font:400 12.5px/1.5 Inter,system-ui,sans-serif!important;color:#9A96B0!important}
+#app #v-gov .gv-k:not(#q1){gap:0!important;background:#fff;border:1px solid #ECEAF2;border-radius:16px;overflow:hidden;margin:0 0 16px!important}
+#app #v-gov .gv-k > div:not(#q1){border:0!important;border-left:1px solid #ECEAF2!important;border-radius:0!important;padding:12px 16px!important;background:none!important}
+#app #v-gov .gv-k > div:first-child{border-left:0!important}
+#app #v-gov .gv-k span:not(#q1){font:600 12.5px Inter,system-ui,sans-serif!important;color:#4A4666!important}
+@media(max-width:640px){#app #v-gov .gv-k > div:not(#q1){border-left:0!important;border-top:1px solid #ECEAF2!important}#app #v-gov .gv-k > div:first-child{border-top:0!important}}
+/* Celine's overview cards */
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fo81 .c:not(#q1){border-left:1px solid #ECEAF2!important;padding:16px 20px!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fo81 .t:not(#q1){font:700 16px/22px Inter,system-ui,sans-serif!important;color:#1E1B3A!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fo81 .big:not(#q1){font:700 22px/30px Inter,system-ui,sans-serif!important;color:#1E1B3A!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fo81 .big span{font:400 13px Inter,system-ui,sans-serif!important;color:#9A96B0!important;margin-left:6px}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fo81 .c p{font:400 13.5px/1.55 Inter,system-ui,sans-serif!important;color:#4A4666!important;margin:0}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fo81 .st.ok{background:#E8F4EE!important;color:#1D7A52!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fo81 .st.todo{background:#FFF4E2!important;color:#A15C07!important}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fo81 .st.late{background:#FDECEA;color:#C0392B}
+body.is-mgr #app :is(#v-finbrief,#v-finov,#v-payroll,#v-expenses,#v-gov,#v-money,#v-wallets) .fx-sync{color:#9A96B0!important}
 </style>
 </body>
 </html>
