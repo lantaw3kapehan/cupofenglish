@@ -7556,7 +7556,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2662;
+const COE_V = 2663;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24012,7 +24012,7 @@ go();
 <div class="grow" style="min-width:0"><div><a class="nm" onclick="openStudent('${e(x.code)}')">${e(x.en)}</a> <span class="mute small">${e(x.cn)} · ${e(x.code)}</span></div>
 <div class="small" style="margin-top:2px">${e(what(x))}${x.t ? ' · ' + e(x.t) : ''}</div>
 <div class="tags"><span class="chip" style="background:${K[3]};color:${K[2]};font-weight:700">${KI2907[x.kind]}${K[1]}</span></div></div>
-<div class="tdb"><button class="btn teal sm" onclick="celPic(${i})">Picture</button>${x.kind === 'book' && window.bbOpen ? `<button class="btn ghost sm" onclick="bbOpen('${e(x.book)}','${e(x.en)}','${e(x.cn || '')}')">Course Books</button>` : ''}<button class="btn ghost sm" onclick="celCopy(${i})">Copy Message</button><button class="btn ghost sm" onclick="celMark(${i})">Mark as Sent</button><button class="btn ghost sm" onclick="celMark(${i},1)" title="No picture needed">Skip</button></div></div>`; }
+<div class="tdb"><button class="btn teal sm" onclick="celPic(${i})">Picture</button>${x.kind === 'book' && window.bbOpen ? `<button class="btn ghost sm" onclick="bbOpen('${e(x.book)}','${e(x.en)}','${e(x.cn || '')}')">Course Books</button>` : ''}${x.kind !== 'bday' && window.LV78 && (() => { try{ const T = LV78.tenure(x.code); return T && T.cur; }catch(er){ return false; } })() ? `<button class="btn ghost sm" onclick="cert78('t','${e(x.code)}')" title="The certificate for their time with us · copy the picture for WeChat">Milestone Certificate</button>` : ''}<button class="btn ghost sm" onclick="celCopy(${i})">Copy Message</button><button class="btn ghost sm" onclick="celMark(${i})">Mark as Sent</button><button class="btn ghost sm" onclick="celMark(${i},1)" title="No picture needed">Skip</button></div></div>`; }
 
   function paint(){ const v = $('v-mtoday'); if(!v || typeof VIEW === 'undefined' || VIEW !== 'mtoday') return; const L = build(), old = $('td-celebrate');
     if(!L){ if(!old) load(); return; } ITEMS = L;
@@ -47507,7 +47507,7 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
         if((x.measureText(nx).width > lim && cur) || soft){ lines.push(cur); cur = pt; } else cur = nx; });
       if(cur) lines.push(cur); out.push(...lines); });
     return out; };
-  async function draw(kind, pv){ const code = String(STU.code).toUpperCase(), W = 1600, H = 1130, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  async function draw(kind, pv, code0){ const code = String(code0 || STU.code).toUpperCase(), W = 1600, H = 1130, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
     const p = who(code), zn = p.cn || p.en; let col, head, headZh, mile, title, titleZh, badge, badgeZh, msg, foot;
     if(kind === 't'){ let T = LV78.tenure(code); if(pv){ const r = LV78.T.find(t => t[0] === pv) || LV78.T[LV78.T.length - 1]; T = { since: (T && T.since) || new Date(), cur: [r[0], r[1], null, r[2], r[3], r[4], r[5], r[6], r[7]] }; } if(!T || !T.cur) throw new Error('No milestone reached yet'); const m = T.cur; col = m[4]; head = 'Learning Milestone Certificate'; headZh = '学习里程碑证书';
       mile = m[1]; title = m[3]; titleZh = m[5]; badge = m[7] + ' Badge'; badgeZh = m[8] + '徽章'; msg = MSG[m[0]] || leg90(m[0] / 12); foot = 'Learning with us since ' + fdt(T.since); }
@@ -47545,9 +47545,9 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
     return new Promise(r => c.toBlob(r, 'image/png')); }
   /* preview any milestone on the open student (checking only, nothing saved) */
   window.cert78pv = async mo => { const b = await draw('t', mo); return await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); };
-  window.cert78 = async function(kind){ if(typeof STU === 'undefined' || !STU || !STU.code) return; let b; try{ toast('Making the certificate…'); }catch(e){}
-    try{ b = await draw(kind); }catch(e){ try{ toast(e.message || 'Could not make the certificate', 4000); }catch(x){} return; }
-    const u = URL.createObjectURL(b), name = 'CupOfEnglish-certificate-' + STU.code + '.png', ov = document.createElement('div'); ov.style.cssText = 'position:fixed;inset:0;background:rgba(20,18,40,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  window.cert78 = async function(kind, code0){ if(!code0 && (typeof STU === 'undefined' || !STU || !STU.code)) return; const CODE = String(code0 || STU.code).toUpperCase(); let b; try{ toast('Making the certificate…'); }catch(e){}   /* 3111: To do › Celebrate passes the code */
+    try{ b = await draw(kind, null, CODE); }catch(e){ try{ toast(e.message || 'Could not make the certificate', 4000); }catch(x){} return; }
+    const u = URL.createObjectURL(b), name = 'CupOfEnglish-certificate-' + CODE + '.png', ov = document.createElement('div'); ov.style.cssText = 'position:fixed;inset:0;background:rgba(20,18,40,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
     ov.innerHTML = '<div style="background:#fff;border-radius:16px;padding:14px;max-width:760px;width:100%;max-height:92vh;overflow:auto"><img src="' + u + '" alt="Certificate" style="width:100%;border-radius:10px;border:1px solid #ECEAF2"><div style="display:flex;gap:8px;margin-top:10px"><button type="button" data-cp78="1" style="all:unset;box-sizing:border-box;flex:1;height:40px;border-radius:10px;text-align:center;font:600 14px Inter,system-ui,sans-serif;cursor:pointer;background:#0E6F68;color:#fff">Copy Picture</button><button type="button" data-sv78="1" style="all:unset;box-sizing:border-box;flex:1;height:40px;border-radius:10px;text-align:center;font:600 14px Inter,system-ui,sans-serif;cursor:pointer;background:#fff;color:#2B2253;border:1px solid #D9D6E3">Save Picture</button><button type="button" style="all:unset;box-sizing:border-box;flex:1;height:40px;border-radius:10px;text-align:center;font:600 14px Inter,system-ui,sans-serif;cursor:pointer;background:#fff;color:#2B2253;border:1px solid #D9D6E3">Close</button></div></div>';
     ov.addEventListener('click', async ev => { const t = ev.target.closest && ev.target.closest('button');
       if(t && t.dataset.cp78){ try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); t.textContent = 'Copied'; toast('Certificate copied · paste it in WeChat'); }catch(x){ const a = document.createElement('a'); a.download = name; a.href = u; a.click(); toast('Copy is blocked here · the picture was saved instead'); } return; }
