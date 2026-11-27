@@ -4943,6 +4943,7 @@ if(/Age missing/.test(iss)) b += `<button class="btn teal sm" onclick="fixSheet(
 if(/Not in DATABASE/.test(iss)) b += `<button class="btn ghost sm" onclick="fixIgnore(${i})">Not a real trial</button>`;
 if(/Typed total|rubric|≠/.test(iss) && !b) b += `<button class="btn teal sm" onclick="fixScore(${i})">How to fix</button><button class="btn ghost sm" onclick="fixIgnore(${i},'checked with the teacher')">Mark checked · hide</button>`;
 }
+if(!done && !prog && !b) b = `<button class="btn ghost sm" onclick="fixIgnore(${i},'checked')">Checked · Hide</button>`;   /* 3113: every row has a way to clear it */
 return `<div class="tdl fixr${done ? ' done' : ''}"><div class="grow"><b>${esc(x.name)}</b> <span class="mute small">${tdDate(x.date)} · ${tdWho(x.t)}</span>
 <div class="small ${done ? '' : 'mute'}">${done ? '<span class="chip green">✓ ' + esc(done.note) + '</span> <span class="mute">· the list updates within the hour</span>' : esc(iss)}</div>${b ? `<div class="fixb">${b}</div>` : ''}</div></div>`; }
 async function fixDo(i, kind, value, extra){
@@ -5044,7 +5045,7 @@ const fol = (F ? F.rows : []).map(r => ({ date: r[0], name: r[1], code: r[2], t:
 sug: r[tdCol(F,/SUGGEST/,6)], fu: r[tdCol(F,/FOLLOW/,7)], note: r[tdCol(F,/NOTE/,8)] }));
 const rep = (P ? P.rows : []).filter(r => String(r[1] || '').trim() && !/reports? (are )?saved|all recent/i.test(String(r[0]) + ' ' + String(r[1]))).map(r => ({ date: r[0], name: r[1], code: r[2], t: r[tdCol(P,/TEACHER/,3)], cefr: r[tdCol(P,/CEFR/,4)], days: parseInt(r[tdCol(P,/^DAYS/,5)]) || -(tdDays(r[0])||0) }));
 const fix = (X ? X.rows : []).map(r => ({ date: r[0], name: r[1], t: r[tdCol(X,/TEACHER/,2)], issue: r[tdCol(X,/ISSUE/,8)] || r.slice(3).filter(Boolean).pop() || '' }))
-.filter(x => !FIXI[fixKey(x)]);                                          // "Not a real trial" entries are hidden
+.filter(x => !FIXI[fixKey(x)] && !/^IELTS assessment$/i.test(String(x.issue || '').trim()));   // "Not a real trial" entries are hidden · 3113: "IELTS assessment" only marks an IELTS trial (its own form, no rubric to check), it is not a problem
 fol.forEach(x => { x.k = tfuKey(x.date, x.name); x.app = TFU[x.k] || null; x.open = !x.app && (!x.fu || /not set/i.test(x.fu)); x.closed = !!(x.app && /^(Enrolling|Not enrolling|Not now)/.test(x.app.st)) || /^Not now/.test(x.fu||''); });
 fol.sort((a, b) => (a.closed - b.closed));
 const repAll = rep; rep.splice(0, rep.length, ...repAll.filter(x => { x.tr = trlFor(x.date, x.name, x.code); return !(x.tr && x.tr.status === 'Sent'); }));
@@ -5087,7 +5088,7 @@ const repH = `<section class="sec" id="td-reports"><div class="row"><h2 class="g
 ${rep.length ? rep.map(x => `<div class="tdr ${x.days > 7 ? 'now' : 'soon'}" data-focus="Report|${esc(String(x.name).replace(/[|"]/g,''))} · send the trial report"><div class="tdn"><b class="num">${Math.abs(x.days)}</b><span>days</span></div>
 <div class="grow" style="min-width:0"><div><a class="nm" onclick="openStudent('${esc(x.code)}')">${esc(x.name)}</a> <span class="mute small">${esc(x.code)}</span></div>
 <div class="small" style="margin-top:2px">Trial ${tdDate(x.date)} · ${tdWho(x.t)}</div><div class="tags">${x.cefr ? `<span class="chip teal">${esc(x.cefr)}</span>` : ''}${trlChip(x)}</div></div>${trlBtn(x)}</div>`).join('') : '<div class="tdok">All trial reports are sent.</div>'}</section>`;
-const fixH = !fix.filter(x => !FIXD[fixKey(x)]).length ? '' : `<details class="sec tdx" id="td-fix"${fix.length && fix.length <= 3 ? ' open' : ''}><summary><h2>Data to fix <span class="c">${fix.filter(x => !FIXD[fixKey(x)]).length} · fix it right here · full list on the FIX tab</span></h2><span class="chev">›</span></summary>
+const fixH = !fix.filter(x => !FIXD[fixKey(x)]).length ? '' : `<details class="sec tdx" id="td-fix"${fix.length && fix.length <= 3 ? ' open' : ''}><summary><h2>Data to fix <span class="c">${fix.filter(x => !FIXD[fixKey(x)]).length} · fix it right here</span></h2><span class="chev">›</span></summary>
 ${fix.length ? fix.map(fixRow).join('') : '<div class="tdok">Nothing to fix.</div>'}</details>`;
 const refH = REF && REF.rows.length ? `<details class="sec tdx" id="td-ref"><summary><h2>Package deadlines · next 30 days <span class="c">${REF.rows.length} · more than 5 lessons left · no action needed</span></h2><span class="chev">›</span></summary>
 ${REF.rows.map(r => { const dl = r[tdCol(REF,/DEADLINE/,6)], n = parseInt(r[tdCol(REF,/DAYS LEFT/,7)]); return `<div class="tdl"><div class="grow"><a class="nm" onclick="openStudent('${esc(r[1])}')">${esc(r[0])}</a> <span class="mute small">${tdWho(r[2])}</span></div>
@@ -5329,7 +5330,7 @@ return { name: r[0], now: !(left > 0) || left <= 1 || (end != null && end <= 7) 
 const fol = (F ? F.rows : []).filter(r => { const fu = r[tdCol(F,/FOLLOW/,7)]; return (!fu || /not set/i.test(fu)) && !TFU[tfuKey(r[0], r[1])] && !(window.tdExisting1813 && tdExisting1813(r[2], r[0])); });   /* 1813 */
 const rep = (P ? (P.rows || []) : []).filter(r => String(r[1] || '').trim() && !/reports? (are )?saved|all recent/i.test(String(r[0]) + ' ' + String(r[1]))).filter(r => { const t = trlFor(r[0], r[1], r[2]); return !(t && t.status === 'Sent'); });   /* 1837: counted the same way as the To do screen */
 try{ if(typeof TRL !== 'undefined' && TRL && TRL.rows && typeof ymdLocal === 'function'){ const s14 = ymdLocal(new Date(Date.now() - 14 * 864e5)); TRL.rows.forEach(t => { if(!t.date || t.status === 'Sent' || t.date < s14) return; if(rep.some(r => String(r[0] || '').slice(0, 10) === t.date && String(r[1] || '').trim().toLowerCase() === String(t.student || '').trim().toLowerCase())) return; rep.push([t.date, t.student, t.code]); }); } }catch(e){}
-const fix = (X ? X.rows : []).filter(r => { try{ const k = fixKey({ date: r[0], name: r[1], t: r[tdCol(X,/TEACHER/,2)], issue: r[tdCol(X,/ISSUE/,8)] || r.slice(3).filter(Boolean).pop() || '' }); return !FIXI[k] && !FIXD[k]; }catch(e){ return true; } });
+const fix = (X ? X.rows : []).filter(r => { try{ const is = r[tdCol(X,/ISSUE/,8)] || r.slice(3).filter(Boolean).pop() || ''; if(/^IELTS assessment$/i.test(String(is).trim())) return false; const k = fixKey({ date: r[0], name: r[1], t: r[tdCol(X,/TEACHER/,2)], issue: is }); return !FIXI[k] && !FIXD[k]; }catch(e){ return true; } });   /* 3113 */
 const X1996 = window.TDX1996 || {}, wait = [X1996.ren ? '' : 'renewals', X1996.trl ? '' : 'trial reports', X1996.tfu ? '' : 'trial follow-ups', X1996.fixi ? '' : 'data fixes'].filter(Boolean);   /* 1996 */
 if(wait.length) try{ tdSide1996(); }catch(e){}
 return { renNow: X1996.ren ? ren.filter(x => x.now) : [], ren: X1996.ren ? ren : [], fol: X1996.tfu ? fol : [], rep: X1996.trl ? rep : [], fix: X1996.fixi ? fix : [], wait }; }
@@ -7556,7 +7557,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2663;
+const COE_V = 2665;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -47536,10 +47537,14 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
     if(cup) x.drawImage(tint(cup, col, 46, 53), W / 2 - 23, by - 28, 46, 53);
     T1(badge, '700 22px', col, by + 70); T1(badgeZh, '600 20px', col, by + 98);
     x.strokeStyle = '#CFCBDA'; x.lineWidth = 2; x.beginPath(); x.moveTo(W - 440, 978); x.lineTo(W - 150, 978); x.stroke(); x.beginPath(); x.moveTo(150, 978); x.lineTo(440, 978); x.stroke();
-    if(sg){ const ink = (() => { const c2 = document.createElement('canvas'); c2.width = sg.width; c2.height = sg.height; const g = c2.getContext('2d'); g.drawImage(sg, 0, 0);
-        const d = g.getImageData(0, 0, c2.width, c2.height), a = d.data; for(let i = 0; i < a.length; i += 4){ const l = (a[i] * .3 + a[i + 1] * .59 + a[i + 2] * .11), al = Math.max(0, Math.min(255, (235 - l) * 1.6)) * (a[i + 3] / 255); a[i] = 26; a[i + 1] = 35; a[i + 2] = 92; a[i + 3] = al; }
+    if(sg){ const ink = (() => {   /* 3112 (Misty 21:01 "make my signature real, it looks pixelated"): the saved signature is small (drawn on a 600 px pad), so it is
+        redrawn 6× larger with smoothing and a soft blur, then the ink edge is set with a smooth step: clean, even strokes with no steps, at print size */
+        const S = 6, c2 = document.createElement('canvas'); c2.width = sg.width * S; c2.height = sg.height * S; const g = c2.getContext('2d');
+        g.fillStyle = '#fff'; g.fillRect(0, 0, c2.width, c2.height); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; try{ g.filter = 'blur(' + (S * .5) + 'px)'; }catch(e){} g.drawImage(sg, 0, 0, c2.width, c2.height); try{ g.filter = 'none'; }catch(e){}
+        const d = g.getImageData(0, 0, c2.width, c2.height), a = d.data, sm = (e0, e1, v) => { const t = Math.max(0, Math.min(1, (v - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+        for(let i = 0; i < a.length; i += 4){ const l = (a[i] * .3 + a[i + 1] * .59 + a[i + 2] * .11), dk = (255 - l) / 255; a[i] = 26; a[i + 1] = 35; a[i + 2] = 92; a[i + 3] = Math.round(255 * sm(.2, .45, dk)); }
         g.putImageData(d, 0, 0); return c2; })();
-      const sh = 104, sw = Math.min(310, ink.width * sh / ink.height); x.save(); x.translate(W - 295, 978 - sh / 2 + 4); x.rotate(-0.05); x.drawImage(ink, -sw / 2, -sh / 2, sw, sh); x.restore(); }
+      const sh = 104, sw = Math.min(310, ink.width * sh / ink.height); x.save(); x.translate(W - 295, 978 - sh / 2 + 4); x.rotate(-0.05); x.imageSmoothingQuality = 'high'; x.drawImage(ink, -sw / 2, -sh / 2, sw, sh); x.restore(); }
     x.textAlign = 'left'; x.fillStyle = '#2B2253'; x.font = '600 24px ' + F; x.fillText(fdt(new Date()), 150, 1012); x.fillStyle = '#8C88A3'; x.font = '400 20px ' + F; x.fillText(foot, 150, 1042);
     x.textAlign = 'right'; x.fillStyle = '#2B2253'; x.font = '600 24px ' + F; x.fillText('Misty Dagyapen', W - 150, 1012); x.fillStyle = '#8C88A3'; x.font = '400 20px ' + F; x.fillText('President, CupOfEnglish', W - 150, 1042);
     return new Promise(r => c.toBlob(r, 'image/png')); }
