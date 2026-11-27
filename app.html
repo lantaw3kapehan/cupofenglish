@@ -7556,7 +7556,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2636;
+const COE_V = 2637;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -44807,16 +44807,24 @@ body.is-mgr #app #v-mtoday > *::before{box-shadow:none}
   }
   function paintF(){
     const v = document.getElementById('v-families'); if(!v) return; v.classList.toggle('det', !!F.sel);
-    let h = '<div class="x11-h"><div><h1>Families</h1><div class="x11-sub">Each family on one page: children, packages, payments, reports and the parent\'s requests.</div></div></div>';
+    /* 3098 (Misty 27 Nov 16:32): Families laid out like Students: title with a quiet count, one search-and-filter row, a white list card with a header row,
+       names in bold, teachers as small pills and units left in teal on the right */
+    let h = '<div class="f98-lead"><h1>Families</h1>' + (F.list ? '<span class="f98-cnt">' + F.list.length + ' families · ' + F.list.filter(f => f.kids.length > 1).length + ' with siblings</span>' : '') + '</div>';
     if(!F.list){ v.innerHTML = h + (F.err ? '<div class="x11-card x11-empty">Could not load. ' + E(F.err) + '</div>' : '<div class="x11-skel"></div><div class="x11-skel"></div>'); return; }
     const sib = F.list.filter(f => f.kids.length > 1), multi = F.list.filter(f => f.teachers.length > 1), q = F.q.trim().toLowerCase();
     let L = F.f === 'sib' ? sib : F.f === 'multi' ? multi : F.list;
     if(q) L = L.filter(f => f.kids.some(k => [k.name, k.cn, k.code].concat(k.teachers || []).join(' ').toLowerCase().includes(q)));
     if(!F.sel && window.innerWidth >= 900 && L.length) F.sel = L[0].id;
-    const fl = '<div class="x11-chips">' + [['all', 'All', F.list.length], ['sib', 'Siblings', sib.length], ['multi', 'Several Teachers', multi.length]].map(([k, l, n]) => '<button class="x11-chip' + (F.f === k ? '' : ' off') + '" onclick="fam2911.f(\'' + k + '\')">' + l + ' <small>' + n + '</small></button>').join('') + '</div>';
-    const list = L.map(f => '<button class="x11-f' + (f.id === F.sel ? ' on' : '') + '" onclick="fam2911.open(\'' + f.id + '\')"><span class="x11-fm"><span class="x11-nbs">' + f.kids.slice(0, 4).map(k => nb(k)).join('') + '</span><small class="x11-mk">' + ICP + E(f.teachers.join(', ') || 'No teacher') + '</small></span><span class="x11-fu"><b>' + f.left.toLocaleString('en-US') + '</b><small>Units Left</small></span></button>').join('') || '<div class="x11-empty">No family matches.</div>';
+    const fl = '<div class="f98-bar"><label class="f98-q"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4.2-4.2"></path></svg><input class="x11-q" id="q2911" placeholder="Search Families" value="' + E(F.q) + '" oninput="fam2911.q(this.value)" aria-label="Search name, code or teacher"></label>'
+      + [['all', 'All', F.list.length], ['sib', 'Siblings', sib.length], ['multi', 'Several Teachers', multi.length]].map(([k, l, n]) => '<button class="f98-chip' + (F.f === k ? ' on' : '') + '" onclick="fam2911.f(\'' + k + '\')">' + l + ' <small>' + n + '</small></button>').join('') + '</div>';
+    const row = f => { const low = f.kids.some(k => k.left != null && +k.left <= 8);
+      return '<div class="f98-r' + (f.id === F.sel ? ' on' : '') + '" role="button" tabindex="0" aria-pressed="' + (f.id === F.sel) + '" onclick="fam2911.open(\'' + f.id + '\')" onkeydown="if(event.key===\'Enter\')fam2911.open(\'' + f.id + '\')">'
+        + '<div class="f98-m"><div class="f98-n"><b>' + E(f.name) + '</b>' + (f.kids.length > 1 ? '<span class="f98-k">' + f.kids.length + ' children</span>' : '') + '</div>'
+        + '<div class="f98-s">' + (f.teachers.length ? f.teachers.map(t => '<i class="f98-tc">' + E(t) + '</i>').join('') : '<span class="f98-none">No teacher yet</span>') + '</div></div>'
+        + '<div class="f98-lf"><b' + (low ? ' class="low"' : '') + '>' + f.left.toLocaleString('en-US') + ' left</b>' + (low ? '<small>Renew Soon</small>' : '') + '</div></div>'; };
+    const list = L.map(row).join('') || '<div class="x11-empty">No family matches.</div>';
     const sel = F.list.find(f => f.id === F.sel);
-    v.innerHTML = h + '<div class="x11-fw"><div class="x11-fcol">' + fl + '<div class="x11-list"><div class="qw"><input class="x11-q" id="q2911" placeholder="Search name, code or teacher" value="' + E(F.q) + '" oninput="fam2911.q(this.value)"></div><div class="x11-fl">' + list + '</div></div></div><div class="x11-dcol">' + (sel ? famDet(sel) : '<div class="x11-card x11-empty">Choose a family.</div>') + '</div></div>';
+    v.innerHTML = h + fl + '<div class="x11-fw"><div class="x11-fcol"><div class="f98-card"><div class="f98-h"><span>Family</span><span>Units Left</span></div><div class="x11-fl">' + list + '</div></div></div><div class="x11-dcol">' + (sel ? famDet(sel) : '<div class="x11-card x11-empty">Choose a family.</div>') + '</div></div>';
     if(sel) loadD(sel.id);
     const qi = document.getElementById('q2911'); if(qi && F.typing){ qi.focus(); qi.setSelectionRange(qi.value.length, qi.value.length); }
   }
@@ -50501,6 +50509,46 @@ body.is-mgr #sheet #sheetBody .shero .hl .chip.tlk2964:not(#y1):not(#y2):not(#y3
 body.is-mgr #sheet #sheetBody .shero .hl .chip.tlk2964:not(#y1):not(#y2):not(#y3):not(#y4):not(#y5):not(#y6):not(#y7):not(#y8):not(#y9):not(#y10):not(#y11):not(#y12):not(#y13):not(#y14):not(#y15):not(#y16):not(#y17):not(#y18) svg{display:inline-block!important;width:13px!important;height:13px!important;color:#0E6F68}
 body.is-mgr #sheet #sheetBody .shero .hl .chip.tlk2964:not(#y1):not(#y2):not(#y3):not(#y4):not(#y5):not(#y6):not(#y7):not(#y8):not(#y9):not(#y10):not(#y11):not(#y12):not(#y13):not(#y14):not(#y15):not(#y16):not(#y17):not(#y18)::before{content:none!important}
 body.is-mgr #sheet #sheetBody .shero .hl .chip.tlk2964:not(#y1):not(#y2):not(#y3):not(#y4):not(#y5):not(#y6):not(#y7):not(#y8):not(#y9):not(#y10):not(#y11):not(#y12):not(#y13):not(#y14):not(#y15):not(#y16):not(#y17):not(#y18)::after{content:"›"!important;display:inline!important;margin-left:2px!important;color:#0E6F68!important;opacity:.7;font-weight:600}
+</style>
+<style id="css3098">
+/* 3098 · Families like Students (values taken from the Students screen) */
+#app #v-families .f98-lead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 16px}
+#app #v-families .f98-lead h1{margin:0!important;font:400 30px/36px "Fredoka One",Fredoka,Inter,sans-serif!important;color:#2B2450!important}
+#app #v-families .f98-cnt{font:500 13px/1.5 Inter,system-ui,sans-serif;color:#9A96B0}
+#app #v-families .f98-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 16px}
+#app #v-families .f98-q{position:relative;display:inline-flex;align-items:center;margin:0}
+#app #v-families .f98-q svg{position:absolute;left:12px;color:#9A96B0;pointer-events:none}
+#app #v-families .f98-q input.x11-q{height:36px!important;width:220px!important;margin:0!important;padding:0 14px 0 34px!important;border:1px solid #E1DEEA!important;border-radius:999px!important;background:#fff!important;font:400 14px Inter,system-ui,sans-serif!important;color:#1E1B3A!important;box-shadow:none!important;outline:0}
+#app #v-families .f98-q input.x11-q:focus{border-color:#0E6F68!important;box-shadow:0 0 0 3px rgba(14,111,104,.12)!important}
+#app #v-families .f98-q input.x11-q::-webkit-search-cancel-button{display:none}
+#app #v-families button.f98-chip{height:36px;padding:0 13px!important;border:1px solid #E1DEEA!important;border-radius:999px!important;background:#fff!important;color:#4A4666!important;font:500 13.5px Inter,system-ui,sans-serif!important;display:inline-flex;align-items:center;gap:6px;cursor:pointer;box-shadow:none!important;margin:0!important;min-height:0!important;width:auto!important}
+#app #v-families button.f98-chip small{font:inherit;color:#9A96B0;font-size:12.5px}
+#app #v-families button.f98-chip:hover{border-color:#C9C5D8!important}
+#app #v-families button.f98-chip.on{border-color:#0E6F68!important;background:#F1F8F7!important;color:#0E6F68!important}
+#app #v-families button.f98-chip.on small{color:#0E6F68}
+#app #v-families .x11-fcol{position:sticky;top:76px}
+#app #v-families .f98-card{background:#fff;border:1px solid #ECEAF2;border-radius:16px;overflow:hidden}
+#app #v-families .f98-h{display:flex;justify-content:space-between;padding:12px 20px 10px;border-bottom:1px solid #ECEAF2;font:600 12px Inter,system-ui,sans-serif;color:#8A879C;letter-spacing:.01em}
+#app #v-families .f98-card .x11-fl{max-height:calc(100vh - 250px)!important;overflow:auto;padding:0!important;margin:0!important;border:0!important;background:none!important}
+#app #v-families .f98-r{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #ECEAF2;cursor:pointer;position:relative;transition:background .12s}
+#app #v-families .f98-r:last-child{border-bottom:0}
+#app #v-families .f98-r:hover{background:#FAFAFC}
+#app #v-families .f98-r.on{background:#F1F8F7}
+#app #v-families .f98-r.on::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:#0E6F68}
+#app #v-families .f98-r:focus-visible{outline:2px solid #0E6F68;outline-offset:-2px}
+#app #v-families .f98-m{flex:1;min-width:0}
+#app #v-families .f98-n{display:flex;align-items:baseline;gap:8px;min-width:0}
+#app #v-families .f98-n b{font:700 15px/22px Inter,system-ui,sans-serif;color:#1E1B3A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#app #v-families .f98-k{flex:none;font:400 12.5px Inter,system-ui,sans-serif;color:#9A96B0}
+#app #v-families .f98-s{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+#app #v-families .f98-tc{font:600 12px/20px Inter,system-ui,sans-serif;font-style:normal;color:#2B2253;background:#fff;border:1px solid #D9D6E3;border-radius:999px;padding:0 8px}
+#app #v-families .f98-none{font:400 12.5px Inter,system-ui,sans-serif;color:#9A96B0}
+#app #v-families .f98-lf{flex:none;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+#app #v-families .f98-lf b{font:700 14px/21px Inter,system-ui,sans-serif;color:#0E6F68;white-space:nowrap}
+#app #v-families .f98-lf b.low{color:#C0392B}
+#app #v-families .f98-lf small{font:600 11px Inter,system-ui,sans-serif;color:#C0392B}
+#app #v-families .x11-fn{font:400 26px/1.2 "Fredoka One",Fredoka,Inter,sans-serif!important;color:#2B2253!important}
+@media(max-width:899px){#app #v-families .x11-fcol{position:static}#app #v-families .f98-card .x11-fl{max-height:none!important}#app #v-families.det .f98-bar{display:none}}
 </style>
 </body>
 </html>
