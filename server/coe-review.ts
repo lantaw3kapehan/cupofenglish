@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
       if (op === "item_add" || op === "item_edit") {
         const cat = String(b.cat || ""); if (!LADDER[cat]) return out({ ok: false, error: "Choose the Annex A category." }, 400);
         const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? String(b.day) : ""; if (!day) return out({ ok: false, error: "Add the date." }, 400);
-        const row = { day, cat, title: cl(b.title, 200), expected: cl(b.expected, 600), detail: cl(b.detail, 2000), prior: !!b.prior, memo_ref: cl(b.memo_ref, 120) || null };
+        const row = { day, cat, title: cl(b.title, 1000), expected: cl(b.expected, 1000), detail: cl(b.detail, 2000), prior: !!b.prior, memo_ref: cl(b.memo_ref, 120) || null };
         if (!row.title) return out({ ok: false, error: "Say what happened." }, 400);
         if (op === "item_add") { const rv = await getRv(+b.id); if (!rv || rv.status === "closed") return out({ ok: false, error: "This review is closed." }, 400);
           const { error } = await db.from("coe_review_item").insert({ ...row, review_id: rv.id, created_by: me }); if (error) throw error; return out({ ok: true, ...(await load(rv)) }); }
