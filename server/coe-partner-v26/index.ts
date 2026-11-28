@@ -365,11 +365,11 @@ Deno.serve(async (req: Request) => {
       const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id || "")).maybeSingle(); if (!A) return out({ ok: false, msg: "No such login" });
       const P = await partnerSet(A.sources || []), pay = await payFor(A, P, false), codes = Object.keys(P), L = await lessonsOf(codes);
       const by: Record<string, { d: string[]; lessons: number }> = {}; let unlinked = 0;
-      // a name shared by two of her students has no single code: it is counted by name (still one learner) so no payment is lost
-      const nk3 = (x: string) => String(x || "").toLowerCase().replace(/[\s.]+/g, ""), nameCodes: Record<string, string[]> = {};
+      // v26c: a name shared by two or more of her students (Leo, Mia, Candy …) has no single code: that payment is left out for that name (never merged: merging joins different children)
+      let amb = 0; const nk3 = (x: string) => String(x || "").toLowerCase().replace(/[\s.]+/g, ""), nameCodes: Record<string, string[]> = {};
       codes.forEach((k) => [P[k].name, P[k].cn].map(nk3).filter(Boolean).forEach((x) => { (nameCodes[x] = nameCodes[x] || []).push(k); }));
-      (pay.rows || []).forEach((r: any) => { const cs = (r.names || []).filter((n: any) => !n.hidden && (n.code || n.name)).map((n: any) => n.code || "N:" + nk3(n.name)); if (!cs.length) { unlinked++; return; }
-        [...new Set(cs)].forEach((k: string) => { const o = by[k] = by[k] || { d: [], lessons: 0 }; o.d.push(r.date); o.lessons += Number(r.lessons) || 0; }); });
+      (pay.rows || []).forEach((r: any) => { const cs = (r.names || []).filter((n: any) => !n.hidden && (n.code || n.name)).map((n: any) => n.code || ""); if (!cs.length || cs.some((x: string) => !x)) { unlinked++; if (cs.some((x: string) => !x)) amb++; if (!cs.filter(Boolean).length) return; }
+        [...new Set(cs.filter(Boolean))].forEach((k: string) => { const o = by[k] = by[k] || { d: [], lessons: 0 }; o.d.push(r.date); o.lessons += Number(r.lessons) || 0; }); });
       const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), mo = (a: string, z: string) => Math.max(0, (+z.slice(0, 4) - +a.slice(0, 4)) * 12 + (+z.slice(5, 7) - +a.slice(5, 7)));
       const S = Object.keys(by).map((k) => { const d = by[k].d.sort(), n = d.length, nc = k.startsWith("N:") ? (nameCodes[k.slice(2)] || []) : [k], l = L[nc.find((c2) => L[c2] && L[c2].active) || nc[0]], act = !!(l && l.active), fin = act ? n - 1 : n;
         return { code: k.startsWith("N:") ? "" : k, name: P[k] ? P[k].name : (nc[0] && P[nc[0]] ? P[nc[0]].name : k.slice(2)), cn: P[k] ? P[k].cn : "", n, first: d[0], last: d[n - 1], active: act, left: l ? l.left : null, fin, ren: n - 1, months: mo(d[0], act ? today : d[n - 1]), lessons: by[k].lessons }; });
@@ -380,13 +380,13 @@ Deno.serve(async (req: Request) => {
           avgPackages: X.length ? sum((x) => x.n, X) / X.length : null, avgMonths: X.length ? sum((x) => x.months, X) / X.length : null }; };
       const years = [...new Set(S.map((x) => x.first.slice(0, 4)))].sort().map((y) => ({ year: y, ...stat(S.filter((x) => x.first.slice(0, 4) === y)) }));
       const dist: Record<string, number> = {}; S.forEach((x) => { const k = x.n >= 6 ? "6+" : String(x.n); dist[k] = (dist[k] || 0) + 1; });
-      return out({ ok: true, partner: A.display_name, since: S.length ? S.map((x) => x.first).sort()[0] : null, all: stat(S), years, dist, unlinked, noSale: codes.filter((k) => !by[k] && !Object.keys(by).some((x) => x.startsWith("N:") && (nameCodes[x.slice(2)] || []).includes(k))).length,
+      return out({ ok: true, partner: A.display_name, ambiguous: amb, sharedNames: Object.keys(nameCodes).filter((x) => nameCodes[x].length > 1).length, since: S.length ? S.map((x) => x.first).sort()[0] : null, all: stat(S), years, dist, unlinked, noSale: codes.filter((k) => !by[k] && !Object.keys(by).some((x) => x.startsWith("N:") && (nameCodes[x.slice(2)] || []).includes(k))).length,
         dueNow: S.filter((x) => x.active && x.left != null && x.left <= 4).length,
         top: S.sort((a, b) => b.n - a.n || a.first.localeCompare(b.first)).slice(0, 12).map((x) => ({ name: x.name, cn: x.cn, code: x.code, n: x.n, first: x.first, months: x.months, active: x.active })) });
     }
     if (op === "pPay") {   // management preview of a login's Payments tab, plus the rows whose learner type is unclear
       const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id || "")).maybeSingle(); if (!A) return out({ ok: false, msg: "No such login" });
-      const P = await partnerSet(A.sources || []); return out({ ok: true, partner: A.display_name, ...(await payFor(A, P, true)) });
+      const P = await partnerSet(A.sources || []); return out({ ok: true, partner: A.display_name, ambiguous: amb, sharedNames: Object.keys(nameCodes).filter((x) => nameCodes[x].length > 1).length, ...(await payFor(A, P, true)) });
     }
     // pActive
     const { error } = await db.from("partner_accounts").update({ active: !!b.active, updated_at: new Date().toISOString(), updated_by: s.name }).eq("id", String(b.id || ""));
