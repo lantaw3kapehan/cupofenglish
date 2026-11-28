@@ -7584,7 +7584,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2721;
+const COE_V = 2722;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -33736,7 +33736,8 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   function load3(){ return Promise.all([call('pPay', { id: Q.id }), call('pOver', { id: Q.id }), call('pRates')]).then(function(r){ Q.pay = r[0]; Q.over = r[1]; Q.rates = r[2]; Q.acc = ((r[2] && r[2].accounts) || []).find(function(a){ return a.id === Q.id; }) || null; paint3(); })
     .catch(function(){ body(back + '<div class="mute" style="margin-top:12px">No connection · try again</div>'); }); }
   function paint3(){ var P = Q.pay || {}, O = Q.over || {}, A = Q.acc || {}, rows = P.rows || [];
-    var h = back + '<h1 style="margin-top:8px">' + e(P.partner || A.display_name || '') + '</h1><div class="mute small">' + e((A.sources || []).join(' · ')) + '</div>';
+    var h = back + '<h1 style="margin-top:8px">' + e(P.partner || A.display_name || '') + '</h1><div class="mute small">' + e((A.sources || []).join(' · ')) + '</div>'
+      + '<div style="margin-top:10px"><button class="btn teal sm" onclick="pa3Renew()">Renewal rate since they started</button></div>';
     // payments
     h += '<h2>Payments at the partner price</h2>';
     if(!P.ok) h += '<div class="mute small">' + e((P && P.msg) || 'Could not load') + '</div>';
@@ -33767,6 +33768,23 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
       + L.map(function(l){ return '<label class="check" style="margin:3px 0"><input type="checkbox" ' + (mine.indexOf(l.label) > -1 ? 'checked ' : '') + 'onchange="pa3Lbl(this.checked, decodeURIComponent(\'' + encodeURIComponent(l.label).replace(/'/g, '%27') + '\'))"><span>' + e(l.label) + ' <span class="mute small">· ' + l.n + ' rows · last ' + e(l.last) + '</span></span></label>'; }).join('') + '</div>'
       + '<div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost sm" onclick="pa3Rates()">Partner prices…</button><button class="btn ghost sm" onclick="pa3Conf()">All conflicts…</button></div>';
     body(h); }
+  /* 3163 · renewal rate of this partner's students since they started (Misty 18:53 · to show Dr. Spring) */
+  var PC = function(x){ return x == null ? '—' : Math.round(x * 100) + '%'; };
+  window.pa3Renew = function(){ frame('Renewal rate'); call('pRenew', { id: Q.id }).then(function(r){ var bk = '<button class="btn ghost sm" onclick="pa3Open(\'' + Q.id + '\')">‹ Payments &amp; students</button>';
+      if(!r || !r.ok){ body(bk + '<div class="mute" style="margin-top:12px">' + e((r && (r.msg || r.error)) || 'Could not load') + '</div>'); return; }
+      var A = r.all || {}, tile = function(lbl, big, sub){ return '<div class="card" style="padding:12px 16px;min-width:150px;flex:1"><div class="mute small">' + lbl + '</div><b style="font-size:26px">' + big + '</b><div class="small mute">' + sub + '</div></div>'; };
+      var h = bk + '<h1 style="margin-top:8px">' + e(r.partner) + ' · Renewal rate</h1><div class="mute small">Since the first payment on record (' + e(r.since || '—') + ') · from SALES payments at the partner price</div>'
+        + '<div class="row" style="gap:10px;flex-wrap:wrap;margin-top:12px">'
+        + tile('Students who renewed', PC(A.studentRate), A.renewedStudents + ' of ' + A.studentsWithFinished + ' students whose first package ended')
+        + tile('Packages renewed', PC(A.packageRate), A.renewals + ' renewals of ' + A.finished + ' packages that ended')
+        + tile('Still studying now', PC(A.students ? A.studying / A.students : null), A.studying + ' of ' + A.students + ' students')
+        + tile('Average per student', (A.avgPackages == null ? '—' : A.avgPackages.toFixed(1)) + ' packages', 'about ' + (A.avgMonths == null ? '—' : Math.round(A.avgMonths)) + ' months with us') + '</div>'
+        + '<h2>By the year they started</h2><div class="card" style="padding:4px 12px"><div class="row small" style="gap:8px;padding:8px 0;font-weight:700"><div style="width:60px">Year</div><div class="grow">Students</div><div style="width:110px;text-align:right">Renewed</div><div style="width:110px;text-align:right">Packages renewed</div><div style="width:110px;text-align:right">Still studying</div></div>'
+        + (r.years || []).map(function(y){ return '<div class="row small" style="gap:8px;padding:8px 0;border-top:1px solid var(--line)"><div style="width:60px"><b>' + e(y.year) + '</b></div><div class="grow">' + y.students + ' · avg ' + (y.avgPackages || 0).toFixed(1) + ' packages</div><div style="width:110px;text-align:right"><b>' + PC(y.studentRate) + '</b> <span class="mute">' + y.renewedStudents + '/' + y.studentsWithFinished + '</span></div><div style="width:110px;text-align:right">' + PC(y.packageRate) + '</div><div style="width:110px;text-align:right">' + y.studying + '</div></div>'; }).join('') + '</div>'
+        + '<h2>How many packages each student bought</h2><div class="row" style="gap:8px;flex-wrap:wrap">' + ['1','2','3','4','5','6+'].map(function(k){ return '<div class="card" style="padding:8px 14px;text-align:center"><div class="mute small">' + k + (k === '1' ? ' package' : ' packages') + '</div><b style="font-size:20px">' + ((r.dist || {})[k] || 0) + '</b></div>'; }).join('') + '</div>'
+        + '<h2>Longest with us</h2><div class="card" style="padding:4px 12px">' + (r.top || []).map(function(t){ return '<div class="row small" style="gap:8px;padding:7px 0;border-top:1px solid var(--line)"><div class="grow"><b>' + e(t.name) + '</b> ' + e(t.cn || '') + ' <span class="mute">' + e(t.code) + '</span></div><div>' + t.n + ' packages · since ' + e(String(t.first).slice(0, 7)) + ' · ' + t.months + ' months' + (t.active ? ' · <span style="color:#1F7A55">studying</span>' : '') + '</div></div>'; }).join('') + '</div>'
+        + '<div class="small mute" style="margin-top:12px">How it is counted: a package “ended” when the student bought a next one or is no longer studying; the latest package of a student still studying is not counted yet. Students who renewed = students with 2 or more packages ÷ students whose first package ended. ' + (r.dueNow ? r.dueNow + ' students are due to renew now (4 lessons or fewer left). ' : '') + (r.unlinked ? r.unlinked + ' payments could not be matched to a student code and are left out. ' : '') + (r.noSale ? r.noSale + ' of her students have no payment in SALES (before the records start).' : '') + '</div>';
+      body(h); }).catch(function(){ body('<div class="mute">No connection · try again</div>'); }); };
   window.pa3More = function(){ Q.all = !Q.all; paint3(); };
   window.pa3Track = function(on){ call('pPayTrack', { id: Q.id, on: on }).then(function(r){ toast(r && r.ok ? (on ? 'Tracking on' : 'Tracking off') : 'Not saved'); load3(); }); };
   window.pa3All = function(){ var d = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10); if(!confirm('Mark every package bought up to ' + d + ' as paid?')) return;
