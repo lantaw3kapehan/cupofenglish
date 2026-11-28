@@ -5861,7 +5861,7 @@ openSheet(`<h1>New class</h1><div class="mute small">Goes straight into the app'
 <label>Student</label><input id="cS" class="in-t" list="cSL" placeholder="Type a name or code" oninput="classPick()" autocomplete="off">
 <datalist id="cSL">${classOpts()}</datalist>
 <label>Class type</label><div class="seg" id="cK" style="margin-top:0"><button type="button" data-k="" class="on" onclick="classKind('')">Regular</button><button type="button" data-k="TC" onclick="classKind('TC')">Trial · TC</button><button type="button" data-k="SC" onclick="classKind('SC')">Substitute · SC</button></div>
-<div id="cNew" class="hide"><label>Chinese name <span class="mute small">(new student · goes into DATABASE with the code)</span></label><input id="cCn" class="in-t" placeholder="e.g. 派派" autocomplete="off"></div>
+<div id="cNew" class="hide"><label>Chinese name <span class="mute small">(new student · goes into DATABASE with the code)</span></label><input id="cCn" class="in-t" placeholder="e.g. 派派" autocomplete="off"><label>Birthday <span class="mute small">(optional · for the age and the birthday greeting)</span></label><input id="cBd" class="in-t" type="date" max="${ymdLocal(new Date())}"></div>
 <div id="cSrc" class="hide"><label>Source <span class="mute small">· how they found us</span></label><div class="seg" id="cSrcK" style="flex-wrap:wrap;margin-top:0">${['Student', 'Partner', 'WeChat', '小红书', 'Website', 'Other'].map(k => `<button type="button" data-k="${k}" onclick="classSrc('${k}')">${k === 'Student' ? 'Student referral' : k}</button>`).join('')}</div>
 <div id="cRefW" class="hide"><input id="cRf" class="in-t" list="cSL" placeholder="Type the student's name or ST code" autocomplete="off" oninput="classRefChk()"><div id="cRfOk" class="small" style="margin-top:4px"></div></div>
 <div id="cPtW" class="hide"><input id="cPt" class="in-t" placeholder="Partner name (optional) · no incentive for partners" autocomplete="off"></div></div>
@@ -5982,7 +5982,7 @@ const BUSY = {};   /* 14 Oct: saves running in the background (no double taps) *
 const whenFree = fn => { if(!$('sheet').classList.contains('on')) return fn(); let n = 0; const w = setInterval(() => { if(!$('sheet').classList.contains('on') || ++n > 120){ clearInterval(w); if(n <= 120) fn(); } }, 1000); };
 async function sendClass(){
 const s = classStu(); if(!s) return toast('Choose a student from the list');
-const D = classDates(), f = {code:s.code, student:s.name, kind:CKIND, fresh: !!s.fresh, cn: s.fresh ? (($('cCn')||{}).value || '').trim() : '', book:$('cB').value, teacher:$('cT').value, date:$('cD').value, time:$('cH').value.trim(), mins:$('cM').value,
+const D = classDates(), f = {code:s.code, student:s.name, kind:CKIND, fresh: !!s.fresh, cn: s.fresh ? (($('cCn')||{}).value || '').trim() : '', birth: s.fresh ? (($('cBd')||{}).value || '') : '', book:$('cB').value, teacher:$('cT').value, date:$('cD').value, time:$('cH').value.trim(), mins:$('cM').value,
 days: $('cR').checked ? classDays() : [], count: D.length, force: ckForce() || !!window.CFORCE};
 if(CKIND === 'TC' && CSRC){ if(CSRC === 'Student'){ classRefChk(); if(!CREF) return toast('Pick the referring student from the list'); if(CREF.code === s.code) return toast('A student cannot refer themselves'); Object.assign(f, { src: 'Student', refCode: CREF.code, refName: CREF.name }); } else Object.assign(f, { src: CSRC, partner: CSRC === 'Partner' ? (($('cPt') || {}).value || '').trim() : '' }); }
 if($('cR').checked && !f.days.length) return toast('Choose the days of the week');
@@ -7566,7 +7566,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2700;
+const COE_V = 2701;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -15526,7 +15526,7 @@ ${rows.map(r => `<div>＋ <b>${DL[r.d]} ${esc(okT(r.time) || r.time || '…')}</
           show(); }catch(e){ toast('Not added in Google Calendar · ' + msg); }
         return; } } }
   function newStu(f, d){ try{
-    const x = { code: String(f.code).toUpperCase(), en: String(f.student || '').trim(), cn: String(f.cn || '').trim(), trialDate: f.kind === 'TC' ? f.date : '', trialTime: f.kind === 'TC' ? f.time : '', trialBook: f.kind === 'TC' ? (f.book || '') : '', trialTeacher: f.kind === 'TC' ? String(f.teacher || '').replace(/^teacher\s+/i, '') : '' };
+    const x = { code: String(f.code).toUpperCase(), en: String(f.student || '').trim(), cn: String(f.cn || '').trim(), trialDate: f.kind === 'TC' ? f.date : '', trialTime: f.kind === 'TC' ? f.time : '', trialBook: f.kind === 'TC' ? (f.book || '') : '', trialTeacher: f.kind === 'TC' ? String(f.teacher || '').replace(/^teacher\s+/i, '') : '', birth: /^\d{4}-\d{2}-\d{2}$/.test(String(f.birth || '')) ? f.birth : '' };   /* 3144: birthday from the New class form */
     if(f.src) x.source = f.src === 'Partner' ? 'Partner – ' + (f.partner || '') : f.src === 'Student' ? (f.refCode || '') + ' – ' + (f.refName || '') : f.src;
     Object.keys(x).forEach(k => { if(x[k] === '') delete x[k]; });
     api('saveStudent', TOKEN, x, 0).catch(() => {});
@@ -16158,7 +16158,7 @@ window.invFile = fl => new Promise(res => { const rd = new FileReader(); rd.onlo
     const bad = slots().find(x => !okT(x.time)); if(bad) return toast('Choose a time for ' + WN[bad.d]);
     const P = plan(); if(!P.length) return toast('Choose the start date');
     const G = groups(P), L = label(P), force = ckForce() || !!window.CFORCE;
-    const base = { code: s.code, student: s.name, kind: CKIND, fresh: !!s.fresh, cn: s.fresh ? (($('cCn') || {}).value || '').trim() : '', book: $('cB').value, teacher, mins: $('cM').value, force };
+    const base = { code: s.code, student: s.name, kind: CKIND, fresh: !!s.fresh, cn: s.fresh ? (($('cCn') || {}).value || '').trim() : '', birth: s.fresh ? (($('cBd') || {}).value || '') : '', book: $('cB').value, teacher, mins: $('cM').value, force };
     if(CKIND === 'TC' && CSRC){ if(CSRC === 'Student'){ classRefChk(); if(!CREF) return toast('Pick the referring student from the list'); if(CREF.code === s.code) return toast('A student cannot refer themselves'); Object.assign(base, { src: 'Student', refCode: CREF.code, refName: CREF.name }); } else Object.assign(base, { src: CSRC, partner: CSRC === 'Partner' ? (($('cPt') || {}).value || '').trim() : '' }); }
     const bk = 'c:' + s.code + '|mx|' + P[0].day; if(BUSY[bk]) return toast('Still adding these classes · wait a moment'); BUSY[bk] = 1;
     const body = $('sheetBody'), snap = body.innerHTML, vals = {}; body.querySelectorAll('input,select,textarea').forEach(el => { if(el.id) vals[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value; });
