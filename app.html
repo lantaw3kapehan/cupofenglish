@@ -7584,7 +7584,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2717;
+const COE_V = 2719;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -37957,7 +37957,11 @@ html body #sheet .seg{border-radius:0!important;overflow:visible!important;flex-
     const rows = L.map(x => row(nm[x.kind] + ' @ ' + pz(x.rate) + (x.rank ? ' · ' + esc(x.rank) : '') + ' <span class="m">(' + esc(span(x)) + ')</span>', +x.units, pz(x.pay))).join('');
     const rs = [...new Set(R.map(x => +x.rate))].sort((a, b) => a - b), k = S.rankNow || {};
     const first = R.filter(x => +x.rate === rs[rs.length - 1]).map(x => x.from).sort()[0];
-    const note = '<div class="m" style="margin-top:6px">Rank-up this month' + (k.prev_rank && k.rank ? ': ' + esc(k.prev_rank) + ' → ' + esc(k.rank) : '') + (k.rank_date && /^\d{4}-/.test(k.rank_date) ? ' on ' + esc(dd(k.rank_date)) : '') + '. Classes up to the class that reached the units are paid at ' + rs.slice(0, -1).map(pz).join(', ') + '; classes from ' + esc(dd(first)) + ' are paid at the new rate ' + pz(rs[rs.length - 1]) + '. Trial and substitute classes are paid at the rate on their day; only regular classes count toward rank.</div>';
+    /* 3161 (Misty 28 Nov "has to be checked well", Kat): when the lower rate runs on after the first class at the new rate, a demerit took the units back
+       under the rank's line for a while; say so, with the day it was reached again, so the overlapping dates explain themselves */
+    const hiR = rs[rs.length - 1], lastLo = R.filter(x => +x.rate < hiR && x.kind === 'reg').map(x => x.to).sort().pop(), dip = lastLo && first && lastLo > first;
+    const dipTxt = dip ? ' The rank was first reached on ' + esc(dd(first)) + '; a demerit then took the units below the line, so the classes until ' + esc(dd(lastLo)) + ' were paid at the earlier rate, and the new rate applies again from ' + esc(dd(k.rank_date || lastLo)) + '.' : '';
+    const note = '<div class="m" style="margin-top:6px">Rank-up this month' + (k.prev_rank && k.rank ? ': ' + esc(k.prev_rank) + ' → ' + esc(k.rank) : '') + (k.rank_date && /^\d{4}-/.test(k.rank_date) ? ' on ' + esc(dd(k.rank_date)) : '') + '. Classes up to the class that reached the units are paid at ' + rs.slice(0, -1).map(pz).join(', ') + '; classes from ' + esc(dd(first)) + ' are paid at the new rate ' + pz(rs[rs.length - 1]) + '.' + dipTxt + ' Trial and substitute classes are paid at the rate on their day; only regular classes count toward rank.</div>';
     return { rows, note, head: rs.map(pz).join(' → ') }; }catch(e){ return null; } }
   function slipHtml(S, forPrint){ const r = S.row, p = S.person, sl = S.slip || {}, cs = S.cases || [], E = r.edited || [];
     const extra = E.filter(e => e.field === 'extra'), less = E.filter(e => e.field === 'less');
@@ -51234,6 +51238,72 @@ body.is-mgr #app #v-trials #tpList .rp-row:last-child{border-bottom:0!important}
     R.leave = R.leave || { fns: /(Leave|Late)\w*\|/, drop(){}, views: ['leave', 'msgs', 'mtoday', 'todo'] };
     R.train = R.train || { fns: /(Train)\w*\|/, drop(){}, views: ['growth', 'mgrowth'] };
     R.talk = R.talk || { fns: /(Talk)\w*\|/, drop(){}, views: [] }; })(0);
+})();
+</script>
+<script id="b3161">
+/* 3161 (Misty 28 Nov 16:56 "where can we lodge … Resa asked for advance or borrowed 10,000 … flexible, editable and sustainable"):
+   Payroll › Advances & Loans. Record an advance (the repayment plan can be set later), change the plan, change or skip one month,
+   record a cash repayment. The month's repayment shows on the payslip as its own deduction line with the balance after it. */
+(function(){
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-adv', MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const E = x => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const P = v => '₱' + (Math.round((+v || 0) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const fd = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + ' ' + MN[+m[2] - 1] + ' ' + m[1] : ''; };
+  const fm = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})/); return m ? MN[+m[2] - 1] + ' ' + m[1] : ''; };
+  const call = (op, o) => fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ token: TOKEN, op }, o || {})) }).then(r => r.json());
+  const thisM = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+  const nextM = () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+  let L = null, busy = false;
+  const st = document.createElement('style'); st.textContent = '#adv61 .row61{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid #EFEDF4}#adv61 .row61:first-of-type{border-top:0}#adv61 .g{flex:1;min-width:0}'
+    + '#adv61 .bar{height:6px;border-radius:3px;background:#EEEDF3;margin-top:6px;overflow:hidden}#adv61 .bar i{display:block;height:100%;background:#0E6F68}#adv61 .pl{font-size:12.5px;font-weight:600;border-radius:999px;padding:2px 9px}'
+    + '#adv61o{position:fixed;inset:0;background:rgba(20,18,40,.45);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px}#adv61o .bx{background:#fff;border-radius:16px;padding:20px 22px;width:100%;max-width:480px;max-height:90vh;overflow:auto;font:14px/1.5 Inter,system-ui,sans-serif;color:#2B2253}'
+    + '#adv61o h3{margin:0 0 4px;font-size:18px}#adv61o .mt{color:#6F6B85;font-size:13px}#adv61o label{display:block;font-size:12.5px;font-weight:600;color:#5B5870;margin:12px 0 4px}#adv61o input,#adv61o select{box-sizing:border-box;width:100%;height:40px;border:1px solid #DCD9E6;border-radius:10px;padding:0 10px;font:inherit;background:#fff}'
+    + '#adv61o .r2{display:flex;gap:10px}#adv61o .r2>div{flex:1}#adv61o .ft{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}#adv61o .bt{all:unset;box-sizing:border-box;height:38px;padding:0 16px;border-radius:10px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center}'
+    + '#adv61o .pr{background:#0E6F68;color:#fff}#adv61o .sc{border:1px solid #DCD9E6;color:#4C4868}#adv61o .er{color:#B42318;font-size:13px;margin-top:8px}#adv61o .it{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid #EEEDF3;font-size:13.5px}#adv61o .it .g{flex:1}#adv61o .lk{all:unset;cursor:pointer;color:#0E6F68;font-weight:600;font-size:13px}';
+  document.head.appendChild(st);
+  let PEO = []; const people = () => PEO;
+  function card(){ const v = document.getElementById('v-payroll'); if(!v || typeof D === 'undefined' || !D || !D.mgr) return;
+    const rows = L || [], open = rows.filter(a => a.status === 'open'), owed = open.reduce((t, a) => t + Math.max(0, +a.amount - +a.repaid), 0);
+    const line = a => { const bal = Math.max(0, +a.amount - +a.repaid), pc = Math.min(100, Math.round(+a.repaid / +a.amount * 100)), cur = (a.pays || []).find(p => p.kind === 'payslip' && String(p.month).slice(0, 7) === thisM());
+      const plan = a.per_month ? P(a.per_month) + ' a month from ' + fm(a.start_month) : '<span style="color:#9A6A12;font-weight:600">Plan not set yet · nothing is deducted</span>';
+      return '<div class="row61"><div class="g"><b>' + E(a.teacher) + '</b> · ' + P(a.amount) + ' given ' + E(fd(a.given_on)) + (a.status === 'closed' ? ' <span class="pl" style="background:#E7F6EE;color:#1E7A55">Repaid</span>' : '')
+        + '<div class="small mute">' + plan + (cur && +cur.amount ? ' · this month ' + P(cur.amount) + (cur.fixed ? ' (changed)' : '') : '') + ' · repaid ' + P(a.repaid) + ' · balance ' + P(bal) + (a.note ? ' · ' + E(a.note) : '') + '</div>'
+        + '<div class="bar"><i style="width:' + pc + '%"></i></div></div><button class="btn ghost sm" onclick="adv61Open(' + a.id + ')">Open</button></div>'; };
+    const h = '<div class="card" id="adv61" style="margin-top:12px"><div style="display:flex;align-items:center;gap:10px"><h2 style="margin:0;flex:1">Advances &amp; Loans</h2><button class="btn teal sm" onclick="adv61New()">Record Advance</button></div>'
+      + '<div class="small mute">Money given ahead of pay, repaid from the payslip each month (its own deduction line) or in cash. ' + (open.length ? open.length + ' open · ' + P(owed) + ' still owed' : 'Nothing owed') + '</div>'
+      + (rows.length ? rows.map(line).join('') : '') + '</div>';
+    const old = document.getElementById('adv61'); if(old && old.outerHTML === h) return; if(old) old.remove();
+    const pa = document.getElementById('pa1946m'); if(pa) pa.insertAdjacentHTML('beforebegin', h); else v.insertAdjacentHTML('beforeend', h); }
+  async function load(){ if(busy || typeof D === 'undefined' || !D || !D.mgr || !TOKEN) return; busy = true; try{ const r = await call('list'); if(r && r.ok){ L = r.rows || []; PEO = r.people || []; card(); } }catch(e){} finally{ busy = false; } }
+  window.adv61Load = load;
+  function sheet(html){ let o = document.getElementById('adv61o'); if(o) o.remove(); o = document.createElement('div'); o.id = 'adv61o'; o.innerHTML = '<div class="bx">' + html + '</div>'; o.addEventListener('click', e => { if(e.target === o) o.remove(); }); document.body.appendChild(o); return o; }
+  const done = async (o, r, msg) => { if(!r || !r.ok){ const er = o.querySelector('.er'); if(er) er.textContent = (r && (r.msg || r.error)) || 'Not saved. Try again.'; return false; } o.remove(); try{ toast(msg || 'Saved ✓'); }catch(e){} await load(); try{ if(typeof loadMgmt === 'function') loadMgmt(true); }catch(e){} return true; };
+  window.adv61New = function(){ const ps = people(); const today = new Date(); const td = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    const o = sheet('<h3>Record Advance</h3><div class="mt">You can leave the repayment plan empty and set it later. Nothing is deducted until there is a plan.</div>'
+      + '<label>Person</label>' + (ps.length ? '<select id="a61t">' + ps.map(n => '<option>' + E(n) + '</option>').join('') + '</select>' : '<input id="a61t" placeholder="Name as on Payroll">')
+      + '<div class="r2"><div><label>Amount given (₱)</label><input id="a61a" type="number" min="1" step="0.01" inputmode="decimal"></div><div><label>Date given</label><input id="a61d" type="date" value="' + td + '"></div></div>'
+      + '<div class="r2"><div><label>Deduct per month (₱)</label><input id="a61p" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Not set yet"></div><div><label>First month to deduct</label><input id="a61s" type="month" value="' + nextM() + '"></div></div>'
+      + '<label>Note</label><input id="a61n" maxlength="300" placeholder="For example: asked by Resa, agreed by Misty"><div class="er"></div>'
+      + '<div class="ft"><button class="bt sc" onclick="document.getElementById(\'adv61o\').remove()">Cancel</button><button class="bt pr" id="a61go">Save</button></div>');
+    o.querySelector('#a61go').onclick = async ev => { ev.target.textContent = 'Saving…'; const pm = o.querySelector('#a61p').value;
+      const r = await call('add', { teacher: o.querySelector('#a61t').value, amount: o.querySelector('#a61a').value, given_on: o.querySelector('#a61d').value, per_month: pm, start_month: pm ? o.querySelector('#a61s').value : '', note: o.querySelector('#a61n').value }).catch(() => null);
+      if(!(await done(o, r, 'Advance recorded ✓'))) ev.target.textContent = 'Save'; }; };
+  window.adv61Open = function(id){ const a = (L || []).find(x => x.id === id); if(!a) return; const bal = Math.max(0, +a.amount - +a.repaid);
+    const pays = (a.pays || []).map(p => '<div class="it"><div class="g">' + (p.kind === 'cash' ? 'Cash / transfer · ' + E(fd(p.day)) : 'Payslip · ' + E(fm(p.month))) + (p.fixed ? ' · changed by hand' : '') + (p.note ? '<div class="mt">' + E(p.note) + '</div>' : '') + '</div><b>' + P(p.amount) + '</b>'
+      + (p.paid ? '<span class="mt">paid</span>' : (p.kind === 'cash' || p.fixed ? '<button class="lk" data-un="' + p.id + '">' + (p.kind === 'cash' ? 'Remove' : 'Back to plan') + '</button>' : '')) + '</div>').join('');
+    const o = sheet('<h3>' + E(a.teacher) + ' · ' + P(a.amount) + '</h3><div class="mt">Given ' + E(fd(a.given_on)) + ' · repaid ' + P(a.repaid) + ' · balance ' + P(bal) + (a.note ? ' · ' + E(a.note) : '') + '</div>'
+      + (pays ? '<label>Repayments</label>' + pays : '')
+      + '<label>Plan</label><div class="r2"><div><input id="a61p" type="number" min="0" step="0.01" value="' + (a.per_month ? +a.per_month : '') + '" placeholder="₱ per month · empty = not set"></div><div><input id="a61s" type="month" value="' + (a.start_month ? String(a.start_month).slice(0, 7) : nextM()) + '"></div></div>'
+      + '<label>This month (' + E(fm(thisM())) + ') only</label><div class="r2"><div><input id="a61m" type="number" min="0" step="0.01" placeholder="₱ · 0 to skip this month"></div><div><button class="bt sc" id="a61mgo" style="width:100%;justify-content:center">Change This Month</button></div></div>'
+      + '<label>Paid in cash or by transfer</label><div class="r2"><div><input id="a61c" type="number" min="1" step="0.01" placeholder="₱"></div><div><input id="a61cd" type="date"></div></div><button class="lk" id="a61cgo" style="margin-top:8px">Record this repayment</button>'
+      + '<div class="er"></div><div class="ft"><button class="bt sc" id="a61rm" style="color:#B42318;margin-right:auto">Remove</button><button class="bt sc" onclick="document.getElementById(\'adv61o\').remove()">Close</button><button class="bt pr" id="a61go">Save Plan</button></div>');
+    o.querySelector('#a61go').onclick = async () => { const pm = o.querySelector('#a61p').value; await done(o, await call('plan', { id, per_month: pm, start_month: pm ? o.querySelector('#a61s').value : '' }).catch(() => null), 'Plan saved ✓'); };
+    o.querySelector('#a61mgo').onclick = async () => { const v = o.querySelector('#a61m').value; if(v === ''){ o.querySelector('.er').textContent = 'Write the amount for this month (0 to skip).'; return; } await done(o, await call('month', { id, month: thisM(), amount: v }).catch(() => null), 'This month changed ✓'); };
+    o.querySelector('#a61cgo').onclick = async () => { await done(o, await call('cash', { id, amount: o.querySelector('#a61c').value, day: o.querySelector('#a61cd').value }).catch(() => null), 'Repayment recorded ✓'); };
+    o.querySelectorAll('[data-un]').forEach(b => b.onclick = async () => { await done(o, await call('unpay', { pay_id: +b.dataset.un }).catch(() => null)); });
+    o.querySelector('#a61rm').onclick = async () => { if(!window.confirm('Remove this advance? Use this only for one entered by mistake.')) return; await done(o, await call('remove', { id }).catch(() => null), 'Removed'); }; };
+  const rr = window.renderPayroll; if(typeof rr === 'function') window.renderPayroll = function(){ const r = rr.apply(this, arguments); try{ if(L) card(); load(); }catch(e){} return r; };
+  setInterval(() => { try{ if(typeof VIEW !== 'undefined' && VIEW === 'payroll' && !document.hidden) load(); }catch(e){} }, 60000);
 })();
 </script>
 </body>
