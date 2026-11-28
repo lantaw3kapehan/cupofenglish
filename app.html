@@ -7565,7 +7565,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2687;
+const COE_V = 2688;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -45413,9 +45413,12 @@ window.dots2471 = function(done, total, label){ try{ done = Math.max(0, +done ||
     /* 5 · check-ins */
     const nW = rv.extended ? 8 : 4;
     h += '<div class="rc"><p class="rk">5 · Weekly check-ins · scored on the four Annex A evaluation areas</p><div class="wk">';
-    for(let w = 1; w <= nW; w++){ const r = W.find(x => x.week === w) || {};
-      h += '<div><b>Week ' + w + '</b>' + (r.at ? ' <span class="rs">· ' + dd(r.at).replace(/ \d{4}$/, '') + '</span>' : '')
-        + (P && open ? '<div class="sc">' + AREAS.map(a => '<span>' + a[1] + '</span><select data-w="' + w + '" data-a="' + a[0] + '"><option value=""></option>' + [1, 2, 3, 4].map(n => '<option value="' + n + '"' + (r[a[0]] === n ? ' selected' : '') + '>' + SCL[n] + '</option>').join('') + '</select>').join('') + '</div><textarea data-wn="' + w + '" rows="2" placeholder="Your note" style="margin-top:6px">' + e(r.note_pres || '') + '</textarea><button class="bt" type="button" data-ws="' + w + '" style="margin-top:6px">Save week ' + w + '</button>'
+    /* 3131 (Misty 28 Nov): Week 0 = the week before the review (baseline), and each week shows its dates */
+    const s0 = rv.sent_at ? new Date(new Date(rv.sent_at).getTime() + 8 * 3600e3) : null, md = d => d.getUTCDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()];
+    const rng = w => { if(!s0) return ''; const a = new Date(Date.UTC(s0.getUTCFullYear(), s0.getUTCMonth(), s0.getUTCDate() + (w - 1) * 7)), b = new Date(a.getTime() + 6 * 864e5); return md(a) + ' – ' + md(b); };
+    for(let w = 0; w <= nW; w++){ const r = W.find(x => x.week === w) || {};
+      h += '<div><b>' + (w ? 'Week ' + w : 'Before the review') + '</b><div class="rs" style="margin:1px 0 0">' + e(rng(w)) + (w ? '' : ' · baseline') + '</div>' + (r.at ? '<div class="rs">Saved ' + dd(r.at).replace(/ \d{4}$/, '') + '</div>' : '')
+        + (P && open ? '<div class="sc">' + AREAS.map(a => '<span>' + a[1] + '</span><select data-w="' + w + '" data-a="' + a[0] + '"><option value=""></option>' + [1, 2, 3, 4].map(n => '<option value="' + n + '"' + (r[a[0]] === n ? ' selected' : '') + '>' + SCL[n] + '</option>').join('') + '</select>').join('') + '</div><textarea data-wn="' + w + '" rows="2" placeholder="Your note" style="margin-top:6px">' + e(r.note_pres || '') + '</textarea><button class="bt" type="button" data-ws="' + w + '" style="margin-top:6px">' + (w ? 'Save week ' + w : 'Save baseline') + '</button>'
            : '<div class="sc">' + AREAS.map(a => '<span>' + a[1] + '</span><span>' + (r[a[0]] ? SCL[r[a[0]]] : '·') + '</span>').join('') + '</div>' + (r.note_pres ? '<p class="rs" style="margin:6px 0 0">' + e(r.note_pres) + '</p>' : ''))
         + (r.note_staff ? '<p class="rs" style="margin:6px 0 0"><b>' + (P ? 'Her note' : 'Your note') + ':</b> ' + e(r.note_staff) + '</p>' : '')
         + (!P && open && r.at ? '<textarea data-sn="' + w + '" rows="2" placeholder="Your note on this week" style="margin-top:6px">' + e(r.note_staff || '') + '</textarea><button class="bt" type="button" data-ss="' + w + '" style="margin-top:6px">Save my note</button>' : '')
@@ -45460,7 +45463,7 @@ window.dots2471 = function(done, total, label){ try{ done = Math.max(0, +done ||
       if(b.dataset.rps){ const t = o.querySelector('[data-rp="' + b.dataset.rps + '"]'); return run({ op: 'reply', iid: +b.dataset.rps, text: t ? t.value : '' }, 'Your answer is saved.'); }
       if(x === 'respond') return run({ op: 'respond', id: rv.id, text: v('rvR') }, 'Your answer was sent.');
       if(b.dataset.ws){ const w = b.dataset.ws, sc = {}; o.querySelectorAll('[data-w="' + w + '"]').forEach(s => { sc[s.dataset.a] = s.value; }); const n = o.querySelector('[data-wn="' + w + '"]');
-        return run(Object.assign({ op: 'week', id: rv.id, week: +w, note: n ? n.value : '' }, sc), 'Week ' + w + ' saved.'); }
+        return run(Object.assign({ op: 'week', id: rv.id, week: +w, note: n ? n.value : '' }, sc), (+w ? 'Week ' + w : 'Baseline') + ' saved.'); }
       if(b.dataset.ss){ const n = o.querySelector('[data-sn="' + b.dataset.ss + '"]'); return run({ op: 'week_note', id: rv.id, week: +b.dataset.ss, note: n ? n.value : '' }, 'Your note is saved.'); }
       if(b.dataset.oc){ const oc = b.dataset.oc; if(!confirm('Record "' + R.outcomes[oc] + '"? ' + (oc === 'extend' ? 'The review runs 30 more days.' : 'This closes the review and she sees the decision and your reason.'))) return;
         return run({ op: 'decide', id: rv.id, outcome: oc, note: v('rvO') }, 'Decision recorded.'); } }; }

@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
       if (op === "week") { const rv = await getRv(+b.id); if (!rv || rv.status !== "sent") return out({ ok: false, error: "Check-ins start once the review is sent." }, 400);
         const sc = (v: unknown) => { const n = +String(v); return n >= 1 && n <= 4 ? n : null; };
         const row: any = { review_id: rv.id, week: +b.week, punct: sc(b.punct), comm: sc(b.comm), accuracy: sc(b.accuracy), collab: sc(b.collab), note_pres: cl(b.note, 1500), at: new Date().toISOString() };
-        if (!(row.week >= 1 && row.week <= 8)) return out({ ok: false, error: "bad week" }, 400);
+        if (!(row.week >= 0 && row.week <= 8)) return out({ ok: false, error: "bad week" }, 400);
         const { error } = await db.from("coe_review_week").upsert(row, { onConflict: "review_id,week" }); if (error) throw error; return out({ ok: true, ...(await load(rv)) }); }
       if (op === "decide") { const rv = await getRv(+b.id); if (!rv || rv.status !== "sent") return out({ ok: false, error: "Not open." }, 400);
         const o = String(b.outcome || ""); if (!OUTCOMES[o]) return out({ ok: false, error: "Choose an outcome." }, 400);
