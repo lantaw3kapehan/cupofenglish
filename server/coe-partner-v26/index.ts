@@ -422,13 +422,13 @@ Deno.serve(async (req: Request) => {
           avgPackages: X.length ? sum((x) => x.n, X) / X.length : null, avgMonths: X.length ? sum((x) => x.months, X) / X.length : null }; };
       const years = [...new Set(S.map((x) => x.first.slice(0, 4)))].sort().map((y) => ({ year: y, ...stat(S.filter((x) => x.first.slice(0, 4) === y)) }));
       const dist: Record<string, number> = {}; S.forEach((x) => { const k = x.n >= 6 ? "6+" : String(x.n); dist[k] = (dist[k] || 0) + 1; });
-      return out({ ok: true, partner: A.display_name, approx: !!A.approx, labels: A.sales_labels, ambiguous: amb, sharedNames: Object.keys(nameCodes).filter((x) => nameCodes[x].length > 1).length, since: S.length ? S.map((x) => x.first).sort()[0] : null, all: stat(S), years, dist, unlinked, noSale: codes.filter((k) => !by[k] && !Object.keys(by).some((x) => x.startsWith("N:") && (nameCodes[x.slice(2)] || []).includes(k))).length,
+      return out({ ok: true, partner: A.display_name, portalStudents: codes.length, portalStudying: codes.filter((k) => L[k] && L[k].active).length, approx: !!A.approx, labels: A.sales_labels, ambiguous: amb, sharedNames: Object.keys(nameCodes).filter((x) => nameCodes[x].length > 1).length, since: S.length ? S.map((x) => x.first).sort()[0] : null, all: stat(S), years, dist, unlinked, noSale: codes.filter((k) => !by[k] && !Object.keys(by).some((x) => x.startsWith("N:") && (nameCodes[x.slice(2)] || []).includes(k))).length,
         dueNow: S.filter((x) => x.active && x.left != null && x.left <= 4).length,
         top: S.sort((a, b) => b.n - a.n || a.first.localeCompare(b.first)).slice(0, 12).map((x) => ({ name: x.name, cn: x.cn, code: x.code, n: x.n, first: x.first, months: x.months, active: x.active })) });
     }
     if (op === "pPay") {   // management preview of a login's Payments tab, plus the rows whose learner type is unclear
       const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id || "")).maybeSingle(); if (!A) return out({ ok: false, msg: "No such login" });
-      const P = await partnerSet(A.sources || []); return out({ ok: true, partner: A.display_name, approx: !!A.approx, labels: A.sales_labels, ambiguous: amb, sharedNames: Object.keys(nameCodes).filter((x) => nameCodes[x].length > 1).length, ...(await payFor(A, P, true)) });
+      const P = await partnerSet(A.sources || []); return out({ ok: true, partner: A.display_name, ...(await payFor(A, P, true)) });
     }
     // pActive
     const { error } = await db.from("partner_accounts").update({ active: !!b.active, updated_at: new Date().toISOString(), updated_by: s.name }).eq("id", String(b.id || ""));
