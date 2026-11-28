@@ -42,6 +42,13 @@ Deno.serve(async (req: Request) => {
   const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
   const { data: s } = await db.from("app_sessions").select("name,mode,role,exp").eq("token_hash", await sha(token)).maybeSingle();
   if (!s || new Date(s.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
+  // v33 (3125, 28 Nov · Misty "make google fully off"): glog = the app reports each call it still sends to Google (any signed-in user)
+  if (String(b.op || "") === "glog") {
+    const L = Array.isArray(b.calls) ? b.calls.slice(0, 40) : [];
+    const rows = L.map((c: any) => ({ who: String(s.name || "").slice(0, 60), mode: String(s.mode || "").slice(0, 20), fn: String(c && c.fn || "").slice(0, 60), kind: String(c && c.kind || "").slice(0, 20), view: String(c && c.view || "").slice(0, 60), n: Math.max(1, Math.min(999, Number(c && c.n) || 1)) })).filter((r: any) => r.fn);
+    if (rows.length) await db.from("coe_google_calls").insert(rows);
+    return out({ ok: true, n: rows.length });
+  }
   if (s.mode !== "mgmt") return out({ ok: false, error: "Management only" }, 403);
   const me = String(s.name || ""), pres = /pres/i.test(String(s.role || ""));
   const op = String(b.op || "");

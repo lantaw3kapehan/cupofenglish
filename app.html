@@ -2115,13 +2115,21 @@ const API_SAFE = /^(saveNote|markHomework|timeIn|classIn|timeOut|tNoteTag|tGoals
 let API_PEND = 0;
 window.addEventListener('beforeunload', ev => { if(API_PEND > 0){ ev.preventDefault(); ev.returnValue = 'Still saving'; return 'Still saving'; } });
 function apiOnce(fn, args, ms, rid){
+/* 3125 (Misty 28 Nov "make google fully off"): every call still sent to Google is reported (fn, read or save, screen) to coe_google_calls,
+   once a minute, so the last ones can be moved to the database before Google's script is switched off. */
+try{ const Q = window.__gq3125 = window.__gq3125 || {}, k = fn + '|' + (rid ? 'save' : 'read') + '|' + String(location.hash || '').slice(1, 40); Q[k] = (Q[k] || 0) + 1;
+  if(!window.__gf3125){ window.__gf3125 = 1; const fl = () => { try{ const q = window.__gq3125 || {}, ks = Object.keys(q); if(!ks.length || typeof TOKEN === 'undefined' || !TOKEN) return; window.__gq3125 = {};
+      const body = JSON.stringify({ op: 'glog', token: TOKEN, calls: ks.slice(0, 40).map(x => { const a = x.split('|'); return { fn: a[0], kind: a[1], view: a[2], n: q[x] }; }) });
+      if(document.visibilityState === 'hidden' && navigator.sendBeacon) navigator.sendBeacon('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-ops', new Blob([body], { type: 'text/plain' }));
+      else fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-ops', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body, keepalive: true }).catch(() => {}); }catch(e){} };
+    setInterval(fl, 60000); addEventListener('pagehide', fl); document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') fl(); }); } }catch(e){}
 try{ (window.__gc = window.__gc || []).push({ fn: fn, at: Math.round(performance.now()), view: String(location.hash || ''), st: String(new Error().stack || '').split('\n').slice(2, 9).map(l => l.replace(/\(?https?:[^ ]*\/(app[^:]*)?/, '').trim()).join(' < ') }); }catch(e){}   /* 3061: list of every Google call (proof for the switch-off) */
 const ac = ms && window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), ms) : 0;
 /* 3063 (Misty 26 Nov): the one door to Google. Management reads that the database answers never go to Google (no "check behind"); Google only
    for the few reads it still works out (SB_GONLY) or when the database has no answer at all. Saves are untouched (they carry a rid). */
 try{ if(!rid && typeof D !== 'undefined' && D && D.mgr && typeof SB_R !== 'undefined' && SB_R.test(fn) && !(typeof SB_GONLY !== 'undefined' && SB_GONLY.test(fn)) && typeof sbDocV === 'function' && typeof sbKey === 'function'){
   const g = () => fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({fn, args}), signal: ac ? ac.signal : undefined}).then(r => r.json()).finally(() => clearTimeout(tid));
-  return Promise.resolve(sbDocV(sbKey(fn, args), fn)).then(d => { if(d && d.data){ clearTimeout(tid); try{ window.__gc.pop(); (window.__gdb = window.__gdb || []).push(fn); }catch(e){} let x = d.data; try{ if(fn === 'mgmtQaForm' && typeof MO !== 'undefined' && MO && Array.isArray(MO.teachers) && MO.teachers.length){ x = Object.assign({}, x, { teachers: MO.teachers.map(t => String(t.name || '')).filter(Boolean).sort() }); } }catch(e){} return { ok: true, data: x }; }   /* 3064: QA form teachers from the database's Overview */ return g(); }, g); } }catch(e){}
+  return Promise.resolve(sbDocV(sbKey(fn, args), fn)).then(d => { if(d && d.data){ clearTimeout(tid); try{ window.__gc.pop(); (window.__gdb = window.__gdb || []).push(fn); const Q = window.__gq3125 || {}, k = fn + '|read|' + String(location.hash || '').slice(1, 40); if(Q[k] > 1) Q[k]--; else delete Q[k]; }catch(e){} let x = d.data; try{ if(fn === 'mgmtQaForm' && typeof MO !== 'undefined' && MO && Array.isArray(MO.teachers) && MO.teachers.length){ x = Object.assign({}, x, { teachers: MO.teachers.map(t => String(t.name || '')).filter(Boolean).sort() }); } }catch(e){} return { ok: true, data: x }; }   /* 3064: QA form teachers from the database's Overview */ return g(); }, g); } }catch(e){}
 return fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(rid ? {fn, args, rid} : {fn, args}), signal: ac ? ac.signal : undefined})
 .then(r => r.json()).finally(() => clearTimeout(tid));
 }
@@ -7557,7 +7565,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2681;
+const COE_V = 2682;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
