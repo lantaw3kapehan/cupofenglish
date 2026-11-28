@@ -7574,7 +7574,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2711;
+const COE_V = 2712;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23831,6 +23831,7 @@ go();
   const NTK1484 = 'coe.nt1484', ntWho1484 = () => { try{ return String((D && D.me && D.me.name) || '').toLowerCase(); }catch(x){ return ''; } };
   const ntSaved1484 = () => { try{ const c = JSON.parse(localStorage.getItem(NTK1484) || 'null'); return c && c.who && c.who === ntWho1484() && Array.isArray(c.list) ? c.list : null; }catch(x){ return null; } };
   const openN = () => (NT || ntSaved1484() || []).filter(n => !n.decided_at && !n.explain_at);
+  window.loadNT3155 = f => loadNT(f);
   async function loadNT(force){ if(isMgmt()) return; if(NT && !force && Date.now() - NTT < 5 * 60e3) return NT;
     try{ NT = (await call('list')).notices; NTT = Date.now(); try{ if(Array.isArray(NT) && ntWho1484()) localStorage.setItem(NTK1484, JSON.stringify({ who: ntWho1484(), list: NT.filter(n => !n.decided_at && !n.explain_at).slice(0, 5) })); }catch(y){} }catch(x){} paintNBan(); paintNBox(); return NT; }
   function paintNBan(){ if(isMgmt()) return; const v = $('v-today'); if(!v) return; let b = v.querySelector('.nt-ban'); const o = openN();
@@ -51188,6 +51189,32 @@ body.is-mgr #app #v-trials #tpList .rp-row:last-child{border-bottom:0!important}
         ev.target.textContent = 'Saving…'; const r = await call('pzSet', [code, f, t, n]).catch(() => null); if(!r || !r.ok) return draw((r && r.msg) || 'Not saved. Try again.');
         await LV78.loadPZ(); draw(); refresh(); }; };
     draw(); };
+})();
+</script>
+<script id="b3155">
+/* 3155 (Misty 28 Nov 15:57 "management edits … instantly reflect on teacher's login"): when management saves something a teacher sees,
+   the teacher's app picks it up within about 15 seconds instead of at the next 4-minute refresh. The database moves a change stamp
+   (sys:stamps, also for the app's own tables since Google is off); the teacher's app already checks it every ~15 s and now reloads what changed:
+   classes / students / leave / agree / reports / money / train → the teacher's data (Today, Schedule, Students, Pay, Growth, Contract);
+   msgs → Notices & requests and notices of breach; leave → leave list; money → pay. Never while typing or during a class video upload. */
+(function(){
+  const T = /^(classes|students|leave|agree|reports|money|train|msgs|talk)$/;
+  let due = {}, tm = 0, last = 0;
+  const typing = () => { const a = document.activeElement; return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !/^(button|checkbox|radio)$/.test(a.type)) || !!(a && a.isContentEditable); };
+  function run(){ tm = 0; if(typeof D === 'undefined' || !D || D.mgr) return;
+    if(typing() || window._vupBusy || document.hidden){ tm = setTimeout(run, 8000); return; }
+    const k = due; due = {}; last = Date.now();
+    try{ if(k.classes || k.students || k.leave || k.agree || k.reports || k.money || k.train) reload(false); }catch(e){}
+    try{ if(k.msgs){ if(typeof loadTMsgs === 'function') loadTMsgs(); if(window.loadNT3155) loadNT3155(true); } }catch(e){}
+    try{ if(k.leave && typeof loadTLeave === 'function') loadTLeave(); }catch(e){}
+    try{ if(k.money && typeof loadMyReady === 'function') loadMyReady(); }catch(e){}
+    try{ if(k.reports && typeof loadGrowth === 'function' && /^(growth|qa)$/.test(VIEW)) loadGrowth(true); }catch(e){}
+    try{ if(k.talk && VIEW === 'talk'){ const f = document.querySelector('#v-talk iframe'); if(f && f.contentWindow) f.contentWindow.location.reload(); } }catch(e){} }
+  function hook(){ const ap = window.coeStampApply; if(!ap || ap.__t3155) return !!ap;
+    const w = function(kinds){ try{ if(typeof D !== 'undefined' && D && !D.mgr){ const mine = (kinds || []).filter(x => T.test(x)); if(mine.length){ mine.forEach(x => due[x] = 1); if(!tm) tm = setTimeout(run, Math.max(1500, 20000 - (Date.now() - last))); } } }catch(e){}
+      return ap.apply(this, arguments); };
+    for(const x in ap) try{ w[x] = ap[x]; }catch(e){} w.__t3155 = 1; window.coeStampApply = w; return true; }
+  (function h(n){ if(!hook() && n < 40) setTimeout(() => h(n + 1), 1500); })(0);
 })();
 </script>
 </body>
