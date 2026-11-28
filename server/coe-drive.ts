@@ -18,6 +18,10 @@
 //       where the last one stopped (docs sys:books16); files not seen in a finished full scan get gone_at (never when the scan saw < 80%).
 //   rec8 {}       (server key) → coaching and training recordings copied into Drive (COACHINGS / TRAININGS next to STUDENT CLASS VIDEOS),
 //       16 MB pieces, resumable across runs (table coe_rec8); a file already in Drive with the same name counts as done.
+// 28 Nov · 3147 (Misty "yes let's all finish now"): the President's "first time or forgot password" without Google (was requestCode /
+//   setPassword in Apps Script; same rules and wording). No sign-in needed:
+//   requestCode { email, mode }            → 6-digit code by email (15 minutes, same code if asked again within the time); table coe_otp
+//   setPassword { email, code, pw, mode }  → checks the code (8 tries), sets the password (same hash as coe-pw / coe login), signs in
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -412,12 +416,57 @@ async function rec8Run() {
   return { ok: true, items: L.length, made, left, err };
 }
 
+
+// ───────────────────────── President: first time or forgot password (ported from requestCode / setPassword)
+async function pwHash(salt: string, pw: string, pep: string) {   // = coe-pw pwHash = coe login
+  const enc = new TextEncoder(), sb = enc.encode(salt);
+  let d = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(salt + "|" + pw + "|" + pep)));
+  for (let i = 0; i < 400; i++) { const x = new Uint8Array(d.length + sb.length); x.set(d); x.set(sb, d.length); d = new Uint8Array(await crypto.subtle.digest("SHA-256", x)); }
+  let bin = ""; d.forEach((c) => bin += String.fromCharCode(c)); return btoa(bin);
+}
+const pwBad = (email: string, pw: string) => pw.length < 8 ? "Use at least 8 characters." : (pw.toLowerCase() === email || /^(\d)\1+$/.test(pw) || /^(12345678|password|qwertyui)/i.test(pw)) ? "Choose a harder password." : "";
+const isMgrR = (r: string) => /ops|operation|manag|admin|president/i.test(r || ""), isPresR = (r: string) => /president/i.test(r || "");
+const accessErr = (u: any, mode: string) => mode === "mgmt" && !isMgrR(u.role) ? "This Gmail has teacher access only. Choose Teacher." : mode !== "mgmt" && !/teacher/i.test(u.role || "") ? "This Gmail is a management account. Choose Management." : "";
+async function requestCode(b: any) {
+  const email = String(b.email || "").trim().toLowerCase(), mode = b.mode === "mgmt" ? "mgmt" : "teacher";
+  const { data: u } = await db.from("auth_users").select("name,role").eq("email", email).maybeSingle();
+  if (!u) return { ok: false, msg: "This Gmail is not registered yet. Please message Ops." };
+  const bad = accessErr(u, mode); if (bad) return { ok: false, msg: bad };
+  if (!(mode === "mgmt" && isPresR(u.role))) return { ok: false, msg: mode === "mgmt" ? "Please ask the President for your password." : "Please message Ops for your password." };
+  const { data: o } = await db.from("coe_otp").select("code,exp,tries").eq("email", email).maybeSingle();
+  const keep = o && Date.parse(o.exp) > Date.now() + 120000, code = keep ? o.code : String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
+  await db.from("coe_otp").upsert({ email, code, exp: new Date(Date.now() + 15 * 60000).toISOString(), tries: keep ? o.tries || 0 : 0 });
+  await gmailSend(email, "CupOfEnglish app · your sign-in code " + code, '<div style="font-family:Rockwell,Georgia,serif;color:#2D2A4A"><p>Hi ' + dsEsc(u.name) + ',</p><p>Your sign-in code is</p><p style="font-size:28px;letter-spacing:6px;color:#5B9EA6"><b>' + code + '</b></p><p style="color:#9E9E9E">It expires in 15 minutes.</p></div>');
+  return { ok: true };
+}
+async function setPassword(b: any) {
+  const email = String(b.email || "").trim().toLowerCase(), code = String(b.code || "").replace(/\D/g, ""), pw = String(b.pw || ""), mode = b.mode === "mgmt" ? "mgmt" : "teacher";
+  const { data: o } = await db.from("coe_otp").select("code,exp,tries").eq("email", email).maybeSingle();
+  if (!o || Date.parse(o.exp) < Date.now()) return { ok: false, msg: "This code has expired. Tap Back and send a new code." };
+  if ((o.tries || 0) >= 8) return { ok: false, msg: "Too many tries. Tap Back and send a new code." };
+  if (o.code !== code) { await db.from("coe_otp").update({ tries: (o.tries || 0) + 1 }).eq("email", email); return { ok: false, msg: "That code does not match. Use the newest email from CupOfEnglish." }; }
+  const { data: u } = await db.from("auth_users").select("name,role").eq("email", email).maybeSingle(); if (!u) return { ok: false, msg: "This Gmail is not registered." };
+  const bad = accessErr(u, mode) || pwBad(email, pw); if (bad) return { ok: false, msg: bad };
+  const { data: sec } = await db.from("auth_secret").select("v").eq("k", "pepper").maybeSingle(); if (!sec || !sec.v) return { ok: false, msg: "Not saved. Try again." };
+  try { await db.rpc("coe_auth_unblock", { p_email: email }); } catch (_) { /* */ }
+  const salt = crypto.randomUUID(), hash = await pwHash(salt, pw, sec.v), now = new Date();
+  const { error } = await db.from("auth_pw").upsert({ email, salt, hash, at: now.getTime(), updated_at: now.toISOString(), src: "db", set_at: now.toISOString(), set_by: email + " (email code)" }, { onConflict: "email" });
+  if (error) return { ok: false, msg: "Not saved. Try again." };
+  await db.from("auth_fails").delete().eq("email", email); await db.from("coe_otp").delete().eq("email", email);
+  const token = crypto.randomUUID(), exp = new Date(Date.now() + 60 * 864e5).toISOString();
+  const { error: e2 } = await db.from("app_sessions").insert({ token_hash: await sha(token), email, name: u.name || "", role: u.role || "", mode, exp, src: "db", updated_at: now.toISOString() });
+  if (e2) return { ok: false, msg: "Password saved. Sign in with it now." };
+  return { ok: true, token, mode, via: "db" };
+}
+
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: h });
   const out = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...h, "Content-Type": "application/json" } });
   if (req.method !== "POST") return out({ ok: false, error: "POST only" }, 405);
   let b: any; try { b = JSON.parse(await req.text()); } catch { return out({ ok: false, error: "bad request" }, 400); }
+  if (b.op === "requestCode") { try { return out(await requestCode(b)); } catch (e) { console.warn("code", e); return out({ ok: false, msg: "The email could not be sent. Try again in a minute." }); } }
+  if (b.op === "setPassword") { try { return out(await setPassword(b)); } catch (e) { console.warn("setpw", e); return out({ ok: false, msg: "Not saved. Try again." }); } }
   // who: the server key (only the database knows it) or an app session
   let srv = false, pres = false, me = "", sess: any = null;
   const sk = req.headers.get("x-coe-srv") || "";

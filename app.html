@@ -715,6 +715,14 @@ html:root:root{
 })();
 </script>
 <script>window.COE_API = "https://script.google.com/a/cupofenglishatph.com/macros/s/AKfycbyqAYrjEQ3CdeTzogP8mZ8tMRx59nV0vMvOHtoQ0wudTBNNXV7YeE_mJPYcqIRhmRbu/exec";</script>
+<script>
+/* 3147 (Misty 28 Nov "yes let's all finish now"): Google's script is off. Nothing in the app sends a request to it any more; a screen
+   that would still have asked Google uses its saved copy (or says it cannot load) instead. The attempt is still counted in
+   coe_google_calls (3125), so anything left can be moved to the database. */
+(function(){ const f0 = window.fetch; if(!f0 || window.__goff3147) return; window.__goff3147 = 1;
+  window.fetch = function(u){ try{ const s = String(u && u.url || u || ''); if(window.COE_API && s.indexOf(window.COE_API) === 0) return Promise.reject(new TypeError('No connection to Google (switched off)')); }catch(e){}
+    return f0.apply(this, arguments); }; })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&amp;family=Fredoka&#43;One&amp;family=Inter:wght@400;500;600&amp;family=Noto&#43;Sans&#43;SC:wght@400;500;600&amp;display=optional">
 <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&amp;family=Fredoka&#43;One&amp;family=Inter:wght@400;500;600&amp;family=Noto&#43;Sans&#43;SC:wght@400;500;600&amp;display=optional" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka&#43;One&amp;display=swap" rel="stylesheet">
@@ -2300,7 +2308,7 @@ if(navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast('Copie
 let LG_BUSY = false;
 async function sendCode(){
 const em = $('em').value.trim().toLowerCase(); if(!em) return toast('Type your email'); if(LG_BUSY) return; LG_BUSY = true; toast('Sending your code…');
-const r = await api('requestCode', em, MODE).catch(()=>({ok:false,msg:'No connection. Check your internet and try again.'})); LG_BUSY = false;
+const r = await fetch(FAST_URL + '-drive', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'requestCode', email: em, mode: MODE }) }).then(x => x.json()).catch(()=>({ok:false,msg:'No connection. Check your internet and try again.'})); LG_BUSY = false;   /* 3147: the code comes from the database */
 if(!r.ok) return toast(r.msg); $('otp').value = '';
 store('set','coe.em.'+MODE, em);
 $('emShow').textContent = em; hide('lg1'); show('lg2'); $('otp').focus();
@@ -2309,7 +2317,7 @@ async function checkCode(){
 const code = $('otp').value.replace(/\D/g,''); if(code.length !== 6) return toast('Type the 6-digit code');
 const npw = $('pw2').value; if(npw.length < 8){ $('pw2').focus(); return toast('Choose a password · at least 8 characters'); }
 if(LG_BUSY) return; LG_BUSY = true; toast('Signing in…');            
-let r; for(let i = 0; i < 2; i++){ r = await api('setPassword', $('em').value.trim().toLowerCase(), code, npw, MODE).catch(()=>null); if(r) break; await new Promise(z => setTimeout(z, 800)); }
+let r; for(let i = 0; i < 2; i++){ r = await fetch(FAST_URL + '-drive', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'setPassword', email: $('em').value.trim().toLowerCase(), code, pw: npw, mode: MODE }) }).then(x => x.json()).catch(()=>null); if(r) break; await new Promise(z => setTimeout(z, 800)); }   /* 3147 */
 LG_BUSY = false; if(!r) return toast('No connection. Check your internet and tap Sign in again.');
 if(!r.ok) return toast(r.msg);
 $('pw2').value = ''; TOKEN = r.token; store('set', KEY_T, TOKEN); hide('login'); show('app'); skeleton(); reload(false);
@@ -7566,7 +7574,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2701;
+const COE_V = 2702;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
