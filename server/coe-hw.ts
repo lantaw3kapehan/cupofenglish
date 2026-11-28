@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-hw v14 (26 Nov · 3078y tenure op) · v13 (26 Nov · 3078 stickers by one fixed rule from 26 Nov 21:00) · v12 (25 Nov · 2873 stickers op returns the learner band) · v10 (24 Nov · 2864 voice notes on a check, stickers: a student's sticker collection) · v9 (22 Nov · 2729 where / whereGet: where the class ended and the homework page, per student) · v8 (21 Nov · 2556 trialMark k books) · v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
+// CupOfEnglish · coe-hw v15 (28 Nov · 3154 tenure returns recorded pauses) · v14 (26 Nov · 3078y tenure op) · v13 (26 Nov · 3078 stickers by one fixed rule from 26 Nov 21:00) · v12 (25 Nov · 2873 stickers op returns the learner band) · v10 (24 Nov · 2864 voice notes on a check, stickers: a student's sticker collection) · v9 (22 Nov · 2729 where / whereGet: where the class ended and the homework page, per student) · v8 (21 Nov · 2556 trialMark k books) · v7 (19 Nov · 2401 trialSteps, trialMark) · v6 (18 Nov · 2378 bonuses: My bonuses for teachers) · v5 (18 Nov · 2373: kinds writing (Writing correction) and given (Give homework); list { kind? }) · v4 (17 Nov 2026, 2308 · Misty: a screen in class where teachers paste the homework the student sent on WeChat,
 // correct it and share it). Used by the Homework check page (homework/index.html).
 // POST { token, op, ... }:
 //   me                       → { name, role, mgmt }
@@ -149,7 +149,9 @@ Deno.serve(async (req: Request) => {
       if (error) throw new Error(error.message);
       const d10 = (v: any) => { const x = String(v == null ? "" : v).trim(); return /^\d{4}-\d{2}-\d{2}/.test(x) ? x.slice(0, 10) : x; };
       const periods = (data || []).map((r: any) => { const row = Array.isArray(r.data) ? r.data.slice() : []; Object.entries(r.app || {}).forEach(([k, v]) => { row[+k] = v; }); return [d10(row[16]), d10(row[20]), d10(row[10])]; }).filter((p: any) => p[0] || p[2]);
-      return out({ ok: true, periods });
+      // v15 (3154, 28 Nov): pauses management recorded (Pauses on the student page) come too, so the teacher's card counts the same learning time
+      const { data: pz } = await db.from("coe_pauses").select("d_from,d_to").eq("code", code).order("d_from");
+      return out({ ok: true, periods, pauses: (pz || []).map((z: any) => [String(z.d_from), z.d_to ? String(z.d_to) : ""]) });
     }
     if (op === "stickers") {   // v10 (2864): a student's sticker collection · every praise stamp on every saved check (gentle fix-it stamps are not stickers)
       const code = String(b.code || "").toUpperCase(); if (!(await owns(code))) return out({ ok: false, error: "Not your student" }, 403);
