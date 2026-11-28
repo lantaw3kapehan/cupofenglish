@@ -272,13 +272,15 @@ async function availDocs() {
 //   (marked approx: a direct student with the same English name could be counted).
 async function accOf(b: any): Promise<any> {
   if (b.id) { const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id)).maybeSingle(); return A; }
-  const sources = (Array.isArray(b.sources) ? b.sources : []).map(norm).filter(Boolean).slice(0, 6); if (!sources.length) return null;
+  const sources = (Array.isArray(b.sources) ? b.sources : []).map(norm).filter(Boolean).slice(0, 300); if (!sources.length) return null;
   const key = (x: string) => x.split(/\s[–-]\s/).pop()!.replace(/^(ms|mr|mrs|dr|teacher)\.?\s+/i, "").trim().toLowerCase();
   const keys = [...new Set(sources.map(key))].filter((k) => k.length >= 3);
   const SL = await pages(() => db.from("coe_sales").select("partner").is("removed_at", null).order("day"));
   const all = [...new Set((SL as any[]).map((x) => norm(x.partner)).filter(Boolean))];
+  const general = (l: string) => !/\s-\s/.test(lbl(l)) || /^adult english - ph$/i.test(lbl(l));   // CupOfEnglish, IELTS, Adult English … (no partner name)
+  if (b.general) return { id: "", display_name: String(b.name || "CupOfEnglish"), sources, sales_labels: all.filter(general), pay_tracking: false, approx: false };   // v26h · 3172: direct and family-referred students
   let labels = all.filter((l) => keys.some((k) => lbl(l).includes(k))), approx = false;
-  if (!labels.length) { labels = all.filter((l) => !/\s-\s/.test(lbl(l)) || /^adult english - ph$/i.test(lbl(l))); approx = true; }
+  if (!labels.length) { labels = all.filter(general); approx = true; }
   return { id: "", display_name: String(b.name || sources[0]), sources, sales_labels: labels, pay_tracking: false, approx };
 }
 Deno.serve(async (req: Request) => {
