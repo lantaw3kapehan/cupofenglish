@@ -22,6 +22,8 @@
 //   setPassword in Apps Script; same rules and wording). No sign-in needed:
 //   requestCode { email, mode }            → 6-digit code by email (15 minutes, same code if asked again within the time); table coe_otp
 //   setPassword { email, code, pw, mode }  → checks the code (8 tries), sets the password (same hash as coe-pw / coe login), signs in
+//   mgmtRoadmap { args:[name] }            → { ok, type, b64 }  the COE-RM-… roadmap picture from Drive (management)
+//   mgmtTrialSentPic { args:[label, what] } → { ok, at }  "<what> sent <time> by <name>" on the trial row (TR-DATA copy, column AS)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -521,6 +523,26 @@ Deno.serve(async (req: Request) => {
       const x = (await flagsAll()).find((y) => y.id === id); if (!x) return out({ ok: false, msg: "Not found." });
       await patchVid(x.id, x.ds, { review: st, reviewed_by: me, review_note: note, reviewed_at: new Date().toISOString() });
       x.st = st; x.by = me; x.dat = Date.now(); x.dnote = note; await vidsBuild(); return out({ ok: true, item: x });
+    }
+    if (op === "mgmtRoadmap") {
+      if (!mgmt) return out({ ok: false, error: "Management only" }, 403);
+      const name = String(A[0] || "").trim(); if (!/^COE-RM-[A-Z0-9-]{2,20}$/.test(name)) return out({ ok: false, msg: "Bad name" });
+      let id = await memo("rm:" + name);
+      if (!id) { const L = await folders("(" + [".jpg", ".jpeg", ".png", ""].map((x) => "name = '" + name + x + "'").join(" or ") + ") and trashed = false"); if (!L.length) return out({ ok: false, missing: true }); id = L[0].id; await memoSet("rm:" + name, id); }
+      const r = await gApi("https://www.googleapis.com/drive/v3/files/" + id + "?alt=media&supportsAllDrives=true"); if (!r.ok) return out({ ok: false, missing: true });
+      const buf = new Uint8Array(await r.arrayBuffer()); let bin = ""; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+      return out({ ok: true, type: r.headers.get("content-type") || "image/jpeg", b64: btoa(bin) });
+    }
+    if (op === "mgmtTrialSentPic") {
+      if (!mgmt) return out({ ok: false, error: "Management only" }, 403);
+      const label = String(A[0] || ""), what = String(A[1] || "").slice(0, 60); if (!label || !what) return out({ ok: false });
+      const { data: R } = await db.from("sheet_rows").select("r,data").eq("tab", "TR-DATA").eq("data->>0", label).limit(1);
+      const row = R && R[0]; if (!row) return out({ ok: false, msg: "Trial report not found." });
+      const at = man().slice(0, 16).replace("T", " "), d = Array.isArray(row.data) ? row.data.slice() : []; while (d.length < 45) d.push("");
+      const old = String(d[44] || ""); d[44] = (old ? old + " · " : "") + what + " sent " + at + " by " + me;
+      const { error } = await db.from("sheet_rows").update({ data: d, updated_at: new Date().toISOString() }).eq("tab", "TR-DATA").eq("r", row.r);
+      if (error) return out({ ok: false, msg: "Not saved. Try again." });
+      return out({ ok: true, at });
     }
     return out({ ok: false, error: "unknown op" }, 400);
   } catch (e) { return out({ ok: false, error: String((e as Error).message || e).slice(0, 400) }, 500); }
