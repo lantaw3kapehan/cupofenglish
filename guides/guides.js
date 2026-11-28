@@ -1,88 +1,88 @@
 /* 2885 · Teacher guides (Misty 25 Nov): one place for every "how to".
    To add or update a guide, edit this list only. `updated` shows a "New" or "Updated" badge for 14 days. */
 window.COE_GUIDES=[
- {id:'app-update',title:'Updating the App',cat:'Getting Started',icon:'refresh',updated:'2026-11-28T14:30',mins:1,
+ {id:'app-update',cover:'img/g-update.webp',title:'Updating the App',cat:'Getting Started',icon:'refresh',updated:'2026-11-28T14:30',mins:1,
   sum:'Keep the app on the newest version. When Update ready shows at the top, tap it.',
   rule:'The app now runs fully on our own database. An old version of the app can fail to upload class videos, so update when you see Update ready.',
   parts:[
-   {h:'Update ready at the top',p:'When a new version is ready, a button shows at the top of the screen: Update ready · Update app (on a phone it shows only Update app). Tap it. The app reloads on the newest version in a few seconds.'},
+   {h:'Update ready at the top',p:'When a new version is ready, a button shows at the top of the screen: Update ready · Update app (on a phone it shows only Update app). Tap it. The app reloads on the newest version in a few seconds.',img:'img/g-update.webp'},
    {h:'Finish what you are typing first',p:'If a form is open with text in it, finish and save it before you update, so nothing you typed is lost.'},
    {h:'Not sure you have the newest version?',p:'Close the app tab or window completely and open the app again. It loads the newest version by itself.'},
    {h:'Something does not work after an update',list:['Close the app and open it again once','Check your internet','Still not working? Message Ops in Team Chat with a screenshot']}
   ]},
- {id:'sign-in',title:'Signing In and Your Password',cat:'Getting Started',icon:'key',updated:'2026-11-28T14:30',mins:1,
+ {id:'sign-in',cover:'img/g-signin.webp',title:'Signing In and Your Password',cat:'Getting Started',icon:'key',updated:'2026-11-28T14:30',mins:1,
   sum:'Sign in with your Gmail and your app password. Forgot it? Message Ops.',
   rule:'Your password is only for you. Never share it, and never sign in on someone else’s laptop and leave it open.',
   parts:[
-   {h:'Sign in',p:'Choose Teacher, type the Gmail registered with CupOfEnglish and your app password, then tap Sign in. You stay signed in on that device, so you rarely need to do this.'},
+   {h:'Sign in',p:'Choose Teacher, type the Gmail registered with CupOfEnglish and your app password, then tap Sign in. You stay signed in on that device, so you rarely need to do this.',img:'img/g-signin.webp'},
    {h:'Wrong password',p:'After 6 wrong tries the app waits 15 minutes before you can try again. Type slowly and check Caps Lock.'},
    {h:'Forgot your password or new to the app',p:'There is no “forgot password” email for teachers. Message Ops: Operations sets a new password for you and tells you privately.'},
    {h:'“This Gmail is not registered yet”',p:'Your Gmail is not in the app yet, or it is spelled differently. Message Ops with the Gmail you use.'},
    {h:'“Your app access was removed”',p:'Your access is off. Message Ops.'}
   ]},
- {id:'leave',title:'Filing a Leave (Notice of Unavailability)',cat:'Rules',icon:'calendar',updated:'2026-11-28T14:30',mins:2,
+ {id:'leave',cover:'img/g-leave-1.webp',title:'Filing a Leave (Notice of Unavailability)',cat:'Rules',icon:'calendar',updated:'2026-11-28T14:30',mins:2,
   sum:'For lessons already booked with you: file at least 4 hours before the first lesson, with proof.',
   rule:'Booked lessons are your commitment. Students book their slots ahead, so file a leave only for a real emergency or a valid reason. Every leave you file counts, whether it is approved, declined or still waiting.',
   parts:[
    {h:'Where to file it',p:'Today or Notices & requests › Request leave. The form is called Notice of unavailability.'},
-   {h:'Fill in the form',list:['Type: Sick, Emergency, Bereavement, Vacation, Personal or Other','From and To: the dates','How much: Whole day, or Some classes with the times','Booked lessons affected: the app lists them and shows how many hours’ notice each one has','Reason: what happened','Proof: the form tells you what to attach for the type you picked. If you cannot attach it yet, tick I’ll send it later']},
+   {h:'Fill in the form',list:['Type: Sick, Emergency, Bereavement, Vacation, Personal or Other','From and To: the dates','How much: Whole day, or Some classes with the times','Booked lessons affected: the app lists them and shows how many hours’ notice each one has','Reason: what happened','Proof: the form tells you what to attach for the type you picked. If you cannot attach it yet, tick I’ll send it later'],img:'img/g-leave-1.webp'},
    {h:'At least 4 hours’ notice (Clause 2.9)',red:1,p:'File at least 4 hours before the first booked lesson. Less than 4 hours’ notice brings a service credit for each lesson, as shown in the form, even with a valid reason. Operations moves or covers your lessons, and you see the status in your list.'},
-   {h:'Every request counts',red:1,p:'All leaves you file are counted by month: approved, declined or waiting. Only a request you cancel yourself does not count. More than 1 in a month is over the limit.'},
+   {h:'Every request counts',red:1,p:'All leaves you file are counted by month: approved, declined or waiting. Only a request you cancel yourself does not count. More than 1 in a month is over the limit.',img:'img/g-leave-2.webp'},
    {h:'The monthly marker',list:['Month 1 of 3 over the limit: a reminder','Month 2 of 3: a formal warning','Month 3 of 3: suspension, a pause in lesson offers of up to 30 days']},
    {h:'Free time with no booked lessons',p:'If you have no booked lessons on those dates, you do not need a leave. Close those hours in My open times instead (Clause 2.10).'}
   ]},
- {id:'time-in',title:'Time-in and Being on Time',cat:'Rules',icon:'clock',updated:'2026-11-28T14:30',mins:2,
+ {id:'time-in',cover:'img/g-timein-1.webp',title:'Time-in and Being on Time',cat:'Rules',icon:'clock',updated:'2026-11-28T14:30',mins:2,
   sum:'Time in 30 to 40 minutes before your first class, then tap I’m in for every class by its start.',
   rule:'Time in at least 30 minutes before your first class. Tap I’m in by the start of each class. There is no grace period.',
   parts:[
-   {h:'Time in on your class laptop',p:'Time-in opens 40 minutes before your first class and is on time until 30 minutes before. Open the app in Chrome or Edge on the laptop you teach on, tap Time in, then Share entire screen · Time in.'},
-   {h:'What the picture must show',list:['Your VooV class with your student','Your computer’s full date and time (Windows: bottom right · Mac: top right)','The LAN cable icon, not Wi-Fi. Turn Wi-Fi off during class','Allow your location when the app asks']},
+   {h:'Time in on your class laptop',p:'Time-in opens 40 minutes before your first class and is on time until 30 minutes before. Open the app in Chrome or Edge on the laptop you teach on, tap Time in, then Share entire screen · Time in.',img:'img/g-timein-1.webp'},
+   {h:'What the picture must show',list:['Your VooV class with your student','Your computer’s full date and time (Windows: bottom right · Mac: top right)','The LAN cable icon, not Wi-Fi. Turn Wi-Fi off during class','Allow your location when the app asks'],img:'img/g-timein-2.webp'},
    {h:'Teaching from the office',p:'Office computer and office internet are fine. The app records At the office when your location is within the office.'},
    {h:'I’m in for each class',p:'I’m in opens 5 minutes before each class (for example at :25 for a :30 class) and is on time until the class starts.'},
    {h:'If you were late: reply once, within 24 hours',red:1,p:'A late shows as a System notice on Today and under Pay › Punctuality. Tap Submit proof or reason, write what happened (with times if you can) and add a picture if you have one, for example a screenshot that shows the time or a power or internet outage notice. You can reply once. Management decides Excused, Unexcused or Waived. A late not excused or waived within 24 hours becomes Unexcused automatically.'}
   ]},
- {id:'notices',title:'Notices, Memos and Got It',cat:'Messages',icon:'bell',updated:'2026-11-28T14:30',mins:1,
+ {id:'notices',cover:'img/g-notices.webp',title:'Notices, Memos and Got It',cat:'Messages',icon:'bell',updated:'2026-11-28T14:30',mins:1,
   sum:'Formal notices and official memos come to Notices & requests. Tap Got it so management knows you read it.',
   rule:'Read every notice when it arrives and tap Got it.',
   parts:[
-   {h:'Where they are',p:'Notices & requests in the menu. A red number shows what you have not read yet. Everything stays there, so you can read it again later.'},
+   {h:'Where they are',p:'Notices & requests in the menu. A red number shows what you have not read yet. Everything stays there, so you can read it again later.',img:'img/g-notices.webp'},
    {h:'Tap Got it',p:'Got it tells management you have read and understood it. Management sees who has read each notice and who tapped Got it.'},
    {h:'Official memos',p:'An official memo has the CupOfEnglish memo layout, a memo number and a signature. It is part of your records, like your contract.'},
    {h:'Reply or ask',p:'If a notice asks for a reply, reply under it. For a new question, tap New message.'}
   ]},
- {id:'video-checks',title:'Video Checks: Explain a Flagged Video',cat:'Classes',icon:'video',updated:'2026-11-28T14:30',mins:1,
+ {id:'video-checks',cover:'img/g-vcheck.webp',title:'Video Checks: Explain a Flagged Video',cat:'Classes',icon:'video',updated:'2026-11-28T14:30',mins:1,
   sum:'Some uploads are checked. If your video is flagged, explain it on Today before management reviews it.',
   rule:'A check never blocks your upload. It only asks you to explain, so management can mark it OK.',
   parts:[
    {h:'What gets flagged',list:['A screen proof instead of a video','A video much shorter than the class (under 80% of the class time)','A video recorded before the class started','The same file as another class’s video']},
-   {h:'Where you see it',p:'Today › Video checks lists your flagged videos with their status: Explain this video, Waiting for review, Reviewed · OK, or Needs action (management will contact you).'},
+   {h:'Where you see it',p:'Today › Video checks lists your flagged videos with their status: Explain this video, Waiting for review, Reviewed · OK, or Needs action (management will contact you).',img:'img/g-vcheck.webp'},
    {h:'Explain it',p:'Tap Explain, choose the reason, and write what happened (required). You can change your explanation until management reviews it.'},
    {h:'Before you upload',p:'If the app sees a problem before the upload, it asks for the reason first, so the explanation goes in with the video.'}
   ]},
- {id:'class-notes',title:'Class Notes on the Right Student',cat:'Classes',icon:'book',updated:'2026-11-28T14:30',mins:1,
+ {id:'class-notes',cover:'img/g-notes.webp',title:'Class Notes on the Right Student',cat:'Classes',icon:'book',updated:'2026-11-28T14:30',mins:1,
   sum:'Open the book from the class you are teaching, and check the student’s name on the notes before you write.',
   rule:'Look at For / 学生 on the page before you write. The name must be the student in front of you.',
   parts:[
    {h:'Open the book for this class',p:'Open the book page from the class card (or the student’s Course book card) of the class you are teaching now. During a class the app puts that student’s name on the notes.'},
-   {h:'Check the name',red:1,p:'Class Notes / 课堂笔记 shows the teacher, the date and For / 学生. If the name is wrong, close the book and open it again from the right class card.'},
+   {h:'Check the name',red:1,p:'Class Notes / 课堂笔记 shows the teacher, the date and For / 学生. If the name is wrong, close the book and open it again from the right class card.',img:'img/g-notes.webp'},
    {h:'No name shown?',p:'If the app cannot tell which student it is, it leaves the name empty rather than guess. Open the book from the class card to fill it in.'},
    {h:'Your drawings are kept',p:'Notes you draw are kept on your laptop for the same day, even if you reopen the book.'}
   ]},
- {id:'my-contract',title:'My Contract: Read and Sign',cat:'My Records',icon:'file',updated:'2026-11-28T14:30',mins:2,
+ {id:'my-contract',cover:'img/g-contract.webp',title:'My Contract: Read and Sign',cat:'My Records',icon:'file',updated:'2026-11-28T14:30',mins:2,
   sum:'Your Agreement, Annex A and Addendum are in the app. Read them, sign in the app, and keep a printable copy.',
   rule:'You must respond within 14 days of receiving a document: sign it, or tell us if you have a question or do not agree.',
   parts:[
    {h:'Where it is',p:'Menu › My Contract shows Your documents, what was sent to you, what you signed and when.'},
-   {h:'Read, then sign',list:['Open the document and read it to the end','Type your full name, exactly as in your Agreement','Draw your signature with your finger or mouse','Tap Sign']},
+   {h:'Read, then sign',list:['Open the document and read it to the end','Type your full name, exactly as in your Agreement','Draw your signature with your finger or mouse','Tap Sign'],img:'img/g-contract.webp'},
    {h:'Not ready to sign?',p:'Tap I have a question, or I do not agree, and write why. Management replies in the app.'},
    {h:'Your copy',p:'Tap Print or save as PDF for your own copy. After the President countersigns, the notarized copy is attached here too.'},
    {h:'Memos in your contract',p:'Official memos that are part of your contract are listed under Memoranda named in your contract.'}
   ]},
- {id:'monthly-work',title:'Monthly Feedback and Peer Reviews',cat:'My Records',icon:'star',updated:'2026-11-28T14:30',mins:1,
+ {id:'monthly-work',cover:'img/g-monthly.webp',title:'Monthly Feedback and Peer Reviews',cat:'My Records',icon:'star',updated:'2026-11-28T14:30',mins:1,
   sum:'Find the monthly feedback and peer reviews you still owe, and send them on time.',
   rule:'Today › Needs your action lists what is due. Clear it before the month closes.',
   parts:[
-   {h:'Monthly feedback',p:'Students › Feedback due shows each student whose monthly feedback is due. Open the student, fill in the feedback form and send it.'},
+   {h:'Monthly feedback',p:'Students › Feedback due shows each student whose monthly feedback is due. Open the student, fill in the feedback form and send it.',img:'img/g-monthly.webp'},
    {h:'Peer reviews',p:'If you are asked to review a colleague’s class, it shows on Today › Needs your action and at the top of Growth › Peer feedback with an Open button. Watch the class, then fill in and send the form.'},
    {h:'Your own feedback from management',p:'When your QA feedback is ready, open it, read it, and tap I have read and understood my feedback.'}
   ]},
