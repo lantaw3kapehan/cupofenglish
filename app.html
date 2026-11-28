@@ -7574,7 +7574,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2708;
+const COE_V = 2709;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -24225,8 +24225,13 @@ go();
     for(const k in o){ const x = o[k]; if(x.done && x.day === D.today && !(D.vids[k] && D.vids[k].url)) D.vids[k] = { url: x.done, at: x.at }; } }catch(e){} }
   const _rt = window.renderToday; if(_rt) window.renderToday = function(){ merge(); return _rt.apply(this, arguments); };
   let BUSY = null;
+  /* 3153 (Misty 28 Nov 15:05): Rose's upload failed 3 times on an old version (it still called Google's script). The app now updates
+     BEFORE a class video upload: a newer version already known → reload now; otherwise it checks once more right before the upload starts. */
+  const newer3153 = async () => { try{ if((typeof newerSaved === 'function' && newerSaved()) || window._updNet || window._upd) return true; const v = await fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '0'); return +v > COE_V; }catch(e){ return false; } };
+  const upd3153 = () => { try{ toast('Updating the app first · then tap Upload video again', 6000); }catch(e){} setTimeout(() => location.reload(), 1200); };
   window.vidUp = id => {
     if(((typeof D !== 'undefined' && D && D.vids) || {})[id] && D.vids[id].url) return toast('This class already has its video · one file per class');
+    if(!BUSY && ((typeof newerSaved === 'function' && newerSaved()) || window._updNet || window._upd)) return upd3153();
     if(BUSY) return toast(BUSY === id ? 'This video is still uploading' : 'Another class video is still uploading · wait for it to finish');
     { const dp = window.__vidDrop; window.__vidDrop = null; if(dp && dp.id === id && Date.now() - dp.t < 3 * 6e4) return go(id, dp.f); }   /* 780: dragged onto the class */
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'video/*,image/*,.mp4,.mov,.m4v,.mkv,.webm,.jpg,.jpeg,.png,.heic';
@@ -24250,6 +24255,7 @@ go();
       const pre = window.vidPre ? await vidPre(c, f) : {}; if(!pre) throw Object.assign(new Error('cancel'), { cancel: 1 });   /* 650: checks + reason before upload */
       show('<b>Preparing the upload…</b><div class="small" style="opacity:.8">' + who + ' · ' + esc(f.name) + ' · ' + mb(f.size) + '</div>', 'wait');
       if(!(s && s.url && !s.done && s.size === f.size && s.fn === f.name && s.lm === f.lastModified && Date.now() - s.t < 5.5 * 36e5)) s = null;
+      if(!s && await newer3153()){ upd3153(); throw Object.assign(new Error('cancel'), { cancel: 1 }); }   /* 3153 */
       if(!s){
         let r; try{ r = await apiNow('tVidStart', TOKEN, { id: c.id, start: c.start }, { name: f.name, size: f.size, type: f.type || '', dur: pre.dur || 0, lm: f.lastModified || 0, why: pre.why || '', note: pre.note || '' }); }
         catch(e){ throw new Error(/saved on this device|signal|connection/i.test(String(e && e.message)) ? 'Weak internet · the upload did not start. Try again when the signal is better.' : (e && e.message) || 'The upload did not start'); }
