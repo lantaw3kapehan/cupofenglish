@@ -11,6 +11,8 @@
 //   tVidFlags   {}                       → { ok, list }   teacher: my video checks (60 days)
 //   tVidExplain { args:[id, why, note] } → { ok }
 //   mgmtVidFlags {}                      → { ok, list }   ·   mgmtVidFlagSet { args:[id, st, note] } → { ok, item }
+// 28 Nov · 3145 (Misty "yes"): the 21:00 "tomorrow's classes" emails, sent from works@ through Gmail (was DAYSCHEDULE in Apps Script):
+//   day_schedule { dry? } (server key) → each teacher gets her own classes; Operations gets the whole day. Once per day (docs sys:dayschedule).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -27,7 +29,7 @@ export async function gToken(sub = AS): Promise<string> {
   const raw = Deno.env.get("GOOGLE_SA_JSON"); if (!raw) throw new Error("GOOGLE_SA_JSON is not set");
   const k = JSON.parse(raw), now = Math.floor(Date.now() / 1000);
   const head = b64u(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const body = b64u(JSON.stringify({ iss: k.client_email, sub, scope: "https://www.googleapis.com/auth/drive", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 }));
+  const body = b64u(JSON.stringify({ iss: k.client_email, sub, scope: "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/gmail.send", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 }));
   const pem = String(k.private_key).replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
   const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
   const key = await crypto.subtle.importKey("pkcs8", der, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
@@ -267,6 +269,40 @@ async function patchVid(id: string, ds: string | null, patch: any) {
   await db.from("coe_class_videos").update(patch).eq("event_id", id);
 }
 
+
+// ───────────────────────── tomorrow's classes by email (ported unchanged from DAYSCHEDULE.gs)
+const DS_MGMT = ["operations@cupofenglishatph.com"];
+const dsEsc = (x: unknown) => String(x == null ? "" : x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" } as any)[c]);
+const dsRows = (L: any[]) => L.map((c) => '<tr><td style="padding:6px 10px;border-bottom:1px solid #eee"><b>' + c.start + "</b>–" + c.end + '</td><td style="padding:6px 10px;border-bottom:1px solid #eee">' +
+  dsEsc(c.student) + (c.type ? " (" + dsEsc(c.type) + ")" : "") + '<br><span style="color:#777">' + dsEsc([c.code, c.book].filter(Boolean).join(" · ")) + '</span></td><td style="padding:6px 10px;border-bottom:1px solid #eee">' + dsEsc(c.meet || "") + "</td></tr>").join("");
+const dsTable = (L: any[]) => '<table style="border-collapse:collapse;font:14px Arial,sans-serif"><tr style="background:#f3f2f8"><th align="left" style="padding:6px 10px">Time (Manila)</th><th align="left" style="padding:6px 10px">Student</th><th align="left" style="padding:6px 10px">Meeting ID</th></tr>' + dsRows(L) + "</table>";
+const DS_FOOT = '<p style="color:#777;font:12px Arial,sans-serif">This is your backup copy of tomorrow\'s schedule, sent outside the app. The app is still the main record: changes made after this email (cancellations, new classes) show only in the app. If the app is down, send your time-in screenshot to the teachers\' WeChat group and Operations will enter it later.</p>';
+const DSW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], DSM = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const dsLabel = (day: string) => { const d = new Date(day + "T12:00:00Z"); return DSW[d.getUTCDay()] + " " + d.getUTCDate() + " " + DSM[d.getUTCMonth()] + " " + d.getUTCFullYear(); };
+const b64 = (s: string) => { const u = new TextEncoder().encode(s); let bin = ""; for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(bin); };
+async function gmailSend(to: string, subject: string, html: string) {
+  const mime = ["From: CupOfEnglish <" + AS + ">", "To: " + to, "Subject: =?UTF-8?B?" + b64(subject) + "?=", "MIME-Version: 1.0", "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", b64(html).replace(/.{76}/g, "$&\r\n")].join("\r\n");
+  const raw = b64(mime).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const r = await gApi("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ raw }) });
+  if (!r.ok) throw new Error("Gmail " + r.status + " " + (await r.text()).slice(0, 200));
+}
+async function daySchedule(dry: boolean) {
+  const { data: d, error } = await db.rpc("coe_day_schedule"); if (error || !d || !d.day) throw new Error("The database gave no schedule");
+  const { data: was } = await db.from("docs").select("data").eq("key", "sys:dayschedule").maybeSingle();
+  if (!dry && was && was.data && was.data.day === d.day) return { ok: true, skipped: "already sent for " + d.day };
+  const label = dsLabel(d.day), T = d.teachers || [], sent: string[] = [], fail: string[] = [];
+  const mails: { to: string; subject: string; html: string }[] = [];
+  T.forEach((t: any) => { if (!t.email || !t.classes || !t.classes.length) return;
+    mails.push({ to: t.email, subject: "Your classes tomorrow, " + label + " (" + t.classes.length + ")",
+      html: '<p style="font:14px Arial,sans-serif">Hi Teacher ' + dsEsc(t.teacher) + ", here are your classes for <b>" + label + "</b>.</p>" + dsTable(t.classes) + DS_FOOT }); });
+  const all = T.map((t: any) => '<h3 style="font:600 15px Arial,sans-serif;margin:18px 0 6px">Teacher ' + dsEsc(t.teacher) + " · " + t.classes.length + "</h3>" + dsTable(t.classes)).join("");
+  DS_MGMT.forEach((to) => mails.push({ to, subject: "All classes tomorrow, " + label + " (" + d.total + ")", html: '<p style="font:14px Arial,sans-serif"><b>' + label + "</b> · " + d.total + " classes · " + T.length + " teachers.</p>" + all + DS_FOOT }));
+  if (dry) return { ok: true, dry: true, day: d.day, mails: mails.map((m) => ({ to: m.to, subject: m.subject, bytes: m.html.length })) };
+  for (const m of mails) { try { await gmailSend(m.to, m.subject, m.html); sent.push(m.to); } catch (e) { fail.push(m.to + ": " + String((e as Error).message || e).slice(0, 120)); } }
+  await db.from("docs").upsert({ key: "sys:dayschedule", scope: "pres", data: { day: d.day, at: Date.now(), sent, fail }, updated_at: new Date().toISOString() });
+  return { ok: !fail.length, day: d.day, sent: sent.length, fail };
+}
+
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: h });
@@ -303,6 +339,7 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, files: got, list: l.error || undefined });
     }
     const A = Array.isArray(b.args) ? b.args : [];
+    if (op === "day_schedule") { if (!srv) return out({ ok: false, error: "server only" }, 403); return out(await daySchedule(!!b.dry)); }
     if (op === "vids_build") { if (!srv && !pres) return out({ ok: false, error: "Only the President can do this." }, 403); return out({ ok: true, ...(await vidsBuild()) }); }
     if (!sess) return out({ ok: false, error: "AUTH" }, 401);
     const mgmt = sess.mode === "mgmt";
