@@ -11,6 +11,7 @@
 //   tVidFlags   {}                       → { ok, list }   teacher: my video checks (60 days)
 //   tVidExplain { args:[id, why, note] } → { ok }
 //   mgmtVidFlags {}                      → { ok, list }   ·   mgmtVidFlagSet { args:[id, st, note] } → { ok, item }
+//   pzList {} → { ok, map: {CODE: [[from, to, note, id, by]]} } · pzSet { args:[code, from, to, note] } · pzDel { args:[id] }   (3154, management: pauses in learning)
 // 28 Nov · 3145 (Misty "yes"): the 21:00 "tomorrow's classes" emails, sent from works@ through Gmail (was DAYSCHEDULE in Apps Script):
 //   day_schedule { dry? } (server key) → each teacher gets her own classes; Operations gets the whole day. Once per day (docs sys:dayschedule).
 // 28 Nov · 3146 (Misty "let's finish those google jobs now"), the last two Google night jobs:
@@ -505,6 +506,16 @@ Deno.serve(async (req: Request) => {
     if (op === "vids_build") { if (!srv && !pres) return out({ ok: false, error: "Only the President can do this." }, 403); return out({ ok: true, ...(await vidsBuild()) }); }
     if (!sess) return out({ ok: false, error: "AUTH" }, 401);
     const mgmt = sess.mode === "mgmt";
+    // 3154 (Misty 28 Nov, Shirui): a pause in learning that the records cannot show, kept per student (table coe_pauses); management only
+    if (op === "pzList") { if (!mgmt) return out({ ok: false, error: "Management only" }, 403);
+      const { data } = await db.from("coe_pauses").select("id,code,d_from,d_to,note,by_name,created_at").order("d_from"); const map: Record<string, any[]> = {};
+      (data || []).forEach((r: any) => { (map[r.code] = map[r.code] || []).push([r.d_from, r.d_to || "", r.note || "", r.id, r.by_name || ""]); }); return out({ ok: true, map }); }
+    if (op === "pzSet") { if (!mgmt) return out({ ok: false, error: "Management only" }, 403);
+      const code = String(A[0] || "").trim().toUpperCase(), f = String(A[1] || "").slice(0, 10), t = String(A[2] || "").slice(0, 10), note = String(A[3] || "").slice(0, 300);
+      if (!/^ST-\d{4}-\d{3}$/.test(code) || !/^\d{4}-\d{2}-\d{2}$/.test(f) || (t && !/^\d{4}-\d{2}-\d{2}$/.test(t)) || (t && t < f)) return out({ ok: false, msg: "Check the dates." });
+      const { error } = await db.from("coe_pauses").insert({ code, d_from: f, d_to: t || null, note, by_name: me }); if (error) return out({ ok: false, msg: "Not saved. Try again." }); return out({ ok: true }); }
+    if (op === "pzDel") { if (!mgmt) return out({ ok: false, error: "Management only" }, 403);
+      const { error } = await db.from("coe_pauses").delete().eq("id", +A[0] || 0); return out({ ok: !error }); }
     if (op === "tVidStart") return out(await vidStart(sess, A[0], A[1]));
     if (op === "tVidDone") return out(await vidDone(sess, A[0], A[1]));
     if (op === "tVidList") return out(await vidList(sess));

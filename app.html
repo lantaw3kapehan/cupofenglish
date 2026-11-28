@@ -7574,7 +7574,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2709;
+const COE_V = 2710;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -47590,6 +47590,10 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
         P.sort((x, y) => x[0] - y[0]); if(!P.length) return null; }
       else P = R.map((x, i) => { const nx = R[i + 1]; let b = x.e && x.e >= x.a ? x.e : nx ? nx.a : td; if(b > td) b = td; return [x.a, b, !x.e && !nx]; });
       const M = []; P.forEach(p => { const l = M[M.length - 1]; if(l && p[0] - l[1] < 45 * DAY){ if(p[1] > l[1]) l[1] = p[1]; l[2] = l[2] || p[2]; } else M.push(p.slice()); });
+      /* 3154 (Misty 28 Nov, Shirui): a pause recorded by management (Pauses on the student page) is cut out of the learning time, even when the records cannot show it */
+      { const PZ = (this.PZ && this.PZ[k]) || []; PZ.forEach(z => { const a = pdx(z[0]), b = z[1] ? pdx(z[1]) : td; if(!a || !b || b <= a) return; const N = [];
+          M.forEach(p => { if(b <= p[0] || a >= p[1]){ N.push(p); return; } if(a > p[0]) N.push([p[0], a, false]); if(b < p[1]) N.push([b, p[1], p[2]]); }); M.splice(0, M.length, ...N); });
+        if(!M.length) return null; }
       const pauses = M.slice(1).map((p, i) => [M[i][1], p[0]]), last = M[M.length - 1], active = last[2] || td - last[1] < 45 * DAY;
       const at = days => { let left = days; for(const p of M){ const len = p[1] - p[0]; if(left <= len) return new Date(p[0].getTime() + left); left -= len; } return null; };
       const learn = M.reduce((t, p) => t + (p[1] - p[0]), 0);
@@ -47597,11 +47601,17 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
       const nx = n ? [n[0], n[1], active ? new Date(td.getTime() + (n[0] * MO - learn)) : null, n[2], n[3], n[4], n[5], n[6], n[7]] : null;
       return { since: fromDB && R[0].a < M[0][0] && M[0][0] - R[0].a < 45 * DAY ? R[0].a : M[0][0], periods: M, pauses, active,   /* 3116: "since" is the first class in DATABASE when the lessons follow it */ learnMo: Math.floor(learn / MO + 1e-6), done, cur: done[done.length - 1] || null, nx, guess, byLessons: !!(this.LM && fromDB) }; },
     /* 3115: months with lessons held from Jan 2026, per student (management) · kept 6 hours */
+    /* 3154: recorded pauses, per student {CODE: [[from, to, note, id, by]]} · kept 6 hours, refreshed with the lessons */
+    PZ: (() => { try{ const c = JSON.parse(localStorage.getItem('coe.pz3154') || 'null'); return c && Date.now() - c.at < 6 * 36e5 ? c.map : null; }catch(e){ return null; } })(),
+    loadPZ(){ if(typeof D === 'undefined' || !D || !D.mgr || typeof TOKEN === 'undefined' || !TOKEN) return Promise.resolve(this.PZ);
+      return fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-drive', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'pzList', args: [] }) }).then(r => r.json())
+        .then(r => { if(r && r.ok && r.map){ const ch = JSON.stringify(r.map) !== JSON.stringify(this.PZ || {}); this.PZ = r.map; try{ localStorage.setItem('coe.pz3154', JSON.stringify({ at: Date.now(), map: r.map })); }catch(e){} if(ch) try{ window.dispatchEvent(new Event('lm3115')); }catch(e){} } return this.PZ; }).catch(() => this.PZ); },
     LM: (() => { try{ const c = JSON.parse(localStorage.getItem('coe.lm3115c') || 'null'); return c && Date.now() - c.at < 6 * 36e5 ? c.map : null; }catch(e){ return null; } })(),
     loadLM(){ if(this._lmP) return this._lmP; if(typeof D === 'undefined' || !D || !D.mgr || typeof TOKEN === 'undefined' || !TOKEN) return Promise.resolve(this.LM);
+      const pz = this.loadPZ();   /* 3154 */
       this._lmP = fetch('https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-ops', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: 'learnmo' }) }).then(r => r.json())
         .then(r => { if(r && r.ok && r.map){ const ch = JSON.stringify(r.map) !== JSON.stringify(this.LM); this.LM = r.map; try{ localStorage.setItem('coe.lm3115c', JSON.stringify({ at: Date.now(), map: r.map })); }catch(e){} if(ch) try{ window.dispatchEvent(new Event('lm3115')); }catch(e){} } return this.LM; })
-        .catch(() => this.LM).finally(() => { setTimeout(() => { this._lmP = null; }, 30 * 6e4); }); return this._lmP; },
+        .catch(() => this.LM).then(v => pz.then(() => v, () => v)).finally(() => { setTimeout(() => { this._lmP = null; }, 30 * 6e4); }); return this._lmP; },
     moTxt(mo){ const y = Math.floor(mo / 12), m = mo % 12; return mo < 1 ? 'under a month' : (y ? y + ' year' + (y > 1 ? 's' : '') : '') + (y && m ? ', ' : '') + (m ? m + ' month' + (m > 1 ? 's' : '') : ''); },
     len(first){ const d = new Date(String(first).slice(0, 10) + 'T00:00:00+08:00'); if(isNaN(d)) return ''; const n = new Date(); let mo = (n.getFullYear() - d.getFullYear()) * 12 + n.getMonth() - d.getMonth(); if(n.getDate() < d.getDate()) mo--; mo = Math.max(0, mo);
       const y = Math.floor(mo / 12), m = mo % 12; return mo < 1 ? 'under a month' : (y ? y + ' year' + (y > 1 ? 's' : '') : '') + (y && m ? ', ' : '') + (m ? m + ' month' + (m > 1 ? 's' : '') : ''); } };
@@ -49353,7 +49363,7 @@ body.is-mgr #sheet #sheetBody .t46 .hd h1 .nm71:not(#q1):not(#q2):not(#q3):not(#
     ms.push({ c: '#0e6f68', t: 'Today', d: dd(new Date().toISOString()), today: 1 });   /* lower case: css3046 recolours any [style*="0E6F68"] in these cards */
     if(T78 && T78.nx){ if(T78.nx[2]){ const dn = Math.ceil((T78.nx[2].getTime() - now) / 864e5); ms.push({ c: T78.nx[4], t: T78.nx[1], d: 'in ' + dn + ' day' + (dn === 1 ? '' : 's'), nx: 1, ms: 1, tip: 'Next: ' + T78.nx[3] + ' on ' + D0(kd(T78.nx[2])) }); } else ms.push({ c: T78.nx[4], t: T78.nx[1], d: 'when classes continue', nx: 1, ms: 1, tip: 'Next: ' + T78.nx[3] }); }
     const ti = ms.findIndex(m => m.today), pc = ms.length > 1 ? ti / (ms.length - 1) * 100 : 100;
-    const jy = '<div class="cd72 jy72"><div class="top"><b>With us ' + E((first && window.LV78 ? LV78.len(first) : '') || withUs || 'under a month') + '</b><span>' + (since ? 'since ' + since : '') + (T78 && T78.pauses && T78.pauses.length ? ' · ' + LV78.moTxt(T78.learnMo) + ' of learning' : '') + (usedU ? ' · ' + usedU.toLocaleString('en-US') + ' units done on this package' : '') + '</span>' + (T78 && T78.cur ? '<button type="button" class="pic72 c78" onclick="cert78(\'t\')">' + LV78.CUP('#fff', 15) + 'Milestone Certificate</button>' : '') + '<button type="button" class="pic72 wk c78" onclick="cert78(\'s\')">Sticker Certificate</button></div><div class="ln78"><div class="fill" style="width:' + pc + '%"></div>' + ms.map((m, i) => '<div class="p78' + (m.ms ? ' ms' : '') + (m.nx ? ' nx' : '') + (i === 0 ? ' f' : i === ms.length - 1 ? ' l' : '') + '" style="--c:' + m.c + ';left:' + (ms.length > 1 ? i / (ms.length - 1) * 100 : 0) + '%"' + (m.tip ? ' title="' + E(m.tip) + '"' : '') + '><i>' + (m.ms ? LV78.CUP(m.c, 15) : '') + '</i><b>' + E(m.t) + '</b><span>' + E(m.d) + '</span></div>').join('') + '</div>'
+    const jy = '<div class="cd72 jy72"><div class="top"><b>With us ' + E((first && window.LV78 ? LV78.len(first) : '') || withUs || 'under a month') + '</b><span>' + (since ? 'since ' + since : '') + (T78 && T78.pauses && T78.pauses.length ? ' · ' + LV78.moTxt(T78.learnMo) + ' of learning' : '') + (usedU ? ' · ' + usedU.toLocaleString('en-US') + ' units done on this package' : '') + '</span>' + (D && D.mgr ? '<button type="button" class="pz54" onclick="event.stopPropagation();pz3154()">Pauses' + (window.LV78 && LV78.PZ && LV78.PZ[String(STU.code).toUpperCase()] ? ' · ' + LV78.PZ[String(STU.code).toUpperCase()].length : '') + '</button>' : '') + (T78 && T78.cur ? '<button type="button" class="pic72 c78" onclick="cert78(\'t\')">' + LV78.CUP('#fff', 15) + 'Milestone Certificate</button>' : '') + '<button type="button" class="pic72 wk c78" onclick="cert78(\'s\')">Sticker Certificate</button></div><div class="ln78"><div class="fill" style="width:' + pc + '%"></div>' + ms.map((m, i) => '<div class="p78' + (m.ms ? ' ms' : '') + (m.nx ? ' nx' : '') + (i === 0 ? ' f' : i === ms.length - 1 ? ' l' : '') + '" style="--c:' + m.c + ';left:' + (ms.length > 1 ? i / (ms.length - 1) * 100 : 0) + '%"' + (m.tip ? ' title="' + E(m.tip) + '"' : '') + '><i>' + (m.ms ? LV78.CUP(m.c, 15) : '') + '</i><b>' + E(m.t) + '</b><span>' + E(m.d) + '</span></div>').join('') + '</div>'
       + (T78 ? '<div class="gl78">' + LV78.T.slice(0, 6).map(t => { const on = T78.done.some(d => d[0] === t[0]), nx = !on && T78.nx && T78.nx[0] === t[0], cu = on && T78.cur && T78.cur[0] === t[0]; return '<span class="t78' + (on ? ' on' : nx ? ' nx' : '') + (cu ? ' cu' : '') + '" style="--c:' + t[3] + '" title="' + E(t[2] + ' · ' + t[6] + ' ' + t[7] + ' · ' + t[1] + ' of learning · certificate' + (on ? ' · reached' : nx ? ' · next' : '')) + '">' + LV78.CUP(on ? '#fff' : t[3], 16) + '<b>' + E(t[2]) + '</b><em>' + E(t[6]) + ' · ' + E(t[1]) + '</em>' + (cu ? '<i class="now78">Current</i>' : '') + '</span>'; }).join('') + '</div>' : '') + '</div>';
     const L = kv(/lessons left/i), CE = kv(/cefr/i), LA = kv(/latest/i), ST = kv(/sticker|k-st/i);
     const mStart = new Date(Date.parse(new Date().toISOString().slice(0, 7) + '-01T00:00:00+08:00')); const thisM = C.filter(c => !c.cancelled && Date.parse(c.start) >= mStart.getTime() && Date.parse(c.start) < now).length;
@@ -51145,6 +51155,39 @@ body.is-mgr #app #v-trials #tpList .rp-row:last-child{border-bottom:0!important}
       return b2.apply(this, arguments); };
     for(const k in b2) try{ w2[k] = b2[k]; }catch(e){}
     window.apiNow = w2; try{ apiNow = w2; }catch(e){} }
+})();
+</script>
+<script id="b3154">
+/* 3154 (Misty 28 Nov 15:21, Shirui "she paused for some time"): management records a pause in learning that the records cannot show.
+   Management student page › With us card › Pauses. The pause is cut out of the learning time everywhere (milestones, certificates, To do › Celebrate). */
+(function(){
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-drive', MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const E = x => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fd = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? +m[3] + ' ' + MN[+m[2] - 1] + ' ' + m[1] : ''; };
+  const call = (op, args) => fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op, args }) }).then(r => r.json());
+  const st = document.createElement('style'); st.textContent = '.pz54{all:unset;box-sizing:border-box;margin-left:8px;height:26px;padding:0 10px;border-radius:999px;border:1px solid #DCD9E6;font:600 12.5px Inter,system-ui,sans-serif;color:#4C4868;cursor:pointer;display:inline-flex;align-items:center}.pz54:hover{border-color:#0E6F68;color:#0E6F68}'
+    + '#pz54o{position:fixed;inset:0;background:rgba(20,18,40,.45);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px}#pz54o .bx{background:#fff;border-radius:16px;padding:20px 22px;width:100%;max-width:460px;max-height:90vh;overflow:auto;font:14px/1.5 Inter,system-ui,sans-serif;color:#2B2253}'
+    + '#pz54o h3{margin:0 0 4px;font-size:18px}#pz54o .mt{color:#6F6B85;font-size:13px}#pz54o .it{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #EEEDF3}#pz54o .it .g{flex:1}#pz54o label{display:block;font-size:12.5px;font-weight:600;color:#5B5870;margin:12px 0 4px}'
+    + '#pz54o input{box-sizing:border-box;width:100%;height:40px;border:1px solid #DCD9E6;border-radius:10px;padding:0 10px;font:inherit}#pz54o .r2{display:flex;gap:10px}#pz54o .r2>div{flex:1}#pz54o .bt{all:unset;box-sizing:border-box;height:38px;padding:0 16px;border-radius:10px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center}'
+    + '#pz54o .pr{background:#0E6F68;color:#fff}#pz54o .sc{border:1px solid #DCD9E6;color:#4C4868}#pz54o .rm{all:unset;cursor:pointer;color:#B42318;font-size:13px;font-weight:600}#pz54o .ft{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}#pz54o .er{color:#B42318;font-size:13px;margin-top:8px}';
+  document.head.appendChild(st);
+  function refresh(){ try{ window.dispatchEvent(new Event('lm3115')); }catch(e){} try{ if(typeof STU !== 'undefined' && STU && STU.code && typeof openStudent === 'function') openStudent(STU.code); }catch(e){} }
+  window.pz3154 = async function(){ if(typeof STU === 'undefined' || !STU || !STU.code || !(D && D.mgr)) return; const code = String(STU.code).toUpperCase();
+    let o = document.getElementById('pz54o'); if(o) o.remove(); o = document.createElement('div'); o.id = 'pz54o'; document.body.appendChild(o);
+    o.addEventListener('click', e => { if(e.target === o) o.remove(); });
+    const draw = (msg) => { const L = (LV78.PZ && LV78.PZ[code]) || [];
+      o.innerHTML = '<div class="bx"><h3>Pauses in learning</h3><div class="mt">For a break the lesson records cannot show (for example before 2026). The time is taken out of learning time, milestones and certificates.</div>'
+        + (L.length ? L.map(z => '<div class="it"><div class="g"><b>' + E(fd(z[0])) + ' to ' + E(z[1] ? fd(z[1]) : 'now') + '</b>' + (z[2] ? '<div class="mt">' + E(z[2]) + '</div>' : '') + '<div class="mt">Added by ' + E(z[4] || '') + '</div></div><button type="button" class="rm" data-id="' + E(z[3]) + '">Remove</button></div>').join('') : '<div class="it"><div class="g mt">No pauses recorded.</div></div>')
+        + '<div class="r2"><div><label>Paused from</label><input type="date" id="pz54f"></div><div><label>Back on (empty if still paused)</label><input type="date" id="pz54t"></div></div>'
+        + '<label>Note</label><input type="text" id="pz54n" maxlength="300" placeholder="For example: parent said she stopped for the school term">'
+        + (msg ? '<div class="er">' + E(msg) + '</div>' : '') + '<div class="ft"><button type="button" class="bt sc" data-x="1">Close</button><button type="button" class="bt pr" data-s="1">Add Pause</button></div></div>';
+      o.querySelector('[data-x]').onclick = () => o.remove();
+      o.querySelectorAll('[data-id]').forEach(b => b.onclick = async () => { b.textContent = 'Removing…'; const r = await call('pzDel', [b.dataset.id]).catch(() => null); if(!r || !r.ok) return draw('Not removed. Try again.'); await LV78.loadPZ(); draw(); refresh(); });
+      o.querySelector('[data-s]').onclick = async ev => { const f = o.querySelector('#pz54f').value, t = o.querySelector('#pz54t').value, n = o.querySelector('#pz54n').value.trim();
+        if(!f) return draw('Choose the date the pause started.'); if(t && t < f) return draw('The return date is before the start.');
+        ev.target.textContent = 'Saving…'; const r = await call('pzSet', [code, f, t, n]).catch(() => null); if(!r || !r.ok) return draw((r && r.msg) || 'Not saved. Try again.');
+        await LV78.loadPZ(); draw(); refresh(); }; };
+    draw(); };
 })();
 </script>
 </body>
