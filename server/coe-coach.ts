@@ -46,7 +46,9 @@ Deno.serve(async (req: Request) => {
         const n = String(r.note || "").replace(/\n§(coach|video|file|mins):.*/g, ""), m = n.split(" — ");
         return { id: r.id, teacher: r.teacher, done_at: r.done_at, topic: m[0] || "Coaching", notes: m.slice(1).join(" — "), mins: +((String(r.note).match(/\n§mins:(\d+)/) || [])[1] || 0) || null };
       });
-      return out({ ok: true, who, upcoming: U.data || [], given, trains: TR.data || [] });
+      // 3174 · coachings this teacher receives (invited), for her Today
+      const { data: RC } = await db.from("coe_training_sessions").select("id,starts_at,mins,facilitator,invited,note,meet_url,status").eq("training_id", "coach").eq("status", "scheduled").contains("invited", [who]).gte("starts_at", new Date(Date.now() - 12 * 36e5).toISOString()).order("starts_at");
+      return out({ ok: true, who, upcoming: U.data || [], given, trains: TR.data || [], receiving: RC || [] });
     }
     if (a === "mytrials") {
       const who = (mgmt && b.as ? str(b.as, 60) : me).toLowerCase(), since = new Date(Date.now() + 8 * 3600e3 - 45 * 864e5).toISOString().slice(0, 10);
