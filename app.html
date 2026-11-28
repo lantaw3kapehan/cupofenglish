@@ -719,6 +719,16 @@ html:root:root{
 /* 3147 (Misty 28 Nov "yes let's all finish now"): Google's script is off. Nothing in the app sends a request to it any more; a screen
    that would still have asked Google uses its saved copy (or says it cannot load) instead. The attempt is still counted in
    coe_google_calls (3125), so anything left can be moved to the database. */
+/* 3157 (Misty 28 Nov 16:42): the database answers that a screen reads (coe-lists, the coe docs/calc/fresh reads) are tried a second time after a
+   short pause when the first try fails (network drop, a cold start, a 5xx). Before Google was switched off a failed read fell back to Google; now it
+   would only show the saved copy, so one quiet retry keeps the screen fresh. Saves are never repeated here. */
+(function(){ const f0 = window.fetch; if(!f0 || window.__rt3157) return; window.__rt3157 = 1;
+  const RD = /"op":"(docs|calc|fresh|payready|tpayready|trialfus|peer|trials|reports|reportswait|leave|tleave|schedule|tmsgs|tab|teacher|bootstrap|classinfo|fixignored|qalast|learnmo|tenure|stickers|pzList|tVidList|tVidFlags|mgmtVidFlags|mgmtRoadmap)"/;
+  window.fetch = function(u, o){ let s = ''; try{ s = String(u && u.url || u || ''); }catch(e){}
+    const body = o && typeof o.body === 'string' ? o.body : '';
+    if(!/supabase\.co\/functions\/v1\/coe/.test(s) || !RD.test(body) || (o && o.signal)) return f0.apply(this, arguments);
+    const self = this, args = arguments, again = () => new Promise(z => setTimeout(z, 800)).then(() => f0.apply(self, args));
+    return f0.apply(this, arguments).then(r => r.status >= 500 ? again() : r, again); }; })();
 (function(){ const f0 = window.fetch; if(!f0 || window.__goff3147) return; window.__goff3147 = 1;
   window.fetch = function(u){ try{ const s = String(u && u.url || u || ''); if(window.COE_API && s.indexOf(window.COE_API) === 0) return Promise.reject(new TypeError('No connection to Google (switched off)')); }catch(e){}
     return f0.apply(this, arguments); }; })();
@@ -7574,7 +7584,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2714;
+const COE_V = 2715;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
