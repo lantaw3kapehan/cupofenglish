@@ -1,3 +1,4 @@
+// v26d (28 Nov 2026 · 3164): shared names matched by management (sys:partnerlink) or by student code year; ops pLinks / pLinkSet.
 // v26 (28 Nov 2026 · 3163, Misty 18:53): management op pRenew = renewal rate of a partner's students since they started. Rollback: v25 @ 3e9c3ce.
 // v24 (21 Nov 2026 · 2649, Misty): payments on the same day: the latest confirmation first (Eleven 1775 above Monica 1774).
 // v21 (4 Nov 2026): sales from the database table coe_sales (exact sheet cells in raw), brought up to date first.
@@ -175,8 +176,8 @@ async function payFor(acc: any, PS: Record<string, { code: string; name: string;
   const out: any[] = [], unclear: any[] = [], dropped: any[] = []; let src = "SALES";
   if (labels.size) {
     try { await db.rpc("coe_money_sync"); } catch (_) { /* the 5-minute job keeps the table close */ }   // v21
-    const [SA, { data: LK }, { data: FX }] = await Promise.all([pages(() => db.from("coe_sales").select("sheet_r,day,invoice,pkg,free,partner,method,rmb,raw,updated_at").is("removed_at", null).order("sheet_r", { nullsFirst: true }).order("created_at")).then((L: any[]) => L.map((x: any) => ({ r: x.sheet_r || 0, updated_at: x.updated_at,
-      data: x.raw || [String(x.day) + "T00:00:00", x.invoice, x.pkg == null ? "" : Number(x.pkg), x.free == null ? 0 : Number(x.free), x.partner || "", x.method || "", x.rmb == null ? "" : Number(x.rmb)] })))   /* v21 (4 Nov): the database table coe_sales (each sheet line's exact cells kept in raw; a sale the app just made has no sheet row yet) */, db.from("docs").select("data,updated_at").eq("key", "sys:pkglink").maybeSingle(), db.from("docs").select("data").eq("key", "sys:salesfix").maybeSingle()]);
+    const [SA, { data: LK }, { data: FX }, { data: PLD }] = await Promise.all([pages(() => db.from("coe_sales").select("sheet_r,day,invoice,pkg,free,partner,method,rmb,raw,updated_at").is("removed_at", null).order("sheet_r", { nullsFirst: true }).order("created_at")).then((L: any[]) => L.map((x: any) => ({ r: x.sheet_r || 0, updated_at: x.updated_at,
+      data: x.raw || [String(x.day) + "T00:00:00", x.invoice, x.pkg == null ? "" : Number(x.pkg), x.free == null ? 0 : Number(x.free), x.partner || "", x.method || "", x.rmb == null ? "" : Number(x.rmb)] })))   /* v21 (4 Nov): the database table coe_sales (each sheet line's exact cells kept in raw; a sale the app just made has no sheet row yet) */, db.from("docs").select("data,updated_at").eq("key", "sys:pkglink").maybeSingle(), db.from("docs").select("data").eq("key", "sys:salesfix").maybeSingle(), db.from("docs").select("data").eq("key", "sys:partnerlink").maybeSingle()]);
     // 28 Oct (Luna) · the SALES copy is synced only now and then; management's sys:pkglink.sales is refreshed on every save, so a sale it
     //   knows about wins for that sheet row when the copy's row is blank or older (same column layout as the sheet: date, invoice, pkg, free, label, method)
     const LKat = Date.parse(String((LK as any)?.data?.at || (LK as any)?.updated_at || "")) || 0, byR: Record<number, any> = {}; SA.forEach((x: any) => { byR[x.r] = x; });
@@ -199,11 +200,19 @@ async function payFor(acc: any, PS: Record<string, { code: string; name: string;
     ((((FX as any)?.data?.fixes) || []) as any[]).filter((f: any) => f && !f.undone && f.set).forEach((f: any) => { const k = wk(ymd(f.d), String(f.who || ""), f.pkg, f.free);
       SA.forEach((x: any) => { const d0 = ymd(c(x.data || [], 0)); if (!d0 || wk(d0, c(x.data, 1), c(x.data, 2), c(x.data, 3)) !== k) return; x.data = [...x.data];
         if (f.set.inv) x.data[1] = String(f.set.inv); if (f.set.label) x.data[4] = String(f.set.label); }); });
+    const PL: Record<string, string> = ((PLD as any)?.data?.links) || {};
     const link: Record<number, string> = {}; (((LK as any)?.data?.act) || []).forEach((a: any) => { if (+a.link > 0 && PS[norm(a.c).toUpperCase()]) link[+a.link] = norm(a.c).toUpperCase(); });
     const one = async (x: any) => { const r = x.data || [], L = lbl(c(r, 4)), date = ymd(c(r, 0)); if (!labels.has(L) || !date) return;
       const pkg = Number(c(r, 2)) || 0, free = Number(c(r, 3)) || 0; if (!pkg && !free) return;
       const names = whoOf(String(c(r, 1))).map((n) => { const cs = byName[nk(n)] || []; return { name: cap(n.replace(/\.(pdf|png|jpe?g)$/i, "")), code: cs.length === 1 ? cs[0] : "" }; });
       if (x.lr && link[x.lr]) { const lc = link[x.lr], i = names.findIndex((n) => n.name.toLowerCase() === PS[lc].name.toLowerCase()); if (i >= 0) names[i].code = lc; else if (names.length <= 1) names.splice(0, 1, { name: PS[lc].name, code: lc }); }
+      // v26d (28 Nov · 3164): a name shared by several of her students. 1) management's match (docs sys:partnerlink, by sale ref + name);
+      //   2) otherwise the student code year: a child whose code is from a later year (ST-2026-…) cannot have paid in 2024, so when only
+      //   one same-name child was already a student that year, that child is meant (marked auto). Still unclear → no code (left out).
+      const ref0 = "SALES:" + (await sha([0, 1, 2, 3, 4].map((j) => r[j] == null ? "" : typeof r[j] === "object" ? JSON.stringify(r[j]) : String(r[j])).join("|"))).slice(0, 32);
+      names.forEach((n: any) => { if (n.code) return; const cs = byName[nk(n.name)] || []; if (cs.length < 2) return; const m = PL[ref0 + "|" + nk(n.name)];
+        if (m && cs.includes(m)) { n.code = m; n.how = "matched"; return; }
+        const ok = cs.filter((k) => +k.slice(3, 7) <= +date.slice(0, 4)); if (ok.length === 1) { n.code = ok[0]; n.how = "auto"; return; } n.cands = ok.length ? ok : cs; });
       // Misty 15:35 · a SALES label alone never qualifies: the row must name at least one of this partner's own students
       // (same membership as the student list: DATABASE + ACTIVE agree, plus Always include, minus Always exclude)
       if (!names.some((n) => n.code || (byName[nk(n.name)] || []).length > 0)) { if (withWhy) dropped.push({ date, invoice: String(c(r, 1)), lessons: pkg, label: norm(c(r, 4)), sheetRow: x.r }); return; }
@@ -213,7 +222,7 @@ async function payFor(acc: any, PS: Record<string, { code: string; name: string;
       if (program === "adult" && ages.length && ages.every((a) => a < 18)) { program = "unclear"; learner = "unclear"; }
       const amount = program !== "unclear" && program !== "other" ? (pkg ? rate(program, pkg, date) : 0) : null;
       const mineName = (n: any) => n.code || (byName[nk(n.name)] || []).length > 0;   // only names of this partner's own students
-      const row: any = { date, names: names.map((n) => mineName(n) ? { name: n.code ? PS[n.code].name : n.name, cn: n.code ? PS[n.code].cn : "", code: n.code } : { name: "", cn: "", code: "", hidden: true }), lessons: pkg, free, learner, program, amount,
+      const row: any = { date, names: names.map((n: any) => mineName(n) ? { name: n.code ? PS[n.code].name : n.name, cn: n.code ? PS[n.code].cn : "", code: n.code, ...(withWhy && n.how ? { how: n.how } : {}), ...(withWhy && n.cands ? { cands: n.cands } : {}) } : { name: "", cn: "", code: "", hidden: true }), lessons: pkg, free, learner, program, amount,
         why: amount != null ? "" : program === "unclear" ? "unclear" : program === "other" ? "program" : "norate" };
       if (withWhy) { const d = pkg ? rateRow(program, pkg, date, false) : null; row.derived = d && d.confirmed === false ? Number(d.amount) : null; row.rmb = c(r, 6) === "" ? null : Number(c(r, 6)); row.label = norm(c(r, 4)); }
       row._n = Number((/(\d{3,})/.exec(String(c(r, 1))) || [])[1]) || 0;   // v24 (21 Nov · 2649): confirmation number, newest first within a day
@@ -267,7 +276,7 @@ Deno.serve(async (req: Request) => {
   const ip = String(req.headers.get("x-forwarded-for") || "").split(",")[0].trim().slice(0, 60);
 
   // ───────── management: create / reset / deactivate partner logins ─────────
-  if (/^p(List|Save|Active|Rates|RateSet|Labels|Pay|Conflicts|PaySet|PayAll|PayTrack|Over|OverSet|DiscSet|Renew)$/.test(op)) {
+  if (/^p(List|Save|Active|Rates|RateSet|Labels|Pay|Conflicts|PaySet|PayAll|PayTrack|Over|OverSet|DiscSet|Renew|Links|LinkSet)$/.test(op)) {
     const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
     const { data: s } = await db.from("app_sessions").select("name,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
     if (!s || new Date(s.exp).getTime() < Date.now() || s.mode !== "mgmt") return out({ ok: false, error: "AUTH" }, 401);
@@ -360,6 +369,24 @@ Deno.serve(async (req: Request) => {
       if (status) { const { error } = await db.from("partner_payments").insert(refs.map((r) => ({ partner, ref: r, sale_date: byRef[r].date, sales_row: byRef[r].sheetRow || null, status, note, marked_by: s.name })));
         if (error) return out({ ok: false, msg: "Not saved" }); }
       return out({ ok: true, n: refs.length });
+    }
+    if (op === "pLinks" || op === "pLinkSet") {   // v26d · 3164: match a shared-name payment to the right child (management)
+      const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id || "")).maybeSingle(); if (!A) return out({ ok: false, msg: "No such login" });
+      if (op === "pLinkSet") { const ref = String(b.ref || ""), nm = String(b.name || "").toLowerCase().replace(/[\s.]+/g, ""), code = norm(b.code).toUpperCase();
+        if (!/^SALES:[0-9a-f]{32}$/.test(ref) || !nm || (code && !/^ST-\d{4}-\d{3}$/.test(code))) return out({ ok: false, msg: "Bad request" });
+        const { data: D0 } = await db.from("docs").select("data").eq("key", "sys:partnerlink").maybeSingle(); const d: any = (D0 as any)?.data || {}; d.links = d.links || {}; d.log = (d.log || []).slice(-400);
+        if (code) d.links[ref + "|" + nm] = code; else delete d.links[ref + "|" + nm]; d.log.push({ ref, name: nm, code, by: s.name, at: new Date().toISOString() });
+        const { error } = await db.from("docs").upsert({ key: "sys:partnerlink", scope: "mgmt", data: d, updated_at: new Date().toISOString() }, { onConflict: "key" }); if (error) return out({ ok: false, msg: "Not saved" });
+      }
+      const P = await partnerSet(A.sources || []), pay = await payFor(A, P, true), codes = Object.keys(P), L = await lessonsOf(codes);
+      const { data: PK } = await db.from("coe_packages").select("code,buy").in("code", codes.length ? codes : ["-"]).is("removed_at", null);
+      const buy: Record<string, string> = {}; (PK || []).forEach((p: any) => { if (!buy[p.code] || p.buy < buy[p.code]) buy[p.code] = p.buy || ""; });
+      const info = (k: string) => ({ code: k, name: P[k] ? P[k].name : "", cn: P[k] ? P[k].cn : "", studying: !!(L[k] && L[k].active), since: buy[k] || "" });
+      const todo: any[] = [], auto: any[] = [];
+      (pay.rows || []).forEach((r: any) => (r.names || []).forEach((n: any) => { if (n.hidden) return;
+        if (n.cands) todo.push({ ref: r.ref, date: r.date, lessons: r.lessons, free: r.free, name: n.name, others: (r.names || []).filter((x: any) => x !== n && !x.hidden).map((x: any) => x.name), cands: n.cands.map(info) });
+        else if (n.how) auto.push({ ref: r.ref, date: r.date, lessons: r.lessons, name: n.name, how: n.how, chosen: info(n.code), cands: ((P && Object.keys(P).filter((k) => P[k].name.toLowerCase() === String(n.name).toLowerCase())) || []).map(info) }); }));
+      return out({ ok: true, partner: A.display_name, todo, auto });
     }
     if (op === "pRenew") {   // v26 (28 Nov · 3163, Misty 18:53): renewal rate of a partner's students since they started (management only)
       const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id || "")).maybeSingle(); if (!A) return out({ ok: false, msg: "No such login" });
