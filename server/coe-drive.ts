@@ -4,6 +4,13 @@
 // POST { token | (header x-coe-srv), op, ... }
 //   probe       {}                → { ok, user, quota }                 (President / server key: is the setup working?)
 //   script_src  {}                → { ok, files }                       (server key: copy the Apps Script source into table coe_gas_src)
+// Class videos (28 Nov · 3142 · the Apps Script versions moved here unchanged in what they do; month-DAILY links dropped: sheets are frozen):
+//   tVidStart   { args:[ev{id,start,teacher?}, file{name,size,type,dur,lm,why,note,test}] } → { ok, url, key, name, chunk }
+//   tVidDone    { args:[key, fileId] }   → { ok, url, name, late, flags, note }   (checks, late case, coe_class_videos + coe_class_video_days, sys:vids)
+//   tVidList    {}                       → { ok, list }   teacher: classes of the last 7 days still without a video
+//   tVidFlags   {}                       → { ok, list }   teacher: my video checks (60 days)
+//   tVidExplain { args:[id, why, note] } → { ok }
+//   mgmtVidFlags {}                      → { ok, list }   ·   mgmtVidFlagSet { args:[id, st, note] } → { ok, item }
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -35,6 +42,231 @@ export async function gApi(url: string, init: RequestInit = {}) {
   return fetch(url, { ...init, headers: h });
 }
 
+
+// ───────────────────────── class videos (ported from Apps Script: tVidStart · VIDSTUDENT08 · VIDKEY26 · tVidDone · vidCheck_ · penalty_)
+const VIDUP_FROM = "2026-10-22";
+const FOLDER = "application/vnd.google-apps.folder";
+const lc = (x: unknown) => String(x || "").trim().toLowerCase();
+const man = (t = Date.now()) => new Date(t + 8 * 3600e3).toISOString();          // Manila wall clock as ISO (no zone)
+const ymd = (d: string | number | Date) => man(new Date(d).getTime()).slice(0, 10);
+const MONS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const dMon = (t: number) => { const s = man(t); return +s.slice(8, 10) + " " + MONS[+s.slice(5, 7) - 1] + " " + s.slice(11, 16); };
+const kindOf = (title: string) => { const t = String(title || "").replace(/\s+X$/i, ""); return /trial/i.test(t) || /-TC$/i.test(t) ? "trial" : (/\bsub\b/i.test(t) || /-SC$/i.test(t)) ? "sub" : ""; };
+const clean = (s: string) => String(s || "").replace(/^copy of\s+/i, "").replace(/\s+/g, "-").replace(/[^A-Za-z0-9一-鿿-]+/g, "").replace(/-{2,}/g, "-").replace(/^-|-$/g, "");
+function makeName(o: any) {
+  const t = clean(o.teacher), bk = clean(o.book), x = o.ext ? "." + String(o.ext).replace(/^\./, "").toLowerCase() : "", pf = o.proof ? "-SCREENPROOF" : "", ts = o.test ? "-TEST" : "";
+  if (o.trial) return [o.iso, o.code || "TRIAL", clean(o.who), bk, t].filter(Boolean).join("-") + pf + ts + x;
+  return [o.code, clean(o.who), o.iso, bk, t].filter(Boolean).join("-") + pf + ts + x;
+}
+const q = (s: string) => s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+async function gJson(url: string, init: RequestInit = {}) { const r = await gApi(url, init); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error("Drive " + r.status + " " + JSON.stringify(j).slice(0, 200)); return j; }
+async function folders(query: string) {
+  const out: any[] = []; let pt = "";
+  do { const j = await gJson("https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent(query) + "&fields=nextPageToken,files(id,name,parents)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true" + (pt ? "&pageToken=" + pt : ""));
+    out.push(...(j.files || [])); pt = j.nextPageToken || ""; } while (pt && out.length < 5000);
+  return out;
+}
+async function mkFolder(name: string, parent: string) { const j = await gJson("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, mimeType: FOLDER, parents: [parent] }) }); return String(j.id); }
+async function memo(k: string) { const { data } = await db.from("docs").select("data").eq("key", "sys:drive:" + k).maybeSingle(); return data && data.data && data.data.id ? String(data.data.id) : ""; }
+async function memoSet(k: string, id: string) { await db.from("docs").upsert({ key: "sys:drive:" + k, scope: "pres", data: { id, at: Date.now() }, updated_at: new Date().toISOString() }); }
+async function rootId() {   // STUDENT CLASS VIDEOS (the folder Apps Script made on 8 Nov), remembered
+  const m = await memo("vid8root"); if (m) return m;
+  const L = await folders(`name='STUDENT CLASS VIDEOS' and mimeType='${FOLDER}' and trashed=false`);
+  if (L.length !== 1) throw new Error("STUDENT CLASS VIDEOS folder: found " + L.length);
+  await memoSet("vid8root", L[0].id); return L[0].id;
+}
+async function child(parent: string, name: string) {
+  const L = await folders(`'${parent}' in parents and name='${q(name)}' and mimeType='${FOLDER}' and trashed=false`);
+  return L.length ? L[0].id : await mkFolder(name, parent);
+}
+async function studentFolder(code: string, student: string, book: string) {   // "CODE | NAME | BOOK" in STUDENT CLASS VIDEOS (book matched as before)
+  const root = await rootId(), B = String(book || "").replace(/[\s-]+/g, "").toUpperCase();
+  const all = await folders(`'${root}' in parents and mimeType='${FOLDER}' and trashed=false`);
+  const L = all.map((f) => { const nm = String(f.name || "").trim(), c = (nm.match(/ST-\d{4}-\d{3}/i) || [])[0]; return c && c.toUpperCase() === code ? { id: f.id, book: String(nm.split("|")[2] || "").replace(/\s+/g, "").toUpperCase() } : null; }).filter(Boolean) as any[];
+  const hit = L.find((x) => B && (x.book === B || (x.book && (x.book.indexOf(B) === 0 || B.indexOf(x.book) === 0)))) || (!B && L[0]);
+  if (hit) return hit.id;
+  return await mkFolder(code + " | " + String(student || "").toUpperCase() + " | " + B, root);
+}
+async function classOf(ev: any) {   // the class from the class table (the calendar)
+  const st = new Date(ev && ev.start); if (isNaN(st.getTime())) return null;
+  const ds = ymd(st), ids = [ev && ev.id].map((x) => String(x || "").split("|")[0].trim()).filter(Boolean);
+  const { data } = await db.from("classes").select("data").eq("day", ds).limit(600);
+  const all = (data || []).map((r: any) => r.data || {});
+  return all.find((e: any) => e.id === ev.id) || all.find((e: any) => ids.indexOf(String(e.id || "").split("|")[0]) > -1) || null;
+}
+const bookOf = (e: any) => String(e.book || "").split(/\s*,\s*/).filter((p) => p && !/^(pre[-\s]?)?[abc][12]\+?$/i.test(p))[0] || "";
+const num = (x: unknown) => { const n = parseFloat(String(x == null ? "" : x).replace(/[^0-9.\-]/g, "")); return isNaN(n) ? 0 : n; };
+
+async function vidStart(u: any, ev: any, file: any) {
+  ev = ev || {}; file = file || {};
+  const mgmt = u.mode === "mgmt";
+  { const st = new Date(ev.start); if (!mgmt && !isNaN(st.getTime()) && st.getTime() - Date.now() > 15 * 6e4) return { ok: false, msg: "This class has not started yet. Upload its video after the class." }; }
+  const size = Math.floor(Number(file.size) || 0), fname = String(file.name || ""), mime = String(file.type || "").slice(0, 60) || (/\.mov$/i.test(fname) ? "video/quicktime" : "video/mp4");
+  if (!(size > 0)) return { ok: false, msg: "Choose the class video file." };
+  const img = /^image\//.test(mime) || /\.(jpe?g|png|heic|heif|webp)$/i.test(fname);
+  if (!img && !/^video\//.test(mime) && !/\.(mp4|mov|m4v|mkv|webm|avi)$/i.test(fname)) return { ok: false, msg: "Choose the class video (MP4, MOV…) or a screen proof picture." };
+  const e = await classOf(ev); if (!e) return { ok: false, msg: "This class was not found in the calendar. Refresh and try again." };
+  const teacher = String(mgmt && ev.teacher ? ev.teacher : u.name).trim(), tl = teacher.toLowerCase();
+  if (!mgmt && (e.teachers || []).map(lc).indexOf(tl) < 0) return { ok: false, msg: "This class is not on your schedule." };
+  const st = new Date(e.start), ds = ymd(st), code = String(e.code || "").toUpperCase(), book = bookOf(e), k = kindOf(e.title);
+  if (!file.test) {   // one file per class: the database decides (the video recorded for this class on this day)
+    const ids = [ev.id, e.id].map((x) => String(x || "").split("|")[0].trim()).filter((x, i, a) => x && a.indexOf(x) === i);
+    for (const id of ids) for (const t of ["coe_class_videos", "coe_class_video_days"]) {
+      const { data, error } = await db.from(t).select("name").eq("event_id", id).eq("day", ds).limit(1);
+      if (error) return { ok: false, msg: "The database did not answer. Try again in a minute." };
+      if (data && data.length) return { ok: false, msg: "This class already has its video (" + (data[0].name || "uploaded") + "). Only one file per class." };
+    }
+  }
+  let fid: string;
+  try {
+    if (k === "trial" || !code) fid = await child(await rootId(), "TRIAL CLASSES");
+    else { const sf = await studentFolder(code, e.student, book); fid = k === "sub" ? await child(sf, "SUB CLASSES") : sf; }
+  } catch (x) { console.warn("vid folder", x); return { ok: false, msg: "Google Drive could not open the folder for this class. Ask Ops to check the student's video folder, then try again." }; }
+  const ext = ((fname.match(/\.([A-Za-z0-9]{2,5})$/) || [])[1] || (mime.split("/")[1] || "mp4").replace("quicktime", "mov")).toLowerCase();
+  const name = makeName({ code, who: String(e.student || "Student").trim(), iso: ds, book: book.replace(/[\s-]+/g, ""), teacher, proof: img, ext, trial: k === "trial" || !code, test: !!file.test });
+  const when = man(st.getTime()).slice(0, 16).replace("T", " ");
+  const meta = { name, parents: [fid], mimeType: mime, description: "Uploaded in the CupOfEnglish app by " + u.name + " · class " + when + (teacher !== u.name ? " · Teacher " + teacher : "") };
+  const r = await gApi("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id", { method: "POST",
+    headers: { "Content-Type": "application/json; charset=UTF-8", "X-Upload-Content-Type": mime, "X-Upload-Content-Length": String(size), Origin: "https://app.cupofenglishatph.com" }, body: JSON.stringify(meta) });
+  const loc = r.headers.get("location");
+  if (r.status !== 200 || !loc) { console.warn("vid start", r.status, (await r.text()).slice(0, 300)); return { ok: false, msg: "Google did not open the upload (" + r.status + "). Try again in a minute." }; }
+  const key = "vdb:" + crypto.randomUUID();
+  const j = { ds, code, teacher, id: e.id, name, by: u.name, test: !!file.test, start: e.start, student: String(e.student || ""), end: e.end, img: !!img,
+    dur: Math.round(Number(file.dur) || 0), lm: Math.round(Number(file.lm) || 0), why: String(file.why || "").slice(0, 60), note: String(file.note || "").slice(0, 400) };
+  await db.from("coe_vid_up").insert({ key, data: j, by_name: u.name });
+  return { ok: true, url: loc, key, name, chunk: 8 * 1024 * 1024 };
+}
+
+async function lateCase(j: any) {   // penalty_('Teacher Late Class Video Submission', 'Unexcused', …) — same POLICY rows, same case layout
+  const subject = "Teacher Late Class Video Submission", condition = "Unexcused";
+  let tier = "";
+  try { const { data } = await db.from("coe_rank_cur").select("rank").ilike("teacher", j.teacher).limit(1); if (data && data[0] && data[0].rank) tier = String(data[0].rank); } catch (_) { /* */ }
+  const [{ data: P }, { data: T }] = await Promise.all([db.from("sheet_rows").select("data").eq("tab", "POLICY"), tier ? Promise.resolve({ data: [] as any[] }) : db.from("sheet_rows").select("data").eq("tab", "T-DASH")]);
+  if (!tier) (T || []).forEach((x: any) => { const r = x.data; if (Array.isArray(r) && lc(r[1]) === lc(j.teacher)) tier = String(r[6] || ""); });
+  const status = /newly hired|starting/i.test(tier) ? "New" : "Regular";
+  let amount = 0, pid = "", dem = 0;
+  (P || []).forEach((x: any) => { const p = x.data; if (!Array.isArray(p)) return;
+    if (p[2] === subject && p[4] === condition && (p[5] === status || p[5] === "All") && /active/i.test(String(p[12] || ""))) { amount = num(p[7]); pid = String(p[0] || ""); }
+    if (p[1] === "Demerit" && lc(p[6]) === lc(tier)) dem = num(p[8]); });
+  const yr = +man().slice(0, 4);
+  const { data: cid, error } = await db.rpc("coe_case_next", { p_year: yr, p_min: 1, p_by: "App (automatic)", p_src: "video" });
+  if (error || !cid) throw new Error("case number: " + (error && error.message));
+  const who = [j.code, j.student].filter(Boolean).join(" ");
+  const detail = "Class video for " + who + " " + j.ds + " · due " + j.ds + " 23:59 · uploaded in the app " + man().slice(0, 16).replace("T", " ") + " · automatic, management may waive";
+  const when = man(new Date(j.start || (j.ds + "T12:00:00+08:00")).getTime()).slice(0, 19);
+  const { error: e2 } = await db.from("coe_rec").insert({ tab: "ACTIONS", key: cid + "#1", sheet_r: 5, src: "app",
+    data: [cid, subject, true, when, "Operations", "Operations", "Teaching Compliance", j.teacher, who, condition, status, tier, true, "", dem || "", "", amount, detail + " · " + pid + " · via app by App (automatic)"] });
+  if (e2) throw new Error("case: " + e2.message);
+  return { caseId: String(cid), amount };
+}
+
+async function vidDone(u: any, key: string, fileId: string) {
+  key = String(key || ""); fileId = String(fileId || "");
+  const { data: row } = await db.from("coe_vid_up").select("data,done").eq("key", key).maybeSingle();
+  if (!row) return { ok: false, msg: "This upload is too old. Upload the video again." };
+  if (row.done) return row.done;                                   // a repeated last step answers "saved" again
+  const j = row.data || {};
+  if (u.mode !== "mgmt" && lc(j.by) !== lc(u.name)) return { ok: false, msg: "Not your upload." };
+  let f: any;
+  try { f = await gJson("https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(fileId) + "?supportsAllDrives=true&fields=id,name,size,md5Checksum,webViewLink,description"); }
+  catch (_) { return { ok: false, msg: "The video did not arrive in Drive. Upload it again." }; }
+  const url = String(f.webViewLink || ("https://drive.google.com/file/d/" + f.id + "/view?usp=drivesdk"));
+  // checks (22 Oct): never block the upload; the teacher explains, management marks OK or Needs action
+  const fl: any[] = [];
+  if (!j.test) {
+    const st = new Date(j.start).getTime(), en = new Date(j.end || j.start).getTime(), len = Math.round((en - st) / 60000);
+    if (j.img) {
+      const m0 = j.ds.slice(0, 7) + "-01", m1 = new Date(Date.UTC(+j.ds.slice(0, 4), +j.ds.slice(5, 7), 1)).toISOString().slice(0, 10);
+      const { count } = await db.from("coe_class_videos").select("event_id", { count: "exact", head: true }).ilike("teacher", j.teacher).eq("proof", true).gte("day", m0).lt("day", m1).neq("event_id", j.id);
+      const n = (count || 0) + 1;
+      fl.push({ k: "proof", t: "Screen proof instead of a video" + (n > 1 ? " · " + n + " this month" : "") });
+    } else {
+      if (j.dur > 0 && len > 0 && j.dur / 60 < len * 0.8) fl.push({ k: "short", t: Math.max(1, Math.round(j.dur / 60)) + " min video for a " + len + " min class" });
+      if (j.lm > 0 && j.lm < st - 10 * 60000) fl.push({ k: "time", t: "Recorded " + dMon(j.lm) + " · before the class started" });
+      if (f.md5Checksum) { j.md5 = f.md5Checksum;
+        const { data: was } = await db.from("coe_class_videos").select("event_id,code,student,day,teacher").eq("md5", j.md5).neq("event_id", j.id).limit(1);
+        const w = was && was[0]; if (w) fl.push({ k: "same", t: "Same file as " + [w.code, w.student, w.day].filter(Boolean).join(" ") + (lc(w.teacher) !== lc(j.teacher) ? " (Teacher " + w.teacher + ")" : "") }); }
+    }
+    if (fl.length) try { await gApi("https://www.googleapis.com/drive/v3/files/" + f.id + "?supportsAllDrives=true", { method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description: (f.description || "") + " · CHECK: " + fl.map((x) => x.t).join(" · ") + (j.why ? " · Teacher: " + j.why + (j.note ? " — " + j.note : "") : "") }) }); } catch (_) { /* */ }
+  }
+  const lateNow = Date.now() > new Date(j.ds + "T23:59:59+08:00").getTime();
+  let lt: any = null;
+  if (!j.test && j.ds >= VIDUP_FROM && lateNow) {   // after 23:59 of the class day: automatic Late Class Video case (management may waive it in Cases)
+    const { data: had } = await db.from("coe_class_video_days").select("case_id").eq("event_id", j.id).eq("day", j.ds).not("case_id", "is", null).limit(1);
+    if (had && had[0]) lt = { caseId: had[0].case_id, amount: 0 };
+    else try { lt = await lateCase(j); } catch (x) { console.warn("vid late case", x); }
+  }
+  if (!j.test) {
+    const rec = { event_id: j.id, day: j.ds, start_at: j.start || null, teacher: j.teacher, code: j.code || null, student: j.student || null,
+      file_id: f.id, name: f.name, url, via: "app", proof: !!j.img, size_bytes: +f.size || null, dur_sec: j.dur || null, late: !!lt || lateNow,
+      case_id: (lt && lt.caseId) || null, md5: j.md5 || null, flags: fl, why: j.why || null, note: j.note || null, uploaded_by: u.name, uploaded_at: new Date().toISOString() };
+    const a = await db.from("coe_class_videos").upsert(rec, { onConflict: "event_id" });
+    const b = await db.from("coe_class_video_days").upsert(rec, { onConflict: "event_id,day" });
+    if (a.error || b.error) console.warn("video log", a.error, b.error);
+    try { await vidsDoc({ day: j.ds, key: String(j.code || "").toUpperCase() + "|" + lc(j.teacher), flag: fl.length ? { id: j.id, ds: j.ds, start: j.start, teacher: j.teacher, code: j.code, student: j.student, url, name: f.name, flags: fl, why: j.why || "", note: j.note || "", at: Date.now(), st: "open", by: "", dnote: "" } : null }); } catch (x) { console.warn("sys:vids", x); }
+  }
+  const res = { ok: true, url, name: f.name, linked: false, late: lt || lateNow, flags: fl, note: "Class video saved · " + f.name };
+  await db.from("coe_vid_up").update({ done: res, file_id: f.id }).eq("key", key);
+  return res;
+}
+// sys:vids (Today, Schedule, the video checks): kept by the database now. One upload is added at once; vidsBuild() rebuilds from the tables
+// and keeps every entry Google had made (Drive-found videos), so nothing that showed before disappears.
+async function vidsDoc(add?: { day: string; key: string; flag: any }) {
+  const { data } = await db.from("docs").select("data").eq("key", "sys:vids").maybeSingle();
+  const d = (data && data.data) || { flags: [], days: {} }; d.days = d.days || {}; d.flags = Array.isArray(d.flags) ? d.flags : [];
+  if (add) { if (add.key && add.key[0] !== "|") (d.days[add.day] = d.days[add.day] || {})[add.key] = 1;
+    if (add.flag) { d.flags = d.flags.filter((x: any) => x.id !== add.flag.id); d.flags.unshift(add.flag); } }
+  d.at = Date.now();
+  await db.from("docs").upsert({ key: "sys:vids", scope: "mgmt", data: d, updated_at: new Date().toISOString() });
+  return d;
+}
+const flagRow = (r: any) => ({ id: r.event_id, ds: r.day, start: r.start_at ? new Date(r.start_at).toISOString() : "", teacher: r.teacher, code: r.code || "", student: r.student || "", url: r.url, name: r.name,
+  flags: r.flags || [], why: r.why || "", note: r.note || "", at: r.uploaded_at ? Date.parse(r.uploaded_at) : 0, st: r.review || "open", by: r.reviewed_by || "", dnote: r.review_note || "", dat: r.reviewed_at ? Date.parse(r.reviewed_at) : undefined });
+async function flagsAll() {   // last 60 days, from the database; review state from the database (Google's copy as a fallback for older ones)
+  const cut = new Date(Date.now() - 60 * 864e5).toISOString();
+  const { data } = await db.from("coe_class_video_days").select("event_id,day,start_at,teacher,code,student,url,name,flags,why,note,review,reviewed_by,review_note,reviewed_at,uploaded_at").gte("uploaded_at", cut).neq("flags", "[]").limit(2000);
+  const { data: doc } = await db.from("docs").select("data").eq("key", "sys:vids").maybeSingle();
+  const old: Record<string, any> = {}; (((doc && doc.data) || {}).flags || []).forEach((x: any) => { old[x.id + "|" + x.ds] = x; });
+  const seen: Record<string, 1> = {}, out: any[] = [];
+  (data || []).forEach((r: any) => { if (!Array.isArray(r.flags) || !r.flags.length) return; const x = flagRow(r), o = old[x.id + "|" + x.ds];
+    if (o && !r.review && o.st && o.st !== "open") { x.st = o.st; x.by = o.by || ""; x.dnote = o.dnote || ""; x.dat = o.dat; }
+    seen[x.id + "|" + x.ds] = 1; out.push(x); });
+  Object.keys(old).forEach((k) => { if (!seen[k] && (old[k].at || 0) > Date.now() - 60 * 864e5) out.push(old[k]); });
+  return out.sort((a, b) => String(b.start).localeCompare(String(a.start)));
+}
+export async function vidsBuild() {
+  const { data } = await db.from("docs").select("data").eq("key", "sys:vids").maybeSingle();
+  const d = (data && data.data) || { flags: [], days: {} }, days: Record<string, Record<string, 1>> = {};
+  const today = man().slice(0, 10), from = new Date(Date.parse(today + "T00:00:00Z") - 7 * 864e5).toISOString().slice(0, 10);
+  Object.keys(d.days || {}).forEach((ds) => { if (ds >= from) days[ds] = { ...(d.days[ds] || {}) }; });
+  for (const t of ["coe_class_video_days", "coe_class_videos"]) {
+    const { data: R } = await db.from(t).select("day,code,teacher,url").gte("day", from).limit(5000);
+    (R || []).forEach((r: any) => { if (!r.code || !r.url) return; (days[r.day] = days[r.day] || {})[String(r.code).toUpperCase() + "|" + lc(r.teacher)] = 1; });
+  }
+  const flags = await flagsAll();
+  await db.from("docs").upsert({ key: "sys:vids", scope: "mgmt", data: { flags, days, at: Date.now() }, updated_at: new Date().toISOString() });
+  return { flags: flags.length, days: Object.keys(days).length };
+}
+async function vidList(u: any) {   // classes of the last 7 days (from 22 Oct) that still have no class video
+  const me = lc(u.name), today = man().slice(0, 10), out: any[] = [];
+  const from = new Date(Date.parse(today + "T00:00:00Z") - 7 * 864e5).toISOString().slice(0, 10), to = new Date(Date.parse(today + "T00:00:00Z") - 864e5).toISOString().slice(0, 10);
+  const { data: C } = await db.from("classes").select("day,data").contains("teachers", JSON.stringify([me])).gte("day", from).lte("day", to).limit(500);
+  const { data: V } = await db.from("coe_class_video_days").select("day,code,teacher,url").gte("day", from).lte("day", to).limit(3000);
+  const { data: V2 } = await db.from("coe_class_videos").select("day,code,teacher,url").gte("day", from).lte("day", to).limit(3000);
+  const { data: doc } = await db.from("docs").select("data").eq("key", "sys:vids").maybeSingle();
+  const has: Record<string, 1> = {}; [...(V || []), ...(V2 || [])].forEach((r: any) => { if (r.url && r.code) has[r.day + "|" + String(r.code).toUpperCase() + "|" + lc(r.teacher)] = 1; });
+  const dd = ((doc && doc.data) || {}).days || {}; Object.keys(dd).forEach((ds) => Object.keys(dd[ds] || {}).forEach((k) => { has[ds + "|" + k] = 1; }));
+  (C || []).forEach((r: any) => { const e = r.data || {}; if (r.day < VIDUP_FROM || e.cancelled || !e.code || (e.teachers || []).map(lc).indexOf(me) < 0) return;
+    if (has[r.day + "|" + String(e.code).toUpperCase() + "|" + me]) return;
+    out.push({ id: e.id, start: e.start, end: e.end, code: e.code, student: e.student || "", book: e.book || "", day: r.day, type: /trial/i.test(e.title || "") ? "Trial" : /\bsub\b/i.test(e.title || "") ? "Sub" : "" }); });
+  return { ok: true, list: out.sort((a, b) => String(b.start).localeCompare(String(a.start))) };
+}
+async function patchVid(id: string, ds: string | null, patch: any) {
+  let a = db.from("coe_class_video_days").update(patch).eq("event_id", id); if (ds) a = a.eq("day", ds); await a;
+  await db.from("coe_class_videos").update(patch).eq("event_id", id);
+}
+
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: h });
@@ -42,14 +274,14 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return out({ ok: false, error: "POST only" }, 405);
   let b: any; try { b = JSON.parse(await req.text()); } catch { return out({ ok: false, error: "bad request" }, 400); }
   // who: the server key (only the database knows it) or an app session
-  let srv = false, pres = false, me = "";
+  let srv = false, pres = false, me = "", sess: any = null;
   const sk = req.headers.get("x-coe-srv") || "";
   if (sk.length >= 32) { const { data } = await db.from("coe_srv_key").select("k").eq("k_hash", await sha(sk)).maybeSingle(); srv = !!data; }
   if (!srv) {
     const token = String(b.token || ""); if (token.length < 16) return out({ ok: false, error: "AUTH" }, 401);
     const { data: s } = await db.from("app_sessions").select("name,role,mode,exp").eq("token_hash", await sha(token)).maybeSingle();
     if (!s || new Date(s.exp).getTime() < Date.now()) return out({ ok: false, error: "AUTH" }, 401);
-    pres = s.mode === "mgmt" && /president/i.test(String(s.role || "")); me = String(s.name || "");
+    pres = s.mode === "mgmt" && /president/i.test(String(s.role || "")); me = String(s.name || ""); sess = s;
   }
   const op = String(b.op || "");
   try {
@@ -69,6 +301,29 @@ Deno.serve(async (req: Request) => {
         if (r.ok) await db.from("coe_gas_src").upsert({ id: f.id, name: f.name, modified: f.modifiedTime, src: JSON.parse(t), copied_at: new Date().toISOString() });
       }
       return out({ ok: true, files: got, list: l.error || undefined });
+    }
+    const A = Array.isArray(b.args) ? b.args : [];
+    if (op === "vids_build") { if (!srv && !pres) return out({ ok: false, error: "Only the President can do this." }, 403); return out({ ok: true, ...(await vidsBuild()) }); }
+    if (!sess) return out({ ok: false, error: "AUTH" }, 401);
+    const mgmt = sess.mode === "mgmt";
+    if (op === "tVidStart") return out(await vidStart(sess, A[0], A[1]));
+    if (op === "tVidDone") return out(await vidDone(sess, A[0], A[1]));
+    if (op === "tVidList") return out(await vidList(sess));
+    if (op === "tVidFlags") return out({ ok: true, list: (await flagsAll()).filter((x) => lc(x.teacher) === lc(me)) });
+    if (op === "tVidExplain") {
+      const id = String(A[0] || ""), L = await flagsAll(), x = L.find((y) => y.id === id && lc(y.teacher) === lc(me)) || L.find((y) => y.id === id);
+      if (!x) return out({ ok: false, msg: "Not found." }); if (lc(x.teacher) !== lc(me)) return out({ ok: false, msg: "Not your class." });
+      if (x.st !== "open") return out({ ok: false, msg: "Management already reviewed this video." });
+      await patchVid(x.id, x.ds, { why: String(A[1] || "").slice(0, 60), note: String(A[2] || "").slice(0, 400) }); await vidsBuild(); return out({ ok: true });
+    }
+    if (op === "mgmtVidFlags") { if (!mgmt) return out({ ok: false, error: "Management only" }, 403); const L = await flagsAll(); return out({ ok: true, list: L.filter((x) => x.st === "open").concat(L.filter((x) => x.st !== "open")) }); }
+    if (op === "mgmtVidFlagSet") {
+      if (!mgmt) return out({ ok: false, error: "Management only" }, 403);
+      const id = String(A[0] || ""), st = String(A[1] || ""), note = String(A[2] || "").slice(0, 300);
+      if (["ok", "action", "open"].indexOf(st) < 0) return out({ ok: false, msg: "Choose OK or Needs action." });
+      const x = (await flagsAll()).find((y) => y.id === id); if (!x) return out({ ok: false, msg: "Not found." });
+      await patchVid(x.id, x.ds, { review: st, reviewed_by: me, review_note: note, reviewed_at: new Date().toISOString() });
+      x.st = st; x.by = me; x.dat = Date.now(); x.dnote = note; await vidsBuild(); return out({ ok: true, item: x });
     }
     return out({ ok: false, error: "unknown op" }, 400);
   } catch (e) { return out({ ok: false, error: String((e as Error).message || e).slice(0, 400) }, 500); }
