@@ -103,7 +103,7 @@ a.gk:hover{border-color:#99D5D9;box-shadow:0 10px 28px rgba(47,39,82,.10);transf
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>Back to the App</span></a></div></div>
 <div class="wrap" id="root"></div>
 <div class="zoom" id="zoom"><img alt=""><button type="button" class="zx">Close ✕</button><div class="zh">Swipe to move around · tap to close</div></div>
-<script src="guides.js?v=3150"></script>
+<script src="guides.js?v=3159"></script>
 <script>
 (function(){
 const G=window.COE_GUIDES||[],root=document.getElementById('root'),Z=document.getElementById('zoom');
@@ -116,17 +116,20 @@ const fresh=g=>g.updated&&(Date.now()-new Date(g.updated))<14*864e5&&seenAll()[g
 const fmt=d=>new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 const SMALL=/^(a|an|the|and|or|but|in|on|to|of|for|with|as|at|by|from)$/;const tc=t=>String(t).split(' ').map((w,i)=>(i&&SMALL.test(w))?w:w.replace(/^([a-z])/,c=>c.toUpperCase())).join(' ');
 const pics=g=>(g.parts||[]).filter(p=>p.img).length;
+/* 3159: management guides only for management (the app's sign-in on this device) */
+let MG=(()=>{try{return localStorage.getItem('coe.guides.mg')==='1'}catch(e){return false}})();
+const vis=()=>G.filter(g=>!g.mgmt||MG);
 function list(){
   document.title='CupOfEnglish · Guides';
   let h='<div class="hero"><div><div class="eyebrow">Teacher Help</div><h1>Guides</h1><p>Short picture guides for the app. When something changes, the new guide shows up here first.</p></div></div><div class="cats">';
-  const cats=[...new Set(G.map(g=>g.cat||'Other'))];
-  cats.forEach(c=>{ const L=G.filter(g=>(g.cat||'Other')===c).sort((a,b)=>(a.soon?1:0)-(b.soon?1:0));
+  const V=vis(),cats=[...new Set(V.map(g=>g.cat||'Other'))];
+  cats.forEach(c=>{ const L=V.filter(g=>(g.cat||'Other')===c).sort((a,b)=>(a.soon?1:0)-(b.soon?1:0));
     h+='<section class="cat"><h2>'+esc(c)+'</h2><div class="grid3">'+L.map(g=>{
       const th=g.thumb||g.cover||((g.parts||[]).find(p=>p.img)||{}).img;
       const top='<div class="tp'+(th&&!g.soon?' ph" style="background-image:url('+th+'?v='+VV+')"':'"')+'><div class="big">'+svg(g.icon,th&&!g.soon?22:30)+'</div>'+(g.soon?'<span class="tag nw">Soon</span>':fresh(g)?'<span class="new nw">'+(seenAll()[g.id]?'UPDATED':'NEW')+'</span>':'')+'</div>';
       const body='<div class="bd2"><h3>'+esc(g.title)+'</h3><p>'+esc(g.sum)+'</p>'+(g.soon?'':'<div class="vw" data-vw="'+g.id+'"></div>')+'<div class="ft2">'+(g.soon?'<span>Coming soon</span>':'<span>'+(pics(g)?pics(g)+(pics(g)==1?' picture':' pictures'):(g.parts||[]).length+' steps')+(g.mins?' · '+g.mins+' min':'')+'</span><b>Open guide ›</b>')+'</div></div>';
       return g.soon?'<div class="gk off">'+top+body+'</div>':'<a class="gk" href="#'+g.id+'">'+top+body+'</a>'; }).join('')+'</div></section>'; });
-  root.innerHTML=h+'</div>';scrollTo(0,0);stats().then(paint);
+  root.innerHTML=h+'</div>';scrollTo(0,0);stats().then(r=>{const m=!!(r&&r.mgmt);try{localStorage.setItem('coe.guides.mg',m?'1':'0')}catch(e){}if(r&&m!==MG){MG=m;list();return}paint(r)});
 }
 function one(g){
   document.title='How to: '+g.title+' · CupOfEnglish';
@@ -148,7 +151,7 @@ const EYE='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="c
 function paint(r){if(!r)return;root.querySelectorAll('[data-vw]').forEach(el=>{const o=r.g[el.dataset.vw]||{views:0,teachers:0};el.innerHTML=EYE+(r.mgmt?'Opened by '+o.teachers+' of '+r.team+' teachers':o.views+' view'+(o.views===1?'':'s')+' by teachers');el.title=o.views+' views by '+o.teachers+' teachers'})}
 function view(id){call('gview',{id}).then(()=>{STa=0;return stats()}).then(r=>{const el=document.getElementById('gm');if(!el||!r||!r.mgmt)return;const o=r.g[id]||{views:0,teachers:0,who:[],not:r.teamNames||[]};
   el.innerHTML='<div class="gm"><b>Opened by '+o.teachers+' of '+r.team+' teachers</b> · '+o.views+' views'+(o.who&&o.who.length?'<div style="margin-top:6px">'+o.who.map(w=>esc(w.name)+' <span style="color:#8A8FA0">'+ago(w.last)+(w.n>1?' · '+w.n+'×':'')+'</span>').join(' · ')+'</div>':'')+(o.not&&o.not.length?'<div style="margin-top:6px" class="n">Not opened yet: '+o.not.map(esc).join(', ')+'</div>':'')+'<div style="margin-top:6px;font-size:12.5px;color:#8A8FA0">Only management sees names.</div></div>'})}
-function go(){const [id,sec]=location.hash.slice(1).split('/'),g=G.find(x=>x.id===id&&!x.soon);
+function go(){const [id,sec]=location.hash.slice(1).split('/'),g=vis().find(x=>x.id===id&&!x.soon);
   if(g){if(!root.querySelector('.gv')||document.title.indexOf(g.title)<0)one(g);const el=sec&&document.getElementById('s'+sec);el?el.scrollIntoView({behavior:'smooth'}):scrollTo(0,0)}else list()}
 root.addEventListener('click',e=>{const im=e.target.closest('figure img');if(im){Z.firstChild.src=im.src;Z.firstChild.style.width=innerWidth<760?Math.min(im.naturalWidth||1400,1400)+'px':'';Z.classList.add('on');Z.scrollTo(0,0);document.body.style.overflow='hidden'}});   /* 2906: on a phone the picture opens large enough to read; swipe to move around */
 Z.addEventListener('click',()=>{Z.classList.remove('on');document.body.style.overflow=''});

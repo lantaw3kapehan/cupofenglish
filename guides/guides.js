@@ -1,6 +1,42 @@
 /* 2885 · Teacher guides (Misty 25 Nov): one place for every "how to".
    To add or update a guide, edit this list only. `updated` shows a "New" or "Updated" badge for 14 days. */
 window.COE_GUIDES=[
+ /* 3159 (Misty 28 Nov 16:42): guides for management only (shown when the app's sign-in on this device is management) */
+ {id:'m-milestone',mgmt:1,title:'Milestone Certificates',cat:'Management',icon:'star',updated:'2026-11-28T17:00',mins:2,
+  sum:'Send the time-with-us certificate when a student reaches 3 months, 6 months, 1 year and every year after.',
+  rule:'Send only what the app lists. If it says Check the dates first, confirm the dates before you send.',
+  parts:[
+   {h:'Where they are',p:'To do › Celebrate lists every active student who reached a milestone in the last 30 days, with the date it was reached and the learning period.'},
+   {h:'Make and send',list:['Tap Milestone Certificate, then Copy Picture and paste it in the parent’s WeChat','Copy Message gives the English and Chinese text to send with it','Tap Mark as Sent, or Skip if it should not be sent']},
+   {h:'Check the dates first',red:1,p:'The amber chip means a break may be missing (for example before 2026, when the records are incomplete). Ask the family or check the chat, then record the break with Pauses on the student page. The milestone moves by itself.'},
+   {h:'How learning time is counted',p:'From January 2026, the lessons actually held. Before 2026, the package dates. A gap of more than 45 days with no lesson, or a recorded pause, is not counted.'},
+   {h:'The titles',list:['3 Months · Rising Learner (Jade)','6 Months · Committed Learner (Sapphire)','1 Year · Dedicated Learner (Amethyst)','2 Years · Honored Learner (Ruby)','3 and 4 Years · Elite Learner (Onyx)','5 Years and more · CupOfEnglish Legend (Gold)']}
+  ]},
+ {id:'m-pauses',mgmt:1,title:'Pauses in Learning',cat:'Management',icon:'calendar',updated:'2026-11-28T17:00',mins:1,
+  sum:'Record a break the lesson records cannot show, so learning time and milestones stay right.',
+  rule:'Record a pause only when you know it happened (the family told us, or the chat shows it).',
+  parts:[
+   {h:'Where',p:'Open the student’s page › With us card › Pauses.'},
+   {h:'Add a pause',list:['Paused from: the first day without lessons','Back on: the day lessons started again (leave it empty if the student has not come back)','Note: what happened, in a few words','Tap Add Pause']},
+   {h:'What changes',p:'The pause is taken out of the learning time everywhere: milestone dates, certificates, To do › Celebrate and the journey line. The teacher’s card counts it the same way. Teachers cannot see or change pauses.'},
+   {h:'Made a mistake?',p:'Open Pauses again and tap Remove on that line.'}
+  ]},
+ {id:'m-videos',mgmt:1,title:'Videos to Check',cat:'Management',icon:'video',updated:'2026-11-28T17:00',mins:1,
+  sum:'Review the class videos the app flagged, with the teacher’s explanation.',
+  rule:'A flag is a question, not a penalty. Read the teacher’s reason before you decide.',
+  parts:[
+   {h:'What gets flagged',list:['A screen proof instead of a video','A video under 80% of the class time','A video recorded before the class started','The same file as another class’s video']},
+   {h:'Where',p:'Overview › Videos to check. Each line shows the class, the check and the teacher’s reason.'},
+   {h:'Decide',list:['Open the video','OK: the reason is fine','Needs action: contact the teacher; she sees “management will contact you”','Remove the wrong video: when a teacher uploaded the wrong file']}
+  ]},
+ {id:'m-sync',mgmt:1,title:'Your Changes Reach Teachers',cat:'Management',icon:'refresh',updated:'2026-11-28T17:00',mins:1,
+  sum:'What you save shows on the teacher’s app within about 20 seconds, without a refresh.',
+  parts:[
+   {h:'What updates by itself',list:['Classes: add, edit, cancel, move, substitute','Student details, book, meeting ID, pauses','Notices, memos, leave answers, late decisions','Video check reviews, contracts to sign, QA feedback, peer reviews','Pay checks and replies, trainings, Speaking topics']},
+   {h:'When it waits',p:'The teacher’s app does not reload while she is typing, uploading a class video, or has the app in the background. It updates as soon as she is done.'},
+   {h:'A teacher still sees the old version',p:'Ask her to tap Update app at the top, or close the app and open it again.'}
+  ]},
+
  {id:'app-update',cover:'img/g-update.webp',title:'Updating the App',cat:'Getting Started',icon:'refresh',updated:'2026-11-28T14:30',mins:1,
   sum:'Keep the app on the newest version. When Update ready shows at the top, tap it.',
   rule:'The app now runs fully on our own database. An old version of the app can fail to upload class videos, so update when you see Update ready.',
