@@ -7584,7 +7584,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2726;
+const COE_V = 2727;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -33732,7 +33732,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
   var back = '<button class="btn ghost sm" onclick="paOpen()">‹ Partner access</button>';
   var ST = { paid: '<span class="pill" style="background:#E7F5EE;color:#1F7A55">Paid</span>', topay: '<span class="pill" style="background:#FFF0D2;color:#8A5300">To pay</span>' };
   // ── one login: payments + students ──
-  window.pa3Open = function(id){ Q.id = id; Q.all = false; frame('Partner payments & students'); load3(); };
+  window.pa3Open = function(id){ Q.id = id; Q.srcs = null; Q.all = false; frame('Partner payments & students'); load3(); };
   function load3(){ return Promise.all([call('pPay', { id: Q.id }), call('pOver', { id: Q.id }), call('pRates')]).then(function(r){ Q.pay = r[0]; Q.over = r[1]; Q.rates = r[2]; Q.acc = ((r[2] && r[2].accounts) || []).find(function(a){ return a.id === Q.id; }) || null; paint3(); })
     .catch(function(){ body(back + '<div class="mute" style="margin-top:12px">No connection · try again</div>'); }); }
   function paint3(){ var P = Q.pay || {}, O = Q.over || {}, A = Q.acc || {}, rows = P.rows || [];
@@ -33770,7 +33770,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     body(h); }
   /* 3163 · renewal rate of this partner's students since they started (Misty 18:53 · to show Dr. Spring) */
   var PC = function(x){ return x == null ? '—' : Math.round(x * 100) + '%'; };
-  window.pa3Renew = function(){ frame('Renewal rate'); call('pRenew', { id: Q.id }).then(function(r){ var bk = '<button class="btn ghost sm" onclick="pa3Open(\'' + Q.id + '\')">‹ Payments &amp; students</button>';
+  window.pa3Renew = function(){ frame('Renewal rate'); call('pRenew', Q.id ? { id: Q.id } : { sources: Q.srcs || [] }).then(function(r){ var bk = Q.id ? '<button class="btn ghost sm" onclick="pa3Open(\'' + Q.id + '\')">‹ Payments &amp; students</button>' : '';
       if(!r || !r.ok){ body(bk + '<div class="mute" style="margin-top:12px">' + e((r && (r.msg || r.error)) || 'Could not load') + '</div>'); return; }
       var A = r.all || {}, tile = function(lbl, big, sub){ return '<div class="card" style="padding:12px 16px;min-width:150px;flex:1"><div class="mute small">' + lbl + '</div><b style="font-size:26px">' + big + '</b><div class="small mute">' + sub + '</div></div>'; };
       var h = bk + '<h1 style="margin-top:8px">' + e(r.partner) + ' · Renewal rate</h1><div class="mute small">Since the first payment on record (' + e(r.since || '—') + ') · from SALES payments at the partner price</div>'
@@ -33780,7 +33780,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
         + tile('Still studying now', PC(A.students ? A.studying / A.students : null), A.studying + ' of ' + A.students + ' students')
         + tile('Average per student', (A.avgPackages == null ? '—' : A.avgPackages.toFixed(1)) + ' packages', 'about ' + (A.avgMonths == null ? '—' : Math.round(A.avgMonths)) + ' months with us') + '</div>'
         + '<h2>By the year they started</h2><div class="card" style="padding:4px 12px"><div class="row small" style="gap:8px;padding:8px 0;font-weight:700"><div style="width:60px">Year</div><div class="grow">Students</div><div style="width:110px;text-align:right">Renewed</div><div style="width:110px;text-align:right">Packages renewed</div><div style="width:110px;text-align:right">Still studying</div></div>'
-        + (r.years || []).map(function(y){ return '<div class="row small" style="gap:8px;padding:8px 0;border-top:1px solid var(--line)"><div style="width:60px"><b>' + e(y.year) + '</b></div><div class="grow">' + y.students + ' · avg ' + (y.avgPackages || 0).toFixed(1) + ' packages</div><div style="width:110px;text-align:right"><b>' + PC(y.studentRate) + '</b> <span class="mute">' + y.renewedStudents + '/' + y.studentsWithFinished + '</span></div><div style="width:110px;text-align:right">' + PC(y.packageRate) + '</div><div style="width:110px;text-align:right">' + y.studying + '</div></div>'; }).join('') + '</div>'
+        + (r.years || []).slice().reverse().map(function(y){ return '<div class="row small" style="gap:8px;padding:8px 0;border-top:1px solid var(--line)"><div style="width:60px"><b>' + e(y.year) + '</b></div><div class="grow">' + y.students + ' · avg ' + (y.avgPackages || 0).toFixed(1) + ' packages</div><div style="width:110px;text-align:right"><b>' + PC(y.studentRate) + '</b> <span class="mute">' + y.renewedStudents + '/' + y.studentsWithFinished + '</span></div><div style="width:110px;text-align:right">' + PC(y.packageRate) + '</div><div style="width:110px;text-align:right">' + y.studying + '</div></div>'; }).join('') + '</div>'
         + '<h2>How many packages each student bought</h2><div class="row" style="gap:8px;flex-wrap:wrap">' + ['1','2','3','4','5','6+'].map(function(k){ return '<div class="card" style="padding:8px 14px;text-align:center"><div class="mute small">' + k + (k === '1' ? ' package' : ' packages') + '</div><b style="font-size:20px">' + ((r.dist || {})[k] || 0) + '</b></div>'; }).join('') + '</div>'
         + '<h2>Longest with us</h2><div class="card" style="padding:4px 12px">' + (r.top || []).map(function(t){ return '<div class="row small" style="gap:8px;padding:7px 0;border-top:1px solid var(--line)"><div class="grow"><b>' + e(t.name) + '</b> ' + e(t.cn || '') + ' <span class="mute">' + e(t.code) + '</span></div><div>' + t.n + ' packages · since ' + e(String(t.first).slice(0, 7)) + ' · ' + t.months + ' months' + (t.active ? ' · <span style="color:#1F7A55">studying</span>' : '') + '</div></div>'; }).join('') + '</div>'
         + '<div class="small mute" style="margin-top:12px">How it is counted: a package “ended” when the student bought a next one or is no longer studying; the latest package of a student still studying is not counted yet. Students who renewed = students with 2 or more packages ÷ students whose first package ended. ' + (r.dueNow ? r.dueNow + ' students are due to renew now (4 lessons or fewer left). ' : '') + (r.unlinked ? r.unlinked + ' payments name a child whose English name is shared by two or more of her students (e.g. Leo, Mia) and are not matched yet, so they are left out (the rates are on the safe side). ' : '') + (r.noSale ? r.noSale + ' of her students have no payment in SALES (before the records start).' : '') + '</div>';
@@ -33796,8 +33796,8 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     var U = r.auto || [];
     if(U.length) h += '<h2>Matched (' + U.length + ')</h2><div class="mute small">By management, or by the student code year (only one child with that name was a student then). Tap to change.</div><div class="card" style="padding:4px 12px;margin-top:6px">' + U.map(function(u, i){ return '<div class="row small" style="gap:8px;padding:7px 0;border-top:1px solid var(--line)"><div class="grow"><b>' + e(u.name) + '</b> · ' + e(u.date) + ' · ' + (u.lessons || 0) + ' lessons → <b>' + e(u.chosen.code) + '</b> ' + e(u.chosen.cn || '') + ' <span class="mute">' + (u.how === 'auto' ? 'by code year' : 'matched') + '</span></div>' + (u.cands.length > 1 ? '<button class="btn ghost sm" onclick="pa3Relink(' + i + ')">Change</button>' : '') + '</div>'; }).join('') + '</div>';
     body(h); }
-  function linkCall(op, x){ return call(op, Object.assign({ id: Q.id }, x || {})).then(function(r){ if(!r || !r.ok){ toast((r && (r.msg || r.error)) || 'Not saved'); return; } LQ = r; paintLinks(); }); }
-  window.pa3LinksFor = function(id){ Q.id = id; window.pa3Links(); };
+  function linkCall(op, x){ return call(op, Object.assign(Q.id ? { id: Q.id } : { sources: Q.srcs || [] }, x || {})).then(function(r){ if(!r || !r.ok){ toast((r && (r.msg || r.error)) || 'Not saved'); return; } LQ = r; paintLinks(); }); }
+  window.pa3LinksFor = function(id, srcs){ Q.id = id || ''; Q.srcs = srcs || null; window.pa3Links(); };
   window.pa3Links = function(){ frame('Match payments to students'); linkCall('pLinks').catch(function(){ body('<div class="mute">No connection · try again</div>'); }); };
   window.pa3Link = function(i, code){ var t = ((LQ || {}).todo || [])[i]; if(!t) return; linkCall('pLinkSet', { ref: t.ref, name: t.name, code: code }).then(function(){ toast('Matched · ' + code); }); };
   window.pa3Relink = function(i){ var u = ((LQ || {}).auto || [])[i]; if(!u) return; var opts = u.cands.map(function(c){ return c.code + (c.cn ? ' ' + c.cn : ''); }).join('\n'); var v = prompt('Which child? Type the code:\n' + opts, u.chosen.code); if(!v) return; v = v.trim().toUpperCase(); if(!u.cands.some(function(c){ return c.code === v; })) return toast('Pick one of the codes shown');
@@ -44635,14 +44635,21 @@ body.is-mgr #app #v-mtoday > *::before{box-shadow:none}
   const pc = x => x == null ? '—' : Math.round(x * 100) + '%';
   const pcall = (op, b) => fetch(FAST_URL + '-partner', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(Object.assign({ op, token: TOKEN }, b || {})) }).then(x => x.json());
   async function prLoad(force){ if(PR.busy) return; PR.busy = 1;
-    try{ if(!PR.list){ const L = await pcall('pList'); PR.list = ((L && L.accounts) || []).filter(a => a.active && !/test/i.test(a.display_name || '')); if(!PR.sel && PR.list.length){ const sp = PR.list.find(a => /spring/i.test(a.display_name || '')); PR.sel = (sp || PR.list[0]).id; } }
-      if(PR.sel && (force || !PR.d[PR.sel])){ const r = await pcall('pRenew', { id: PR.sel }); if(r && r.ok) PR.d[PR.sel] = r; } }
+    try{ if(!PR.list){ const L = await pcall('pList'), acc = ((L && L.accounts) || []).filter(a => a.active && !/test/i.test(a.display_name || ''));
+        /* every partner source (Misty 19:15: Ms. Jane, Dr. Rose, Mr. Clark, Ms. Xiaolan too), grouped by the person: "Zhanjiang – Ms. Xiaolan" + "Xiaolan" = one */
+        const who = x => String(x).split(/\s[–-]\s/).pop().trim(), key = x => who(x).replace(/^(ms|mr|mrs|dr|teacher)\.?\s+/i, '').toLowerCase(), G = {};
+        ((L && L.sources) || []).filter(x => x.partnerLike || /^(ms|mr|mrs|dr)\.?\s/i.test(who(x.source))).forEach(x => { const k = key(x.source); if(k.length < 3) return; const g = G[k] = G[k] || { id: 'S:' + k, name: '', sources: [], n: 0 }; g.sources.push(x.source); g.n += x.students || 0; if(!g.name || /^(ms|mr|mrs|dr)\.?\s/i.test(who(x.source))) g.name = who(x.source); });
+        acc.forEach(a => { const k = key((a.sources || [])[0] || a.display_name); if(G[k]){ G[k].acc = a.id; G[k].name = a.display_name || G[k].name; } });
+        PR.list = Object.values(G).filter(g => g.n > 0).sort((a, b) => (+!!b.acc - +!!a.acc) || b.n - a.n);
+        if(!PR.sel && PR.list.length){ const sp = PR.list.find(g => /spring/i.test(g.name)); PR.sel = (sp || PR.list[0]).id; } }
+      const g = (PR.list || []).find(x => x.id === PR.sel);
+      if(g && (force || !PR.d[PR.sel])){ const r = await pcall('pRenew', g.acc ? { id: g.acc } : { sources: g.sources, name: g.name }); if(r && r.ok) PR.d[PR.sel] = r; } }
     catch(e){} finally { PR.busy = 0; } if(typeof VIEW !== 'undefined' && VIEW === 'mgrowth') paint(); }
-  window.gw3165 = { pick(id){ PR.sel = id; paint(); prLoad(0); }, reload(){ prLoad(1); } };
+  window.gw3165 = { pick(id){ PR.sel = id; paint(); prLoad(0); }, reload(){ prLoad(1); }, links(){ const g = (PR.list || []).find(x => x.id === PR.sel); if(g) pa3LinksFor(g.acc || '', g.acc ? null : g.sources); } };
   function prCard(){ if(!PR.list && !PR.busy) setTimeout(() => prLoad(0), 0);
     const L = PR.list || [], r = PR.d[PR.sel];
     let h = '<div class="gw-c"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>Partner Renewal Rate <small>since their first payment on record</small></h2><div style="display:flex;gap:6px;flex-wrap:wrap">'
-      + L.map(a => '<button class="btn sm ' + (a.id === PR.sel ? 'teal' : 'ghost') + '" onclick="gw3165.pick(\'' + a.id + '\')">' + E(a.display_name) + '</button>').join('') + '</div></div>';
+      + L.map(a => '<button class="btn sm ' + (a.id === PR.sel ? 'teal' : 'ghost') + '" onclick="gw3165.pick(\'' + a.id + '\')">' + E(a.name) + '</button>').join('') + '</div></div>';
     if(!r) return h + '<div class="gw-skel" style="margin-top:12px"></div></div>';
     const A = r.all || {};
     h += '<div class="gw-n">' + E(r.partner) + '\'s students from ' + E(r.since || '—') + ' to today, from her payments at the partner price.</div>'
@@ -44652,9 +44659,10 @@ body.is-mgr #app #v-mtoday > *::before{box-shadow:none}
       + '<div class="gw-t"><span>Still Studying</span><b>' + pc(A.students ? A.studying / A.students : null) + '</b><small>' + A.studying + ' of ' + A.students + ' students</small></div>'
       + '<div class="gw-t"><span>Average per Student</span><b>' + (A.avgPackages == null ? '—' : A.avgPackages.toFixed(1)) + '</b><small>packages · about ' + Math.round(A.avgMonths || 0) + ' months</small></div></div>'
       + '<div class="gw-r" style="font-weight:700;font-size:13px;color:#6F6B85"><span>Started</span><span>Students who renewed</span><span class="v">Packages renewed</span></div>'
-      + (r.years || []).map(y => '<div class="gw-r"><span class="nm">' + E(y.year) + ' <small style="font-weight:400;color:#8A879C">· ' + y.students + ' students</small></span><div class="gw-bar" title="' + y.renewedStudents + ' of ' + y.studentsWithFinished + '"><i style="width:' + Math.round((y.studentRate || 0) * 100) + '%;background:#0E6F68"></i></div><span class="v">' + pc(y.studentRate) + ' <small>· ' + y.renewedStudents + '/' + y.studentsWithFinished + '</small> · ' + pc(y.packageRate) + '</span></div>').join('');
+      + (r.years || []).slice().reverse().map(y => '<div class="gw-r"><span class="nm">' + E(y.year) + ' <small style="font-weight:400;color:#8A879C">· ' + y.students + ' students</small></span><div class="gw-bar" title="' + y.renewedStudents + ' of ' + y.studentsWithFinished + '"><i style="width:' + Math.round((y.studentRate || 0) * 100) + '%;background:#0E6F68"></i></div><span class="v">' + pc(y.studentRate) + ' <small>· ' + y.renewedStudents + '/' + y.studentsWithFinished + '</small> · ' + pc(y.packageRate) + '</span></div>').join('');
+    if(r.approx) h += '<div class="gw-note" style="color:#8A5300">This partner\'s payments are not labelled with her name in SALES, so payments that name one of her students are used. A direct student with the same English name could be counted: read with care.</div>';
     h += '<div class="gw-note">A package has ended when the student bought the next one or stopped studying; a current student\'s latest package is not counted yet.' + (r.dueNow ? ' ' + r.dueNow + ' students are due to renew now.' : '') + (r.noSale ? ' ' + r.noSale + ' of her students have no matched payment yet (they started before the records begin in Dec 2023, or share a name below), so they are not counted.' : '') + '</div>';
-    if(r.unlinked) h += '<div class="gw-act" style="align-items:center"><span class="gw-n" style="margin:0"><b>' + r.unlinked + ' payments to match</b> · same English name, several students (Leo, Mia …). They are left out until matched, so the rate is on the safe side.</span><button class="btn teal sm" onclick="pa3LinksFor(\'' + PR.sel + '\')">Match payments to students</button><button class="btn ghost sm" onclick="gw3165.reload()">Refresh</button></div>';
+    if(r.unlinked) h += '<div class="gw-act" style="align-items:center"><span class="gw-n" style="margin:0"><b>' + r.unlinked + ' payments to match</b> · same English name, several students (Leo, Mia …). They are left out until matched, so the rate is on the safe side.</span><button class="btn teal sm" onclick="gw3165.links()">Match payments to students</button><button class="btn ghost sm" onclick="gw3165.reload()">Refresh</button></div>';
     return h + '</div>'; }
 
   async function load(force){ if(!mgr() || S.busy) return; if(!force && S.r && Date.now() - S.at < 120000){ paint(); return; } S.busy = 1; if(!S.r) paint();
