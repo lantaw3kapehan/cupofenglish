@@ -7584,7 +7584,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2733;
+const COE_V = 2734;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -33770,7 +33770,7 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     body(h); }
   /* 3163 · renewal rate of this partner's students since they started (Misty 18:53 · to show Dr. Spring) */
   var PC = function(x){ return x == null ? '—' : Math.round(x * 100) + '%'; };
-  window.pa3Renew = function(){ frame('Renewal rate'); call('pRenew', Q.id ? { id: Q.id } : { sources: Q.srcs || [], general: Q.gen || 0 }).then(function(r){ var bk = Q.id ? '<button class="btn ghost sm" onclick="pa3Open(\'' + Q.id + '\')">‹ Payments &amp; students</button>' : '';
+  window.pa3Renew = function(){ frame('Renewal rate'); call('pRenew', Q.id ? { id: Q.id } : (Q.grp ? { group: Q.grp } : { sources: Q.srcs || [] })).then(function(r){ var bk = Q.id ? '<button class="btn ghost sm" onclick="pa3Open(\'' + Q.id + '\')">‹ Payments &amp; students</button>' : '';
       if(!r || !r.ok){ body(bk + '<div class="mute" style="margin-top:12px">' + e((r && (r.msg || r.error)) || 'Could not load') + '</div>'); return; }
       var A = r.all || {}, tile = function(lbl, big, sub){ return '<div class="card" style="padding:12px 16px;min-width:150px;flex:1"><div class="mute small">' + lbl + '</div><b style="font-size:26px">' + big + '</b><div class="small mute">' + sub + '</div></div>'; };
       var h = bk + '<h1 style="margin-top:8px">' + e(r.partner) + ' · Renewal rate</h1><div class="mute small">Since the first payment on record (' + e(r.since || '—') + ') · from SALES payments at the partner price</div>'
@@ -33796,8 +33796,8 @@ function kx1112(me, t, m, g){ var E = function(v){ return String(v == null ? '' 
     var U = r.auto || [];
     if(U.length) h += '<h2>Matched (' + U.length + ')</h2><div class="mute small">By management, or by the student code year (only one child with that name was a student then). Tap to change.</div><div class="card" style="padding:4px 12px;margin-top:6px">' + U.map(function(u, i){ return '<div class="row small" style="gap:8px;padding:7px 0;border-top:1px solid var(--line)"><div class="grow"><b>' + e(u.name) + '</b> · ' + e(u.date) + ' · ' + (u.lessons || 0) + ' lessons → <b>' + e(u.chosen.code) + '</b> ' + e(u.chosen.cn || '') + ' <span class="mute">' + (u.how === 'auto' ? 'by code year' : 'matched') + '</span></div>' + (u.cands.length > 1 ? '<button class="btn ghost sm" onclick="pa3Relink(' + i + ')">Change</button>' : '') + '</div>'; }).join('') + '</div>';
     body(h); }
-  function linkCall(op, x){ return call(op, Object.assign(Q.id ? { id: Q.id } : { sources: Q.srcs || [], general: Q.gen || 0 }, x || {})).then(function(r){ if(!r || !r.ok){ toast((r && (r.msg || r.error)) || 'Not saved'); return; } LQ = r; paintLinks(); }); }
-  window.pa3LinksFor = function(id, srcs, gen){ Q.id = id || ''; Q.srcs = srcs || null; Q.gen = gen ? 1 : 0; window.pa3Links(); };
+  function linkCall(op, x){ return call(op, Object.assign(Q.id ? { id: Q.id } : (Q.grp ? { group: Q.grp } : { sources: Q.srcs || [] }), x || {})).then(function(r){ if(!r || !r.ok){ toast((r && (r.msg || r.error)) || 'Not saved'); return; } LQ = r; paintLinks(); }); }
+  window.pa3LinksFor = function(id, srcs, grp){ Q.id = id || ''; Q.srcs = srcs || null; Q.grp = grp || ''; window.pa3Links(); };
   window.pa3Links = function(){ frame('Match payments to students'); linkCall('pLinks').catch(function(){ body('<div class="mute">No connection · try again</div>'); }); };
   window.pa3Link = function(i, code){ var t = ((LQ || {}).todo || [])[i]; if(!t) return; linkCall('pLinkSet', { ref: t.ref, name: t.name, code: code }).then(function(){ toast('Matched · ' + code); }); };
   window.pa3Relink = function(i){ var u = ((LQ || {}).auto || [])[i]; if(!u) return; var opts = u.cands.map(function(c){ return c.code + (c.cn ? ' ' + c.cn : ''); }).join('\n'); var v = prompt('Which child? Type the code:\n' + opts, u.chosen.code); if(!v) return; v = v.trim().toUpperCase(); if(!u.cands.some(function(c){ return c.code === v; })) return toast('Pick one of the codes shown');
@@ -44646,13 +44646,12 @@ body.is-mgr #app #v-mtoday > *::before{box-shadow:none}
         const used = new Set(PR.list.flatMap(g => g.sources)), rest = ((L && L.sources) || []).filter(x => !used.has(x.source) && x.students > 0);
         const isCoe = x => /^(coe\b|cupofenglish|wechat|website|other\b|not recorded|walk-?in|bfsu)/i.test(x.source);
         const own = rest.filter(isCoe), ref = rest.filter(x => !isCoe(x)), sum = A => A.reduce((a, x) => a + (x.students || 0), 0);
-        if(own.length) PR.list.push({ id: 'X:coe', name: 'CupOfEnglish (direct)', sources: own.map(x => x.source), n: sum(own), general: 1 });
-        if(ref.length) PR.list.push({ id: 'X:ref', name: 'Referred by families', sources: ref.map(x => x.source), n: sum(ref), general: 1 });
+        PR.list.push({ id: 'X:coe', name: 'CupOfEnglish (direct)', group: 'coe', n: sum(own) }, { id: 'X:ref', name: 'Referred by families', group: 'ref', n: sum(ref) });
         if(!PR.sel && PR.list.length){ const sp = PR.list.find(g => /spring/i.test(g.name)); PR.sel = (sp || PR.list[0]).id; } }
       const g = (PR.list || []).find(x => x.id === PR.sel);
-      if(g && (force || !PR.d[PR.sel])){ const r = await pcall('pRenew', g.acc ? { id: g.acc } : { sources: g.sources, name: g.name, general: g.general ? 1 : 0 }); if(r && r.ok) PR.d[PR.sel] = r; } }
+      if(g && (force || !PR.d[PR.sel])){ const r = await pcall('pRenew', g.acc ? { id: g.acc } : g.group ? { group: g.group, name: g.name } : { sources: g.sources, name: g.name }); if(r && r.ok) PR.d[PR.sel] = r; } }
     catch(e){} finally { PR.busy = 0; } if(typeof VIEW !== 'undefined' && VIEW === 'mgrowth') paint(); }
-  window.gw3165 = { pick(id){ PR.sel = id; paint(); prLoad(0); }, reload(){ prLoad(1); }, links(){ const g = (PR.list || []).find(x => x.id === PR.sel); if(g) pa3LinksFor(g.acc || '', g.acc ? null : g.sources, g.general); } };
+  window.gw3165 = { pick(id){ PR.sel = id; paint(); prLoad(0); }, reload(){ prLoad(1); }, links(){ const g = (PR.list || []).find(x => x.id === PR.sel); if(g) pa3LinksFor(g.acc || '', g.acc ? null : g.sources, g.group); } };
   function prCard(){ if(!PR.list && !PR.busy) setTimeout(() => prLoad(0), 0);
     const L = PR.list || [], r = PR.d[PR.sel];
     let h = '<div class="gw-c"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>Partner Renewal Rate <small>since their first payment on record</small></h2><div style="display:flex;gap:6px;flex-wrap:wrap">'

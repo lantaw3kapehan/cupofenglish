@@ -272,7 +272,18 @@ async function availDocs() {
 //   (marked approx: a direct student with the same English name could be counted).
 async function accOf(b: any): Promise<any> {
   if (b.id) { const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id)).maybeSingle(); return A; }
-  const sources = (Array.isArray(b.sources) ? b.sources : []).map(norm).filter(Boolean).slice(0, 300); if (!sources.length) return null;
+  let sources = (Array.isArray(b.sources) ? b.sources : []).map(norm).filter(Boolean).slice(0, 300);
+  if (b.group === "coe" || b.group === "ref") {   // v26i · 3172: CupOfEnglish's own students / students referred by families (same words as Growth's "Where New Students Came From")
+    const [DB, PK] = await Promise.all([rows("DATABASE"), pages(() => db.from("coe_packages").select("source").is("removed_at", null).order("code"))]);
+    const raw = new Set<string>(); DB.forEach((r: any[]) => { const v = norm(c(r, 22)); if (v) raw.add(v); }); (PK as any[]).forEach((p) => { const v = norm(p.source); if (v) raw.add(v); });
+    const who = (x: string) => x.split(/\s[–-]\s/).pop()!.trim(), key = (x: string) => who(x).replace(/^(ms|mr|mrs|dr|teacher)\.?\s+/i, "").trim().toLowerCase();
+    const isRef = (x: string) => /^(ST-\d{4}-\d{3})/i.test(x) || /'s (mom|mother|dad|father|brother|sister|son|daughter|cousin)\b/i.test(x) || /referr/i.test(x);
+    const isCoe = (x: string) => /^(coe\b|cupofenglish|wechat|website|other$|not recorded|walk-?in|bfsu|xiaohongshu|小红书|facebook|fb\b)/i.test(x);
+    const isPartner = (x: string) => /\s[–-]\s/.test(x) && !isRef(x) && !isCoe(x) || /^(ms|mr|mrs|dr)\.?\s/i.test(who(x)) || /^partner/i.test(x);
+    const pk = new Set([...raw].filter(isPartner).map(key));
+    sources = [...raw].filter((x) => b.group === "coe" ? isCoe(x) : !isCoe(x) && !isPartner(x) && !pk.has(key(x)) && (isRef(x) || !/\s[–-]\s/.test(x)) && !/^(n\/a|none|#ref!|\?|\d{4}-\d{2}-\d{2}.*)$/i.test(x));
+    b.general = 1; b.name = b.name || (b.group === "coe" ? "CupOfEnglish (direct)" : "Referred by families"); }
+  if (!sources.length) return null;
   const key = (x: string) => x.split(/\s[–-]\s/).pop()!.replace(/^(ms|mr|mrs|dr|teacher)\.?\s+/i, "").trim().toLowerCase();
   const keys = [...new Set(sources.map(key))].filter((k) => k.length >= 3);
   const SL = await pages(() => db.from("coe_sales").select("partner").is("removed_at", null).order("day"));
