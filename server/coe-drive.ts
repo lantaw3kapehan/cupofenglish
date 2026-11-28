@@ -13,6 +13,11 @@
 //   mgmtVidFlags {}                      → { ok, list }   ·   mgmtVidFlagSet { args:[id, st, note] } → { ok, item }
 // 28 Nov · 3145 (Misty "yes"): the 21:00 "tomorrow's classes" emails, sent from works@ through Gmail (was DAYSCHEDULE in Apps Script):
 //   day_schedule { dry? } (server key) → each teacher gets her own classes; Operations gets the whole day. Once per day (docs sys:dayschedule).
+// 28 Nov · 3146 (Misty "let's finish those google jobs now"), the last two Google night jobs:
+//   books_scan {} (server key) → the books folder (BK16_ROOT, 4 levels) into coe_book_files, then coe_book_automatch. A run continues
+//       where the last one stopped (docs sys:books16); files not seen in a finished full scan get gone_at (never when the scan saw < 80%).
+//   rec8 {}       (server key) → coaching and training recordings copied into Drive (COACHINGS / TRAININGS next to STUDENT CLASS VIDEOS),
+//       16 MB pieces, resumable across runs (table coe_rec8); a file already in Drive with the same name counts as done.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -303,6 +308,110 @@ async function daySchedule(dry: boolean) {
   return { ok: !fail.length, day: d.day, sent: sent.length, fail };
 }
 
+
+// ───────────────────────── books folder scan (ported from booksScan16_)
+const BK16_ROOT = "1TXgfR2yOKWSdq59muGLNeWGv8h6PVpVc";
+async function children(id: string) {
+  const out: any[] = []; let pt = "";
+  do { const j = await gJson("https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent(`'${id}' in parents and trashed=false`) + "&fields=nextPageToken,files(id,name,mimeType,size)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true" + (pt ? "&pageToken=" + pt : ""));
+    out.push(...(j.files || [])); pt = j.nextPageToken || ""; } while (pt);
+  return out;
+}
+async function booksScan() {
+  const t0 = Date.now(), { data: st0 } = await db.from("docs").select("data").eq("key", "sys:books16").maybeSingle();
+  let st: any = (st0 && st0.data) || {};
+  if (!st.queue || !st.queue.length) {
+    if (st.done_at && Date.now() - st.done_at < 20 * 3600e3) return { ok: true, skipped: "scanned " + new Date(st.done_at).toISOString() };
+    st = { run: new Date().toISOString(), queue: [{ id: BK16_ROOT, path: "", depth: 0 }], files: 0 };
+  }
+  while (st.queue.length && Date.now() - t0 < 100e3) {
+    const batch = st.queue.splice(0, 6);
+    const res = await Promise.all(batch.map(async (f: any) => ({ f, L: await children(f.id) })));
+    const rows: any[] = [];
+    for (const { f, L } of res) for (const x of L) {
+      if (x.mimeType === FOLDER) { if (f.depth < 4) st.queue.push({ id: x.id, path: (f.path ? f.path + " / " : "") + x.name, depth: f.depth + 1 }); continue; }
+      rows.push({ id: x.id, name: x.name, path: f.path, mime: x.mimeType, folder_id: f.id, size: x.size != null ? +x.size : null, seen_at: st.run, gone_at: null });
+    }
+    for (let i = 0; i < rows.length; i += 400) { const { error } = await db.from("coe_book_files").upsert(rows.slice(i, i + 400), { onConflict: "id" }); if (error) throw new Error("books save: " + error.message); }
+    st.files += rows.length;
+  }
+  let fin: any = null;
+  if (!st.queue.length) {
+    const { count } = await db.from("coe_book_files").select("id", { count: "exact", head: true }).is("gone_at", null);
+    if (st.files >= 0.8 * (count || 0)) await db.from("coe_book_files").update({ gone_at: new Date().toISOString() }).lt("seen_at", st.run).is("gone_at", null);
+    try { await db.rpc("coe_book_automatch"); } catch (_) { /* */ }
+    fin = { files: st.files, before: count }; st = { done_at: Date.now(), files: st.files, run: st.run };
+  }
+  await db.from("docs").upsert({ key: "sys:books16", scope: "pres", data: st, updated_at: new Date().toISOString() });
+  return { ok: true, left: (st.queue || []).length, files: st.files, finished: fin };
+}
+
+// ───────────────────────── coaching and training recordings → Drive (ported from rec8Run)
+const VIDEO_ROOT = "1BtfJ4G6qQXi73Ctj_Tb3ehwZnGKjUuDd";   // TEACHERS VIDEO CLASSES
+const rec8Clean = (s: string) => String(s || "").replace(/[\\/:*?"<>|#%]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+const ymdM = (d: string) => man(Date.parse(d)).slice(0, 10);
+async function rec8Items() {
+  const out: any[] = [];
+  const { data: T0 } = await db.from("coe_trainings").select("id,title"); const T: Record<string, string> = {}; (T0 || []).forEach((t: any) => { T[t.id] = t.title; });
+  const { data: R } = await db.from("coe_training_records").select("id,teacher,done_at,note,status").eq("training_id", "coach").order("id");
+  (R || []).forEach((r: any) => { const n = String(r.note || ""), f = (n.match(/§file:(\S+)/) || [])[1], v = (n.match(/§video:(\S+)/) || [])[1], coach = ((n.match(/§coach:([^\n]+)/) || [])[1] || "").trim();
+    if (!f && !v) return; out.push({ key: "c" + r.id, kind: "COACHINGS", sub: String(r.teacher || "").toUpperCase(), name: ymdM(r.done_at) + "-" + rec8Clean(r.teacher) + "-coaching" + (coach ? "-by-" + rec8Clean(coach) : ""), path: f || "", link: f ? "" : v }); });
+  const { data: S } = await db.from("coe_training_sessions").select("id,training_id,starts_at,facilitator,recording_path").not("recording_path", "is", null).order("id");
+  (S || []).forEach((x: any) => { const t = T[x.training_id] || x.training_id || "Training";
+    out.push({ key: "s" + x.id, kind: "TRAININGS", sub: String(t).toUpperCase(), name: ymdM(x.starts_at) + "-" + rec8Clean(t) + (x.facilitator ? "-by-" + rec8Clean(x.facilitator) : ""), path: x.recording_path, link: "" }); });
+  const { data: P } = await db.from("coe_training_parts").select("id,training_id,title,video_path").not("video_path", "is", null).order("id");
+  (P || []).forEach((x: any) => { const t = T[x.training_id] || x.training_id || "Training"; out.push({ key: "p" + x.id, kind: "TRAININGS", sub: String(t).toUpperCase(), name: rec8Clean(x.title), path: x.video_path, link: "" }); });
+  try { for (const Tf of await folders(`'${VIDEO_ROOT}' in parents and mimeType='${FOLDER}' and trashed=false`))
+    for (const Sf of await folders(`'${Tf.id}' in parents and mimeType='${FOLDER}' and trashed=false`))
+      if (/training/i.test(Sf.name)) out.push({ key: "f" + Sf.id, kind: "TRAININGS", sub: "FROM TEACHER FOLDERS", name: String(Tf.name).trim() + " · " + String(Sf.name).trim(), path: "", link: Sf.id });
+  } catch (e) { console.warn("rec8 old folders", e); }
+  return out;
+}
+async function rec8Top(name: string) {   // COACHINGS / TRAININGS next to STUDENT CLASS VIDEOS
+  const m = await memo("rec8:" + name); if (m) return m;
+  const root = await rootId(), j = await gJson("https://www.googleapis.com/drive/v3/files/" + root + "?fields=parents&supportsAllDrives=true");
+  const id = await child((j.parents || [])[0], name); await memoSet("rec8:" + name, id); return id;
+}
+async function rec8Run() {
+  const t0 = Date.now(), L = await rec8Items(); let made = 0, err = 0, left = 0;
+  const { data: D } = await db.from("coe_rec8").select("*"); const S: Record<string, any> = {}; (D || []).forEach((r: any) => { S[r.key] = r; });
+  const subs: Record<string, string> = {};
+  for (const x of L) {
+    const st = S[x.key]; if (st && (st.status === "done" || st.status === "none")) continue;
+    if (Date.now() - t0 > 100e3) { left++; continue; }
+    try {
+      const top = await rec8Top(x.kind), sk = x.kind + "|" + x.sub, sub = subs[sk] || (subs[sk] = await child(top, x.sub || "OTHER"));
+      if (!x.path) {   // a Drive link (or an old TRAINING folder): one shortcut
+        const tid = (String(x.link).match(/[-\w]{25,}/) || [])[0]; if (!tid) { await db.from("coe_rec8").upsert({ key: x.key, status: "none", name: x.name, at: new Date().toISOString() }); continue; }
+        const nm = x.name + " (link)", have = await folders(`'${sub}' in parents and name='${q(nm)}' and trashed=false`);
+        if (!have.length) await gJson("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: nm, mimeType: "application/vnd.google-apps.shortcut", parents: [sub], shortcutDetails: { targetId: tid } }) });
+        await db.from("coe_rec8").upsert({ key: x.key, status: "done", name: nm, at: new Date().toISOString() }); made++; continue;
+      }
+      const ext = (String(x.path).match(/\.(\w{2,5})$/) || [, "mp4"])[1].toLowerCase(), mime = ext === "webm" ? "video/webm" : ext === "mov" ? "video/quicktime" : "video/mp4", nm = x.name + "." + ext;
+      if (!st || !st.session) { const have = await folders(`'${sub}' in parents and name='${q(nm)}' and trashed=false`);
+        if (have.length) { await db.from("coe_rec8").upsert({ key: x.key, status: "done", name: nm, file_id: have[0].id, at: new Date().toISOString() }); continue; } }
+      const { data: sg, error: se } = await db.storage.from("trainings").createSignedUrl(x.path, 3600); if (se || !sg) throw new Error("sign " + (se && se.message));
+      const src = sg.signedUrl, h0 = await fetch(src, { headers: { Range: "bytes=0-0" } }), size = +String(h0.headers.get("content-range") || "").split("/")[1]; try { await h0.body?.cancel(); } catch (_) { /* */ }
+      if (!(size > 1)) throw new Error("size " + h0.status);
+      let session = st && st.session && st.size === size ? st.session : "", off = 0;
+      if (session) { const q0 = await fetch(session, { method: "PUT", headers: { "Content-Range": "bytes */" + size } }); if (q0.status === 308) { const g = q0.headers.get("range"); off = g ? +g.split("-")[1] + 1 : 0; } else if (q0.status === 200 || q0.status === 201) off = size; else session = ""; }
+      if (!session) {
+        const r = await gApi("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true", { method: "POST", headers: { "Content-Type": "application/json", "X-Upload-Content-Type": mime, "X-Upload-Content-Length": String(size) }, body: JSON.stringify({ name: nm, parents: [sub] }) });
+        session = r.headers.get("location") || ""; if (!session) throw new Error("session " + r.status); off = 0;
+      }
+      const CH = 16 * 1024 * 1024; let id = "";
+      while (off < size && Date.now() - t0 < 110e3) {
+        const b = Math.min(size, off + CH) - 1, part = await fetch(src, { headers: { Range: "bytes=" + off + "-" + b } }); if ([200, 206].indexOf(part.status) < 0) throw new Error("read " + part.status);
+        const up = await fetch(session, { method: "PUT", headers: { "Content-Range": "bytes " + off + "-" + b + "/" + size }, body: new Uint8Array(await part.arrayBuffer()) });
+        if (up.status === 200 || up.status === 201) { id = (await up.json()).id; off = size; } else if (up.status === 308) { const g = up.headers.get("range"); off = g ? +g.split("-")[1] + 1 : 0; } else throw new Error("upload " + up.status + " " + (await up.text()).slice(0, 120));
+      }
+      await db.from("coe_rec8").upsert(off >= size && id ? { key: x.key, status: "done", name: nm, file_id: id, session: null, size, at: new Date().toISOString() } : { key: x.key, status: "up", name: nm, session, size, at: new Date().toISOString() });
+      if (id) made++; else left++;
+    } catch (e) { err++; console.warn("rec8 " + x.key, e); await db.from("coe_rec8").upsert({ key: x.key, status: "err", name: x.name, err: String((e as Error).message || e).slice(0, 300), at: new Date().toISOString() }); }
+  }
+  return { ok: true, items: L.length, made, left, err };
+}
+
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: h });
@@ -339,6 +448,8 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, files: got, list: l.error || undefined });
     }
     const A = Array.isArray(b.args) ? b.args : [];
+    if (op === "books_scan") { if (!srv) return out({ ok: false, error: "server only" }, 403); return out(await booksScan()); }
+    if (op === "rec8") { if (!srv) return out({ ok: false, error: "server only" }, 403); return out(await rec8Run()); }
     if (op === "day_schedule") { if (!srv) return out({ ok: false, error: "server only" }, 403); return out(await daySchedule(!!b.dry)); }
     if (op === "vids_build") { if (!srv && !pres) return out({ ok: false, error: "Only the President can do this." }, 403); return out({ ok: true, ...(await vidsBuild()) }); }
     if (!sess) return out({ ok: false, error: "AUTH" }, 401);
