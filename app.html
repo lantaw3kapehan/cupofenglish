@@ -7565,7 +7565,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2690;
+const COE_V = 2691;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23672,7 +23672,7 @@ go();
 
   window.ctAdminPaint2587 = () => paintAdmin();
   window.ctTeacher = function(t){ const b = $('sheetBody'); if(!b || !AD) return; const P = pres(); const rs = tRows(t); const pp = (AD.people || []).find(x => x.teacher === t) || {};
-    const signDocs = (AD.docs || []).filter(d => d.needs_sign);
+    const signDocs = (AD.docs || []).filter(d => d.needs_sign && (d.kind !== 'undertaking' || String(d.ref || '').toLowerCase().endsWith('-' + String(t).toLowerCase())));   /* 3134: an individual document shows only for its teacher */
     let h = '<div class="ct"><button class="btn ghost sm" style="margin-bottom:10px" onclick="ctAdmin()">‹ Contracts</button><h1>' + e(t) + '</h1><div class="sub">Signing record · Philippine time</div>';
     signDocs.forEach(d => { const r = rs.find(x => x.doc_id === d.id); const [c, l] = adStatus(r, d);
       h += '<div class="box"><div style="display:flex;justify-content:space-between;gap:6px 10px;align-items:center;flex-wrap:wrap"><b style="flex:1 1 200px">' + e(d.title) + '</b><span class="pill ' + c + '">' + e(l) + '</span></div>';
@@ -23693,6 +23693,8 @@ go();
           (r.scan_at ? '<button class="btn sm ghost" onclick="ctScan(' + r.id + ')">View scan</button>' : '') +
           (r.status === 'signed' ? '<button class="btn sm ghost" onclick="ctPrint(' + r.id + ')">Print for notarization</button>' : '') +
           (P ? '<button class="btn sm ghost" style="color:#9A3A26" onclick="ctVoid(' + r.id + ',\'' + e(t) + '\')">Start again</button>' : '') + '</div>';
+      } else if(P && d.kind === 'undertaking'){
+        h += '<div class="fine" style="margin:8px 0">Draft · not sent. ' + e(t) + ' cannot see it until you send it. She then has ' + (d.respond_days || 14) + ' days to read and sign it in the app.</div><div class="row2"><button class="btn sm ghost" onclick="ctPrev3134(' + d.id + ')">Read it</button><button class="btn sm teal" onclick="ctSend3134(' + d.id + ',\'' + e(t) + '\')">Send to ' + e(t) + '</button></div>';
       } else if(P && d.kind !== 'addendum'){
         h += '<div class="row2"><button class="btn sm ghost" onclick="ctPaper(\'' + e(t) + '\',\'' + e(d.ref) + '\')">Signed on paper before · record it</button></div>';
       }
@@ -23703,10 +23705,15 @@ go();
         '<div class="lab">Address</div><input class="in" id="cpA" value="' + e(pp.address || '') + '">' +
         '<div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><div class="lab">Agreement date</div><input class="in" type="date" id="cpD" value="' + e(pp.agreement_date || '') + '"></div><div><div class="lab">50-min rate ₱ (Article III)</div><input class="in" type="number" id="cpR" value="' + e(pp.rate50 || '') + '" placeholder="150"></div></div>' +
         '<div class="row2"><button class="btn sm teal" onclick="ctPeople(\'' + e(t) + '\')">Save details</button>' +
-        (signDocs.some(d => !rs.find(x => x.doc_id === d.id)) ? '<button class="btn sm ghost" onclick="ctSet(\'' + e(t) + '\')">Send the full set (new teacher)</button>' : '') + '</div></div>'; }
+        (signDocs.some(d => d.kind !== 'undertaking' && !rs.find(x => x.doc_id === d.id)) ? '<button class="btn sm ghost" onclick="ctSet(\'' + e(t) + '\')">Send the full set (new teacher)</button>' : '') + '</div></div>'; }
     const T8 = termOf(rs, AD.docs, pp); b.innerHTML = h.replace('<div class="sub">Signing record · Philippine time</div>', '<div class="sub">Signing record · Philippine time' + (T8 ? ' · <b>term ' + e(ph(T8.start)) + ' to ' + e(ph(T8.end)) + '</b>' + (T8.due ? ' · <b style="color:#9A3A26">renewal due</b>' : '') : ' · two-year term: add the Agreement date (details below) or record the paper Agreement') + '</div>') + '</div>'; b.scrollTop = 0; };
 
   async function refresh(t){ AD = await call('list'); CNTT = 0; ctCount(); ctTeacher(t); }
+  window.ctPrev3134 = async function(id){ try{ const j = await call('doc_body', { id }); const md = String(j.doc.body || '');
+      const html = e(md).replace(/^### (.*)$/gm, '<h3>$1</h3>').replace(/^## (.*)$/gm, '<h2 style="font-size:17px;margin:16px 0 6px">$1</h2>').replace(/^# (.*)$/gm, '<h1>$1</h1>').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+      openSheet('<div class="ct"><button class="btn ghost sm" style="margin-bottom:10px" onclick="ctAdmin()">‹ Contracts</button><div class="fine" style="margin:0 0 10px">Preview · exactly the text the teacher will read and sign</div><div style="font-size:14px;line-height:1.6">' + html + '</div></div>'); $('sheet').classList.add('wide'); }catch(x){ toast(x.message); } };
+  window.ctSend3134 = async function(id, t){ if(!confirm('Send this memo to ' + t + ' now? She will see it in My Contract and be asked to sign it within 14 days.')) return;
+    try{ await call('send_one', { id, teacher: t }); toast('Sent to ' + t); await refresh(t); }catch(x){ toast(x.message); } };
   window.ctReply = async (id, t) => { const v = prompt('Reply to ' + t + ' (they see it with the document):'); if(!v) return; try{ await call('reply', { id, reply: v }); toast('Reply saved'); await refresh(t); }catch(x){ toast(x.message); } };
   window.ctPaper = async (t, ref) => { const v = prompt('Date ' + t + ' signed the ' + (ref === 'agreement' ? 'Agreement' : 'Annex A') + ' on paper (YYYY-MM-DD):', ''); if(v == null) return; if(v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return toast('Use YYYY-MM-DD');
     try{ await call('paper', { teacher: t, ref, date: v }); toast('Recorded · attach the notarized scan'); await refresh(t); }catch(x){ toast(x.message); } };

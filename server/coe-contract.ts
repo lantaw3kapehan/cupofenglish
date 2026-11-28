@@ -174,6 +174,16 @@ Deno.serve(async (req: Request) => {
       const { data: r2 } = await db.from("coe_contract_signs").select(LIGHT).eq("id", r.id).maybeSingle();
       return out({ ok: true, row: r2 });
     }
+    // 3134 (Misty 28 Nov): an individual document (kind "undertaking", ref ending "-<teacher>") is a draft until the President sends it to that teacher
+    if (a === "doc_body") { if (!pres) return onlyPres();
+      const { data: d } = await db.from("coe_contract_docs").select("id,title,version,body").eq("id", +b.id).maybeSingle(); if (!d) return out({ ok: false, error: "Not found" });
+      return out({ ok: true, doc: d }); }
+    if (a === "send_one") { if (!pres) return onlyPres();
+      const t = str(b.teacher, 60), id = +b.id; const d = (await docs()).find((x: any) => x.id === id);
+      if (!t || !d || !d.needs_sign) return out({ ok: false, error: "Teacher or document not found" });
+      if (d.kind === "undertaking" && !String(d.ref || "").toLowerCase().endsWith("-" + t.toLowerCase())) return out({ ok: false, error: "This document is for another teacher." });
+      await db.from("coe_contract_signs").upsert([{ teacher: t, doc_id: d.id, sent_at: now, sent_by: me, due_at: new Date(Date.now() + d.respond_days * 864e5).toISOString() }], { onConflict: "teacher,doc_id", ignoreDuplicates: true });
+      return out({ ok: true, sent: 1 }); }
     if (a === "send_set") {
       const t = str(b.teacher, 60); if (!t) return out({ ok: false, error: "Pick a teacher" });
       const ds = (await docs()).filter((d: any) => d.in_new_set && d.needs_sign);
