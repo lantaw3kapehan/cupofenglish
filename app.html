@@ -7584,7 +7584,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2715;
+const COE_V = 2716;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -47595,11 +47595,14 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
          package dates. Before 2026 it comes from the DATABASE rows; a row with no end date is counted to 31 Dec 2025 and, when the 2026 lessons do not start
          by February to confirm it, the result is marked guess (check the dates before sending). */
       const LMsrc = this.LM && fromDB ? this.LM : (!fromDB && this.LMT && this.LMT[k] ? this.LMT : null);   /* 3156: teachers get the same lesson months from coe-hw */
-      if(LMsrc){ const Y26 = new Date('2026-01-01T00:00:00'), E25 = new Date('2025-12-31T00:00:00'), LMk = (LMsrc[k] || []).filter(Array.isArray).slice().sort((x, y) => x[0] < y[0] ? -1 : 1), early = LMk.length && LMk[0][0] <= '2026-02';
+      /* 3158: a 2025 marker ["2025-E", from, to] = the 2025 attendance tabs show no lessons for 2+ months → "Check the dates first" (unless a pause covers it) */
+      const G25 = ((LMsrc || {})[k] || []).filter(x => Array.isArray(x) && /E$/.test(String(x[0])));
+      if(LMsrc){ const Y26 = new Date('2026-01-01T00:00:00'), E25 = new Date('2025-12-31T00:00:00'), LMk = (LMsrc[k] || []).filter(x => Array.isArray(x) && !/E$/.test(String(x[0]))).slice().sort((x, y) => x[0] < y[0] ? -1 : 1), early = LMk.length && LMk[0][0] <= '2026-02';
         P = []; R.forEach((x, i) => { if(x.a >= Y26) return; const nx = R[i + 1]; let b; if(x.e && x.e >= x.a) b = x.e; else if(nx && nx.a < Y26) b = nx.a; else { b = E25; if(!early) guess = true; } if(b > E25) b = E25; if(b > x.a) P.push([x.a, b, false]); });
         LMk.forEach((m, i) => { const a = pdx(m[1]); let b = pdx(m[2]); if(!a || !b) return; if(i === LMk.length - 1 && td - b < 45 * DAY) b = td; if(b > td) b = td; if(b >= a) P.push([a, b, b >= td]); });   /* first to last lesson of each month; the last one runs to today while the student is still taking lessons */
         /* the lessons bought before 2026 must fit the time counted before 2026 (at least 2 a month), otherwise a break is likely missing */
         P.sort((x, y) => x[0] - y[0]); if(!P.length) return null; }
+      if(G25.length){ const PZk = (this.PZ && this.PZ[k]) || []; if(!G25.every(g => PZk.some(z => String(z[0]) <= String(g[1]) && (!z[1] || String(z[1]) >= String(g[2]))))) guess = true; }   /* 3158 */
       else P = R.map((x, i) => { const nx = R[i + 1]; let b = x.e && x.e >= x.a ? x.e : nx ? nx.a : td; if(b > td) b = td; return [x.a, b, !x.e && !nx]; });
       const M = []; P.forEach(p => { const l = M[M.length - 1]; if(l && p[0] - l[1] < 45 * DAY){ if(p[1] > l[1]) l[1] = p[1]; l[2] = l[2] || p[2]; } else M.push(p.slice()); });
       /* 3154 (Misty 28 Nov, Shirui): a pause recorded by management (Pauses on the student page) is cut out of the learning time, even when the records cannot show it */
@@ -47611,7 +47614,7 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
       const learn = M.reduce((t, p) => t + (p[1] - p[0]), 0);
       const done = T.filter(t => learn >= t[0] * MO).map(t => [t[0], t[1], at(t[0] * MO), t[2], t[3], t[4], t[5], t[6], t[7]]), n = T.find(t => learn < t[0] * MO);
       const nx = n ? [n[0], n[1], active ? new Date(td.getTime() + (n[0] * MO - learn)) : null, n[2], n[3], n[4], n[5], n[6], n[7]] : null;
-      return { since: (fromDB || LMsrc) && R[0].a < M[0][0] && M[0][0] - R[0].a < 45 * DAY ? R[0].a : M[0][0], periods: M, pauses, active,   /* 3116: "since" is the first class in DATABASE when the lessons follow it */ learnMo: Math.floor(learn / MO + 1e-6), done, cur: done[done.length - 1] || null, nx, guess, byLessons: !!LMsrc }; },
+      return { since: (fromDB || LMsrc) && R[0].a < M[0][0] && M[0][0] - R[0].a < 45 * DAY ? R[0].a : M[0][0], periods: M, pauses, active,   /* 3116: "since" is the first class in DATABASE when the lessons follow it */ learnMo: Math.floor(learn / MO + 1e-6), done, cur: done[done.length - 1] || null, nx, guess, byLessons: !!LMsrc, gap25: G25.length ? G25.map(x => [x[1], x[2]]) : null }; },
     /* 3115: months with lessons held from Jan 2026, per student (management) · kept 6 hours */
     /* 3154: recorded pauses, per student {CODE: [[from, to, note, id, by]]} · kept 6 hours, refreshed with the lessons */
     PZ: (() => { try{ const c = JSON.parse(localStorage.getItem('coe.pz3154') || 'null'); return c && Date.now() - c.at < 6 * 36e5 ? c.map : null; }catch(e){ return null; } })(),
@@ -47720,7 +47723,7 @@ body.is-tch #sheet #sheetBody #stuBk:not(#q1):not(#q2):not(#q3):not(#q4):not(#q5
   window.cert78 = async function(kind, code0){ if(!code0 && (typeof STU === 'undefined' || !STU || !STU.code)) return; const CODE = String(code0 || STU.code).toUpperCase(); let b; try{ toast('Making the certificate…'); }catch(e){}   /* 3111: To do › Celebrate passes the code */
     if(kind === 't' && window.LV78){ try{ if(!LV78.LM) await LV78.loadLM(); }catch(e){} }   /* 3115: learning time from the lessons held */
     try{ b = await draw(kind, null, CODE); }catch(e){ try{ toast(e.message || 'Could not make the certificate', 4000); }catch(x){} return; }
-    try{ const TG = kind === 't' && LV78.tenure(CODE); if(TG && TG.guess) toast('Check the dates first · a package before 2026 has no end date, so a break may be missing', 7000); }catch(e){}
+    try{ const TG = kind === 't' && LV78.tenure(CODE); if(TG && TG.guess) toast('Check the dates first · a break before 2026 may be missing (record it with Pauses on the student page)', 7000); }catch(e){}
     const u = URL.createObjectURL(b), name = 'CupOfEnglish-certificate-' + CODE + '.png', ov = document.createElement('div'); ov.style.cssText = 'position:fixed;inset:0;background:rgba(20,18,40,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
     ov.innerHTML = '<div style="background:#fff;border-radius:16px;padding:14px;max-width:760px;width:100%;max-height:92vh;overflow:auto"><img src="' + u + '" alt="Certificate" style="width:100%;border-radius:10px;border:1px solid #ECEAF2"><div style="display:flex;gap:8px;margin-top:10px"><button type="button" data-cp78="1" style="all:unset;box-sizing:border-box;flex:1;height:40px;border-radius:10px;text-align:center;font:600 14px Inter,system-ui,sans-serif;cursor:pointer;background:#0E6F68;color:#fff">Copy Picture</button><button type="button" data-sv78="1" style="all:unset;box-sizing:border-box;flex:1;height:40px;border-radius:10px;text-align:center;font:600 14px Inter,system-ui,sans-serif;cursor:pointer;background:#fff;color:#2B2253;border:1px solid #D9D6E3">Save Picture</button><button type="button" style="all:unset;box-sizing:border-box;flex:1;height:40px;border-radius:10px;text-align:center;font:600 14px Inter,system-ui,sans-serif;cursor:pointer;background:#fff;color:#2B2253;border:1px solid #D9D6E3">Close</button></div></div>';
     ov.addEventListener('click', async ev => { const t = ev.target.closest && ev.target.closest('button');
