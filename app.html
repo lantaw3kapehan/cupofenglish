@@ -7566,7 +7566,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2698;
+const COE_V = 2699;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -51093,6 +51093,35 @@ body.is-mgr #app #v-trials #tpList .rp-row:last-child{border-bottom:0!important}
   window.memoDraft3137 = open;
   const _go = window.go; if(_go) window.go = function(v){ const r = _go.apply(this, arguments); if(v === 'msgs') setTimeout(paint, 500); return r; };
   setInterval(() => { try{ if(typeof VIEW !== 'undefined' && VIEW === 'msgs') paint(); }catch(x){} }, 5000);
+})();
+</script>
+<script>
+/* 3142 · class videos without Google's script: upload link, last step, video lists and checks come from the database (coe-drive,
+   Drive as works@ through the school's service account). An upload Google started before this version (key "vup:…") is finished by Google. */
+(function(){
+  if(window.__3142 || typeof window.api !== 'function') return; window.__3142 = 1;
+  const URL_ = 'https://rlxkiahqjsabopmuhern.supabase.co/functions/v1/coe-drive';
+  const WR = /^(tVidStart|tVidDone|tVidExplain|mgmtVidFlagSet)$/, RD = /^(tVidList|tVidFlags|mgmtVidFlags)$/;
+  const call = (fn, args) => fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, op: fn, args }) })
+    .then(r => r.json().then(j => { if(r.status >= 500) throw Object.assign(new Error(j && j.error || 'db'), { srv: 1 }); return j; }));
+  const go = (fn, args, fb) => {
+    if(fn === 'tVidDone' && /^vup:/.test(String(args[1] || ''))) return fb();          /* started by Google: Google finishes it */
+    const a = args.slice(1);                                                             /* args[0] is the token */
+    if(RD.test(fn)) return call(fn, a).then(j => { if(!j || j.ok === false) throw new Error('db'); return j; }).catch(() => fb());
+    return call(fn, a).catch(e => { throw new Error(fn === 'tVidDone' ? 'Weak internet · saved on this device · the link is added when the signal is back' : 'Weak signal · connection dropped. Try again when the signal is better.'); });
+  };
+  const b1 = window.api;
+  const w = function(fn){ const args = [].slice.call(arguments, 1), self = this, all = arguments;
+    if(WR.test(fn) || RD.test(fn)) return go(fn, args, () => b1.apply(self, all));
+    return b1.apply(this, arguments); };
+  for(const k in b1) try{ w[k] = b1[k]; }catch(e){}
+  window.api = w; try{ api = w; }catch(e){}
+  const b2 = window.apiNow;
+  if(typeof b2 === 'function'){ const w2 = function(fn){ const args = [].slice.call(arguments, 1), self = this, all = arguments;
+      if(WR.test(fn) || RD.test(fn)) return go(fn, args, () => b2.apply(self, all));
+      return b2.apply(this, arguments); };
+    for(const k in b2) try{ w2[k] = b2[k]; }catch(e){}
+    window.apiNow = w2; try{ apiNow = w2; }catch(e){} }
 })();
 </script>
 </body>
