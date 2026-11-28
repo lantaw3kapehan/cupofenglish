@@ -7566,7 +7566,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2699;
+const COE_V = 2700;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -20784,10 +20784,11 @@ if(typeof VIEW !== 'undefined' && VIEW === 'money') try{ renderMoney(); }catch(e
   window.api = function(fn){
     if(fn !== 'classCheck') return base.apply(this, arguments);
     const args = arguments, q = Object.assign({}, args[2] || {}), g = ++GEN, t0 = Date.now();
-    const slow = base.apply(this, args);   // Google, as before
+    let slow0 = null; const slow = { then: (a, b) => (slow0 || (slow0 = base.apply(this, args))).then(a, b), catch: f => (slow0 || (slow0 = base.apply(this, args))).catch(f) };   /* 3143: Google only when the database cannot answer */
     const fast = fetch(FAST_URL + '-clash', { method: 'POST', headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(Object.assign({ token: TOKEN }, q, { code: q.code || (q.ignore ? '' : ((String(($('cS') || {}).value || '').match(/ST-\d{4}-\d{3}/i) || [''])[0])) })) }).then(x => x.json()).catch(() => null);
-    return Promise.race([fast.then(r => r && r.ok ? r : slow), new Promise(z => setTimeout(() => z(null), 6000)).then(() => slow)]).then(r => {
+    let fin3143 = false; return Promise.race([fast.then(r => { fin3143 = true; return r && r.ok ? r : slow; }), new Promise(z => setTimeout(() => z(null), 6000)).then(() => fin3143 ? null : slow)]).then(r => {
+      if(r && r.src === 'db' && 'hours' in r){ return { ok: true, hours: !!r.hours, issues: (r.issues || []).concat(r.more ? ['…and ' + r.more + ' more'] : []), quick: true }; }   /* 3143: hours from the database too */
       if(r && r.src === 'db'){
         r = { ok: true, hours: false, issues: (r.issues || []).concat(r.more ? ['…and ' + r.more + ' more'] : []), quick: true };
         slow.then(G => { try{
