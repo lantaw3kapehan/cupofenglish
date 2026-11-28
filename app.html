@@ -7565,7 +7565,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2692;
+const COE_V = 2693;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -23516,7 +23516,7 @@ go();
     if(r && r.status === 'paper') h += '<div class="box"><b>You signed this on paper' + (r.paper_date ? ' on ' + ph(r.paper_date) : '') + '.</b>' + (r.scan_at ? '<div class="row2"><button class="btn sm teal" onclick="ctScan(' + r.id + ')">View the notarized copy</button></div>' : '<div class="s" style="font-size:12.5px;color:#6F6B85;margin-top:4px">The notarized scan will be attached here.</div>') + '</div>';
     if(r && r.reply) h += '<div class="note"><b>Reply from ' + e(r.reply_by || 'management') + ':</b> ' + e(r.reply) + '</div>';
     if(d.kind === 'annex_a') h += '<div class="note" style="margin:0 0 12px"><b>Updated by Addendum No. 1 (Clause 1.5).</b> Your schedule is the slots you open in the app: once a student is booked, that lesson is your confirmed schedule unless the student cancels or stops, or Operations changes it; no monthly schedule to submit (2.10). Time-in is now in the app: it opens 40 minutes before your first class and is on time at least 30 minutes before, with one screenshot showing the student code only; for each later class tap <b>I\'m in</b> (Clauses 2.2–2.3). Operations sends student reminders; you send them when Operations is off (2.8). Amounts follow Clause 4.1. The text below is the Annex A you signed.</div>';
-    h += '<div class="text">' + md(d.body) + '</div>';
+    h += d.kind === 'undertaking' ? memoDoc3136(d.body) : '<div class="text">' + md(d.body) + '</div>';   /* 3136 */
     if(need) h += signForm();
     else if(r && r.status === 'signed') h += recordBox(r);
     else if(r && r.status === 'declined') h += '<div class="box"><b>You did not agree</b><div class="note">' + e(r.note || '') + '</div><div class="fine">Management will talk with you. Your old terms continue only until your Agreement ends: CupOfEnglish may end it with 30 days\' notice, and renewal is only on the current terms (Clause 1.8). You can still sign below if you change your mind.</div></div>' + signForm();
@@ -23709,8 +23709,23 @@ go();
     const T8 = termOf(rs, AD.docs, pp); b.innerHTML = h.replace('<div class="sub">Signing record · Philippine time</div>', '<div class="sub">Signing record · Philippine time' + (T8 ? ' · <b>term ' + e(ph(T8.start)) + ' to ' + e(ph(T8.end)) + '</b>' + (T8.due ? ' · <b style="color:#9A3A26">renewal due</b>' : '') : ' · two-year term: add the Agreement date (details below) or record the paper Agreement') + '</div>') + '</div>'; b.scrollTop = 0; };
 
   async function refresh(t){ AD = await call('list'); CNTT = 0; ctCount(); ctTeacher(t); }
+  /* 3136 (Misty 28 Nov "use our official template in memos"): an individual memo (kind "undertaking") shows in the same official memorandum
+     layout as Messages › Memoranda: logo, number, TO / SUBJECT / DATE, the body, Misty's signature, the office footer. */
+  window.memoDoc3136 = function(body){ try{ if(typeof msigLoad === 'function') msigLoad(); }catch(x){}
+    const L = String(body || '').replace(/\r/g, '').split('\n'), hd = {}; let no = '';
+    const rest = L.filter(l => { const t = l.trim(); let m = t.match(/^#\s+(.*)$/); if(m && !no){ no = m[1]; return false; }
+      m = t.match(/^\*\*(To|From|Date|Subject):\*\*\s*(.*)$/i); if(m){ hd[m[1].toLowerCase()] = m[2]; return false; }
+      if(/^Misty T\. Dagyapen$|^President, CupOfEnglish$/.test(t)) return false; return true; }).join('\n');
+    let b = md(rest);
+    b = b.replace(/<h3>(5\. Final official warning)<\/h3>([\s\S]*?)(?=<h3>|$)/, (z, h, c) => '<div class="m36-warn"><h3>' + h + '</h3>' + c.replace(/(<p>We value your teaching[\s\S]*)$/, '</div>$1') + (/<\/div><p>We value/.test(c.replace(/(<p>We value your teaching[\s\S]*)$/, '</div>$1')) ? '' : '</div>'));
+    b = b.replace(/<h3>(4\. Personal undertaking)<\/h3>([\s\S]*?)(?=<div class="m36-warn">|<h3>|$)/, (z, h, c) => '<div class="m36-box"><h3>' + h + '</h3>' + c + '</div>');
+    const logo = (document.querySelector('#login img') || {}).src || '', sig = typeof msigImg === 'function' ? msigImg('misty') : '';
+    const foot = typeof MEMO_FOOT !== 'undefined' ? MEMO_FOOT : '';
+    return '<div class="memo m3136">' + (logo ? '<img class="memo-logo" src="' + logo + '" alt="CupOfEnglish">' : '<b>CupOfEnglish</b>') + '<div class="memo-no">' + e(no.replace(/\s*\(individual\)\s*$/i, '')) + '</div>'
+      + '<table class="memo-h"><tr><td colspan="2"><b>MEMORANDUM</b></td></tr><tr><td><b>TO</b></td><td><b>: ' + e(hd.to || '') + '</b></td></tr><tr><td><b>FROM</b></td><td><b>: ' + e(hd.from || '') + '</b></td></tr><tr><td><b>SUBJECT</b></td><td><b>: ' + e(hd.subject || '') + '</b></td></tr><tr><td><b>DATE</b></td><td><b>: ' + e(hd.date || '') + '</b></td></tr></table><hr>'
+      + '<div class="memo-b m36-b">' + b + '</div><div class="memo-s">' + sig + '<b>MISTY T. DAGYAPEN</b><br>President<br><b>CupOfEnglish (OPC)</b></div><div class="memo-f">' + foot + '</div></div>'; };
   window.ctPrev3134 = async function(id){ try{ const j = await call('doc_body', { id }); const md0 = String(j.doc.body || '');
-      const html = md(md0);
+      const html = memoDoc3136(md0);
       openSheet('<div class="ct"><button class="btn ghost sm" style="margin-bottom:10px" onclick="ctAdmin()">‹ Contracts</button><div class="fine" style="margin:0 0 10px">Preview · exactly the text the teacher will read and sign</div>' + html + '</div>'); $('sheet').classList.add('wide'); }catch(x){ toast(x.message); } };
   window.ctSend3134 = async function(id, t){ if(!confirm('Send this memo to ' + t + ' now? She will see it in My Contract and be asked to sign it within 14 days.')) return;
     try{ await call('send_one', { id, teacher: t }); toast('Sent to ' + t); await refresh(t); }catch(x){ toast(x.message); } };
@@ -51017,5 +51032,21 @@ body.is-mgr #app #v-trials #tpList .rp-row:last-child{border-bottom:0!important}
   var _r = window.renderLeave; if(typeof _r === 'function') window.renderLeave = function(){ var r = _r.apply(this, arguments); try{ paint(); }catch(e){ console.warn('lv3124', e); } return r; };
 })();
 </script>
+<style id="s3136">
+.m3136{max-width:820px;margin:12px auto 0}
+.m3136 .m36-b{font-size:14px;line-height:1.6}
+.m3136 .m36-b h3{font:700 15px Inter,sans-serif;color:#1E1B3A;margin:22px 0 8px;padding-left:10px;border-left:3px solid #0E6F68}
+.m3136 .m36-b h3:first-child{margin-top:6px}
+.m3136 .m36-b p{margin:0 0 10px}
+.m3136 .m36-b ul,.m3136 .m36-b ol{margin:0 0 10px;padding-left:22px}
+.m3136 .m36-b li{margin:4px 0}
+.m3136 .ct-tw{overflow-x:auto;margin:8px 0 12px}
+.m3136 .ct-t{border-collapse:collapse;width:100%;font-size:12.5px}
+.m3136 .ct-t th{text-align:left;background:#F6F5FA;font-weight:700;color:#4A4666}
+.m3136 .ct-t th,.m3136 .ct-t td{border:1px solid #ECEAF2;padding:7px 9px;vertical-align:top}
+.m3136 .m36-box{background:#F6F5FA;border:1px solid #ECEAF2;border-radius:12px;padding:4px 16px 8px;margin:16px 0}
+.m3136 .m36-warn{background:#FBEAEA;border:1px solid #F2C7C3;border-radius:12px;padding:4px 16px 8px;margin:16px 0}
+.m3136 .m36-warn h3{border-left-color:#C0392B;color:#9C2F2F}
+</style>
 </body>
 </html>
