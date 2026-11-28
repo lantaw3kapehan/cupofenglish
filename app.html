@@ -642,6 +642,7 @@ html:root:root{
       + P.slice(0, 6).map(r => '<div class="trm-it" style="align-items:flex-start"><span><b>' + esc1826(r.topic) + '</b><small>' + esc1826(d1826(r.done_at)) + ' · coached ' + esc1826(tName(r.teacher)) + (r.mins ? ' · ' + hrs1826(r.mins) : '') + '</small>'
         + (r.notes ? '<details class="tx-cn"><summary><span>' + esc1826(String(r.notes).split(/\n/)[0].slice(0, 90)) + '</span><b>Read notes</b></summary><div class="small" style="white-space:pre-line;margin-top:6px">' + esc1826(r.notes) + '</div></details>' : '') + '</span></div>').join('')
       + '</section>'; }
+  window.cg1826Get = async function(){ try{ const g = await call1826('given', {}); if(g && g.ok){ G1826 = g; W1826 = g.who || W1826; } return g; }catch(x){ return null; } };   /* 3174: Today's coaching card */
   async function load1826(who){ W1826 = who; try{ const isMgr = typeof D !== 'undefined' && D && D.mgr; G1826 = await call1826('given', isMgr ? { teacher: who } : {}); }catch(x){} box1826(); }
   window.cg1826Done = function(sid){ const s = ((G1826 || {}).upcoming || []).find(x => x.id === sid); if(!s) return; const t = (s.invited || []).map(tName).join(', ');
     openSheet('<h1>Coaching done</h1><div class="mute small">' + esc1826(t) + ' · ' + esc1826(s.note || 'Coaching') + ' · ' + esc1826(dt1826(s.starts_at)) + ' · ' + hrs1826(s.mins) + '</div><div class="card" style="margin-top:12px"><label class="small mute">Notes for ' + esc1826(t) + ' · what we worked on, next steps</label><textarea id="cgN" rows="6" style="width:100%;margin:4px 0 10px"></textarea>'
@@ -7584,7 +7585,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2735;
+const COE_V = 2736;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -51383,6 +51384,31 @@ body.is-mgr #app #v-trials #tpList .rp-row:last-child{border-bottom:0!important}
     o.querySelector('#a61rm').onclick = async () => { if(!window.confirm('Remove this advance? Use this only for one entered by mistake.')) return; await done(o, await call('remove', { id }).catch(() => null), 'Removed'); }; };
   const rr = window.renderPayroll; if(typeof rr === 'function') window.renderPayroll = function(){ const r = rr.apply(this, arguments); try{ if(L) card(); load(); }catch(e){} return r; };
   setInterval(() => { try{ if(typeof VIEW !== 'undefined' && VIEW === 'payroll' && !document.hidden) load(); }catch(e){} }, 60000);
+})();
+</script>
+<script>
+/* 3174 · Teacher Today: a "Coaching today" card (Misty 21:00 "it should also appear on her TODAY, as coaching"): coachings she gives
+   (Notes & video from 1 h before) and coachings she receives, today only (Manila). */
+(function(){
+  if(window.__3174) return; window.__3174 = 1;
+  let G = null, at = 0, busy = 0;
+  const esc3 = x => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const day = t => new Date(new Date(t).getTime() + 8 * 3600e3).toISOString().slice(0, 10), today = () => day(Date.now());
+  const hm = t => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' });
+  const nm = n => 'Teacher ' + String(n || '').replace(/^teacher\s+/i, '');
+  function paint(){ const v = document.getElementById('v-today'); if(!v || (typeof D !== 'undefined' && D && D.mgr)) return; let el = document.getElementById('cg3174');
+    const T = today(), give = ((G && G.upcoming) || []).filter(s => day(s.starts_at) === T), get = ((G && G.receiving) || []).filter(s => day(s.starts_at) === T);
+    if(!give.length && !get.length){ if(el) el.remove(); return; }
+    const now = Date.now();
+    const h = '<section class="tx-card" id="cg3174" style="margin:0 0 14px"><div class="tx-h"><b>Coaching today</b></div>'
+      + give.map(s => { const open = new Date(s.starts_at).getTime() - 3600e3 < now; return '<div class="trm-it"><span><b>' + esc3(s.note || 'Coaching') + '</b><small>' + hm(s.starts_at) + ' · you coach ' + esc3((s.invited || []).map(nm).join(', ')) + ' · ' + (s.mins || 60) + ' min</small></span>'
+        + (open ? '<button class="btn sm teal" onclick="cg1826Done(' + s.id + ')">Notes &amp; video</button>' : '<span class="small mute">notes &amp; video from ' + hm(new Date(s.starts_at).getTime() - 3600e3) + '</span>') + '</div>'; }).join('')
+      + get.map(s => '<div class="trm-it"><span><b>' + esc3(s.note || 'Coaching') + '</b><small>' + hm(s.starts_at) + ' · coached by ' + esc3(nm(s.facilitator)) + ' · ' + (s.mins || 60) + ' min</small></span>' + (s.meet_url ? '<a class="btn sm teal" href="' + esc3(s.meet_url) + '" target="_blank" rel="noopener">Join</a>' : '<span class="small mute">booked</span>') + '</div>').join('')
+      + '</section>';
+    if(el){ if(el.outerHTML !== h) el.outerHTML = h; } else v.insertAdjacentHTML('afterbegin', h); }
+  async function load(){ if(busy || (typeof D !== 'undefined' && D && D.mgr) || typeof window.cg1826Get !== 'function') return; if(G && Date.now() - at < 120000){ paint(); return; } busy = 1; try{ const g = await window.cg1826Get(); if(g && g.ok){ G = g; at = Date.now(); } }finally{ busy = 0; } paint(); }
+  const _rt = window.renderToday; if(_rt) window.renderToday = function(){ const r = _rt.apply(this, arguments); try{ setTimeout(paint, 0); load(); }catch(e){} return r; };
+  setTimeout(load, 2500); setInterval(() => { if(typeof VIEW !== 'undefined' && VIEW === 'today') paint(); }, 60000);
 })();
 </script>
 </body>
