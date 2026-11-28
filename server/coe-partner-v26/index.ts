@@ -1,3 +1,4 @@
+// v26e (28 Nov 2026 · 3166): pRenew / pLinks also for a partner source without a login (accOf).
 // v26d (28 Nov 2026 · 3164): shared names matched by management (sys:partnerlink) or by student code year; ops pLinks / pLinkSet.
 // v26 (28 Nov 2026 · 3163, Misty 18:53): management op pRenew = renewal rate of a partner's students since they started. Rollback: v25 @ 3e9c3ce.
 // v24 (21 Nov 2026 · 2649, Misty): payments on the same day: the latest confirmation first (Eleven 1775 above Monica 1774).
@@ -266,6 +267,20 @@ async function availDocs() {
   (A || []).forEach((d: any) => ((d.data && d.data.teachers) || []).forEach((t: any) => add(t.name, t.days, t.busy, Date.parse(d.updated_at) || 0)));
   (O || []).forEach((d: any) => { let nm = ""; try { nm = JSON.parse(String(d.key).slice("mgmt:mgmtAvail|".length))[0]; } catch { return; } if (d.data && d.data.days) add(nm, d.data.days, d.data.busy, Date.parse(d.updated_at) || 0); });
   return H; }
+// v26e (28 Nov · 3166): a partner without a login (Dr. Rose, Mr. Clark, Ms. Xiaolan …) for the management renewal rate. Labels = the SALES
+//   labels that carry the partner's name; none (Ms. Xiaolan) → the general labels (CupOfEnglish, IELTS …) restricted to her own students
+//   (marked approx: a direct student with the same English name could be counted).
+async function accOf(b: any): Promise<any> {
+  if (b.id) { const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id)).maybeSingle(); return A; }
+  const sources = (Array.isArray(b.sources) ? b.sources : []).map(norm).filter(Boolean).slice(0, 6); if (!sources.length) return null;
+  const key = (x: string) => x.split(/\s[–-]\s/).pop()!.replace(/^(ms|mr|mrs|dr|teacher)\.?\s+/i, "").trim().toLowerCase();
+  const keys = [...new Set(sources.map(key))].filter((k) => k.length >= 3);
+  const SL = await pages(() => db.from("coe_sales").select("partner").is("removed_at", null).order("day"));
+  const all = [...new Set((SL as any[]).map((x) => norm(x.partner)).filter(Boolean))];
+  let labels = all.filter((l) => keys.some((k) => lbl(l).includes(k))), approx = false;
+  if (!labels.length) { labels = all.filter((l) => !/\s-\s/.test(lbl(l)) || /^adult english - ph$/i.test(lbl(l))); approx = true; }
+  return { id: "", display_name: String(b.name || sources[0]), sources, sales_labels: labels, pay_tracking: false, approx };
+}
 Deno.serve(async (req: Request) => {
   const h = cors(req.headers.get("origin") || "");
   if (req.method === "OPTIONS") return new Response("ok", { headers: h });
@@ -371,7 +386,7 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, n: refs.length });
     }
     if (op === "pLinks" || op === "pLinkSet") {   // v26d · 3164: match a shared-name payment to the right child (management)
-      const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id || "")).maybeSingle(); if (!A) return out({ ok: false, msg: "No such login" });
+      const A = await accOf(b); if (!A) return out({ ok: false, msg: "No such partner" });
       if (op === "pLinkSet") { const ref = String(b.ref || ""), nm = String(b.name || "").toLowerCase().replace(/[\s.]+/g, ""), code = norm(b.code).toUpperCase();
         if (!/^SALES:[0-9a-f]{32}$/.test(ref) || !nm || (code && !/^ST-\d{4}-\d{3}$/.test(code))) return out({ ok: false, msg: "Bad request" });
         const { data: D0 } = await db.from("docs").select("data").eq("key", "sys:partnerlink").maybeSingle(); const d: any = (D0 as any)?.data || {}; d.links = d.links || {}; d.log = (d.log || []).slice(-400);
@@ -389,7 +404,7 @@ Deno.serve(async (req: Request) => {
       return out({ ok: true, partner: A.display_name, todo, auto });
     }
     if (op === "pRenew") {   // v26 (28 Nov · 3163, Misty 18:53): renewal rate of a partner's students since they started (management only)
-      const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id || "")).maybeSingle(); if (!A) return out({ ok: false, msg: "No such login" });
+      const A = await accOf(b); if (!A) return out({ ok: false, msg: "No such partner" });
       const P = await partnerSet(A.sources || []), pay = await payFor(A, P, false), codes = Object.keys(P), L = await lessonsOf(codes);
       const by: Record<string, { d: string[]; lessons: number }> = {}; let unlinked = 0;
       // v26c: a name shared by two or more of her students (Leo, Mia, Candy …) has no single code: that payment is left out for that name (never merged: merging joins different children)
@@ -407,13 +422,13 @@ Deno.serve(async (req: Request) => {
           avgPackages: X.length ? sum((x) => x.n, X) / X.length : null, avgMonths: X.length ? sum((x) => x.months, X) / X.length : null }; };
       const years = [...new Set(S.map((x) => x.first.slice(0, 4)))].sort().map((y) => ({ year: y, ...stat(S.filter((x) => x.first.slice(0, 4) === y)) }));
       const dist: Record<string, number> = {}; S.forEach((x) => { const k = x.n >= 6 ? "6+" : String(x.n); dist[k] = (dist[k] || 0) + 1; });
-      return out({ ok: true, partner: A.display_name, ambiguous: amb, sharedNames: Object.keys(nameCodes).filter((x) => nameCodes[x].length > 1).length, since: S.length ? S.map((x) => x.first).sort()[0] : null, all: stat(S), years, dist, unlinked, noSale: codes.filter((k) => !by[k] && !Object.keys(by).some((x) => x.startsWith("N:") && (nameCodes[x.slice(2)] || []).includes(k))).length,
+      return out({ ok: true, partner: A.display_name, approx: !!A.approx, labels: A.sales_labels, ambiguous: amb, sharedNames: Object.keys(nameCodes).filter((x) => nameCodes[x].length > 1).length, since: S.length ? S.map((x) => x.first).sort()[0] : null, all: stat(S), years, dist, unlinked, noSale: codes.filter((k) => !by[k] && !Object.keys(by).some((x) => x.startsWith("N:") && (nameCodes[x.slice(2)] || []).includes(k))).length,
         dueNow: S.filter((x) => x.active && x.left != null && x.left <= 4).length,
         top: S.sort((a, b) => b.n - a.n || a.first.localeCompare(b.first)).slice(0, 12).map((x) => ({ name: x.name, cn: x.cn, code: x.code, n: x.n, first: x.first, months: x.months, active: x.active })) });
     }
     if (op === "pPay") {   // management preview of a login's Payments tab, plus the rows whose learner type is unclear
       const { data: A } = await db.from("partner_accounts").select("id,display_name,sources,sales_labels,pay_tracking").eq("id", String(b.id || "")).maybeSingle(); if (!A) return out({ ok: false, msg: "No such login" });
-      const P = await partnerSet(A.sources || []); return out({ ok: true, partner: A.display_name, ambiguous: amb, sharedNames: Object.keys(nameCodes).filter((x) => nameCodes[x].length > 1).length, ...(await payFor(A, P, true)) });
+      const P = await partnerSet(A.sources || []); return out({ ok: true, partner: A.display_name, approx: !!A.approx, labels: A.sales_labels, ambiguous: amb, sharedNames: Object.keys(nameCodes).filter((x) => nameCodes[x].length > 1).length, ...(await payFor(A, P, true)) });
     }
     // pActive
     const { error } = await db.from("partner_accounts").update({ active: !!b.active, updated_at: new Date().toISOString(), updated_by: s.name }).eq("id", String(b.id || ""));
