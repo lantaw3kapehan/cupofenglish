@@ -1,4 +1,4 @@
-// CupOfEnglish · coe-review v1 (20 Nov 2026 · 2518) · Performance Improvement Plan and Accountability Review (Annex A)
+// CupOfEnglish · coe-review v3 (3128 record across reviews) · v1 (20 Nov 2026 · 2518) · Performance Improvement Plan and Accountability Review (Annex A)
 // Office staff under a Regular Employment Contract (Operations). The President writes; the staff member reads, acknowledges and answers.
 // A draft is never shown to the staff member. Nothing here changes pay.
 // POST { token, op: "get", staff? }       → { ok, review, items, weeks, ladder, role: "pres" | "staff" }
@@ -38,13 +38,21 @@ Deno.serve(async (req: Request) => {
   const op = String(b.op || "");
   try {
     const load = async (rv: any) => {
-      const { data: I } = await db.from("coe_review_item").select("*").eq("review_id", rv.id).is("gone_at", null).order("day").order("id");
+      // v3 (3128, Misty 28 Nov): occurrences count across ALL her reviews (sent ones + this one), so the record carries over
+      const { data: RV } = await db.from("coe_review").select("id,status,sent_at").ilike("staff", rv.staff);
+      const ids = (RV || []).filter((r: any) => r.status !== "draft" || r.id === rv.id).map((r: any) => r.id);
+      const { data: I } = await db.from("coe_review_item").select("*").in("review_id", ids.length ? ids : [rv.id]).is("gone_at", null).order("day").order("id");
       const n: Record<string, number> = {};
-      const items = (I || []).map((x: any) => { const k = x.cat; n[k] = (n[k] || 0) + 1; const L = LADDER[k] || LADDER.other;
+      const all = (I || []).map((x: any) => { const k = x.cat; n[k] = (n[k] || 0) + 1; const L = LADDER[k] || LADDER.other;
         const step = k === "other" ? "" : n[k] <= 3 ? L.steps[n[k] - 1] : REPEATED;
         return { ...x, catName: L.name, occ: n[k], step }; });
+      const items = all.filter((x: any) => x.review_id === rv.id);
+      const byCat = Object.keys(n).map((k) => { const L = LADDER[k] || LADDER.other, c = n[k];
+        return { cat: k, name: L.name, n: c, step: k === "other" ? "" : c <= 3 ? L.steps[c - 1] : REPEATED, next: k === "other" ? "" : c < 3 ? L.steps[c] : REPEATED }; })
+        .sort((a, b) => b.n - a.n);
+      const record = { reviews: (RV || []).filter((r: any) => r.status !== "draft").length, concerns: all.length, byCat, repeated: REPEATED };
       const { data: W } = await db.from("coe_review_week").select("*").eq("review_id", rv.id).order("week");
-      return { review: rv, items, weeks: W || [] };
+      return { review: rv, items, weeks: W || [], record };
     };
     const getRv = async (id: number) => { const { data } = await db.from("coe_review").select("*").eq("id", id).maybeSingle(); return data; };
     const mine = (rv: any) => rv && rv.staff.toLowerCase() === me.toLowerCase() && rv.status !== "draft";
