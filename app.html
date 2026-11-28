@@ -2127,14 +2127,15 @@ try{ (window.__gc = window.__gc || []).push({ fn: fn, at: Math.round(performance
 const ac = ms && window.AbortController ? new AbortController() : null, tid = ac ? setTimeout(() => ac.abort(), ms) : 0;
 /* 3063 (Misty 26 Nov): the one door to Google. Management reads that the database answers never go to Google (no "check behind"); Google only
    for the few reads it still works out (SB_GONLY) or when the database has no answer at all. Saves are untouched (they carry a rid). */
-try{ if(!rid && typeof D !== 'undefined' && D && D.mgr && typeof SB_R !== 'undefined' && SB_R.test(fn) && !(typeof SB_GONLY !== 'undefined' && SB_GONLY.test(fn)) && typeof sbDocV === 'function' && typeof sbKey === 'function'){
-  const g = () => fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({fn, args}), signal: ac ? ac.signal : undefined}).then(r => r.json()).finally(() => clearTimeout(tid));
+try{ if(!rid && typeof D !== 'undefined' && D && D.mgr && /^(mgmt|sched|money|db)/.test(fn) && !(typeof SB_GONLY !== 'undefined' && SB_GONLY.test(fn)) && typeof sbDocV === 'function' && typeof sbKey === 'function'){   /* 3141: every management read asks the database first (was: only the SB_R list) */
+  const g0 = () => fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({fn, args}), signal: ac ? ac.signal : undefined}).then(r => r.json()).finally(() => clearTimeout(tid));
+  const g = () => fetch(FAST_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ op: 'calc', token: TOKEN, fn, args: args.slice(1), scope: D.pres ? 'pres' : 'mgmt' }) }).then(x => x.json()).then(j => { if(j && j.ok && j.data){ clearTimeout(tid); try{ window.__gc.pop(); const Q = window.__gq3125 || {}, k = fn + '|read|' + String(location.hash || '').slice(1, 40); if(Q[k] > 1) Q[k]--; else delete Q[k]; }catch(e){} return { ok: true, data: j.data }; } return g0(); }, g0);   /* 3141: the database works it out before Google is asked */
   return Promise.resolve(sbDocV(sbKey(fn, args), fn)).then(d => { if(d && d.data){ clearTimeout(tid); try{ window.__gc.pop(); (window.__gdb = window.__gdb || []).push(fn); const Q = window.__gq3125 || {}, k = fn + '|read|' + String(location.hash || '').slice(1, 40); if(Q[k] > 1) Q[k]--; else delete Q[k]; }catch(e){} let x = d.data; try{ if(fn === 'mgmtQaForm' && typeof MO !== 'undefined' && MO && Array.isArray(MO.teachers) && MO.teachers.length){ x = Object.assign({}, x, { teachers: MO.teachers.map(t => String(t.name || '')).filter(Boolean).sort() }); } }catch(e){} return { ok: true, data: x }; }   /* 3064: QA form teachers from the database's Overview */ return g(); }, g); } }catch(e){}
 return fetch(API_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(rid ? {fn, args, rid} : {fn, args}), signal: ac ? ac.signal : undefined})
 .then(r => r.json()).finally(() => clearTimeout(tid));
 }
 function apiNow(fn, ...args){
-if(!GAS){ const write = !API_READ.test(fn), safe = write || API_SAFE.test(fn), rid = write ? 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) : ''; if(write) API_PEND++;
+if(!GAS){ const write = !API_READ.test(fn) && !API_BG.test(fn) && !(typeof SB_R !== 'undefined' && SB_R.test(fn)), safe = write || API_SAFE.test(fn), rid = write ? 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) : ''; if(write) API_PEND++;
 const run = async () => { let last, net = false;
 for(let a = 0; a < (safe ? 4 : 1); a++){
 if(a) await new Promise(z => setTimeout(z, [0, 1500, 4000, 10000][a]));
@@ -7565,7 +7566,7 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden && TOK
 function DEMO_API(fn){ return Promise.resolve({ ok: false, msg: 'Demo mode is off' }); }
 /* ── Updates arrive by themselves in the installed app: newer screens are fetched in the background and swapped in
 when nobody is in the middle of something (no open card, no typing). Bump COE_V with every release. */
-const COE_V = 2697;
+const COE_V = 2698;
 function newerSaved(){ try{ const nv = +(localStorage.getItem('coe.newV') || 0); if(nv > COE_V) return true; }catch(e){} let c = ''; try{ c = localStorage.getItem('coe.app') || ''; }catch(e){} const m = c.match(/const COE_V = (\d+);/); return m && +m[1] > COE_V; }   /* 1986: + the frame's background download */
 function busy(){ const a = document.activeElement || {}; if(document.querySelector('#svPills [data-k="wait"]')) return true; return $('sheet').classList.contains('on') || /INPUT|TEXTAREA|SELECT/.test(a.tagName || ''); }
 function applyUpdate(){ if(newerSaved() || window._updNet){ if(busy() || updQuiet()){ window._upd = 1; updBanner(); } else location.reload(); } }
@@ -26621,7 +26622,7 @@ section.sec.tx-next{margin-top:14px}.tx-nx{display:flex;align-items:center;gap:1
         let items = r.items || [];
         if(GQ1788.length) items = items.concat(GQ1788.splice(0, GQ1788.length));   /* 1788: Google's items from the last check */
         items.sort((p, q) => q.t - p.t); return { now: r.now, time: r.time, items: items.slice(0, 25) }; })
-      .catch(() => { gAt = Date.now(); return base.apply(self, args); });   /* database not answering: Google as before */
+      .catch(() => new Promise(z => setTimeout(z, 2500)).then(() => fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ token: TOKEN, action: 'pulse', since: since || 0 }) }).then(x => x.json())).then(r => r && r.ok !== false ? { now: r.now, time: r.time, items: (r.items || []).sort((p, q) => q.t - p.t).slice(0, 25) } : { items: [] }).catch(() => ({ items: [] })));   /* 3141: database not answering: ask it again, never Google */
   };
   for(const k in base) try{ w[k] = base[k]; }catch(e){}
   window.api = w;
