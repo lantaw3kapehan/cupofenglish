@@ -301,7 +301,7 @@ async function gmailSend(to: string, subject: string, html: string) {
 async function daySchedule(dry: boolean) {
   const { data: d, error } = await db.rpc("coe_day_schedule"); if (error || !d || !d.day) throw new Error("The database gave no schedule");
   const { data: was } = await db.from("docs").select("data").eq("key", "sys:dayschedule").maybeSingle();
-  if (!dry && was && was.data && was.data.day === d.day) return { ok: true, skipped: "already sent for " + d.day };
+  if (!dry && was && was.data && was.data.day === d.day && ((was.data.sent || []).length || !(was.data.fail || []).length)) return { ok: true, skipped: "already sent for " + d.day };   // 3175: a run where every email failed can be sent again
   const label = dsLabel(d.day), T = d.teachers || [], sent: string[] = [], fail: string[] = [];
   const mails: { to: string; subject: string; html: string }[] = [];
   T.forEach((t: any) => { if (!t.email || !t.classes || !t.classes.length) return;
